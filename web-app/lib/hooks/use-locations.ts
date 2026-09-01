@@ -1,7 +1,11 @@
 import { locationsApi, County, SubCounty, Ward } from '@/lib/api/locations';
 import { queryKeys } from '@/lib/query-client';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
-import { transformCountyRow, transformSubCountyRow, transformWardRow } from '@/lib/powersync/transforms';
+import {
+  transformCountyRow,
+  transformSubCountyRow,
+  transformWardRow,
+} from '@/lib/powersync/transforms';
 import type { CountyRow, SubCountyRow, WardRow } from '@/lib/powersync/schema';
 
 /**

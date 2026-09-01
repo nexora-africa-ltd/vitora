@@ -157,11 +157,7 @@ export function PainScoreSlider({
       <div className="flex items-center justify-between">
         <Label className="text-sm font-medium">Pain Score (0-10)</Label>
         <Badge
-          className={cn(
-            severity.bgClass,
-            severity.textClass,
-            'transition-colors duration-200'
-          )}
+          className={cn(severity.bgClass, severity.textClass, 'transition-colors duration-200')}
         >
           <span className="mr-1">{severity.emoji}</span>
           {severity.label}
@@ -171,15 +167,13 @@ export function PainScoreSlider({
       {/* Slider container */}
       <div className="relative">
         {/* Number scale markers */}
-        <div className="flex justify-between px-1 mb-2">
+        <div className="mb-2 flex justify-between px-1">
           {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
             <span
               key={num}
               className={cn(
-                'text-xs font-medium w-4 text-center',
-                currentScore === num
-                  ? 'text-foreground font-bold'
-                  : 'text-muted-foreground'
+                'w-4 text-center text-xs font-medium',
+                currentScore === num ? 'font-bold text-foreground' : 'text-muted-foreground'
               )}
             >
               {num}
@@ -188,7 +182,7 @@ export function PainScoreSlider({
         </div>
 
         {/* Slider with gradient track */}
-        <div className="relative h-8 flex items-center">
+        <div className="relative flex h-8 items-center">
           {/* Gradient background track */}
           <div className="absolute inset-x-0 h-3 rounded-full bg-gradient-to-r from-green-400 via-yellow-400 via-50% to-red-500 shadow-inner" />
 
@@ -203,7 +197,7 @@ export function PainScoreSlider({
             disabled={disabled}
             aria-label={`Pain score: ${severity.label} (${currentScore} out of 10)`}
             className={cn(
-              'relative w-full h-3 appearance-none bg-transparent cursor-pointer z-10',
+              'relative z-10 h-3 w-full cursor-pointer appearance-none bg-transparent',
               // Thumb styling - uses webkit and moz prefixes
               '[&::-webkit-slider-thumb]:appearance-none',
               '[&::-webkit-slider-thumb]:w-6',
@@ -227,17 +221,23 @@ export function PainScoreSlider({
               '[&::-moz-range-thumb]:cursor-grab',
               '[&::-moz-range-thumb]:active:cursor-grabbing',
               // Dynamic thumb color based on position
-              currentScore <= 2 && '[&::-webkit-slider-thumb]:bg-green-500 [&::-moz-range-thumb]:bg-green-500',
-              currentScore > 2 && currentScore <= 4 && '[&::-webkit-slider-thumb]:bg-yellow-500 [&::-moz-range-thumb]:bg-yellow-500',
-              currentScore > 4 && currentScore <= 6 && '[&::-webkit-slider-thumb]:bg-orange-500 [&::-moz-range-thumb]:bg-orange-500',
-              currentScore > 6 && '[&::-webkit-slider-thumb]:bg-red-500 [&::-moz-range-thumb]:bg-red-500',
+              currentScore <= 2 &&
+                '[&::-moz-range-thumb]:bg-green-500 [&::-webkit-slider-thumb]:bg-green-500',
+              currentScore > 2 &&
+                currentScore <= 4 &&
+                '[&::-moz-range-thumb]:bg-yellow-500 [&::-webkit-slider-thumb]:bg-yellow-500',
+              currentScore > 4 &&
+                currentScore <= 6 &&
+                '[&::-moz-range-thumb]:bg-orange-500 [&::-webkit-slider-thumb]:bg-orange-500',
+              currentScore > 6 &&
+                '[&::-moz-range-thumb]:bg-red-500 [&::-webkit-slider-thumb]:bg-red-500',
               disabled && 'cursor-not-allowed opacity-50'
             )}
           />
         </div>
 
         {/* Labels under the slider */}
-        <div className="flex justify-between mt-2 text-xs">
+        <div className="mt-2 flex justify-between text-xs">
           <span className="text-green-600 dark:text-green-400">No Pain</span>
           <span className="text-yellow-600 dark:text-yellow-400">Moderate</span>
           <span className="text-red-600 dark:text-red-400">Worst Pain</span>
@@ -246,7 +246,8 @@ export function PainScoreSlider({
 
       {/* Current value display */}
       <div className="text-center text-sm text-muted-foreground">
-        Current: <span className="font-medium text-foreground">{currentScore}</span> — {severity.label}
+        Current: <span className="font-medium text-foreground">{currentScore}</span> —{' '}
+        {severity.label}
       </div>
     </div>
   );

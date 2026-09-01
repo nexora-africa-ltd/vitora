@@ -108,7 +108,11 @@ export default function FacilityDetailPage() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
 
-  const { data: facility, isLoading, error } = useQuery({
+  const {
+    data: facility,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['facility', facilityId],
     queryFn: () => facilitiesApi.get(facilityId),
     enabled: !isNaN(facilityId),
@@ -177,7 +181,7 @@ export default function FacilityDetailPage() {
   }
 
   const enabledModules = Object.entries(moduleLabels).filter(
-    ([key]) => facility[key as keyof typeof facility] === true,
+    ([key]) => facility[key as keyof typeof facility] === true
   );
 
   return (
@@ -189,7 +193,7 @@ export default function FacilityDetailPage() {
           isSuperuser ? (
             <Button asChild size="sm" variant="outline">
               <Link href={`/admin/facilities/${facilityId}/edit`}>
-                <Pencil className="h-4 w-4 mr-1" />
+                <Pencil className="mr-1 h-4 w-4" />
                 Edit
               </Link>
             </Button>
@@ -198,7 +202,7 @@ export default function FacilityDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <div className="min-w-0 space-y-1">
           <p className="truncate text-sm font-medium">
             {facility.mfl_code}
@@ -207,19 +211,17 @@ export default function FacilityDetailPage() {
               · {formatFacilityLevel(facility.level, facility.level_subtype)}
             </span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             <MapPin className="mr-1 inline h-3.5 w-3.5" />
             {facility.county_name}, {facility.sub_county_name}
             {facility.ward_name && `, ${facility.ward_name}`}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+        <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
           <Badge variant={facility.is_active ? 'default' : 'secondary'}>
             {facility.is_active ? 'Active' : 'Inactive'}
           </Badge>
-          {facility.is_headquarters && (
-            <Badge variant="outline">HQ</Badge>
-          )}
+          {facility.is_headquarters && <Badge variant="outline">HQ</Badge>}
         </div>
       </div>
 
@@ -258,7 +260,7 @@ export default function FacilityDetailPage() {
         {/* SHA Contract */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <ShieldCheck className="h-4 w-4" />
               SHA Contract
             </CardTitle>
@@ -310,12 +312,10 @@ export default function FacilityDetailPage() {
         </Card>
 
         {/* SHA Interventions & Tariffs */}
-        {facility.sha_contracted && (
-          <FacilityInterventionsPanel facilityLevel={facility.level} />
-        )}
+        {facility.sha_contracted && <FacilityInterventionsPanel facilityLevel={facility.level} />}
 
         {/* DHA Registry */}
-        <div className="md:col-span-2 space-y-3">
+        <div className="space-y-3 md:col-span-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-blue-600" />
@@ -337,9 +337,9 @@ export default function FacilityDetailPage() {
               disabled={syncDha.isPending}
             >
               {syncDha.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
               ) : (
-                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                <RefreshCw className="mr-1 h-3.5 w-3.5" />
               )}
               {facility.dha_registry_synced_at ? 'Refresh' : 'Fetch from DHA'}
             </Button>

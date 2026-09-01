@@ -8,13 +8,16 @@
 // =============================================================================
 
 export type CriticalNotificationStatus =
-  | 'PENDING' | 'NOTIFIED' | 'READ_BACK'
-  | 'ACKNOWLEDGED' | 'ESCALATED' | 'FAILED';
+  | 'PENDING'
+  | 'NOTIFIED'
+  | 'READ_BACK'
+  | 'ACKNOWLEDGED'
+  | 'ESCALATED'
+  | 'FAILED';
 
 export type CriticalNotificationSeverity = 'CRITICAL' | 'PANIC';
 
-export type CriticalNotificationMethod =
-  | 'PHONE_CALL' | 'IN_PERSON' | 'SECURE_MESSAGE' | 'PAGER';
+export type CriticalNotificationMethod = 'PHONE_CALL' | 'IN_PERSON' | 'SECURE_MESSAGE' | 'PAGER';
 
 // =============================================================================
 // Critical Value Range

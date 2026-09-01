@@ -108,7 +108,8 @@ export default function IDSRReportsPage() {
       hideOnMobile: true,
       sortable: true,
       sortType: 'date' as const,
-      sortFn: (a: IDSRWeeklyReportListItem, b: IDSRWeeklyReportListItem) => new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime(),
+      sortFn: (a: IDSRWeeklyReportListItem, b: IDSRWeeklyReportListItem) =>
+        new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime(),
       cell: (item: IDSRWeeklyReportListItem) => (
         <span className="text-sm text-muted-foreground">
           {formatDate(item.week_start_date)} - {formatDate(item.week_end_date)}
@@ -134,7 +135,8 @@ export default function IDSRReportsPage() {
       key: 'outbreak_declared',
       header: 'Outbreak',
       sortable: true,
-      sortFn: (a: IDSRWeeklyReportListItem, b: IDSRWeeklyReportListItem) => Number(a.outbreak_declared) - Number(b.outbreak_declared),
+      sortFn: (a: IDSRWeeklyReportListItem, b: IDSRWeeklyReportListItem) =>
+        Number(a.outbreak_declared) - Number(b.outbreak_declared),
       cell: (item: IDSRWeeklyReportListItem) =>
         item.outbreak_declared ? (
           <Badge variant="destructive" className="w-fit">
@@ -259,11 +261,11 @@ export default function IDSRReportsPage() {
                     <p className="text-xs text-muted-foreground">
                       {formatDate(item.week_start_date)} - {formatDate(item.week_end_date)}
                     </p>
-                    <p className="text-sm mt-1">
+                    <p className="mt-1 text-sm">
                       {item.total_cases} cases, {item.total_deaths} deaths
                     </p>
                   </div>
-                  <div className="flex flex-col gap-2 items-end">
+                  <div className="flex flex-col items-end gap-2">
                     {item.outbreak_declared && (
                       <Badge variant="destructive" className="w-fit">
                         Outbreak
@@ -279,13 +281,23 @@ export default function IDSRReportsPage() {
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!hasPrev}
+            >
               Previous
             </Button>
             <span className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </span>
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNext}
+            >
               Next
             </Button>
           </div>

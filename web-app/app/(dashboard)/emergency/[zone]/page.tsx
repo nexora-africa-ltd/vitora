@@ -68,10 +68,7 @@ import {
   CATEGORY_LABELS,
   TRIAGE_CATEGORY_ORDER,
 } from '@/lib/config/emergency';
-import {
-  TRIAGE_CATEGORY_CONFIG,
-  QUEUE_STATUS_CONFIG,
-} from '@/lib/types/triage';
+import { TRIAGE_CATEGORY_CONFIG, QUEUE_STATUS_CONFIG } from '@/lib/types/triage';
 import type { TriageCategory, TriageQueueEntry, QueueStatus } from '@/lib/types/triage';
 import { cn } from '@/lib/utils/cn';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -113,7 +110,15 @@ interface QueueCardProps {
   onSelect: () => void;
 }
 
-function QueueCard({ item, onCall, onWithClinician, onComplete, onLWBS, onEscalate, onSelect }: QueueCardProps) {
+function QueueCard({
+  item,
+  onCall,
+  onWithClinician,
+  onComplete,
+  onLWBS,
+  onEscalate,
+  onSelect,
+}: QueueCardProps) {
   const waitTimeClass = getWaitTimeClass(item.triage_category, item.wait_time_minutes);
   const genderDisplay = item.patient_gender === 'M' ? 'M' : item.patient_gender === 'F' ? 'F' : 'O';
 
@@ -125,28 +130,28 @@ function QueueCard({ item, onCall, onWithClinician, onComplete, onLWBS, onEscala
         item.triage_category === 'ORANGE' && 'border-l-4 border-l-orange-500',
         item.triage_category === 'YELLOW' && 'border-l-4 border-l-yellow-500',
         item.triage_category === 'GREEN' && 'border-l-4 border-l-green-500',
-        item.triage_category === 'BLUE' && 'border-l-4 border-l-blue-500',
+        item.triage_category === 'BLUE' && 'border-l-4 border-l-blue-500'
       )}
       onClick={onSelect}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           {/* Patient Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold truncate">{item.patient_name}</h3>
-              <Badge variant="outline" className="text-xs shrink-0">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex items-center gap-2">
+              <h3 className="truncate font-semibold">{item.patient_name}</h3>
+              <Badge variant="outline" className="shrink-0 text-xs">
                 {item.patient_age} yrs &bull; {genderDisplay}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mb-2">{item.patient_mrn}</p>
-            <p className="text-sm mb-2 line-clamp-1">
+            <p className="mb-2 text-sm text-muted-foreground">{item.patient_mrn}</p>
+            <p className="mb-2 line-clamp-1 text-sm">
               <span className="font-medium">CC:</span> {item.chief_complaint || 'Not specified'}
             </p>
           </div>
 
           {/* Right Side: Category, Status, Wait Time */}
-          <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex shrink-0 flex-col items-end gap-2">
             <TriageCategoryBadge category={item.triage_category} size="sm" />
 
             <Badge
@@ -161,7 +166,7 @@ function QueueCard({ item, onCall, onWithClinician, onComplete, onLWBS, onEscala
               }
               className={cn(
                 'text-xs',
-                item.status === 'WITH_CLINICIAN' && 'bg-green-500 hover:bg-green-600',
+                item.status === 'WITH_CLINICIAN' && 'bg-green-500 hover:bg-green-600'
               )}
             >
               {QUEUE_STATUS_CONFIG[item.status]?.label || item.status}
@@ -176,7 +181,7 @@ function QueueCard({ item, onCall, onWithClinician, onComplete, onLWBS, onEscala
             </div>
 
             {item.alerts_count > 0 && (
-              <div className="flex items-center gap-1 text-destructive text-xs">
+              <div className="flex items-center gap-1 text-xs text-destructive">
                 <AlertCircle className="h-3 w-3" />
                 <span>{item.alerts_count} alerts</span>
               </div>
@@ -186,40 +191,40 @@ function QueueCard({ item, onCall, onWithClinician, onComplete, onLWBS, onEscala
 
         {/* Action Buttons */}
         <div
-          className="flex items-center gap-2 mt-3 pt-3 border-t"
+          className="mt-3 flex items-center gap-2 border-t pt-3"
           onClick={(e) => e.stopPropagation()}
         >
           {item.status === 'WAITING' && (
             <>
               <Button size="sm" variant="default" onClick={onCall}>
-                <Phone className="h-3 w-3 mr-1" />
+                <Phone className="mr-1 h-3 w-3" />
                 Call
               </Button>
               <Button size="sm" variant="outline" onClick={onLWBS}>
-                <LogOut className="h-3 w-3 mr-1" />
+                <LogOut className="mr-1 h-3 w-3" />
                 LWBS
               </Button>
             </>
           )}
           {item.status === 'CALLED' && (
             <Button size="sm" variant="default" onClick={onWithClinician}>
-              <UserCheck className="h-3 w-3 mr-1" />
+              <UserCheck className="mr-1 h-3 w-3" />
               With Doctor
             </Button>
           )}
           {item.status === 'WITH_CLINICIAN' && (
             <Button size="sm" variant="default" onClick={onComplete}>
-              <CheckCircle className="h-3 w-3 mr-1" />
+              <CheckCircle className="mr-1 h-3 w-3" />
               Complete
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={onEscalate} title="Escalate patient">
-            <Shield className="h-3 w-3 mr-1" />
+            <Shield className="mr-1 h-3 w-3" />
             <span className="hidden sm:inline">Escalate</span>
           </Button>
           <Button size="sm" variant="ghost" className="ml-auto" onClick={onSelect}>
             View Details
-            <ChevronRight className="h-3 w-3 ml-1" />
+            <ChevronRight className="ml-1 h-3 w-3" />
           </Button>
         </div>
       </CardContent>
@@ -276,11 +281,7 @@ export default function ZoneQueuePage() {
   const categoryColor = CATEGORY_COLORS[zoneMeta.primaryCategory];
 
   // Fetch queue filtered to this zone
-  const {
-    data: queueData,
-    isLoading,
-    refetch,
-  } = useTriageQueue({ area: zoneCode });
+  const { data: queueData, isLoading, refetch } = useTriageQueue({ area: zoneCode });
 
   // Queue actions: call, with-clinician, complete, LWBS
   const {
@@ -328,7 +329,7 @@ export default function ZoneQueuePage() {
         (item) =>
           item.patient_name.toLowerCase().includes(lower) ||
           item.patient_mrn.toLowerCase().includes(lower) ||
-          item.chief_complaint?.toLowerCase().includes(lower),
+          item.chief_complaint?.toLowerCase().includes(lower)
       );
     }
 
@@ -416,11 +417,13 @@ export default function ZoneQueuePage() {
         />
 
         {/* Zone Info Bar */}
-        <div className={cn(
-          'flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg border-2',
-          categoryColor.border,
-          categoryColor.bg,
-        )}>
+        <div
+          className={cn(
+            'flex flex-col gap-3 rounded-lg border-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4',
+            categoryColor.border,
+            categoryColor.bg
+          )}
+        >
           <div className="flex items-center gap-3">
             <StatusIndicator state={categoryColor.indicatorState} size="md" />
             <div>
@@ -443,7 +446,7 @@ export default function ZoneQueuePage() {
                 <Badge
                   key={cat}
                   variant="secondary"
-                  className={cn('text-xs gap-1', colors.bg, colors.text)}
+                  className={cn('gap-1 text-xs', colors.bg, colors.text)}
                 >
                   <StatusIndicator state={colors.indicatorState} size="sm" />
                   {count} {cat}
@@ -454,12 +457,8 @@ export default function ZoneQueuePage() {
 
           {/* Status breakdown */}
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-            {(statusCounts.WAITING ?? 0) > 0 && (
-              <span>{statusCounts.WAITING} waiting</span>
-            )}
-            {(statusCounts.CALLED ?? 0) > 0 && (
-              <span>{statusCounts.CALLED} called</span>
-            )}
+            {(statusCounts.WAITING ?? 0) > 0 && <span>{statusCounts.WAITING} waiting</span>}
+            {(statusCounts.CALLED ?? 0) > 0 && <span>{statusCounts.CALLED} called</span>}
             {(statusCounts.WITH_CLINICIAN ?? 0) > 0 && (
               <span>{statusCounts.WITH_CLINICIAN} with doctor</span>
             )}
@@ -469,7 +468,7 @@ export default function ZoneQueuePage() {
         {/* KETA Target Wait Times Reference */}
         <Card className="border-dashed">
           <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="mb-2 flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">KETA Target Wait Times</span>
               <HelpPopover content="Kenya Emergency Triage Assessment (KETA) target times. Patients exceeding these targets are flagged with a warning." />
@@ -496,9 +495,9 @@ export default function ZoneQueuePage() {
 
         {/* Search & Filter Bar */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 flex-1 max-w-md">
+          <div className="flex max-w-md flex-1 items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search patient name or MRN..."
                 value={searchTerm}
@@ -519,7 +518,7 @@ export default function ZoneQueuePage() {
           <div className="flex items-center gap-2">
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <X className="h-3 w-3 mr-1" />
+                <X className="mr-1 h-3 w-3" />
                 Clear filters
               </Button>
             )}
@@ -532,8 +531,8 @@ export default function ZoneQueuePage() {
 
         {/* Expanded Filters */}
         {showFilters && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end p-3 rounded-lg bg-muted/50 border">
-            <div className="space-y-1 flex-1">
+          <div className="flex flex-col gap-3 rounded-lg border bg-muted/50 p-3 sm:flex-row sm:items-end">
+            <div className="flex-1 space-y-1">
               <Label className="text-xs">Category</Label>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger className="h-8">
@@ -549,7 +548,7 @@ export default function ZoneQueuePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1 flex-1">
+            <div className="flex-1 space-y-1">
               <Label className="text-xs">Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="h-8">
@@ -571,8 +570,8 @@ export default function ZoneQueuePage() {
           <QueueSkeleton />
         ) : queueItems.length === 0 ? (
           <Card className="p-8 text-center">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">
+            <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="mb-2 text-lg font-semibold">
               {hasActiveFilters ? 'No matching patients' : 'No patients in zone'}
             </h3>
             <p className="text-muted-foreground">
@@ -631,10 +630,25 @@ export default function ZoneQueuePage() {
                   badges={[
                     { label: item.triage_category, variant: 'outline' as const },
                     ...(exceeded
-                      ? [{ label: `⚠ ${formatWaitTime(item.wait_time_minutes)}`, variant: 'destructive' as const }]
-                      : [{ label: formatWaitTime(item.wait_time_minutes), variant: 'secondary' as const }]),
+                      ? [
+                          {
+                            label: `⚠ ${formatWaitTime(item.wait_time_minutes)}`,
+                            variant: 'destructive' as const,
+                          },
+                        ]
+                      : [
+                          {
+                            label: formatWaitTime(item.wait_time_minutes),
+                            variant: 'secondary' as const,
+                          },
+                        ]),
                     ...(item.alerts_count > 0
-                      ? [{ label: `${item.alerts_count} alert${item.alerts_count > 1 ? 's' : ''}`, variant: 'destructive' as const }]
+                      ? [
+                          {
+                            label: `${item.alerts_count} alert${item.alerts_count > 1 ? 's' : ''}`,
+                            variant: 'destructive' as const,
+                          },
+                        ]
                       : []),
                   ]}
                   metadata={[
@@ -645,15 +659,32 @@ export default function ZoneQueuePage() {
                   actions={[
                     ...(item.status === 'WAITING'
                       ? [
-                          { label: 'Call Patient', onClick: () => callPatient(item.id).then(() => refetch()) },
-                          { label: 'Mark LWBS', onClick: () => handleLWBS(item.id), variant: 'destructive' as const },
+                          {
+                            label: 'Call Patient',
+                            onClick: () => callPatient(item.id).then(() => refetch()),
+                          },
+                          {
+                            label: 'Mark LWBS',
+                            onClick: () => handleLWBS(item.id),
+                            variant: 'destructive' as const,
+                          },
                         ]
                       : []),
                     ...(item.status === 'CALLED'
-                      ? [{ label: 'With Doctor', onClick: () => markWithClinician(item.id).then(() => refetch()) }]
+                      ? [
+                          {
+                            label: 'With Doctor',
+                            onClick: () => markWithClinician(item.id).then(() => refetch()),
+                          },
+                        ]
                       : []),
                     ...(item.status === 'WITH_CLINICIAN'
-                      ? [{ label: 'Complete', onClick: () => markComplete(item.id).then(() => refetch()) }]
+                      ? [
+                          {
+                            label: 'Complete',
+                            onClick: () => markComplete(item.id).then(() => refetch()),
+                          },
+                        ]
                       : []),
                     { label: 'Escalate', onClick: () => handleEscalate(item) },
                   ]}
@@ -694,7 +725,7 @@ export default function ZoneQueuePage() {
               onClick={confirmLWBS}
               disabled={!lwbsReason.trim() || actionLoading}
             >
-              <LogOut className="h-4 w-4 mr-1" />
+              <LogOut className="mr-1 h-4 w-4" />
               Confirm LWBS
             </Button>
           </DialogFooter>

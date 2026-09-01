@@ -3,9 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Search, User, ExternalLink, Globe, Database, Loader2,
-  Shield, ShieldCheck, ShieldX, Users, UserPlus, ChevronDown, ChevronUp,
-  Fingerprint, Accessibility, AlertTriangle, CheckCircle2,
+  Search,
+  User,
+  ExternalLink,
+  Globe,
+  Database,
+  Loader2,
+  Shield,
+  ShieldCheck,
+  ShieldX,
+  Users,
+  UserPlus,
+  ChevronDown,
+  ChevronUp,
+  Fingerprint,
+  Accessibility,
+  AlertTriangle,
+  CheckCircle2,
   Briefcase,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -107,7 +121,8 @@ export default function PatientLookupPage() {
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
   const [healthcloudProviderId, setHealthcloudProviderId] = useState('');
   const [healthcloudMemberNumber, setHealthcloudMemberNumber] = useState('');
-  const [healthcloudEligibility, setHealthcloudEligibility] = useState<VerifyViaHealthcloudResult | null>(null);
+  const [healthcloudEligibility, setHealthcloudEligibility] =
+    useState<VerifyViaHealthcloudResult | null>(null);
   const healthcloudPreview = useVerifyEnrollmentViaHealthcloudPreview();
   const { data: providerConfigsData } = useProviderConfigs({ page: 1, page_size: 200 });
   const { data: plansData } = useInsurancePlans({ page: 1, page_size: 500 });
@@ -128,18 +143,22 @@ export default function PatientLookupPage() {
     setEligibility(null);
 
     const query = debouncedQuery.trim();
-    const idTypeLabel = ILM_LOOKUP_ID_OPTIONS.find((opt) => opt.value === lookupIdType)?.label || 'National ID';
-    const crParams = lookupIdType === 'national_id'
-      ? { national_id: query }
-      : { identification_type: idTypeLabel, identification_number: query };
+    const idTypeLabel =
+      ILM_LOOKUP_ID_OPTIONS.find((opt) => opt.value === lookupIdType)?.label || 'National ID';
+    const crParams =
+      lookupIdType === 'national_id'
+        ? { national_id: query }
+        : { identification_type: idTypeLabel, identification_number: query };
 
     crMutation.mutate(crParams, {
       onSuccess: (result) => {
         // Also check eligibility if we have a national_id
-        const nationalId = result?.client?.national_id || (lookupIdType === 'national_id' ? query : null);
+        const nationalId =
+          result?.client?.national_id || (lookupIdType === 'national_id' ? query : null);
         if (nationalId) {
           setEligibilityLoading(true);
-          shaApi.checkDirectEligibility({ national_id: nationalId })
+          shaApi
+            .checkDirectEligibility({ national_id: nationalId })
             .then(setEligibility)
             .catch(() => setEligibility(null))
             .finally(() => setEligibilityLoading(false));
@@ -202,12 +221,10 @@ export default function PatientLookupPage() {
   const handleRegisterFromHealthcloud = () => {
     if (!healthcloudEligibility || !selectedHealthcloudProvider) return;
     const raw = healthcloudEligibility.raw_response as Record<string, unknown>;
-    const member = raw.member && typeof raw.member === 'object'
-      ? (raw.member as Record<string, unknown>)
-      : {};
-    const cover = raw.cover && typeof raw.cover === 'object'
-      ? (raw.cover as Record<string, unknown>)
-      : {};
+    const member =
+      raw.member && typeof raw.member === 'object' ? (raw.member as Record<string, unknown>) : {};
+    const cover =
+      raw.cover && typeof raw.cover === 'object' ? (raw.cover as Record<string, unknown>) : {};
 
     const names = splitNames(String(member.names || ''));
     const prefill = {
@@ -260,11 +277,12 @@ export default function PatientLookupPage() {
     }
 
     const raw = healthcloudEligibility.raw_response as Record<string, unknown>;
-    const cover = raw.cover && typeof raw.cover === 'object'
-      ? (raw.cover as Record<string, unknown>)
-      : {};
+    const cover =
+      raw.cover && typeof raw.cover === 'object' ? (raw.cover as Record<string, unknown>) : {};
     const validToRaw = String(cover.validTo || '');
-    const validTo = validToRaw ? validToRaw.slice(0, 10) : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10);
+    const validTo = validToRaw
+      ? validToRaw.slice(0, 10)
+      : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10);
 
     try {
       await createEnrollment.mutateAsync({
@@ -302,8 +320,8 @@ export default function PatientLookupPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center gap-3">
-            <KenyaCoatOfArms size={28} className="shrink-0 hidden sm:block" />
-            <div className="w-[180px] shrink-0 hidden md:block">
+            <KenyaCoatOfArms size={28} className="hidden shrink-0 sm:block" />
+            <div className="hidden w-[180px] shrink-0 md:block">
               <Select
                 value={lookupIdType || undefined}
                 onValueChange={(value) => setLookupIdType(value as IlmLookupIdType)}
@@ -356,7 +374,7 @@ export default function PatientLookupPage() {
               value={lookupIdType || undefined}
               onValueChange={(value) => setLookupIdType(value as IlmLookupIdType)}
             >
-              <SelectTrigger className="h-9 mt-1">
+              <SelectTrigger className="mt-1 h-9">
                 <SelectValue placeholder="ID type" />
               </SelectTrigger>
               <SelectContent>
@@ -369,19 +387,23 @@ export default function PatientLookupPage() {
             </Select>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Local search is automatic. Click &ldquo;CR/SHA Lookup&rdquo; to query the national Client Registry by ID number.
+            Local search is automatic. Click &ldquo;CR/SHA Lookup&rdquo; to query the national
+            Client Registry by ID number.
           </p>
         </CardContent>
       </Card>
 
       <Card>
-        <CardContent className="pt-4 space-y-3">
+        <CardContent className="space-y-3 pt-4">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-primary" />
             <p className="text-sm font-medium">HealthCloud Eligibility (Member Number)</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_auto] gap-2">
-            <Select value={healthcloudProviderId || undefined} onValueChange={setHealthcloudProviderId}>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-[220px_1fr_auto]">
+            <Select
+              value={healthcloudProviderId || undefined}
+              onValueChange={setHealthcloudProviderId}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
@@ -409,7 +431,7 @@ export default function PatientLookupPage() {
             >
               {healthcloudPreview.isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Checking...
                 </>
               ) : (
@@ -429,22 +451,26 @@ export default function PatientLookupPage() {
                   onClick={handleRegisterFromHealthcloud}
                   disabled={!selectedHealthcloudProvider}
                 >
-                  <UserPlus className="h-4 w-4 mr-2" />
+                  <UserPlus className="mr-2 h-4 w-4" />
                   Register New Patient
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => void handleCreateEnrollmentDraft()}
-                  disabled={!matchedLocalPatient || createEnrollment.isPending || !selectedHealthcloudProvider}
+                  disabled={
+                    !matchedLocalPatient ||
+                    createEnrollment.isPending ||
+                    !selectedHealthcloudProvider
+                  }
                 >
                   {createEnrollment.isPending ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Creating Enrollment...
                     </>
                   ) : (
                     <>
-                      <ShieldCheck className="h-4 w-4 mr-2" />
+                      <ShieldCheck className="mr-2 h-4 w-4" />
                       Create Enrollment for Matched Local Patient
                     </>
                   )}
@@ -452,11 +478,13 @@ export default function PatientLookupPage() {
               </div>
               {matchedLocalPatient ? (
                 <p className="text-xs text-muted-foreground">
-                  Matched local patient: {matchedLocalPatient.first_name} {matchedLocalPatient.last_name} ({matchedLocalPatient.mrn}).
+                  Matched local patient: {matchedLocalPatient.first_name}{' '}
+                  {matchedLocalPatient.last_name} ({matchedLocalPatient.mrn}).
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  No local patient match from the current CR result. Use "Register New Patient" to prefill a new record.
+                  No local patient match from the current CR result. Use "Register New Patient" to
+                  prefill a new record.
                 </p>
               )}
             </div>
@@ -477,7 +505,12 @@ export default function PatientLookupPage() {
           <AlertDescription>
             {(() => {
               const err = crMutation.error as { response?: { data?: { error?: string } } };
-              return err?.response?.data?.error || (crMutation.error instanceof Error ? crMutation.error.message : 'CR/SHA lookup failed. Please try again.');
+              return (
+                err?.response?.data?.error ||
+                (crMutation.error instanceof Error
+                  ? crMutation.error.message
+                  : 'CR/SHA lookup failed. Please try again.')
+              );
             })()}
           </AlertDescription>
         </Alert>
@@ -504,10 +537,7 @@ export default function PatientLookupPage() {
             <Shield className="h-4 w-4 text-primary" />
             <p className="text-sm font-medium">Coverage Result</p>
           </div>
-          <EligibilityOnlyCard
-            eligibility={eligibility}
-            eligibilityLoading={eligibilityLoading}
-          />
+          <EligibilityOnlyCard eligibility={eligibility} eligibilityLoading={eligibilityLoading} />
         </div>
       )}
       {crResult && !crResult.found && (
@@ -527,7 +557,7 @@ export default function PatientLookupPage() {
               <CardContent className="py-4">
                 <div className="flex items-center gap-3">
                   <Skeleton className="h-10 w-10 rounded-full" />
-                  <div className="space-y-2 flex-1">
+                  <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-48" />
                     <Skeleton className="h-3 w-32" />
                   </div>
@@ -560,17 +590,21 @@ export default function PatientLookupPage() {
                       <User className="h-5 w-5 text-primary" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium truncate">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-medium">
                           {patient.full_name || `${patient.first_name} ${patient.last_name}`}
                         </span>
                         <Badge variant="outline" size="sm" className="font-mono">
                           {patient.mrn}
                         </Badge>
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                         <span>
-                          {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}
+                          {patient.gender === 'M'
+                            ? 'Male'
+                            : patient.gender === 'F'
+                              ? 'Female'
+                              : 'Other'}
                           {patient.age ? `, ${patient.age}y` : ''}
                         </span>
                         {patient.phone_number && (
@@ -587,7 +621,7 @@ export default function PatientLookupPage() {
                         )}
                       </div>
                     </div>
-                    <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </div>
                 </CardContent>
               </Card>
@@ -597,34 +631,40 @@ export default function PatientLookupPage() {
       )}
 
       {/* Empty State */}
-      {hasSearched && !isLoading && patients.length === 0 && !crClient && !eligibility && !eligibilityLoading && (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <User className="mx-auto h-10 w-10 text-muted-foreground/40" />
-            <p className="mt-3 text-sm text-muted-foreground">
-              No local patients found matching &ldquo;{debouncedQuery}&rdquo;
-            </p>
-            <div className="mt-3 flex flex-col sm:flex-row gap-2 justify-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCRLookup}
-                disabled={crMutation.isPending}
-              >
-                <Globe className="h-4 w-4 mr-1.5" />
-                Search Client Registry
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push('/patients/new')} disabled={!canCreateRoute('/patients/new')}
-              >
-                Register New Patient
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {hasSearched &&
+        !isLoading &&
+        patients.length === 0 &&
+        !crClient &&
+        !eligibility &&
+        !eligibilityLoading && (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <User className="mx-auto h-10 w-10 text-muted-foreground/40" />
+              <p className="mt-3 text-sm text-muted-foreground">
+                No local patients found matching &ldquo;{debouncedQuery}&rdquo;
+              </p>
+              <div className="mt-3 flex flex-col justify-center gap-2 sm:flex-row">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCRLookup}
+                  disabled={crMutation.isPending}
+                >
+                  <Globe className="mr-1.5 h-4 w-4" />
+                  Search Client Registry
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push('/patients/new')}
+                  disabled={!canCreateRoute('/patients/new')}
+                >
+                  Register New Patient
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
       {/* Initial State */}
       {!hasSearched && !isLoading && (
@@ -649,8 +689,8 @@ function EligibilityOnlyCard({
   eligibilityLoading: boolean;
 }) {
   return (
-    <Card className="border-primary/30 overflow-hidden">
-      <CardContent className="py-4 bg-primary/5 space-y-3">
+    <Card className="overflow-hidden border-primary/30">
+      <CardContent className="space-y-3 bg-primary/5 py-4">
         <Tabs defaultValue="sha" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="sha" className="gap-2">
@@ -671,9 +711,12 @@ function EligibilityOnlyCard({
 
             {eligibility && (
               <>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-wrap items-center gap-2">
                   {eligibility.is_eligible ? (
-                    <Badge variant="default" className="gap-1.5 bg-green-600 hover:bg-green-600 text-white">
+                    <Badge
+                      variant="default"
+                      className="gap-1.5 bg-green-600 text-white hover:bg-green-600"
+                    >
                       <ShieldCheck className="h-3.5 w-3.5" />
                       Eligible
                     </Badge>
@@ -695,10 +738,23 @@ function EligibilityOnlyCard({
                   )}
                 </div>
 
-                {(eligibility.full_name || eligibility.gender || eligibility.date_of_birth || eligibility.age != null) && (
-                  <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2 gap-y-1">
-                    {eligibility.full_name && <span className="font-medium text-foreground">{eligibility.full_name}</span>}
-                    {eligibility.gender && <span>{eligibility.gender === 'M' ? 'Male' : eligibility.gender === 'F' ? 'Female' : eligibility.gender}</span>}
+                {(eligibility.full_name ||
+                  eligibility.gender ||
+                  eligibility.date_of_birth ||
+                  eligibility.age != null) && (
+                  <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    {eligibility.full_name && (
+                      <span className="font-medium text-foreground">{eligibility.full_name}</span>
+                    )}
+                    {eligibility.gender && (
+                      <span>
+                        {eligibility.gender === 'M'
+                          ? 'Male'
+                          : eligibility.gender === 'F'
+                            ? 'Female'
+                            : eligibility.gender}
+                      </span>
+                    )}
                     {eligibility.date_of_birth && <span>DOB: {eligibility.date_of_birth}</span>}
                     {eligibility.age != null && <span>{eligibility.age}y</span>}
                   </div>
@@ -717,8 +773,8 @@ function EligibilityOnlyCard({
 
           <TabsContent value="healthcloud" className="mt-3">
             <p className="text-xs text-muted-foreground">
-              HealthCloud session requires a successful CR match linked to a local patient enrollment.
-              Run CR/SHA lookup and open the HealthCloud tab in the full CR result card.
+              HealthCloud session requires a successful CR match linked to a local patient
+              enrollment. Run CR/SHA lookup and open the HealthCloud tab in the full CR result card.
             </p>
           </TabsContent>
         </Tabs>
@@ -732,12 +788,20 @@ function EligibilityOnlyCard({
 // =============================================================================
 
 /** Render a label + value pair; returns null when value is falsy. */
-function DetailItem({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+function DetailItem({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value?: string | null;
+  mono?: boolean;
+}) {
   if (!value) return null;
   return (
     <div className="min-w-0">
       <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className={`text-xs truncate ${mono ? 'font-mono' : ''}`}>{value}</p>
+      <p className={`truncate text-xs ${mono ? 'font-mono' : ''}`}>{value}</p>
     </div>
   );
 }
@@ -765,10 +829,14 @@ function CRResultCard({
   const router = useRouter();
   const [showDependants, setShowDependants] = useState(false);
   const [openDependantBenefitsKey, setOpenDependantBenefitsKey] = useState<string | null>(null);
-  const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(null);
+  const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(
+    null
+  );
   const [benefitsEmpty, setBenefitsEmpty] = useState(false);
   const [benefitsChecked, setBenefitsChecked] = useState(false);
-  const [privateEligibility, setPrivateEligibility] = useState<VerifyViaHealthcloudResult | null>(null);
+  const [privateEligibility, setPrivateEligibility] = useState<VerifyViaHealthcloudResult | null>(
+    null
+  );
   const startHealthcloudSession = useStartHealthcloudSession();
   const { data: enrollmentData, isLoading: enrollmentLoading } = usePatientInsurances(
     matchedLocalPatient?.id
@@ -802,7 +870,8 @@ function CRResultCard({
     if (eligibility.raw_response) {
       eligibilityResponse.raw_response = eligibility.raw_response;
     }
-    shaApi.validateCapitationDirect(eligibilityResponse)
+    shaApi
+      .validateCapitationDirect(eligibilityResponse)
       .then(setCapitationWarning)
       .catch(() => setCapitationWarning(null));
   }, [eligibility]);
@@ -834,23 +903,30 @@ function CRResultCard({
     for (const oid of client.other_identifications) {
       if (oid.identification_number) {
         // Shorten well-known types
-        const shortLabel = oid.identification_type
-          ?.replace('Household Number', 'HH')
-          .replace('SHA Number', 'SHA') ?? 'ID';
+        const shortLabel =
+          oid.identification_type?.replace('Household Number', 'HH').replace('SHA Number', 'SHA') ??
+          'ID';
         principalIds.push({ label: shortLabel, value: oid.identification_number });
       }
     }
   }
   if (client.huduma_number) principalIds.push({ label: 'Huduma', value: client.huduma_number });
-  if (client.passport_number) principalIds.push({ label: 'Passport', value: client.passport_number });
+  if (client.passport_number)
+    principalIds.push({ label: 'Passport', value: client.passport_number });
   if (client.alien_id) principalIds.push({ label: 'Alien ID', value: client.alien_id });
   if (client.kra_pin) principalIds.push({ label: 'KRA', value: client.kra_pin });
 
   const hasExtraLocation = client.sub_county || client.ward || client.village_estate;
   const hasContactInfo = client.email || client.address || client.zip_code;
   const eligibilityErrorInfo = eligibility ? extractSHAErrorInfo(eligibility) : null;
-  const hasDemographics = client.citizenship || client.civil_status || client.employment_type || client.place_of_birth || client.is_person_with_disability;
-  const hasDetailSection = hasExtraLocation || hasContactInfo || hasDemographics || principalIds.length > 0;
+  const hasDemographics =
+    client.citizenship ||
+    client.civil_status ||
+    client.employment_type ||
+    client.place_of_birth ||
+    client.is_person_with_disability;
+  const hasDetailSection =
+    hasExtraLocation || hasContactInfo || hasDemographics || principalIds.length > 0;
 
   const totalDependantsDisplay = totalDependants || eligibility?.dependents_covered || 0;
   const showDependentsSection = totalDependantsDisplay > 0;
@@ -860,7 +936,9 @@ function CRResultCard({
     if (dep.other_identifications?.length) {
       const preferred = dep.other_identifications.find((oid) => {
         const label = oid.identification_type?.toLowerCase() ?? '';
-        return label.includes('sha') || label.includes('hie patient id') || label.includes('cr number');
+        return (
+          label.includes('sha') || label.includes('hie patient id') || label.includes('cr number')
+        );
       });
       if (preferred?.identification_number) return preferred.identification_number;
     }
@@ -871,30 +949,37 @@ function CRResultCard({
   };
 
   return (
-    <Card className="border-primary/30 overflow-hidden">
+    <Card className="overflow-hidden border-primary/30">
       {/* Main patient info */}
-      <CardContent className="py-4 bg-primary/5">
+      <CardContent className="bg-primary/5 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20">
             <Globe className="h-5 w-5 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium truncate">
-                {client.first_name} {client.middle_name ? `${client.middle_name} ` : ''}{client.last_name}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="truncate font-medium">
+                {client.first_name} {client.middle_name ? `${client.middle_name} ` : ''}
+                {client.last_name}
               </span>
               <Badge variant="default" size="sm">
                 CR: {client.client_number}
               </Badge>
               {client.is_person_with_disability && (
-                <Badge variant="outline" size="sm" className="gap-1 border-amber-400 text-amber-700 dark:text-amber-400">
+                <Badge
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 border-amber-400 text-amber-700 dark:text-amber-400"
+                >
                   <Accessibility className="h-3 w-3" />
                   PWD
                 </Badge>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
-              <span>{client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : client.gender}</span>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+              <span>
+                {client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : client.gender}
+              </span>
               {client.date_of_birth && (
                 <>
                   <span>•</span>
@@ -930,13 +1015,15 @@ function CRResultCard({
 
       {/* Detailed CR Data */}
       {hasDetailSection && (
-        <CardContent className="py-3 border-t space-y-3">
+        <CardContent className="space-y-3 border-t py-3">
           {/* Other Identifications */}
           {principalIds.length > 0 && (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5">
                 <Fingerprint className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">Other Identifications</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  Other Identifications
+                </span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {principalIds.map((oid, i) => (
@@ -949,7 +1036,7 @@ function CRResultCard({
           )}
 
           {/* Demographics + Contact + Location detail grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4">
             {/* Demographics */}
             <DetailItem label="Citizenship" value={client.citizenship} />
             <DetailItem label="Civil Status" value={client.civil_status} />
@@ -966,7 +1053,7 @@ function CRResultCard({
         </CardContent>
       )}
 
-      <CardContent className="py-3 border-t">
+      <CardContent className="border-t py-3">
         <Tabs defaultValue="sha" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="sha" className="gap-2">
@@ -978,7 +1065,7 @@ function CRResultCard({
           </TabsList>
 
           <TabsContent value="sha" className="mt-3">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="mb-2 flex items-center gap-2">
               <Shield className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">SHA Eligibility</span>
             </div>
@@ -990,189 +1077,234 @@ function CRResultCard({
             )}
             {eligibility && (
               <div className="space-y-2">
-            {/* Status badge row */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {eligibility.is_eligible && !eligibilityErrorInfo ? (
-                <Badge variant="default" className="bg-green-600 hover:bg-green-700 gap-1">
-                  <ShieldCheck className="h-3 w-3" />
-                  Covered
-                </Badge>
-              ) : (
-                <Badge variant="destructive" className="gap-1">
-                  <ShieldX className="h-3 w-3" />
-                  {eligibilityErrorInfo ? 'Check Failed' : 'Not Covered'}
-                </Badge>
-              )}
-              {eligibility.sha_number && (
-                <Badge variant="outline" size="sm" className="font-mono">
-                  SHA: {eligibility.sha_number}
-                </Badge>
-              )}
-              {eligibility.copay_percentage > 0 && (
-                <Badge variant="secondary" size="sm">
-                  Copay: {eligibility.copay_percentage}%
-                </Badge>
-              )}
-              {eligibility.coverage_end_date && (
-                <span className="text-xs text-muted-foreground">
-                  Expires: {eligibility.coverage_end_date}
-                </span>
-              )}
-              {eligibility.whitelisted_for_otp && (
-                <Badge variant="outline" size="sm" className="border-green-300 text-green-600 dark:text-green-400">OTP Whitelisted</Badge>
-              )}
-            </div>
-
-            {/* Reason (ineligible) */}
-            {eligibility.reason && !eligibility.is_eligible && !eligibilityErrorInfo && (
-              <p className="text-xs text-muted-foreground">{eligibility.reason}</p>
-            )}
-
-            {eligibilityErrorInfo && (
-              <Alert variant="destructive" className="bg-destructive/10">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-1">
-                    <p className="font-medium">{eligibilityErrorInfo.title}</p>
-                    <p>{eligibilityErrorInfo.message}</p>
-                    {eligibilityErrorInfo.detail && eligibilityErrorInfo.detail !== eligibilityErrorInfo.message && (
-                      <p className="text-xs break-words">{eligibilityErrorInfo.detail}</p>
-                    )}
-                    {(eligibilityErrorInfo.code || typeof eligibilityErrorInfo.upstreamStatus === 'number') && (
-                      <p className="text-xs font-mono opacity-90">
-                        {eligibilityErrorInfo.code || 'SHA_ERROR'}
-                        {typeof eligibilityErrorInfo.upstreamStatus === 'number' ? ` (upstream ${eligibilityErrorInfo.upstreamStatus})` : ''}
-                      </p>
-                    )}
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Possible solution */}
-            {eligibility.possible_solution && (
-              <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-2">
-                <p className="text-xs text-blue-700 dark:text-blue-300">{eligibility.possible_solution}</p>
-              </div>
-            )}
-
-            {/* Verified name + demographics from SHA */}
-            {(eligibility.full_name || eligibility.gender || eligibility.date_of_birth) && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                {eligibility.full_name && (
-                  <span className="font-medium text-foreground">{eligibility.full_name}</span>
-                )}
-                {eligibility.gender && (
-                  <span>{eligibility.gender === 'M' ? 'Male' : eligibility.gender === 'F' ? 'Female' : eligibility.gender}</span>
-                )}
-                {eligibility.date_of_birth && (
-                  <span>DOB: {eligibility.date_of_birth}</span>
-                )}
-                {eligibility.age != null && <span>{eligibility.age}y</span>}
-              </div>
-            )}
-
-            {/* Member CR + status codes */}
-            {(eligibility.member_cr_number || eligibility.status_code) && (
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                {eligibility.member_cr_number && (
-                  <Badge variant="outline" size="sm" className="font-mono text-[10px]">CR: {eligibility.member_cr_number}</Badge>
-                )}
-                {eligibility.status_code && (
-                  <Badge variant="outline" size="sm" className="text-[10px]">
-                    Status: {eligibility.status_code}{eligibility.status_desc ? ` — ${eligibility.status_desc}` : ''}
-                  </Badge>
-                )}
-                {eligibility.nhif_transition_status && (
-                  <Badge variant="outline" size="sm" className="text-[10px] border-amber-300 text-amber-700 dark:text-amber-400">
-                    NHIF: {eligibility.nhif_transition_status}
-                  </Badge>
-                )}
-              </div>
-            )}
-
-            {/* Schemes — expanded with coverage dates */}
-            {eligibility.schemes && eligibility.schemes.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground">Coverage Schemes:</p>
-                <div className="space-y-1">
-                  {eligibility.schemes.map((scheme, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        'rounded-md border px-2.5 py-1.5 text-xs',
-                        scheme.coverage?.status === 'ACTIVE'
-                          ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
-                          : 'border-muted bg-muted/20'
-                      )}
+                {/* Status badge row */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {eligibility.is_eligible && !eligibilityErrorInfo ? (
+                    <Badge variant="default" className="gap-1 bg-green-600 hover:bg-green-700">
+                      <ShieldCheck className="h-3 w-3" />
+                      Covered
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive" className="gap-1">
+                      <ShieldX className="h-3 w-3" />
+                      {eligibilityErrorInfo ? 'Check Failed' : 'Not Covered'}
+                    </Badge>
+                  )}
+                  {eligibility.sha_number && (
+                    <Badge variant="outline" size="sm" className="font-mono">
+                      SHA: {eligibility.sha_number}
+                    </Badge>
+                  )}
+                  {eligibility.copay_percentage > 0 && (
+                    <Badge variant="secondary" size="sm">
+                      Copay: {eligibility.copay_percentage}%
+                    </Badge>
+                  )}
+                  {eligibility.coverage_end_date && (
+                    <span className="text-xs text-muted-foreground">
+                      Expires: {eligibility.coverage_end_date}
+                    </span>
+                  )}
+                  {eligibility.whitelisted_for_otp && (
+                    <Badge
+                      variant="outline"
+                      size="sm"
+                      className="border-green-300 text-green-600 dark:text-green-400"
                     >
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{scheme.schemeName || `Scheme ${i + 1}`}</span>
-                        {scheme.memberType && (
-                          <Badge variant="secondary" className="text-[10px]">{scheme.memberType}</Badge>
-                        )}
-                        {scheme.coverage?.status && (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'text-[10px]',
-                              scheme.coverage.status === 'ACTIVE'
-                                ? 'border-green-300 text-green-700 dark:text-green-400'
-                                : 'text-muted-foreground'
-                            )}
-                          >
-                            {typeof scheme.coverage.status === 'string'
-                              ? scheme.coverage.status
-                              : String(scheme.coverage.status)}
-                          </Badge>
+                      OTP Whitelisted
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Reason (ineligible) */}
+                {eligibility.reason && !eligibility.is_eligible && !eligibilityErrorInfo && (
+                  <p className="text-xs text-muted-foreground">{eligibility.reason}</p>
+                )}
+
+                {eligibilityErrorInfo && (
+                  <Alert variant="destructive" className="bg-destructive/10">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="space-y-1">
+                        <p className="font-medium">{eligibilityErrorInfo.title}</p>
+                        <p>{eligibilityErrorInfo.message}</p>
+                        {eligibilityErrorInfo.detail &&
+                          eligibilityErrorInfo.detail !== eligibilityErrorInfo.message && (
+                            <p className="break-words text-xs">{eligibilityErrorInfo.detail}</p>
+                          )}
+                        {(eligibilityErrorInfo.code ||
+                          typeof eligibilityErrorInfo.upstreamStatus === 'number') && (
+                          <p className="font-mono text-xs opacity-90">
+                            {eligibilityErrorInfo.code || 'SHA_ERROR'}
+                            {typeof eligibilityErrorInfo.upstreamStatus === 'number'
+                              ? ` (upstream ${eligibilityErrorInfo.upstreamStatus})`
+                              : ''}
+                          </p>
                         )}
                       </div>
-                      {(scheme.policy?.startDate || scheme.policy?.endDate || scheme.policy?.number) && (
-                        <div className="mt-0.5 text-[10px] text-muted-foreground">
-                          {scheme.policy.startDate && <>From: {scheme.policy.startDate}</>}
-                          {scheme.policy.endDate && <> • To: {scheme.policy.endDate}</>}
-                          {scheme.policy.number && <> • #{scheme.policy.number}</>}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Possible solution */}
+                {eligibility.possible_solution && (
+                  <div className="rounded-md border border-blue-200 bg-blue-50 p-2 dark:border-blue-800 dark:bg-blue-950/30">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      {eligibility.possible_solution}
+                    </p>
+                  </div>
+                )}
+
+                {/* Verified name + demographics from SHA */}
+                {(eligibility.full_name || eligibility.gender || eligibility.date_of_birth) && (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    {eligibility.full_name && (
+                      <span className="font-medium text-foreground">{eligibility.full_name}</span>
+                    )}
+                    {eligibility.gender && (
+                      <span>
+                        {eligibility.gender === 'M'
+                          ? 'Male'
+                          : eligibility.gender === 'F'
+                            ? 'Female'
+                            : eligibility.gender}
+                      </span>
+                    )}
+                    {eligibility.date_of_birth && <span>DOB: {eligibility.date_of_birth}</span>}
+                    {eligibility.age != null && <span>{eligibility.age}y</span>}
+                  </div>
+                )}
+
+                {/* Member CR + status codes */}
+                {(eligibility.member_cr_number || eligibility.status_code) && (
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {eligibility.member_cr_number && (
+                      <Badge variant="outline" size="sm" className="font-mono text-[10px]">
+                        CR: {eligibility.member_cr_number}
+                      </Badge>
+                    )}
+                    {eligibility.status_code && (
+                      <Badge variant="outline" size="sm" className="text-[10px]">
+                        Status: {eligibility.status_code}
+                        {eligibility.status_desc ? ` — ${eligibility.status_desc}` : ''}
+                      </Badge>
+                    )}
+                    {eligibility.nhif_transition_status && (
+                      <Badge
+                        variant="outline"
+                        size="sm"
+                        className="border-amber-300 text-[10px] text-amber-700 dark:text-amber-400"
+                      >
+                        NHIF: {eligibility.nhif_transition_status}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                {/* Schemes — expanded with coverage dates */}
+                {eligibility.schemes && eligibility.schemes.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Coverage Schemes:</p>
+                    <div className="space-y-1">
+                      {eligibility.schemes.map((scheme, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            'rounded-md border px-2.5 py-1.5 text-xs',
+                            scheme.coverage?.status === 'ACTIVE'
+                              ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
+                              : 'border-muted bg-muted/20'
+                          )}
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium">
+                              {scheme.schemeName || `Scheme ${i + 1}`}
+                            </span>
+                            {scheme.memberType && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                {scheme.memberType}
+                              </Badge>
+                            )}
+                            {scheme.coverage?.status && (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  'text-[10px]',
+                                  scheme.coverage.status === 'ACTIVE'
+                                    ? 'border-green-300 text-green-700 dark:text-green-400'
+                                    : 'text-muted-foreground'
+                                )}
+                              >
+                                {typeof scheme.coverage.status === 'string'
+                                  ? scheme.coverage.status
+                                  : String(scheme.coverage.status)}
+                              </Badge>
+                            )}
+                          </div>
+                          {(scheme.policy?.startDate ||
+                            scheme.policy?.endDate ||
+                            scheme.policy?.number) && (
+                            <div className="mt-0.5 text-[10px] text-muted-foreground">
+                              {scheme.policy.startDate && <>From: {scheme.policy.startDate}</>}
+                              {scheme.policy.endDate && <> • To: {scheme.policy.endDate}</>}
+                              {scheme.policy.number && <> • #{scheme.policy.number}</>}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                  </div>
+                )}
 
-            {/* Employment */}
-            {eligibility.employer_name && (
-              <p className="text-xs text-muted-foreground">
-                <Briefcase className="h-3 w-3 inline mr-1" />
-                {eligibility.is_employed ? 'Employed' : 'Unemployed'}
-                {eligibility.employer_name && <> • Employer: {eligibility.employer_name}</>}
-                {eligibility.employment_type && <> ({eligibility.employment_type})</>}
-              </p>
-            )}
+                {/* Employment */}
+                {eligibility.employer_name && (
+                  <p className="text-xs text-muted-foreground">
+                    <Briefcase className="mr-1 inline h-3 w-3" />
+                    {eligibility.is_employed ? 'Employed' : 'Unemployed'}
+                    {eligibility.employer_name && <> • Employer: {eligibility.employer_name}</>}
+                    {eligibility.employment_type && <> ({eligibility.employment_type})</>}
+                  </p>
+                )}
 
-            {/* Means testing — expanded */}
-            {eligibility.means_testing && eligibility.means_testing.monthly_contribution != null && (
-              <div className="rounded-md border bg-muted/20 px-2.5 py-1.5 text-xs space-y-1">
-                <p className="font-medium text-muted-foreground">Means Testing</p>
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground">
-                  {eligibility.means_testing.monthly_contribution != null && (
-                    <span>Monthly: <span className="font-medium text-foreground">KES {eligibility.means_testing.monthly_contribution.toLocaleString()}</span></span>
+                {/* Means testing — expanded */}
+                {eligibility.means_testing &&
+                  eligibility.means_testing.monthly_contribution != null && (
+                    <div className="space-y-1 rounded-md border bg-muted/20 px-2.5 py-1.5 text-xs">
+                      <p className="font-medium text-muted-foreground">Means Testing</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground">
+                        {eligibility.means_testing.monthly_contribution != null && (
+                          <span>
+                            Monthly:{' '}
+                            <span className="font-medium text-foreground">
+                              KES {eligibility.means_testing.monthly_contribution.toLocaleString()}
+                            </span>
+                          </span>
+                        )}
+                        {eligibility.means_testing.annual_contribution != null && (
+                          <span>
+                            Annual:{' '}
+                            <span className="font-medium text-foreground">
+                              KES {eligibility.means_testing.annual_contribution.toLocaleString()}
+                            </span>
+                          </span>
+                        )}
+                        {eligibility.means_testing.income_prediction_category && (
+                          <span>
+                            Category:{' '}
+                            <span className="font-medium text-foreground">
+                              {eligibility.means_testing.income_prediction_category}
+                            </span>
+                          </span>
+                        )}
+                        {eligibility.means_testing.mt_date && (
+                          <span>Date: {eligibility.means_testing.mt_date}</span>
+                        )}
+                        {eligibility.means_testing.appeal_status && (
+                          <span>Appeal: {eligibility.means_testing.appeal_status}</span>
+                        )}
+                      </div>
+                    </div>
                   )}
-                  {eligibility.means_testing.annual_contribution != null && (
-                    <span>Annual: <span className="font-medium text-foreground">KES {eligibility.means_testing.annual_contribution.toLocaleString()}</span></span>
-                  )}
-                  {eligibility.means_testing.income_prediction_category && (
-                    <span>Category: <span className="font-medium text-foreground">{eligibility.means_testing.income_prediction_category}</span></span>
-                  )}
-                  {eligibility.means_testing.mt_date && (
-                    <span>Date: {eligibility.means_testing.mt_date}</span>
-                  )}
-                  {eligibility.means_testing.appeal_status && (
-                    <span>Appeal: {eligibility.means_testing.appeal_status}</span>
-                  )}
-                </div>
-              </div>
-            )}
               </div>
             )}
             {!eligibility && !eligibilityLoading && (
@@ -1188,7 +1320,8 @@ function CRResultCard({
 
             {!matchedLocalPatient ? (
               <p className="text-xs text-muted-foreground">
-                Register this CR client locally to run private-insurance eligibility and start a HealthCloud session.
+                Register this CR client locally to run private-insurance eligibility and start a
+                HealthCloud session.
               </p>
             ) : enrollmentLoading ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1212,10 +1345,10 @@ function CRResultCard({
                   <div key={enrollment.id} className="rounded border p-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
+                        <p className="truncate text-sm font-medium">
                           {enrollment.provider_name} - {enrollment.plan_name}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="truncate text-xs text-muted-foreground">
                           Member: {enrollment.member_number}
                         </p>
                       </div>
@@ -1244,14 +1377,14 @@ function CRResultCard({
 
       {/* Eligible to be treated at this facility — benefits available */}
       {eligibility?.is_eligible && benefitsChecked && !benefitsEmpty && eligibility?.sha_number && (
-        <CardContent className="py-3 border-t">
+        <CardContent className="border-t py-3">
           <div className="flex gap-2 rounded-md border border-green-300 bg-green-50 p-3 dark:border-green-700 dark:bg-green-950/40">
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
             <div className="min-w-0">
               <p className="text-xs font-medium text-green-800 dark:text-green-300">
                 Eligible for Treatment at This Facility
               </p>
-              <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+              <p className="mt-0.5 text-xs text-green-700 dark:text-green-400">
                 This patient has active SHA benefit packages at this facility. Check the benefits
                 section below for specific packages, interventions, and utilization details.
               </p>
@@ -1262,18 +1395,19 @@ function CRResultCard({
 
       {/* Capitation Provider Validation */}
       {capitationWarning && (capitationWarning.details || !capitationWarning.is_valid) && (
-        <CardContent className="py-3 border-t">
+        <CardContent className="border-t py-3">
           {capitationWarning.is_valid ? (
             <div className="flex gap-2 rounded-md border border-green-300 bg-green-50 p-3 dark:border-green-700 dark:bg-green-950/40">
-              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
               <div className="min-w-0">
                 <p className="text-xs font-medium text-green-800 dark:text-green-300">
                   Capitation Provider Matched
                 </p>
-                <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
-                  This facility is the patient&apos;s selected outpatient provider. PHC/capitation claims can be submitted.
+                <p className="mt-0.5 text-xs text-green-700 dark:text-green-400">
+                  This facility is the patient&apos;s selected outpatient provider. PHC/capitation
+                  claims can be submitted.
                   {capitationWarning.warning && (
-                    <span className="block mt-1 text-amber-600 dark:text-amber-400">
+                    <span className="mt-1 block text-amber-600 dark:text-amber-400">
                       Note: {capitationWarning.warning}
                     </span>
                   )}
@@ -1282,12 +1416,12 @@ function CRResultCard({
             </div>
           ) : (
             <div className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/40">
-              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <div className="min-w-0">
                 <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
                   Provider Mismatch
                 </p>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
                   {capitationWarning.warning}
                 </p>
               </div>
@@ -1298,29 +1432,35 @@ function CRResultCard({
 
       {/* SHA Benefits & Interventions */}
       {eligibility?.is_eligible && eligibility?.sha_number && (
-        <CardContent className="py-3 border-t">
+        <CardContent className="border-t py-3">
           <BenefitsPanel
             crNumber={eligibility.sha_number}
             compact
-            onEmpty={() => { setBenefitsEmpty(true); setBenefitsChecked(true); }}
-            onHasBenefits={() => { setBenefitsEmpty(false); setBenefitsChecked(true); }}
+            onEmpty={() => {
+              setBenefitsEmpty(true);
+              setBenefitsChecked(true);
+            }}
+            onHasBenefits={() => {
+              setBenefitsEmpty(false);
+              setBenefitsChecked(true);
+            }}
           />
         </CardContent>
       )}
 
       {/* SHA eligible but no benefits — cannot be treated at this facility */}
       {eligibility?.is_eligible && benefitsEmpty && (
-        <CardContent className="py-3 border-t">
+        <CardContent className="border-t py-3">
           <div className="flex gap-2 rounded-md border border-red-300 bg-red-50 p-3 dark:border-red-700 dark:bg-red-950/40">
-            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
             <div className="min-w-0">
               <p className="text-xs font-medium text-red-800 dark:text-red-300">
                 Cannot Be Treated at This Facility
               </p>
-              <p className="text-xs text-red-700 dark:text-red-400 mt-0.5">
-                This patient is enrolled in SHA but has no active benefit packages at this
-                facility. SHA claims cannot be submitted. The patient should be directed to
-                a facility compatible with their scheme/fund or registered as a private/cash patient.
+              <p className="mt-0.5 text-xs text-red-700 dark:text-red-400">
+                This patient is enrolled in SHA but has no active benefit packages at this facility.
+                SHA claims cannot be submitted. The patient should be directed to a facility
+                compatible with their scheme/fund or registered as a private/cash patient.
               </p>
             </div>
           </div>
@@ -1329,259 +1469,312 @@ function CRResultCard({
 
       {/* Dependants */}
       {showDependentsSection && (
-        <CardContent className="py-3 border-t">
+        <CardContent className="border-t py-3">
           <button
             type="button"
             onClick={() => setShowDependants(!showDependants)}
-            className="flex items-center gap-2 w-full text-left"
+            className="flex w-full items-center gap-2 text-left"
           >
             <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">
-              Dependants ({totalDependantsDisplay})
-            </span>
+            <span className="text-sm font-medium">Dependants ({totalDependantsDisplay})</span>
             {showDependants ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground ml-auto" />
+              <ChevronUp className="ml-auto h-4 w-4 text-muted-foreground" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground ml-auto" />
+              <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground" />
             )}
           </button>
           {showDependants && (
             <div className="mt-2 space-y-2">
               {/* CR dependants (full details) */}
-              {crDependants.length > 0 && crDependants.map((dep, i) => {
-                const depBenefitKey = dep.id || dep.identification_number || `${dep.first_name || 'dep'}-${dep.last_name || i}-${i}`;
-                const depLookupId = getCRDependantLookupId(dep);
-                const showDepBenefits = openDependantBenefitsKey === depBenefitKey;
-                // Collect dependant other IDs as badges
-                const depOtherIds: { label: string; value: string }[] = [];
-                if (dep.other_identifications) {
-                  for (const oid of dep.other_identifications) {
-                    if (oid.identification_number) {
-                      const shortLabel = oid.identification_type
-                        ?.replace('Household Number', 'HH')
-                        .replace('SHA Number', 'SHA') ?? 'ID';
-                      depOtherIds.push({ label: shortLabel, value: oid.identification_number });
+              {crDependants.length > 0 &&
+                crDependants.map((dep, i) => {
+                  const depBenefitKey =
+                    dep.id ||
+                    dep.identification_number ||
+                    `${dep.first_name || 'dep'}-${dep.last_name || i}-${i}`;
+                  const depLookupId = getCRDependantLookupId(dep);
+                  const showDepBenefits = openDependantBenefitsKey === depBenefitKey;
+                  // Collect dependant other IDs as badges
+                  const depOtherIds: { label: string; value: string }[] = [];
+                  if (dep.other_identifications) {
+                    for (const oid of dep.other_identifications) {
+                      if (oid.identification_number) {
+                        const shortLabel =
+                          oid.identification_type
+                            ?.replace('Household Number', 'HH')
+                            .replace('SHA Number', 'SHA') ?? 'ID';
+                        depOtherIds.push({ label: shortLabel, value: oid.identification_number });
+                      }
                     }
                   }
-                }
-                const depLocationStr = locationChain(dep.county, dep.sub_county, dep.ward);
+                  const depLocationStr = locationChain(dep.county, dep.sub_county, dep.ward);
 
-                return (
-                  <div
-                    key={`cr-${dep.id || i}`}
-                    className="rounded-md border p-3 bg-muted/30 space-y-2"
-                  >
-                    {/* Row 1: Name + relationship badge + register button */}
-                    <div className="flex items-start gap-3">
-                      <User className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium truncate">
-                            {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ') || 'Unknown'}
-                          </span>
-                          {dep.relationship && (
-                            <Badge variant="secondary" size="sm">{dep.relationship}</Badge>
-                          )}
-                          {dep.id && (
-                            <Badge variant="outline" size="sm" className="font-mono text-[11px]">
-                              CR: {dep.id}
-                            </Badge>
-                          )}
+                  return (
+                    <div
+                      key={`cr-${dep.id || i}`}
+                      className="space-y-2 rounded-md border bg-muted/30 p-3"
+                    >
+                      {/* Row 1: Name + relationship badge + register button */}
+                      <div className="flex items-start gap-3">
+                        <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="truncate text-sm font-medium">
+                              {[dep.first_name, dep.middle_name, dep.last_name]
+                                .filter(Boolean)
+                                .join(' ') || 'Unknown'}
+                            </span>
+                            {dep.relationship && (
+                              <Badge variant="secondary" size="sm">
+                                {dep.relationship}
+                              </Badge>
+                            )}
+                            {dep.id && (
+                              <Badge variant="outline" size="sm" className="font-mono text-[11px]">
+                                CR: {dep.id}
+                              </Badge>
+                            )}
+                          </div>
+                          {/* Row 2: Key metadata line */}
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                            {dep.gender && (
+                              <span>
+                                {dep.gender === 'M'
+                                  ? 'Male'
+                                  : dep.gender === 'F'
+                                    ? 'Female'
+                                    : dep.gender}
+                              </span>
+                            )}
+                            {dep.date_of_birth && (
+                              <>
+                                <span>•</span>
+                                <span>DOB: {dep.date_of_birth}</span>
+                              </>
+                            )}
+                            {dep.identification_number && (
+                              <>
+                                <span>•</span>
+                                <span>ID: {dep.identification_number}</span>
+                              </>
+                            )}
+                            {dep.phone && (
+                              <>
+                                <span>•</span>
+                                <span>{dep.phone}</span>
+                              </>
+                            )}
+                            {depLocationStr && (
+                              <>
+                                <span>•</span>
+                                <span>{depLocationStr}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        {/* Row 2: Key metadata line */}
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
-                          {dep.gender && <span>{dep.gender === 'M' ? 'Male' : dep.gender === 'F' ? 'Female' : dep.gender}</span>}
-                          {dep.date_of_birth && (
-                            <>
-                              <span>•</span>
-                              <span>DOB: {dep.date_of_birth}</span>
-                            </>
-                          )}
-                          {dep.identification_number && (
-                            <>
-                              <span>•</span>
-                              <span>ID: {dep.identification_number}</span>
-                            </>
-                          )}
-                          {dep.phone && (
-                            <>
-                              <span>•</span>
-                              <span>{dep.phone}</span>
-                            </>
-                          )}
-                          {depLocationStr && (
-                            <>
-                              <span>•</span>
-                              <span>{depLocationStr}</span>
-                            </>
-                          )}
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Button
+                            variant={showDepBenefits ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="h-7 px-2"
+                            title={
+                              showDepBenefits ? 'Hide dependant benefits' : 'See dependant benefits'
+                            }
+                            onClick={() => {
+                              setOpenDependantBenefitsKey((prev) =>
+                                prev === depBenefitKey ? null : depBenefitKey
+                              );
+                            }}
+                          >
+                            {showDepBenefits ? 'Hide benefits' : 'See benefits'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            title="Register this dependant"
+                            onClick={() => {
+                              const principalContributor = eligibility?.schemes?.find(
+                                (scheme) => scheme.principalContributor?.idNumber
+                              )?.principalContributor;
+                              const principalNationalId =
+                                principalContributor?.idType?.toUpperCase() === 'NATIONAL_ID'
+                                  ? principalContributor.idNumber
+                                  : (client.national_id ?? undefined);
+                              const depShaNumber = dep.other_identifications?.find((oid) =>
+                                oid.identification_type?.toLowerCase().includes('sha')
+                              )?.identification_number;
+                              const depHouseholdNumber = dep.other_identifications?.find((oid) =>
+                                oid.identification_type?.toLowerCase().includes('household')
+                              )?.identification_number;
+
+                              const depPerson: SHAPayloadPerson = {
+                                source: 'dependent',
+                                relationship: dep.relationship,
+                                id: dep.id ?? undefined,
+                                resourceType: dep.resourceType ?? undefined,
+                                first_name: dep.first_name ?? undefined,
+                                middle_name: dep.middle_name ?? undefined,
+                                last_name: dep.last_name ?? undefined,
+                                gender: dep.gender ?? undefined,
+                                date_of_birth: dep.date_of_birth ?? undefined,
+                                place_of_birth: dep.place_of_birth ?? undefined,
+                                citizenship: dep.citizenship ?? undefined,
+                                employment_type: dep.employment_type ?? undefined,
+                                civil_status: dep.civil_status ?? undefined,
+                                identification_type: dep.identification_type ?? undefined,
+                                identification_number: dep.identification_number ?? undefined,
+                                other_identifications: dep.other_identifications?.map((oid) => ({
+                                  identification_type: oid.identification_type,
+                                  identification_number: oid.identification_number,
+                                })),
+                                phone: dep.phone ?? undefined,
+                                country: dep.country ?? undefined,
+                                county: dep.county ?? undefined,
+                                sub_county: dep.sub_county ?? undefined,
+                                ward: dep.ward ?? undefined,
+                                village_estate: dep.village_estate ?? undefined,
+                                province_state_country: dep.province_state_country ?? undefined,
+                                zip_code: dep.zip_code ?? undefined,
+                                postal_address: dep.postal_address ?? undefined,
+                                id_serial: dep.id_serial ?? undefined,
+                                sha_number: depShaNumber,
+                                cr_number: dep.id ?? undefined,
+                                household_number: depHouseholdNumber,
+                                principal_national_id: principalNationalId,
+                              };
+
+                              sessionStorage.removeItem('cr_prepopulate');
+                              sessionStorage.setItem(
+                                'sha_person_prepopulate',
+                                JSON.stringify(depPerson)
+                              );
+                              router.push('/patients/new?from_sha=1');
+                            }}
+                          >
+                            <UserPlus className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-1">
+
+                      {/* Row 3: Other IDs + extra detail */}
+                      {(depOtherIds.length > 0 ||
+                        dep.citizenship ||
+                        dep.civil_status ||
+                        dep.employment_type ||
+                        dep.village_estate) && (
+                        <div className="space-y-1.5 pl-7">
+                          {depOtherIds.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {depOtherIds.map((oid, j) => (
+                                <Badge
+                                  key={j}
+                                  variant="outline"
+                                  size="sm"
+                                  className="font-mono text-[11px]"
+                                >
+                                  {oid.label}: {oid.value}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                            {dep.citizenship && <span>Citizenship: {dep.citizenship}</span>}
+                            {dep.civil_status && <span>Status: {dep.civil_status}</span>}
+                            {dep.employment_type && <span>Employment: {dep.employment_type}</span>}
+                            {dep.village_estate && <span>Village: {dep.village_estate}</span>}
+                          </div>
+                        </div>
+                      )}
+
+                      {showDepBenefits && (
+                        <div className="pl-7 pt-1">
+                          {depLookupId ? (
+                            <BenefitsPanel crNumber={depLookupId} compact />
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No SHA/CR identifier found for this dependant. Register first or
+                              verify from the SHA modal to load benefits.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+              {/* SHA dependants (if no CR dependants available) */}
+              {crDependants.length === 0 &&
+                shaDependants.length > 0 &&
+                shaDependants.map((dep, i) => {
+                  const depBenefitKey = dep.sha_number || dep.name || `sha-${i}`;
+                  const showDepBenefits = openDependantBenefitsKey === depBenefitKey;
+                  return (
+                    <div key={`sha-${i}`} className="rounded-md border bg-muted/30 p-2.5">
+                      <div className="flex items-center gap-3">
+                        <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="truncate text-sm font-medium">{dep.name}</span>
+                            {dep.relationship && (
+                              <Badge variant="secondary" size="sm">
+                                {dep.relationship}
+                              </Badge>
+                            )}
+                            {dep.is_active ? (
+                              <Badge
+                                variant="outline"
+                                size="sm"
+                                className="border-green-300 text-green-700 dark:text-green-400"
+                              >
+                                Active
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" size="sm" className="text-muted-foreground">
+                                Inactive
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                            {dep.age != null && <span>Age: {dep.age}</span>}
+                            {dep.sha_number && (
+                              <>
+                                <span>•</span>
+                                <span className="font-mono">SHA: {dep.sha_number}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
                         <Button
                           variant={showDepBenefits ? 'secondary' : 'ghost'}
                           size="sm"
                           className="h-7 px-2"
-                          title={showDepBenefits ? 'Hide dependant benefits' : 'See dependant benefits'}
+                          title={
+                            showDepBenefits ? 'Hide dependant benefits' : 'See dependant benefits'
+                          }
                           onClick={() => {
-                            setOpenDependantBenefitsKey((prev) => (prev === depBenefitKey ? null : depBenefitKey));
+                            setOpenDependantBenefitsKey((prev) =>
+                              prev === depBenefitKey ? null : depBenefitKey
+                            );
                           }}
                         >
                           {showDepBenefits ? 'Hide benefits' : 'See benefits'}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          title="Register this dependant"
-                          onClick={() => {
-                          const principalContributor = eligibility?.schemes?.find((scheme) => scheme.principalContributor?.idNumber)?.principalContributor;
-                          const principalNationalId = principalContributor?.idType?.toUpperCase() === 'NATIONAL_ID'
-                            ? principalContributor.idNumber
-                            : (client.national_id ?? undefined);
-                          const depShaNumber = dep.other_identifications?.find((oid) => oid.identification_type?.toLowerCase().includes('sha'))?.identification_number;
-                          const depHouseholdNumber = dep.other_identifications?.find((oid) => oid.identification_type?.toLowerCase().includes('household'))?.identification_number;
-
-                          const depPerson: SHAPayloadPerson = {
-                            source: 'dependent',
-                            relationship: dep.relationship,
-                            id: dep.id ?? undefined,
-                            resourceType: dep.resourceType ?? undefined,
-                            first_name: dep.first_name ?? undefined,
-                            middle_name: dep.middle_name ?? undefined,
-                            last_name: dep.last_name ?? undefined,
-                            gender: dep.gender ?? undefined,
-                            date_of_birth: dep.date_of_birth ?? undefined,
-                            place_of_birth: dep.place_of_birth ?? undefined,
-                            citizenship: dep.citizenship ?? undefined,
-                            employment_type: dep.employment_type ?? undefined,
-                            civil_status: dep.civil_status ?? undefined,
-                            identification_type: dep.identification_type ?? undefined,
-                            identification_number: dep.identification_number ?? undefined,
-                            other_identifications: dep.other_identifications?.map((oid) => ({
-                              identification_type: oid.identification_type,
-                              identification_number: oid.identification_number,
-                            })),
-                            phone: dep.phone ?? undefined,
-                            country: dep.country ?? undefined,
-                            county: dep.county ?? undefined,
-                            sub_county: dep.sub_county ?? undefined,
-                            ward: dep.ward ?? undefined,
-                            village_estate: dep.village_estate ?? undefined,
-                            province_state_country: dep.province_state_country ?? undefined,
-                            zip_code: dep.zip_code ?? undefined,
-                            postal_address: dep.postal_address ?? undefined,
-                            id_serial: dep.id_serial ?? undefined,
-                            sha_number: depShaNumber,
-                            cr_number: dep.id ?? undefined,
-                            household_number: depHouseholdNumber,
-                            principal_national_id: principalNationalId,
-                          };
-
-                          sessionStorage.removeItem('cr_prepopulate');
-                          sessionStorage.setItem('sha_person_prepopulate', JSON.stringify(depPerson));
-                          router.push('/patients/new?from_sha=1');
-                          }}
-                        >
-                          <UserPlus className="h-3.5 w-3.5" />
-                        </Button>
                       </div>
-                    </div>
-
-                    {/* Row 3: Other IDs + extra detail */}
-                    {(depOtherIds.length > 0 || dep.citizenship || dep.civil_status || dep.employment_type || dep.village_estate) && (
-                      <div className="pl-7 space-y-1.5">
-                        {depOtherIds.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {depOtherIds.map((oid, j) => (
-                              <Badge key={j} variant="outline" size="sm" className="font-mono text-[11px]">
-                                {oid.label}: {oid.value}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                          {dep.citizenship && <span>Citizenship: {dep.citizenship}</span>}
-                          {dep.civil_status && <span>Status: {dep.civil_status}</span>}
-                          {dep.employment_type && <span>Employment: {dep.employment_type}</span>}
-                          {dep.village_estate && <span>Village: {dep.village_estate}</span>}
+                      {showDepBenefits && (
+                        <div className="mt-2 pl-7">
+                          {dep.sha_number ? (
+                            <BenefitsPanel crNumber={dep.sha_number} compact />
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No SHA number found for this dependant yet.
+                            </p>
+                          )}
                         </div>
-                      </div>
-                    )}
-
-                    {showDepBenefits && (
-                      <div className="pl-7 pt-1">
-                        {depLookupId ? (
-                          <BenefitsPanel crNumber={depLookupId} compact />
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            No SHA/CR identifier found for this dependant. Register first or verify from the SHA modal to load benefits.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* SHA dependants (if no CR dependants available) */}
-              {crDependants.length === 0 && shaDependants.length > 0 && shaDependants.map((dep, i) => {
-                const depBenefitKey = dep.sha_number || dep.name || `sha-${i}`;
-                const showDepBenefits = openDependantBenefitsKey === depBenefitKey;
-                return (
-                <div
-                  key={`sha-${i}`}
-                  className="rounded-md border p-2.5 bg-muted/30"
-                >
-                  <div className="flex items-center gap-3">
-                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium truncate">{dep.name}</span>
-                      {dep.relationship && (
-                        <Badge variant="secondary" size="sm">{dep.relationship}</Badge>
-                      )}
-                      {dep.is_active ? (
-                        <Badge variant="outline" size="sm" className="border-green-300 text-green-700 dark:text-green-400">Active</Badge>
-                      ) : (
-                        <Badge variant="outline" size="sm" className="text-muted-foreground">Inactive</Badge>
                       )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
-                      {dep.age != null && <span>Age: {dep.age}</span>}
-                      {dep.sha_number && (
-                        <>
-                          <span>•</span>
-                          <span className="font-mono">SHA: {dep.sha_number}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    variant={showDepBenefits ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="h-7 px-2"
-                    title={showDepBenefits ? 'Hide dependant benefits' : 'See dependant benefits'}
-                    onClick={() => {
-                      setOpenDependantBenefitsKey((prev) => (prev === depBenefitKey ? null : depBenefitKey));
-                    }}
-                  >
-                    {showDepBenefits ? 'Hide benefits' : 'See benefits'}
-                  </Button>
-                  </div>
-                  {showDepBenefits && (
-                    <div className="mt-2 pl-7">
-                      {dep.sha_number ? (
-                        <BenefitsPanel crNumber={dep.sha_number} compact />
-                      ) : (
-                        <p className="text-xs text-muted-foreground">
-                          No SHA number found for this dependant yet.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );})}
+                  );
+                })}
             </div>
           )}
         </CardContent>

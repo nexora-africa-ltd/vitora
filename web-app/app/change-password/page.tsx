@@ -3,17 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import {
-  Eye,
-  EyeOff,
-  Loader2,
-  Sun,
-  Moon,
-  AlertCircle,
-  ShieldAlert,
-  Check,
-  X,
-} from 'lucide-react';
+import { Eye, EyeOff, Loader2, Sun, Moon, AlertCircle, ShieldAlert, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +19,10 @@ interface PasswordValidationState {
   errors: string[];
 }
 
-function getBackendErrorMessage(err: unknown): { message: string; fieldErrors?: Record<string, string[]> } {
+function getBackendErrorMessage(err: unknown): {
+  message: string;
+  fieldErrors?: Record<string, string[]>;
+} {
   if (err instanceof AxiosError) {
     const data = err.response?.data;
     if (!data || typeof data !== 'object') {
@@ -49,7 +42,8 @@ function getBackendErrorMessage(err: unknown): { message: string; fieldErrors?: 
     if (fieldErrors.current_password) messages.push(...fieldErrors.current_password);
     if (fieldErrors.non_field_errors) messages.push(...fieldErrors.non_field_errors);
     if (data.detail && typeof data.detail === 'string') messages.push(data.detail);
-    const message = messages.length > 0 ? messages.join(' ') : err.message || 'Failed to change password';
+    const message =
+      messages.length > 0 ? messages.join(' ') : err.message || 'Failed to change password';
     return { message, fieldErrors };
   }
 
@@ -71,7 +65,8 @@ function getBackendErrorMessage(err: unknown): { message: string; fieldErrors?: 
     if (fieldErrors.current_password) messages.push(...fieldErrors.current_password);
     if (fieldErrors.non_field_errors) messages.push(...fieldErrors.non_field_errors);
     if (data.detail && typeof data.detail === 'string') messages.push(data.detail);
-    const message = messages.length > 0 ? messages.join(' ') : plain.message || 'Failed to change password';
+    const message =
+      messages.length > 0 ? messages.join(' ') : plain.message || 'Failed to change password';
     return { message, fieldErrors };
   }
 
@@ -215,11 +210,11 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4 sm:p-8 bg-background">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4 sm:p-8">
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-10"
+        className="absolute right-4 top-4 z-10"
         onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
       >
         <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -227,28 +222,29 @@ export default function ChangePasswordPage() {
         <span className="sr-only">Toggle theme</span>
       </Button>
 
-      <Card className="relative w-full max-w-md border-brand-burgundy-200 dark:border-muted/30 shadow-lg overflow-hidden">
+      <Card className="relative w-full max-w-md overflow-hidden border-brand-burgundy-200 shadow-lg dark:border-muted/30">
         {mounted && (
           <VitoraLogo
             variant="icon"
             tone={isDark ? 'white' : 'teal'}
             alt=""
-            className="absolute top-1/2 left-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none select-none"
+            className="pointer-events-none absolute left-1/2 top-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 select-none opacity-[0.03]"
             imageClassName="pointer-events-none select-none"
           />
         )}
 
-        <CardHeader className="relative z-10 text-center space-y-4">
+        <CardHeader className="relative z-10 space-y-4 text-center">
           <div className="mx-auto">
             <VitoraLogo tone={isDark ? 'light' : 'dark'} alt={APP_NAME} className="w-36" />
           </div>
-          <div className="mx-auto rounded-full bg-amber-500/10 p-3 w-fit">
+          <div className="mx-auto w-fit rounded-full bg-amber-500/10 p-3">
             <ShieldAlert className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
             <CardTitle className="text-xl font-bold">Password Change Required</CardTitle>
             <CardDescription className="mt-2">
-              You must set a new password before continuing. This is a one-time security requirement.
+              You must set a new password before continuing. This is a one-time security
+              requirement.
             </CardDescription>
           </div>
         </CardHeader>
@@ -256,8 +252,8 @@ export default function ChangePasswordPage() {
         <CardContent className="relative z-10">
           <form onSubmit={handleSubmit} className="space-y-4">
             {submitError && (
-              <div className="flex items-start gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
-                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <span>{submitError}</span>
               </div>
             )}
@@ -297,14 +293,14 @@ export default function ChangePasswordPage() {
               </div>
 
               {validation.status === 'checking' && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Checking password strength…
                 </p>
               )}
 
               {validation.status === 'valid' && (
-                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                <p className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
                   <Check className="h-3 w-3" />
                   Password meets security requirements
                 </p>
@@ -313,11 +309,8 @@ export default function ChangePasswordPage() {
               {(validation.status === 'invalid' || fieldErrors.new_password) && (
                 <div className="space-y-1">
                   {validation.errors.map((err, idx) => (
-                    <p
-                      key={idx}
-                      className="text-xs text-destructive flex items-start gap-1.5"
-                    >
-                      <X className="h-3 w-3 mt-0.5 shrink-0" />
+                    <p key={idx} className="flex items-start gap-1.5 text-xs text-destructive">
+                      <X className="mt-0.5 h-3 w-3 shrink-0" />
                       {err}
                     </p>
                   ))}
@@ -326,9 +319,9 @@ export default function ChangePasswordPage() {
                     .map((err, idx) => (
                       <p
                         key={`be-${idx}`}
-                        className="text-xs text-destructive flex items-start gap-1.5"
+                        className="flex items-start gap-1.5 text-xs text-destructive"
                       >
-                        <X className="h-3 w-3 mt-0.5 shrink-0" />
+                        <X className="mt-0.5 h-3 w-3 shrink-0" />
                         {err}
                       </p>
                     ))}
@@ -374,12 +367,16 @@ export default function ChangePasswordPage() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   tabIndex={-1}
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               {!passwordsMatch && (
-                <p className="text-xs text-destructive flex items-center gap-1.5">
-                  <X className="h-3 w-3 mt-0.5 shrink-0" />
+                <p className="flex items-center gap-1.5 text-xs text-destructive">
+                  <X className="mt-0.5 h-3 w-3 shrink-0" />
                   Passwords do not match
                 </p>
               )}
@@ -387,12 +384,10 @@ export default function ChangePasswordPage() {
 
             <Button
               type="submit"
-              className="w-full h-11"
+              className="h-11 w-full"
               disabled={isSubmitting || !isFormValid}
               title={
-                !isFormValid && !isSubmitting
-                  ? 'Fix password issues before continuing'
-                  : undefined
+                !isFormValid && !isSubmitting ? 'Fix password issues before continuing' : undefined
               }
             >
               {isSubmitting ? (

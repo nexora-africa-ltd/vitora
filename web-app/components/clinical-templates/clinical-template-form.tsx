@@ -30,11 +30,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils/cn';
 import { coreApi } from '@/lib/api/core';
 import { ObstetricCalculator } from '@/components/clinical-templates/obstetric-calculator';
@@ -79,12 +75,7 @@ export function ClinicalTemplateForm({
 
   // Handle obstetric calculator auto-populate
   const handleObstetricApply = useCallback(
-    (values: {
-      lmp: string;
-      edd: string;
-      gestational_age_weeks: number;
-      trimester: number;
-    }) => {
+    (values: { lmp: string; edd: string; gestational_age_weeks: number; trimester: number }) => {
       if (!visitInfoSection) return;
 
       const sectionName = visitInfoSection.name;
@@ -129,12 +120,10 @@ export function ClinicalTemplateForm({
   // Guard against missing template or content
   if (!template || !template.content || !template.content.sections) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+      <div className="py-8 text-center text-muted-foreground">
+        <AlertCircle className="mx-auto mb-4 h-12 w-12 opacity-50" />
         <p>Template has no content</p>
-        <p className="text-sm mt-1">
-          This template doesn&apos;t have any sections defined.
-        </p>
+        <p className="mt-1 text-sm">This template doesn&apos;t have any sections defined.</p>
       </div>
     );
   }
@@ -157,7 +146,7 @@ export function ClinicalTemplateForm({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <FileText className="h-5 w-5" />
             {template.name}
           </CardTitle>
@@ -173,12 +162,8 @@ export function ClinicalTemplateForm({
           <ObstetricCalculator
             lmpValue={value[visitInfoSection.name]?.['lmp'] as string | undefined}
             eddValue={value[visitInfoSection.name]?.['edd'] as string | undefined}
-            onLMPChange={(lmp) =>
-              handleFieldChange(visitInfoSection.name, 'lmp', lmp)
-            }
-            onEDDChange={(edd) =>
-              handleFieldChange(visitInfoSection.name, 'edd', edd)
-            }
+            onLMPChange={(lmp) => handleFieldChange(visitInfoSection.name, 'lmp', lmp)}
+            onEDDChange={(edd) => handleFieldChange(visitInfoSection.name, 'edd', edd)}
             onGestationalAgeChange={(weeks) =>
               handleFieldChange(visitInfoSection.name, 'gestational_age_weeks', weeks)
             }
@@ -203,8 +188,9 @@ export function ClinicalTemplateForm({
                 <CollapsibleTrigger asChild>
                   <div
                     className={cn(
-                      'flex items-center justify-between p-3 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors',
-                      completeness.isComplete && 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
+                      'flex cursor-pointer items-center justify-between rounded-md border p-3 transition-colors hover:bg-muted/50',
+                      completeness.isComplete &&
+                        'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
                     )}
                   >
                     <div className="flex items-center gap-2">
@@ -229,15 +215,13 @@ export function ClinicalTemplateForm({
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="grid gap-4 pt-4 pl-6">
+                  <div className="grid gap-4 pl-6 pt-4">
                     {section.fields.map((field) => (
                       <TemplateFieldRenderer
                         key={field.name}
                         field={field}
                         value={value[section.name]?.[field.name]}
-                        onChange={(v) =>
-                          handleFieldChange(section.name, field.name, v)
-                        }
+                        onChange={(v) => handleFieldChange(section.name, field.name, v)}
                         disabled={disabled}
                       />
                     ))}
@@ -258,12 +242,7 @@ interface TemplateFieldRendererProps {
   disabled?: boolean;
 }
 
-function TemplateFieldRenderer({
-  field,
-  value,
-  onChange,
-  disabled,
-}: TemplateFieldRendererProps) {
+function TemplateFieldRenderer({ field, value, onChange, disabled }: TemplateFieldRendererProps) {
   const id = `field-${field.name}`;
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -299,7 +278,7 @@ function TemplateFieldRenderer({
         <div className="space-y-2">
           <Label htmlFor={id}>
             {field.label}
-            {field.required && <span className="text-destructive ml-1">*</span>}
+            {field.required && <span className="ml-1 text-destructive">*</span>}
           </Label>
           <div className="flex gap-2">
             <Input
@@ -323,16 +302,14 @@ function TemplateFieldRenderer({
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <Wand2 className="h-4 w-4 mr-1" />
+                    <Wand2 className="mr-1 h-4 w-4" />
                     Generate
                   </>
                 )}
               </Button>
             )}
           </div>
-          {field.help_text && (
-            <p className="text-xs text-muted-foreground">{field.help_text}</p>
-          )}
+          {field.help_text && <p className="text-xs text-muted-foreground">{field.help_text}</p>}
         </div>
       );
 
@@ -341,7 +318,7 @@ function TemplateFieldRenderer({
         <div className="space-y-2">
           <Label htmlFor={id}>
             {field.label}
-            {field.required && <span className="text-destructive ml-1">*</span>}
+            {field.required && <span className="ml-1 text-destructive">*</span>}
           </Label>
           <Textarea
             id={id}
@@ -351,9 +328,7 @@ function TemplateFieldRenderer({
             disabled={disabled}
             rows={3}
           />
-          {field.help_text && (
-            <p className="text-xs text-muted-foreground">{field.help_text}</p>
-          )}
+          {field.help_text && <p className="text-xs text-muted-foreground">{field.help_text}</p>}
         </div>
       );
 
@@ -362,44 +337,50 @@ function TemplateFieldRenderer({
         <div className="space-y-2">
           <Label htmlFor={id}>
             {field.label}
-            {field.required && <span className="text-destructive ml-1">*</span>}
+            {field.required && <span className="ml-1 text-destructive">*</span>}
           </Label>
           <Input
             id={id}
             type="number"
             value={(value as number) ?? ''}
-            onChange={(e) =>
-              onChange(e.target.value ? Number(e.target.value) : null)
-            }
+            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
             min={field.min}
             max={field.max}
             placeholder={field.placeholder}
             disabled={disabled}
           />
-          {field.help_text && (
-            <p className="text-xs text-muted-foreground">{field.help_text}</p>
-          )}
+          {field.help_text && <p className="text-xs text-muted-foreground">{field.help_text}</p>}
         </div>
       );
 
     case 'date':
       // Determine if this field should allow future dates
       // First check explicit field config, then fall back to name/label heuristics
-      const isFutureDateField = field.allow_future ?? [
-        'edd', 'expected_delivery', 'expected_date', 'expiry', 'expiry_date',
-        'next_appointment', 'follow_up', 'follow_up_date', 'due_date',
-        'scheduled_date', 'appointment_date',
-      ].some(
-        (keyword) =>
-          field.name.toLowerCase().includes(keyword) ||
-          field.label?.toLowerCase().includes(keyword)
-      );
+      const isFutureDateField =
+        field.allow_future ??
+        [
+          'edd',
+          'expected_delivery',
+          'expected_date',
+          'expiry',
+          'expiry_date',
+          'next_appointment',
+          'follow_up',
+          'follow_up_date',
+          'due_date',
+          'scheduled_date',
+          'appointment_date',
+        ].some(
+          (keyword) =>
+            field.name.toLowerCase().includes(keyword) ||
+            field.label?.toLowerCase().includes(keyword)
+        );
       const isPastDateField = field.allow_past ?? true;
       return (
         <div className="space-y-2">
           <Label htmlFor={id}>
             {field.label}
-            {field.required && <span className="text-destructive ml-1">*</span>}
+            {field.required && <span className="ml-1 text-destructive">*</span>}
           </Label>
           <DatePicker
             value={(value as string) ? parseISO(value as string) : undefined}
@@ -409,9 +390,7 @@ function TemplateFieldRenderer({
             allowFuture={isFutureDateField}
             allowPast={isPastDateField}
           />
-          {field.help_text && (
-            <p className="text-xs text-muted-foreground">{field.help_text}</p>
-          )}
+          {field.help_text && <p className="text-xs text-muted-foreground">{field.help_text}</p>}
         </div>
       );
 
@@ -426,7 +405,7 @@ function TemplateFieldRenderer({
           />
           <Label htmlFor={id} className="cursor-pointer">
             {field.label}
-            {field.required && <span className="text-destructive ml-1">*</span>}
+            {field.required && <span className="ml-1 text-destructive">*</span>}
           </Label>
         </div>
       );
@@ -436,13 +415,9 @@ function TemplateFieldRenderer({
         <div className="space-y-2">
           <Label htmlFor={id}>
             {field.label}
-            {field.required && <span className="text-destructive ml-1">*</span>}
+            {field.required && <span className="ml-1 text-destructive">*</span>}
           </Label>
-          <Select
-            value={(value as string) || ''}
-            onValueChange={onChange}
-            disabled={disabled}
-          >
+          <Select value={(value as string) || ''} onValueChange={onChange} disabled={disabled}>
             <SelectTrigger id={id}>
               <SelectValue placeholder={field.placeholder || 'Select...'} />
             </SelectTrigger>
@@ -454,9 +429,7 @@ function TemplateFieldRenderer({
               ))}
             </SelectContent>
           </Select>
-          {field.help_text && (
-            <p className="text-xs text-muted-foreground">{field.help_text}</p>
-          )}
+          {field.help_text && <p className="text-xs text-muted-foreground">{field.help_text}</p>}
         </div>
       );
 
@@ -466,7 +439,7 @@ function TemplateFieldRenderer({
         <div className="space-y-2">
           <Label>
             {field.label}
-            {field.required && <span className="text-destructive ml-1">*</span>}
+            {field.required && <span className="ml-1 text-destructive">*</span>}
           </Label>
           <div className="grid gap-2 sm:grid-cols-2">
             {field.options?.map((option) => (
@@ -489,17 +462,13 @@ function TemplateFieldRenderer({
               </div>
             ))}
           </div>
-          {field.help_text && (
-            <p className="text-xs text-muted-foreground">{field.help_text}</p>
-          )}
+          {field.help_text && <p className="text-xs text-muted-foreground">{field.help_text}</p>}
         </div>
       );
 
     default:
       return (
-        <div className="text-sm text-muted-foreground">
-          Unsupported field type: {field.type}
-        </div>
+        <div className="text-sm text-muted-foreground">Unsupported field type: {field.type}</div>
       );
   }
 }

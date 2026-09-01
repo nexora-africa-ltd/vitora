@@ -71,7 +71,7 @@ export interface AIContextEnrichment {
  */
 export function assessContextSufficiency(
   patientContext: AIPatientContext | null,
-  encounterContext: AIEncounterContext | null,
+  encounterContext: AIEncounterContext | null
 ): ContextSufficiencyResult {
   const missingFields: string[] = [];
   const presentFields: string[] = [];
@@ -90,8 +90,7 @@ export function assessContextSufficiency(
 
   // --- Chief complaint ---
   const hasChiefComplaint =
-    encounterContext?.chief_complaint != null &&
-    encounterContext.chief_complaint.trim().length > 0;
+    encounterContext?.chief_complaint != null && encounterContext.chief_complaint.trim().length > 0;
 
   if (hasChiefComplaint) {
     presentFields.push('chief complaint');
@@ -104,20 +103,38 @@ export function assessContextSufficiency(
   let vitalCount = 0;
   const missingVitals: string[] = [];
 
-  if (vitals?.pulse != null) { vitalCount++; } else { missingVitals.push('heart rate'); }
-  if (vitals?.spo2 != null) { vitalCount++; } else { missingVitals.push('SpO2'); }
-  if (vitals?.temperature != null) { vitalCount++; } else { missingVitals.push('temperature'); }
-  if (vitals?.rr != null) { vitalCount++; } else { missingVitals.push('respiratory rate'); }
-  if (vitals?.map != null) { vitalCount++; } else { missingVitals.push('blood pressure'); }
+  if (vitals?.pulse != null) {
+    vitalCount++;
+  } else {
+    missingVitals.push('heart rate');
+  }
+  if (vitals?.spo2 != null) {
+    vitalCount++;
+  } else {
+    missingVitals.push('SpO2');
+  }
+  if (vitals?.temperature != null) {
+    vitalCount++;
+  } else {
+    missingVitals.push('temperature');
+  }
+  if (vitals?.rr != null) {
+    vitalCount++;
+  } else {
+    missingVitals.push('respiratory rate');
+  }
+  if (vitals?.map != null) {
+    vitalCount++;
+  } else {
+    missingVitals.push('blood pressure');
+  }
 
   if (vitalCount >= 2) {
     presentFields.push(`${vitalCount}/5 vital signs`);
   }
   if (vitalCount < 5) {
     missingFields.push(
-      vitalCount === 0
-        ? 'vital signs'
-        : `some vitals (${missingVitals.join(', ')})`
+      vitalCount === 0 ? 'vital signs' : `some vitals (${missingVitals.join(', ')})`
     );
   }
 
@@ -137,13 +154,14 @@ export function assessContextSufficiency(
   if (hasDemographics && hasChiefComplaint && vitalCount >= 2) {
     level = 'sufficient';
     canProceed = true;
-    message = vitalCount < 5
-      ? `Good context available (${vitalCount}/5 vitals). Adding ${missingVitals.join(', ')} would improve recommendations.`
-      : 'Full clinical context available for analysis.';
+    message =
+      vitalCount < 5
+        ? `Good context available (${vitalCount}/5 vitals). Adding ${missingVitals.join(', ')} would improve recommendations.`
+        : 'Full clinical context available for analysis.';
   } else if (hasDemographics && (hasChiefComplaint || vitalCount >= 1)) {
     level = 'partial';
     canProceed = true;
-    const missing = missingFields.filter(f => f !== 'patient demographics (age, sex)');
+    const missing = missingFields.filter((f) => f !== 'patient demographics (age, sex)');
     message = `Limited context — ${missing.join(' and ')} not yet entered. TibaBot can respond, but recommendations will be more accurate with complete data.`;
   } else {
     level = 'insufficient';
@@ -161,7 +179,7 @@ export function assessContextSufficiency(
 function buildInsufficientMessage(
   hasDemographics: boolean,
   hasChiefComplaint: boolean,
-  vitalCount: number,
+  vitalCount: number
 ): string {
   const parts: string[] = [];
 
@@ -184,24 +202,21 @@ function buildInsufficientMessage(
  */
 export function buildContextGuidanceMessage(result: ContextSufficiencyResult): string {
   if (result.level === 'insufficient') {
-    const lines = [
-      '⚠️ **Insufficient clinical data**\n',
-      result.message,
-      '',
-      '**What to do:**',
-    ];
+    const lines = ['⚠️ **Insufficient clinical data**\n', result.message, '', '**What to do:**'];
 
     if (result.missingFields.includes('chief complaint')) {
       lines.push('- Go to the **Assessment** tab and enter the chief complaint');
     }
-    if (result.missingFields.some(f => f.includes('vital'))) {
+    if (result.missingFields.some((f) => f.includes('vital'))) {
       lines.push('- Go to the **Vitals** tab and record vital signs');
     }
     if (result.missingFields.includes('patient demographics (age, sex)')) {
       lines.push('- Ensure patient demographics are loaded');
     }
 
-    lines.push('\nOnce you\'ve entered the data, come back and I\'ll have full context to assist you.');
+    lines.push(
+      "\nOnce you've entered the data, come back and I'll have full context to assist you."
+    );
     return lines.join('\n');
   }
 
@@ -210,7 +225,7 @@ export function buildContextGuidanceMessage(result: ContextSufficiencyResult): s
       '⚠️ **Limited clinical context available**\n',
       result.message,
       '',
-      'I\'ll do my best with what\'s available, but consider filling in the missing fields for more precise recommendations.',
+      "I'll do my best with what's available, but consider filling in the missing fields for more precise recommendations.",
     ];
     return lines.join('\n');
   }
@@ -240,7 +255,7 @@ function calculateMAPFromBP(systolic?: number, diastolic?: number): number | und
 export function mergeContextWithEnrichment(
   patientContext: AIPatientContext | null,
   encounterContext: AIEncounterContext | null,
-  enrichment: AIContextEnrichment | null,
+  enrichment: AIContextEnrichment | null
 ): { mergedPatient: AIPatientContext | null; mergedEncounter: AIEncounterContext | null } {
   if (!enrichment) {
     return { mergedPatient: patientContext, mergedEncounter: encounterContext };
@@ -249,12 +264,18 @@ export function mergeContextWithEnrichment(
   // --- Merge patient context ---
   const baseAllergies = patientContext?.allergies ?? [];
   const enrichedAllergies = enrichment.allergies
-    ? enrichment.allergies.split(',').map((s) => s.trim()).filter(Boolean)
+    ? enrichment.allergies
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
     : null;
 
   const baseMeds = patientContext?.current_medications ?? [];
   const enrichedMeds = enrichment.current_medications
-    ? enrichment.current_medications.split(',').map((s) => s.trim()).filter(Boolean)
+    ? enrichment.current_medications
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
     : null;
 
   const mergedPatient: AIPatientContext | null = patientContext
@@ -273,9 +294,10 @@ export function mergeContextWithEnrichment(
     pulse: enrichment.heart_rate ?? baseVitals.pulse,
     temperature: enrichment.temperature ?? baseVitals.temperature,
     rr: enrichment.respiratory_rate ?? baseVitals.rr,
-    map: (enrichment.systolic_bp != null && enrichment.diastolic_bp != null)
-      ? calculateMAPFromBP(enrichment.systolic_bp, enrichment.diastolic_bp)
-      : baseVitals.map,
+    map:
+      enrichment.systolic_bp != null && enrichment.diastolic_bp != null
+        ? calculateMAPFromBP(enrichment.systolic_bp, enrichment.diastolic_bp)
+        : baseVitals.map,
   };
 
   const mergedEncounter: AIEncounterContext = {

@@ -40,10 +40,7 @@ export const checkinKeys = {
  * @param query - Search query (MRN, phone, ID, or name)
  * @param options - Additional options (enabled, limit)
  */
-export function usePatientSearch(
-  query: string,
-  options?: { enabled?: boolean; limit?: number }
-) {
+export function usePatientSearch(query: string, options?: { enabled?: boolean; limit?: number }) {
   return useQuery({
     queryKey: checkinKeys.search(query),
     queryFn: () => checkinApi.searchPatients(query, options?.limit),
@@ -103,13 +100,8 @@ export function useCheckinPatient() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      patientId,
-      data,
-    }: {
-      patientId: number;
-      data: CheckInRequest;
-    }) => checkinApi.checkinPatient(patientId, data),
+    mutationFn: ({ patientId, data }: { patientId: number; data: CheckInRequest }) =>
+      checkinApi.checkinPatient(patientId, data),
     onSuccess: () => {
       // Invalidate today's check-ins list
       queryClient.invalidateQueries({ queryKey: checkinKeys.today() });

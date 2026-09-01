@@ -172,13 +172,13 @@ export default function NewFacilityPage() {
         {/* Organization */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Building2 className="h-4 w-4 text-muted-foreground" />
               Organization
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-w-md">
+            <div className="max-w-md space-y-2">
               <Label>Organization *</Label>
               <Select
                 value={orgId?.toString() ?? ''}
@@ -214,7 +214,7 @@ export default function NewFacilityPage() {
         {/* Facility Details */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Building2 className="h-4 w-4 text-muted-foreground" />
               Facility Details
             </CardTitle>
@@ -331,7 +331,7 @@ export default function NewFacilityPage() {
         {/* Location */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               Location
             </CardTitle>
@@ -359,9 +359,7 @@ export default function NewFacilityPage() {
                   ))}
                 </SelectContent>
               </Select>
-              {formErrors.county && (
-                <p className="text-xs text-destructive">{formErrors.county}</p>
-              )}
+              {formErrors.county && <p className="text-xs text-destructive">{formErrors.county}</p>}
             </div>
             <div className="space-y-2">
               <Label>Sub-County *</Label>
@@ -417,7 +415,7 @@ export default function NewFacilityPage() {
         {/* SHA */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Shield className="h-4 w-4 text-muted-foreground" />
               SHA Integration
             </CardTitle>

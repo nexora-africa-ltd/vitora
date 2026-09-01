@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  MapPin,
-  Calendar,
-  Globe,
-} from 'lucide-react';
+import { MapPin, Calendar, Globe } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -70,7 +66,8 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
   const hduBeds = beds.hduBeds ?? 0;
   const dialysisBeds = beds.dialysisBeds ?? 0;
   const cots = beds.numberOfCots ?? 0;
-  const hasBedData = totalBeds > 0 || normalBeds > 0 || icuBeds > 0 || hduBeds > 0 || dialysisBeds > 0 || cots > 0;
+  const hasBedData =
+    totalBeds > 0 || normalBeds > 0 || icuBeds > 0 || hduBeds > 0 || dialysisBeds > 0 || cots > 0;
 
   // Operational status
   const regOps = (data.regulatoryOperationalStatus ?? {}) as Record<string, string>;
@@ -88,15 +85,13 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
   const fmtDate = (d: string) => (d ? d.split(' ')[0] : '');
 
   return (
-    <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+    <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <Globe className="h-5 w-5 text-blue-600" />
-          <CardTitle className="text-lg text-blue-700 dark:text-blue-300">
-            DHA Registry
-          </CardTitle>
+          <CardTitle className="text-lg text-blue-700 dark:text-blue-300">DHA Registry</CardTitle>
           {fidCode && (
-            <Badge variant="outline" className="ml-auto text-blue-600 border-blue-600">
+            <Badge variant="outline" className="ml-auto border-blue-600 text-blue-600">
               FID: {fidCode}
             </Badge>
           )}
@@ -106,58 +101,64 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
         {/* Name & Type */}
         {name && (
           <div>
-            <h3 className="font-semibold text-lg">{name}</h3>
+            <h3 className="text-lg font-semibold">{name}</h3>
             {facilityType && <p className="text-sm text-muted-foreground">{facilityType}</p>}
           </div>
         )}
 
         {/* Core Identifiers & Details */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
           {frCode && (
             <div>
-              <Label className="text-muted-foreground text-xs">FR Code</Label>
+              <Label className="text-xs text-muted-foreground">FR Code</Label>
               <p className="font-medium">{frCode}</p>
             </div>
           )}
           {registrationNumber && (
             <div>
-              <Label className="text-muted-foreground text-xs">Registration No.</Label>
+              <Label className="text-xs text-muted-foreground">Registration No.</Label>
               <p className="font-medium">{registrationNumber}</p>
             </div>
           )}
           {kephLevel && (
             <div>
-              <Label className="text-muted-foreground text-xs">KEPH Level</Label>
+              <Label className="text-xs text-muted-foreground">KEPH Level</Label>
               <p className="font-medium">{kephLevel}</p>
             </div>
           )}
           {county && (
             <div>
-              <Label className="text-muted-foreground text-xs">Location</Label>
+              <Label className="text-xs text-muted-foreground">Location</Label>
               <div className="flex items-center gap-1">
                 <MapPin className="h-3 w-3 text-muted-foreground" />
                 <p className="font-medium">{county}</p>
               </div>
               {subCounty && <p className="text-xs text-muted-foreground">{subCounty}</p>}
-              {physicalLocation && <p className="text-xs text-muted-foreground truncate">{physicalLocation}</p>}
+              {physicalLocation && (
+                <p className="truncate text-xs text-muted-foreground">{physicalLocation}</p>
+              )}
             </div>
           )}
           {operationalStatus && (
             <div>
-              <Label className="text-muted-foreground text-xs">Regulatory Status</Label>
+              <Label className="text-xs text-muted-foreground">Regulatory Status</Label>
               <Badge
                 variant={operationalStatus === 'ACTIVE' ? 'default' : 'secondary'}
                 className="mt-1"
               >
                 {operationalStatus}
               </Badge>
-              {operationalReason && <p className="text-xs text-muted-foreground mt-0.5">{operationalReason}</p>}
-              {suspensionReason && <p className="text-xs text-red-600 mt-0.5">{suspensionReason}</p>}
+              {operationalReason && (
+                <p className="mt-0.5 text-xs text-muted-foreground">{operationalReason}</p>
+              )}
+              {suspensionReason && (
+                <p className="mt-0.5 text-xs text-red-600">{suspensionReason}</p>
+              )}
             </div>
           )}
           {shaOperationalStatus && (
             <div>
-              <Label className="text-muted-foreground text-xs">SHA Status</Label>
+              <Label className="text-xs text-muted-foreground">SHA Status</Label>
               <Badge
                 variant={shaOperationalStatus === 'ACTIVE' ? 'default' : 'secondary'}
                 className="mt-1"
@@ -168,25 +169,25 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
           )}
           {ownership && (
             <div>
-              <Label className="text-muted-foreground text-xs">Ownership</Label>
+              <Label className="text-xs text-muted-foreground">Ownership</Label>
               <p className="font-medium">{ownership}</p>
             </div>
           )}
           {regulator && (
             <div>
-              <Label className="text-muted-foreground text-xs">Regulator</Label>
+              <Label className="text-xs text-muted-foreground">Regulator</Label>
               <p className="font-medium uppercase">{regulator}</p>
             </div>
           )}
           {pcnCode && (
             <div>
-              <Label className="text-muted-foreground text-xs">PCN Code</Label>
+              <Label className="text-xs text-muted-foreground">PCN Code</Label>
               <p className="font-medium">{pcnCode}</p>
             </div>
           )}
           {isHub !== undefined && (
             <div>
-              <Label className="text-muted-foreground text-xs">Hub Facility</Label>
+              <Label className="text-xs text-muted-foreground">Hub Facility</Label>
               <p className="font-medium">{isHub ? 'Yes' : 'No'}</p>
             </div>
           )}
@@ -196,24 +197,26 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
 
         {/* Licensing */}
         <div>
-          <Label className="text-muted-foreground text-xs font-semibold">Licensing</Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-2">
+          <Label className="text-xs font-semibold text-muted-foreground">Licensing</Label>
+          <div className="mt-2 grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
             {licenseStatus && (
               <div>
-                <Label className="text-muted-foreground text-xs">License Status</Label>
+                <Label className="text-xs text-muted-foreground">License Status</Label>
                 <Badge
                   variant={licenseStatus === 'LICENSED' ? 'default' : 'secondary'}
                   className={cn('mt-1', licenseStatus === 'LICENSED' && 'bg-green-600')}
                 >
                   {licenseStatus}
                 </Badge>
-                {licenseNumber && <p className="text-xs text-muted-foreground mt-0.5">#{licenseNumber}</p>}
+                {licenseNumber && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">#{licenseNumber}</p>
+                )}
               </div>
             )}
             {licenseStart && (
               <div>
-                <Label className="text-muted-foreground text-xs">License Start</Label>
-                <div className="flex items-center gap-1 mt-1">
+                <Label className="text-xs text-muted-foreground">License Start</Label>
+                <div className="mt-1 flex items-center gap-1">
                   <Calendar className="h-3 w-3 text-muted-foreground" />
                   <span className="font-medium">{fmtDate(licenseStart)}</span>
                 </div>
@@ -221,8 +224,8 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
             )}
             {licenseEnd && (
               <div>
-                <Label className="text-muted-foreground text-xs">License Expiry</Label>
-                <div className="flex items-center gap-1 mt-1">
+                <Label className="text-xs text-muted-foreground">License Expiry</Label>
+                <div className="mt-1 flex items-center gap-1">
                   <Calendar className="h-3 w-3 text-muted-foreground" />
                   <span className={cn('font-medium', isLicenseExpired && 'text-red-600')}>
                     {fmtDate(licenseEnd)}
@@ -239,12 +242,16 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
           <>
             <Separator />
             <div>
-              <Label className="text-muted-foreground text-xs font-semibold">SHA Contract</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-2">
+              <Label className="text-xs font-semibold text-muted-foreground">SHA Contract</Label>
+              <div className="mt-2 grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
                 <div>
-                  <Label className="text-muted-foreground text-xs">Contract Status</Label>
+                  <Label className="text-xs text-muted-foreground">Contract Status</Label>
                   <Badge
-                    variant={contractStatus && contractStatus.toLowerCase().includes('active') ? 'default' : 'secondary'}
+                    variant={
+                      contractStatus && contractStatus.toLowerCase().includes('active')
+                        ? 'default'
+                        : 'secondary'
+                    }
                     className="mt-1"
                   >
                     {contractStatus || 'Not Contracted'}
@@ -252,13 +259,13 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
                 </div>
                 {contractStart && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">Contract Start</Label>
+                    <Label className="text-xs text-muted-foreground">Contract Start</Label>
                     <p className="font-medium">{fmtDate(contractStart)}</p>
                   </div>
                 )}
                 {contractEnd && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">Contract End</Label>
+                    <Label className="text-xs text-muted-foreground">Contract End</Label>
                     <p className="font-medium">{fmtDate(contractEnd)}</p>
                   </div>
                 )}
@@ -272,40 +279,40 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
           <>
             <Separator />
             <div>
-              <Label className="text-muted-foreground text-xs font-semibold">Bed Capacity</Label>
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-3 text-sm mt-2">
+              <Label className="text-xs font-semibold text-muted-foreground">Bed Capacity</Label>
+              <div className="mt-2 grid grid-cols-3 gap-3 text-sm md:grid-cols-6">
                 {totalBeds > 0 && (
-                  <div className="text-center p-2 rounded-md bg-background/50">
+                  <div className="rounded-md bg-background/50 p-2 text-center">
                     <p className="text-lg font-bold">{totalBeds}</p>
                     <p className="text-xs text-muted-foreground">Total</p>
                   </div>
                 )}
                 {normalBeds > 0 && (
-                  <div className="text-center p-2 rounded-md bg-background/50">
+                  <div className="rounded-md bg-background/50 p-2 text-center">
                     <p className="text-lg font-bold">{normalBeds}</p>
                     <p className="text-xs text-muted-foreground">Normal</p>
                   </div>
                 )}
                 {icuBeds > 0 && (
-                  <div className="text-center p-2 rounded-md bg-background/50">
+                  <div className="rounded-md bg-background/50 p-2 text-center">
                     <p className="text-lg font-bold">{icuBeds}</p>
                     <p className="text-xs text-muted-foreground">ICU</p>
                   </div>
                 )}
                 {hduBeds > 0 && (
-                  <div className="text-center p-2 rounded-md bg-background/50">
+                  <div className="rounded-md bg-background/50 p-2 text-center">
                     <p className="text-lg font-bold">{hduBeds}</p>
                     <p className="text-xs text-muted-foreground">HDU</p>
                   </div>
                 )}
                 {dialysisBeds > 0 && (
-                  <div className="text-center p-2 rounded-md bg-background/50">
+                  <div className="rounded-md bg-background/50 p-2 text-center">
                     <p className="text-lg font-bold">{dialysisBeds}</p>
                     <p className="text-xs text-muted-foreground">Dialysis</p>
                   </div>
                 )}
                 {cots > 0 && (
-                  <div className="text-center p-2 rounded-md bg-background/50">
+                  <div className="rounded-md bg-background/50 p-2 text-center">
                     <p className="text-lg font-bold">{cots}</p>
                     <p className="text-xs text-muted-foreground">Cots</p>
                   </div>
@@ -320,24 +327,26 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
           <>
             <Separator />
             <div>
-              <Label className="text-muted-foreground text-xs font-semibold">Address</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-2">
+              <Label className="text-xs font-semibold text-muted-foreground">Address</Label>
+              <div className="mt-2 grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
                 {postalAddress && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">Postal Address</Label>
+                    <Label className="text-xs text-muted-foreground">Postal Address</Label>
                     <p className="font-medium">{postalAddress}</p>
                   </div>
                 )}
                 {town && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">Town</Label>
+                    <Label className="text-xs text-muted-foreground">Town</Label>
                     <p className="font-medium">{town}</p>
                   </div>
                 )}
                 {latitude && longitude && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">Coordinates</Label>
-                    <p className="font-medium">{latitude}, {longitude}</p>
+                    <Label className="text-xs text-muted-foreground">Coordinates</Label>
+                    <p className="font-medium">
+                      {latitude}, {longitude}
+                    </p>
                   </div>
                 )}
               </div>
@@ -350,18 +359,20 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
           <>
             <Separator />
             <div>
-              <Label className="text-muted-foreground text-xs font-semibold">Facility Contact</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-2">
+              <Label className="text-xs font-semibold text-muted-foreground">
+                Facility Contact
+              </Label>
+              <div className="mt-2 grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
                 {facilityPhone && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">Phone</Label>
+                    <Label className="text-xs text-muted-foreground">Phone</Label>
                     <p className="font-medium">{facilityPhone}</p>
                   </div>
                 )}
                 {facilityEmail && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">Email</Label>
-                    <p className="font-medium truncate">{facilityEmail}</p>
+                    <Label className="text-xs text-muted-foreground">Email</Label>
+                    <p className="truncate font-medium">{facilityEmail}</p>
                   </div>
                 )}
               </div>
@@ -374,29 +385,29 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
           <>
             <Separator />
             <div>
-              <Label className="text-muted-foreground text-xs font-semibold">Administrator</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-2">
+              <Label className="text-xs font-semibold text-muted-foreground">Administrator</Label>
+              <div className="mt-2 grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
                 {adminName && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">Name</Label>
+                    <Label className="text-xs text-muted-foreground">Name</Label>
                     <p className="font-medium">{adminName}</p>
                   </div>
                 )}
                 {adminPhone && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">Phone</Label>
+                    <Label className="text-xs text-muted-foreground">Phone</Label>
                     <p className="font-medium">{adminPhone}</p>
                   </div>
                 )}
                 {adminEmail && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">Email</Label>
-                    <p className="font-medium truncate">{adminEmail}</p>
+                    <Label className="text-xs text-muted-foreground">Email</Label>
+                    <p className="truncate font-medium">{adminEmail}</p>
                   </div>
                 )}
                 {adminId && (
                   <div>
-                    <Label className="text-muted-foreground text-xs">ID Number</Label>
+                    <Label className="text-xs text-muted-foreground">ID Number</Label>
                     <p className="font-medium">{adminId}</p>
                   </div>
                 )}
@@ -410,8 +421,10 @@ export function DhaResultCard({ data }: { data: Record<string, unknown> }) {
           <>
             <Separator />
             <div>
-              <Label className="text-muted-foreground text-xs font-semibold">Contracted Services</Label>
-              <div className="flex flex-wrap gap-1 mt-2">
+              <Label className="text-xs font-semibold text-muted-foreground">
+                Contracted Services
+              </Label>
+              <div className="mt-2 flex flex-wrap gap-1">
                 {services.map((service, i) => (
                   <Badge key={i} variant="outline" className="text-xs">
                     {service}

@@ -93,14 +93,16 @@ export default function NewInsuranceProviderPage() {
               <CardTitle className="text-base">Provider Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Provider Name *</FormLabel>
-                      <FormControl><Input placeholder="e.g. Jubilee Health Insurance" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="e.g. Jubilee Health Insurance" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -111,7 +113,9 @@ export default function NewInsuranceProviderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Code *</FormLabel>
-                      <FormControl><Input placeholder="e.g. JUBILEE" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="e.g. JUBILEE" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -123,10 +127,16 @@ export default function NewInsuranceProviderPage() {
                     <FormItem>
                       <FormLabel>Type</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
                         <SelectContent>
                           {Object.entries(PROVIDER_TYPE_LABELS).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -141,7 +151,11 @@ export default function NewInsuranceProviderPage() {
                     <FormItem>
                       <FormLabel>Status</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
                         <SelectContent>
                           <SelectItem value="active">Active</SelectItem>
                           <SelectItem value="suspended">Suspended</SelectItem>
@@ -158,7 +172,9 @@ export default function NewInsuranceProviderPage() {
                 name="api_integration_enabled"
                 render={({ field }) => (
                   <FormItem className="flex items-center gap-2">
-                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
                     <FormLabel className="!mt-0">API Integration Enabled</FormLabel>
                   </FormItem>
                 )}
@@ -171,14 +187,16 @@ export default function NewInsuranceProviderPage() {
               <CardTitle className="text-base">Contact Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="contact_person"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Contact Person</FormLabel>
-                      <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -189,7 +207,9 @@ export default function NewInsuranceProviderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Email</FormLabel>
-                      <FormControl><Input type="email" placeholder="claims@provider.co.ke" {...field} /></FormControl>
+                      <FormControl>
+                        <Input type="email" placeholder="claims@provider.co.ke" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -200,7 +220,9 @@ export default function NewInsuranceProviderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone</FormLabel>
-                      <FormControl><Input placeholder="+254700000000" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="+254700000000" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -211,7 +233,9 @@ export default function NewInsuranceProviderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Website</FormLabel>
-                      <FormControl><Input placeholder="https://www.provider.co.ke" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="https://www.provider.co.ke" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -223,7 +247,9 @@ export default function NewInsuranceProviderPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Address</FormLabel>
-                    <FormControl><Input placeholder="P.O. Box 12345, Nairobi" {...field} /></FormControl>
+                    <FormControl>
+                      <Input placeholder="P.O. Box 12345, Nairobi" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -241,7 +267,13 @@ export default function NewInsuranceProviderPage() {
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormControl><Textarea placeholder="Any additional notes about this provider..." rows={3} {...field} /></FormControl>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Any additional notes about this provider..."
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -250,7 +282,9 @@ export default function NewInsuranceProviderPage() {
           </Card>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => router.back()}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={createProvider.isPending}>
               {createProvider.isPending ? 'Creating...' : 'Create Provider'}
             </Button>

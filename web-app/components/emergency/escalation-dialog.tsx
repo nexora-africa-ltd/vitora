@@ -129,7 +129,7 @@ export function EscalationDialog({
 
         <div className="space-y-4 py-2">
           {/* Patient Info */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border text-sm">
+          <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-3 text-sm">
             <div>
               <p className="font-medium">{patientName}</p>
               <p className="text-xs text-muted-foreground">{patientMrn}</p>
@@ -155,23 +155,23 @@ export function EscalationDialog({
                     type="button"
                     onClick={() => setSelectedType(type)}
                     className={cn(
-                      'flex items-center gap-3 p-3 rounded-lg border text-left transition-colors',
+                      'flex items-center gap-3 rounded-lg border p-3 text-left transition-colors',
                       isSelected
                         ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                        : 'border-border hover:border-primary/50 hover:bg-muted/50',
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
                     )}
                   >
                     <div
                       className={cn(
-                        'p-2 rounded-md',
+                        'rounded-md p-2',
                         isSelected
                           ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground',
+                          : 'bg-muted text-muted-foreground'
                       )}
                     >
                       {TYPE_ICONS[type]}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium">{config.shortLabel}</p>
                       <p className="text-xs text-muted-foreground">{config.description}</p>
                     </div>

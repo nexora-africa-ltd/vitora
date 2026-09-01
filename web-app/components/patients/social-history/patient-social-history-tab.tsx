@@ -63,7 +63,7 @@ export function PatientSocialHistoryTab({
         </div>
         {!readOnly && (
           <Button size="sm" onClick={() => setShowAddDialog(true)} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="mr-1 h-4 w-4" />
             Add Observation
           </Button>
         )}

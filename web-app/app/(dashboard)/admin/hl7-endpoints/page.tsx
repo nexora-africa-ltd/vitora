@@ -58,7 +58,12 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { hl7EndpointApi } from '@/lib/api/hl7';
-import type { HL7Endpoint, HL7EndpointListItem, HL7EndpointPayload, HL7EndpointType } from '@/lib/types/hl7';
+import type {
+  HL7Endpoint,
+  HL7EndpointListItem,
+  HL7EndpointPayload,
+  HL7EndpointType,
+} from '@/lib/types/hl7';
 
 const ENDPOINT_TYPES: { value: HL7EndpointType; label: string }[] = [
   { value: 'LIS', label: 'Laboratory Information System' },
@@ -212,7 +217,7 @@ export default function HL7EndpointsPage() {
           helpContent="Configure external system connections (LIS, RIS, etc.) for HL7/MLLP messaging. Each endpoint is scoped to the current facility."
           actions={
             <Button onClick={openCreate} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               Add Endpoint
             </Button>
           }
@@ -228,13 +233,13 @@ export default function HL7EndpointsPage() {
         ) : endpoints.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <Network className="h-12 w-12 text-muted-foreground mb-4" />
+              <Network className="mb-4 h-12 w-12 text-muted-foreground" />
               <p className="text-lg font-medium">No endpoints configured</p>
-              <p className="text-sm text-muted-foreground mt-1 mb-4">
+              <p className="mb-4 mt-1 text-sm text-muted-foreground">
                 Add an external system endpoint to start sending HL7 messages.
               </p>
               <Button onClick={openCreate} size="sm">
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 Add Endpoint
               </Button>
             </CardContent>
@@ -261,9 +266,7 @@ export default function HL7EndpointsPage() {
                 key: 'endpoint_type',
                 header: 'Type',
                 sortable: true,
-                cell: (item) => (
-                  <Badge variant="outline">{item.endpoint_type}</Badge>
-                ),
+                cell: (item) => <Badge variant="outline">{item.endpoint_type}</Badge>,
               },
               {
                 key: 'receiving_facility',
@@ -279,12 +282,12 @@ export default function HL7EndpointsPage() {
                 cell: (item) =>
                   item.is_active ? (
                     <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                      <Wifi className="h-3 w-3 mr-1" />
+                      <Wifi className="mr-1 h-3 w-3" />
                       Active
                     </Badge>
                   ) : (
                     <Badge variant="secondary">
-                      <WifiOff className="h-3 w-3 mr-1" />
+                      <WifiOff className="mr-1 h-3 w-3" />
                       Inactive
                     </Badge>
                   ),
@@ -305,7 +308,10 @@ export default function HL7EndpointsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={(e) => { e.stopPropagation(); testMutation.mutate(item.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        testMutation.mutate(item.id);
+                      }}
                       disabled={testingId === item.id}
                       title="Test connection"
                     >
@@ -318,7 +324,10 @@ export default function HL7EndpointsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={(e) => { e.stopPropagation(); openEdit(item); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(item);
+                      }}
                       title="Edit"
                     >
                       <Pencil className="h-4 w-4" />
@@ -326,7 +335,10 @@ export default function HL7EndpointsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={(e) => { e.stopPropagation(); setDeleteId(item.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(item.id);
+                      }}
                       title="Delete"
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -337,7 +349,7 @@ export default function HL7EndpointsPage() {
             ]}
             mobileCard={(item) => (
               <Card className="p-3">
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium">{item.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -345,22 +357,27 @@ export default function HL7EndpointsPage() {
                     </p>
                   </div>
                   {item.is_active ? (
-                    <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 shrink-0">
+                    <Badge className="shrink-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
                       Active
                     </Badge>
                   ) : (
-                    <Badge variant="secondary" className="shrink-0">Inactive</Badge>
+                    <Badge variant="secondary" className="shrink-0">
+                      Inactive
+                    </Badge>
                   )}
                 </div>
-                <div className="flex gap-1 mt-2">
+                <div className="mt-2 flex gap-1">
                   <Button variant="ghost" size="sm" onClick={() => testMutation.mutate(item.id)}>
-                    <Zap className="h-3 w-3 mr-1" />Test
+                    <Zap className="mr-1 h-3 w-3" />
+                    Test
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => openEdit(item)}>
-                    <Pencil className="h-3 w-3 mr-1" />Edit
+                    <Pencil className="mr-1 h-3 w-3" />
+                    Edit
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setDeleteId(item.id)}>
-                    <Trash2 className="h-3 w-3 mr-1 text-destructive" />Delete
+                    <Trash2 className="mr-1 h-3 w-3 text-destructive" />
+                    Delete
                   </Button>
                 </div>
               </Card>
@@ -370,7 +387,7 @@ export default function HL7EndpointsPage() {
 
         {/* Create/Edit Dialog */}
         <Dialog open={showForm} onOpenChange={(open) => !open && closeForm()}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingId ? 'Edit Endpoint' : 'New HL7 Endpoint'}</DialogTitle>
             </DialogHeader>
@@ -391,10 +408,14 @@ export default function HL7EndpointsPage() {
                     value={form.endpoint_type}
                     onValueChange={(v) => setForm({ ...form, endpoint_type: v as HL7EndpointType })}
                   >
-                    <SelectTrigger id="endpoint_type"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="endpoint_type">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       {ENDPOINT_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -428,7 +449,9 @@ export default function HL7EndpointsPage() {
                       id="mllp_port"
                       type="number"
                       value={form.mllp_port}
-                      onChange={(e) => setForm({ ...form, mllp_port: parseInt(e.target.value) || 2575 })}
+                      onChange={(e) =>
+                        setForm({ ...form, mllp_port: parseInt(e.target.value) || 2575 })
+                      }
                     />
                   </div>
                   <div>
@@ -437,7 +460,9 @@ export default function HL7EndpointsPage() {
                       id="timeout"
                       type="number"
                       value={form.timeout}
-                      onChange={(e) => setForm({ ...form, timeout: parseFloat(e.target.value) || 30 })}
+                      onChange={(e) =>
+                        setForm({ ...form, timeout: parseFloat(e.target.value) || 30 })
+                      }
                     />
                   </div>
                   <div>
@@ -446,7 +471,9 @@ export default function HL7EndpointsPage() {
                       id="max_retries"
                       type="number"
                       value={form.max_retries}
-                      onChange={(e) => setForm({ ...form, max_retries: parseInt(e.target.value) || 5 })}
+                      onChange={(e) =>
+                        setForm({ ...form, max_retries: parseInt(e.target.value) || 5 })
+                      }
                     />
                   </div>
                   <div className="flex items-center gap-2 sm:col-span-2">
@@ -520,13 +547,20 @@ export default function HL7EndpointsPage() {
               </div>
             </div>
             <DialogFooter className="flex flex-col gap-2 sm:flex-row">
-              <Button variant="outline" onClick={closeForm}>Cancel</Button>
+              <Button variant="outline" onClick={closeForm}>
+                Cancel
+              </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!form.name || !form.mllp_host || createMutation.isPending || updateMutation.isPending}
+                disabled={
+                  !form.name ||
+                  !form.mllp_host ||
+                  createMutation.isPending ||
+                  updateMutation.isPending
+                }
               >
                 {(createMutation.isPending || updateMutation.isPending) && (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                 )}
                 {editingId ? 'Save Changes' : 'Create Endpoint'}
               </Button>
@@ -540,7 +574,8 @@ export default function HL7EndpointsPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Endpoint</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently remove this endpoint configuration. Messages already sent through it will not be affected.
+                This will permanently remove this endpoint configuration. Messages already sent
+                through it will not be affected.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

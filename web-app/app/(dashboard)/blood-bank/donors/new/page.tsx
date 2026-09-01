@@ -13,7 +13,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useCreateBloodDonor } from '@/lib/hooks/use-blood-bank';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -67,10 +71,22 @@ export default function NewBloodDonorPage() {
     } catch (err) {
       setError(getApiErrorMessage(err));
     }
-  }, [firstName, lastName, dateOfBirth, gender, bloodGroup, patientId, phoneNumber, nationalId, notes, createMutation, router]);
+  }, [
+    firstName,
+    lastName,
+    dateOfBirth,
+    gender,
+    bloodGroup,
+    patientId,
+    phoneNumber,
+    nationalId,
+    notes,
+    createMutation,
+    router,
+  ]);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title="Register Blood Donor"
         helpContent="Register a new blood donor. Link to an existing patient record if available."
@@ -143,7 +159,9 @@ export default function NewBloodDonorPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {BLOOD_GROUPS.map((bg) => (
-                    <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                    <SelectItem key={bg} value={bg}>
+                      {bg}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -204,11 +222,11 @@ export default function NewBloodDonorPage() {
 
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => router.back()}>
-          <X className="h-4 w-4 mr-2" />
+          <X className="mr-2 h-4 w-4" />
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={createMutation.isPending}>
-          <Save className="h-4 w-4 mr-2" />
+          <Save className="mr-2 h-4 w-4" />
           {createMutation.isPending ? 'Saving...' : 'Register Donor'}
         </Button>
       </div>

@@ -1,11 +1,29 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft, Pencil, BrainCircuit, Loader2 } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Trash2,
+  AlertCircle,
+  Check,
+  X,
+  ChevronLeft,
+  Pencil,
+  BrainCircuit,
+  Loader2,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -41,14 +59,16 @@ export function DiagnosisEntry({
   existingDiagnoses,
   editingDiagnosis,
   onCancelEdit,
-  disabled = false
+  disabled = false,
 }: DiagnosisEntryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedCode, setSelectedCode] = useState<ICD10SearchResult | null>(null);
   const [codingSystem, setCodingSystem] = useState<CodingSystem>('icd11');
   const [icd11Value, setIcd11Value] = useState<{ code: string; title: string } | null>(null);
-  const [snomedValue, setSnomedValue] = useState<{ concept_id: string; display: string } | null>(null);
+  const [snomedValue, setSnomedValue] = useState<{ concept_id: string; display: string } | null>(
+    null
+  );
   const [snomedQuery, setSnomedQuery] = useState('');
   const [snomedResults, setSnomedResults] = useState<SNOMEDSearchResult[]>([]);
   const [snomedSearching, setSnomedSearching] = useState(false);
@@ -57,7 +77,9 @@ export function DiagnosisEntry({
 
   const [formData, setFormData] = useState<DiagnosisFormData>({
     icd10_code: null,
-    diagnosis_type: existingDiagnoses.some(d => d.diagnosis_type === 'PRIMARY') ? 'SECONDARY' : 'PRIMARY',
+    diagnosis_type: existingDiagnoses.some((d) => d.diagnosis_type === 'PRIMARY')
+      ? 'SECONDARY'
+      : 'PRIMARY',
     free_text_diagnosis: '',
     notes: '',
     is_confirmed: false,
@@ -122,7 +144,7 @@ export function DiagnosisEntry({
   }, [smartAutopopulate, aiSuggestions, dismissedAISuggestions]);
 
   const handleDismissAISuggestion = useCallback((code: string) => {
-    setDismissedAISuggestions(prev => new Set([...prev, code]));
+    setDismissedAISuggestions((prev) => new Set([...prev, code]));
   }, []);
 
   const handleAcceptAISuggestion = useCallback((suggestion: AIICD10Suggestion) => {
@@ -137,7 +159,7 @@ export function DiagnosisEntry({
     setSelectedCode(asResult);
     setIcd11Value(null);
     setSnomedValue(null);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       icd10_code: null, // No DB id from AI — code-based selection
       icd10_display: `${suggestion.code} - ${suggestion.description}`,
@@ -152,9 +174,8 @@ export function DiagnosisEntry({
   }, []);
 
   // Filter out dismissed suggestions
-  const visibleAISuggestions = aiSuggestions?.suggestions?.filter(
-    s => !dismissedAISuggestions.has(s.code)
-  ) || [];
+  const visibleAISuggestions =
+    aiSuggestions?.suggestions?.filter((s) => !dismissedAISuggestions.has(s.code)) || [];
 
   // Populate form when editing an existing diagnosis
   useEffect(() => {
@@ -173,7 +194,11 @@ export function DiagnosisEntry({
         setCodingSystem('icd11');
         setIcd11Value({
           code: editingDiagnosis.data.icd11_code,
-          title: editingDiagnosis.data.icd11_display?.replace(`${editingDiagnosis.data.icd11_code} - `, '') || ''
+          title:
+            editingDiagnosis.data.icd11_display?.replace(
+              `${editingDiagnosis.data.icd11_code} - `,
+              ''
+            ) || '',
         });
         setSelectedCode(null);
         setSnomedValue(null);
@@ -196,7 +221,9 @@ export function DiagnosisEntry({
       setSnomedValue(null);
       setFormData({
         icd10_code: null,
-        diagnosis_type: existingDiagnoses.some(d => d.diagnosis_type === 'PRIMARY') ? 'SECONDARY' : 'PRIMARY',
+        diagnosis_type: existingDiagnoses.some((d) => d.diagnosis_type === 'PRIMARY')
+          ? 'SECONDARY'
+          : 'PRIMARY',
         free_text_diagnosis: '',
         notes: '',
         is_confirmed: false,
@@ -209,7 +236,7 @@ export function DiagnosisEntry({
     setSelectedCode(code);
     setIcd11Value(null);
     setSnomedValue(null);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       icd10_code: code.id,
       icd10_display: `${code.code} - ${code.short_description || code.description}`,
@@ -226,7 +253,7 @@ export function DiagnosisEntry({
     setIcd11Value(code);
     setSelectedCode(null);
     setSnomedValue(null);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       icd10_code: null,
       icd10_display: undefined,
@@ -241,7 +268,7 @@ export function DiagnosisEntry({
     setSnomedValue({ concept_id: result.concept_id, display: result.display });
     setSelectedCode(null);
     setIcd11Value(null);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       icd10_code: null,
       icd10_display: undefined,
@@ -279,7 +306,7 @@ export function DiagnosisEntry({
     setSelectedCode(null);
     setIcd11Value(null);
     setSnomedValue(null);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       icd10_code: null,
       icd10_display: undefined,
@@ -336,7 +363,7 @@ export function DiagnosisEntry({
       <div className="space-y-2">
         <Label>Diagnosis Code Search</Label>
         {hasSelectedCode ? (
-          <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
+          <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-3">
             <Badge variant="outline" className="font-mono">
               {selectedCode?.code || icd11Value?.code || snomedValue?.concept_id}
             </Badge>
@@ -351,12 +378,18 @@ export function DiagnosisEntry({
               </Badge>
             )}
             {snomedValue && (
-              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+              <Badge
+                variant="secondary"
+                className="bg-purple-100 text-xs text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
+              >
                 SNOMED
               </Badge>
             )}
-            <span className="flex-1 text-sm truncate">
-              {selectedCode?.short_description || selectedCode?.description || icd11Value?.title || snomedValue?.display}
+            <span className="flex-1 truncate text-sm">
+              {selectedCode?.short_description ||
+                selectedCode?.description ||
+                icd11Value?.title ||
+                snomedValue?.display}
             </span>
             <Button
               type="button"
@@ -371,13 +404,15 @@ export function DiagnosisEntry({
         ) : (
           <div className="space-y-3">
             {/* Coding System Pill Selector */}
-            <div className="flex gap-1 rounded-md border p-1 w-fit">
+            <div className="flex w-fit gap-1 rounded-md border p-1">
               <button
                 type="button"
                 onClick={() => setCodingSystem('icd10')}
                 className={cn(
-                  'px-3 py-1 rounded text-xs font-medium transition-colors',
-                  codingSystem === 'icd10' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                  'rounded px-3 py-1 text-xs font-medium transition-colors',
+                  codingSystem === 'icd10'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
                 )}
               >
                 ICD-10
@@ -386,8 +421,10 @@ export function DiagnosisEntry({
                 type="button"
                 onClick={() => setCodingSystem('icd11')}
                 className={cn(
-                  'px-3 py-1 rounded text-xs font-medium transition-colors',
-                  codingSystem === 'icd11' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                  'rounded px-3 py-1 text-xs font-medium transition-colors',
+                  codingSystem === 'icd11'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
                 )}
               >
                 ICD-11
@@ -396,7 +433,7 @@ export function DiagnosisEntry({
                 type="button"
                 onClick={() => setCodingSystem('snomed')}
                 className={cn(
-                  'px-3 py-1 rounded text-xs font-medium transition-colors',
+                  'rounded px-3 py-1 text-xs font-medium transition-colors',
                   codingSystem === 'snomed' ? 'bg-purple-600 text-white' : 'hover:bg-accent'
                 )}
               >
@@ -407,7 +444,7 @@ export function DiagnosisEntry({
             {/* ICD-10 Search */}
             {codingSystem === 'icd10' && (
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder="Search ICD-10 codes (e.g., malaria, J18, diabetes)..."
@@ -423,8 +460,8 @@ export function DiagnosisEntry({
 
                 {/* Search Results Dropdown */}
                 {isSearchOpen && searchQuery.length >= 2 && (
-                  <Card className="absolute z-50 mt-1 w-full shadow-lg overflow-hidden">
-                    <CardContent className="p-2 max-h-72 overflow-y-auto overscroll-contain">
+                  <Card className="absolute z-50 mt-1 w-full overflow-hidden shadow-lg">
+                    <CardContent className="max-h-72 overflow-y-auto overscroll-contain p-2">
                       {isSearching ? (
                         <div className="space-y-2">
                           {[1, 2, 3].map((i) => (
@@ -436,8 +473,8 @@ export function DiagnosisEntry({
                         </div>
                       ) : icd10SearchError ? (
                         <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-                          <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-                          <p className="text-xs sm:text-sm text-destructive">
+                          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                          <p className="text-xs text-destructive sm:text-sm">
                             {getApiErrorMessage(icd10SearchError)}
                           </p>
                         </div>
@@ -448,9 +485,9 @@ export function DiagnosisEntry({
                               <button
                                 type="button"
                                 onClick={() => handleSelectCode(code)}
-                                className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
+                                className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-accent"
                               >
-                                <Badge variant="outline" className="font-mono shrink-0">
+                                <Badge variant="outline" className="shrink-0 font-mono">
                                   {code.code}
                                 </Badge>
                                 <span className="text-sm">
@@ -461,7 +498,7 @@ export function DiagnosisEntry({
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-center text-muted-foreground py-4 text-sm">
+                        <p className="py-4 text-center text-sm text-muted-foreground">
                           No ICD-10 codes found for &quot;{searchQuery}&quot;
                         </p>
                       )}
@@ -484,7 +521,7 @@ export function DiagnosisEntry({
             {/* SNOMED CT Search */}
             {codingSystem === 'snomed' && (
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder="Search SNOMED CT (e.g., diabetes mellitus, fracture)..."
@@ -502,8 +539,8 @@ export function DiagnosisEntry({
                 />
 
                 {isSnomedOpen && snomedQuery.length >= 2 && (
-                  <Card className="absolute z-50 mt-1 w-full shadow-lg overflow-hidden">
-                    <CardContent className="p-2 max-h-72 overflow-y-auto overscroll-contain">
+                  <Card className="absolute z-50 mt-1 w-full overflow-hidden shadow-lg">
+                    <CardContent className="max-h-72 overflow-y-auto overscroll-contain p-2">
                       {snomedSearching ? (
                         <div className="space-y-2">
                           {[1, 2, 3].map((i) => (
@@ -515,8 +552,8 @@ export function DiagnosisEntry({
                         </div>
                       ) : snomedError ? (
                         <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-                          <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-                          <p className="text-xs sm:text-sm text-destructive">{snomedError}</p>
+                          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                          <p className="text-xs text-destructive sm:text-sm">{snomedError}</p>
                         </div>
                       ) : snomedResults.length > 0 ? (
                         <ul className="space-y-1">
@@ -528,15 +565,18 @@ export function DiagnosisEntry({
                                   e.preventDefault();
                                   handleSelectSNOMED(result);
                                 }}
-                                className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
+                                className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-accent"
                               >
-                                <Badge variant="outline" className="font-mono shrink-0 bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">
+                                <Badge
+                                  variant="outline"
+                                  className="shrink-0 bg-purple-50 font-mono text-purple-700 dark:bg-purple-900/20 dark:text-purple-400"
+                                >
                                   {result.concept_id}
                                 </Badge>
                                 <div className="min-w-0">
                                   <span className="text-sm">{result.display}</span>
                                   {result.semantic_tag && (
-                                    <span className="text-xs text-muted-foreground ml-1">
+                                    <span className="ml-1 text-xs text-muted-foreground">
                                       ({result.semantic_tag})
                                     </span>
                                   )}
@@ -546,7 +586,7 @@ export function DiagnosisEntry({
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-center text-muted-foreground py-4 text-sm">
+                        <p className="py-4 text-center text-sm text-muted-foreground">
                           No SNOMED CT concepts found for &quot;{snomedQuery}&quot;
                         </p>
                       )}
@@ -567,11 +607,19 @@ export function DiagnosisEntry({
         <div className="relative">
           <Input
             id="free_text_diagnosis"
-            placeholder={hasSelectedCode ? 'Additional notes about this diagnosis...' : 'Enter diagnosis if code not available...'}
+            placeholder={
+              hasSelectedCode
+                ? 'Additional notes about this diagnosis...'
+                : 'Enter diagnosis if code not available...'
+            }
             value={formData.free_text_diagnosis}
-            onChange={(e) => setFormData(prev => ({ ...prev, free_text_diagnosis: e.target.value }))}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, free_text_diagnosis: e.target.value }))
+            }
             disabled={disabled}
-            className={cn(aiEnabled && formData.free_text_diagnosis.trim().length >= 3 && 'pr-28 sm:pr-36')}
+            className={cn(
+              aiEnabled && formData.free_text_diagnosis.trim().length >= 3 && 'pr-28 sm:pr-36'
+            )}
           />
           {/* AI Suggest button — rendered inside input when sufficient text */}
           {aiEnabled && formData.free_text_diagnosis.trim().length >= 3 && (
@@ -581,7 +629,7 @@ export function DiagnosisEntry({
               size="sm"
               onClick={handleAISuggest}
               disabled={disabled || isAISuggesting}
-              className="absolute right-1 top-1/2 -translate-y-1/2 gap-1 h-7 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-950/40"
+              className="absolute right-1 top-1/2 h-7 -translate-y-1/2 gap-1 text-xs text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:text-purple-400 dark:hover:bg-purple-950/40 dark:hover:text-purple-300"
             >
               {isAISuggesting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -618,17 +666,17 @@ export function DiagnosisEntry({
 
         {/* AI Suggestion Results */}
         {visibleAISuggestions.length > 0 && (
-          <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20 p-3 space-y-2">
+          <div className="space-y-2 rounded-lg border border-purple-200 bg-purple-50/50 p-3 dark:border-purple-800 dark:bg-purple-950/20">
             <div className="flex items-center gap-1.5 text-xs font-medium text-purple-700 dark:text-purple-400">
               <BrainCircuit className="h-3.5 w-3.5" />
               AI Suggested Codes
-              <span className="text-muted-foreground font-normal">(click to accept)</span>
+              <span className="font-normal text-muted-foreground">(click to accept)</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {visibleAISuggestions.map((suggestion) => (
                 <div
                   key={suggestion.code}
-                  className="group flex items-center gap-1 rounded-md border border-purple-200 dark:border-purple-700 bg-white dark:bg-purple-950/40 px-2 py-1 text-sm transition-colors hover:border-purple-400 dark:hover:border-purple-500"
+                  className="group flex items-center gap-1 rounded-md border border-purple-200 bg-white px-2 py-1 text-sm transition-colors hover:border-purple-400 dark:border-purple-700 dark:bg-purple-950/40 dark:hover:border-purple-500"
                 >
                   <button
                     type="button"
@@ -636,16 +684,14 @@ export function DiagnosisEntry({
                     className="flex items-center gap-1.5 text-left"
                     disabled={disabled}
                   >
-                    <Badge variant="outline" className="font-mono text-xs shrink-0">
+                    <Badge variant="outline" className="shrink-0 font-mono text-xs">
                       {suggestion.code}
                     </Badge>
-                    <span className="text-xs truncate max-w-[180px]">
-                      {suggestion.description}
-                    </span>
+                    <span className="max-w-[180px] truncate text-xs">{suggestion.description}</span>
                     {suggestion.is_billable && (
                       <Badge
                         variant="secondary"
-                        className="text-[10px] shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                        className="shrink-0 bg-blue-100 text-[10px] text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
                       >
                         Billable
                       </Badge>
@@ -653,12 +699,12 @@ export function DiagnosisEntry({
                     <Badge
                       variant="secondary"
                       className={cn(
-                        "text-[10px] shrink-0",
+                        'shrink-0 text-[10px]',
                         suggestion.confidence >= 0.8
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                           : suggestion.confidence >= 0.5
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                       )}
                     >
                       {Math.round(suggestion.confidence * 100)}%
@@ -667,7 +713,7 @@ export function DiagnosisEntry({
                   <button
                     type="button"
                     onClick={() => handleDismissAISuggestion(suggestion.code)}
-                    className="ml-0.5 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity"
+                    className="ml-0.5 rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
                     title="Dismiss suggestion"
                   >
                     <X className="h-3 w-3 text-muted-foreground" />
@@ -680,7 +726,7 @@ export function DiagnosisEntry({
 
         {/* AI Error/Unavailable Message */}
         {aiSuggestions?.error && visibleAISuggestions.length === 0 && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <AlertCircle className="h-3 w-3" />
             {aiSuggestions.error}
           </p>
@@ -693,24 +739,32 @@ export function DiagnosisEntry({
           <Label>Type</Label>
           <RadioGroup
             value={formData.diagnosis_type}
-            onValueChange={(value) => setFormData(prev => ({
-              ...prev,
-              diagnosis_type: value as 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL'
-            }))}
+            onValueChange={(value) =>
+              setFormData((prev) => ({
+                ...prev,
+                diagnosis_type: value as 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL',
+              }))
+            }
             disabled={disabled}
             className="flex flex-wrap gap-3"
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="PRIMARY" id="type-primary" />
-              <Label htmlFor="type-primary" className="cursor-pointer font-normal">Primary</Label>
+              <Label htmlFor="type-primary" className="cursor-pointer font-normal">
+                Primary
+              </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="SECONDARY" id="type-secondary" />
-              <Label htmlFor="type-secondary" className="cursor-pointer font-normal">Secondary</Label>
+              <Label htmlFor="type-secondary" className="cursor-pointer font-normal">
+                Secondary
+              </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="DIFFERENTIAL" id="type-differential" />
-              <Label htmlFor="type-differential" className="cursor-pointer font-normal">Differential</Label>
+              <Label htmlFor="type-differential" className="cursor-pointer font-normal">
+                Differential
+              </Label>
             </div>
           </RadioGroup>
         </div>
@@ -719,28 +773,41 @@ export function DiagnosisEntry({
           <Label>Certainty</Label>
           <RadioGroup
             value={formData.certainty}
-            onValueChange={(value) => setFormData(prev => ({
-              ...prev,
-              certainty: value as 'suspected' | 'probable' | 'confirmed' | 'ruled_out'
-            }))}
+            onValueChange={(value) =>
+              setFormData((prev) => ({
+                ...prev,
+                certainty: value as 'suspected' | 'probable' | 'confirmed' | 'ruled_out',
+              }))
+            }
             disabled={disabled}
             className="flex flex-wrap gap-3"
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="suspected" id="certainty-suspected" />
-              <Label htmlFor="certainty-suspected" className="cursor-pointer font-normal">Suspected</Label>
+              <Label htmlFor="certainty-suspected" className="cursor-pointer font-normal">
+                Suspected
+              </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="probable" id="certainty-probable" />
-              <Label htmlFor="certainty-probable" className="cursor-pointer font-normal">Probable</Label>
+              <Label htmlFor="certainty-probable" className="cursor-pointer font-normal">
+                Probable
+              </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="confirmed" id="certainty-confirmed" />
-              <Label htmlFor="certainty-confirmed" className="cursor-pointer font-normal">Confirmed</Label>
+              <Label htmlFor="certainty-confirmed" className="cursor-pointer font-normal">
+                Confirmed
+              </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="ruled_out" id="certainty-ruled-out" />
-              <Label htmlFor="certainty-ruled-out" className="cursor-pointer font-normal text-muted-foreground">Ruled Out</Label>
+              <Label
+                htmlFor="certainty-ruled-out"
+                className="cursor-pointer font-normal text-muted-foreground"
+              >
+                Ruled Out
+              </Label>
             </div>
           </RadioGroup>
         </div>
@@ -750,14 +817,16 @@ export function DiagnosisEntry({
         <Checkbox
           id="is_confirmed"
           checked={formData.is_confirmed}
-          onCheckedChange={(checked) => setFormData(prev => ({
-            ...prev,
-            is_confirmed: checked === true,
-            certainty: checked === true ? 'confirmed' : prev.certainty,
-          }))}
+          onCheckedChange={(checked) =>
+            setFormData((prev) => ({
+              ...prev,
+              is_confirmed: checked === true,
+              certainty: checked === true ? 'confirmed' : prev.certainty,
+            }))
+          }
           disabled={disabled}
         />
-        <label htmlFor="is_confirmed" className="text-sm leading-none cursor-pointer">
+        <label htmlFor="is_confirmed" className="cursor-pointer text-sm leading-none">
           Diagnostics Confirmed
         </label>
       </div>
@@ -769,7 +838,7 @@ export function DiagnosisEntry({
           id="diagnosis_notes"
           placeholder="Notes specific to this diagnosis (e.g., clinical reasoning, supporting evidence)..."
           value={formData.notes}
-          onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+          onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
           disabled={disabled}
           rows={2}
           className="resize-none"
@@ -786,30 +855,39 @@ export function DiagnosisEntry({
             disabled={disabled}
             className="flex-1"
           >
-            <X className="h-4 w-4 mr-2" />
+            <X className="mr-2 h-4 w-4" />
             Cancel
           </Button>
         )}
         <Button
           type="button"
           onClick={handleAdd}
-          disabled={disabled || (!selectedCode && !icd11Value && !snomedValue && !formData.free_text_diagnosis.trim())}
-          className={editingDiagnosis ? "flex-1" : "w-full"}
-          variant={editingDiagnosis ? "default" : hasSelectedCode || formData.free_text_diagnosis.trim() ? "default" : "outline"}
+          disabled={
+            disabled ||
+            (!selectedCode && !icd11Value && !snomedValue && !formData.free_text_diagnosis.trim())
+          }
+          className={editingDiagnosis ? 'flex-1' : 'w-full'}
+          variant={
+            editingDiagnosis
+              ? 'default'
+              : hasSelectedCode || formData.free_text_diagnosis.trim()
+                ? 'default'
+                : 'outline'
+          }
         >
           {editingDiagnosis ? (
             <>
-              <Check className="h-4 w-4 mr-2" />
+              <Check className="mr-2 h-4 w-4" />
               Update Diagnosis
             </>
           ) : hasSelectedCode || formData.free_text_diagnosis.trim() ? (
             <>
-              <Check className="h-4 w-4 mr-2" />
+              <Check className="mr-2 h-4 w-4" />
               Save Diagnosis
             </>
           ) : (
             <>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Add Diagnosis
             </>
           )}
@@ -845,7 +923,7 @@ export function DiagnosisListDisplay({
   onEdit,
   onUpdate,
   editingIndex,
-  disabled = false
+  disabled = false,
 }: DiagnosisListDisplayProps) {
   if (diagnoses.length === 0) return null;
 
@@ -866,19 +944,19 @@ export function DiagnosisListDisplay({
 
   return (
     <div className="space-y-3">
-      <h4 className="font-medium text-sm">Added Diagnoses ({diagnoses.length})</h4>
+      <h4 className="text-sm font-medium">Added Diagnoses ({diagnoses.length})</h4>
       <ul className="space-y-2">
         {diagnoses.map((diagnosis, index) => (
           <li
             key={index}
             className={cn(
-              "flex items-start gap-3 p-3 rounded-lg border bg-card transition-colors",
-              editingIndex === index && "ring-2 ring-primary border-primary",
-              diagnosis.certainty === 'ruled_out' && "opacity-60"
+              'flex items-start gap-3 rounded-lg border bg-card p-3 transition-colors',
+              editingIndex === index && 'border-primary ring-2 ring-primary',
+              diagnosis.certainty === 'ruled_out' && 'opacity-60'
             )}
           >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
                 <Badge className={typeColors[diagnosis.diagnosis_type]}>
                   {diagnosis.diagnosis_type}
                 </Badge>
@@ -886,17 +964,26 @@ export function DiagnosisListDisplay({
                   {diagnosis.certainty === 'ruled_out' ? 'RULED OUT' : diagnosis.certainty}
                 </Badge>
                 {/* Quick confirm toggle */}
-                {onUpdate && !disabled && diagnosis.certainty !== 'confirmed' && diagnosis.certainty !== 'ruled_out' && (
-                  <button
-                    type="button"
-                    onClick={() => onUpdate(index, { ...diagnosis, certainty: 'confirmed', is_confirmed: true })}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border border-green-300 text-green-700 hover:bg-green-100 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/30 transition-colors"
-                    title="Mark as confirmed"
-                  >
-                    <Check className="h-3 w-3" />
-                    Confirm
-                  </button>
-                )}
+                {onUpdate &&
+                  !disabled &&
+                  diagnosis.certainty !== 'confirmed' &&
+                  diagnosis.certainty !== 'ruled_out' && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdate(index, {
+                          ...diagnosis,
+                          certainty: 'confirmed',
+                          is_confirmed: true,
+                        })
+                      }
+                      className="inline-flex items-center gap-1 rounded-full border border-green-300 px-2 py-0.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-100 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/30"
+                      title="Mark as confirmed"
+                    >
+                      <Check className="h-3 w-3" />
+                      Confirm
+                    </button>
+                  )}
                 {diagnosis.is_confirmed && (
                   <Badge variant="outline" className="gap-1">
                     <Check className="h-3 w-3" />
@@ -904,24 +991,31 @@ export function DiagnosisListDisplay({
                   </Badge>
                 )}
               </div>
-              <p className={cn(
-                "font-medium text-sm",
-                diagnosis.certainty === 'ruled_out' && "line-through text-muted-foreground"
-              )}>
+              <p
+                className={cn(
+                  'text-sm font-medium',
+                  diagnosis.certainty === 'ruled_out' && 'text-muted-foreground line-through'
+                )}
+              >
                 {diagnosis.snomed_display
                   ? `${diagnosis.snomed_display}`
-                  : diagnosis.icd11_display || diagnosis.icd10_display || diagnosis.free_text_diagnosis}
+                  : diagnosis.icd11_display ||
+                    diagnosis.icd10_display ||
+                    diagnosis.free_text_diagnosis}
               </p>
               {diagnosis.snomed_code && (
-                <Badge variant="secondary" className="text-[10px] mt-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                <Badge
+                  variant="secondary"
+                  className="mt-1 bg-purple-100 text-[10px] text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
+                >
                   SNOMED: {diagnosis.snomed_code}
                 </Badge>
               )}
               {diagnosis.notes && (
-                <p className="text-sm text-muted-foreground mt-1">{diagnosis.notes}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{diagnosis.notes}</p>
               )}
             </div>
-            <div className="flex gap-1 shrink-0">
+            <div className="flex shrink-0 gap-1">
               {onEdit && (
                 <Button
                   type="button"
@@ -971,33 +1065,43 @@ export function DiagnosisFormContent({
   onAdd,
   onRemove,
   onUpdate,
-  disabled = false
+  disabled = false,
 }: DiagnosisFormContentProps) {
-  const [editingDiagnosis, setEditingDiagnosis] = useState<{ index: number; data: DiagnosisFormData } | null>(null);
+  const [editingDiagnosis, setEditingDiagnosis] = useState<{
+    index: number;
+    data: DiagnosisFormData;
+  } | null>(null);
 
-  const handleEdit = useCallback((index: number) => {
-    const diagnosis = diagnoses[index];
+  const handleEdit = useCallback(
+    (index: number) => {
+      const diagnosis = diagnoses[index];
 
-    if (!diagnosis) return;
+      if (!diagnosis) return;
 
-    setEditingDiagnosis({ index, data: { ...diagnosis } });
-  }, [diagnoses]);
+      setEditingDiagnosis({ index, data: { ...diagnosis } });
+    },
+    [diagnoses]
+  );
 
   const handleCancelEdit = useCallback(() => {
     setEditingDiagnosis(null);
   }, []);
 
-  const handleUpdate = useCallback((index: number, data: DiagnosisFormData) => {
-    if (onUpdate) {
-      onUpdate(index, data);
-    }
-    setEditingDiagnosis(null);
-  }, [onUpdate]);
+  const handleUpdate = useCallback(
+    (index: number, data: DiagnosisFormData) => {
+      if (onUpdate) {
+        onUpdate(index, data);
+      }
+      setEditingDiagnosis(null);
+    },
+    [onUpdate]
+  );
 
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        Add diagnoses using ICD-10/ICD-11 codes. Click the pencil icon to update certainty after lab results.
+        Add diagnoses using ICD-10/ICD-11 codes. Click the pencil icon to update certainty after lab
+        results.
       </p>
 
       {/* List of added diagnoses */}
@@ -1013,8 +1117,8 @@ export function DiagnosisFormContent({
       {/* Diagnosis entry form - Always visible for adding more */}
       <div className="pt-2">
         {editingDiagnosis ? (
-          <div className="p-3 border-2 border-primary rounded-lg bg-primary/5">
-            <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+          <div className="rounded-lg border-2 border-primary bg-primary/5 p-3">
+            <h4 className="mb-3 flex items-center gap-2 text-sm font-medium">
               <Pencil className="h-4 w-4" />
               Editing Diagnosis
             </h4>
@@ -1030,13 +1134,11 @@ export function DiagnosisFormContent({
         ) : (
           <>
             {diagnoses.length > 0 && (
-              <h4 className="text-sm font-medium mb-3 text-muted-foreground">Add Another Diagnosis</h4>
+              <h4 className="mb-3 text-sm font-medium text-muted-foreground">
+                Add Another Diagnosis
+              </h4>
             )}
-            <DiagnosisEntry
-              onAdd={onAdd}
-              existingDiagnoses={diagnoses}
-              disabled={disabled}
-            />
+            <DiagnosisEntry onAdd={onAdd} existingDiagnoses={diagnoses} disabled={disabled} />
           </>
         )}
       </div>
@@ -1065,20 +1167,23 @@ export function DiagnosisForm({
   onUpdate,
   disabled = false,
   onPrevious,
-  onNext
+  onNext,
 }: DiagnosisFormProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
           <AlertCircle className="h-5 w-5" />
           Diagnosis (Dx)
           {diagnoses.length > 0 && (
-            <Badge variant="secondary" className="ml-2">{diagnoses.length}</Badge>
+            <Badge variant="secondary" className="ml-2">
+              {diagnoses.length}
+            </Badge>
           )}
         </CardTitle>
         <CardDescription>
-          Add diagnoses using ICD-10/ICD-11 codes. Click the pencil icon to update certainty after lab results.
+          Add diagnoses using ICD-10/ICD-11 codes. Click the pencil icon to update certainty after
+          lab results.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -1094,18 +1199,20 @@ export function DiagnosisForm({
       {/* Navigation Footer */}
       {(onPrevious || onNext) && (
         <CardFooter className="border-t pt-4">
-          <div className="flex justify-between w-full">
+          <div className="flex w-full justify-between">
             {onPrevious ? (
               <Button onClick={onPrevious} variant="secondary">
                 ← Back to HPI
               </Button>
-            ) : <div />}
+            ) : (
+              <div />
+            )}
             {onNext ? (
               <Button onClick={onNext} variant="secondary">
                 Continue to Labs →
               </Button>
             ) : (
-              <div className="text-sm text-muted-foreground flex items-center">
+              <div className="flex items-center text-sm text-muted-foreground">
                 Add diagnoses using the form above
               </div>
             )}

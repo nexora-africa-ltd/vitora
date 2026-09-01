@@ -117,11 +117,11 @@ export function PatientTable({
         viewMode === 'list' ? (
           <div className="space-y-3">
             {/* Desktop skeleton table */}
-            <div className="hidden md:block animate-pulse">
+            <div className="hidden animate-pulse md:block">
               <div className="rounded-md border">
                 <div className="h-12 border-b bg-muted/30" />
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-16 border-b flex items-center px-4 gap-4">
+                  <div key={i} className="flex h-16 items-center gap-4 border-b px-4">
                     <Skeleton className="h-4 w-24" />
                     <Skeleton className="h-4 w-32 flex-1" />
                     <Skeleton className="h-4 w-20" />
@@ -133,12 +133,12 @@ export function PatientTable({
               </div>
             </div>
             {/* Mobile skeleton cards */}
-            <div className="md:hidden space-y-3">
+            <div className="space-y-3 md:hidden">
               {[...Array(5)].map((_, i) => (
                 <Card key={i} className="p-4">
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
-                      <div className="space-y-2 flex-1">
+                      <div className="flex-1 space-y-2">
                         <Skeleton className="h-4 w-32" />
                         <Skeleton className="h-3 w-24" />
                       </div>
@@ -168,18 +168,17 @@ export function PatientTable({
           router={router}
         />
       ) : (
-        <PatientGridView
-          patients={patients}
-          selectMode={selectMode}
-          onSelect={onSelect}
-        />
+        <PatientGridView patients={patients} selectMode={selectMode} onSelect={onSelect} />
       )}
 
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            <span className="hidden sm:inline">Page </span>{page}<span className="hidden sm:inline"> of {totalPages}</span><span className="sm:hidden">/{totalPages}</span>
+            <span className="hidden sm:inline">Page </span>
+            {page}
+            <span className="hidden sm:inline"> of {totalPages}</span>
+            <span className="sm:hidden">/{totalPages}</span>
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -236,7 +235,8 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
         const data = err.response.data;
         toast({
           title: 'Patient Unavailable',
-          description: data.detail || 'This patient already has an active encounter with another clinician.',
+          description:
+            data.detail || 'This patient already has an active encounter with another clinician.',
           variant: 'destructive',
         });
       } else {
@@ -250,21 +250,21 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
   };
 
   const renderMobileCard = (patient: Patient) => (
-    <Card className="p-4 hover:bg-muted/50 transition-colors">
+    <Card className="p-4 transition-colors hover:bg-muted/50">
       <div className="space-y-3">
         {/* Header: Name + Sensitive badge */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="font-medium truncate">
+            <p className="truncate font-medium">
               {patient.first_name} {patient.last_name}
             </p>
-            <p className="text-sm text-muted-foreground font-mono">
+            <p className="font-mono text-sm text-muted-foreground">
               {isPendingSync(patient.mrn) ? <PendingSyncBadge label="MRN pending" /> : patient.mrn}
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             {patient.is_sensitive && (
-              <Badge variant="destructive" className="text-xs shrink-0 w-fit">
+              <Badge variant="destructive" className="w-fit shrink-0 text-xs">
                 Sensitive
               </Badge>
             )}
@@ -276,18 +276,22 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/patients/${patient.id}`);
-                  }}>
-                    <Eye className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/patients/${patient.id}`);
+                    }}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
                     View Details
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/patients/${patient.id}/edit`);
-                  }}>
-                    <Edit className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/patients/${patient.id}/edit`);
+                    }}
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -296,17 +300,19 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                     disabled={quickConsult.isPending}
                   >
                     {quickConsult.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <Stethoscope className="h-4 w-4 mr-2" />
+                      <Stethoscope className="mr-2 h-4 w-4" />
                     )}
                     Start Consultation
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/encounters/new?patient=${patient.id}`);
-                  }}>
-                    <FileText className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/encounters/new?patient=${patient.id}`);
+                    }}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
                     New Encounter
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -314,7 +320,7 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                     className="text-destructive"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="mr-2 h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -326,7 +332,7 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
         {/* Metadata row */}
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>{calculateAge(patient.date_of_birth)} yrs</span>
-          <Badge className={`shrink-0 w-fit ${genderColors[patient.gender]}`}>
+          <Badge className={`w-fit shrink-0 ${genderColors[patient.gender]}`}>
             {genderLabels[patient.gender]}
           </Badge>
           {patient.registered_at_facility_name && (
@@ -374,7 +380,8 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
           key: 'name',
           header: 'Name',
           sortable: true,
-          sortFn: (a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`),
+          sortFn: (a, b) =>
+            `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`),
           cell: (patient) => (
             <div className="flex items-center gap-2">
               <span className="font-medium">
@@ -393,13 +400,12 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
           header: 'Age/Gender',
           hideOnMobile: true,
           sortable: true,
-          sortFn: (a, b) => new Date(b.date_of_birth).getTime() - new Date(a.date_of_birth).getTime(),
+          sortFn: (a, b) =>
+            new Date(b.date_of_birth).getTime() - new Date(a.date_of_birth).getTime(),
           cell: (patient) => (
             <div className="flex items-center gap-2">
               <span>{calculateAge(patient.date_of_birth)} yrs</span>
-              <Badge className={genderColors[patient.gender]}>
-                {genderLabels[patient.gender]}
-              </Badge>
+              <Badge className={genderColors[patient.gender]}>{genderLabels[patient.gender]}</Badge>
             </div>
           ),
         },
@@ -436,7 +442,7 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
           key: 'actions',
           header: '',
           className: 'w-[50px]',
-          cell: (patient) => (
+          cell: (patient) =>
             !selectMode ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -445,18 +451,22 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/patients/${patient.id}`);
-                  }}>
-                    <Eye className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/patients/${patient.id}`);
+                    }}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
                     View Details
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/patients/${patient.id}/edit`);
-                  }}>
-                    <Edit className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/patients/${patient.id}/edit`);
+                    }}
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -465,17 +475,19 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                     disabled={quickConsult.isPending}
                   >
                     {quickConsult.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <Stethoscope className="h-4 w-4 mr-2" />
+                      <Stethoscope className="mr-2 h-4 w-4" />
                     )}
                     Start Consultation
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/encounters/new?patient=${patient.id}`);
-                  }}>
-                    <FileText className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/encounters/new?patient=${patient.id}`);
+                    }}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
                     New Encounter
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -483,13 +495,12 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
                     className="text-destructive"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="mr-2 h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : null
-          ),
+            ) : null,
         },
       ]}
     />
@@ -517,46 +528,68 @@ function PatientGridView({ patients, selectMode, onSelect }: PatientGridViewProp
           gender={patient.gender}
           href={selectMode ? undefined : `/patients/${patient.id}`}
           onClick={selectMode && onSelect ? () => onSelect(patient.id) : undefined}
-          status={patient.is_sensitive ? {
-            label: 'Sensitive',
-            variant: 'destructive',
-          } : undefined}
-          badges={[{
-            label: `${calculateAge(patient.date_of_birth)} yrs, ${genderLabels[patient.gender]}`,
-            variant: 'secondary',
-          }]}
+          status={
+            patient.is_sensitive
+              ? {
+                  label: 'Sensitive',
+                  variant: 'destructive',
+                }
+              : undefined
+          }
+          badges={[
+            {
+              label: `${calculateAge(patient.date_of_birth)} yrs, ${genderLabels[patient.gender]}`,
+              variant: 'secondary',
+            },
+          ]}
           metadata={[
             {
               icon: <Hash className="h-3 w-3" />,
               label: 'MRN',
               value: patient.mrn,
             },
-            ...(patient.phone_number ? [{
-              icon: <Phone className="h-3 w-3" />,
-              label: 'Phone',
-              value: patient.phone_number,
-            }] : []),
-            ...(patient.county_name ? [{
-              icon: <MapPin className="h-3 w-3" />,
-              label: 'County',
-              value: patient.county_name,
-            }] : []),
-            ...(patient.registered_at_facility_name ? [{
-              icon: <MapPin className="h-3 w-3" />,
-              label: 'Facility',
-              value: patient.registered_at_facility_name,
-            }] : []),
+            ...(patient.phone_number
+              ? [
+                  {
+                    icon: <Phone className="h-3 w-3" />,
+                    label: 'Phone',
+                    value: patient.phone_number,
+                  },
+                ]
+              : []),
+            ...(patient.county_name
+              ? [
+                  {
+                    icon: <MapPin className="h-3 w-3" />,
+                    label: 'County',
+                    value: patient.county_name,
+                  },
+                ]
+              : []),
+            ...(patient.registered_at_facility_name
+              ? [
+                  {
+                    icon: <MapPin className="h-3 w-3" />,
+                    label: 'Facility',
+                    value: patient.registered_at_facility_name,
+                  },
+                ]
+              : []),
             {
               icon: <Calendar className="h-3 w-3" />,
               label: 'Registered',
               value: formatDate(patient.created_at),
             },
           ]}
-          actions={selectMode ? [] : [
-            { label: 'View Details', href: `/patients/${patient.id}` },
-            { label: 'Edit', href: `/patients/${patient.id}/edit` },
-            { label: 'New Encounter', href: `/encounters/new?patient=${patient.id}` },
-          ]}
+          actions={
+            selectMode
+              ? []
+              : [
+                  { label: 'View Details', href: `/patients/${patient.id}` },
+                  { label: 'Edit', href: `/patients/${patient.id}/edit` },
+                  { label: 'New Encounter', href: `/encounters/new?patient=${patient.id}` },
+                ]
+          }
         />
       ))}
     </EntityGrid>

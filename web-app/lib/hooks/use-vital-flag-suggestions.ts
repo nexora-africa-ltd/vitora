@@ -29,7 +29,10 @@ export const vitalFlagSuggestionKeys = {
     [...vitalFlagSuggestionKeys.patient(patientId), suggestionId] as const,
 };
 
-function invalidatePatientSuggestionQueries(queryClient: ReturnType<typeof useQueryClient>, patientId: number) {
+function invalidatePatientSuggestionQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  patientId: number
+) {
   queryClient.invalidateQueries({ queryKey: vitalFlagSuggestionKeys.patient(patientId) });
   queryClient.invalidateQueries({ queryKey: chronicConditionKeys.patient(patientId) });
 }

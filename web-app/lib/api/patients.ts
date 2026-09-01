@@ -18,7 +18,19 @@ import {
   PatientQRCodeSchema,
   VitalsHistoryResponseSchema,
 } from '@/lib/schemas/patient.schema';
-import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, EmergencyContact, PatientEncounter, DuplicateCheckResult, DuplicateCheckParams, HouseholdMembersResponse, ContactPatientSmsPayload, ContactPatientSmsResponse } from '@/lib/types/patient';
+import type {
+  Patient,
+  PatientCreateData,
+  PatientUpdateData,
+  PatientListParams,
+  EmergencyContact,
+  PatientEncounter,
+  DuplicateCheckResult,
+  DuplicateCheckParams,
+  HouseholdMembersResponse,
+  ContactPatientSmsPayload,
+  ContactPatientSmsResponse,
+} from '@/lib/types/patient';
 import type { PaginatedResponse } from '@/lib/types';
 import type { VitalsDataPoint, TimeRange } from '@/components/shared/vitals-trend-chart';
 
@@ -58,7 +70,8 @@ export const patientsApi = {
     if (params.search) searchParams.set('search', params.search);
     if (params.gender) searchParams.set('gender', params.gender);
     if (params.county) searchParams.set('county', String(params.county));
-    if (params.is_sensitive !== undefined) searchParams.set('is_sensitive', String(params.is_sensitive));
+    if (params.is_sensitive !== undefined)
+      searchParams.set('is_sensitive', String(params.is_sensitive));
     if (params.current_facility_only !== undefined) {
       searchParams.set('current_facility_only', String(params.current_facility_only));
     }
@@ -202,7 +215,7 @@ export const patientsApi = {
    */
   async getHouseholdMembers(
     householdNumber: string,
-    excludePatientId?: number,
+    excludePatientId?: number
   ): Promise<HouseholdMembersResponse> {
     const searchParams = new URLSearchParams({ household_number: householdNumber });
     if (excludePatientId) {
@@ -234,14 +247,10 @@ export const patientsApi = {
    * Get aggregated vitals history for a patient from all sources
    * (triage, encounters, inpatient nursing).
    */
-  async getVitalsHistory(
-    id: IdParam,
-    range: TimeRange = 'all',
-  ): Promise<VitalsDataPoint[]> {
-    const response = await apiClient.get<VitalsDataPoint[]>(
-      `/api/patients/${id}/vitals-history/`,
-      { params: { range } },
-    );
+  async getVitalsHistory(id: IdParam, range: TimeRange = 'all'): Promise<VitalsDataPoint[]> {
+    const response = await apiClient.get<VitalsDataPoint[]>(`/api/patients/${id}/vitals-history/`, {
+      params: { range },
+    });
     return parseResponse(VitalsHistoryResponseSchema, response.data, {
       context: 'patientsApi.getVitalsHistory',
     });
@@ -250,8 +259,14 @@ export const patientsApi = {
   /**
    * Send a custom SMS message to a patient.
    */
-  async contactPatient(id: IdParam, payload: ContactPatientSmsPayload): Promise<ContactPatientSmsResponse> {
-    const response = await apiClient.post<ContactPatientSmsResponse>(`/api/patients/${id}/contact-patient/`, payload);
+  async contactPatient(
+    id: IdParam,
+    payload: ContactPatientSmsPayload
+  ): Promise<ContactPatientSmsResponse> {
+    const response = await apiClient.post<ContactPatientSmsResponse>(
+      `/api/patients/${id}/contact-patient/`,
+      payload
+    );
     return parseResponse(ContactPatientSmsResponseSchema, response.data, {
       context: 'patientsApi.contactPatient',
     });

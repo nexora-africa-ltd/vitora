@@ -36,7 +36,11 @@ export function SupervisorAlertsPanel({ className }: SupervisorAlertsPanelProps)
   const [isAcknowledgeDialogOpen, setIsAcknowledgeDialogOpen] = useState(false);
 
   // Fetch alerts
-  const { data: alertsResponse, isLoading, error } = useQuery({
+  const {
+    data: alertsResponse,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['supervisor-alerts'],
     queryFn: () => inpatientApi.getSupervisorAlerts(undefined, 50),
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -149,8 +153,8 @@ export function SupervisorAlertsPanel({ className }: SupervisorAlertsPanelProps)
 
             <TabsContent value="pending" className="mt-4 space-y-3">
               {pendingAlerts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Check className="h-12 w-12 mx-auto mb-3 text-green-500" />
+                <div className="py-8 text-center text-muted-foreground">
+                  <Check className="mx-auto mb-3 h-12 w-12 text-green-500" />
                   <p>No pending alerts</p>
                   <p className="text-sm">All critical violations have been acknowledged</p>
                 </div>
@@ -167,7 +171,7 @@ export function SupervisorAlertsPanel({ className }: SupervisorAlertsPanelProps)
 
             <TabsContent value="acknowledged" className="mt-4 space-y-3">
               {acknowledgedAlerts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="py-8 text-center text-muted-foreground">
                   <p>No acknowledged alerts</p>
                 </div>
               ) : (
@@ -196,11 +200,15 @@ export function SupervisorAlertsPanel({ className }: SupervisorAlertsPanelProps)
 
           {selectedAlert && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                <p className="font-medium text-destructive mb-2">Critical Violations:</p>
-                <ul className="list-disc list-inside space-y-1 text-sm">
+              <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+                <p className="mb-2 font-medium text-destructive">Critical Violations:</p>
+                <ul className="list-inside list-disc space-y-1 text-sm">
                   {selectedAlert.critical_violations.map((v, i) => (
-                    <li key={i}>{typeof v === 'string' ? v : (v as { message?: string }).message ?? 'Unknown violation'}</li>
+                    <li key={i}>
+                      {typeof v === 'string'
+                        ? v
+                        : ((v as { message?: string }).message ?? 'Unknown violation')}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -252,25 +260,23 @@ function AlertCard({ alert, onAcknowledge }: AlertCardProps) {
 
   return (
     <div
-      className={`p-4 rounded-lg border ${
+      className={`rounded-lg border p-4 ${
         alert.is_acknowledged
-          ? 'bg-muted/50 border-muted'
-          : 'bg-destructive/5 border-destructive/30'
+          ? 'border-muted bg-muted/50'
+          : 'border-destructive/30 bg-destructive/5'
       }`}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">{alert.patient_name}</span>
             <Badge variant="outline" className="text-xs">
               {alert.patient_mrn}
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Admission: {alert.admission_number}
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Admission: {alert.admission_number}</p>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
               {alert.ward_name} - Bed {alert.bed_number}
@@ -287,11 +293,13 @@ function AlertCard({ alert, onAcknowledge }: AlertCardProps) {
 
           {/* Violations */}
           <div className="mt-3">
-            <p className="text-sm font-medium text-destructive mb-1">Violations:</p>
+            <p className="mb-1 text-sm font-medium text-destructive">Violations:</p>
             <div className="flex flex-wrap gap-1">
               {alert.critical_violations.map((v, i) => (
                 <Badge key={i} variant="destructive" className="text-xs">
-                  {typeof v === 'string' ? v : (v as { code?: string; message?: string }).code ?? 'UNKNOWN'}
+                  {typeof v === 'string'
+                    ? v
+                    : ((v as { code?: string; message?: string }).code ?? 'UNKNOWN')}
                 </Badge>
               ))}
             </div>
@@ -313,9 +321,7 @@ function AlertCard({ alert, onAcknowledge }: AlertCardProps) {
               <Check className="h-4 w-4" />
               <span>
                 Acknowledged by {alert.acknowledged_by}
-                {alert.acknowledged_at && (
-                  <> on {formatDateTime(alert.acknowledged_at)}</>
-                )}
+                {alert.acknowledged_at && <> on {formatDateTime(alert.acknowledged_at)}</>}
               </span>
             </div>
           )}
@@ -323,12 +329,8 @@ function AlertCard({ alert, onAcknowledge }: AlertCardProps) {
 
         {/* Action button */}
         {!alert.is_acknowledged && onAcknowledge && (
-          <Button
-            size="sm"
-            onClick={onAcknowledge}
-            className="shrink-0 w-full sm:w-auto"
-          >
-            <Check className="h-4 w-4 mr-1" />
+          <Button size="sm" onClick={onAcknowledge} className="w-full shrink-0 sm:w-auto">
+            <Check className="mr-1 h-4 w-4" />
             Acknowledge
           </Button>
         )}

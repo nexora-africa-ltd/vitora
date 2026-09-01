@@ -54,7 +54,11 @@ export default function OrganizationDetailPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const { isSuperuser } = usePermissions();
 
-  const { data: org, isLoading, error } = useQuery({
+  const {
+    data: org,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['organization', orgId],
     queryFn: () => organizationsApi.get(orgId),
     enabled: !isNaN(orgId),
@@ -73,7 +77,7 @@ export default function OrganizationDetailPage() {
       <div className="space-y-4 sm:space-y-6">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-20 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
         </div>
@@ -105,7 +109,7 @@ export default function OrganizationDetailPage() {
             isSuperuser ? (
               <Button asChild size="sm" variant="outline">
                 <Link href={`/admin/organizations/${orgId}/edit`}>
-                  <Pencil className="h-4 w-4 mr-1" />
+                  <Pencil className="mr-1 h-4 w-4" />
                   Edit
                 </Link>
               </Button>
@@ -114,23 +118,23 @@ export default function OrganizationDetailPage() {
         />
 
         {/* Summary Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 items-center gap-3">
             {org.logo ? (
               <Image
                 src={org.logo.startsWith('http') ? org.logo : `${API_BASE_URL}${org.logo}`}
                 alt={`${org.name} logo`}
                 width={40}
                 height={40}
-                className="h-10 w-10 rounded-md object-cover shrink-0"
+                className="h-10 w-10 shrink-0 rounded-md object-cover"
               />
             ) : (
-              <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
                 <Building2 className="h-5 w-5 text-primary" />
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">
+              <p className="truncate text-sm font-medium">
                 {org.slug}
                 {org.county_name && (
                   <span className="text-muted-foreground"> · {org.county_name}</span>
@@ -139,15 +143,13 @@ export default function OrganizationDetailPage() {
                   <span className="text-muted-foreground"> / {org.sub_county_name}</span>
                 )}
               </p>
-              <p className="text-xs sm:text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground sm:text-sm">
                 Created {formatDate(org.created_at)}
-                {org.updated_at !== org.created_at && (
-                  <> · Updated {formatDate(org.updated_at)}</>
-                )}
+                {org.updated_at !== org.created_at && <> · Updated {formatDate(org.updated_at)}</>}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             <Badge className={`${tierColors[org.subscription_tier]} w-fit`}>
               {tierLabel(org.subscription_tier)}
             </Badge>
@@ -158,11 +160,11 @@ export default function OrganizationDetailPage() {
         </div>
 
         {/* Details Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Contact Information */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 Contact Information
               </CardTitle>
@@ -186,9 +188,7 @@ export default function OrganizationDetailPage() {
               <InfoRow
                 icon={<Globe className="h-3.5 w-3.5" />}
                 label="Location"
-                value={
-                  [org.county_name, org.sub_county_name].filter(Boolean).join(', ') || '—'
-                }
+                value={[org.county_name, org.sub_county_name].filter(Boolean).join(', ') || '—'}
               />
             </CardContent>
           </Card>
@@ -196,7 +196,7 @@ export default function OrganizationDetailPage() {
           {/* Subscription & Limits */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Shield className="h-4 w-4 text-muted-foreground" />
                 Subscription & Limits
               </CardTitle>
@@ -244,23 +244,15 @@ export default function OrganizationDetailPage() {
           {/* Usage */}
           <Card className="md:col-span-2">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Building2 className="h-4 w-4 text-muted-foreground" />
                 Usage
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <UsageStat
-                  label="Facilities"
-                  value={org.facility_count}
-                  max={org.max_facilities}
-                />
-                <UsageStat
-                  label="Staff"
-                  value={org.staff_count}
-                  max={org.max_users}
-                />
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <UsageStat label="Facilities" value={org.facility_count} max={org.max_facilities} />
+                <UsageStat label="Staff" value={org.staff_count} max={org.max_users} />
               </div>
             </CardContent>
           </Card>
@@ -269,14 +261,14 @@ export default function OrganizationDetailPage() {
         {/* Facilities Table */}
         <Card>
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               Facilities ({facilities.length})
             </CardTitle>
             {isSuperuser && (
               <Button asChild size="sm" className="w-full sm:w-auto">
                 <Link href={`/admin/organizations/${orgId}/facilities/new`}>
-                  <Plus className="h-4 w-4 mr-1" />
+                  <Plus className="mr-1 h-4 w-4" />
                   New Facility
                 </Link>
               </Button>
@@ -285,10 +277,12 @@ export default function OrganizationDetailPage() {
           <CardContent className="px-0 sm:px-6">
             {facilitiesLoading ? (
               <div className="space-y-3 px-6 sm:px-0">
-                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
               </div>
             ) : facilities.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 px-6 sm:px-0 py-8 text-center">
+              <div className="flex flex-col items-center gap-3 px-6 py-8 text-center sm:px-0">
                 <Building2 className="h-10 w-10 text-muted-foreground/50" />
                 <p className="text-sm text-muted-foreground">
                   No facilities registered for this organization.
@@ -296,7 +290,7 @@ export default function OrganizationDetailPage() {
                 {isSuperuser && (
                   <Button asChild size="sm">
                     <Link href={`/admin/organizations/${orgId}/facilities/new`}>
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="mr-1 h-4 w-4" />
                       Add First Facility
                     </Link>
                   </Button>
@@ -317,7 +311,7 @@ export default function OrganizationDetailPage() {
                         <span className="font-medium">
                           {f.name}
                           {f.is_headquarters && (
-                            <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">
+                            <Badge variant="outline" className="ml-2 px-1.5 py-0 text-[10px]">
                               HQ
                             </Badge>
                           )}
@@ -329,16 +323,16 @@ export default function OrganizationDetailPage() {
                     key: 'mfl_code',
                     header: 'MFL Code',
                     sortable: true,
-                    cell: (f) => (
-                      <span className="font-mono text-xs">{f.mfl_code}</span>
-                    ),
+                    cell: (f) => <span className="font-mono text-xs">{f.mfl_code}</span>,
                   },
                   {
                     key: 'level',
                     header: 'KEPH Level',
                     sortable: true,
                     cell: (f) => (
-                      <span className="text-sm">{formatFacilityLevel(f.level, f.level_subtype)}</span>
+                      <span className="text-sm">
+                        {formatFacilityLevel(f.level, f.level_subtype)}
+                      </span>
                     ),
                     hideOnMobile: true,
                   },
@@ -377,10 +371,10 @@ export default function OrganizationDetailPage() {
                 mobileCard={(f) => (
                   <div className="flex items-center justify-between p-3">
                     <div className="min-w-0">
-                      <span className="font-medium truncate block">
+                      <span className="block truncate font-medium">
                         {f.name}
                         {f.is_headquarters && (
-                          <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">
+                          <Badge variant="outline" className="ml-2 px-1.5 py-0 text-[10px]">
                             HQ
                           </Badge>
                         )}
@@ -403,10 +397,18 @@ export default function OrganizationDetailPage() {
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
     <div className="flex items-start gap-2 text-sm">
-      <span className="text-muted-foreground mt-0.5 shrink-0">{icon}</span>
+      <span className="mt-0.5 shrink-0 text-muted-foreground">{icon}</span>
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="truncate">{value}</p>
@@ -424,9 +426,7 @@ function UsageStat({ label, value, max }: { label: string; value: number; max?: 
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-2xl font-semibold">
         {value}
-        {max != null && (
-          <span className="text-sm font-normal text-muted-foreground"> / {max}</span>
-        )}
+        {max != null && <span className="text-sm font-normal text-muted-foreground"> / {max}</span>}
       </p>
       {percentage !== null && (
         <div className="h-1.5 w-full rounded-full bg-muted">

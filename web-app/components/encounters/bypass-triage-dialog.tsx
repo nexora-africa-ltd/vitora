@@ -31,10 +31,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Loader2, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  type TriageBypassReason,
-  TRIAGE_BYPASS_REASON_DISPLAY
-} from '@/lib/types/encounter';
+import { type TriageBypassReason, TRIAGE_BYPASS_REASON_DISPLAY } from '@/lib/types/encounter';
 
 // =============================================================================
 // Types
@@ -108,11 +105,7 @@ export function BypassTriageDialog({
       return;
     }
 
-    await onBypass(
-      encounter.id,
-      selectedReason,
-      selectedReason === 'OTHER' ? notes : undefined
-    );
+    await onBypass(encounter.id, selectedReason, selectedReason === 'OTHER' ? notes : undefined);
   };
 
   const handleCancel = () => {
@@ -133,13 +126,13 @@ export function BypassTriageDialog({
             <div className="space-y-4">
               {/* Warning message */}
               <p className="text-sm text-muted-foreground">
-                You are about to bypass triage assessment for this patient.
-                Please confirm and select a reason for bypassing triage.
+                You are about to bypass triage assessment for this patient. Please confirm and
+                select a reason for bypassing triage.
               </p>
 
               {/* Patient Info */}
-              <div className="rounded-md border p-3 bg-muted/50">
-                <div className="flex items-center gap-2 mb-2">
+              <div className="rounded-md border bg-muted/50 p-3">
+                <div className="mb-2 flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{encounter.patient_name}</span>
                 </div>
@@ -159,7 +152,11 @@ export function BypassTriageDialog({
                   onValueChange={(value) => setSelectedReason(value as BypassReasonValue)}
                   disabled={isLoading}
                 >
-                  <SelectTrigger id="bypass-reason" aria-label="Select a reason" disabled={isLoading}>
+                  <SelectTrigger
+                    id="bypass-reason"
+                    aria-label="Select a reason"
+                    disabled={isLoading}
+                  >
                     <SelectValue placeholder="Select a reason" />
                   </SelectTrigger>
                   <SelectContent>
@@ -170,9 +167,7 @@ export function BypassTriageDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                {validationError && (
-                  <p className="text-sm text-destructive">{validationError}</p>
-                )}
+                {validationError && <p className="text-sm text-destructive">{validationError}</p>}
               </div>
 
               {/* Notes field for "Other" reason */}
@@ -191,9 +186,7 @@ export function BypassTriageDialog({
               )}
 
               {/* Error message */}
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
+              {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -212,7 +205,7 @@ export function BypassTriageDialog({
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Bypassing...
               </>
             ) : (

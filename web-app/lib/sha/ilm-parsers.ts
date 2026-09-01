@@ -25,7 +25,10 @@ export function getString(obj: Record<string, unknown> | undefined, ...keys: str
   return '';
 }
 
-export function getNumber(obj: Record<string, unknown> | undefined, ...keys: string[]): number | undefined {
+export function getNumber(
+  obj: Record<string, unknown> | undefined,
+  ...keys: string[]
+): number | undefined {
   if (!obj) return undefined;
   for (const key of keys) {
     const val = obj[key];
@@ -35,7 +38,10 @@ export function getNumber(obj: Record<string, unknown> | undefined, ...keys: str
   return undefined;
 }
 
-export function getBool(obj: Record<string, unknown> | undefined, ...keys: string[]): boolean | undefined {
+export function getBool(
+  obj: Record<string, unknown> | undefined,
+  ...keys: string[]
+): boolean | undefined {
   if (!obj) return undefined;
   for (const key of keys) {
     const val = obj[key];
@@ -139,9 +145,10 @@ function parseScheme(raw: Record<string, unknown>): ParsedScheme {
   const coverage = (raw.coverage ?? {}) as Record<string, unknown>;
   const rawStatus = getString(coverage, 'status', 'coverageStatus');
   // DHA returns "1" for active coverage, or text like "ACTIVE"
-  const normalizedStatus = rawStatus === '1' || rawStatus.toUpperCase() === 'ACTIVE'
-    ? 'ACTIVE'
-    : rawStatus.toUpperCase() || 'INACTIVE';
+  const normalizedStatus =
+    rawStatus === '1' || rawStatus.toUpperCase() === 'ACTIVE'
+      ? 'ACTIVE'
+      : rawStatus.toUpperCase() || 'INACTIVE';
   return {
     schemeName: getString(raw, 'schemeName', 'scheme_name', 'name'),
     memberType: getString(raw, 'memberType', 'member_type', 'membership_type'),
@@ -151,24 +158,41 @@ function parseScheme(raw: Record<string, unknown>): ParsedScheme {
   };
 }
 
-export function parseEligibility(resp: IlmRegistryResponse | null | undefined): ParsedEligibility | null {
+export function parseEligibility(
+  resp: IlmRegistryResponse | null | undefined
+): ParsedEligibility | null {
   const rec = firstRecord(resp?.data);
   if (!rec) return null;
 
-  const rawSchemes = Array.isArray(rec.schemes)
-    ? (rec.schemes as Record<string, unknown>[])
-    : [];
+  const rawSchemes = Array.isArray(rec.schemes) ? (rec.schemes as Record<string, unknown>[]) : [];
   const schemes = rawSchemes.map(parseScheme);
   // DHA signals eligibility via: schemes[].coverage.status === "1" (parsed above),
   // OR top-level `eligible: 1` / `statusCode: "10"` when no schemes present.
-  const isActive = schemes.some((s) => s.coverageStatus === 'ACTIVE')
-    || rec.eligible === 1 || rec.eligible === true
-    || String(rec.statusCode) === '10';
+  const isActive =
+    schemes.some((s) => s.coverageStatus === 'ACTIVE') ||
+    rec.eligible === 1 ||
+    rec.eligible === true ||
+    String(rec.statusCode) === '10';
 
   return {
     fullName: getString(rec, 'fullName', 'full_name', 'name', 'patientName'),
-    memberCrNumber: getString(rec, 'memberCrNumber', 'member_cr_number', 'crNumber', 'cr_number', 'patientId', 'patient_id'),
-    identificationNumber: getString(rec, 'identificationNumber', 'identification_number', 'idNumber', 'nationalId', 'national_id'),
+    memberCrNumber: getString(
+      rec,
+      'memberCrNumber',
+      'member_cr_number',
+      'crNumber',
+      'cr_number',
+      'patientId',
+      'patient_id'
+    ),
+    identificationNumber: getString(
+      rec,
+      'identificationNumber',
+      'identification_number',
+      'idNumber',
+      'nationalId',
+      'national_id'
+    ),
     identificationType: getString(rec, 'identificationType', 'identification_type', 'idType'),
     age: getNumber(rec, 'age', 'patientAge'),
     gender: getString(rec, 'gender', 'sex'),
@@ -199,8 +223,12 @@ export interface ParsedFacility {
 export function parseFacility(resp: IlmRegistryResponse | null | undefined): ParsedFacility | null {
   const rec = firstRecord(resp?.data);
   if (!rec) return null;
-  const services = rec.shaContractedServices ?? rec.sha_contracted_services ?? rec.contractedServices;
-  const shaOps = (rec.SHAOperationStatus ?? rec.shaOperationStatus ?? {}) as Record<string, unknown>;
+  const services =
+    rec.shaContractedServices ?? rec.sha_contracted_services ?? rec.contractedServices;
+  const shaOps = (rec.SHAOperationStatus ?? rec.shaOperationStatus ?? {}) as Record<
+    string,
+    unknown
+  >;
 
   return {
     fidCode: getString(rec, 'fidCode', 'fid_code', 'mflCode', 'mfl_code'),
@@ -208,9 +236,23 @@ export function parseFacility(resp: IlmRegistryResponse | null | undefined): Par
     officialName: getString(rec, 'officialName', 'official_name', 'name', 'facilityName'),
     facilityType: getString(rec, 'facilityType', 'facility_type', 'type'),
     kephLevel: getString(rec, 'kephLevel', 'keph_level', 'level'),
-    shaContractStatus: getString(rec, 'shaContractStatus', 'sha_contract_status', 'contractStatus').toUpperCase(),
-    shaOperationalStatus: getString(shaOps, 'operationalStatus', 'operational_status').toUpperCase(),
-    facilityLicenseStatus: getString(rec, 'facilityLicenseStatus', 'facility_license_status', 'licenseStatus').toUpperCase(),
+    shaContractStatus: getString(
+      rec,
+      'shaContractStatus',
+      'sha_contract_status',
+      'contractStatus'
+    ).toUpperCase(),
+    shaOperationalStatus: getString(
+      shaOps,
+      'operationalStatus',
+      'operational_status'
+    ).toUpperCase(),
+    facilityLicenseStatus: getString(
+      rec,
+      'facilityLicenseStatus',
+      'facility_license_status',
+      'licenseStatus'
+    ).toUpperCase(),
     shaContractedServices: Array.isArray(services) ? (services as string[]).map(String) : [],
     county: getString(rec, 'county', 'countyName'),
     subCounty: getString(rec, 'subCounty', 'sub_county', 'subCountyName'),
@@ -232,43 +274,50 @@ export interface ParsedProfessional {
   identificationNumber: string;
 }
 
-export function parseProfessional(resp: IlmRegistryResponse | null | undefined): ParsedProfessional | null {
+export function parseProfessional(
+  resp: IlmRegistryResponse | null | undefined
+): ParsedProfessional | null {
   const rec = firstRecord(resp?.data);
   if (!rec) return null;
 
-  const root = (typeof rec.message === 'object' && rec.message !== null)
-    ? (rec.message as Record<string, unknown>)
-    : rec;
-  const membership = (typeof root.membership === 'object' && root.membership !== null)
-    ? (root.membership as Record<string, unknown>)
-    : undefined;
-  const identifiers = (typeof root.identifiers === 'object' && root.identifiers !== null)
-    ? (root.identifiers as Record<string, unknown>)
-    : undefined;
-  const professional = (typeof root.professional_details === 'object' && root.professional_details !== null)
-    ? (root.professional_details as Record<string, unknown>)
-    : undefined;
+  const root =
+    typeof rec.message === 'object' && rec.message !== null
+      ? (rec.message as Record<string, unknown>)
+      : rec;
+  const membership =
+    typeof root.membership === 'object' && root.membership !== null
+      ? (root.membership as Record<string, unknown>)
+      : undefined;
+  const identifiers =
+    typeof root.identifiers === 'object' && root.identifiers !== null
+      ? (root.identifiers as Record<string, unknown>)
+      : undefined;
+  const professional =
+    typeof root.professional_details === 'object' && root.professional_details !== null
+      ? (root.professional_details as Record<string, unknown>)
+      : undefined;
 
-  const licenses = Array.isArray(root.licenses)
-    ? (root.licenses as Record<string, unknown>[])
-    : [];
-  const activeLicense = licenses.find((license) => {
-    const end = getString(license, 'license_end', 'licenseEnd', 'expiryDate', 'expiry_date');
-    if (!end || end.toLowerCase() === 'none') return false;
-    const parsed = new Date(end);
-    if (Number.isNaN(parsed.getTime())) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return parsed >= today;
-  }) || licenses[0];
+  const licenses = Array.isArray(root.licenses) ? (root.licenses as Record<string, unknown>[]) : [];
+  const activeLicense =
+    licenses.find((license) => {
+      const end = getString(license, 'license_end', 'licenseEnd', 'expiryDate', 'expiry_date');
+      if (!end || end.toLowerCase() === 'none') return false;
+      const parsed = new Date(end);
+      if (Number.isNaN(parsed.getTime())) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return parsed >= today;
+    }) || licenses[0];
 
-  const explicitStatus = getString(root, 'licenseStatus', 'license_status', 'status')
-    || getString(membership, 'licenseStatus', 'license_status', 'status');
+  const explicitStatus =
+    getString(root, 'licenseStatus', 'license_status', 'status') ||
+    getString(membership, 'licenseStatus', 'license_status', 'status');
   const membershipActiveRaw = membership?.is_active;
-  const membershipActive = membershipActiveRaw === true
-    || membershipActiveRaw === 1
-    || membershipActiveRaw === '1'
-    || membershipActiveRaw === 'true';
+  const membershipActive =
+    membershipActiveRaw === true ||
+    membershipActiveRaw === 1 ||
+    membershipActiveRaw === '1' ||
+    membershipActiveRaw === 'true';
   const derivedStatus = explicitStatus
     ? explicitStatus.toUpperCase()
     : membershipActive
@@ -287,20 +336,24 @@ export function parseProfessional(resp: IlmRegistryResponse | null | undefined):
       ]
         .filter(Boolean)
         .join(' '),
-    registrationNumber: getString(
-      root,
-      'registrationNumber',
-      'registration_number',
-      'regNumber',
-      'reg_number',
-      'licenseNumber',
-    ) || getString(membership, 'registration_id', 'registrationNumber'),
-    regulator: getString(root, 'regulator', 'regulatoryBody') || getString(membership, 'licensing_body'),
-    cadre: getString(root, 'cadre', 'category', 'profession')
-      || getString(professional, 'professional_cadre', 'practice_type'),
-    specialty: getString(root, 'specialty', 'specialization', 'specialisation')
-      || getString(membership, 'specialty')
-      || getString(professional, 'discipline_name'),
+    registrationNumber:
+      getString(
+        root,
+        'registrationNumber',
+        'registration_number',
+        'regNumber',
+        'reg_number',
+        'licenseNumber'
+      ) || getString(membership, 'registration_id', 'registrationNumber'),
+    regulator:
+      getString(root, 'regulator', 'regulatoryBody') || getString(membership, 'licensing_body'),
+    cadre:
+      getString(root, 'cadre', 'category', 'profession') ||
+      getString(professional, 'professional_cadre', 'practice_type'),
+    specialty:
+      getString(root, 'specialty', 'specialization', 'specialisation') ||
+      getString(membership, 'specialty') ||
+      getString(professional, 'discipline_name'),
     licenseStatus: derivedStatus,
     licenseExpiry: getString(
       activeLicense,
@@ -308,10 +361,11 @@ export function parseProfessional(resp: IlmRegistryResponse | null | undefined):
       'licenseExpiry',
       'license_expiry',
       'expiryDate',
-      'expiry_date',
+      'expiry_date'
     ),
-    identificationNumber: getString(root, 'identificationNumber', 'identification_number', 'idNumber')
-      || getString(identifiers, 'identification_number', 'identificationNumber'),
+    identificationNumber:
+      getString(root, 'identificationNumber', 'identification_number', 'idNumber') ||
+      getString(identifiers, 'identification_number', 'identificationNumber'),
   };
 }
 
@@ -341,22 +395,53 @@ export interface ParsedUtilizationEntry {
 }
 
 const UTILIZATION_KNOWN_KEYS = new Set([
-  'interventioncode', 'intervention_code', 'code',
-  'interventionname', 'intervention_name', 'name',
-  'visitcount', 'visit_count', 'count', 'utilisationcount',
-  'lastvisit', 'last_visit', 'lastvisitdate', 'servicedate',
-  'periodstart', 'period_start', 'startdate',
-  'periodend', 'period_end', 'enddate',
-  'schemecode', 'scheme_code',
-  'schemename', 'scheme_name',
-  'status', 'coverage_status', 'coveragestatus',
-  'benefitcode', 'benefit_code',
-  'benefitname', 'benefit_name',
-  'remainingquota', 'remaining_quota', 'remaining',
-  'totalquota', 'total_quota', 'quota', 'limit',
-  'amountused', 'amount_used', 'usedamount',
-  'amountremaining', 'amount_remaining', 'remainingamount',
-  'facilityname', 'facility_name', 'facility',
+  'interventioncode',
+  'intervention_code',
+  'code',
+  'interventionname',
+  'intervention_name',
+  'name',
+  'visitcount',
+  'visit_count',
+  'count',
+  'utilisationcount',
+  'lastvisit',
+  'last_visit',
+  'lastvisitdate',
+  'servicedate',
+  'periodstart',
+  'period_start',
+  'startdate',
+  'periodend',
+  'period_end',
+  'enddate',
+  'schemecode',
+  'scheme_code',
+  'schemename',
+  'scheme_name',
+  'status',
+  'coverage_status',
+  'coveragestatus',
+  'benefitcode',
+  'benefit_code',
+  'benefitname',
+  'benefit_name',
+  'remainingquota',
+  'remaining_quota',
+  'remaining',
+  'totalquota',
+  'total_quota',
+  'quota',
+  'limit',
+  'amountused',
+  'amount_used',
+  'usedamount',
+  'amountremaining',
+  'amount_remaining',
+  'remainingamount',
+  'facilityname',
+  'facility_name',
+  'facility',
 ]);
 
 function toDisplayValue(value: unknown): string {
@@ -378,14 +463,18 @@ function eligibilityFromValue(value: unknown): string {
     const v = value.trim();
     if (!v) return '';
     const upper = v.toUpperCase();
-    if (upper === '1' || upper === 'TRUE' || upper === 'ELIGIBLE' || upper === 'ACTIVE') return 'ELIGIBLE';
-    if (upper === '0' || upper === 'FALSE' || upper === 'INELIGIBLE' || upper === 'INACTIVE') return 'INELIGIBLE';
+    if (upper === '1' || upper === 'TRUE' || upper === 'ELIGIBLE' || upper === 'ACTIVE')
+      return 'ELIGIBLE';
+    if (upper === '0' || upper === 'FALSE' || upper === 'INELIGIBLE' || upper === 'INACTIVE')
+      return 'INELIGIBLE';
     return upper;
   }
   return '';
 }
 
-function extractAdditionalDetails(item: Record<string, unknown>): Array<{ key: string; value: string }> {
+function extractAdditionalDetails(
+  item: Record<string, unknown>
+): Array<{ key: string; value: string }> {
   const details: Array<{ key: string; value: string }> = [];
   for (const [rawKey, rawValue] of Object.entries(item)) {
     const key = rawKey.trim();
@@ -400,9 +489,12 @@ function extractAdditionalDetails(item: Record<string, unknown>): Array<{ key: s
   return details;
 }
 
-function extractComputationalDetails(item: Record<string, unknown>): Array<{ key: string; value: string }> {
+function extractComputationalDetails(
+  item: Record<string, unknown>
+): Array<{ key: string; value: string }> {
   const computational = (item.computationalDetails ?? item.computational_details) as unknown;
-  if (!computational || typeof computational !== 'object' || Array.isArray(computational)) return [];
+  if (!computational || typeof computational !== 'object' || Array.isArray(computational))
+    return [];
   const details: Array<{ key: string; value: string }> = [];
   for (const [rawKey, rawValue] of Object.entries(computational as Record<string, unknown>)) {
     const key = rawKey.trim();
@@ -415,7 +507,9 @@ function extractComputationalDetails(item: Record<string, unknown>): Array<{ key
   return details;
 }
 
-export function parseUtilization(resp: IlmRegistryResponse | null | undefined): ParsedUtilizationEntry[] {
+export function parseUtilization(
+  resp: IlmRegistryResponse | null | undefined
+): ParsedUtilizationEntry[] {
   const items = extractItems<Record<string, unknown>>(resp?.data);
   return items.map((item) => {
     const directEligibility = eligibilityFromValue(
@@ -445,10 +539,7 @@ export function parseUtilization(resp: IlmRegistryResponse | null | undefined): 
       amountUsed: getNumber(item, 'amountUsed', 'amount_used', 'usedAmount'),
       amountRemaining: getNumber(item, 'amountRemaining', 'amount_remaining', 'remainingAmount'),
       facilityName: getString(item, 'facilityName', 'facility_name', 'facility'),
-      additionalDetails: [
-        ...extractAdditionalDetails(item),
-        ...extractComputationalDetails(item),
-      ],
+      additionalDetails: [...extractAdditionalDetails(item), ...extractComputationalDetails(item)],
     };
   });
 }

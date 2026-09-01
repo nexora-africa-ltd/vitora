@@ -348,13 +348,10 @@ export class HubWebSocketClient {
       }
       params.set('limit', '50');
 
-      const response = await fetch(
-        `${this.hubUrl}/api/sync/pull/?${params.toString()}`,
-        {
-          headers: { Authorization: `Bearer ${this.authToken}` },
-          signal: AbortSignal.timeout(5000),
-        }
-      );
+      const response = await fetch(`${this.hubUrl}/api/sync/pull/?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${this.authToken}` },
+        signal: AbortSignal.timeout(5000),
+      });
 
       if (!response.ok) return;
 

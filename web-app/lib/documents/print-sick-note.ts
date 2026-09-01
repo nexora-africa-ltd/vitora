@@ -6,7 +6,13 @@
 
 import type { SickNote } from '@/lib/types/sick-note';
 import type { FacilityInfo, ClinicianInfo, PatientInfo, SignatureInfo } from './types';
-import { buildPrintDocument, openPrintWindow, escapeHtml, formatDate, renderSignatureColumn } from './renderer';
+import {
+  buildPrintDocument,
+  openPrintWindow,
+  escapeHtml,
+  formatDate,
+  renderSignatureColumn,
+} from './renderer';
 
 // =============================================================================
 // SICK NOTE TEMPLATE
@@ -146,10 +152,16 @@ export function printSickNote(options: PrintSickNoteOptions): Window | null {
 
   // Note
   html = html.replace(/\{\{note_number\}\}/g, escapeHtml(sickNote.note_number));
-  html = html.replace(/\{\{issued_date\}\}/g, formatDate(sickNote.issued_at || sickNote.created_at));
+  html = html.replace(
+    /\{\{issued_date\}\}/g,
+    formatDate(sickNote.issued_at || sickNote.created_at)
+  );
 
   // Patient
-  html = html.replace(/\{\{patient_name\}\}/g, escapeHtml(patient?.full_name || sickNote.patient_name));
+  html = html.replace(
+    /\{\{patient_name\}\}/g,
+    escapeHtml(patient?.full_name || sickNote.patient_name)
+  );
   html = html.replace(/\{\{patient_mrn\}\}/g, escapeHtml(patient?.mrn || sickNote.patient_mrn));
 
   // Leave
@@ -180,8 +192,14 @@ export function printSickNote(options: PrintSickNoteOptions): Window | null {
   }
 
   // Clinician
-  html = html.replace(/\{\{clinician_name\}\}/g, escapeHtml(clinician?.name || sickNote.issued_by_name));
-  html = html.replace(/\{\{clinician_registration\}\}/g, escapeHtml(clinician?.registration_number || ''));
+  html = html.replace(
+    /\{\{clinician_name\}\}/g,
+    escapeHtml(clinician?.name || sickNote.issued_by_name)
+  );
+  html = html.replace(
+    /\{\{clinician_registration\}\}/g,
+    escapeHtml(clinician?.registration_number || '')
+  );
 
   // Digital signature
   html = html.replace(/\{\{signature_column\}\}/g, renderSignatureColumn(signature));

@@ -8,13 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -147,7 +141,11 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
 
   // Queries
   const { data: order, isLoading: orderLoading } = useImagingOrder(orderNumber);
-  const { data: report, isLoading: reportLoading, refetch: refetchReport } = useRadiologyReportByOrder(orderNumber);
+  const {
+    data: report,
+    isLoading: reportLoading,
+    refetch: refetchReport,
+  } = useRadiologyReportByOrder(orderNumber);
 
   // Mutations
   const createReport = useCreateRadiologyReport();
@@ -325,7 +323,12 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
 
     try {
       let signatureData:
-        | { signer_full_name: string; signed_at: string; certificate_serial?: string; is_valid?: boolean }
+        | {
+            signer_full_name: string;
+            signed_at: string;
+            certificate_serial?: string;
+            is_valid?: boolean;
+          }
         | undefined;
       try {
         const sigs = await signaturesApi.forDocument('RadiologyReport', report.id);
@@ -358,7 +361,11 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
         facility: facilityDetail
           ? {
               name: facilityDetail.name,
-              address: `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(/^, |, $/g, ''),
+              address:
+                `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(
+                  /^, |, $/g,
+                  ''
+                ),
               phone: '',
               license: facilityDetail.mfl_code || '',
             }
@@ -411,14 +418,12 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
 
   if (!order) {
     return (
-      <div className="text-center py-12">
-        <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
+      <div className="py-12 text-center">
+        <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive" />
         <h2 className="text-lg font-semibold">Order Not Found</h2>
-        <p className="text-muted-foreground mb-4">
-          The imaging order could not be loaded.
-        </p>
+        <p className="mb-4 text-muted-foreground">The imaging order could not be loaded.</p>
         <Button onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Go Back
         </Button>
       </div>
@@ -430,7 +435,8 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
     roleCategory === 'CLINICAL' || CLINICAL_ROLE_CODES.has((role || '').toUpperCase());
   const canSign = report?.can_sign;
   const amendLockedReason =
-    report && (Boolean(report.signed_at) || report.status === 'FINAL' || report.status === 'AMENDED')
+    report &&
+    (Boolean(report.signed_at) || report.status === 'FINAL' || report.status === 'AMENDED')
       ? getAmendLockedMessage({
           isAdmin,
           isSuperuser,
@@ -440,8 +446,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
   const canAmend = Boolean(report?.can_amend) && !amendLockedReason;
   const hasSignedOrFinalizedReport =
     Boolean(report?.signed_at) || report?.status === 'FINAL' || report?.status === 'AMENDED';
-  const canSupersede =
-    hasSignedOrFinalizedReport && !report?.superseded_by_report_number;
+  const canSupersede = hasSignedOrFinalizedReport && !report?.superseded_by_report_number;
   const supersedeDisabledReason = report?.superseded_by_report_number
     ? `This report was already superseded by ${report.superseded_by_report_number}.`
     : null;
@@ -452,14 +457,17 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
       {/* Header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-start gap-3">
-          <Button variant="ghost" size="icon" className="shrink-0 mt-0.5" onClick={() => router.back()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mt-0.5 shrink-0"
+            onClick={() => router.back()}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold">
-              Radiology Report
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <h1 className="text-lg font-bold sm:text-xl md:text-2xl">Radiology Report</h1>
+            <p className="text-xs text-muted-foreground sm:text-sm">
               Order: {orderNumber}
               {report && ` | Report: ${report.report_number}`}
             </p>
@@ -470,9 +478,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
             <Badge className={STATUS_COLORS[report.status]}>
               {REPORT_STATUS_LABELS[report.status]}
             </Badge>
-            {report.is_critical && (
-              <Badge variant="destructive">Critical Finding</Badge>
-            )}
+            {report.is_critical && <Badge variant="destructive">Critical Finding</Badge>}
             <SignatureBadge
               documentType="RadiologyReport"
               documentId={report.id}
@@ -486,7 +492,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
       {showCriticalAlert && (
         <Card className="border-red-500 bg-red-50 dark:bg-red-950/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-red-700 dark:text-red-400 flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
               <AlertTriangle className="h-5 w-5" />
               Critical Finding - Communication Required
             </CardTitle>
@@ -495,11 +501,8 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="destructive"
-              onClick={() => setCriticalDialogOpen(true)}
-            >
-              <Phone className="h-4 w-4 mr-2" />
+            <Button variant="destructive" onClick={() => setCriticalDialogOpen(true)}>
+              <Phone className="mr-2 h-4 w-4" />
               Record Communication
             </Button>
           </CardContent>
@@ -513,7 +516,11 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
             <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" />
               <span className="text-sm">
-                Critical finding communicated to <strong>{report.critical_communicated_to}</strong> via {report.critical_communicated_method} on {report.critical_communicated_at ? formatDateTime(report.critical_communicated_at) : 'N/A'}
+                Critical finding communicated to <strong>{report.critical_communicated_to}</strong>{' '}
+                via {report.critical_communicated_method} on{' '}
+                {report.critical_communicated_at
+                  ? formatDateTime(report.critical_communicated_at)
+                  : 'N/A'}
               </span>
             </div>
           </CardContent>
@@ -526,7 +533,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
           <CardTitle className="text-base">Patient & Order Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
             <div>
               <span className="text-muted-foreground">Patient:</span>
               <p className="font-medium">{report?.patient_name || order.patient_name}</p>
@@ -537,7 +544,9 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
             </div>
             <div>
               <span className="text-muted-foreground">Modality:</span>
-              <p className="font-medium">{report?.modality || order.items?.[0]?.modality || 'N/A'}</p>
+              <p className="font-medium">
+                {report?.modality || order.items?.[0]?.modality || 'N/A'}
+              </p>
             </div>
             <div>
               <span className="text-muted-foreground">Ordered:</span>
@@ -546,8 +555,8 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
           </div>
           <Separator className="my-3" />
           <div>
-            <span className="text-muted-foreground text-sm">Clinical Indication:</span>
-            <p className="text-sm mt-1">{order.clinical_indication}</p>
+            <span className="text-sm text-muted-foreground">Clinical Indication:</span>
+            <p className="mt-1 text-sm">{order.clinical_indication}</p>
           </div>
         </CardContent>
       </Card>
@@ -555,7 +564,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
       {/* Report Form */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-5 w-5" />
             Report Content
           </CardTitle>
@@ -672,7 +681,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
       {report && report.amendments && report.amendments.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <History className="h-5 w-5" />
               Amendment History
             </CardTitle>
@@ -682,11 +691,11 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
               {report.amendments.map((amendment) => (
                 <div
                   key={amendment.id}
-                  className="border-l-2 border-amber-500 pl-3 py-2 bg-amber-50/50 dark:bg-amber-950/20 rounded-r"
+                  className="rounded-r border-l-2 border-amber-500 bg-amber-50/50 py-2 pl-3 dark:bg-amber-950/20"
                 >
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">Amendment #{amendment.amendment_number}</span>
-                    <span className="text-muted-foreground text-xs">
+                    <span className="text-xs text-muted-foreground">
                       {formatDateTime(amendment.amended_at)}
                     </span>
                   </div>
@@ -703,17 +712,14 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
       {/* Actions */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-col sm:flex-row gap-2 sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
             <div className="flex flex-wrap gap-2">
               {canEdit && (
-                <Button
-                  onClick={handleSaveDraft}
-                  disabled={isMutating}
-                >
+                <Button onClick={handleSaveDraft} disabled={isMutating}>
                   {isMutating ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <Save className="h-4 w-4 mr-2" />
+                    <Save className="mr-2 h-4 w-4" />
                   )}
                   Save Draft
                 </Button>
@@ -723,7 +729,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="default" className="bg-green-600 hover:bg-green-700">
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
                       Sign & Finalize
                     </Button>
                   </AlertDialogTrigger>
@@ -737,9 +743,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleSign}>
-                        Sign Report
-                      </AlertDialogAction>
+                      <AlertDialogAction onClick={handleSign}>Sign Report</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -751,7 +755,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
                     <TooltipTrigger asChild>
                       <span>
                         <Button variant="outline" disabled>
-                          <Edit className="h-4 w-4 mr-2" />
+                          <Edit className="mr-2 h-4 w-4" />
                           Amend Report
                         </Button>
                       </span>
@@ -762,18 +766,19 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
               ) : null}
 
               {canAmend && (
-                <Button
-                  variant="outline"
-                  onClick={() => setAmendDialogOpen(true)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
+                <Button variant="outline" onClick={() => setAmendDialogOpen(true)}>
+                  <Edit className="mr-2 h-4 w-4" />
                   Amend Report
                 </Button>
               )}
 
               {canSupersede && (
-                <Button variant="outline" onClick={handleSupersede} disabled={supersedeReport.isPending}>
-                  <CopyPlus className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  onClick={handleSupersede}
+                  disabled={supersedeReport.isPending}
+                >
+                  <CopyPlus className="mr-2 h-4 w-4" />
                   {supersedeReport.isPending ? 'Creating...' : 'Create Superseding Report'}
                 </Button>
               )}
@@ -784,7 +789,7 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
                     <TooltipTrigger asChild>
                       <span>
                         <Button variant="outline" disabled>
-                          <CopyPlus className="h-4 w-4 mr-2" />
+                          <CopyPlus className="mr-2 h-4 w-4" />
                           Create Superseding Report
                         </Button>
                       </span>
@@ -799,11 +804,11 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
               {report && (
                 <>
                   <Button variant="outline" onClick={handlePrint}>
-                    <Printer className="h-4 w-4 mr-2" />
+                    <Printer className="mr-2 h-4 w-4" />
                     Print
                   </Button>
                   <Button variant="outline" onClick={handleDownloadPdf}>
-                    <Download className="h-4 w-4 mr-2" />
+                    <Download className="mr-2 h-4 w-4" />
                     PDF
                   </Button>
                 </>
@@ -819,8 +824,8 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
           <DialogHeader>
             <DialogTitle>Amend Report</DialogTitle>
             <DialogDescription>
-              Provide a reason for the amendment. You can also modify the findings
-              and impression above before amending.
+              Provide a reason for the amendment. You can also modify the findings and impression
+              above before amending.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -841,9 +846,9 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
             </Button>
             <Button onClick={handleAmend} disabled={isMutating}>
               {isMutating ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Edit className="h-4 w-4 mr-2" />
+                <Edit className="mr-2 h-4 w-4" />
               )}
               Submit Amendment
             </Button>
@@ -872,7 +877,10 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="commMethod">Communication Method</Label>
-              <Select value={commMethod} onValueChange={(v) => setCommMethod(v as CriticalCommMethod)}>
+              <Select
+                value={commMethod}
+                onValueChange={(v) => setCommMethod(v as CriticalCommMethod)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -892,9 +900,9 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
             </Button>
             <Button onClick={handleCommunicateCritical} disabled={isMutating}>
               {isMutating ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <CheckCircle2 className="h-4 w-4 mr-2" />
+                <CheckCircle2 className="mr-2 h-4 w-4" />
               )}
               Confirm Communication
             </Button>

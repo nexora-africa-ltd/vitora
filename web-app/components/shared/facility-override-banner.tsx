@@ -28,7 +28,12 @@ export function FacilityBanner() {
   }, []);
 
   // Hide on public/auth pages or when not authenticated
-  if (!mounted || isLoading || !isAuthenticated || HIDDEN_PATHS.some((p) => pathname.startsWith(p))) {
+  if (
+    !mounted ||
+    isLoading ||
+    !isAuthenticated ||
+    HIDDEN_PATHS.some((p) => pathname.startsWith(p))
+  ) {
     return null;
   }
 

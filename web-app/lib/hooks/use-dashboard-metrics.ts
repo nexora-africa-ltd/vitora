@@ -218,15 +218,11 @@ async function fetchDashboardMetrics(filter?: DateRangeFilter): Promise<Dashboar
 
   // Extract data with fallbacks for failed requests
   const stats = statsRes.status === 'fulfilled' ? statsRes.value.data : null;
-  const patientVolume = volumeRes.status === 'fulfilled'
-    ? transformPatientVolume(volumeRes.value.data)
-    : [];
-  const revenueBreakdown = revenueRes.status === 'fulfilled'
-    ? transformRevenueBreakdown(revenueRes.value.data)
-    : [];
-  const recentActivity = activityRes.status === 'fulfilled'
-    ? activityRes.value.data.results
-    : [];
+  const patientVolume =
+    volumeRes.status === 'fulfilled' ? transformPatientVolume(volumeRes.value.data) : [];
+  const revenueBreakdown =
+    revenueRes.status === 'fulfilled' ? transformRevenueBreakdown(revenueRes.value.data) : [];
+  const recentActivity = activityRes.status === 'fulfilled' ? activityRes.value.data.results : [];
 
   // Log any failures for debugging
   if (statsRes.status === 'rejected') {
@@ -338,11 +334,7 @@ export function useRecentActivity(limit = 10) {
 /**
  * Hook for fetching paginated activity feed with filtering.
  */
-export function useActivityFeed(options?: {
-  limit?: number;
-  offset?: number;
-  types?: string[];
-}) {
+export function useActivityFeed(options?: { limit?: number; offset?: number; types?: string[] }) {
   const { limit = 20, offset = 0, types } = options ?? {};
 
   return useQuery({

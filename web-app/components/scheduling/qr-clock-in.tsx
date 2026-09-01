@@ -56,7 +56,7 @@ export function QRCodeDisplay() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <QrCode className="h-4 w-4 mr-1" />
+          <QrCode className="mr-1 h-4 w-4" />
           <span className="hidden sm:inline">QR Clock-In</span>
           <span className="sm:hidden">QR</span>
         </Button>
@@ -70,23 +70,18 @@ export function QRCodeDisplay() {
         </DialogHeader>
         <div className="flex flex-col items-center gap-3 sm:gap-4">
           <div className="rounded-xl border bg-white p-3 sm:p-4">
-            <canvas ref={canvasRef} className="max-w-full h-auto" />
+            <canvas ref={canvasRef} className="h-auto max-w-full" />
           </div>
           {data && (
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground text-center">
+            <div className="flex items-center gap-2 text-center text-xs text-muted-foreground sm:text-sm">
               <Timer className="h-4 w-4 shrink-0" />
               <span>
                 {data.facility_name} · Valid until {validUntil}
               </span>
             </div>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isLoading}
-          >
-            <RefreshCw className="h-4 w-4 mr-1" />
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+            <RefreshCw className="mr-1 h-4 w-4" />
             Refresh
           </Button>
         </div>
@@ -136,7 +131,7 @@ export function QRScannerDialog() {
           clockInMutation.mutate(decodedText);
           scanner.stop().catch(() => {});
         },
-        () => {}, // ignore scan failure
+        () => {} // ignore scan failure
       );
     } catch {
       // Camera not available — user can use manual input
@@ -165,7 +160,7 @@ export function QRScannerDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Scan className="h-4 w-4 mr-1" />
+          <Scan className="mr-1 h-4 w-4" />
           Scan QR
         </Button>
       </DialogTrigger>
@@ -180,12 +175,10 @@ export function QRScannerDialog() {
           <div
             id="qr-reader"
             ref={scannerRef}
-            className="w-full max-w-[300px] rounded-lg overflow-hidden"
+            className="w-full max-w-[300px] overflow-hidden rounded-lg"
           />
           <div className="w-full space-y-2">
-            <p className="text-xs text-muted-foreground text-center">
-              Or enter the code manually:
-            </p>
+            <p className="text-center text-xs text-muted-foreground">Or enter the code manually:</p>
             <div className="flex gap-2">
               <input
                 type="text"

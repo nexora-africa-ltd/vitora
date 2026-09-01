@@ -20,12 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrency } from '@/lib/utils/format';
 import type { ClaimItem, CoverageType } from '@/lib/types/sha';
 import { COVERAGE_TYPE_LABELS } from '@/lib/types/sha';
@@ -46,11 +41,14 @@ interface ClaimItemsTableProps {
 // ============================================================================
 
 function CoverageBadge({ coverageType }: { coverageType: CoverageType }) {
-  const config: Record<CoverageType, {
-    icon: React.ReactNode;
-    label: string;
-    className: string;
-  }> = {
+  const config: Record<
+    CoverageType,
+    {
+      icon: React.ReactNode;
+      label: string;
+      className: string;
+    }
+  > = {
     sha: {
       icon: <SHALogo size="xs" />,
       label: 'SHA',
@@ -92,10 +90,13 @@ function CoverageBadge({ coverageType }: { coverageType: CoverageType }) {
 // ============================================================================
 
 function ItemStatusBadge({ status }: { status: ClaimItem['status'] }) {
-  const config: Record<ClaimItem['status'], {
-    label: string;
-    className: string;
-  }> = {
+  const config: Record<
+    ClaimItem['status'],
+    {
+      label: string;
+      className: string;
+    }
+  > = {
     pending: {
       label: 'Pending',
       className: 'bg-yellow-100 text-yellow-800',
@@ -139,24 +140,21 @@ export function ClaimItemsTable({
           <CardTitle>Claim Items</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">No items in this claim.</p>
+          <p className="text-sm text-muted-foreground">No items in this claim.</p>
         </CardContent>
       </Card>
     );
   }
 
   // Calculate totals
-  const totalClaimed = items.reduce(
-    (sum, item) => sum + parseFloat(item.claimed_amount || '0'),
-    0
-  );
+  const totalClaimed = items.reduce((sum, item) => sum + parseFloat(item.claimed_amount || '0'), 0);
   const totalApproved = items.reduce(
     (sum, item) => sum + parseFloat(item.approved_amount || '0'),
     0
   );
 
   // Check if any items use PFMS
-  const hasPFMS = items.some(item => item.coverage_type !== 'sha');
+  const hasPFMS = items.some((item) => item.coverage_type !== 'sha');
 
   return (
     <Card className={className}>
@@ -164,8 +162,8 @@ export function ClaimItemsTable({
         <CardTitle className="flex items-center justify-between">
           <span>Claim Items ({items.length})</span>
           {hasPFMS && showCoverageType && (
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              <Building2 className="h-3 w-3 mr-1" />
+            <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700">
+              <Building2 className="mr-1 h-3 w-3" />
               Dual Coverage (SHA + PFMS)
             </Badge>
           )}
@@ -189,9 +187,7 @@ export function ClaimItemsTable({
           <TableBody>
             {items.map((item, index) => (
               <TableRow key={item.id}>
-                <TableCell className="font-mono text-muted-foreground">
-                  {index + 1}
-                </TableCell>
+                <TableCell className="font-mono text-muted-foreground">{index + 1}</TableCell>
                 <TableCell>
                   <div>
                     <span className="font-medium">{item.description}</span>
@@ -207,12 +203,8 @@ export function ClaimItemsTable({
                     <CoverageBadge coverageType={item.coverage_type} />
                   </TableCell>
                 )}
-                <TableCell className="font-mono text-sm">
-                  {item.tariff_code || '—'}
-                </TableCell>
-                <TableCell className="text-right">
-                  {item.quantity}
-                </TableCell>
+                <TableCell className="font-mono text-sm">{item.tariff_code || '—'}</TableCell>
+                <TableCell className="text-right">{item.quantity}</TableCell>
                 <TableCell className="text-right">
                   {formatCurrency(parseFloat(item.unit_price || '0'))}
                 </TableCell>
@@ -221,7 +213,7 @@ export function ClaimItemsTable({
                 </TableCell>
                 <TableCell className="text-right">
                   {item.approved_amount ? (
-                    <span className="text-green-600 font-medium">
+                    <span className="font-medium text-green-600">
                       {formatCurrency(parseFloat(item.approved_amount))}
                     </span>
                   ) : (
@@ -234,9 +226,7 @@ export function ClaimItemsTable({
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="text-xs text-red-500 ml-1 cursor-help">
-                            ⓘ
-                          </span>
+                          <span className="ml-1 cursor-help text-xs text-red-500">ⓘ</span>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p className="max-w-xs">{item.rejection_reason}</p>
@@ -259,9 +249,7 @@ export function ClaimItemsTable({
           {totalApproved > 0 && (
             <div className="text-right">
               <span className="text-muted-foreground">Total Approved:</span>
-              <span className="ml-2 font-bold text-green-600">
-                {formatCurrency(totalApproved)}
-              </span>
+              <span className="ml-2 font-bold text-green-600">{formatCurrency(totalApproved)}</span>
             </div>
           )}
         </div>

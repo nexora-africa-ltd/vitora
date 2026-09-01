@@ -108,7 +108,8 @@ export default function NewRolePage() {
       />
 
       <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
-        Define the role details first, then assign only the permissions needed for the work this role performs.
+        Define the role details first, then assign only the permissions needed for the work this
+        role performs.
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -182,13 +183,13 @@ export default function NewRolePage() {
         <Card>
           <CardHeader>
             <CardTitle>Permissions</CardTitle>
-            <CardDescription>Select the permissions for this role ({formData.permissions.length} selected)</CardDescription>
+            <CardDescription>
+              Select the permissions for this role ({formData.permissions.length} selected)
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {permissionsLoading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading permissions…
-              </div>
+              <div className="py-8 text-center text-muted-foreground">Loading permissions…</div>
             ) : permissionsData ? (
               <PermissionGroupSelector
                 permissions={permissionsData}

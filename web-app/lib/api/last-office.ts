@@ -6,10 +6,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
-import {
-  DeathRecordSchema,
-  PaginatedDeathRecordSchema,
-} from '@/lib/schemas/last-office.schema';
+import { DeathRecordSchema, PaginatedDeathRecordSchema } from '@/lib/schemas/last-office.schema';
 import type {
   DeathRecord,
   DeathRecordListItem,

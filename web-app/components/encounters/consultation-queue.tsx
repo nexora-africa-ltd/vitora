@@ -26,21 +26,8 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Search,
-  Users,
-  AlertCircle,
-  Filter,
-  PhoneCall,
-  Forward,
-  LogIn,
-} from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Search, Users, AlertCircle, Filter, PhoneCall, Forward, LogIn } from 'lucide-react';
 import { ConsultationQueueItem } from './consultation-queue-item';
 import { ConsultationQueueGridItem } from './consultation-queue-grid-item';
 import StatusIndicator from '@/components/ui/status-indicator';
@@ -262,7 +249,7 @@ export function ConsultationQueue({
         <CardContent className="px-3 sm:px-6">
           <div className="space-y-3 sm:space-y-4" data-testid="queue-loading">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-24 sm:h-32 w-full rounded-lg" />
+              <Skeleton key={i} className="h-24 w-full rounded-lg sm:h-32" />
             ))}
           </div>
         </CardContent>
@@ -282,12 +269,14 @@ export function ConsultationQueue({
         </CardHeader>
         <CardContent className="px-3 sm:px-6">
           <div
-            className="flex flex-col items-center justify-center py-6 sm:py-8 text-center"
+            className="flex flex-col items-center justify-center py-6 text-center sm:py-8"
             data-testid="error-state"
           >
-            <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-destructive mb-3 sm:mb-4" />
-            <p className="text-destructive font-medium mb-2 text-sm sm:text-base">Failed to load queue</p>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-4 px-4">{error}</p>
+            <AlertCircle className="mb-3 h-10 w-10 text-destructive sm:mb-4 sm:h-12 sm:w-12" />
+            <p className="mb-2 text-sm font-medium text-destructive sm:text-base">
+              Failed to load queue
+            </p>
+            <p className="mb-4 px-4 text-xs text-muted-foreground sm:text-sm">{error}</p>
             <p className="text-xs text-muted-foreground">Pull down to retry</p>
           </div>
         </CardContent>
@@ -297,13 +286,13 @@ export function ConsultationQueue({
 
   return (
     <Card>
-      <CardHeader className="pb-3 sm:pb-6 px-3 sm:px-6">
+      <CardHeader className="px-3 pb-3 sm:px-6 sm:pb-6">
         <div className="flex flex-col gap-3 sm:gap-4">
           {/* Header Row */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
               <Users className="h-5 w-5 shrink-0" />
-              <CardTitle className="text-lg sm:text-xl truncate">Consultation Queue</CardTitle>
+              <CardTitle className="truncate text-lg sm:text-xl">Consultation Queue</CardTitle>
               <HelpPopover content="Patients waiting for consultation appear here, sorted by triage priority. Call a patient, then start their consultation to document the encounter." />
               <Badge variant="secondary" className="shrink-0 text-xs">
                 {stats.total}
@@ -326,12 +315,12 @@ export function ConsultationQueue({
 
           {/* Stats Summary - Colored Dots */}
           <TooltipProvider delayDuration={200}>
-            <div className="flex items-center gap-3 flex-wrap" data-testid="queue-stats">
+            <div className="flex flex-wrap items-center gap-3" data-testid="queue-stats">
               {stats.by_category.RED > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default">
-                      <span className="h-3 w-3 rounded-full bg-red-500 shrink-0" />
+                    <div className="flex cursor-default items-center gap-1">
+                      <span className="h-3 w-3 shrink-0 rounded-full bg-red-500" />
                       <span className="text-sm font-medium">{stats.by_category.RED}</span>
                     </div>
                   </TooltipTrigger>
@@ -341,8 +330,8 @@ export function ConsultationQueue({
               {stats.by_category.ORANGE > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default">
-                      <span className="h-3 w-3 rounded-full bg-orange-500 shrink-0" />
+                    <div className="flex cursor-default items-center gap-1">
+                      <span className="h-3 w-3 shrink-0 rounded-full bg-orange-500" />
                       <span className="text-sm font-medium">{stats.by_category.ORANGE}</span>
                     </div>
                   </TooltipTrigger>
@@ -352,8 +341,8 @@ export function ConsultationQueue({
               {stats.by_category.YELLOW > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default">
-                      <span className="h-3 w-3 rounded-full bg-yellow-500 shrink-0" />
+                    <div className="flex cursor-default items-center gap-1">
+                      <span className="h-3 w-3 shrink-0 rounded-full bg-yellow-500" />
                       <span className="text-sm font-medium">{stats.by_category.YELLOW}</span>
                     </div>
                   </TooltipTrigger>
@@ -363,8 +352,8 @@ export function ConsultationQueue({
               {stats.by_category.GREEN > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default">
-                      <span className="h-3 w-3 rounded-full bg-green-500 shrink-0" />
+                    <div className="flex cursor-default items-center gap-1">
+                      <span className="h-3 w-3 shrink-0 rounded-full bg-green-500" />
                       <span className="text-sm font-medium">{stats.by_category.GREEN}</span>
                     </div>
                   </TooltipTrigger>
@@ -374,8 +363,8 @@ export function ConsultationQueue({
               {stats.by_category.BLUE > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default">
-                      <span className="h-3 w-3 rounded-full bg-blue-500 shrink-0" />
+                    <div className="flex cursor-default items-center gap-1">
+                      <span className="h-3 w-3 shrink-0 rounded-full bg-blue-500" />
                       <span className="text-sm font-medium">{stats.by_category.BLUE}</span>
                     </div>
                   </TooltipTrigger>
@@ -385,7 +374,7 @@ export function ConsultationQueue({
               {stats.by_category.bypassed > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default text-muted-foreground">
+                    <div className="flex cursor-default items-center gap-1 text-muted-foreground">
                       <Forward className="h-3.5 w-3.5 shrink-0" />
                       <span className="text-sm">{stats.by_category.bypassed}</span>
                     </div>
@@ -396,7 +385,7 @@ export function ConsultationQueue({
               {stats.by_category.direct > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default text-muted-foreground">
+                    <div className="flex cursor-default items-center gap-1 text-muted-foreground">
                       <LogIn className="h-3.5 w-3.5 shrink-0" />
                       <span className="text-sm">{stats.by_category.direct}</span>
                     </div>
@@ -407,7 +396,7 @@ export function ConsultationQueue({
               {stats.called > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-default text-blue-600">
+                    <div className="flex cursor-default items-center gap-1 text-blue-600">
                       <PhoneCall className="h-3.5 w-3.5 shrink-0" />
                       <span className="text-sm font-medium">{stats.called}</span>
                     </div>
@@ -420,10 +409,10 @@ export function ConsultationQueue({
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3 mt-3 sm:mt-4">
+        <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:gap-3">
           {/* Search */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search patient by name, MRN..."
               value={searchQuery}
@@ -434,12 +423,9 @@ export function ConsultationQueue({
           </div>
 
           {/* Status Filter */}
-          <Select
-            value={filters.consultation_status || 'all'}
-            onValueChange={handleStatusFilter}
-          >
+          <Select value={filters.consultation_status || 'all'} onValueChange={handleStatusFilter}>
             <SelectTrigger className="w-full sm:w-[160px]" aria-label="Filter by status">
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -450,12 +436,9 @@ export function ConsultationQueue({
           </Select>
 
           {/* Triage Filter */}
-          <Select
-            value={filters.triage_status || 'all'}
-            onValueChange={handleTriageFilter}
-          >
+          <Select value={filters.triage_status || 'all'} onValueChange={handleTriageFilter}>
             <SelectTrigger className="w-full sm:w-[160px]" aria-label="Filter by triage">
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Triage" />
             </SelectTrigger>
             <SelectContent>
@@ -472,14 +455,12 @@ export function ConsultationQueue({
         {/* Empty State */}
         {displayedItems.length === 0 ? (
           <div
-            className="flex flex-col items-center justify-center py-8 sm:py-12 text-center"
+            className="flex flex-col items-center justify-center py-8 text-center sm:py-12"
             data-testid="empty-queue"
           >
-            <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4" />
-            <p className="text-muted-foreground font-medium mb-2 text-sm sm:text-base">
-              {queueItems.length === 0
-                ? 'No patients waiting'
-                : 'No patients match your filters'}
+            <Users className="mb-3 h-10 w-10 text-muted-foreground sm:mb-4 sm:h-12 sm:w-12" />
+            <p className="mb-2 text-sm font-medium text-muted-foreground sm:text-base">
+              {queueItems.length === 0 ? 'No patients waiting' : 'No patients match your filters'}
             </p>
             {queueItems.length > 0 && (
               <Button

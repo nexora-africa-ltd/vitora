@@ -231,9 +231,9 @@ export async function pushChanges(): Promise<PushResponse | null> {
     const result: PushResponse = await response.json();
 
     // Mark successfully pushed entries as done
-    db.prepare(
-      `DELETE FROM _sync_outbox WHERE id IN (${ids.map(() => '?').join(',')})`
-    ).run(...ids);
+    db.prepare(`DELETE FROM _sync_outbox WHERE id IN (${ids.map(() => '?').join(',')})`).run(
+      ...ids
+    );
 
     return result;
   } catch (error) {
@@ -409,12 +409,22 @@ export function stopAutoSync(): void {
  */
 export function getSyncStatus(): SyncStatus {
   if (!isLocalDbAvailable()) {
-    return { lastSync: null, pendingChanges: 0, failedChanges: 0, isOnline: false, isSyncing: false };
+    return {
+      lastSync: null,
+      pendingChanges: 0,
+      failedChanges: 0,
+      isOnline: false,
+      isSyncing: false,
+    };
   }
 
   const db = getLocalDb();
-  const pending = db.prepare("SELECT COUNT(*) as count FROM _sync_outbox WHERE status = 'PENDING'").get() as { count: number };
-  const failed = db.prepare("SELECT COUNT(*) as count FROM _sync_outbox WHERE status = 'FAILED'").get() as { count: number };
+  const pending = db
+    .prepare("SELECT COUNT(*) as count FROM _sync_outbox WHERE status = 'PENDING'")
+    .get() as { count: number };
+  const failed = db
+    .prepare("SELECT COUNT(*) as count FROM _sync_outbox WHERE status = 'FAILED'")
+    .get() as { count: number };
 
   return {
     lastSync: getLastSyncTimestamp(),
@@ -465,15 +475,15 @@ export function pruneOutbox(maxAgeHours = 24): number {
 
   // Delete pushed entries older than threshold
   const cutoff = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000).toISOString();
-  const result = db.prepare(
-    `DELETE FROM _sync_outbox WHERE status = 'PUSHED' AND created_at < ?`
-  ).run(cutoff);
+  const result = db
+    .prepare(`DELETE FROM _sync_outbox WHERE status = 'PUSHED' AND created_at < ?`)
+    .run(cutoff);
 
   // Delete permanently failed entries older than 7 days
   const failedCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const failedResult = db.prepare(
-    `DELETE FROM _sync_outbox WHERE status = 'FAILED' AND created_at < ?`
-  ).run(failedCutoff);
+  const failedResult = db
+    .prepare(`DELETE FROM _sync_outbox WHERE status = 'FAILED' AND created_at < ?`)
+    .run(failedCutoff);
 
   const total = (result.changes || 0) + (failedResult.changes || 0);
   if (total > 0) {

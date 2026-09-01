@@ -49,8 +49,11 @@ export default function CounsellingDashboardPage() {
   const counsellingStats = dashboardStats?.counselling;
   const counsellingQueue = dashboardStats?.clinic_queue_stats?.counselling;
   const mentalHealthQueue = dashboardStats?.clinic_queue_stats?.mental_health;
-  const totalWaiting = (counsellingQueue?.waiting_count || 0) + (mentalHealthQueue?.waiting_count || 0);
-  const totalInConsultation = (counsellingQueue?.in_consultation_count || 0) + (mentalHealthQueue?.in_consultation_count || 0);
+  const totalWaiting =
+    (counsellingQueue?.waiting_count || 0) + (mentalHealthQueue?.waiting_count || 0);
+  const totalInConsultation =
+    (counsellingQueue?.in_consultation_count || 0) +
+    (mentalHealthQueue?.in_consultation_count || 0);
 
   const statusVariants: Record<string, string> = {
     REGISTERED: 'bg-blue-100 text-blue-800',
@@ -65,8 +68,11 @@ export default function CounsellingDashboardPage() {
         title="Counselling Services"
         helpContent="Manage counselling referrals and sessions. Support grief counselling, family therapy, substance abuse, mental health, and psychosocial support."
         actions={
-          <Button onClick={() => router.push('/allied-health/counselling/referrals/new')} disabled={!canCreateRoute('/allied-health/counselling/referrals/new')}>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button
+            onClick={() => router.push('/allied-health/counselling/referrals/new')}
+            disabled={!canCreateRoute('/allied-health/counselling/referrals/new')}
+          >
+            <Plus className="mr-2 h-4 w-4" />
             New Referral
           </Button>
         }
@@ -83,9 +89,7 @@ export default function CounsellingDashboardPage() {
             <div className="text-2xl font-bold text-purple-600">
               {statsLoading ? '...' : totalWaiting}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {totalInConsultation} in session
-            </p>
+            <p className="text-xs text-muted-foreground">{totalInConsultation} in session</p>
           </CardContent>
         </Card>
 
@@ -96,11 +100,9 @@ export default function CounsellingDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {statsLoading ? '...' : (counsellingStats?.pending_count || 0)}
+              {statsLoading ? '...' : counsellingStats?.pending_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting acceptance
-            </p>
+            <p className="text-xs text-muted-foreground">Awaiting acceptance</p>
           </CardContent>
         </Card>
 
@@ -111,11 +113,9 @@ export default function CounsellingDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {statsLoading ? '...' : (counsellingStats?.follow_ups_count || 0)}
+              {statsLoading ? '...' : counsellingStats?.follow_ups_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Scheduled follow-ups
-            </p>
+            <p className="text-xs text-muted-foreground">Scheduled follow-ups</p>
           </CardContent>
         </Card>
 
@@ -126,11 +126,9 @@ export default function CounsellingDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {statsLoading ? '...' : (counsellingStats?.completed_today_count || 0)}
+              {statsLoading ? '...' : counsellingStats?.completed_today_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Sessions finished
-            </p>
+            <p className="text-xs text-muted-foreground">Sessions finished</p>
           </CardContent>
         </Card>
       </div>
@@ -176,11 +174,11 @@ export default function CounsellingDashboardPage() {
                     {queueData.results.map((visit) => (
                       <div
                         key={visit.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                        className="flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                         onClick={() => router.push(`/clinics/visits/${visit.id}`)}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                             <User className="h-5 w-5 text-muted-foreground" />
                           </div>
                           <div>
@@ -193,7 +191,8 @@ export default function CounsellingDashboardPage() {
                         <div className="flex items-center gap-3">
                           <div className="text-right text-sm">
                             <p className="text-muted-foreground">
-                              {visit.registered_at && format(new Date(visit.registered_at), 'HH:mm')}
+                              {visit.registered_at &&
+                                format(new Date(visit.registered_at), 'HH:mm')}
                             </p>
                           </div>
                           <Badge className={statusVariants[visit.status] || 'bg-gray-100'}>

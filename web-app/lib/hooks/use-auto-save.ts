@@ -18,13 +18,7 @@ import { useSyncStatus } from '@/lib/context/sync-context';
 // LocalStorage key prefix for offline queue
 const OFFLINE_QUEUE_PREFIX = 'vitora_autosave_queue_';
 
-export type AutoSaveStatus =
-  | 'idle'
-  | 'pending'
-  | 'saving'
-  | 'saved'
-  | 'error'
-  | 'offline';
+export type AutoSaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error' | 'offline';
 
 interface AutoSaveOptions<T> {
   /** Data to be auto-saved */
@@ -222,7 +216,19 @@ export function useAutoSave<T>({
     };
 
     save();
-  }, [debouncedData, enabled, isDirty, isOnline, onSave, onSuccess, onError, hasChanged, syncStatus, persistKey, storageKey]);
+  }, [
+    debouncedData,
+    enabled,
+    isDirty,
+    isOnline,
+    onSave,
+    onSuccess,
+    onError,
+    hasChanged,
+    syncStatus,
+    persistKey,
+    storageKey,
+  ]);
 
   // Process offline queue when back online
   useEffect(() => {

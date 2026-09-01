@@ -16,15 +16,7 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import {
-  ArrowRight,
-  Building2,
-  GitBranch,
-  Network,
-  Search,
-  UserRound,
-  Users,
-} from 'lucide-react';
+import { ArrowRight, Building2, GitBranch, Network, Search, UserRound, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,7 +85,11 @@ type FacilityNodeData = {
   isActive: boolean;
 };
 
-type OrgChartNodeData = DepartmentNodeData | StaffNodeData | OrganizationNodeData | FacilityNodeData;
+type OrgChartNodeData =
+  | DepartmentNodeData
+  | StaffNodeData
+  | OrganizationNodeData
+  | FacilityNodeData;
 
 type DepartmentDetail = {
   department: Department;
@@ -241,9 +237,7 @@ function OrganizationNode({ data, selected }: NodeProps<Node<OrganizationNodeDat
             <p className="truncate text-sm font-semibold text-foreground">{data.name}</p>
             <p className="mt-1 truncate font-mono text-xs text-muted-foreground">{data.slug}</p>
           </div>
-          <Badge className={tierColors[data.subscriptionTier] ?? ''}>
-            {data.subscriptionTier}
-          </Badge>
+          <Badge className={tierColors[data.subscriptionTier] ?? ''}>{data.subscriptionTier}</Badge>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -281,7 +275,9 @@ function FacilityNode({ data, selected }: NodeProps<Node<FacilityNodeData>>) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{data.name}</p>
-            <p className="mt-1 truncate font-mono text-xs text-muted-foreground">MFL {data.mflCode}</p>
+            <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+              MFL {data.mflCode}
+            </p>
           </div>
           {data.isHeadquarters ? (
             <Badge variant="default">HQ</Badge>
@@ -348,9 +344,8 @@ function buildOrgChart(
   }
 
   for (const department of departments) {
-    const normalizedParentId = department.parent && departmentsById.has(department.parent)
-      ? department.parent
-      : null;
+    const normalizedParentId =
+      department.parent && departmentsById.has(department.parent) ? department.parent : null;
     const siblings = childrenByParent.get(normalizedParentId) ?? [];
     siblings.push(department.id);
     childrenByParent.set(normalizedParentId, siblings);
@@ -414,9 +409,10 @@ function buildOrgChart(
     const position = positions.get(department.id) ?? { x: 0, y: 0 };
     const childIds = childrenByParent.get(department.id) ?? [];
     const supervisorStats = supervisorCounts.get(department.id) ?? { total: 0, assigned: 0 };
-    const supervisorCoverage = supervisorStats.total > 0
-      ? Math.round((supervisorStats.assigned / supervisorStats.total) * 100)
-      : 0;
+    const supervisorCoverage =
+      supervisorStats.total > 0
+        ? Math.round((supervisorStats.assigned / supervisorStats.total) * 100)
+        : 0;
 
     detailsById.set(department.id, {
       department,
@@ -539,7 +535,8 @@ function buildOrgChart(
     const staffMinX = staffXValues.length > 0 ? Math.min(...staffXValues) : 0;
     const staffMaxX = staffXValues.length > 0 ? Math.max(...staffXValues) : 0;
     const staffTreeWidth = staffMaxX - staffMinX;
-    const baseShiftX = departmentNodeX + DEPARTMENT_NODE_WIDTH / 2 - staffTreeWidth / 2 - STAFF_NODE_WIDTH / 2;
+    const baseShiftX =
+      departmentNodeX + DEPARTMENT_NODE_WIDTH / 2 - staffTreeWidth / 2 - STAFF_NODE_WIDTH / 2;
 
     for (const staffMember of departmentStaff) {
       const staffPosition = staffPositions.get(staffMember.id) ?? { x: 0, y: 0 };
@@ -612,7 +609,8 @@ function buildOrgChart(
 
     // Place org nodes in a row at the top
     if (hasOrgs) {
-      const orgTotalWidth = organizations.length * (ORG_NODE_WIDTH + HORIZONTAL_GAP) - HORIZONTAL_GAP;
+      const orgTotalWidth =
+        organizations.length * (ORG_NODE_WIDTH + HORIZONTAL_GAP) - HORIZONTAL_GAP;
       const orgStartX = existingCenterX - orgTotalWidth / 2;
 
       organizations.forEach((org, index) => {
@@ -643,7 +641,8 @@ function buildOrgChart(
 
     // Place facility nodes between orgs and departments
     if (hasFacilities) {
-      const facilityTotalWidth = facilities.length * (FACILITY_NODE_WIDTH + HORIZONTAL_GAP) - HORIZONTAL_GAP;
+      const facilityTotalWidth =
+        facilities.length * (FACILITY_NODE_WIDTH + HORIZONTAL_GAP) - HORIZONTAL_GAP;
       const facilityStartX = existingCenterX - facilityTotalWidth / 2;
       const facilityY = 40 + orgYOffset;
 
@@ -811,7 +810,8 @@ export function AdminOrgChart({
 
     const departmentMatches = visibleDepartments
       .filter((department) => {
-        const haystack = `${department.name} ${department.code} ${department.department_type_display}`.toLowerCase();
+        const haystack =
+          `${department.name} ${department.code} ${department.department_type_display}`.toLowerCase();
         return haystack.includes(deferredSearchQuery);
       })
       .slice(0, 5)
@@ -825,7 +825,8 @@ export function AdminOrgChart({
 
     const staffMatches = visibleStaff
       .filter((staffMember) => {
-        const haystack = `${staffMember.full_name} ${staffMember.primary_role_name ?? ''} ${staffMember.primary_department_name ?? ''}`.toLowerCase();
+        const haystack =
+          `${staffMember.full_name} ${staffMember.primary_role_name ?? ''} ${staffMember.primary_department_name ?? ''}`.toLowerCase();
         return haystack.includes(deferredSearchQuery);
       })
       .slice(0, 5)
@@ -842,8 +843,23 @@ export function AdminOrgChart({
   }, [deferredSearchQuery, visibleDepartments, visibleStaff]);
 
   const chart = useMemo(
-    () => buildOrgChart(visibleDepartments, visibleStaff, organizations, facilities, selectedDepartmentId, showStaffLines),
-    [selectedDepartmentId, showStaffLines, visibleDepartments, visibleStaff, organizations, facilities]
+    () =>
+      buildOrgChart(
+        visibleDepartments,
+        visibleStaff,
+        organizations,
+        facilities,
+        selectedDepartmentId,
+        showStaffLines
+      ),
+    [
+      selectedDepartmentId,
+      showStaffLines,
+      visibleDepartments,
+      visibleStaff,
+      organizations,
+      facilities,
+    ]
   );
 
   useEffect(() => {
@@ -852,7 +868,8 @@ export function AdminOrgChart({
       return;
     }
 
-    const hasSelected = selectedDepartmentId !== null && chart.detailsById.has(selectedDepartmentId);
+    const hasSelected =
+      selectedDepartmentId !== null && chart.detailsById.has(selectedDepartmentId);
     if (!hasSelected) {
       setSelectedDepartmentId(chart.firstDepartmentId);
       setSelectedStaffId(null);
@@ -870,13 +887,14 @@ export function AdminOrgChart({
     }
   }, [chart.staffById, selectedDepartmentId, selectedStaffId]);
 
-  const selectedDetail = selectedDepartmentId === null
-    ? null
-    : chart.detailsById.get(selectedDepartmentId) ?? null;
-  const selectedStaff = selectedStaffId === null ? null : chart.staffById.get(selectedStaffId) ?? null;
+  const selectedDetail =
+    selectedDepartmentId === null ? null : (chart.detailsById.get(selectedDepartmentId) ?? null);
+  const selectedStaff =
+    selectedStaffId === null ? null : (chart.staffById.get(selectedStaffId) ?? null);
 
   const focusedDepartmentStaff = useMemo(
-    () => visibleStaff.filter((staffMember) => staffMember.primary_department === selectedDepartmentId),
+    () =>
+      visibleStaff.filter((staffMember) => staffMember.primary_department === selectedDepartmentId),
     [selectedDepartmentId, visibleStaff]
   );
 
@@ -922,7 +940,8 @@ export function AdminOrgChart({
               </div>
             </div>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Click a node to inspect it. Staff reporting lines appear for the selected department when staff lines are enabled.
+              Click a node to inspect it. Staff reporting lines appear for the selected department
+              when staff lines are enabled.
             </p>
           </div>
 
@@ -989,7 +1008,7 @@ export function AdminOrgChart({
       </div>
 
       {/* Canvas: full width at every breakpoint */}
-      <div className="h-[540px] overflow-hidden rounded-[28px] border border-border/70 sm:h-[580px] lg:h-[620px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(15,118,110,0.08),transparent_30%),hsl(var(--background))]">
+      <div className="h-[540px] overflow-hidden rounded-[28px] border border-border/70 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(15,118,110,0.08),transparent_30%),hsl(var(--background))] sm:h-[580px] lg:h-[620px]">
         <ReactFlow
           nodes={chart.nodes}
           edges={chart.edges}
@@ -1027,7 +1046,7 @@ export function AdminOrgChart({
             pannable
             zoomable
             nodeStrokeWidth={3}
-            className="!hidden md:!block !rounded-2xl !border !border-border/70 !bg-background/90"
+            className="!hidden !rounded-2xl !border !border-border/70 !bg-background/90 md:!block"
             nodeColor={(node) => {
               if (node.data?.kind === 'staff') {
                 return '#0f766e';
@@ -1072,12 +1091,16 @@ export function AdminOrgChart({
                       {selectedStaff.primary_role_name || 'Role not assigned'}
                     </p>
                   </div>
-                  <Badge variant={selectedStaff.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
+                  <Badge
+                    variant={selectedStaff.employment_status === 'ACTIVE' ? 'default' : 'secondary'}
+                  >
                     {selectedStaff.employment_status || 'ACTIVE'}
                   </Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {selectedStaff.title ? <Badge variant="outline">{selectedStaff.title}</Badge> : null}
+                  {selectedStaff.title ? (
+                    <Badge variant="outline">{selectedStaff.title}</Badge>
+                  ) : null}
                   <Badge variant="secondary">{selectedStaff.employee_id}</Badge>
                 </div>
               </div>
@@ -1124,7 +1147,9 @@ export function AdminOrgChart({
                   </Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge variant="outline">{selectedDetail.department.department_type_display}</Badge>
+                  <Badge variant="outline">
+                    {selectedDetail.department.department_type_display}
+                  </Badge>
                   <Badge variant="secondary">{selectedDetail.department.staff_count} staff</Badge>
                 </div>
               </div>
@@ -1132,11 +1157,15 @@ export function AdminOrgChart({
               <div className="space-y-3 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <UserRound className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Head: {selectedDetail.headName || 'Not assigned'}</span>
+                  <span className="truncate">
+                    Head: {selectedDetail.headName || 'Not assigned'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Parent: {selectedDetail.parentName || 'Top-level department'}</span>
+                  <span className="truncate">
+                    Parent: {selectedDetail.parentName || 'Top-level department'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <GitBranch className="h-4 w-4 shrink-0" />

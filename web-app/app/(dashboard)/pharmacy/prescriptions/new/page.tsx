@@ -45,11 +45,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
   CommandEmpty,
@@ -60,12 +56,7 @@ import {
 } from '@/components/ui/command';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DrugProductSelect as DrugSelect } from '@/components/terminology';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
@@ -127,21 +118,9 @@ export default function NewPrescriptionPage() {
     queryFn: pharmacyApi.getBootstrap,
   });
   const canCreateFromCapabilities = bootstrap?.permissions.can_create_prescription ?? true;
+  const hasPrescriptionAccess = canCreatePrescription && canCreateFromCapabilities;
   const searchParams = useSearchParams();
 
-  if (!canCreatePrescription || !canCreateFromCapabilities) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Prescription" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create prescriptions for this facility.
-          </p>
-        </Card>
-      </div>
-    );
-  }
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -265,7 +244,12 @@ export default function NewPrescriptionPage() {
 
   // Auto-calculate quantity when dosage, frequency, or duration changes
   const autoQuantity = useMemo(() => {
-    return calculateQuantity(unitsPerDose, currentItem.frequency, currentItem.duration, selectedDrug?.form);
+    return calculateQuantity(
+      unitsPerDose,
+      currentItem.frequency,
+      currentItem.duration,
+      selectedDrug?.form
+    );
   }, [unitsPerDose, currentItem.frequency, currentItem.duration, selectedDrug?.form]);
 
   useEffect(() => {
@@ -317,9 +301,9 @@ MEDICATIONS
       text += `
 ${index + 1}. ${item.drug_name}
    Dosage: ${item.dosage}
-   Frequency: ${FREQUENCY_OPTIONS.find(f => f.value === item.frequency)?.label || item.frequency}
+   Frequency: ${FREQUENCY_OPTIONS.find((f) => f.value === item.frequency)?.label || item.frequency}
    Duration: ${item.duration}
-   Route: ${ROUTE_OPTIONS.find(r => r.value === item.route)?.label || item.route || 'Oral'}
+   Route: ${ROUTE_OPTIONS.find((r) => r.value === item.route)?.label || item.route || 'Oral'}
    Quantity: ${item.quantity_prescribed}
    ${item.instructions ? `Instructions: ${item.instructions}` : ''}
    ${item.is_substitutable ? '[Substitution Allowed]' : '[No Substitution]'}
@@ -395,7 +379,8 @@ Prescribed by: ${prescriberName}
       items: items.map((item) => ({
         drug_name: item.drug_name,
         dosage: item.dosage,
-        frequency: FREQUENCY_OPTIONS.find((f) => f.value === item.frequency)?.label || item.frequency,
+        frequency:
+          FREQUENCY_OPTIONS.find((f) => f.value === item.frequency)?.label || item.frequency,
         duration: item.duration,
         instructions: item.instructions,
         quantity_prescribed: item.quantity_prescribed,
@@ -449,7 +434,8 @@ Prescribed by: ${prescriberName}
             age: patient.date_of_birth
               ? `${Math.floor((Date.now() - new Date(patient.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years`
               : undefined,
-            gender: patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : patient.gender,
+            gender:
+              patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : patient.gender,
           }
         : undefined,
       clinician: {
@@ -462,7 +448,17 @@ Prescribed by: ${prescriberName}
     };
 
     await printPrescription(printOptions);
-  }, [items, patient, patientId, encounterId, clinicalNotes, dispensingType, prescriberName, user, toast]);
+  }, [
+    items,
+    patient,
+    patientId,
+    encounterId,
+    clinicalNotes,
+    dispensingType,
+    prescriberName,
+    user,
+    toast,
+  ]);
 
   // Validate current item before adding
   const validateItem = useCallback((): boolean => {
@@ -567,28 +563,31 @@ Prescribed by: ${prescriberName}
   }, []);
 
   // Select SHA drug from DrugSelect component
-  const handleSelectSHADrug = useCallback((drug: { code: string; name: string; price?: number }) => {
-    const shaDrug: SHADrugSelection = {
-      code: drug.code,
-      name: drug.name,
-      price: drug.price,
-    };
-    setSelectedSHADrug(shaDrug);
-    setSelectedDrug(null); // Clear local drug if SHA selected
+  const handleSelectSHADrug = useCallback(
+    (drug: { code: string; name: string; price?: number }) => {
+      const shaDrug: SHADrugSelection = {
+        code: drug.code,
+        name: drug.name,
+        price: drug.price,
+      };
+      setSelectedSHADrug(shaDrug);
+      setSelectedDrug(null); // Clear local drug if SHA selected
 
-    setCurrentItem((prev) => ({
-      ...prev,
-      drug: undefined, // SHA drugs may not have local ID
-      drug_name: drug.name,
-      drug_strength: '',
-      drug_form: '',
-      route: 'PO',
-      dosage: '',
-      sha_code: drug.code,
-    }));
-    setDrugSearch(drug.name);
-    setShowDrugSearch(false);
-  }, []);
+      setCurrentItem((prev) => ({
+        ...prev,
+        drug: undefined, // SHA drugs may not have local ID
+        drug_name: drug.name,
+        drug_strength: '',
+        drug_form: '',
+        route: 'PO',
+        dosage: '',
+        sha_code: drug.code,
+      }));
+      setDrugSearch(drug.name);
+      setShowDrugSearch(false);
+    },
+    []
+  );
 
   const handleApplyPpbCode = useCallback(
     async (ppbCode: string) => {
@@ -601,13 +600,20 @@ Prescribed by: ${prescriberName}
           title: 'PPB code applied',
           description: `${updated.generic_name} updated with PPB code ${ppbCode}.`,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const description =
+          typeof error === 'object' &&
+          error !== null &&
+          'response' in error &&
+          typeof (error as { response?: { data?: { error?: string } } }).response?.data?.error ===
+            'string'
+            ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+            : error instanceof Error
+              ? error.message
+              : 'Could not update local drug metadata.';
         toast({
           title: 'Failed to apply PPB code',
-          description:
-            error?.response?.data?.error ||
-            error?.message ||
-            'Could not update local drug metadata.',
+          description,
           variant: 'destructive',
         });
       } finally {
@@ -618,50 +624,62 @@ Prescribed by: ${prescriberName}
   );
 
   // Actually submit the prescription (after allergy check)
-  const submitPrescription = useCallback(async (allergyOverride?: boolean) => {
-    if (!patientId) return;
+  const submitPrescription = useCallback(
+    async (allergyOverride?: boolean) => {
+      if (!patientId) return;
 
-    const clinicalNotesWithOverride = allergyOverride
-      ? `${clinicalNotes}\n\n[ALLERGY WARNING ACKNOWLEDGED: Prescriber reviewed and acknowledged drug-allergy interactions]`.trim()
-      : clinicalNotes;
+      const clinicalNotesWithOverride = allergyOverride
+        ? `${clinicalNotes}\n\n[ALLERGY WARNING ACKNOWLEDGED: Prescriber reviewed and acknowledged drug-allergy interactions]`.trim()
+        : clinicalNotes;
 
-    try {
-      await createPrescription.mutateAsync({
-        patient: patientId,
-        encounter: encounterId,
-        dispensing_type: dispensingType,
-        clinical_notes: clinicalNotesWithOverride || undefined,
-        items: items.map((item) => ({
-          drug: item.drug,
-          quantity_prescribed: item.quantity_prescribed,
-          dosage: item.dosage,
-          frequency: item.frequency,
-          duration: item.duration,
-          route: item.route,
-          instructions: item.instructions,
-          is_substitutable: item.is_substitutable,
-        })),
-      });
+      try {
+        await createPrescription.mutateAsync({
+          patient: patientId,
+          encounter: encounterId,
+          dispensing_type: dispensingType,
+          clinical_notes: clinicalNotesWithOverride || undefined,
+          items: items.map((item) => ({
+            drug: item.drug,
+            quantity_prescribed: item.quantity_prescribed,
+            dosage: item.dosage,
+            frequency: item.frequency,
+            duration: item.duration,
+            route: item.route,
+            instructions: item.instructions,
+            is_substitutable: item.is_substitutable,
+          })),
+        });
 
-      toast({
-        title: 'Prescription Created',
-        description: `Prescription with ${items.length} item(s) has been created successfully`,
-      });
+        toast({
+          title: 'Prescription Created',
+          description: `Prescription with ${items.length} item(s) has been created successfully`,
+        });
 
-      // Navigate back to encounter orders tab if we came from one
-      if (encounterId) {
-        router.push(`/encounters/${encounterId}/edit/orders`);
-      } else {
-        router.push('/pharmacy');
+        // Navigate back to encounter orders tab if we came from one
+        if (encounterId) {
+          router.push(`/encounters/${encounterId}/edit/orders`);
+        } else {
+          router.push('/pharmacy');
+        }
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to create prescription. Please try again.',
+          variant: 'destructive',
+        });
       }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to create prescription. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  }, [patientId, encounterId, clinicalNotes, dispensingType, items, createPrescription, toast, router]);
+    },
+    [
+      patientId,
+      encounterId,
+      clinicalNotes,
+      dispensingType,
+      items,
+      createPrescription,
+      toast,
+      router,
+    ]
+  );
 
   // Submit prescription - checks for drug-allergy interactions first
   const handleSubmit = useCallback(async () => {
@@ -685,9 +703,7 @@ Prescribed by: ${prescriberName}
 
     // Check for drug-allergy interactions
     const drugIds = items.map((item) => item.drug).filter((id): id is number => id !== undefined);
-    const drugNames = items
-      .map((item) => item.drug_name)
-      .filter((name): name is string => !!name);
+    const drugNames = items.map((item) => item.drug_name).filter((name): name is string => !!name);
 
     if (drugIds.length > 0 || drugNames.length > 0) {
       try {
@@ -728,7 +744,7 @@ Prescribed by: ${prescriberName}
 
   if (patientLoading || encounterLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -737,7 +753,7 @@ Prescribed by: ${prescriberName}
   // Walk-in: no patient yet — show patient selector
   if (!patientId || !patient) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="mx-auto max-w-4xl">
         <div className="space-y-4 sm:space-y-6">
           <PageHeader
             title="New Prescription"
@@ -763,8 +779,22 @@ Prescribed by: ${prescriberName}
     );
   }
 
+  if (!hasPrescriptionAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Prescription" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to create prescriptions for this facility.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="mx-auto max-w-4xl">
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="New Prescription"
@@ -772,19 +802,17 @@ Prescribed by: ${prescriberName}
         />
 
         {/* Patient & Encounter Summary Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-sm font-medium truncate">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="truncate text-sm font-medium">
               {patient.first_name} {patient.last_name}
               <span className="text-muted-foreground"> • {patient.mrn}</span>
             </p>
             {encounter && (
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                Encounter #{encounterId}
-              </p>
+              <p className="text-xs text-muted-foreground sm:text-sm">Encounter #{encounterId}</p>
             )}
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground shrink-0">
+          <p className="shrink-0 text-xs text-muted-foreground sm:text-sm">
             Prescriber: {prescriberName}
           </p>
         </div>
@@ -804,16 +832,15 @@ Prescribed by: ${prescriberName}
               </Label>
 
               {/* Show selected drug if any */}
-              {(selectedDrug || selectedSHADrug) ? (
-                <div className="p-3 rounded-lg bg-muted/50 border">
+              {selectedDrug || selectedSHADrug ? (
+                <div className="rounded-lg border bg-muted/50 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                        <span className="font-medium text-sm break-words">
+                        <span className="break-words text-sm font-medium">
                           {selectedDrug
-                            ? (selectedDrug.brand_names?.[0] || selectedDrug.generic_name)
-                            : selectedSHADrug?.name
-                          }
+                            ? selectedDrug.brand_names?.[0] || selectedDrug.generic_name
+                            : selectedSHADrug?.name}
                         </span>
                         {selectedSHADrug && (
                           <Badge variant="secondary" className="text-xs">
@@ -826,24 +853,27 @@ Prescribed by: ${prescriberName}
                           </Badge>
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
+                      <div className="mt-0.5 text-xs text-muted-foreground">
                         {selectedDrug
                           ? `${selectedDrug.generic_name} • ${selectedDrug.form} • ${selectedDrug.strength}`
-                          : `${selectedSHADrug?.form || ''} • ${selectedSHADrug?.strength || ''}`
-                        }
+                          : `${selectedSHADrug?.form || ''} • ${selectedSHADrug?.strength || ''}`}
                       </div>
                       {selectedSHADrug?.code && (
-                        <div className="text-xs font-mono text-muted-foreground mt-1">
+                        <div className="mt-1 font-mono text-xs text-muted-foreground">
                           Code: {selectedSHADrug.code}
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-1 items-center shrink-0">
+                    <div className="flex shrink-0 flex-wrap items-center gap-1">
                       {selectedDrug?.requires_prescription && (
-                        <Badge variant="outline" className="text-xs">Rx</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Rx
+                        </Badge>
                       )}
                       {selectedDrug?.is_controlled && (
-                        <Badge variant="destructive" className="text-xs">Controlled</Badge>
+                        <Badge variant="destructive" className="text-xs">
+                          Controlled
+                        </Badge>
                       )}
                       <Button
                         type="button"
@@ -854,7 +884,7 @@ Prescribed by: ${prescriberName}
                           setSelectedDrug(null);
                           setSelectedSHADrug(null);
                           setDrugSearch('');
-                          setCurrentItem(prev => ({
+                          setCurrentItem((prev) => ({
                             ...prev,
                             drug: undefined,
                             drug_name: undefined,
@@ -883,18 +913,17 @@ Prescribed by: ${prescriberName}
                   <TooltipProvider delayDuration={300}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="flex items-center gap-2 w-fit cursor-default">
-                          <Switch
-                            checked={useSHADrug}
-                            onCheckedChange={setUseSHADrug}
-                          />
+                        <div className="flex w-fit cursor-default items-center gap-2">
+                          <Switch checked={useSHADrug} onCheckedChange={setUseSHADrug} />
                           <span className="text-sm font-medium">
                             {useSHADrug ? 'Using DHIS2 Formulary' : 'Using Local Inventory'}
                           </span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Switch to {useSHADrug ? 'Using Local Inventory' : 'Using DHIS2 Formulary'}</p>
+                        <p>
+                          Switch to {useSHADrug ? 'Using Local Inventory' : 'Using DHIS2 Formulary'}
+                        </p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -902,7 +931,7 @@ Prescribed by: ${prescriberName}
                   {/* Local Drug Search */}
                   {!useSHADrug && (
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         id="drug-search"
                         placeholder="Search drugs by name or generic name..."
@@ -915,17 +944,17 @@ Prescribed by: ${prescriberName}
                         className={`pl-10 ${errors.drug ? 'border-destructive' : ''}`}
                       />
                       {showDrugSearch && drugSearch && (
-                        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
+                        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover shadow-lg">
                           {localSearchLoading ? (
                             <div className="p-4 text-center text-muted-foreground">
-                              <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                             </div>
                           ) : stockedDrugs.length > 0 ? (
                             stockedDrugs.map((drug) => (
                               <button
                                 key={drug.id}
                                 type="button"
-                                className="w-full px-4 py-2 text-left hover:bg-accent flex items-center justify-between"
+                                className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-accent"
                                 onClick={() => handleSelectDrug(drug)}
                               >
                                 <div>
@@ -969,7 +998,7 @@ Prescribed by: ${prescriberName}
             {/* Dosage - Smart dosage based on selected drug */}
             <div className="space-y-2">
               <div className="space-y-2">
-                <div className="flex items-center justify-between h-5">
+                <div className="flex h-5 items-center justify-between">
                   <Label htmlFor="dosage">
                     Dosage <span className="text-destructive">*</span>
                   </Label>
@@ -1014,11 +1043,20 @@ Prescribed by: ${prescriberName}
                     </SelectTrigger>
                     <SelectContent>
                       {dosageSuggestions.map((suggestion) => (
-                        <SelectItem key={suggestion.value} value={suggestion.value} textValue={suggestion.label}>
-                          <div className="flex items-center justify-between w-full gap-2">
+                        <SelectItem
+                          key={suggestion.value}
+                          value={suggestion.value}
+                          textValue={suggestion.label}
+                        >
+                          <div className="flex w-full items-center justify-between gap-2">
                             <span>{suggestion.label}</span>
                             {suggestion.isDefault && (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">Suggested</Badge>
+                              <Badge
+                                variant="secondary"
+                                className="shrink-0 px-1.5 py-0 text-[10px]"
+                              >
+                                Suggested
+                              </Badge>
                             )}
                           </div>
                         </SelectItem>
@@ -1065,9 +1103,7 @@ Prescribed by: ${prescriberName}
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.frequency && (
-                  <p className="text-sm text-destructive">{errors.frequency}</p>
-                )}
+                {errors.frequency && <p className="text-sm text-destructive">{errors.frequency}</p>}
               </div>
 
               <div className="space-y-2">
@@ -1097,7 +1133,7 @@ Prescribed by: ${prescriberName}
 
             {/* Quantity */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between h-5">
+              <div className="flex h-5 items-center justify-between">
                 <Label htmlFor="quantity">
                   Quantity to Dispense <span className="text-destructive">*</span>
                 </Label>
@@ -1149,16 +1185,12 @@ Prescribed by: ${prescriberName}
                 <div className="flex items-center gap-2">
                   <Label htmlFor="route">Route</Label>
                   {selectedDrug && (
-                    <span className="text-xs text-muted-foreground">
-                      (auto-set from drug form)
-                    </span>
+                    <span className="text-xs text-muted-foreground">(auto-set from drug form)</span>
                   )}
                 </div>
                 <Select
                   value={currentItem.route}
-                  onValueChange={(value) =>
-                    setCurrentItem((prev) => ({ ...prev, route: value }))
-                  }
+                  onValueChange={(value) => setCurrentItem((prev) => ({ ...prev, route: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select route..." />
@@ -1195,14 +1227,14 @@ Prescribed by: ${prescriberName}
                   setCurrentItem((prev) => ({ ...prev, is_substitutable: checked === true }))
                 }
               />
-              <Label htmlFor="substitutable" className="text-sm cursor-pointer">
+              <Label htmlFor="substitutable" className="cursor-pointer text-sm">
                 Allow generic substitution
               </Label>
             </div>
 
             {/* Add button */}
             <Button onClick={handleAddItem} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Add to Prescription
             </Button>
           </CardContent>
@@ -1211,7 +1243,7 @@ Prescribed by: ${prescriberName}
         {/* Prescription Items */}
         {items.length > 0 && (
           <Card>
-            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-col gap-2 space-y-0 pb-2 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-base">Prescription Items ({items.length})</CardTitle>
               <div className="flex gap-2">
                 <Button
@@ -1222,7 +1254,7 @@ Prescribed by: ${prescriberName}
                   disabled={items.length === 0}
                 >
                   {copied ? (
-                    <Check className="h-4 w-4 sm:mr-1 text-green-600" />
+                    <Check className="h-4 w-4 text-green-600 sm:mr-1" />
                   ) : (
                     <Copy className="h-4 w-4 sm:mr-1" />
                   )}
@@ -1245,20 +1277,17 @@ Prescribed by: ${prescriberName}
                 {items.map((item, index) => (
                   <div
                     key={index}
-                    className="flex items-start justify-between gap-2 p-3 border rounded-lg bg-muted/30"
+                    className="flex items-start justify-between gap-2 rounded-lg border bg-muted/30 p-3"
                   >
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="font-medium text-sm truncate">{item.drug_name}</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground break-words">
-                        {item.dosage} • {item.frequency} • {item.duration} •{' '}
-                        {item.route || 'PO'}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="truncate text-sm font-medium">{item.drug_name}</div>
+                      <div className="break-words text-xs text-muted-foreground sm:text-sm">
+                        {item.dosage} • {item.frequency} • {item.duration} • {item.route || 'PO'}
                       </div>
                       <div className="text-xs sm:text-sm">
                         Qty: <strong>{item.quantity_prescribed}</strong>
                         {item.instructions && (
-                          <span className="ml-2 text-muted-foreground">
-                            • {item.instructions}
-                          </span>
+                          <span className="ml-2 text-muted-foreground">• {item.instructions}</span>
                         )}
                       </div>
                       {item.is_substitutable && (
@@ -1270,7 +1299,7 @@ Prescribed by: ${prescriberName}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-destructive hover:text-destructive shrink-0 h-8 w-8"
+                      className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
                       onClick={() => handleRemoveItem(index)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1295,21 +1324,27 @@ Prescribed by: ${prescriberName}
               rows={3}
             />
             <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
-              <Label className="text-sm shrink-0">Dispensing</Label>
+              <Label className="shrink-0 text-sm">Dispensing</Label>
               <RadioGroup
                 value={dispensingType}
                 onValueChange={(v) => setDispensingType(v as 'INTERNAL' | 'EXTERNAL')}
                 className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4"
               >
-                <label className="flex items-center gap-1.5 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-1.5">
                   <RadioGroupItem value="INTERNAL" />
-                  <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-sm"><span className="sm:hidden">Internal</span><span className="hidden sm:inline">Internal (Hospital Pharmacy)</span></span>
+                  <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="text-sm">
+                    <span className="sm:hidden">Internal</span>
+                    <span className="hidden sm:inline">Internal (Hospital Pharmacy)</span>
+                  </span>
                 </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-1.5">
                   <RadioGroupItem value="EXTERNAL" />
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-sm"><span className="sm:hidden">External</span><span className="hidden sm:inline">External (Outside Pharmacy)</span></span>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="text-sm">
+                    <span className="sm:hidden">External</span>
+                    <span className="hidden sm:inline">External (Outside Pharmacy)</span>
+                  </span>
                 </label>
               </RadioGroup>
             </div>
@@ -1322,18 +1357,20 @@ Prescribed by: ${prescriberName}
             Cancel
           </Button>
           <ShiftGate>
-          <Button
-            className="w-full sm:w-auto"
-            onClick={handleSubmit}
-            disabled={items.length === 0 || createPrescription.isPending || checkInteractions.isPending}
-          >
-            {createPrescription.isPending || checkInteractions.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Pill className="h-4 w-4 mr-2" />
-            )}
-            Create Prescription ({items.length} item{items.length !== 1 ? 's' : ''})
-          </Button>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={handleSubmit}
+              disabled={
+                items.length === 0 || createPrescription.isPending || checkInteractions.isPending
+              }
+            >
+              {createPrescription.isPending || checkInteractions.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Pill className="mr-2 h-4 w-4" />
+              )}
+              Create Prescription ({items.length} item{items.length !== 1 ? 's' : ''})
+            </Button>
           </ShiftGate>
         </div>
 

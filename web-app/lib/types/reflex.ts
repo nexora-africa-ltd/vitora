@@ -8,15 +8,27 @@
 // =============================================================================
 
 export type ReflexOperator =
-  | 'GT' | 'LT' | 'GTE' | 'LTE' | 'EQ' | 'NEQ'
-  | 'IN_RANGE' | 'OUT_OF_RANGE' | 'CONTAINS'
-  | 'CRITICAL' | 'ABNORMAL';
+  | 'GT'
+  | 'LT'
+  | 'GTE'
+  | 'LTE'
+  | 'EQ'
+  | 'NEQ'
+  | 'IN_RANGE'
+  | 'OUT_OF_RANGE'
+  | 'CONTAINS'
+  | 'CRITICAL'
+  | 'ABNORMAL';
 
 export type ReflexAction = 'AUTO_ORDER' | 'SUGGEST';
 
 export type ReflexExecutionStatus =
-  | 'TRIGGERED' | 'ORDERED' | 'SUGGESTED'
-  | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  | 'TRIGGERED'
+  | 'ORDERED'
+  | 'SUGGESTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED';
 
 // =============================================================================
 // Reflex Rule

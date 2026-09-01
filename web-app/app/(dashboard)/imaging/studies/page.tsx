@@ -34,7 +34,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ModalityBadge } from '@/components/imaging';
 import { imagingApi } from '@/lib/api/imaging';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import { DICOMStudy, DICOMStudyListParams, ImagingModality, MODALITY_LABELS } from '@/lib/types/imaging';
+import {
+  DICOMStudy,
+  DICOMStudyListParams,
+  ImagingModality,
+  MODALITY_LABELS,
+} from '@/lib/types/imaging';
 import { formatBytes, formatDate } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
 import {
@@ -117,7 +122,7 @@ export default function DICOMStudiesPage() {
         <CardContent className="pt-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search patient, accession, description..."
                 value={searchTerm}
@@ -155,7 +160,7 @@ export default function DICOMStudiesPage() {
       <Card>
         <CardContent className="p-0 sm:p-6">
           {isLoading ? (
-            <div className="p-4 space-y-3">
+            <div className="space-y-3 p-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
@@ -169,9 +174,9 @@ export default function DICOMStudiesPage() {
             </div>
           ) : !studies.length ? (
             <div className="p-8 text-center text-muted-foreground">
-              <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <ImageIcon className="mx-auto mb-4 h-12 w-12 opacity-50" />
               <p>No DICOM studies found</p>
-              <p className="text-sm mt-2">
+              <p className="mt-2 text-sm">
                 {searchTerm || modalityFilter !== 'all'
                   ? 'Try adjusting your filters'
                   : 'Upload DICOM images to get started'}
@@ -180,7 +185,7 @@ export default function DICOMStudiesPage() {
           ) : (
             <>
               {/* Desktop Table */}
-              <div className="hidden md:block overflow-x-auto">
+              <div className="hidden overflow-x-auto md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -203,14 +208,14 @@ export default function DICOMStudiesPage() {
                         onClick={() => handleViewStudy(study)}
                       >
                         <TableCell>
-                          <div className="w-12 h-12 rounded bg-black flex items-center justify-center overflow-hidden">
+                          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded bg-black">
                             {study.thumbnail_path ? (
                               <Image
                                 src={imagingApi.getThumbnailUrl(study.thumbnail_path) || ''}
                                 alt="Thumbnail"
                                 width={48}
                                 height={48}
-                                className="w-full h-full object-cover"
+                                className="h-full w-full object-cover"
                               />
                             ) : (
                               <ImageIcon className="h-6 w-6 text-muted-foreground" />
@@ -258,24 +263,24 @@ export default function DICOMStudiesPage() {
               </div>
 
               {/* Mobile Cards */}
-              <div className="md:hidden space-y-3 p-4">
-                  {studies.map((study) => (
+              <div className="space-y-3 p-4 md:hidden">
+                {studies.map((study) => (
                   <Card
                     key={study.study_instance_uid}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
                     onClick={() => handleViewStudy(study)}
                   >
                     <CardContent className="p-3">
                       <div className="flex gap-3">
                         {/* Thumbnail */}
-                        <div className="w-14 h-14 rounded bg-black flex-shrink-0 flex items-center justify-center overflow-hidden">
+                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded bg-black">
                           {study.thumbnail_path ? (
                             <Image
                               src={imagingApi.getThumbnailUrl(study.thumbnail_path) || ''}
                               alt="Thumbnail"
                               width={56}
                               height={56}
-                              className="w-full h-full object-cover"
+                              className="h-full w-full object-cover"
                             />
                           ) : (
                             <ImageIcon className="h-6 w-6 text-muted-foreground" />
@@ -283,12 +288,12 @@ export default function DICOMStudiesPage() {
                         </div>
 
                         {/* Info */}
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <p className="font-medium truncate">{study.patient_name}</p>
+                              <p className="truncate font-medium">{study.patient_name}</p>
                               <p
-                                className="text-xs text-muted-foreground truncate"
+                                className="truncate text-xs text-muted-foreground"
                                 title={study.study_description || 'No description'}
                               >
                                 {study.study_description || 'No description'}
@@ -296,7 +301,7 @@ export default function DICOMStudiesPage() {
                             </div>
                             <ModalityBadge modality={study.modality as ImagingModality} />
                           </div>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                          <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
                               {formatDate(study.study_date)}
@@ -313,11 +318,11 @@ export default function DICOMStudiesPage() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between p-4 border-t">
+                <div className="flex items-center justify-between border-t p-4">
                   <p className="text-sm text-muted-foreground">
                     Showing {(page - 1) * PAGE_SIZE + 1} -{' '}
-                    {Math.min(page * PAGE_SIZE, studiesData?.count || 0)} of{' '}
-                    {studiesData?.count} studies
+                    {Math.min(page * PAGE_SIZE, studiesData?.count || 0)} of {studiesData?.count}{' '}
+                    studies
                   </p>
                   <div className="flex gap-2">
                     <Button

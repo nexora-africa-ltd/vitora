@@ -40,11 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Prescription, PrescriptionStatus, PrescriptionItem } from '@/lib/types/pharmacy';
 import { DispenseDialog } from './dispensing/dispense-dialog';
@@ -147,7 +143,7 @@ export function PrescriptionsTable({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <XCircle className="h-12 w-12 text-destructive mb-4" />
+        <XCircle className="mb-4 h-12 w-12 text-destructive" />
         <p className="text-destructive">{error.message}</p>
       </div>
     );
@@ -170,22 +166,22 @@ export function PrescriptionsTable({
             onClick={canExpand ? () => toggleExpanded(rx.id) : undefined}
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0 space-y-1">
+              <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm text-muted-foreground">
                     {rx.prescription_number}
                   </span>
                   <Badge className={`${STATUS_COLORS[displayStatus]} shrink-0`}>
-                    <StatusIcon className="h-3 w-3 mr-1" />
+                    <StatusIcon className="mr-1 h-3 w-3" />
                     {displayStatus}
                   </Badge>
                 </div>
-                <p className="font-medium truncate">{rx.patient_name}</p>
+                <p className="truncate font-medium">{rx.patient_name}</p>
                 <p className="text-sm text-muted-foreground">{rx.patient_mrn}</p>
               </div>
-              <div className="text-right shrink-0">
+              <div className="shrink-0 text-right">
                 <p className="text-sm">{formatDate(rx.prescribed_date, 'MMM d')}</p>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                   <Pill className="h-3.5 w-3.5" />
                   <span>{rx.items?.length ?? 0}</span>
                 </div>
@@ -193,12 +189,10 @@ export function PrescriptionsTable({
             </div>
 
             {/* Prescriber */}
-            <p className="text-xs text-muted-foreground mt-2">
-              By: {rx.prescriber_name}
-            </p>
+            <p className="mt-2 text-xs text-muted-foreground">By: {rx.prescriber_name}</p>
 
             {/* Actions row */}
-            <div className="flex items-center justify-between mt-3 pt-3 border-t">
+            <div className="mt-3 flex items-center justify-between border-t pt-3">
               <Button
                 variant="outline"
                 size="sm"
@@ -207,7 +201,7 @@ export function PrescriptionsTable({
                   router.push(`/pharmacy/prescriptions/${rx.id}`);
                 }}
               >
-                <Eye className="h-4 w-4 mr-1.5" />
+                <Eye className="mr-1.5 h-4 w-4" />
                 View
               </Button>
               {canExpand && (
@@ -221,12 +215,12 @@ export function PrescriptionsTable({
                 >
                   {isExpanded ? (
                     <>
-                      <ChevronUp className="h-4 w-4 mr-1" />
+                      <ChevronUp className="mr-1 h-4 w-4" />
                       Hide Items
                     </>
                   ) : (
                     <>
-                      <ChevronDown className="h-4 w-4 mr-1" />
+                      <ChevronDown className="mr-1 h-4 w-4" />
                       Show Items
                     </>
                   )}
@@ -237,20 +231,17 @@ export function PrescriptionsTable({
 
           {/* Expanded items section */}
           {isExpanded && (
-            <div className="border-t bg-muted/30 p-4 space-y-3">
-              <h4 className="font-semibold text-sm flex items-center gap-2">
+            <div className="space-y-3 border-t bg-muted/30 p-4">
+              <h4 className="flex items-center gap-2 text-sm font-semibold">
                 <Package className="h-4 w-4" />
                 Prescription Items
               </h4>
               <div className="space-y-2">
                 {(rx.items ?? []).map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3 border rounded-md bg-background space-y-2"
-                  >
+                  <div key={item.id} className="space-y-2 rounded-md border bg-background p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{item.drug_name}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{item.drug_name}</p>
                         <p className="text-xs text-muted-foreground">
                           {item.dosage} • {item.frequency}
                         </p>
@@ -269,22 +260,33 @@ export function PrescriptionsTable({
                             });
                           }}
                         >
-                          <Pill className="h-3.5 w-3.5 mr-1" />
+                          <Pill className="mr-1 h-3.5 w-3.5" />
                           Dispense
                         </ActionButton>
                       ) : item.is_cancelled ? (
-                        <Badge variant="outline" className="shrink-0">Cancelled</Badge>
+                        <Badge variant="outline" className="shrink-0">
+                          Cancelled
+                        </Badge>
                       ) : (
-                        <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 shrink-0">
-                          <CheckCircle className="h-3 w-3 mr-1" />
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                        >
+                          <CheckCircle className="mr-1 h-3 w-3" />
                           Done
                         </Badge>
                       )}
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                      <span>Rx: <strong>{item.quantity_prescribed}</strong></span>
-                      <span>Given: <strong>{item.quantity_dispensed}</strong></span>
-                      <span>Left: <strong className="text-primary">{item.remaining_quantity}</strong></span>
+                      <span>
+                        Rx: <strong>{item.quantity_prescribed}</strong>
+                      </span>
+                      <span>
+                        Given: <strong>{item.quantity_dispensed}</strong>
+                      </span>
+                      <span>
+                        Left: <strong className="text-primary">{item.remaining_quantity}</strong>
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -373,17 +375,19 @@ export function PrescriptionsTable({
         return (
           <div className="flex items-center gap-1.5">
             <Badge className={STATUS_COLORS[displayStatus]}>
-              <StatusIcon className="h-3 w-3 mr-1" />
+              <StatusIcon className="mr-1 h-3 w-3" />
               {displayStatus}
             </Badge>
             {isExpiringSoon && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
                   </TooltipTrigger>
                   <TooltipContent>
-                    {daysLeft === 0 ? 'Expires today' : `Expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
+                    {daysLeft === 0
+                      ? 'Expires today'
+                      : `Expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -400,9 +404,15 @@ export function PrescriptionsTable({
       cell: (rx: Prescription) => (
         <Badge variant="outline" className="text-[10px]">
           {rx.dispensing_type === 'EXTERNAL' ? (
-            <><ExternalLink className="h-2.5 w-2.5 mr-0.5" />External</>
+            <>
+              <ExternalLink className="mr-0.5 h-2.5 w-2.5" />
+              External
+            </>
           ) : (
-            <><Building2 className="h-2.5 w-2.5 mr-0.5" />Internal</>
+            <>
+              <Building2 className="mr-0.5 h-2.5 w-2.5" />
+              Internal
+            </>
           )}
         </Badge>
       ),
@@ -419,7 +429,7 @@ export function PrescriptionsTable({
             router.push(`/pharmacy/prescriptions/${rx.id}`);
           }}
         >
-          <Eye className="h-4 w-4 mr-1" />
+          <Eye className="mr-1 h-4 w-4" />
           View
         </Button>
       ),
@@ -446,7 +456,7 @@ export function PrescriptionsTable({
           <Collapsible open={showFilters} onOpenChange={setShowFilters}>
             <CollapsibleTrigger asChild>
               <Button variant="outline" size="sm" className="w-full">
-                <Filter className="h-4 w-4 mr-2" />
+                <Filter className="mr-2 h-4 w-4" />
                 {showFilters ? 'Hide Filters' : 'Show Filters'}
               </Button>
             </CollapsibleTrigger>
@@ -470,7 +480,7 @@ export function PrescriptionsTable({
 
         {/* Desktop: Inline filters */}
         <div className="hidden sm:flex sm:items-center sm:gap-4">
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
@@ -512,8 +522,8 @@ export function PrescriptionsTable({
         renderExpandedRow={(rx) => {
           if (!expandedRows.has(rx.id)) return null;
           return (
-            <div className="bg-muted/30 p-4 space-y-3 w-full">
-              <h4 className="font-semibold text-sm flex items-center gap-2">
+            <div className="w-full space-y-3 bg-muted/30 p-4">
+              <h4 className="flex items-center gap-2 text-sm font-semibold">
                 <Package className="h-4 w-4" />
                 Prescription Items - {rx.prescription_number}
               </h4>
@@ -521,20 +531,26 @@ export function PrescriptionsTable({
                 {(rx.items ?? []).map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-3 border rounded-md bg-background w-full"
+                    className="flex w-full items-center justify-between rounded-md border bg-background p-3"
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{item.drug_name}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{item.drug_name}</p>
                       <p className="text-xs text-muted-foreground">
                         {item.dosage} • {item.frequency} • {item.duration}
                       </p>
-                      <div className="flex items-center gap-3 mt-1 text-xs">
-                        <span>Rx: <strong>{item.quantity_prescribed}</strong></span>
-                        <span>Given: <strong>{item.quantity_dispensed}</strong></span>
-                        <span>Left: <strong className="text-primary">{item.remaining_quantity}</strong></span>
+                      <div className="mt-1 flex items-center gap-3 text-xs">
+                        <span>
+                          Rx: <strong>{item.quantity_prescribed}</strong>
+                        </span>
+                        <span>
+                          Given: <strong>{item.quantity_dispensed}</strong>
+                        </span>
+                        <span>
+                          Left: <strong className="text-primary">{item.remaining_quantity}</strong>
+                        </span>
                       </div>
                     </div>
-                    <div className="shrink-0 ml-3">
+                    <div className="ml-3 shrink-0">
                       {item.remaining_quantity > 0 && !item.is_cancelled ? (
                         <ActionButton
                           action="pharmacy.dispense"
@@ -547,14 +563,17 @@ export function PrescriptionsTable({
                             });
                           }}
                         >
-                          <Pill className="h-4 w-4 mr-1.5" />
+                          <Pill className="mr-1.5 h-4 w-4" />
                           Dispense
                         </ActionButton>
                       ) : item.is_cancelled ? (
                         <Badge variant="outline">Cancelled</Badge>
                       ) : (
-                        <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
-                          <CheckCircle className="h-3 w-3 mr-1" />
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                        >
+                          <CheckCircle className="mr-1 h-3 w-3" />
                           Done
                         </Badge>
                       )}
@@ -590,7 +609,9 @@ export function PrescriptionsTable({
       {totalPages > 1 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-center text-sm text-muted-foreground sm:text-left">
-            <p>Page {page} of {totalPages}</p>
+            <p>
+              Page {page} of {totalPages}
+            </p>
             {totalCount > 0 && (
               <p>
                 Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} of{' '}

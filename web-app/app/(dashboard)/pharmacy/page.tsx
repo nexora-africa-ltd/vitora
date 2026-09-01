@@ -16,7 +16,16 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Plus, Pill, Package, FileText, AlertTriangle, Loader2, History, BarChart3 } from 'lucide-react';
+import {
+  Plus,
+  Pill,
+  Package,
+  FileText,
+  AlertTriangle,
+  Loader2,
+  History,
+  BarChart3,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +50,13 @@ import {
 } from '@/lib/hooks/use-pharmacy';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import { StockStatus, PrescriptionStatus, DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
+import {
+  StockStatus,
+  PrescriptionStatus,
+  DrugCategory,
+  DrugForm,
+  DrugSchedule,
+} from '@/lib/types/pharmacy';
 import { useFacility } from '@/lib/context/facility-context';
 import { usePharmacySocket } from '@/lib/hooks/use-websocket';
 import { usePermissions } from '@/lib/hooks/use-permissions';
@@ -175,11 +190,14 @@ export default function PharmacyPage() {
     isLoading: alertsLoading,
     error: alertsError,
     refetch: refetchAlerts,
-  } = useStockAlerts({
-    page: alertsPage,
-    page_size: alertsPageSize,
-    resolved: alertsResolved,
-  }, { enabled: canViewAlerts });
+  } = useStockAlerts(
+    {
+      page: alertsPage,
+      page_size: alertsPageSize,
+      resolved: alertsResolved,
+    },
+    { enabled: canViewAlerts }
+  );
 
   const {
     data: rxData,
@@ -207,9 +225,7 @@ export default function PharmacyPage() {
   });
 
   // Calculate counts for badges
-  const unresolvedAlertsCount = canViewAlerts
-    ? alertsData?.count ?? 0
-    : 0;
+  const unresolvedAlertsCount = canViewAlerts ? (alertsData?.count ?? 0) : 0;
   const pendingRxCount = pendingRx?.length ?? 0;
 
   // Calculate total pages
@@ -251,13 +267,13 @@ export default function PharmacyPage() {
                 data-testid="direct-dispense-button"
                 className="w-full sm:w-auto"
               >
-                <Pill className="h-4 w-4 mr-2" />
+                <Pill className="mr-2 h-4 w-4" />
                 Direct Dispense
               </Button>
             ) : null}
             <Link href="/pharmacy/reports" data-testid="pharmacy-reports">
               <Button variant="outline" className="w-full sm:w-auto">
-                <BarChart3 className="h-4 w-4 mr-2" />
+                <BarChart3 className="mr-2 h-4 w-4" />
                 Reports
               </Button>
             </Link>
@@ -282,22 +298,22 @@ export default function PharmacyPage() {
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-0.5">
-                <p className="text-xs sm:text-sm text-muted-foreground">Total Items</p>
-                <p className="text-xl sm:text-2xl font-bold">{drugsData?.count ?? 0}</p>
+                <p className="text-xs text-muted-foreground sm:text-sm">Total Items</p>
+                <p className="text-xl font-bold sm:text-2xl">{drugsData?.count ?? 0}</p>
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs sm:text-sm text-muted-foreground">Stock Batches</p>
-                <p className="text-xl sm:text-2xl font-bold">
-                  {inventoryModuleEnabled ? stockData?.count ?? 0 : 'N/A'}
+                <p className="text-xs text-muted-foreground sm:text-sm">Stock Batches</p>
+                <p className="text-xl font-bold sm:text-2xl">
+                  {inventoryModuleEnabled ? (stockData?.count ?? 0) : 'N/A'}
                 </p>
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs sm:text-sm text-muted-foreground">Pending Rx</p>
-                <p className="text-xl sm:text-2xl font-bold">{pendingRxCount}</p>
+                <p className="text-xs text-muted-foreground sm:text-sm">Pending Rx</p>
+                <p className="text-xl font-bold sm:text-2xl">{pendingRxCount}</p>
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs sm:text-sm text-muted-foreground">Active Alerts</p>
-                <p className="text-xl sm:text-2xl font-bold text-destructive">
+                <p className="text-xs text-muted-foreground sm:text-sm">Active Alerts</p>
+                <p className="text-xl font-bold text-destructive sm:text-2xl">
                   {canViewAlerts ? unresolvedAlertsCount : 'N/A'}
                 </p>
               </div>
@@ -315,178 +331,200 @@ export default function PharmacyPage() {
           </CardContent>
         </Card>
       ) : (
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="w-full flex flex-wrap h-auto gap-1 p-1">
-          <TabsTrigger value="drugs" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
-            <Pill className="h-4 w-4" />
-            <span className="hidden sm:inline">Catalog</span>
-          </TabsTrigger>
-          {inventoryModuleEnabled ? (
-            <TabsTrigger value="inventory" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Inventory</span>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="flex h-auto w-full flex-wrap gap-1 p-1">
+            <TabsTrigger
+              value="drugs"
+              className="flex-1 gap-1.5 px-2 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm"
+            >
+              <Pill className="h-4 w-4" />
+              <span className="hidden sm:inline">Catalog</span>
             </TabsTrigger>
-          ) : null}
-          <TabsTrigger value="prescriptions" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 relative">
-            <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Prescriptions</span>
-            {pendingRxCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-0.5 h-5 min-w-[1.25rem] px-1.5 flex items-center justify-center text-xs tabular-nums"
-                data-testid="pending-count"
+            {inventoryModuleEnabled ? (
+              <TabsTrigger
+                value="inventory"
+                className="flex-1 gap-1.5 px-2 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm"
               >
-                {pendingRxCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="dispensing" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
-            <History className="h-4 w-4" />
-            <span className="hidden sm:inline">Dispensing</span>
-          </TabsTrigger>
-          {canViewAlerts ? (
-            <TabsTrigger value="alerts" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 relative">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="hidden sm:inline">Alerts</span>
-              {unresolvedAlertsCount > 0 && (
+                <Package className="h-4 w-4" />
+                <span className="hidden sm:inline">Inventory</span>
+              </TabsTrigger>
+            ) : null}
+            <TabsTrigger
+              value="prescriptions"
+              className="relative flex-1 gap-1.5 px-2 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm"
+            >
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Prescriptions</span>
+              {pendingRxCount > 0 && (
                 <Badge
                   variant="destructive"
-                  className="ml-0.5 h-5 min-w-[1.25rem] px-1.5 flex items-center justify-center text-xs tabular-nums"
+                  className="ml-0.5 flex h-5 min-w-[1.25rem] items-center justify-center px-1.5 text-xs tabular-nums"
+                  data-testid="pending-count"
                 >
-                  {unresolvedAlertsCount}
+                  {pendingRxCount}
                 </Badge>
               )}
             </TabsTrigger>
-          ) : null}
-        </TabsList>
+            <TabsTrigger
+              value="dispensing"
+              className="flex-1 gap-1.5 px-2 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm"
+            >
+              <History className="h-4 w-4" />
+              <span className="hidden sm:inline">Dispensing</span>
+            </TabsTrigger>
+            {canViewAlerts ? (
+              <TabsTrigger
+                value="alerts"
+                className="relative flex-1 gap-1.5 px-2 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                <span className="hidden sm:inline">Alerts</span>
+                {unresolvedAlertsCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="ml-0.5 flex h-5 min-w-[1.25rem] items-center justify-center px-1.5 text-xs tabular-nums"
+                  >
+                    {unresolvedAlertsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            ) : null}
+          </TabsList>
 
-        {/* Drugs Tab */}
-        <TabsContent value="drugs" className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => router.push('/pharmacy/drugs/new')} data-testid="add-drug-button" size="sm">
-              <Plus className="h-4 w-4 mr-1.5" />
-              Add Item
-            </Button>
-          </div>
-          <DrugTable
-            drugs={drugsData?.results ?? []}
-            isLoading={drugsLoading}
-            error={drugsError as Error | null}
-            page={drugsPage}
-            totalPages={drugsTotalPages}
-            totalCount={drugsData?.count}
-            onPageChange={setDrugsPage}
-            onSearch={(query) => {
-              setDrugsSearch(query);
-              setDrugsPage(1);
-            }}
-            onFiltersChange={(filters) => {
-              setDrugsFilters(filters);
-              setDrugsPage(1);
-            }}
-          />
-        </TabsContent>
-
-        {inventoryModuleEnabled ? (
-          <TabsContent value="inventory" className="space-y-4">
+          {/* Drugs Tab */}
+          <TabsContent value="drugs" className="space-y-4">
             <div className="flex justify-end">
-              <Button onClick={() => router.push('/pharmacy/stock/receive')} size="sm">
-                <Plus className="h-4 w-4 mr-1.5" />
-                Quick Receive
+              <Button
+                onClick={() => router.push('/pharmacy/drugs/new')}
+                data-testid="add-drug-button"
+                size="sm"
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add Item
               </Button>
             </div>
-            <StockTable
-              batches={stockData?.results ?? []}
-              isLoading={stockLoading}
-              error={stockError as Error | null}
-              page={stockPage}
-              totalPages={stockTotalPages}
-              onPageChange={setStockPage}
+            <DrugTable
+              drugs={drugsData?.results ?? []}
+              isLoading={drugsLoading}
+              error={drugsError as Error | null}
+              page={drugsPage}
+              totalPages={drugsTotalPages}
+              totalCount={drugsData?.count}
+              onPageChange={setDrugsPage}
+              onSearch={(query) => {
+                setDrugsSearch(query);
+                setDrugsPage(1);
+              }}
+              onFiltersChange={(filters) => {
+                setDrugsFilters(filters);
+                setDrugsPage(1);
+              }}
+            />
+          </TabsContent>
+
+          {inventoryModuleEnabled ? (
+            <TabsContent value="inventory" className="space-y-4">
+              <div className="flex justify-end">
+                <Button onClick={() => router.push('/pharmacy/stock/receive')} size="sm">
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Quick Receive
+                </Button>
+              </div>
+              <StockTable
+                batches={stockData?.results ?? []}
+                isLoading={stockLoading}
+                error={stockError as Error | null}
+                page={stockPage}
+                totalPages={stockTotalPages}
+                onPageChange={setStockPage}
+                onStatusFilter={(status) => {
+                  setStockStatus(status);
+                  setStockPage(1);
+                }}
+                onSearchFilter={(query) => {
+                  setStockSearch(query);
+                  setStockPage(1);
+                }}
+                drugs={drugsData?.results.map((d) => ({
+                  id: d.id,
+                  display_name: d.generic_name + ' ' + d.strength,
+                }))}
+              />
+            </TabsContent>
+          ) : null}
+
+          {/* Prescriptions Tab */}
+          <TabsContent value="prescriptions" className="space-y-4">
+            <div className="flex justify-end">
+              {canCreatePrescription && canCreatePrescriptionFromCapabilities ? (
+                <Button onClick={() => router.push('/pharmacy/prescriptions/new')} size="sm">
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  New Prescription
+                </Button>
+              ) : null}
+            </div>
+            <PrescriptionsTable
+              prescriptions={rxData?.results ?? []}
+              isLoading={rxLoading}
+              error={rxError as Error | null}
+              page={rxPage}
+              pageSize={rxPageSize}
+              totalCount={rxData?.count ?? 0}
+              totalPages={rxTotalPages}
+              onPageChange={setRxPage}
               onStatusFilter={(status) => {
-                setStockStatus(status);
-                setStockPage(1);
+                setRxStatus(status);
+                setRxPage(1);
               }}
-              onSearchFilter={(query) => {
-                setStockSearch(query);
-                setStockPage(1);
+              onSearch={(query) => {
+                setRxSearch(query);
+                setRxPage(1);
               }}
-              drugs={drugsData?.results.map(d => ({ id: d.id, display_name: d.generic_name + ' ' + d.strength }))}
             />
           </TabsContent>
-        ) : null}
 
-        {/* Prescriptions Tab */}
-        <TabsContent value="prescriptions" className="space-y-4">
-          <div className="flex justify-end">
-            {canCreatePrescription && canCreatePrescriptionFromCapabilities ? (
-              <Button onClick={() => router.push('/pharmacy/prescriptions/new')} size="sm">
-                <Plus className="h-4 w-4 mr-1.5" />
-                New Prescription
-              </Button>
-            ) : null}
-          </div>
-          <PrescriptionsTable
-            prescriptions={rxData?.results ?? []}
-            isLoading={rxLoading}
-            error={rxError as Error | null}
-            page={rxPage}
-            pageSize={rxPageSize}
-            totalCount={rxData?.count ?? 0}
-            totalPages={rxTotalPages}
-            onPageChange={setRxPage}
-            onStatusFilter={(status) => {
-              setRxStatus(status);
-              setRxPage(1);
-            }}
-            onSearch={(query) => {
-              setRxSearch(query);
-              setRxPage(1);
-            }}
-          />
-        </TabsContent>
-
-        {/* Dispensing History Tab */}
-        <TabsContent value="dispensing" className="space-y-4">
-          <DispensingHistoryTable
-            dispensings={dispensingData?.results ?? []}
-            isLoading={dispensingLoading}
-            error={dispensingError as Error | null}
-            page={dispensingPage}
-            totalPages={dispensingTotalPages}
-            onPageChange={setDispensingPage}
-            onPatientFilter={(patientId) => {
-              setDispensingPatientFilter(patientId);
-              setDispensingPage(1);
-            }}
-            onDrugFilter={(drugId) => {
-              setDispensingDrugFilter(drugId);
-              setDispensingPage(1);
-            }}
-            onDateRangeFilter={(from, to) => {
-              setDispensingDateFrom(from);
-              setDispensingDateTo(to);
-              setDispensingPage(1);
-            }}
-          />
-        </TabsContent>
-
-        {/* Alerts Tab */}
-        {canViewAlerts ? (
-          <TabsContent value="alerts" className="space-y-4">
-            <AlertsPanel
-              alerts={alertsData?.results ?? []}
-              isLoading={alertsLoading}
-              error={alertsError as Error | null}
-              page={alertsPage}
-              totalPages={alertsTotalPages}
-              totalCount={alertsData?.count ?? 0}
-              onPageChange={setAlertsPage}
-              onRefresh={() => refetchAlerts()}
-              autoRefreshInterval={300} // Auto-refresh every 5 minutes (300 seconds)
+          {/* Dispensing History Tab */}
+          <TabsContent value="dispensing" className="space-y-4">
+            <DispensingHistoryTable
+              dispensings={dispensingData?.results ?? []}
+              isLoading={dispensingLoading}
+              error={dispensingError as Error | null}
+              page={dispensingPage}
+              totalPages={dispensingTotalPages}
+              onPageChange={setDispensingPage}
+              onPatientFilter={(patientId) => {
+                setDispensingPatientFilter(patientId);
+                setDispensingPage(1);
+              }}
+              onDrugFilter={(drugId) => {
+                setDispensingDrugFilter(drugId);
+                setDispensingPage(1);
+              }}
+              onDateRangeFilter={(from, to) => {
+                setDispensingDateFrom(from);
+                setDispensingDateTo(to);
+                setDispensingPage(1);
+              }}
             />
           </TabsContent>
-        ) : null}
-      </Tabs>
+
+          {/* Alerts Tab */}
+          {canViewAlerts ? (
+            <TabsContent value="alerts" className="space-y-4">
+              <AlertsPanel
+                alerts={alertsData?.results ?? []}
+                isLoading={alertsLoading}
+                error={alertsError as Error | null}
+                page={alertsPage}
+                totalPages={alertsTotalPages}
+                totalCount={alertsData?.count ?? 0}
+                onPageChange={setAlertsPage}
+                onRefresh={() => refetchAlerts()}
+                autoRefreshInterval={300} // Auto-refresh every 5 minutes (300 seconds)
+              />
+            </TabsContent>
+          ) : null}
+        </Tabs>
       )}
 
       {/* Direct Dispense Dialog */}

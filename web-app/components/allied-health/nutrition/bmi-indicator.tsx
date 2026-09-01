@@ -8,10 +8,7 @@
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  BMI_CLASSIFICATION_CONFIG,
-  type BMIClassification,
-} from '@/lib/types/nutrition';
+import { BMI_CLASSIFICATION_CONFIG, type BMIClassification } from '@/lib/types/nutrition';
 
 interface BMIIndicatorProps {
   bmi: number | null;
@@ -54,21 +51,15 @@ export function BMIIndicator({
   className,
 }: BMIIndicatorProps) {
   if (bmi === null) {
-    return (
-      <span className="text-sm text-muted-foreground">No BMI data</span>
-    );
+    return <span className="text-sm text-muted-foreground">No BMI data</span>;
   }
 
-  const config = classification
-    ? BMI_CLASSIFICATION_CONFIG[classification]
-    : null;
+  const config = classification ? BMI_CLASSIFICATION_CONFIG[classification] : null;
 
   if (compact) {
     return (
       <div className={cn('flex items-center gap-2', className)}>
-        <span className={cn('font-semibold tabular-nums', config?.color)}>
-          {bmi.toFixed(1)}
-        </span>
+        <span className={cn('font-semibold tabular-nums', config?.color)}>{bmi.toFixed(1)}</span>
         {config && (
           <Badge variant="outline" className={cn('text-xs', config.color)}>
             {config.label}
@@ -102,7 +93,7 @@ export function BMIIndicator({
       {showBar && (
         <div className="relative">
           {/* Color gradient bar */}
-          <div className="flex h-3 rounded-full overflow-hidden">
+          <div className="flex h-3 overflow-hidden rounded-full">
             {BMI_RANGES.map((range) => (
               <div
                 key={range.key}
@@ -113,17 +104,14 @@ export function BMIIndicator({
           </div>
 
           {/* Marker */}
-          <div
-            className="absolute top-0 -mt-1 w-0 h-0"
-            style={{ left: `${getBmiPosition(bmi)}%` }}
-          >
+          <div className="absolute top-0 -mt-1 h-0 w-0" style={{ left: `${getBmiPosition(bmi)}%` }}>
             <div className="relative -left-1.5">
-              <div className="w-3 h-5 border-2 border-foreground rounded-sm bg-background" />
+              <div className="h-5 w-3 rounded-sm border-2 border-foreground bg-background" />
             </div>
           </div>
 
           {/* Range labels */}
-          <div className="flex justify-between mt-1">
+          <div className="mt-1 flex justify-between">
             <span className="text-[10px] text-muted-foreground">10</span>
             <span className="text-[10px] text-muted-foreground">18.5</span>
             <span className="text-[10px] text-muted-foreground">25</span>

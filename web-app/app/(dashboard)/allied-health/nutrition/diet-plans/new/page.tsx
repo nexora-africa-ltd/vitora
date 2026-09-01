@@ -20,9 +20,7 @@ function NewDietPlanContent() {
         title="New Diet Plan"
         helpContent="Create a new diet plan with meal plans, nutritional targets, and food guidance."
       />
-      <DietPlanForm
-        consultationId={consultationId ? Number(consultationId) : undefined}
-      />
+      <DietPlanForm consultationId={consultationId ? Number(consultationId) : undefined} />
     </div>
   );
 }

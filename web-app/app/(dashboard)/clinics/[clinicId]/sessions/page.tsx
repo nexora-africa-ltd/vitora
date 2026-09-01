@@ -40,11 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useClinic, useClinicSessions } from '@/lib/hooks/use-clinics';
 import { ClinicNavigation } from '@/components/clinics/clinic-navigation';
 import type { ClinicSession, ClinicSessionStatus } from '@/lib/types/clinic';
@@ -116,7 +112,9 @@ export default function ClinicSessionsPage() {
         from = format(subDays(today, 365), 'yyyy-MM-dd');
         break;
       case 'custom':
-        from = customStartDate ? format(customStartDate, 'yyyy-MM-dd') : format(subDays(today, 30), 'yyyy-MM-dd');
+        from = customStartDate
+          ? format(customStartDate, 'yyyy-MM-dd')
+          : format(subDays(today, 30), 'yyyy-MM-dd');
         to = customEndDate ? format(customEndDate, 'yyyy-MM-dd') : format(today, 'yyyy-MM-dd');
         break;
       default:
@@ -128,7 +126,11 @@ export default function ClinicSessionsPage() {
 
   // Fetch data
   const { data: clinic, isLoading: clinicLoading } = useClinic(clinicId);
-  const { data: sessionsData, isLoading: sessionsLoading, refetch } = useClinicSessions(clinicId, { ...dateParams, page, page_size: PAGE_SIZE });
+  const {
+    data: sessionsData,
+    isLoading: sessionsLoading,
+    refetch,
+  } = useClinicSessions(clinicId, { ...dateParams, page, page_size: PAGE_SIZE });
 
   const sessions = useMemo(() => sessionsData?.results ?? [], [sessionsData]);
   const totalSessions = sessionsData?.count ?? 0;
@@ -154,13 +156,11 @@ export default function ClinicSessionsPage() {
     return {
       totalSessions,
       totalPatientsSeen,
-      avgPatientsPerSession: closedSessions.length > 0
-        ? Math.round(totalPatientsSeen / closedSessions.length)
-        : 0,
+      avgPatientsPerSession:
+        closedSessions.length > 0 ? Math.round(totalPatientsSeen / closedSessions.length) : 0,
       avgWaitTime: 0,
-      completionRate: sessions.length > 0
-        ? Math.round((closedSessions.length / sessions.length) * 100)
-        : 0,
+      completionRate:
+        sessions.length > 0 ? Math.round((closedSessions.length / sessions.length) * 100) : 0,
     };
   }, [sessions, totalSessions]);
 
@@ -181,8 +181,8 @@ export default function ClinicSessionsPage() {
   if (!clinic) {
     return (
       <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-        <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
-        <h3 className="text-base sm:text-lg font-semibold mb-2">Clinic not found</h3>
+        <AlertCircle className="mb-4 h-10 w-10 text-muted-foreground sm:h-12 sm:w-12" />
+        <h3 className="mb-2 text-base font-semibold sm:text-lg">Clinic not found</h3>
         <Button asChild size="sm">
           <Link href="/clinics">Back to Clinics</Link>
         </Button>
@@ -192,300 +192,333 @@ export default function ClinicSessionsPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
-    <div className="space-y-4 sm:space-y-6">
-      <PageHeader
-        title={`${clinic.name} - Sessions`}
-        helpContent="View historical session data, patient counts, and performance metrics for this clinic."
-        actions={
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-        }
-      />
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title={`${clinic.name} - Sessions`}
+          helpContent="View historical session data, patient counts, and performance metrics for this clinic."
+          actions={
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+          }
+        />
 
-      {/* Navigation */}
-      <ClinicNavigation clinicId={clinicId} />
+        {/* Navigation */}
+        <ClinicNavigation clinicId={clinicId} />
 
-      {/* Date Range Filter */}
-      <Card>
-        <CardContent className="p-3 sm:p-6">
-          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:flex-wrap">
-            <div className="flex items-center gap-2">
-              <CalendarRange className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs sm:text-sm font-medium">Date Range:</span>
-            </div>
-
-            <Select value={dateRange} onValueChange={(v) => { setDateRange(v as DateRange); setPage(1); }}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <SelectValue placeholder="Select range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Last 7 Days</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-                <SelectItem value="quarter">Last 90 Days</SelectItem>
-                <SelectItem value="year">Last Year</SelectItem>
-                <SelectItem value="custom">Custom Range</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {dateRange === 'custom' && (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full sm:w-[140px] justify-start text-left font-normal">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      <span className="truncate">
-                        {customStartDate ? format(customStartDate, 'MMM d, yy') : 'Start'}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <CalendarComponent
-                      mode="single"
-                      selected={customStartDate}
-                      onSelect={setCustomStartDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <span className="text-muted-foreground text-center">to</span>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full sm:w-[140px] justify-start text-left font-normal">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      <span className="truncate">
-                        {customEndDate ? format(customEndDate, 'MMM d, yy') : 'End'}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <CalendarComponent
-                      mode="single"
-                      selected={customEndDate}
-                      onSelect={setCustomEndDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+        {/* Date Range Filter */}
+        <Card>
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+              <div className="flex items-center gap-2">
+                <CalendarRange className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-medium sm:text-sm">Date Range:</span>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Sessions</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold">{stats.totalSessions}</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">In period</p>
-          </CardContent>
-        </Card>
+              <Select
+                value={dateRange}
+                onValueChange={(v) => {
+                  setDateRange(v as DateRange);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <SelectValue placeholder="Select range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">Last 7 Days</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="quarter">Last 90 Days</SelectItem>
+                  <SelectItem value="year">Last Year</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Patients</CardTitle>
-            <Users className="h-4 w-4 text-blue-500 hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.totalPatientsSeen}</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Total seen</p>
-          </CardContent>
-        </Card>
+              {dateRange === 'custom' && (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start text-left font-normal sm:w-[140px]"
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        <span className="truncate">
+                          {customStartDate ? format(customStartDate, 'MMM d, yy') : 'Start'}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={customStartDate}
+                        onSelect={setCustomStartDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Avg/Session</CardTitle>
-            <BarChart3 className="h-4 w-4 text-green-500 hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.avgPatientsPerSession}</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Patients</p>
-          </CardContent>
-        </Card>
+                  <span className="text-center text-muted-foreground">to</span>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Completion</CardTitle>
-            <CheckCircle className="h-4 w-4 text-purple-500 hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.completionRate}%</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Rate</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Sessions Table */}
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-base sm:text-lg">Session History</CardTitle>
-            <HelpPopover content="Detailed view of all clinic sessions in the selected period including patient counts and timing." />
-          </div>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6 pt-0">
-          <ResponsiveTable<ClinicSession>
-            data={sessions}
-            keyExtractor={(session) => session.id}
-            isLoading={sessionsLoading}
-            emptyMessage="No sessions recorded for the selected date range."
-            onRowClick={(session) => router.push(`/clinics/${clinicId}/sessions/${session.id}`)}
-            columns={[
-              {
-                key: 'session_date',
-                header: 'Date',
-                sortable: true,
-                sortType: 'date',
-                cell: (session) => (
-                  <span className="font-medium">{formatDate(session.session_date)}</span>
-                ),
-              },
-              {
-                key: 'status',
-                header: 'Status',
-                sortable: true,
-                cell: (session) => (
-                  <Badge className={cn('font-normal shrink-0 w-fit text-xs', STATUS_COLORS[session.status])}>
-                    {session.status_display}
-                  </Badge>
-                ),
-              },
-              {
-                key: 'opened_by_name',
-                header: 'Opened By',
-                sortable: true,
-                cell: (session) => session.opened_by_name || '--',
-                hideOnMobile: true,
-              },
-              {
-                key: 'opened_at',
-                header: 'Opened',
-                sortable: true,
-                sortType: 'date',
-                cell: (session) => formatTime(session.opened_at),
-                hideOnMobile: true,
-              },
-              {
-                key: 'closed_at',
-                header: 'Closed',
-                sortable: true,
-                sortType: 'date',
-                cell: (session) => formatTime(session.closed_at),
-                hideOnMobile: true,
-              },
-              {
-                key: 'duration',
-                header: 'Duration',
-                cell: (session) => calculateSessionDuration(session.opened_at, session.closed_at),
-                hideOnMobile: true,
-              },
-              {
-                key: 'patients_registered',
-                header: 'Reg',
-                sortable: true,
-                sortType: 'number',
-                cell: (session) => <span className="font-medium">{session.patients_registered}</span>,
-                className: 'text-right',
-              },
-              {
-                key: 'patients_seen',
-                header: 'Seen',
-                sortable: true,
-                sortType: 'number',
-                cell: (session) => (
-                  <span className="font-medium text-green-600">{session.patients_seen}</span>
-                ),
-                className: 'text-right',
-              },
-              {
-                key: 'patients_waiting',
-                header: 'Wait',
-                sortable: true,
-                sortType: 'number',
-                cell: (session) => (
-                  session.patients_waiting > 0 ? (
-                    <span className="text-orange-600 font-medium">{session.patients_waiting}</span>
-                  ) : (
-                    <span className="text-muted-foreground">0</span>
-                  )
-                ),
-                className: 'text-right',
-              },
-            ]}
-            mobileCard={(session) => (
-              <div className="rounded-lg border p-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-sm truncate">
-                    {formatDate(session.session_date)}
-                  </span>
-                  <Badge className={cn('font-normal shrink-0 text-xs', STATUS_COLORS[session.status])}>
-                    {session.status_display}
-                  </Badge>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start text-left font-normal sm:w-[140px]"
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        <span className="truncate">
+                          {customEndDate ? format(customEndDate, 'MMM d, yy') : 'End'}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={customEndDate}
+                        onSelect={setCustomEndDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <span className="text-muted-foreground">Reg:</span>{' '}
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Sessions</CardTitle>
+              <Calendar className="hidden h-4 w-4 text-muted-foreground sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold sm:text-2xl">{stats.totalSessions}</div>
+              <p className="hidden text-xs text-muted-foreground sm:block">In period</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Patients</CardTitle>
+              <Users className="hidden h-4 w-4 text-blue-500 sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-blue-600 sm:text-2xl">
+                {stats.totalPatientsSeen}
+              </div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Total seen</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Avg/Session</CardTitle>
+              <BarChart3 className="hidden h-4 w-4 text-green-500 sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-green-600 sm:text-2xl">
+                {stats.avgPatientsPerSession}
+              </div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Patients</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Completion</CardTitle>
+              <CheckCircle className="hidden h-4 w-4 text-purple-500 sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-purple-600 sm:text-2xl">
+                {stats.completionRate}%
+              </div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Rate</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sessions Table */}
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base sm:text-lg">Session History</CardTitle>
+              <HelpPopover content="Detailed view of all clinic sessions in the selected period including patient counts and timing." />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 sm:p-6">
+            <ResponsiveTable<ClinicSession>
+              data={sessions}
+              keyExtractor={(session) => session.id}
+              isLoading={sessionsLoading}
+              emptyMessage="No sessions recorded for the selected date range."
+              onRowClick={(session) => router.push(`/clinics/${clinicId}/sessions/${session.id}`)}
+              columns={[
+                {
+                  key: 'session_date',
+                  header: 'Date',
+                  sortable: true,
+                  sortType: 'date',
+                  cell: (session) => (
+                    <span className="font-medium">{formatDate(session.session_date)}</span>
+                  ),
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  sortable: true,
+                  cell: (session) => (
+                    <Badge
+                      className={cn(
+                        'w-fit shrink-0 text-xs font-normal',
+                        STATUS_COLORS[session.status]
+                      )}
+                    >
+                      {session.status_display}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: 'opened_by_name',
+                  header: 'Opened By',
+                  sortable: true,
+                  cell: (session) => session.opened_by_name || '--',
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'opened_at',
+                  header: 'Opened',
+                  sortable: true,
+                  sortType: 'date',
+                  cell: (session) => formatTime(session.opened_at),
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'closed_at',
+                  header: 'Closed',
+                  sortable: true,
+                  sortType: 'date',
+                  cell: (session) => formatTime(session.closed_at),
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'duration',
+                  header: 'Duration',
+                  cell: (session) => calculateSessionDuration(session.opened_at, session.closed_at),
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'patients_registered',
+                  header: 'Reg',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (session) => (
                     <span className="font-medium">{session.patients_registered}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Seen:</span>{' '}
+                  ),
+                  className: 'text-right',
+                },
+                {
+                  key: 'patients_seen',
+                  header: 'Seen',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (session) => (
                     <span className="font-medium text-green-600">{session.patients_seen}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Wait:</span>{' '}
-                    {session.patients_waiting > 0 ? (
-                      <span className="font-medium text-orange-600">{session.patients_waiting}</span>
+                  ),
+                  className: 'text-right',
+                },
+                {
+                  key: 'patients_waiting',
+                  header: 'Wait',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (session) =>
+                    session.patients_waiting > 0 ? (
+                      <span className="font-medium text-orange-600">
+                        {session.patients_waiting}
+                      </span>
                     ) : (
                       <span className="text-muted-foreground">0</span>
-                    )}
+                    ),
+                  className: 'text-right',
+                },
+              ]}
+              mobileCard={(session) => (
+                <div className="space-y-2 rounded-lg border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-medium">
+                      {formatDate(session.session_date)}
+                    </span>
+                    <Badge
+                      className={cn('shrink-0 text-xs font-normal', STATUS_COLORS[session.status])}
+                    >
+                      {session.status_display}
+                    </Badge>
                   </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Reg:</span>{' '}
+                      <span className="font-medium">{session.patients_registered}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Seen:</span>{' '}
+                      <span className="font-medium text-green-600">{session.patients_seen}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Wait:</span>{' '}
+                      {session.patients_waiting > 0 ? (
+                        <span className="font-medium text-orange-600">
+                          {session.patients_waiting}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </div>
+                  </div>
+                  {session.opened_at && (
+                    <p className="text-xs text-muted-foreground">
+                      {formatTime(session.opened_at)} - {formatTime(session.closed_at)} (
+                      {calculateSessionDuration(session.opened_at, session.closed_at)})
+                    </p>
+                  )}
                 </div>
-                {session.opened_at && (
-                  <p className="text-xs text-muted-foreground">
-                    {formatTime(session.opened_at)} - {formatTime(session.closed_at)} ({calculateSessionDuration(session.opened_at, session.closed_at)})
-                  </p>
-                )}
-              </div>
-            )}
-          />
-        </CardContent>
-      </Card>
+              )}
+            />
+          </CardContent>
+        </Card>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => p - 1)}
-            disabled={!hasPrevPage}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={!hasNextPage}
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-      )}
-    </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!hasPrevPage}
+            >
+              <ChevronLeft className="mr-1 h-4 w-4" />
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNextPage}
+            >
+              Next
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
     </PullToRefresh>
   );
 }

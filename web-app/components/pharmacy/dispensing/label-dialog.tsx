@@ -80,7 +80,8 @@ export function LabelDialog({
           dosage: extendedDispensing.dosage,
           frequency: extendedDispensing.frequency,
           duration: extendedDispensing.duration,
-          instructions: extendedDispensing.instructions || 'Take as directed by your healthcare provider.',
+          instructions:
+            extendedDispensing.instructions || 'Take as directed by your healthcare provider.',
         },
         layout,
         showBatchInfo,
@@ -103,9 +104,7 @@ export function LabelDialog({
   };
   const expiryDate = extendedDispensing.batch_expiry || 'N/A';
   const instructions =
-    extendedDispensing.dosage ||
-    extendedDispensing.instructions ||
-    'Take as directed';
+    extendedDispensing.dosage || extendedDispensing.instructions || 'Take as directed';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -121,12 +120,12 @@ export function LabelDialog({
         </DialogHeader>
 
         {/* Label Preview */}
-        <div className="flex justify-center p-4 bg-muted/30 rounded-md">
-          <div className="label bg-white border-2 border-black p-3 w-72 text-xs">
+        <div className="flex justify-center rounded-md bg-muted/30 p-4">
+          <div className="label w-72 border-2 border-black bg-white p-3 text-xs">
             {/* Header */}
-            <div className="text-center border-b border-black pb-2 mb-2">
-              <h1 className="text-sm font-bold m-0">{facilityName.toUpperCase()}</h1>
-              <p className="text-[10px] text-muted-foreground m-0">Healthcare Excellence</p>
+            <div className="mb-2 border-b border-black pb-2 text-center">
+              <h1 className="m-0 text-sm font-bold">{facilityName.toUpperCase()}</h1>
+              <p className="m-0 text-[10px] text-muted-foreground">Healthcare Excellence</p>
             </div>
 
             {/* Patient Name */}
@@ -138,7 +137,7 @@ export function LabelDialog({
             {/* Drug Name */}
             <div className="mb-1">
               <span className="text-[10px] text-muted-foreground">Medication:</span>
-              <div className="text-sm font-bold bg-muted/50 p-1 rounded">
+              <div className="rounded bg-muted/50 p-1 text-sm font-bold">
                 {dispensing.drug_name}
               </div>
             </div>
@@ -152,11 +151,11 @@ export function LabelDialog({
             {/* Instructions */}
             <div className="mb-2">
               <span className="text-[10px] text-muted-foreground">Instructions:</span>
-              <div className="bg-muted/50 p-1.5 rounded text-[11px]">{instructions}</div>
+              <div className="rounded bg-muted/50 p-1.5 text-[11px]">{instructions}</div>
             </div>
 
             {/* Dates */}
-            <div className="grid grid-cols-2 gap-2 text-[10px] mb-2">
+            <div className="mb-2 grid grid-cols-2 gap-2 text-[10px]">
               <div>
                 <span className="text-muted-foreground">Dispensed:</span>
                 <div>{dispensedDate}</div>
@@ -169,14 +168,14 @@ export function LabelDialog({
 
             {/* Expiry Warning */}
             {showExpiryWarning && (
-              <div className="border border-destructive bg-destructive/5 p-1 text-[10px] text-destructive flex items-center gap-1">
+              <div className="flex items-center gap-1 border border-destructive bg-destructive/5 p-1 text-[10px] text-destructive">
                 <AlertTriangle className="h-3 w-3 shrink-0" />
                 <span>Do not use after expiry date. Keep away from children.</span>
               </div>
             )}
 
             {/* Footer */}
-            <div className="mt-2 pt-2 border-t border-dashed text-[9px] text-muted-foreground">
+            <div className="mt-2 border-t border-dashed pt-2 text-[9px] text-muted-foreground">
               {showBatchInfo && <p className="m-0">Batch: {dispensing.batch_number}</p>}
               <p className="m-0">Dispensed by: {dispensing.dispensed_by_name}</p>
             </div>
@@ -201,7 +200,7 @@ export function LabelDialog({
           </Button>
 
           {showOptions && (
-            <div className="space-y-4 p-3 border rounded-md bg-muted/20">
+            <div className="space-y-4 rounded-md border bg-muted/20 p-3">
               {/* Layout Selection */}
               <div className="space-y-2">
                 <Label htmlFor="layout">Printer Format</Label>
@@ -248,7 +247,7 @@ export function LabelDialog({
             Cancel
           </Button>
           <Button onClick={handlePrint} disabled={isPrinting}>
-            <Printer className="h-4 w-4 mr-2" />
+            <Printer className="mr-2 h-4 w-4" />
             {isPrinting ? 'Printing...' : 'Print Label'}
           </Button>
         </DialogFooter>

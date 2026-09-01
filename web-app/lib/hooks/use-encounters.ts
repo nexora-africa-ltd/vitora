@@ -9,8 +9,18 @@ import { EncounterListParams, Encounter } from '@/lib/types/encounter';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
 import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
 import { generateId } from '@/lib/powersync/uuid';
-import { transformEncounterRow, transformDiagnosisRow, transformTreatmentPlanRow, transformMedicationRow } from '@/lib/powersync/transforms';
-import type { EncounterRow, DiagnosisRow, TreatmentPlanRow, MedicationRow } from '@/lib/powersync/schema';
+import {
+  transformEncounterRow,
+  transformDiagnosisRow,
+  transformTreatmentPlanRow,
+  transformMedicationRow,
+} from '@/lib/powersync/transforms';
+import type {
+  EncounterRow,
+  DiagnosisRow,
+  TreatmentPlanRow,
+  MedicationRow,
+} from '@/lib/powersync/schema';
 import type { PaginatedResponse } from '@/lib/types';
 import type { Diagnosis, TreatmentPlan, Medication } from '@/lib/types/encounter';
 
@@ -34,7 +44,9 @@ export function useEncounters(params?: EncounterListParams) {
     sqlParams.push(params.encounter_type);
   }
   if (params?.search) {
-    conditions.push('(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR e.chief_complaint LIKE ?)');
+    conditions.push(
+      '(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR e.chief_complaint LIKE ?)'
+    );
     const pattern = `%${params.search}%`;
     sqlParams.push(pattern, pattern, pattern, pattern);
   }
@@ -46,7 +58,12 @@ export function useEncounters(params?: EncounterListParams) {
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   return useOfflineQuery<
-    EncounterRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string },
+    EncounterRow & {
+      id: string;
+      patient_first_name?: string;
+      patient_last_name?: string;
+      patient_mrn?: string;
+    },
     PaginatedResponse<Encounter>
   >({
     sql: `SELECT e.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
@@ -60,7 +77,7 @@ export function useEncounters(params?: EncounterListParams) {
       count: rows.length < limit ? offset + rows.length : offset + limit + 1,
       next: null,
       previous: null,
-      results: rows.map(r => transformEncounterRow(r) as unknown as Encounter),
+      results: rows.map((r) => transformEncounterRow(r) as unknown as Encounter),
     }),
     queryKey: ['encounters', params],
     queryFn: () => encountersApi.list(params),
@@ -83,7 +100,12 @@ export function useEncounter(id: string | number) {
   const localId = Number.isFinite(numericId) && numericId > 0 ? numericId : null;
 
   return useOfflineQuery<
-    EncounterRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string },
+    EncounterRow & {
+      id: string;
+      patient_first_name?: string;
+      patient_last_name?: string;
+      patient_mrn?: string;
+    },
     Encounter
   >({
     sql: `SELECT e.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
@@ -125,9 +147,8 @@ export function useEncounterClinicalSnapshot(encounterId: string | number) {
 export function useEncounterDiagnoses(encounterId: string | number) {
   const numericEncounterId =
     typeof encounterId === 'number' ? encounterId : Number.parseInt(encounterId, 10);
-  const localEncounterId = Number.isFinite(numericEncounterId) && numericEncounterId > 0
-    ? numericEncounterId
-    : null;
+  const localEncounterId =
+    Number.isFinite(numericEncounterId) && numericEncounterId > 0 ? numericEncounterId : null;
 
   return useOfflineQuery<
     DiagnosisRow & { id: string; icd10_code_text?: string; icd10_short_description?: string },
@@ -139,7 +160,7 @@ export function useEncounterDiagnoses(encounterId: string | number) {
       WHERE d.encounter_id = ?
       ORDER BY d.created_at`,
     params: [String(localEncounterId ?? 0)],
-    transform: (rows) => rows.map(r => transformDiagnosisRow(r) as unknown as Diagnosis),
+    transform: (rows) => rows.map((r) => transformDiagnosisRow(r) as unknown as Diagnosis),
     queryKey: ['encounters', encounterId, 'diagnoses'],
     queryFn: () => encountersApi.getDiagnoses(encounterId),
     queryOptions: {
@@ -158,14 +179,10 @@ export function useEncounterDiagnoses(encounterId: string | number) {
 export function useEncounterTreatmentPlan(encounterId: string | number) {
   const numericEncounterId =
     typeof encounterId === 'number' ? encounterId : Number.parseInt(encounterId, 10);
-  const localEncounterId = Number.isFinite(numericEncounterId) && numericEncounterId > 0
-    ? numericEncounterId
-    : null;
+  const localEncounterId =
+    Number.isFinite(numericEncounterId) && numericEncounterId > 0 ? numericEncounterId : null;
 
-  return useOfflineQuery<
-    TreatmentPlanRow & { id: string },
-    TreatmentPlan | null
-  >({
+  return useOfflineQuery<TreatmentPlanRow & { id: string }, TreatmentPlan | null>({
     sql: `SELECT * FROM encounters_treatmentplan WHERE encounter_id = ? LIMIT 1`,
     params: [String(localEncounterId ?? 0)],
     transform: (rows) => {
@@ -293,7 +310,8 @@ export function useUpdateEncounter() {
       if (data.temperature !== undefined) fields.temperature = data.temperature ?? null;
       if (data.pulse !== undefined) fields.pulse = data.pulse ?? null;
       if (data.blood_pressure !== undefined) fields.blood_pressure = data.blood_pressure || null;
-      if (data.respiratory_rate !== undefined) fields.respiratory_rate = data.respiratory_rate ?? null;
+      if (data.respiratory_rate !== undefined)
+        fields.respiratory_rate = data.respiratory_rate ?? null;
       if (data.spo2 !== undefined) fields.spo2 = data.spo2 ?? null;
       if (data.weight !== undefined) fields.weight = data.weight ?? null;
       if (data.height !== undefined) fields.height = data.height ?? null;
@@ -357,18 +375,21 @@ export function usePreTriageQueue(params?: PreTriageQueueParams) {
 export function useAddDiagnosis(encounterId: string | number) {
   const queryClient = useQueryClient();
 
-  return useOfflineMutation<{
-    icd10_code?: number | null;
-    icd11_code?: string;
-    icd11_display?: string;
-    snomed_code?: string;
-    snomed_display?: string;
-    diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
-    free_text_diagnosis?: string;
-    notes?: string;
-    is_confirmed?: boolean;
-    certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
-  }, Diagnosis>({
+  return useOfflineMutation<
+    {
+      icd10_code?: number | null;
+      icd11_code?: string;
+      icd11_display?: string;
+      snomed_code?: string;
+      snomed_display?: string;
+      diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
+      free_text_diagnosis?: string;
+      notes?: string;
+      is_confirmed?: boolean;
+      certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
+    },
+    Diagnosis
+  >({
     table: 'encounters_diagnosis',
     operation: 'create',
     buildLocalData: (data) => ({
@@ -420,40 +441,46 @@ export function useDeleteDiagnosis(encounterId: string | number) {
 export function useUpdateDiagnosis(encounterId: string | number) {
   const queryClient = useQueryClient();
 
-  return useOfflineMutation<{
-    diagnosisId: number;
-    data: {
-      icd10_code?: number | null;
-      icd11_code?: string;
-      icd11_display?: string;
-      snomed_code?: string;
-      snomed_display?: string;
-      diagnosis_type?: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
-      free_text_diagnosis?: string;
-      notes?: string;
-      is_confirmed?: boolean;
-      certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
-    };
-  }, Diagnosis>({
+  return useOfflineMutation<
+    {
+      diagnosisId: number;
+      data: {
+        icd10_code?: number | null;
+        icd11_code?: string;
+        icd11_display?: string;
+        snomed_code?: string;
+        snomed_display?: string;
+        diagnosis_type?: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
+        free_text_diagnosis?: string;
+        notes?: string;
+        is_confirmed?: boolean;
+        certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
+      };
+    },
+    Diagnosis
+  >({
     table: 'encounters_diagnosis',
     operation: 'update',
     getId: (input) => input.diagnosisId,
     buildLocalData: ({ data }) => {
       const fields: Record<string, string | number | null> = {};
-      if (data.icd10_code !== undefined) fields.icd10_code_id = data.icd10_code ? String(data.icd10_code) : null;
+      if (data.icd10_code !== undefined)
+        fields.icd10_code_id = data.icd10_code ? String(data.icd10_code) : null;
       if (data.icd11_code !== undefined) fields.icd11_code = data.icd11_code || null;
       if (data.icd11_display !== undefined) fields.icd11_display = data.icd11_display || null;
       if (data.snomed_code !== undefined) fields.snomed_code = data.snomed_code || null;
       if (data.snomed_display !== undefined) fields.snomed_display = data.snomed_display || null;
       if (data.diagnosis_type !== undefined) fields.diagnosis_type = data.diagnosis_type;
-      if (data.free_text_diagnosis !== undefined) fields.free_text_diagnosis = data.free_text_diagnosis || null;
+      if (data.free_text_diagnosis !== undefined)
+        fields.free_text_diagnosis = data.free_text_diagnosis || null;
       if (data.notes !== undefined) fields.notes = data.notes || null;
       if (data.is_confirmed !== undefined) fields.is_confirmed = data.is_confirmed ? 1 : 0;
       if (data.certainty !== undefined) fields.certainty = data.certainty;
       fields.updated_at = new Date().toISOString();
       return fields;
     },
-    mutationFn: ({ diagnosisId, data }) => encountersApi.updateDiagnosis(encounterId, diagnosisId, data),
+    mutationFn: ({ diagnosisId, data }) =>
+      encountersApi.updateDiagnosis(encounterId, diagnosisId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'diagnoses'] });
     },
@@ -465,16 +492,14 @@ export function useUpdateDiagnosis(encounterId: string | number) {
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useEncounterMedications(treatmentPlanId: number | undefined) {
-  return useOfflineQuery<
-    MedicationRow & { id: string },
-    Medication[]
-  >({
+  return useOfflineQuery<MedicationRow & { id: string }, Medication[]>({
     sql: `SELECT * FROM encounters_medication WHERE treatment_plan_id = ? ORDER BY created_at`,
     params: [String(treatmentPlanId ?? 0)],
-    transform: (rows) => rows.map(r => {
-      const local = transformMedicationRow(r);
-      return { ...local, is_active: true } as Medication;
-    }),
+    transform: (rows) =>
+      rows.map((r) => {
+        const local = transformMedicationRow(r);
+        return { ...local, is_active: true } as Medication;
+      }),
     queryKey: ['treatment-plans', treatmentPlanId, 'medications'],
     queryFn: async () => {
       // Medications are typically embedded in the treatment plan response;

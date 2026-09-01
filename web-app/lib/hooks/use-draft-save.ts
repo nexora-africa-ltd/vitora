@@ -58,8 +58,8 @@ function getStorageKey(draftKey: string): string {
  */
 export function clearAllDrafts(): number {
   if (typeof window === 'undefined') return 0;
-  const keys = Object.keys(localStorage).filter(k => k.startsWith(DRAFT_PREFIX));
-  keys.forEach(k => localStorage.removeItem(k));
+  const keys = Object.keys(localStorage).filter((k) => k.startsWith(DRAFT_PREFIX));
+  keys.forEach((k) => localStorage.removeItem(k));
   return keys.length;
 }
 
@@ -122,7 +122,7 @@ export function useDraftSave<T>({
 
     // Store initial data for comparison
     initialDataRef.current = data;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey, enabled]);
 
   // Track dirty state - use JSON comparison with refs to avoid infinite loops

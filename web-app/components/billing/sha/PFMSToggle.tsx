@@ -11,13 +11,7 @@
 'use client';
 
 import React from 'react';
-import {
-  Building2,
-  HelpCircle,
-  User,
-  UserCircle,
-  Heart,
-} from 'lucide-react';
+import { Building2, HelpCircle, User, UserCircle, Heart } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -27,12 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { PFMSCategory } from '@/lib/types/sha';
@@ -92,13 +81,13 @@ export function PFMSToggle({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                <HelpCircle className="h-4 w-4 cursor-help text-muted-foreground" />
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p className="text-sm">
                   <strong>PFMS (Public Finance Management System)</strong> provides
-                  government-subsidized healthcare coverage for vulnerable populations
-                  including: elderly, persons with disabilities, orphans, and the indigent.
+                  government-subsidized healthcare coverage for vulnerable populations including:
+                  elderly, persons with disabilities, orphans, and the indigent.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -148,10 +137,10 @@ export function PFMSToggle({
             variant="secondary"
             className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
           >
-            <Building2 className="h-3 w-3 mr-1" />
+            <Building2 className="mr-1 h-3 w-3" />
             PFMS: {PFMS_CATEGORY_LABELS[pfmsCategory]}
           </Badge>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="mt-1 text-xs text-muted-foreground">
             Claims will include both SHA and PFMS coverage for dual reimbursement
           </p>
         </div>

@@ -4,11 +4,7 @@ import { useCallback, useState } from 'react';
 import { Building2, Check, ChevronsUpDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
   CommandEmpty,
@@ -53,7 +49,7 @@ export function FacilitySwitcher() {
       switchFacility(toUserFacility(detail));
       setOpen(false);
     },
-    [facility, switchFacility],
+    [facility, switchFacility]
   );
 
   if (!facility) return null;
@@ -61,9 +57,9 @@ export function FacilitySwitcher() {
   // Single facility — static display
   if (facilities.length <= 1) {
     return (
-      <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground">
+      <div className="hidden items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground sm:flex">
         <Building2 className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate max-w-[120px] xl:max-w-[180px]">{facility.name}</span>
+        <span className="max-w-[120px] truncate xl:max-w-[180px]">{facility.name}</span>
       </div>
     );
   }
@@ -77,7 +73,7 @@ export function FacilitySwitcher() {
           role="combobox"
           aria-expanded={open}
           aria-label="Switch facility"
-          className="hidden sm:flex items-center gap-1.5 h-9 px-2.5 text-xs max-w-[160px] xl:max-w-[220px] border border-border/40"
+          className="hidden h-9 max-w-[160px] items-center gap-1.5 border border-border/40 px-2.5 text-xs sm:flex xl:max-w-[220px]"
         >
           <Building2 className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{facility.name}</span>
@@ -101,17 +97,17 @@ export function FacilitySwitcher() {
                     <Check
                       className={cn(
                         'h-3.5 w-3.5 shrink-0',
-                        f.id === facility.id ? 'opacity-100' : 'opacity-0',
+                        f.id === facility.id ? 'opacity-100' : 'opacity-0'
                       )}
                     />
-                    <div className="flex flex-col min-w-0">
+                    <div className="flex min-w-0 flex-col">
                       <span className="truncate text-sm">{f.name}</span>
-                      <span className="text-xs text-muted-foreground truncate">
+                      <span className="truncate text-xs text-muted-foreground">
                         {f.mfl_code} · Level {f.level}
                       </span>
                     </div>
                     {f.is_headquarters && (
-                      <Badge variant="secondary" className="ml-auto text-[10px] px-1 h-4 shrink-0">
+                      <Badge variant="secondary" className="ml-auto h-4 shrink-0 px-1 text-[10px]">
                         HQ
                       </Badge>
                     )}

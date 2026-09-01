@@ -15,12 +15,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { auditIntegrityApi } from '@/lib/api/audit-integrity';
@@ -76,9 +71,9 @@ export default function AuditIntegrityPage() {
               size="sm"
             >
               {verifyMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="mr-2 h-4 w-4" />
               )}
               Verify Now
             </Button>
@@ -86,13 +81,13 @@ export default function AuditIntegrityPage() {
         />
 
         {/* Status Cards */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {isLoading ? (
             <>
               {Array.from({ length: 4 }).map((_, i) => (
                 <Card key={i} className="relative overflow-hidden">
                   <CardContent className="p-4">
-                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="mb-2 h-4 w-20" />
                     <Skeleton className="h-8 w-16" />
                   </CardContent>
                 </Card>
@@ -113,7 +108,7 @@ export default function AuditIntegrityPage() {
                   aria-hidden="true"
                 />
                 <CardContent className="relative p-4">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                  <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                     {chainStatus.last_verification_valid === null ? (
                       <ShieldCheck className="h-4 w-4 text-muted-foreground" />
                     ) : chainStatus.last_verification_valid ? (
@@ -142,7 +137,7 @@ export default function AuditIntegrityPage() {
                   aria-hidden="true"
                 />
                 <CardContent className="relative p-4">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                  <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                     <Hash className="h-4 w-4" />
                     Total Entries
                   </div>
@@ -159,12 +154,10 @@ export default function AuditIntegrityPage() {
                   aria-hidden="true"
                 />
                 <CardContent className="relative p-4">
-                  <div className="text-xs text-muted-foreground mb-1">Hash Coverage</div>
-                  <div className="text-2xl font-bold">
-                    {hashCoverage}%
-                  </div>
+                  <div className="mb-1 text-xs text-muted-foreground">Hash Coverage</div>
+                  <div className="text-2xl font-bold">{hashCoverage}%</div>
                   {chainStatus.entries_without_hashes > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {chainStatus.entries_without_hashes} unhashed
                     </p>
                   )}
@@ -178,7 +171,7 @@ export default function AuditIntegrityPage() {
                   aria-hidden="true"
                 />
                 <CardContent className="relative p-4">
-                  <div className="text-xs text-muted-foreground mb-1">Tamper Alerts</div>
+                  <div className="mb-1 text-xs text-muted-foreground">Tamper Alerts</div>
                   <div className="text-2xl font-bold">
                     {chainStatus.tamper_alerts_count === 0 ? (
                       <span className="text-green-600">0</span>
@@ -196,14 +189,17 @@ export default function AuditIntegrityPage() {
         {verificationResult && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 {verificationResult.valid ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 ) : (
                   <XCircle className="h-5 w-5 text-destructive" />
                 )}
                 Verification Result
-                <Badge variant={verificationResult.valid ? 'default' : 'destructive'} className="ml-auto">
+                <Badge
+                  variant={verificationResult.valid ? 'default' : 'destructive'}
+                  className="ml-auto"
+                >
                   {verificationResult.valid ? 'PASSED' : 'FAILED'}
                 </Badge>
               </CardTitle>
@@ -212,7 +208,9 @@ export default function AuditIntegrityPage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Entries Checked</span>
-                  <p className="font-medium">{verificationResult.entries_checked.toLocaleString()}</p>
+                  <p className="font-medium">
+                    {verificationResult.entries_checked.toLocaleString()}
+                  </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Checked At</span>
@@ -231,7 +229,7 @@ export default function AuditIntegrityPage() {
               </div>
               <div className="text-sm">
                 <span className="text-muted-foreground">Details</span>
-                <p className="font-mono text-xs mt-1 p-2 bg-muted rounded">
+                <p className="mt-1 rounded bg-muted p-2 font-mono text-xs">
                   {verificationResult.details}
                 </p>
               </div>
@@ -246,18 +244,24 @@ export default function AuditIntegrityPage() {
               <CardTitle className="text-base">Chain Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2 text-sm">
+              <div className="grid gap-3 text-sm sm:grid-cols-2">
                 <div className="flex justify-between sm:flex-col">
                   <span className="text-muted-foreground">Chain Length</span>
-                  <span className="font-medium">{chainStatus.chain_length.toLocaleString()} entries</span>
+                  <span className="font-medium">
+                    {chainStatus.chain_length.toLocaleString()} entries
+                  </span>
                 </div>
                 <div className="flex justify-between sm:flex-col">
                   <span className="text-muted-foreground">Entries With Hashes</span>
-                  <span className="font-medium">{chainStatus.entries_with_hashes.toLocaleString()}</span>
+                  <span className="font-medium">
+                    {chainStatus.entries_with_hashes.toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between sm:flex-col">
                   <span className="text-muted-foreground">Entries Without Hashes</span>
-                  <span className="font-medium">{chainStatus.entries_without_hashes.toLocaleString()}</span>
+                  <span className="font-medium">
+                    {chainStatus.entries_without_hashes.toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between sm:flex-col">
                   <span className="text-muted-foreground">Last Verified</span>

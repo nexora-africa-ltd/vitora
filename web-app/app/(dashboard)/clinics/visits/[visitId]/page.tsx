@@ -40,11 +40,18 @@ import { cn } from '@/lib/utils/cn';
 import { getClinicVisitDestination } from '@/lib/utils/clinic-visit-routing';
 import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 
-const statusConfig: Record<ClinicVisitStatus, { label: string; className: string; icon: typeof Clock }> = {
+const statusConfig: Record<
+  ClinicVisitStatus,
+  { label: string; className: string; icon: typeof Clock }
+> = {
   REGISTERED: { label: 'Registered', className: 'bg-blue-100 text-blue-800', icon: Clock },
   WAITING: { label: 'Waiting', className: 'bg-yellow-100 text-yellow-800', icon: Clock },
   CALLED: { label: 'Called', className: 'bg-orange-100 text-orange-800', icon: Phone },
-  IN_CONSULTATION: { label: 'In Consultation', className: 'bg-purple-100 text-purple-800', icon: Stethoscope },
+  IN_CONSULTATION: {
+    label: 'In Consultation',
+    className: 'bg-purple-100 text-purple-800',
+    icon: Stethoscope,
+  },
   COMPLETED: { label: 'Completed', className: 'bg-green-100 text-green-800', icon: CheckCircle },
   REFERRED: { label: 'Referred', className: 'bg-indigo-100 text-indigo-800', icon: ArrowRight },
   NO_SHOW: { label: 'No Show', className: 'bg-gray-100 text-gray-800', icon: XCircle },
@@ -78,7 +85,10 @@ export default function ClinicVisitDetailPage() {
   const handleCallPatient = async () => {
     try {
       await callPatientMutation.mutateAsync(visitId);
-      toast({ title: 'Patient called', description: 'Patient has been summoned for consultation.' });
+      toast({
+        title: 'Patient called',
+        description: 'Patient has been summoned for consultation.',
+      });
     } catch (err) {
       toast({
         title: 'Failed to call patient',
@@ -120,7 +130,7 @@ export default function ClinicVisitDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <LoadingSpinner />
       </div>
     );
@@ -129,7 +139,7 @@ export default function ClinicVisitDetailPage() {
   if (error || !visit) {
     return (
       <div className="p-4 text-center text-destructive">
-        <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+        <AlertTriangle className="mx-auto mb-2 h-8 w-8" />
         <p>Failed to load visit details</p>
         <p className="text-sm text-muted-foreground">{error?.message || 'Visit not found'}</p>
       </div>
@@ -137,7 +147,8 @@ export default function ClinicVisitDetailPage() {
   }
 
   const canCall = visit.status === 'REGISTERED' || visit.status === 'WAITING';
-  const canStart = visit.status === 'CALLED' || visit.status === 'WAITING' || visit.status === 'REGISTERED';
+  const canStart =
+    visit.status === 'CALLED' || visit.status === 'WAITING' || visit.status === 'REGISTERED';
   const canComplete = visit.status === 'IN_CONSULTATION' || visit.status === 'CALLED';
   const statusInfo = statusConfig[visit.status] || statusConfig.REGISTERED;
   const priorityInfo = priorityConfig[visit.priority] || priorityConfig.STANDARD;
@@ -148,9 +159,10 @@ export default function ClinicVisitDetailPage() {
   const mchRegistrationHref = mchRegistrationId
     ? `/mch/${mchRegistrationId}?tab=${mchTab}&clinic_visit_id=${visit.id}${visit.encounter ? `&encounter_id=${visit.encounter}` : ''}`
     : null;
-  const mchRegistrationLabel = visit.source_module === 'MCH_PNC'
-    ? 'Open Postnatal Registration'
-    : 'Open Antenatal Registration';
+  const mchRegistrationLabel =
+    visit.source_module === 'MCH_PNC'
+      ? 'Open Postnatal Registration'
+      : 'Open Antenatal Registration';
 
   return (
     <div className="space-y-6">
@@ -170,14 +182,13 @@ export default function ClinicVisitDetailPage() {
           <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1 text-sm text-sky-950">
               <p>
-                This clinic visit belongs to
-                {' '}
-                {visit.source_module === 'MCH_PNC' ? 'a postnatal' : 'an antenatal'}
-                {' '}
-                MCH registration.
+                This clinic visit belongs to{' '}
+                {visit.source_module === 'MCH_PNC' ? 'a postnatal' : 'an antenatal'} MCH
+                registration.
               </p>
               <p className="text-sky-800/80">
-                Use the registration view to record the linked {visit.source_module === 'MCH_PNC' ? 'PNC' : 'ANC'} clinical payload.
+                Use the registration view to record the linked{' '}
+                {visit.source_module === 'MCH_PNC' ? 'PNC' : 'ANC'} clinical payload.
               </p>
             </div>
             <Button variant="outline" asChild>
@@ -198,9 +209,9 @@ export default function ClinicVisitDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between items-start">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="font-medium text-lg">{visit.patient.full_name}</p>
+                <p className="text-lg font-medium">{visit.patient.full_name}</p>
                 <p className="text-sm text-muted-foreground">{visit.patient.mrn}</p>
               </div>
               <Button
@@ -245,11 +256,11 @@ export default function ClinicVisitDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
-              <Badge className={cn('text-sm px-3 py-1', statusInfo.className)}>
-                <StatusIcon className="h-4 w-4 mr-1" />
+              <Badge className={cn('px-3 py-1 text-sm', statusInfo.className)}>
+                <StatusIcon className="mr-1 h-4 w-4" />
                 {statusInfo.label}
               </Badge>
-              <Badge className={cn('text-sm px-3 py-1', priorityInfo.className)}>
+              <Badge className={cn('px-3 py-1 text-sm', priorityInfo.className)}>
                 {priorityInfo.label}
               </Badge>
             </div>
@@ -278,9 +289,7 @@ export default function ClinicVisitDetailPage() {
               {visit.called_at && (
                 <div>
                   <p className="text-muted-foreground">Called At</p>
-                  <p className="font-medium">
-                    {format(new Date(visit.called_at), 'HH:mm, MMM d')}
-                  </p>
+                  <p className="font-medium">{format(new Date(visit.called_at), 'HH:mm, MMM d')}</p>
                 </div>
               )}
               {visit.consultation_started_at && (
@@ -316,13 +325,13 @@ export default function ClinicVisitDetailPage() {
           <CardContent className="space-y-4">
             {visit.chief_complaint && (
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Chief Complaint</p>
+                <p className="mb-1 text-sm text-muted-foreground">Chief Complaint</p>
                 <p className="text-base">{visit.chief_complaint}</p>
               </div>
             )}
             {visit.notes && (
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                <p className="mb-1 text-sm text-muted-foreground">Notes</p>
                 <p className="text-base">{visit.notes}</p>
               </div>
             )}
@@ -334,7 +343,9 @@ export default function ClinicVisitDetailPage() {
       <EncounterProcedureOrders
         clinicVisitId={visit.id}
         patientId={visit.patient.id}
-        disabled={visit.status === 'COMPLETED' || visit.status === 'CANCELLED' || visit.status === 'NO_SHOW'}
+        disabled={
+          visit.status === 'COMPLETED' || visit.status === 'CANCELLED' || visit.status === 'NO_SHOW'
+        }
       />
 
       {/* Actions */}
@@ -345,11 +356,8 @@ export default function ClinicVisitDetailPage() {
         <CardContent>
           <div className="flex flex-wrap gap-3">
             {canCall && (
-              <Button
-                onClick={handleCallPatient}
-                disabled={callPatientMutation.isPending}
-              >
-                <Phone className="h-4 w-4 mr-2" />
+              <Button onClick={handleCallPatient} disabled={callPatientMutation.isPending}>
+                <Phone className="mr-2 h-4 w-4" />
                 Call Patient
               </Button>
             )}
@@ -359,7 +367,7 @@ export default function ClinicVisitDetailPage() {
                 disabled={startConsultationMutation.isPending}
                 variant="default"
               >
-                <Play className="h-4 w-4 mr-2" />
+                <Play className="mr-2 h-4 w-4" />
                 Start Consultation
               </Button>
             )}
@@ -369,7 +377,7 @@ export default function ClinicVisitDetailPage() {
                 disabled={completeVisitMutation.isPending}
                 variant="outline"
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
+                <CheckCircle className="mr-2 h-4 w-4" />
                 Complete Visit
               </Button>
             )}
@@ -378,7 +386,7 @@ export default function ClinicVisitDetailPage() {
                 variant="outline"
                 onClick={() => router.push(buildEncounterHref(visit.encounter!, 'soap'))}
               >
-                <Stethoscope className="h-4 w-4 mr-2" />
+                <Stethoscope className="mr-2 h-4 w-4" />
                 View Encounter
               </Button>
             )}

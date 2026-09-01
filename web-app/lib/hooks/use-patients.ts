@@ -9,7 +9,16 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '@/lib/api/patients';
-import type { Patient, PatientListParams, PatientCreateData, PatientUpdateData, DuplicateCheckParams, EmergencyContact, PatientEncounter, ContactPatientSmsResponse } from '@/lib/types/patient';
+import type {
+  Patient,
+  PatientListParams,
+  PatientCreateData,
+  PatientUpdateData,
+  DuplicateCheckParams,
+  EmergencyContact,
+  PatientEncounter,
+  ContactPatientSmsResponse,
+} from '@/lib/types/patient';
 import type { TimeRange } from '@/components/shared/vitals-trend-chart';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
 import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
@@ -33,11 +42,14 @@ export const patientKeys = {
   list: (params?: PatientListParams) => [...patientKeys.lists(), params] as const,
   details: () => [...patientKeys.all, 'detail'] as const,
   detail: (id: string | number) => [...patientKeys.details(), id] as const,
-  emergencyContacts: (id: string | number) => [...patientKeys.detail(id), 'emergency-contacts'] as const,
+  emergencyContacts: (id: string | number) =>
+    [...patientKeys.detail(id), 'emergency-contacts'] as const,
   encounters: (id: string | number) => [...patientKeys.detail(id), 'encounters'] as const,
   qrCode: (id: string | number) => [...patientKeys.detail(id), 'qr-code'] as const,
-  duplicateCheck: (params: DuplicateCheckParams) => [...patientKeys.all, 'duplicate-check', params] as const,
-  vitalsHistory: (id: string | number, range: string) => [...patientKeys.detail(id), 'vitals-history', range] as const,
+  duplicateCheck: (params: DuplicateCheckParams) =>
+    [...patientKeys.all, 'duplicate-check', params] as const,
+  vitalsHistory: (id: string | number, range: string) =>
+    [...patientKeys.detail(id), 'vitals-history', range] as const,
 };
 
 // =============================================================================
@@ -107,7 +119,7 @@ export function usePatients(params: PatientListParams = {}) {
         count: rows.length < limit ? offset + rows.length : offset + limit + 1,
         next: null,
         previous: null,
-        results: rows.map(r => transformPatientRow(r) as unknown as Patient),
+        results: rows.map((r) => transformPatientRow(r) as unknown as Patient),
       };
     },
     queryKey: patientKeys.list(params),
@@ -138,9 +150,9 @@ export function usePatient(id: number | string) {
       WHERE p.id = ?`,
     params: [localId ?? '0'],
     transform: (rows) => {
-        if (rows.length === 0) throw new Error(`Patient ${id} not found`);
-        return transformPatientRow(rows[0]!) as unknown as Patient;
-      },
+      if (rows.length === 0) throw new Error(`Patient ${id} not found`);
+      return transformPatientRow(rows[0]!) as unknown as Patient;
+    },
     queryKey: patientKeys.detail(id),
     queryFn: () => patientsApi.getPatient(id),
     forceApi: numericId === null,
@@ -161,9 +173,8 @@ export function usePatient(id: number | string) {
   });
 
   // Merge PII into base data when available
-  const data = baseResult.data && piiResult.data
-    ? { ...baseResult.data, ...piiResult.data }
-    : baseResult.data;
+  const data =
+    baseResult.data && piiResult.data ? { ...baseResult.data, ...piiResult.data } : baseResult.data;
 
   return {
     ...baseResult,
@@ -178,25 +189,25 @@ export function usePatient(id: number | string) {
 export function usePatientEmergencyContacts(patientId: string | number) {
   const numericPatientId =
     typeof patientId === 'number' ? patientId : Number.parseInt(String(patientId), 10);
-  const localPatientId = Number.isFinite(numericPatientId) && numericPatientId > 0
-    ? numericPatientId
-    : null;
+  const localPatientId =
+    Number.isFinite(numericPatientId) && numericPatientId > 0 ? numericPatientId : null;
 
-  return useOfflineQuery<
-    Record<string, unknown> & { id: string },
-    EmergencyContact[]
-  >({
+  return useOfflineQuery<Record<string, unknown> & { id: string }, EmergencyContact[]>({
     sql: 'SELECT * FROM patients_emergencycontact WHERE patient_id = ? ORDER BY created_at',
     params: [String(localPatientId ?? 0)],
-    transform: (rows) => rows.map(row => ({
-      id: parseInt(row.id, 10) || 0,
-      full_name: (row.full_name as string) || '',
-      relationship: (row.relationship as string) || '',
-      phone_number: (row.phone_number as string) || '',
-      alternative_phone: (row.alternative_phone as string) || undefined,
-      created_at: (row.created_at as string) || '',
-      updated_at: (row.updated_at as string) || '',
-    } as EmergencyContact)),
+    transform: (rows) =>
+      rows.map(
+        (row) =>
+          ({
+            id: parseInt(row.id, 10) || 0,
+            full_name: (row.full_name as string) || '',
+            relationship: (row.relationship as string) || '',
+            phone_number: (row.phone_number as string) || '',
+            alternative_phone: (row.alternative_phone as string) || undefined,
+            created_at: (row.created_at as string) || '',
+            updated_at: (row.updated_at as string) || '',
+          }) as EmergencyContact
+      ),
     queryKey: patientKeys.emergencyContacts(patientId),
     queryFn: () => patientsApi.getEmergencyContacts(patientId),
     forceApi: localPatientId === null,
@@ -210,27 +221,24 @@ export function usePatientEmergencyContacts(patientId: string | number) {
 export function usePatientEncounters(patientId: string | number) {
   const numericPatientId =
     typeof patientId === 'number' ? patientId : Number.parseInt(String(patientId), 10);
-  const localPatientId = Number.isFinite(numericPatientId) && numericPatientId > 0
-    ? numericPatientId
-    : null;
+  const localPatientId =
+    Number.isFinite(numericPatientId) && numericPatientId > 0 ? numericPatientId : null;
 
-  return useOfflineQuery<
-    Record<string, unknown> & { id: string },
-    PatientEncounter[]
-  >({
+  return useOfflineQuery<Record<string, unknown> & { id: string }, PatientEncounter[]>({
     sql: `SELECT id, encounter_type, encounter_date, chief_complaint, consultation_status as status, created_at
       FROM encounters_encounter
       WHERE patient_id = ?
       ORDER BY encounter_date DESC`,
     params: [String(localPatientId ?? 0)],
-    transform: (rows) => rows.map(row => ({
-      id: parseInt(row.id, 10) || 0,
-      encounter_type: (row.encounter_type as string) || '',
-      status: ((row.status as string) || 'CREATED') as PatientEncounter['status'],
-      encounter_date: (row.encounter_date as string) || '',
-      chief_complaint: (row.chief_complaint as string) || '',
-      created_at: (row.created_at as string) || '',
-    })),
+    transform: (rows) =>
+      rows.map((row) => ({
+        id: parseInt(row.id, 10) || 0,
+        encounter_type: (row.encounter_type as string) || '',
+        status: ((row.status as string) || 'CREATED') as PatientEncounter['status'],
+        encounter_date: (row.encounter_date as string) || '',
+        chief_complaint: (row.chief_complaint as string) || '',
+        created_at: (row.created_at as string) || '',
+      })),
     queryKey: patientKeys.encounters(patientId),
     queryFn: () => patientsApi.getEncounters(patientId),
     forceApi: localPatientId === null,
@@ -288,8 +296,7 @@ export function useCreatePatient() {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }),
-    mutationFn: ({ data, idempotencyKey }) =>
-      patientsApi.createPatient(data, idempotencyKey),
+    mutationFn: ({ data, idempotencyKey }) => patientsApi.createPatient(data, idempotencyKey),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: patientKeys.lists() });
     },
@@ -376,10 +383,7 @@ export function useDeletePatient() {
  *   identification_type: 'national_id',
  * }, { enabled: idNumber.length >= 5 });
  */
-export function useDuplicateCheck(
-  params: DuplicateCheckParams,
-  options?: { enabled?: boolean }
-) {
+export function useDuplicateCheck(params: DuplicateCheckParams, options?: { enabled?: boolean }) {
   // Only enable if we have meaningful search criteria
   const hasIdCriteria = Boolean(
     params.identification_number && params.identification_number.length >= 5

@@ -21,7 +21,11 @@ import { proceduresApi } from '@/lib/api/procedures';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { toast } from '@/lib/hooks/use-toast';
-import { getClinicTypesForCategory, getBestFitClinicTypes, getAllProcedureClinicTypes } from '@/lib/config/procedure-clinic-mapping';
+import {
+  getClinicTypesForCategory,
+  getBestFitClinicTypes,
+  getAllProcedureClinicTypes,
+} from '@/lib/config/procedure-clinic-mapping';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useQuery } from '@tanstack/react-query';
 
@@ -93,7 +97,8 @@ export default function ClinicMappingsPage() {
   const allProcedureClinicTypes = getAllProcedureClinicTypes();
 
   const allProcedureClinics = useMemo(
-    () => (clinicsData?.results ?? []).filter((c) => allProcedureClinicTypes.includes(c.clinic_type)),
+    () =>
+      (clinicsData?.results ?? []).filter((c) => allProcedureClinicTypes.includes(c.clinic_type)),
     [clinicsData, allProcedureClinicTypes]
   );
 
@@ -245,9 +250,7 @@ export default function ClinicMappingsPage() {
 
   const pendingCount = Object.keys(pendingChanges).length;
   const isLoading = isCatalogLoading || isClinicsLoading;
-  const unassignedCount = catalogEntries.filter(
-    (e) => getClinicIds(e).length === 0
-  ).length;
+  const unassignedCount = catalogEntries.filter((e) => getClinicIds(e).length === 0).length;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -257,20 +260,18 @@ export default function ClinicMappingsPage() {
         actions={
           <div className="flex items-center gap-2">
             {canManageCatalog && unassignedCount > 0 && allProcedureClinics.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={autoAssignAll}
-                disabled={savingIds.size > 0}
-              >
-                <Wand2 className="h-4 w-4 mr-2" />
+              <Button variant="outline" onClick={autoAssignAll} disabled={savingIds.size > 0}>
+                <Wand2 className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Auto-Assign</span>
                 <span className="sm:hidden">Auto</span>
-                <Badge variant="secondary" className="ml-1.5">{unassignedCount}</Badge>
+                <Badge variant="secondary" className="ml-1.5">
+                  {unassignedCount}
+                </Badge>
               </Button>
             )}
             {pendingCount > 0 && (
               <Button onClick={saveAllPending} disabled={savingIds.size > 0}>
-                {savingIds.size > 0 && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {savingIds.size > 0 && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save All ({pendingCount})
               </Button>
             )}
@@ -280,8 +281,8 @@ export default function ClinicMappingsPage() {
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search procedures..."
             value={search}
@@ -289,7 +290,13 @@ export default function ClinicMappingsPage() {
             className="pl-9"
           />
         </div>
-        <Select value={categoryFilter} onValueChange={(val) => { setCategoryFilter(val); setPage(1); }}>
+        <Select
+          value={categoryFilter}
+          onValueChange={(val) => {
+            setCategoryFilter(val);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
@@ -305,7 +312,8 @@ export default function ClinicMappingsPage() {
 
         {allProcedureClinics.length > 0 && (
           <div className="text-sm text-muted-foreground">
-            {allProcedureClinics.length} clinic{allProcedureClinics.length !== 1 ? 's' : ''} available for procedures
+            {allProcedureClinics.length} clinic{allProcedureClinics.length !== 1 ? 's' : ''}{' '}
+            available for procedures
           </div>
         )}
       </div>
@@ -315,9 +323,10 @@ export default function ClinicMappingsPage() {
         <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
           <CardContent className="py-4">
             <p className="text-sm text-amber-800 dark:text-amber-200">
-              No procedure-compatible clinics found. Create clinics with type <strong>Procedure Room</strong>,{' '}
-              <strong>Dental</strong>, <strong>Eye</strong>, <strong>ENT</strong>, <strong>Surgical</strong>, or{' '}
-              other specialized types to enable automatic slot-based scheduling.
+              No procedure-compatible clinics found. Create clinics with type{' '}
+              <strong>Procedure Room</strong>, <strong>Dental</strong>, <strong>Eye</strong>,{' '}
+              <strong>ENT</strong>, <strong>Surgical</strong>, or other specialized types to enable
+              automatic slot-based scheduling.
             </p>
           </CardContent>
         </Card>
@@ -360,32 +369,31 @@ export default function ClinicMappingsPage() {
             const isSaving = savingIds.has(entry.id);
 
             return (
-              <Card
-                key={entry.id}
-                className={changed ? 'border-primary/40 bg-primary/[0.02]' : ''}
-              >
-                <CardContent className="py-3 px-4 sm:px-6">
+              <Card key={entry.id} className={changed ? 'border-primary/40 bg-primary/[0.02]' : ''}>
+                <CardContent className="px-4 py-3 sm:px-6">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     {/* Left: procedure info */}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Syringe className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="font-medium text-sm">{entry.name}</span>
-                        <span className="text-xs text-muted-foreground font-mono">{entry.code}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Syringe className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="text-sm font-medium">{entry.name}</span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {entry.code}
+                        </span>
                         <Badge variant="outline" className="text-xs">
                           {entry.category.replace(/_/g, ' ')}
                         </Badge>
                       </div>
 
                       {/* Assigned clinics */}
-                      <div className="flex flex-wrap gap-1.5 mt-2">
+                      <div className="mt-2 flex flex-wrap gap-1.5">
                         {allSelectedClinics.map((clinic) => (
                           <Badge key={clinic.id} variant="secondary" className="gap-1 pr-1 text-xs">
                             {clinic.name}
                             <button
                               type="button"
                               onClick={() => removeClinic(entry, clinic.id)}
-                              className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+                              className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-muted-foreground/20"
                               aria-label={`Remove ${clinic.name}`}
                               disabled={isSaving}
                             >
@@ -394,19 +402,21 @@ export default function ClinicMappingsPage() {
                           </Badge>
                         ))}
                         {clinicIds.length === 0 && (
-                          <span className="text-xs text-muted-foreground italic">Manual scheduling</span>
+                          <span className="text-xs italic text-muted-foreground">
+                            Manual scheduling
+                          </span>
                         )}
                       </div>
                     </div>
 
                     {/* Right: add clinic + save */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex shrink-0 items-center gap-2">
                       {availableClinics.length > 0 && (
                         <Select
                           onValueChange={(val) => addClinic(entry, Number(val))}
                           disabled={isSaving}
                         >
-                          <SelectTrigger className="w-44 h-8 text-xs">
+                          <SelectTrigger className="h-8 w-44 text-xs">
                             <SelectValue placeholder="Add room..." />
                           </SelectTrigger>
                           <SelectContent>
@@ -462,7 +472,7 @@ export default function ClinicMappingsPage() {
             onClick={() => setPage((p) => p - 1)}
             disabled={!hasPrev}
           >
-            <ChevronLeft className="h-4 w-4 mr-1" />
+            <ChevronLeft className="mr-1 h-4 w-4" />
             Previous
           </Button>
           <span className="text-sm text-muted-foreground">
@@ -475,7 +485,7 @@ export default function ClinicMappingsPage() {
             disabled={!hasNext}
           >
             Next
-            <ChevronRight className="h-4 w-4 ml-1" />
+            <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
       )}

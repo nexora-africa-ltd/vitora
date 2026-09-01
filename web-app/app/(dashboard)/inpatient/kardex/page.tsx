@@ -62,19 +62,15 @@ export default function KardexListPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Nursing Kardex"
           helpContent="View and manage nursing kardex records for all admitted patients. Monitor fall risks, pressure sore risks, and isolation requirements."
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard
-            title="Active Kardex"
-            value={stats.total}
-            icon={ClipboardList}
-          />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatsCard title="Active Kardex" value={stats.total} icon={ClipboardList} />
           <StatsCard
             title="High Fall Risk"
             value={stats.highRiskFall}
@@ -87,17 +83,13 @@ export default function KardexListPage() {
             icon={Activity}
             variant={stats.highRiskPressure > 0 ? 'warning' : 'default'}
           />
-          <StatsCard
-            title="In Isolation"
-            value={stats.isolationRequired}
-            icon={BedDouble}
-          />
+          <StatsCard title="In Isolation" value={stats.isolationRequired} icon={BedDouble} />
         </div>
 
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row">
               <Select value={riskFilter} onValueChange={setRiskFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Fall Risk" />
@@ -116,7 +108,7 @@ export default function KardexListPage() {
         {/* Kardex List */}
         {isLoading ? (
           <Card>
-            <CardContent className="pt-6 space-y-4">
+            <CardContent className="space-y-4 pt-6">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
@@ -157,7 +149,9 @@ export default function KardexListPage() {
                 cell: (kardex) => (
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <span>{kardex.ward_name} - {kardex.bed_number}</span>
+                    <span>
+                      {kardex.ward_name} - {kardex.bed_number}
+                    </span>
                   </div>
                 ),
                 hideOnMobile: true,
@@ -197,23 +191,21 @@ export default function KardexListPage() {
             ]}
             mobileCard={(kardex) => (
               <Card className="p-4">
-                <div className="flex justify-between items-start mb-2">
+                <div className="mb-2 flex items-start justify-between">
                   <div>
                     <p className="font-medium">{kardex.patient_name || 'Unknown'}</p>
                     <p className="text-sm text-muted-foreground">{kardex.admission_number}</p>
                   </div>
-                  {kardex.isolation_required && (
-                    <Badge variant="destructive">Isolated</Badge>
-                  )}
+                  {kardex.isolation_required && <Badge variant="destructive">Isolated</Badge>}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
                   <Building2 className="h-4 w-4" />
-                  <span>{kardex.ward_name} - {kardex.bed_number}</span>
+                  <span>
+                    {kardex.ward_name} - {kardex.bed_number}
+                  </span>
                 </div>
                 <div className="flex gap-2">
-                  <Badge className={riskColors[kardex.fall_risk]}>
-                    Fall: {kardex.fall_risk}
-                  </Badge>
+                  <Badge className={riskColors[kardex.fall_risk]}>Fall: {kardex.fall_risk}</Badge>
                   <Badge className={riskColors[kardex.pressure_sore_risk]}>
                     Pressure: {kardex.pressure_sore_risk}
                   </Badge>

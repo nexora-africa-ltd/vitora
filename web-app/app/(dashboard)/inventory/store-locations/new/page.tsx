@@ -59,20 +59,7 @@ export default function NewStoreLocationPage() {
     queryFn: inventoryApi.getBootstrap,
   });
   const canAdjustFromCapabilities = bootstrap?.permissions.can_adjust_stock ?? true;
-
-  if (!canCreateStore || !canAdjustFromCapabilities) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Store Location" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create store locations.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  const hasStoreAccess = canCreateStore && canAdjustFromCapabilities;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -85,6 +72,20 @@ export default function NewStoreLocationPage() {
   });
 
   const isSubmitting = form.formState.isSubmitting;
+
+  if (!hasStoreAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Store Location" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to create store locations.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   async function onSubmit(data: FormValues) {
     try {
@@ -106,7 +107,7 @@ export default function NewStoreLocationPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-3xl mx-auto">
+    <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
       <PageHeader
         title="New Store Location"
         helpContent="Create a new storage location — main store, satellite pharmacy, ward store, etc."

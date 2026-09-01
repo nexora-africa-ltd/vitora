@@ -46,7 +46,7 @@ export function LicenseBanner() {
   }
 
   return (
-    <div className="relative flex items-center gap-3 bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2.5 text-sm rounded-md">
+    <div className="relative flex items-center gap-3 rounded-md border border-destructive/20 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
       <Icon className="h-4 w-4 shrink-0" />
       <span className="flex-1">{message}</span>
       {isCheckInOverdue && (

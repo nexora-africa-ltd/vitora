@@ -49,7 +49,7 @@ export function TodaysSessionsList({ sessions, isLoading }: TodaysSessionsListPr
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="animate-pulse">
-                <div className="h-16 bg-muted rounded" />
+                <div className="h-16 rounded bg-muted" />
               </div>
             ))}
           </div>
@@ -84,19 +84,14 @@ export function TodaysSessionsList({ sessions, isLoading }: TodaysSessionsListPr
               {sessions.map((session) => (
                 <div
                   key={`${session.module}-${session.id}`}
-                  className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  className="flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge
-                        variant="secondary"
-                        className={moduleColors[session.module]}
-                      >
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center gap-2">
+                      <Badge variant="secondary" className={moduleColors[session.module]}>
                         {moduleLabels[session.module]}
                       </Badge>
-                      <span className="text-sm font-medium truncate">
-                        {session.treatment_type}
-                      </span>
+                      <span className="truncate text-sm font-medium">{session.treatment_type}</span>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">

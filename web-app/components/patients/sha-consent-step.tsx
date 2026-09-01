@@ -70,15 +70,15 @@ interface SHAConsentStepProps {
 }
 
 type StepState =
-  | 'checking'         // Looking up SHA member
-  | 'not_eligible'     // No SHA coverage — skip
-  | 'ready'            // SHA eligible, ready to obtain consent
+  | 'checking' // Looking up SHA member
+  | 'not_eligible' // No SHA coverage — skip
+  | 'ready' // SHA eligible, ready to obtain consent
   | 'biometric_pending' // Biometric dialog open, waiting for fingerprint
-  | 'biometric_failed'  // Biometrics failed/expired, showing OTP fallback option
-  | 'otp_sent'         // OTP sent, waiting for code
-  | 'validating'       // Validating OTP or starting visit with auth_guid
-  | 'done'             // Consent obtained
-  | 'skipped';         // User chose to skip
+  | 'biometric_failed' // Biometrics failed/expired, showing OTP fallback option
+  | 'otp_sent' // OTP sent, waiting for code
+  | 'validating' // Validating OTP or starting visit with auth_guid
+  | 'done' // Consent obtained
+  | 'skipped'; // User chose to skip
 
 /**
  * Derive the DHA service_type from the selected intervention's access_point.
@@ -135,7 +135,7 @@ export function SHAConsentStep({
   // ---- Shared cascading benefit-package → intervention fetch ----
   const crId = useMemo(
     () => toCrId(patientCrNumber || shaMember?.sha_member_number || shaMember?.sha_number || ''),
-    [shaMember, patientCrNumber],
+    [shaMember, patientCrNumber]
   );
   const {
     benefitPackageOptions,
@@ -228,9 +228,7 @@ export function SHAConsentStep({
       if (encounterId) {
         try {
           const claims = await shaApi.getClaims({ encounter: encounterId });
-          const visitAlreadyStarted = claims.results?.some(
-            (c) => !!c.dha_visit_started_at
-          );
+          const visitAlreadyStarted = claims.results?.some((c) => !!c.dha_visit_started_at);
           if (visitAlreadyStarted) {
             setStep('done');
             onComplete?.({ consented: true });
@@ -294,7 +292,9 @@ export function SHAConsentStep({
     setOtpServerMessage(null);
     setIsReusedConsent(false);
 
-    const hasAdmissionConflict = await checkActiveAdmissionConflict(deriveServiceType(selectedIntervention));
+    const hasAdmissionConflict = await checkActiveAdmissionConflict(
+      deriveServiceType(selectedIntervention)
+    );
     if (hasAdmissionConflict) return;
 
     // If we don't have an SHAMember yet, create one on-demand
@@ -376,7 +376,9 @@ export function SHAConsentStep({
     if (!consentId || !otpCode.trim()) return;
     setError(null);
 
-    const hasAdmissionConflict = await checkActiveAdmissionConflict(deriveServiceType(selectedIntervention));
+    const hasAdmissionConflict = await checkActiveAdmissionConflict(
+      deriveServiceType(selectedIntervention)
+    );
     if (hasAdmissionConflict) {
       setStep('otp_sent');
       return;
@@ -448,7 +450,9 @@ export function SHAConsentStep({
   const handleBiometricStart = async () => {
     setError(null);
 
-    const hasAdmissionConflict = await checkActiveAdmissionConflict(deriveServiceType(selectedIntervention));
+    const hasAdmissionConflict = await checkActiveAdmissionConflict(
+      deriveServiceType(selectedIntervention)
+    );
     if (hasAdmissionConflict) return;
 
     setStep('biometric_pending');
@@ -511,7 +515,8 @@ export function SHAConsentStep({
           onComplete?.({ consented: true, consentId: response.id });
         },
         onError: (err: unknown) => {
-          const errorMsg = extractDHAErrorMessage(err) || 'Failed to start visit after biometric verification';
+          const errorMsg =
+            extractDHAErrorMessage(err) || 'Failed to start visit after biometric verification';
           setStep('biometric_failed');
           setError(errorMsg);
           onError?.(errorMsg);
@@ -525,7 +530,9 @@ export function SHAConsentStep({
     if (biometricAuthGuid) {
       try {
         await shaApi.cancelBiometricAuth(biometricAuthGuid);
-      } catch { /* best effort */ }
+      } catch {
+        /* best effort */
+      }
     }
     setBiometricAuthGuid(null);
     setBiometricIframeUrl(null);
@@ -568,7 +575,7 @@ export function SHAConsentStep({
   }
 
   return (
-    <div className={cn('rounded-lg border p-4 space-y-3', className)}>
+    <div className={cn('space-y-3 rounded-lg border p-4', className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -586,12 +593,7 @@ export function SHAConsentStep({
           )}
         </div>
         {step !== 'done' && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSkip}
-            className="text-xs h-7"
-          >
+          <Button variant="ghost" size="sm" onClick={handleSkip} className="h-7 text-xs">
             <SkipForward className="mr-1 h-3 w-3" />
             Skip
           </Button>
@@ -607,14 +609,15 @@ export function SHAConsentStep({
               : 'Select the visit intervention, then send a one-time password to the patient\u0027s phone.'}
             {eligibilityInfo?.verifiedName && (
               <>
-                <span className="block mt-0.5 text-green-600 dark:text-green-400">
+                <span className="mt-0.5 block text-green-600 dark:text-green-400">
                   {isDependentWorkflow
                     ? `Coverage verified for principal ${eligibilityInfo.verifiedName}`
                     : `Coverage verified for ${eligibilityInfo.verifiedName}`}
-                  {eligibilityInfo.coverageEndDate && ` • Valid until ${eligibilityInfo.coverageEndDate}`}
+                  {eligibilityInfo.coverageEndDate &&
+                    ` • Valid until ${eligibilityInfo.coverageEndDate}`}
                 </span>
                 {isDependentWorkflow && patientName && (
-                  <span className="block mt-0.5 text-emerald-600 dark:text-emerald-400">
+                  <span className="mt-0.5 block text-emerald-600 dark:text-emerald-400">
                     Admitting dependant: {patientName}
                   </span>
                 )}
@@ -626,7 +629,7 @@ export function SHAConsentStep({
           <div className="space-y-1">
             <Label className="text-xs font-medium">Benefit Package</Label>
             {benefitPackagesLoading ? (
-              <div className="flex items-center gap-2 h-9 px-3 border rounded-md">
+              <div className="flex h-9 items-center gap-2 rounded-md border px-3">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 <span className="text-xs text-muted-foreground">Loading packages...</span>
               </div>
@@ -634,7 +637,7 @@ export function SHAConsentStep({
               <select
                 value={selectedBenefitPkgCode}
                 onChange={(e) => setSelectedBenefitPkgCode(e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs"
               >
                 <option value="">Select benefit package...</option>
                 {benefitPackageOptions.map((pkg) => (
@@ -644,7 +647,7 @@ export function SHAConsentStep({
                 ))}
               </select>
             ) : (
-              <p className="text-xs text-muted-foreground py-2">
+              <p className="py-2 text-xs text-muted-foreground">
                 {shaMember
                   ? 'No eligible benefit packages found. OTP can still be sent.'
                   : 'Benefit packages will load after member verification. OTP can still be sent.'}
@@ -657,7 +660,7 @@ export function SHAConsentStep({
             <div className="space-y-1">
               <Label className="text-xs font-medium">Intervention</Label>
               {interventionsLoading ? (
-                <div className="flex items-center gap-2 h-9 px-3 border rounded-md">
+                <div className="flex h-9 items-center gap-2 rounded-md border px-3">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   <span className="text-xs text-muted-foreground">Loading interventions...</span>
                 </div>
@@ -668,20 +671,21 @@ export function SHAConsentStep({
                     setSelectedInterventionCode(e.target.value);
                     setAdmissionConflict(null);
                   }}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs"
                 >
                   <option value="">Select intervention...</option>
                   {interventionOptions.map((item) => {
                     const extra = item.paymentMechanism ? ` (${item.paymentMechanism})` : '';
                     return (
                       <option key={item.code} value={item.code}>
-                        {item.code} — {item.name || 'Unknown'}{extra}
+                        {item.code} — {item.name || 'Unknown'}
+                        {extra}
                       </option>
                     );
                   })}
                 </select>
               ) : (
-                <p className="text-xs text-muted-foreground py-2">
+                <p className="py-2 text-xs text-muted-foreground">
                   No interventions found for this package.
                 </p>
               )}
@@ -700,7 +704,7 @@ export function SHAConsentStep({
 
           {/* Existing whitelist request status */}
           {existingWhitelistStatus && (
-            <div className="flex items-center gap-2 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10 px-3 py-2">
+            <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/10">
               <span className="text-xs text-muted-foreground">OTP Whitelist:</span>
               <WhitelistStatusBadge status={existingWhitelistStatus} />
             </div>
@@ -726,7 +730,7 @@ export function SHAConsentStep({
               }
               size="sm"
             >
-              {(sendOTP.isPending || isCreatingMember) ? (
+              {sendOTP.isPending || isCreatingMember ? (
                 <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Send className="mr-2 h-3.5 w-3.5" />
@@ -762,15 +766,17 @@ export function SHAConsentStep({
             </div>
           )}
           <div className="flex gap-2">
-            <div className="space-y-1 flex-1">
-              <Label htmlFor="sha-otp-checkin" className="sr-only">OTP Code</Label>
+            <div className="flex-1 space-y-1">
+              <Label htmlFor="sha-otp-checkin" className="sr-only">
+                OTP Code
+              </Label>
               <Input
                 id="sha-otp-checkin"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value)}
                 placeholder={isReusedConsent ? 'OTP not required' : '6-digit code'}
                 maxLength={6}
-                className="font-mono h-9"
+                className="h-9 font-mono"
                 disabled={step === 'validating' || isReusedConsent}
               />
             </div>
@@ -797,75 +803,74 @@ export function SHAConsentStep({
               {isReusedConsent ? 'Proceed' : 'Verify'}
             </Button>
           </div>
-          {error && (() => {
-            const lower = error.toLowerCase();
-            const isBiometricRestricted = lower.includes('restricted to biometric');
-            const isWhitelistError = lower.includes('whitelist');
-            if (isBiometricRestricted) {
-              return (
-                <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
-                  <div className="flex gap-2">
-                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
-                    <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
+          {error &&
+            (() => {
+              const lower = error.toLowerCase();
+              const isBiometricRestricted = lower.includes('restricted to biometric');
+              const isWhitelistError = lower.includes('whitelist');
+              if (isBiometricRestricted) {
+                return (
+                  <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                    <div className="flex gap-2">
+                      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                      <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
+                    </div>
+                    <div className="flex flex-row flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                        onClick={() => {
+                          setError(null);
+                          handleBiometricStart();
+                        }}
+                      >
+                        <Fingerprint className="mr-2 h-3.5 w-3.5" />
+                        Use Biometric Instead
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                        onClick={() => setWhitelistOpen(true)}
+                      >
+                        <ShieldAlert className="mr-2 h-3.5 w-3.5" />
+                        Request OTP Whitelist
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex flex-row flex-wrap gap-2">
+                );
+              }
+              if (isWhitelistError) {
+                return (
+                  <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                    <div className="flex gap-2">
+                      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                      <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
+                    </div>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
-                      onClick={() => {
-                        setError(null);
-                        handleBiometricStart();
-                      }}
-                    >
-                      <Fingerprint className="mr-2 h-3.5 w-3.5" />
-                      Use Biometric Instead
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
+                      className="shrink-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
                       onClick={() => setWhitelistOpen(true)}
                     >
                       <ShieldAlert className="mr-2 h-3.5 w-3.5" />
                       Request OTP Whitelist
                     </Button>
                   </div>
-                </div>
-              );
-            }
-            if (isWhitelistError) {
-              return (
-                <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
-                  <div className="flex gap-2">
-                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
-                    <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
-                    onClick={() => setWhitelistOpen(true)}
-                  >
-                    <ShieldAlert className="mr-2 h-3.5 w-3.5" />
-                    Request OTP Whitelist
-                  </Button>
-                </div>
-              );
-            }
-            return <p className="text-xs text-destructive">{error}</p>;
-          })()}
+                );
+              }
+              return <p className="text-xs text-destructive">{error}</p>;
+            })()}
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleSendOTP}
               disabled={sendOTP.isPending || resendCountdown > 0 || isReusedConsent}
-              className="text-xs h-7"
+              className="h-7 text-xs"
             >
-              {sendOTP.isPending ? (
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              ) : null}
+              {sendOTP.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
               {resendCountdown > 0 ? `Resend OTP (${resendCountdown}s)` : 'Resend OTP'}
             </Button>
             {resendCountdown > 0 && (
@@ -895,11 +900,11 @@ export function SHAConsentStep({
             <span>Waiting for fingerprint capture…</span>
           </div>
           {biometricIframeUrl && (
-            <div className="rounded-md border overflow-hidden">
+            <div className="overflow-hidden rounded-md border">
               <iframe
                 src={biometricIframeUrl}
                 title="Biometric Fingerprint Capture"
-                className="w-full h-[280px]"
+                className="h-[280px] w-full"
                 sandbox="allow-scripts allow-same-origin allow-forms"
               />
             </div>
@@ -909,15 +914,9 @@ export function SHAConsentStep({
               Biometric device should be active. The system is polling for authorization…
             </p>
           )}
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBiometricCancel}
-            >
+            <Button variant="ghost" size="sm" onClick={handleBiometricCancel}>
               <X className="mr-1.5 h-3.5 w-3.5" />
               Cancel
             </Button>
@@ -928,79 +927,81 @@ export function SHAConsentStep({
       {/* Step: Biometric failed — offer OTP fallback */}
       {step === 'biometric_failed' && (
         <div className="space-y-3">
-          <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10 p-3">
+          <div className="rounded-md border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-800 dark:bg-amber-900/10">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
                   Biometric verification unavailable
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {error || 'Fingerprint verification could not be completed. You can send an OTP to the patient\u0027s phone instead.'}
+                  {error ||
+                    'Fingerprint verification could not be completed. You can send an OTP to the patient\u0027s phone instead.'}
                 </p>
               </div>
             </div>
           </div>
 
           {/* Check for DHA-specific errors (restricted to biometric / whitelist) */}
-          {error && (() => {
-            const lower = error.toLowerCase();
-            const isBiometricRestricted = lower.includes('restricted to biometric');
-            const isWhitelist = lower.includes('whitelist');
-            if (isBiometricRestricted) {
-              return (
-                <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
-                  <div className="flex gap-2">
-                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
-                    <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
+          {error &&
+            (() => {
+              const lower = error.toLowerCase();
+              const isBiometricRestricted = lower.includes('restricted to biometric');
+              const isWhitelist = lower.includes('whitelist');
+              if (isBiometricRestricted) {
+                return (
+                  <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                    <div className="flex gap-2">
+                      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                      <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
+                    </div>
+                    <div className="flex flex-row flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                        onClick={() => {
+                          setError(null);
+                          handleBiometricStart();
+                        }}
+                      >
+                        <Fingerprint className="mr-2 h-3.5 w-3.5" />
+                        Use Biometric Instead
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                        onClick={() => setWhitelistOpen(true)}
+                      >
+                        <ShieldAlert className="mr-2 h-3.5 w-3.5" />
+                        Request OTP Whitelist
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex flex-row flex-wrap gap-2">
+                );
+              }
+              if (isWhitelist) {
+                return (
+                  <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                    <div className="flex gap-2">
+                      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                      <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
+                    </div>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
-                      onClick={() => {
-                        setError(null);
-                        handleBiometricStart();
-                      }}
-                    >
-                      <Fingerprint className="mr-2 h-3.5 w-3.5" />
-                      Use Biometric Instead
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
+                      className="shrink-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
                       onClick={() => setWhitelistOpen(true)}
                     >
                       <ShieldAlert className="mr-2 h-3.5 w-3.5" />
                       Request OTP Whitelist
                     </Button>
                   </div>
-                </div>
-              );
-            }
-            if (isWhitelist) {
-              return (
-                <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
-                  <div className="flex gap-2">
-                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
-                    <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 shrink-0"
-                    onClick={() => setWhitelistOpen(true)}
-                  >
-                    <ShieldAlert className="mr-2 h-3.5 w-3.5" />
-                    Request OTP Whitelist
-                  </Button>
-                </div>
-              );
-            }
-            return null;
-          })()}
+                );
+              }
+              return null;
+            })()}
 
           {/* Contact picker for OTP target */}
           {crId && (
@@ -1033,7 +1034,7 @@ export function SHAConsentStep({
               }
               size="sm"
             >
-              {(sendOTP.isPending || isCreatingMember) ? (
+              {sendOTP.isPending || isCreatingMember ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Send className="mr-1.5 h-3.5 w-3.5" />
@@ -1044,7 +1045,7 @@ export function SHAConsentStep({
               variant="ghost"
               size="sm"
               onClick={() => setWhitelistOpen(true)}
-              className="text-xs h-7 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-400 dark:hover:bg-amber-900/20"
+              className="h-7 border-amber-300 text-xs text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-400 dark:hover:bg-amber-900/20"
             >
               <AlertTriangle className="mr-1 h-3 w-3" />
               Request OTP Whitelist
@@ -1076,7 +1077,7 @@ export function SHAConsentStep({
 
       {/* Step: Done */}
       {step === 'done' && (
-        <div className="rounded-md bg-green-50 dark:bg-green-900/10 p-3">
+        <div className="rounded-md bg-green-50 p-3 dark:bg-green-900/10">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             <span className="text-sm font-medium text-green-700 dark:text-green-300">
@@ -1085,7 +1086,6 @@ export function SHAConsentStep({
           </div>
         </div>
       )}
-
-  </div>
+    </div>
   );
 }

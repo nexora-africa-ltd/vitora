@@ -330,9 +330,7 @@ export const aiApi = {
 
         if (payloadType === 'error') {
           handlers.onError?.(
-            typeof streamPayload.error === 'string'
-              ? streamPayload.error
-              : 'AI service error.'
+            typeof streamPayload.error === 'string' ? streamPayload.error : 'AI service error.'
           );
           return;
         }
@@ -451,7 +449,9 @@ export const aiApi = {
    * @param data - Patient features (age, gender, vitals, complaint, etc.)
    * @returns Predicted condition with confidence, risk factors, and differentials
    */
-  predictCondition: async (data: AIConditionPredictRequest): Promise<AIConditionPredictResponse> => {
+  predictCondition: async (
+    data: AIConditionPredictRequest
+  ): Promise<AIConditionPredictResponse> => {
     const response = await apiClient.post('/api/ai/predict/condition/', data);
     return parseResponse(AIConditionPredictResponseSchema, response.data, {
       context: 'aiApi.predictCondition',
@@ -545,7 +545,9 @@ export const aiApi = {
   /**
    * Record an accepted or applied AI suggestion for accountability.
    */
-  auditSuggestionAction: async (data: AISuggestionAuditRequest): Promise<AISuggestionAuditResponse> => {
+  auditSuggestionAction: async (
+    data: AISuggestionAuditRequest
+  ): Promise<AISuggestionAuditResponse> => {
     const response = await apiClient.post('/api/ai/suggestion-audit/', data);
     return parseResponse(AISuggestionAuditResponseSchema, response.data, {
       context: 'aiApi.auditSuggestionAction',
@@ -619,7 +621,10 @@ export const aiApi = {
   /**
    * Get stored eGFR results for a patient or encounter.
    */
-  getStoredEGFRResults: async (params: { patient_id?: number; encounter_id?: number }): Promise<StoredEGFRResult[]> => {
+  getStoredEGFRResults: async (params: {
+    patient_id?: number;
+    encounter_id?: number;
+  }): Promise<StoredEGFRResult[]> => {
     const response = await apiClient.get('/api/ai/results/egfr/', { params });
     return parseResponse(StoredEGFRResultSchema.array(), response.data, {
       context: 'aiApi.getStoredEGFRResults',
@@ -690,7 +695,9 @@ export const aiApi = {
    * @param data - Same as generateCarePlan
    * @returns FHIR R4 CarePlan resource JSON
    */
-  generateCarePlanFHIR: async (data: AICarePlanGenerateRequest): Promise<Record<string, unknown>> => {
+  generateCarePlanFHIR: async (
+    data: AICarePlanGenerateRequest
+  ): Promise<Record<string, unknown>> => {
     const response = await apiClient.post('/api/ai/care-plan/generate/fhir/', data);
     return parseResponse(z.record(z.unknown()), response.data, {
       context: 'aiApi.generateCarePlanFHIR',
@@ -730,7 +737,9 @@ export const aiApi = {
    * @param data - Current text, field name, and optional patient context
    * @returns Ranked autocomplete suggestions with confidence
    */
-  clerkingAutocomplete: async (data: AIClerkingAutocompleteRequest): Promise<AIClerkingAutocompleteResponse> => {
+  clerkingAutocomplete: async (
+    data: AIClerkingAutocompleteRequest
+  ): Promise<AIClerkingAutocompleteResponse> => {
     const response = await apiClient.post('/api/ai/clerking/autocomplete/', data);
     return parseResponse(AIClerkingAutocompleteResponseSchema, response.data, {
       context: 'aiApi.clerkingAutocomplete',
@@ -746,7 +755,9 @@ export const aiApi = {
    * @param data - Free-text note and target format (SOAP or SBAR)
    * @returns Structured note with named sections
    */
-  clerkingStructure: async (data: AIClerkingStructureRequest): Promise<AIClerkingStructureResponse> => {
+  clerkingStructure: async (
+    data: AIClerkingStructureRequest
+  ): Promise<AIClerkingStructureResponse> => {
     const response = await apiClient.post('/api/ai/clerking/structure/', data);
     return parseResponse(AIClerkingStructureResponseSchema, response.data, {
       context: 'aiApi.clerkingStructure',
@@ -767,7 +778,9 @@ export const aiApi = {
    * @param data - Document type, patient/admission/encounter context, output format
    * @returns Generated document with sections, ICD-10 suggestions, citations
    */
-  generateClinicalDocument: async (data: AIClinicalDocumentRequest): Promise<AIClinicalDocumentResponse> => {
+  generateClinicalDocument: async (
+    data: AIClinicalDocumentRequest
+  ): Promise<AIClinicalDocumentResponse> => {
     const response = await apiClient.post('/api/ai/clinical/document/', data);
     return parseResponse(AIClinicalDocumentResponseSchema, response.data, {
       context: 'aiApi.generateClinicalDocument',
@@ -800,7 +813,7 @@ export const aiApi = {
   // ===========================================================================
 
   assessSurgicalPreOp: async (
-    data: AISurgicalPreOpAssessRequest,
+    data: AISurgicalPreOpAssessRequest
   ): Promise<AISurgicalPreOpAssessResponse> => {
     const response = await apiClient.post('/api/ai/surgical/pre-op/assess/', data);
     return parseResponse(AISurgicalPreOpAssessResponseSchema, response.data, {
@@ -809,7 +822,7 @@ export const aiApi = {
   },
 
   startSurgicalChecklist: async (
-    data: AISurgicalChecklistStartRequest,
+    data: AISurgicalChecklistStartRequest
   ): Promise<AISurgicalChecklistSessionResponse> => {
     const response = await apiClient.post('/api/ai/surgical/checklist/start/', data);
     return parseResponse(AISurgicalChecklistSessionResponseSchema, response.data, {
@@ -819,7 +832,7 @@ export const aiApi = {
 
   advanceSurgicalChecklist: async (
     sessionId: string,
-    data: AISurgicalChecklistAdvanceRequest,
+    data: AISurgicalChecklistAdvanceRequest
   ): Promise<AISurgicalChecklistSessionResponse> => {
     const response = await apiClient.post(`/api/ai/surgical/checklist/${sessionId}/advance/`, data);
     return parseResponse(AISurgicalChecklistSessionResponseSchema, response.data, {
@@ -828,7 +841,7 @@ export const aiApi = {
   },
 
   getSurgicalChecklistStatus: async (
-    sessionId: string,
+    sessionId: string
   ): Promise<AISurgicalChecklistSessionResponse> => {
     const response = await apiClient.get(`/api/ai/surgical/checklist/${sessionId}/status/`);
     return parseResponse(AISurgicalChecklistSessionResponseSchema, response.data, {
@@ -837,7 +850,7 @@ export const aiApi = {
   },
 
   generateSurgicalPostOpCarePlan: async (
-    data: AISurgicalPostOpCarePlanRequest,
+    data: AISurgicalPostOpCarePlanRequest
   ): Promise<AISurgicalPostOpCarePlanResponse> => {
     const response = await apiClient.post('/api/ai/surgical/post-op/care-plan/', data);
     return parseResponse(AISurgicalPostOpCarePlanResponseSchema, response.data, {
@@ -863,7 +876,10 @@ export const aiApi = {
   // Stored AI Results — retrieval
   // ===========================================================================
 
-  getStoredCarePlans: async (params?: { encounter_id?: number; admission_id?: number }): Promise<StoredCarePlanResult[]> => {
+  getStoredCarePlans: async (params?: {
+    encounter_id?: number;
+    admission_id?: number;
+  }): Promise<StoredCarePlanResult[]> => {
     const response = await apiClient.get('/api/ai/results/care-plans/', { params });
     return parseResponse(StoredCarePlanResultSchema.array(), response.data, {
       context: 'aiApi.getStoredCarePlans',
@@ -877,43 +893,62 @@ export const aiApi = {
     });
   },
 
-  getStoredLabInterpretations: async (params?: { lab_result_id?: number; encounter_id?: number }): Promise<StoredLabInterpretResult[]> => {
+  getStoredLabInterpretations: async (params?: {
+    lab_result_id?: number;
+    encounter_id?: number;
+  }): Promise<StoredLabInterpretResult[]> => {
     const response = await apiClient.get('/api/ai/results/lab-interpretations/', { params });
     return parseResponse(StoredLabInterpretResultSchema.array(), response.data, {
       context: 'aiApi.getStoredLabInterpretations',
     });
   },
 
-  getStoredDischargeResults: async (params?: { admission_id?: number }): Promise<StoredDischargeResult[]> => {
+  getStoredDischargeResults: async (params?: {
+    admission_id?: number;
+  }): Promise<StoredDischargeResult[]> => {
     const response = await apiClient.get('/api/ai/results/discharge/', { params });
     return parseResponse(StoredDischargeResultSchema.array(), response.data, {
       context: 'aiApi.getStoredDischargeResults',
     });
   },
 
-  getStoredICURiskResults: async (params?: { admission_id?: number }): Promise<StoredICURiskResult[]> => {
+  getStoredICURiskResults: async (params?: {
+    admission_id?: number;
+  }): Promise<StoredICURiskResult[]> => {
     const response = await apiClient.get('/api/ai/results/icu-risk/', { params });
     return parseResponse(StoredICURiskResultSchema.array(), response.data, {
       context: 'aiApi.getStoredICURiskResults',
     });
   },
 
-  getStoredSurgicalPreOpAssessments: async (params: { surgery_case_id: number }): Promise<StoredSurgicalPreOpAssessResult[]> => {
-    const response = await apiClient.get('/api/ai/results/surgical/pre-op-assessments/', { params });
+  getStoredSurgicalPreOpAssessments: async (params: {
+    surgery_case_id: number;
+  }): Promise<StoredSurgicalPreOpAssessResult[]> => {
+    const response = await apiClient.get('/api/ai/results/surgical/pre-op-assessments/', {
+      params,
+    });
     return parseResponse(StoredSurgicalPreOpAssessResultSchema.array(), response.data, {
       context: 'aiApi.getStoredSurgicalPreOpAssessments',
     });
   },
 
-  getStoredSurgicalChecklistSessions: async (params: { surgery_case_id: number }): Promise<StoredSurgicalChecklistSessionResult[]> => {
-    const response = await apiClient.get('/api/ai/results/surgical/checklist-sessions/', { params });
+  getStoredSurgicalChecklistSessions: async (params: {
+    surgery_case_id: number;
+  }): Promise<StoredSurgicalChecklistSessionResult[]> => {
+    const response = await apiClient.get('/api/ai/results/surgical/checklist-sessions/', {
+      params,
+    });
     return parseResponse(StoredSurgicalChecklistSessionResultSchema.array(), response.data, {
       context: 'aiApi.getStoredSurgicalChecklistSessions',
     });
   },
 
-  getStoredSurgicalPostOpCarePlans: async (params: { surgery_case_id: number }): Promise<StoredSurgicalPostOpCarePlanResult[]> => {
-    const response = await apiClient.get('/api/ai/results/surgical/post-op-care-plans/', { params });
+  getStoredSurgicalPostOpCarePlans: async (params: {
+    surgery_case_id: number;
+  }): Promise<StoredSurgicalPostOpCarePlanResult[]> => {
+    const response = await apiClient.get('/api/ai/results/surgical/post-op-care-plans/', {
+      params,
+    });
     return parseResponse(StoredSurgicalPostOpCarePlanResultSchema.array(), response.data, {
       context: 'aiApi.getStoredSurgicalPostOpCarePlans',
     });
@@ -933,14 +968,18 @@ export const aiApi = {
    * @param data - Diagnoses, symptoms, existing orders, patient demographics
    * @returns Investigation suggestions grouped by priority
    */
-  suggestInvestigations: async (data: AIInvestigationSuggestRequest): Promise<AIInvestigationSuggestResponse> => {
+  suggestInvestigations: async (
+    data: AIInvestigationSuggestRequest
+  ): Promise<AIInvestigationSuggestResponse> => {
     const response = await apiClient.post('/api/ai/investigations/suggest/', data);
     return parseResponse(AIInvestigationSuggestResponseSchema, response.data, {
       context: 'aiApi.suggestInvestigations',
     });
   },
 
-  getStoredInvestigationSuggestions: async (params?: { encounter_id?: number }): Promise<StoredInvestigationSuggestResult[]> => {
+  getStoredInvestigationSuggestions: async (params?: {
+    encounter_id?: number;
+  }): Promise<StoredInvestigationSuggestResult[]> => {
     const response = await apiClient.get('/api/ai/results/investigation-suggestions/', { params });
     return parseResponse(StoredInvestigationSuggestResultSchema.array(), response.data, {
       context: 'aiApi.getStoredInvestigationSuggestions',
@@ -962,7 +1001,9 @@ export const aiApi = {
   },
 
   /** Seed advisory suggestion rows from an AI result. */
-  seedAdvisoryLinks: async (data: AIAdvisoryBulkSeedRequest): Promise<AIAdvisoryBulkSeedResponse> => {
+  seedAdvisoryLinks: async (
+    data: AIAdvisoryBulkSeedRequest
+  ): Promise<AIAdvisoryBulkSeedResponse> => {
     const response = await apiClient.post('/api/ai/advisory-links/', data);
     return parseResponse(AIAdvisoryBulkSeedResponseSchema, response.data, {
       context: 'aiApi.seedAdvisoryLinks',
@@ -970,7 +1011,10 @@ export const aiApi = {
   },
 
   /** Mark an advisory link as ORDERED / DECLINED / NOT_APPLICABLE. */
-  actionAdvisoryLink: async (id: number, data: AIAdvisoryOrderLinkActionRequest): Promise<AIAdvisoryOrderLink> => {
+  actionAdvisoryLink: async (
+    id: number,
+    data: AIAdvisoryOrderLinkActionRequest
+  ): Promise<AIAdvisoryOrderLink> => {
     const response = await apiClient.patch(`/api/ai/advisory-links/${id}/action/`, data);
     return parseResponse(AIAdvisoryOrderLinkSchema, response.data, {
       context: 'aiApi.actionAdvisoryLink',
@@ -1014,7 +1058,9 @@ export const aiApi = {
    * @param data - Patient and encounter context
    * @returns Proactive insights with deduplication hash
    */
-  getProactiveInsights: async (data: ProactiveInsightsRequest): Promise<ProactiveInsightsResponse> => {
+  getProactiveInsights: async (
+    data: ProactiveInsightsRequest
+  ): Promise<ProactiveInsightsResponse> => {
     const response = await apiClient.post('/api/ai/clinical/proactive-insights/', data);
     return parseResponse(ProactiveInsightsResponseSchema, response.data, {
       context: 'aiApi.getProactiveInsights',
@@ -1034,7 +1080,9 @@ export const aiApi = {
   },
 
   /** Register a new webhook subscription. */
-  registerWebhook: async (data: TibaBotWebhookRegisterRequest): Promise<TibaBotWebhookListResponse> => {
+  registerWebhook: async (
+    data: TibaBotWebhookRegisterRequest
+  ): Promise<TibaBotWebhookListResponse> => {
     const response = await apiClient.post('/api/ai/webhooks/', data);
     return parseResponse(TibaBotWebhookListResponseSchema, response.data, {
       context: 'aiApi.registerWebhook',
@@ -1050,7 +1098,10 @@ export const aiApi = {
   },
 
   /** Update a webhook subscription. */
-  updateWebhook: async (webhookId: string, data: TibaBotWebhookUpdateRequest): Promise<TibaBotWebhookListResponse> => {
+  updateWebhook: async (
+    webhookId: string,
+    data: TibaBotWebhookUpdateRequest
+  ): Promise<TibaBotWebhookListResponse> => {
     const response = await apiClient.put(`/api/ai/webhooks/${webhookId}/`, data);
     return parseResponse(TibaBotWebhookListResponseSchema, response.data, {
       context: 'aiApi.updateWebhook',
@@ -1114,8 +1165,12 @@ export const aiApi = {
   },
 
   /** Delete a document from the facility knowledge base. */
-  deleteFacilityKBDocument: async (documentId: string): Promise<FacilityKBDocumentDeleteResponse> => {
-    const response = await apiClient.delete(`/api/ai/facility/knowledge-base/documents/${documentId}/`);
+  deleteFacilityKBDocument: async (
+    documentId: string
+  ): Promise<FacilityKBDocumentDeleteResponse> => {
+    const response = await apiClient.delete(
+      `/api/ai/facility/knowledge-base/documents/${documentId}/`
+    );
     return parseResponse(FacilityKBDocumentDeleteResponseSchema, response.data, {
       context: 'aiApi.deleteFacilityKBDocument',
     });

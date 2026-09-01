@@ -107,7 +107,10 @@ export const theatreApi = {
     });
   },
 
-  async updateTheatre(id: number, data: Partial<OperatingTheatreCreateData>): Promise<OperatingTheatreDetail> {
+  async updateTheatre(
+    id: number,
+    data: Partial<OperatingTheatreCreateData>
+  ): Promise<OperatingTheatreDetail> {
     const response = await apiClient.patch(`/api/theatre/operating-theatres/${id}/`, data);
     return parseResponse(OperatingTheatreDetailSchema, response.data, {
       context: 'theatreApi.updateTheatre',
@@ -279,21 +282,30 @@ export const theatreApi = {
   },
 
   async completeSignIn(caseNumber: string, data: WHOSignInData): Promise<WHOChecklist> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/who-checklist/sign-in/`, data);
+    const response = await apiClient.post(
+      `/api/theatre/cases/${caseNumber}/who-checklist/sign-in/`,
+      data
+    );
     return parseResponse(WHOChecklistSchema, response.data, {
       context: 'theatreApi.completeSignIn',
     });
   },
 
   async completeTimeOut(caseNumber: string, data: WHOTimeOutData): Promise<WHOChecklist> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/who-checklist/time-out/`, data);
+    const response = await apiClient.post(
+      `/api/theatre/cases/${caseNumber}/who-checklist/time-out/`,
+      data
+    );
     return parseResponse(WHOChecklistSchema, response.data, {
       context: 'theatreApi.completeTimeOut',
     });
   },
 
   async completeSignOut(caseNumber: string, data: WHOSignOutData): Promise<WHOChecklist> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/who-checklist/sign-out/`, data);
+    const response = await apiClient.post(
+      `/api/theatre/cases/${caseNumber}/who-checklist/sign-out/`,
+      data
+    );
     return parseResponse(WHOChecklistSchema, response.data, {
       context: 'theatreApi.completeSignOut',
     });
@@ -310,8 +322,14 @@ export const theatreApi = {
     });
   },
 
-  async createAnesthesiaRecord(caseNumber: string, data: AnesthesiaRecordCreateData): Promise<AnesthesiaRecord> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/anesthesia/create/`, data);
+  async createAnesthesiaRecord(
+    caseNumber: string,
+    data: AnesthesiaRecordCreateData
+  ): Promise<AnesthesiaRecord> {
+    const response = await apiClient.post(
+      `/api/theatre/cases/${caseNumber}/anesthesia/create/`,
+      data
+    );
     return parseResponse(AnesthesiaRecordSchema, response.data, {
       context: 'theatreApi.createAnesthesiaRecord',
     });
@@ -321,14 +339,20 @@ export const theatreApi = {
     caseNumber: string,
     data: Partial<AnesthesiaRecordCreateData>
   ): Promise<AnesthesiaRecord> {
-    const response = await apiClient.patch(`/api/theatre/cases/${caseNumber}/anesthesia/update/`, data);
+    const response = await apiClient.patch(
+      `/api/theatre/cases/${caseNumber}/anesthesia/update/`,
+      data
+    );
     return parseResponse(AnesthesiaRecordSchema, response.data, {
       context: 'theatreApi.updateAnesthesiaRecord',
     });
   },
 
   async addIntraOpVital(caseNumber: string, data: Record<string, unknown>): Promise<IntraOpVital> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/anesthesia/vitals/`, data);
+    const response = await apiClient.post(
+      `/api/theatre/cases/${caseNumber}/anesthesia/vitals/`,
+      data
+    );
     return parseResponse(IntraOpVitalSchema, response.data, {
       context: 'theatreApi.addIntraOpVital',
     });
@@ -349,9 +373,7 @@ export const theatreApi = {
   },
 
   async deleteIntraOpVital(caseNumber: string, vitalId: number): Promise<void> {
-    await apiClient.delete(
-      `/api/theatre/cases/${caseNumber}/anesthesia/vitals/${vitalId}/delete/`
-    );
+    await apiClient.delete(`/api/theatre/cases/${caseNumber}/anesthesia/vitals/${vitalId}/delete/`);
   },
 
   async bulkAddIntraOpVitals(
@@ -385,15 +407,27 @@ export const theatreApi = {
     });
   },
 
-  async createOperativeNote(caseNumber: string, data: OperativeNoteCreateData): Promise<OperativeNote> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/operative-note/create/`, data);
+  async createOperativeNote(
+    caseNumber: string,
+    data: OperativeNoteCreateData
+  ): Promise<OperativeNote> {
+    const response = await apiClient.post(
+      `/api/theatre/cases/${caseNumber}/operative-note/create/`,
+      data
+    );
     return parseResponse(OperativeNoteSchema, response.data, {
       context: 'theatreApi.createOperativeNote',
     });
   },
 
-  async updateOperativeNote(caseNumber: string, data: Partial<OperativeNoteCreateData>): Promise<OperativeNote> {
-    const response = await apiClient.patch(`/api/theatre/cases/${caseNumber}/operative-note/update/`, data);
+  async updateOperativeNote(
+    caseNumber: string,
+    data: Partial<OperativeNoteCreateData>
+  ): Promise<OperativeNote> {
+    const response = await apiClient.patch(
+      `/api/theatre/cases/${caseNumber}/operative-note/update/`,
+      data
+    );
     return parseResponse(OperativeNoteSchema, response.data, {
       context: 'theatreApi.updateOperativeNote',
     });
@@ -424,8 +458,14 @@ export const theatreApi = {
     });
   },
 
-  async addConsumable(caseNumber: string, data: Record<string, unknown>): Promise<TheatreConsumable> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/consumables/add/`, data);
+  async addConsumable(
+    caseNumber: string,
+    data: Record<string, unknown>
+  ): Promise<TheatreConsumable> {
+    const response = await apiClient.post(
+      `/api/theatre/cases/${caseNumber}/consumables/add/`,
+      data
+    );
     return parseResponse(TheatreConsumableSchema, response.data, {
       context: 'theatreApi.addConsumable',
     });
@@ -485,7 +525,9 @@ export const theatreApi = {
   //  Theatre Equipment Types
   // =========================================================================
 
-  async listEquipmentTypes(params?: TheatreEquipmentTypeListParams): Promise<PaginatedTheatreEquipmentTypes> {
+  async listEquipmentTypes(
+    params?: TheatreEquipmentTypeListParams
+  ): Promise<PaginatedTheatreEquipmentTypes> {
     const response = await apiClient.get('/api/theatre/equipment-types/', { params });
     return parseResponse(PaginatedTheatreEquipmentTypeSchema, response.data, {
       context: 'theatreApi.listEquipmentTypes',
@@ -499,14 +541,19 @@ export const theatreApi = {
     });
   },
 
-  async createEquipmentType(data: TheatreEquipmentTypeCreateData): Promise<TheatreEquipmentTypeDetail> {
+  async createEquipmentType(
+    data: TheatreEquipmentTypeCreateData
+  ): Promise<TheatreEquipmentTypeDetail> {
     const response = await apiClient.post('/api/theatre/equipment-types/', data);
     return parseResponse(TheatreEquipmentTypeDetailSchema, response.data, {
       context: 'theatreApi.createEquipmentType',
     });
   },
 
-  async updateEquipmentType(id: number, data: Partial<TheatreEquipmentTypeCreateData>): Promise<TheatreEquipmentTypeDetail> {
+  async updateEquipmentType(
+    id: number,
+    data: Partial<TheatreEquipmentTypeCreateData>
+  ): Promise<TheatreEquipmentTypeDetail> {
     const response = await apiClient.patch(`/api/theatre/equipment-types/${id}/`, data);
     return parseResponse(TheatreEquipmentTypeDetailSchema, response.data, {
       context: 'theatreApi.updateEquipmentType',
@@ -517,15 +564,22 @@ export const theatreApi = {
     await apiClient.delete(`/api/theatre/equipment-types/${id}/`);
   },
 
-  async listEquipmentTypeChildren(id: number, activeOnly = false): Promise<TheatreEquipmentTypeList[]> {
+  async listEquipmentTypeChildren(
+    id: number,
+    activeOnly = false
+  ): Promise<TheatreEquipmentTypeList[]> {
     const params = activeOnly ? { active_only: 'true' } : {};
-    const response = await apiClient.get(`/api/theatre/equipment-types/${id}/children/`, { params });
+    const response = await apiClient.get(`/api/theatre/equipment-types/${id}/children/`, {
+      params,
+    });
     return parseResponse(z.array(TheatreEquipmentTypeListSchema), response.data, {
       context: 'theatreApi.listEquipmentTypeChildren',
     });
   },
 
-  async listEquipmentTypeTree(params?: TheatreEquipmentTypeListParams): Promise<PaginatedTheatreEquipmentTypes> {
+  async listEquipmentTypeTree(
+    params?: TheatreEquipmentTypeListParams
+  ): Promise<PaginatedTheatreEquipmentTypes> {
     const response = await apiClient.get('/api/theatre/equipment-types/tree/', { params });
     return parseResponse(PaginatedTheatreEquipmentTypeSchema, response.data, {
       context: 'theatreApi.listEquipmentTypeTree',
@@ -545,15 +599,25 @@ export const theatreApi = {
     });
   },
 
-  async addCaseEquipment(caseId: number, data: CaseEquipmentCreateData): Promise<CaseEquipmentRequirement> {
+  async addCaseEquipment(
+    caseId: number,
+    data: CaseEquipmentCreateData
+  ): Promise<CaseEquipmentRequirement> {
     const response = await apiClient.post(`/api/theatre/cases/${caseId}/equipment/`, data);
     return parseResponse(CaseEquipmentRequirementSchema, response.data, {
       context: 'theatreApi.addCaseEquipment',
     });
   },
 
-  async updateCaseEquipment(caseId: number, requirementId: number, data: Partial<CaseEquipmentCreateData>): Promise<CaseEquipmentRequirement> {
-    const response = await apiClient.patch(`/api/theatre/cases/${caseId}/equipment/${requirementId}/`, data);
+  async updateCaseEquipment(
+    caseId: number,
+    requirementId: number,
+    data: Partial<CaseEquipmentCreateData>
+  ): Promise<CaseEquipmentRequirement> {
+    const response = await apiClient.patch(
+      `/api/theatre/cases/${caseId}/equipment/${requirementId}/`,
+      data
+    );
     return parseResponse(CaseEquipmentRequirementSchema, response.data, {
       context: 'theatreApi.updateCaseEquipment',
     });

@@ -24,8 +24,7 @@ export function DemoBanner() {
   }, []);
 
   // Determine if we should show the banner
-  const isDemo = APP_ENV === 'staging' ||
-    process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+  const isDemo = APP_ENV === 'staging' || process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
   if (!mounted || !isDemo || HIDDEN_PATHS.some((p) => pathname.startsWith(p))) {
     return null;
@@ -34,12 +33,7 @@ export function DemoBanner() {
   const demoFacility = process.env.NEXT_PUBLIC_DEMO_FACILITY || 'Demo';
 
   return (
-    <SystemBanner
-      text={`${demoFacility} - DEMO`}
-      color="bg-amber-500"
-      size="xs"
-      show={true}
-    />
+    <SystemBanner text={`${demoFacility} - DEMO`} color="bg-amber-500" size="xs" show={true} />
   );
 }
 

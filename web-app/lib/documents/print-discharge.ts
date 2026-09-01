@@ -58,7 +58,12 @@ function stripAdvisoryContent(md: string): string {
       // Remove blocks that are entirely italic: *text* or _text_ (possibly multi-line)
       if (/^\*[^*]+\*$/.test(trimmed) || /^_[^_]+_$/.test(trimmed)) return null;
       // Remove italic-prefixed advisory lines (e.g. "*Relevant guideline context...*)
-      if (/^\*.*(?:guideline|context|reference|advisory|note|disclaimer|AI.generated|clinician.review).*\*?\s*$/i.test(trimmed)) return null;
+      if (
+        /^\*.*(?:guideline|context|reference|advisory|note|disclaimer|AI.generated|clinician.review).*\*?\s*$/i.test(
+          trimmed
+        )
+      )
+        return null;
       // Remove "Not documented (reason)" standalone lines
       if (/^not documented\b/i.test(trimmed)) return null;
       // Remove standalone parenthetical instruction blocks
@@ -75,10 +80,7 @@ function stripAdvisoryContent(md: string): string {
           if (/^\|(\s*:?-{2,}:?\s*\|)+/.test(line)) return true;
 
           // Clean "Not documented ..." from cell values
-          const scrubbed = line.replace(
-            /not documented\s*(\([^)]*\))?/gi,
-            '\u2014',
-          );
+          const scrubbed = line.replace(/not documented\s*(\([^)]*\))?/gi, '\u2014');
 
           // Drop the row if every data cell is now just a dash/empty
           const cells = scrubbed
@@ -97,9 +99,7 @@ function stripAdvisoryContent(md: string): string {
         });
 
         // If only header + separator remain (no data rows), drop the whole table
-        const dataRows = cleaned.filter(
-          (l) => /^\|/.test(l) && !/^\|(\s*:?-{2,}:?\s*\|)+/.test(l),
-        );
+        const dataRows = cleaned.filter((l) => /^\|/.test(l) && !/^\|(\s*:?-{2,}:?\s*\|)+/.test(l));
         if (dataRows.length <= 1) return null; // only header row left
 
         return cleaned.join('\n');
@@ -163,13 +163,19 @@ function markdownToHtml(md: string): string {
 
   // Unordered lists: consecutive lines starting with "- "
   html = html.replace(/(^- .+$(\n- .+$)*)/gm, (block) => {
-    const items = block.split('\n').map((line) => `<li>${line.replace(/^- /, '')}</li>`).join('');
+    const items = block
+      .split('\n')
+      .map((line) => `<li>${line.replace(/^- /, '')}</li>`)
+      .join('');
     return `<ul>${items}</ul>`;
   });
 
   // Ordered lists: consecutive lines starting with "1. ", "2. ", etc.
   html = html.replace(/(^\d+\. .+$(\n\d+\. .+$)*)/gm, (block) => {
-    const items = block.split('\n').map((line) => `<li>${line.replace(/^\d+\.\s/, '')}</li>`).join('');
+    const items = block
+      .split('\n')
+      .map((line) => `<li>${line.replace(/^\d+\.\s/, '')}</li>`)
+      .join('');
     return `<ol>${items}</ol>`;
   });
 
@@ -544,9 +550,7 @@ function prepareRenderContext(data: DischargeDocumentData) {
   const dischargeDate = data.dischargeDate
     ? formatDate(data.dischargeDate)
     : formatDate(now.toISOString());
-  const admissionDate = data.admissionDate
-    ? formatDate(data.admissionDate)
-    : '';
+  const admissionDate = data.admissionDate ? formatDate(data.admissionDate) : '';
 
   const facilityDetails: string[] = [];
   if (data.facilityMflCode) facilityDetails.push(`MFL: ${escapeHtml(data.facilityMflCode)}`);
@@ -561,31 +565,41 @@ function prepareRenderContext(data: DischargeDocumentData) {
 function renderFooterBlocks(
   data: DischargeDocumentData,
   ctx: ReturnType<typeof prepareRenderContext>,
-  qrDataUri?: string,
+  qrDataUri?: string
 ): string {
   const showSig = data.showSignatureLines !== false;
   const showQr = data.showQrCode !== false;
 
   return `
-${showSig ? `
+${
+  showSig
+    ? `
 <div class="signature-block">
   <div class="sig">
     <div class="line">Discharging Officer</div>
     ${data.signature ? `<div style="font-size: 11px; margin-top: 4px;">${escapeHtml(data.signature.signer_full_name)}</div><div style="font-size: 10px; color: #666;">${formatDateTime(data.signature.signed_at)}</div>` : ''}
   </div>
-  ${showQr && qrDataUri ? `
+  ${
+    showQr && qrDataUri
+      ? `
   <div class="qr-block">
     <img src="${qrDataUri}" alt="QR Code" width="80" height="80" />
     <div class="qr-label">${escapeHtml(data.admissionNumber || '')}</div>
   </div>
-  ` : ''}
+  `
+      : ''
+  }
   <div class="sig">
-    ${data.signature
-      ? `<div style="color: ${data.signature.is_valid !== false ? '#16a34a' : '#dc2626'}; font-weight: 600; font-size: 11px;">${data.signature.is_valid !== false ? '✓ Digitally Signed' : '⚠ Signature Invalid'}</div>`
-      : '<div class="line">Patient / Guardian Signature</div>'}
+    ${
+      data.signature
+        ? `<div style="color: ${data.signature.is_valid !== false ? '#16a34a' : '#dc2626'}; font-weight: 600; font-size: 11px;">${data.signature.is_valid !== false ? '✓ Digitally Signed' : '⚠ Signature Invalid'}</div>`
+        : '<div class="line">Patient / Guardian Signature</div>'
+    }
   </div>
 </div>
-` : ''}
+`
+    : ''
+}
 
 <div class="footer">
   <span>Printed: ${ctx.now.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>

@@ -9,12 +9,7 @@
 // Enums / Status unions
 // ---------------------------------------------------------------------------
 
-export type InsuranceProviderType =
-  | 'private'
-  | 'corporate'
-  | 'community'
-  | 'micro'
-  | 'other';
+export type InsuranceProviderType = 'private' | 'corporate' | 'community' | 'micro' | 'other';
 
 export type InsuranceProviderStatus = 'active' | 'suspended' | 'inactive';
 
@@ -30,12 +25,7 @@ export type InsuranceCoverageType =
 
 export type InsurancePlanStatus = 'active' | 'discontinued';
 
-export type PatientInsuranceMemberType =
-  | 'principal'
-  | 'spouse'
-  | 'child'
-  | 'dependent'
-  | 'other';
+export type PatientInsuranceMemberType = 'principal' | 'spouse' | 'child' | 'dependent' | 'other';
 
 export type PatientInsuranceStatus =
   | 'active'
@@ -70,11 +60,7 @@ export type InsuranceClaimType =
   | 'maternity'
   | 'emergency';
 
-export type InsuranceClaimItemStatus =
-  | 'pending'
-  | 'approved'
-  | 'partially_approved'
-  | 'rejected';
+export type InsuranceClaimItemStatus = 'pending' | 'approved' | 'partially_approved' | 'rejected';
 
 export type InsurancePreauthStatus =
   | 'draft'
@@ -92,27 +78,13 @@ export type InsurancePreauthType =
   | 'medication'
   | 'other';
 
-export type InsuranceRemittanceStatus =
-  | 'received'
-  | 'reconciled'
-  | 'partial'
-  | 'disputed';
+export type InsuranceRemittanceStatus = 'received' | 'reconciled' | 'partial' | 'disputed';
 
-export type AccreditationStatus =
-  | 'accredited'
-  | 'pending'
-  | 'expired'
-  | 'not_accredited';
+export type AccreditationStatus = 'accredited' | 'pending' | 'expired' | 'not_accredited';
 
 export type SubmissionFormat = 'api' | 'csv' | 'excel' | 'pdf' | 'manual';
 
-export type ApiAuthType =
-  | 'none'
-  | 'basic'
-  | 'bearer'
-  | 'oauth2'
-  | 'api_key'
-  | 'custom';
+export type ApiAuthType = 'none' | 'basic' | 'bearer' | 'oauth2' | 'api_key' | 'custom';
 
 // ---------------------------------------------------------------------------
 // Label maps

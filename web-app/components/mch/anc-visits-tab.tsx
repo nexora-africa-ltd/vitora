@@ -7,12 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -188,7 +183,7 @@ export function ANCVisitsTab({
         </Card>
       ) : null}
 
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">ANC Visits</h3>
           <HelpPopover content="Antenatal care visits track maternal health throughout pregnancy. WHO recommends 8+ contacts." />
@@ -219,9 +214,11 @@ export function ANCVisitsTab({
               {isDelivered ? 'Backdate ANC Visit' : 'Record Visit'}
             </Button>
           )}
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{isDelivered && isAdminUser ? 'Backdate ANC Visit' : 'Record ANC Visit'}</DialogTitle>
+              <DialogTitle>
+                {isDelivered && isAdminUser ? 'Backdate ANC Visit' : 'Record ANC Visit'}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -272,7 +269,10 @@ export function ANCVisitsTab({
                 </div>
                 <div className="space-y-2">
                   <Label>Presentation</Label>
-                  <Select value={presentation} onValueChange={(v) => setPresentation(v as FetalPresentation)}>
+                  <Select
+                    value={presentation}
+                    onValueChange={(v) => setPresentation(v as FetalPresentation)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
@@ -287,7 +287,10 @@ export function ANCVisitsTab({
                 </div>
                 <div className="space-y-2">
                   <Label>Urine Protein</Label>
-                  <Select value={urineProtein} onValueChange={(v) => setUrineProtein(v as UrineResult)}>
+                  <Select
+                    value={urineProtein}
+                    onValueChange={(v) => setUrineProtein(v as UrineResult)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
@@ -302,7 +305,10 @@ export function ANCVisitsTab({
                 </div>
                 <div className="space-y-2">
                   <Label>Urine Glucose</Label>
-                  <Select value={urineGlucose} onValueChange={(v) => setUrineGlucose(v as UrineResult)}>
+                  <Select
+                    value={urineGlucose}
+                    onValueChange={(v) => setUrineGlucose(v as UrineResult)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
@@ -365,11 +371,7 @@ export function ANCVisitsTab({
 
               <div className="space-y-2">
                 <Label>Notes</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                />
+                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
               </div>
 
               <div className="flex justify-end gap-2">
@@ -397,17 +399,13 @@ export function ANCVisitsTab({
           {visits.map((visit) => (
             <Card key={visit.id}>
               <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-base">
-                    Visit #{visit.visit_number}
-                  </CardTitle>
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-base">Visit #{visit.visit_number}</CardTitle>
                   <Badge variant="outline">
                     {visit.gestation_weeks ? `${visit.gestation_weeks} wks` : 'N/A'}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(visit.visit_date)}
-                </p>
+                <p className="text-sm text-muted-foreground">{formatDate(visit.visit_date)}</p>
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -423,12 +421,13 @@ export function ANCVisitsTab({
                   )}
                   {visit.fetal_heart_rate && (
                     <div>
-                      <span className="text-muted-foreground">FHR:</span> {visit.fetal_heart_rate} BPM
+                      <span className="text-muted-foreground">FHR:</span> {visit.fetal_heart_rate}{' '}
+                      BPM
                     </div>
                   )}
                 </div>
                 {visit.alerts.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="mt-2 flex flex-wrap gap-1">
                     {visit.alerts.map((alert, i) => (
                       <Badge key={i} variant="destructive" className="gap-1">
                         <AlertTriangle className="h-3 w-3" />
@@ -438,7 +437,7 @@ export function ANCVisitsTab({
                   </div>
                 )}
                 {visit.next_visit_date && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-blue-600">
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-blue-600">
                     <Calendar className="h-3 w-3" />
                     Next visit: {formatDate(visit.next_visit_date)}
                   </div>

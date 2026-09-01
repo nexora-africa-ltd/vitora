@@ -3,11 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Plus,
-  Search,
-  CalendarDays,
-} from 'lucide-react';
+import { Plus, Search, CalendarDays } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -101,7 +97,7 @@ export default function AppointmentsListPage() {
   useSchedulingSocket(facility?.id ?? null);
 
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | ''>(
-    (searchParams.get('status') as AppointmentStatus) || '',
+    (searchParams.get('status') as AppointmentStatus) || ''
   );
   const [typeFilter, setTypeFilter] = useState<AppointmentType | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<AppointmentPriority | ''>('');
@@ -110,7 +106,15 @@ export default function AppointmentsListPage() {
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['scheduling-appointments', statusFilter, typeFilter, priorityFilter, fromDate, toDate, page],
+    queryKey: [
+      'scheduling-appointments',
+      statusFilter,
+      typeFilter,
+      priorityFilter,
+      fromDate,
+      toDate,
+      page,
+    ],
     queryFn: () =>
       appointmentsApi.list({
         status: statusFilter || undefined,
@@ -137,7 +141,7 @@ export default function AppointmentsListPage() {
           actions={
             canCreateAppointment ? (
               <Button size="sm" onClick={() => router.push('/scheduling/appointments/new')}>
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">New Appointment</span>
                 <span className="sm:hidden">New</span>
               </Button>
@@ -149,7 +153,10 @@ export default function AppointmentsListPage() {
         <div className="flex flex-wrap gap-2">
           <Select
             value={statusFilter || '_all'}
-            onValueChange={(v) => { setStatusFilter(v === '_all' ? '' : (v as AppointmentStatus)); setPage(1); }}
+            onValueChange={(v) => {
+              setStatusFilter(v === '_all' ? '' : (v as AppointmentStatus));
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Status" />
@@ -165,7 +172,10 @@ export default function AppointmentsListPage() {
 
           <Select
             value={typeFilter || '_all'}
-            onValueChange={(v) => { setTypeFilter(v === '_all' ? '' : (v as AppointmentType)); setPage(1); }}
+            onValueChange={(v) => {
+              setTypeFilter(v === '_all' ? '' : (v as AppointmentType));
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Type" />
@@ -181,7 +191,10 @@ export default function AppointmentsListPage() {
 
           <Select
             value={priorityFilter || '_all'}
-            onValueChange={(v) => { setPriorityFilter(v === '_all' ? '' : (v as AppointmentPriority)); setPage(1); }}
+            onValueChange={(v) => {
+              setPriorityFilter(v === '_all' ? '' : (v as AppointmentPriority));
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-full sm:w-[140px]">
               <SelectValue placeholder="Priority" />
@@ -198,14 +211,20 @@ export default function AppointmentsListPage() {
           <Input
             type="date"
             value={fromDate}
-            onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setFromDate(e.target.value);
+              setPage(1);
+            }}
             className="w-full sm:w-[150px]"
             placeholder="From"
           />
           <Input
             type="date"
             value={toDate}
-            onChange={(e) => { setToDate(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setToDate(e.target.value);
+              setPage(1);
+            }}
             className="w-full sm:w-[150px]"
             placeholder="To"
           />
@@ -230,9 +249,7 @@ export default function AppointmentsListPage() {
               key: 'appointment_number',
               header: 'Appointment #',
               sortable: true,
-              cell: (a) => (
-                <span className="font-mono text-xs">{a.appointment_number}</span>
-              ),
+              cell: (a) => <span className="font-mono text-xs">{a.appointment_number}</span>,
             },
             {
               key: 'patient_name',
@@ -253,7 +270,9 @@ export default function AppointmentsListPage() {
               sortable: true,
               hideOnMobile: true,
               cell: (a) => (
-                <span className="text-sm capitalize">{a.appointment_type.toLowerCase().replace('_', ' ')}</span>
+                <span className="text-sm capitalize">
+                  {a.appointment_type.toLowerCase().replace('_', ' ')}
+                </span>
               ),
             },
             {
@@ -262,7 +281,9 @@ export default function AppointmentsListPage() {
               sortable: true,
               sortType: 'date',
               cell: (a) => (
-                <span className="text-sm">{formatDate(a.scheduled_start, 'MMM d, yyyy h:mm a')}</span>
+                <span className="text-sm">
+                  {formatDate(a.scheduled_start, 'MMM d, yyyy h:mm a')}
+                </span>
               ),
             },
             {
@@ -271,7 +292,7 @@ export default function AppointmentsListPage() {
               sortable: true,
               hideOnMobile: true,
               cell: (a) => (
-                <Badge className={`${priorityColors[a.priority]} shrink-0 w-fit`}>
+                <Badge className={`${priorityColors[a.priority]} w-fit shrink-0`}>
                   {a.priority}
                 </Badge>
               ),
@@ -281,7 +302,7 @@ export default function AppointmentsListPage() {
               header: 'Status',
               sortable: true,
               cell: (a) => (
-                <Badge className={`${statusColors[a.status]} shrink-0 w-fit`}>
+                <Badge className={`${statusColors[a.status]} w-fit shrink-0`}>
                   {statusLabels[a.status]}
                 </Badge>
               ),
@@ -291,16 +312,16 @@ export default function AppointmentsListPage() {
             <Card className="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm truncate">{a.patient_name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="truncate text-sm font-medium">{a.patient_name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {a.appointment_number} &bull; {a.resource_name}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {formatDate(a.scheduled_start, 'MMM d, h:mm a')} &bull;{' '}
                     {a.appointment_type.toLowerCase().replace('_', ' ')}
                   </p>
                 </div>
-                <div className="flex flex-col gap-1 items-end shrink-0">
+                <div className="flex shrink-0 flex-col items-end gap-1">
                   <Badge className={`${statusColors[a.status]} w-fit text-xs`}>
                     {statusLabels[a.status]}
                   </Badge>

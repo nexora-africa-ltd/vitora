@@ -96,7 +96,7 @@ export default function NewStandaloneOrderPage() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
       <PageHeader
         title="New Standalone Order"
         helpContent="Create a lab order without requiring a clinical encounter. For walk-in patients, external referrals, or standalone lab operations."
@@ -144,14 +144,18 @@ export default function NewStandaloneOrderPage() {
                     <Input
                       id="walkin_national_id"
                       value={formData.walkin_national_id}
-                      onChange={(e) => setFormData({ ...formData, walkin_national_id: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, walkin_national_id: e.target.value })
+                      }
                     />
                   </div>
                   <div>
                     <Label htmlFor="walkin_gender">Gender</Label>
                     <Select
                       value={formData.walkin_gender}
-                      onValueChange={(v) => setFormData({ ...formData, walkin_gender: v as 'M' | 'F' | 'O' })}
+                      onValueChange={(v) =>
+                        setFormData({ ...formData, walkin_gender: v as 'M' | 'F' | 'O' })
+                      }
                     >
                       <SelectTrigger id="walkin_gender">
                         <SelectValue placeholder="Select" />
@@ -180,7 +184,9 @@ export default function NewStandaloneOrderPage() {
                 <Label htmlFor="priority">Priority</Label>
                 <Select
                   value={formData.priority}
-                  onValueChange={(v) => setFormData({ ...formData, priority: v as 'ROUTINE' | 'URGENT' | 'STAT' })}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, priority: v as 'ROUTINE' | 'URGENT' | 'STAT' })
+                  }
                 >
                   <SelectTrigger id="priority">
                     <SelectValue />
@@ -209,12 +215,12 @@ export default function NewStandaloneOrderPage() {
         {/* Tests */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <FlaskConical className="h-4 w-4" />
               Tests
             </CardTitle>
             <Button type="button" size="sm" variant="outline" onClick={addItem}>
-              <Plus className="h-3 w-3 mr-1" /> Add Test
+              <Plus className="mr-1 h-3 w-3" /> Add Test
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">

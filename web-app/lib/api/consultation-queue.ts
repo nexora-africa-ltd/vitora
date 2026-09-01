@@ -12,10 +12,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
-import {
-  EncounterSchema,
-  PaginatedConsultationQueueSchema,
-} from '@/lib/schemas/encounter.schema';
+import { EncounterSchema, PaginatedConsultationQueueSchema } from '@/lib/schemas/encounter.schema';
 import type {
   ConsultationQueueItem,
   ConsultationQueueFilters,
@@ -64,9 +61,7 @@ export const consultationQueueApi = {
    * @returns The updated encounter
    */
   async callPatient(encounterId: number): Promise<Encounter> {
-    const response = await apiClient.post<Encounter>(
-      `/api/encounters/${encounterId}/call/`
-    );
+    const response = await apiClient.post<Encounter>(`/api/encounters/${encounterId}/call/`);
     return parseResponse(EncounterSchema, response.data, {
       context: 'consultationQueueApi.callPatient',
     }) as Encounter;
@@ -101,11 +96,7 @@ export const consultationQueueApi = {
    * @param notes - Additional notes (optional, for 'OTHER' reason)
    * @returns The updated encounter
    */
-  async bypassTriage(
-    encounterId: number,
-    reason: string,
-    notes?: string
-  ): Promise<Encounter> {
+  async bypassTriage(encounterId: number, reason: string, notes?: string): Promise<Encounter> {
     const response = await apiClient.post<Encounter>(
       `/api/encounters/${encounterId}/bypass_triage/`,
       { reason, notes }

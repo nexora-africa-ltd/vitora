@@ -11,7 +11,13 @@ import { z } from 'zod';
 
 export const WorksheetGroupBySchema = z.enum(['ANALYZER', 'SECTION', 'PRIORITY', 'SPECIMEN_TYPE']);
 export const WorksheetExportFormatSchema = z.enum(['CSV', 'PDF', 'ZPL']);
-export const WorksheetStatusSchema = z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'PRINTED']);
+export const WorksheetStatusSchema = z.enum([
+  'DRAFT',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+  'PRINTED',
+]);
 
 export const LabelFormatSchema = z.enum(['ZPL', 'PDF']);
 export const LabelTypeSchema = z.enum(['SPECIMEN', 'ALIQUOT', 'SLIDE', 'BLOCK', 'RACK', 'TRAY']);
@@ -170,15 +176,17 @@ export const PaginatedLabelPrintJobSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
   previous: z.string().nullable(),
-  results: z.array(z.object({
-    id: z.number(),
-    template: z.number().nullable(),
-    template_name: z.string(),
-    status: LabelPrintJobStatusSchema,
-    label_count: z.number(),
-    generated_by: z.number().nullable(),
-    generated_at: z.string().nullable(),
-    printed_at: z.string().nullable(),
-    created_at: z.string(),
-  })),
+  results: z.array(
+    z.object({
+      id: z.number(),
+      template: z.number().nullable(),
+      template_name: z.string(),
+      status: LabelPrintJobStatusSchema,
+      label_count: z.number(),
+      generated_by: z.number().nullable(),
+      generated_at: z.string().nullable(),
+      printed_at: z.string().nullable(),
+      created_at: z.string(),
+    })
+  ),
 });

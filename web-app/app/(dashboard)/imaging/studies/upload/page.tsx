@@ -122,12 +122,14 @@ export default function DICOMUploadPage() {
 
   // Patient search — only fires when user is typing on step 2
   const searchEnabled = step === 2 && patientSearch.length >= 2;
-  const { data: patientsData, isLoading: searchingPatients } = useQuery<PaginatedResponse<Patient>>({
-    queryKey: ['patients', 'search', patientSearch],
-    queryFn: () => patientsApi.getPatients({ search: patientSearch, page_size: 10 }),
-    enabled: searchEnabled,
-    staleTime: 15000,
-  });
+  const { data: patientsData, isLoading: searchingPatients } = useQuery<PaginatedResponse<Patient>>(
+    {
+      queryKey: ['patients', 'search', patientSearch],
+      queryFn: () => patientsApi.getPatients({ search: patientSearch, page_size: 10 }),
+      enabled: searchEnabled,
+      staleTime: 15000,
+    }
+  );
 
   // Fetch unfulfilled imaging orders for the selected patient
   const { data: patientOrders } = useQuery<PaginatedResponse<ImagingOrder>>({
@@ -138,8 +140,8 @@ export default function DICOMUploadPage() {
   });
 
   // Filter to orders that can receive uploads (not cancelled, not yet completed with study)
-  const linkableOrders = (patientOrders?.results ?? []).filter(
-    (o) => ['ORDERED', 'SCHEDULED', 'IN_PROGRESS'].includes(o.status)
+  const linkableOrders = (patientOrders?.results ?? []).filter((o) =>
+    ['ORDERED', 'SCHEDULED', 'IN_PROGRESS'].includes(o.status)
   );
 
   // Upload mutation
@@ -269,27 +271,33 @@ export default function DICOMUploadPage() {
   });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const addFiles = useCallback((selectedFiles: File[]) => {
-    const newFiles: UploadFile[] = selectedFiles
-      .filter((file) => {
-        const ext = '.' + file.name.split('.').pop();
-        return ACCEPTED_EXTENSIONS.includes(ext) && file.size <= MAX_FILE_SIZE;
-      })
-      .slice(0, MAX_FILES - files.length)
-      .map((file) => ({
-        file,
-        id: `${file.name}-${Date.now()}-${Math.random()}`,
-        status: 'pending' as const,
-      }));
-    setFiles((prev) => [...prev, ...newFiles]);
-  }, [files.length]);
+  const addFiles = useCallback(
+    (selectedFiles: File[]) => {
+      const newFiles: UploadFile[] = selectedFiles
+        .filter((file) => {
+          const ext = '.' + file.name.split('.').pop();
+          return ACCEPTED_EXTENSIONS.includes(ext) && file.size <= MAX_FILE_SIZE;
+        })
+        .slice(0, MAX_FILES - files.length)
+        .map((file) => ({
+          file,
+          id: `${file.name}-${Date.now()}-${Math.random()}`,
+          status: 'pending' as const,
+        }));
+      setFiles((prev) => [...prev, ...newFiles]);
+    },
+    [files.length]
+  );
 
   // Handle file selection
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    addFiles(selectedFiles);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [addFiles]);
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = Array.from(e.target.files || []);
+      addFiles(selectedFiles);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    },
+    [addFiles]
+  );
 
   // Handle drag and drop
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -297,11 +305,14 @@ export default function DICOMUploadPage() {
     e.stopPropagation();
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    addFiles(Array.from(e.dataTransfer.files));
-  }, [addFiles]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      addFiles(Array.from(e.dataTransfer.files));
+    },
+    [addFiles]
+  );
 
   const removeFile = useCallback((id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
@@ -349,7 +360,7 @@ export default function DICOMUploadPage() {
   const uploadPercent = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
       <PageHeader
         title="Upload DICOM Studies"
         helpContent="Upload DICOM files (.dcm) to create imaging studies. Follow the steps: select files, link to a patient, then upload."
@@ -364,10 +375,16 @@ export default function DICOMUploadPage() {
         ].map((s, i) => (
           <div key={s.num} className="flex items-center">
             {i > 0 && (
-              <div className={cn(
-                'w-8 sm:w-12 h-0.5 mx-1',
-                s.done || step > s.num ? 'bg-green-500' : step >= s.num ? 'bg-primary' : 'bg-muted-foreground/30'
-              )} />
+              <div
+                className={cn(
+                  'mx-1 h-0.5 w-8 sm:w-12',
+                  s.done || step > s.num
+                    ? 'bg-green-500'
+                    : step >= s.num
+                      ? 'bg-primary'
+                      : 'bg-muted-foreground/30'
+                )}
+              />
             )}
             <button
               type="button"
@@ -376,7 +393,7 @@ export default function DICOMUploadPage() {
               }}
               disabled={s.num > step}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors',
+                'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:py-2 sm:text-sm',
                 s.done
                   ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                   : step === s.num
@@ -389,7 +406,7 @@ export default function DICOMUploadPage() {
               {s.done ? (
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
               ) : (
-                <span className="h-4 w-4 sm:h-5 sm:w-5 rounded-full border-2 border-current flex items-center justify-center text-[10px] sm:text-xs font-bold shrink-0">
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-current text-[10px] font-bold sm:h-5 sm:w-5 sm:text-xs">
                   {s.num}
                 </span>
               )}
@@ -405,14 +422,16 @@ export default function DICOMUploadPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <CardTitle>Select DICOM Files</CardTitle>
-              <HelpPopover content={`Drag and drop .dcm files or click to browse. Maximum ${MAX_FILES} files, ${MAX_FILE_SIZE / 1024 / 1024}MB each.`} />
+              <HelpPopover
+                content={`Drag and drop .dcm files or click to browse. Maximum ${MAX_FILES} files, ${MAX_FILE_SIZE / 1024 / 1024}MB each.`}
+              />
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Drop Zone */}
             <div
               className={cn(
-                'border-2 border-dashed rounded-lg p-8 sm:p-12 text-center cursor-pointer transition-colors',
+                'cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors sm:p-12',
                 'hover:border-primary hover:bg-primary/5',
                 files.length === 0 ? 'border-primary bg-primary/5' : 'border-muted-foreground/30'
               )}
@@ -433,9 +452,9 @@ export default function DICOMUploadPage() {
                 onChange={handleFileSelect}
                 aria-label="Select DICOM files"
               />
-              <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="font-medium text-lg">Drop DICOM files here</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <Upload className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+              <p className="text-lg font-medium">Drop DICOM files here</p>
+              <p className="mt-1 text-sm text-muted-foreground">
                 or click to browse • .dcm files up to 100 MB each
               </p>
             </div>
@@ -445,28 +464,29 @@ export default function DICOMUploadPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">
-                    {files.length} file{files.length !== 1 ? 's' : ''} • {formatFileSize(totalFileSize)}
+                    {files.length} file{files.length !== 1 ? 's' : ''} •{' '}
+                    {formatFileSize(totalFileSize)}
                   </span>
                   <Button variant="ghost" size="sm" onClick={clearFiles}>
                     Clear all
                   </Button>
                 </div>
-                <ScrollArea className="h-[200px] border rounded-md p-2">
+                <ScrollArea className="h-[200px] rounded-md border p-2">
                   <div className="space-y-1">
                     {files.map((uploadFile) => (
                       <div
                         key={uploadFile.id}
-                        className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50"
+                        className="flex items-center gap-3 rounded-md p-2 hover:bg-muted/50"
                       >
-                        <FileImage className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm flex-1 truncate">{uploadFile.file.name}</span>
-                        <span className="text-xs text-muted-foreground shrink-0">
+                        <FileImage className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="flex-1 truncate text-sm">{uploadFile.file.name}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
                           {formatFileSize(uploadFile.file.size)}
                         </span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="shrink-0 h-7 w-7"
+                          className="h-7 w-7 shrink-0"
                           onClick={() => removeFile(uploadFile.id)}
                         >
                           <X className="h-3.5 w-3.5" />
@@ -480,7 +500,7 @@ export default function DICOMUploadPage() {
                 <div className="flex justify-end pt-2">
                   <Button onClick={() => setStep(2)}>
                     Next: Link Patient
-                    <ArrowRight className="h-4 w-4 ml-2" />
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -497,16 +517,17 @@ export default function DICOMUploadPage() {
               <CardTitle>Link to Patient</CardTitle>
               <HelpPopover content="Associate uploaded studies with a patient record. This is required for the study to appear in the patient's imaging history." />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {files.length} file{files.length !== 1 ? 's' : ''} selected ({formatFileSize(totalFileSize)})
+            <p className="mt-1 text-sm text-muted-foreground">
+              {files.length} file{files.length !== 1 ? 's' : ''} selected (
+              {formatFileSize(totalFileSize)})
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             {patientId ? (
-              <div className="flex items-center gap-3 p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
                 <User className="h-10 w-10 text-green-600 dark:text-green-400" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{patientSearch}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{patientSearch}</p>
                   <p className="text-xs text-muted-foreground">Patient linked successfully</p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={clearPatient}>
@@ -515,7 +536,7 @@ export default function DICOMUploadPage() {
               </div>
             ) : (
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by patient name or MRN..."
                   value={patientSearch}
@@ -530,32 +551,30 @@ export default function DICOMUploadPage() {
 
                 {/* Patient Search Results */}
                 {showPatientSearch && patientSearch.length >= 2 && (
-                  <Card className="absolute z-10 w-full mt-1 shadow-lg">
+                  <Card className="absolute z-10 mt-1 w-full shadow-lg">
                     <div className="max-h-[250px] overflow-y-auto overscroll-contain">
                       {searchingPatients ? (
-                        <div className="p-4 text-center text-muted-foreground">
-                          Searching...
-                        </div>
+                        <div className="p-4 text-center text-muted-foreground">Searching...</div>
                       ) : patientsData?.results?.length ? (
                         <div className="p-1">
                           {patientsData.results.map((patient) => (
                             <button
                               key={patient.id}
                               type="button"
-                              className="w-full text-left p-3 rounded-md hover:bg-muted flex items-center gap-3"
-                              onClick={() => selectPatient(
-                                patient.id,
-                                `${patient.first_name} ${patient.last_name} (${patient.mrn})`
-                              )}
+                              className="flex w-full items-center gap-3 rounded-md p-3 text-left hover:bg-muted"
+                              onClick={() =>
+                                selectPatient(
+                                  patient.id,
+                                  `${patient.first_name} ${patient.last_name} (${patient.mrn})`
+                                )
+                              }
                             >
                               <User className="h-5 w-5 text-muted-foreground" />
                               <div>
                                 <p className="font-medium">
                                   {patient.first_name} {patient.last_name}
                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {patient.mrn}
-                                </p>
+                                <p className="text-xs text-muted-foreground">{patient.mrn}</p>
                               </div>
                             </button>
                           ))}
@@ -573,7 +592,7 @@ export default function DICOMUploadPage() {
 
             {/* Optional: Link to an existing imaging order */}
             {patientId && linkableOrders.length > 0 && (
-              <div className="space-y-2 pt-2 border-t">
+              <div className="space-y-2 border-t pt-2">
                 <div className="flex items-center gap-2">
                   <ClipboardList className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Link to Imaging Order</span>
@@ -585,11 +604,11 @@ export default function DICOMUploadPage() {
                       <button
                         key={order.id}
                         type="button"
-                        onClick={() => setSelectedOrderId(
-                          selectedOrderId === order.id ? null : order.id
-                        )}
+                        onClick={() =>
+                          setSelectedOrderId(selectedOrderId === order.id ? null : order.id)
+                        }
                         className={cn(
-                          'w-full text-left p-3 rounded-md border transition-colors',
+                          'w-full rounded-md border p-3 text-left transition-colors',
                           selectedOrderId === order.id
                             ? 'border-primary bg-primary/5'
                             : 'border-muted hover:bg-muted/50'
@@ -597,15 +616,14 @@ export default function DICOMUploadPage() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {order.order_number}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {order.items.map((i) => i.procedure_name).join(', ') || order.clinical_indication}
+                            <p className="truncate text-sm font-medium">{order.order_number}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {order.items.map((i) => i.procedure_name).join(', ') ||
+                                order.clinical_indication}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
                               {PRIORITY_LABELS[order.priority]}
                             </Badge>
                             {selectedOrderId === order.id && (
@@ -623,12 +641,12 @@ export default function DICOMUploadPage() {
             {/* Navigation */}
             <div className="flex justify-between pt-2">
               <Button variant="outline" onClick={() => setStep(1)}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
               <Button onClick={() => setStep(3)} disabled={!patientId}>
                 Next: Upload
-                <ArrowRight className="h-4 w-4 ml-2" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </CardContent>
@@ -643,10 +661,12 @@ export default function DICOMUploadPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Summary */}
-            <div className="flex flex-col gap-2 p-4 rounded-lg bg-muted/50 text-sm">
+            <div className="flex flex-col gap-2 rounded-lg bg-muted/50 p-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Files</span>
-                <span className="font-medium">{files.length} file{files.length !== 1 ? 's' : ''}</span>
+                <span className="font-medium">
+                  {files.length} file{files.length !== 1 ? 's' : ''}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total size</span>
@@ -654,7 +674,7 @@ export default function DICOMUploadPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Patient</span>
-                <span className="font-medium truncate ml-4">{patientSearch}</span>
+                <span className="ml-4 truncate font-medium">{patientSearch}</span>
               </div>
               {selectedOrderId && (
                 <div className="flex justify-between">
@@ -714,8 +734,7 @@ export default function DICOMUploadPage() {
                   )}
                   {getUploadErrorDetails(uploadMutation.error).map((detail, i) => (
                     <p key={i} className="text-xs">
-                      <span className="font-medium">{detail.file}:</span>{' '}
-                      {detail.errors.join('; ')}
+                      <span className="font-medium">{detail.file}:</span> {detail.errors.join('; ')}
                     </p>
                   ))}
                 </AlertDescription>
@@ -729,7 +748,7 @@ export default function DICOMUploadPage() {
                 onClick={() => setStep(2)}
                 disabled={uploadMutation.isPending}
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
               {uploadMutation.isPending && (
@@ -738,14 +757,13 @@ export default function DICOMUploadPage() {
                 </Button>
               )}
               {!uploadMutation.isSuccess && (
-                <Button
-                  onClick={handleUpload}
-                  disabled={uploadMutation.isPending}
-                  size="lg"
-                >
+                <Button onClick={handleUpload} disabled={uploadMutation.isPending} size="lg">
                   {uploadMutation.isPending ? (
                     serverProcessing ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing…
+                      </>
                     ) : (
                       `Uploading… ${uploadPercent}%`
                     )
@@ -753,8 +771,9 @@ export default function DICOMUploadPage() {
                     <>{canResumeUpload ? 'Resume Upload' : 'Retry Upload'}</>
                   ) : (
                     <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload {files.filter((f) => f.status !== 'success').length} File{files.filter((f) => f.status !== 'success').length !== 1 ? 's' : ''}
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload {files.filter((f) => f.status !== 'success').length} File
+                      {files.filter((f) => f.status !== 'success').length !== 1 ? 's' : ''}
                     </>
                   )}
                 </Button>
@@ -762,7 +781,7 @@ export default function DICOMUploadPage() {
               {uploadMutation.isSuccess && (
                 <Button onClick={() => router.push('/imaging/studies')}>
                   View Studies
-                  <ArrowRight className="h-4 w-4 ml-2" />
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               )}
             </div>

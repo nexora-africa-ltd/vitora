@@ -12,12 +12,7 @@
  */
 
 import { useRequiresActiveShift } from '@/lib/hooks/use-active-shift';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
 
 interface ShiftGateProps {

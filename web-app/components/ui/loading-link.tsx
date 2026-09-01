@@ -46,9 +46,7 @@ export function LoadingLink({
       onClick={handleClick}
       {...props}
     >
-      {isLoading && showSpinner && (
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-      )}
+      {isLoading && showSpinner && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
       {children}
     </Link>
   );

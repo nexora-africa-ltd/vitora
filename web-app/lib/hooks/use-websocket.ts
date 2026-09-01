@@ -326,8 +326,10 @@ export function useWebSocket<TMessage = WebSocketMessage>(
     if (!url || typeof window === 'undefined') return;
 
     // Don't connect if already connected or connecting
-    if (wsRef.current?.readyState === WebSocket.OPEN ||
-        wsRef.current?.readyState === WebSocket.CONNECTING) {
+    if (
+      wsRef.current?.readyState === WebSocket.OPEN ||
+      wsRef.current?.readyState === WebSocket.CONNECTING
+    ) {
       return;
     }
 
@@ -363,7 +365,9 @@ export function useWebSocket<TMessage = WebSocketMessage>(
         setConnectionState('error');
         onErrorRef.current?.(event);
         // WebSocket error events don't carry useful info — log the URL instead
-        console.warn(`[WebSocket] Connection error for ${url}. Server may not be running or WebSocket endpoint is unavailable. Falling back to polling.`);
+        console.warn(
+          `[WebSocket] Connection error for ${url}. Server may not be running or WebSocket endpoint is unavailable. Falling back to polling.`
+        );
       };
 
       ws.onclose = () => {
@@ -606,7 +610,11 @@ export function useLabEncounterSocket(
       // Cast to lab message type for proper event typing
       const labMessage = message as unknown as LabWebSocketMessage;
 
-      console.log(`[WebSocket] Lab encounter ${encounterId} event:`, labMessage.event, labMessage.data);
+      console.log(
+        `[WebSocket] Lab encounter ${encounterId} event:`,
+        labMessage.event,
+        labMessage.data
+      );
 
       // Invalidate encounter-specific lab orders (matches useEncounterLabOrders key)
       queryClient.invalidateQueries({ queryKey: labQueryKeys.encounterOrders(encounterId) });
@@ -685,9 +693,7 @@ export function useLabOrderSocket(
  *
  * @param options - WebSocket options
  */
-export function useLabClinicianSocket(
-  options: UseLabWebSocketOptions = {}
-): UseWebSocketReturn {
+export function useLabClinicianSocket(options: UseLabWebSocketOptions = {}): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
   const url = getWebSocketUrl('/ws/lab/clinician/');
@@ -737,9 +743,7 @@ export function useLabClinicianSocket(
  *
  * @param options - WebSocket options
  */
-export function useLabQueueSocket(
-  options: UseLabWebSocketOptions = {}
-): UseWebSocketReturn {
+export function useLabQueueSocket(options: UseLabWebSocketOptions = {}): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
   const url = getWebSocketUrl('/ws/lab/queue/');
@@ -788,10 +792,10 @@ export type EmergencyEventType =
  * Critical patient data from WebSocket
  */
 export interface EmergencyCriticalPatient {
-  id: number;  // Triage assessment ID
-  queue_id?: number;  // Queue entry ID
+  id: number; // Triage assessment ID
+  queue_id?: number; // Queue entry ID
   encounter_id?: number;
-  encounter_status?: string;  // CREATED, IN_PROGRESS, CLOSED, CANCELLED
+  encounter_status?: string; // CREATED, IN_PROGRESS, CLOSED, CANCELLED
   patient_name: string;
   mrn: string;
   chief_complaint: string;
@@ -799,7 +803,7 @@ export interface EmergencyCriticalPatient {
   assigned_area_display: string;
   wait_minutes: number;
   arrival_time: string;
-  status: string;  // Queue status
+  status: string; // Queue status
 }
 
 /**
@@ -879,8 +883,14 @@ export function useEmergencySocket(
   options: UseEmergencySocketOptions = {}
 ): UseEmergencySocketReturn {
   const queryClient = useQueryClient();
-  const [criticalData, setCriticalData] = useState<{ count: number; patients: EmergencyCriticalPatient[] } | null>(null);
-  const [zonesData, setZonesData] = useState<{ zones: EmergencyZoneSummary[]; total_patients: number } | null>(null);
+  const [criticalData, setCriticalData] = useState<{
+    count: number;
+    patients: EmergencyCriticalPatient[];
+  } | null>(null);
+  const [zonesData, setZonesData] = useState<{
+    zones: EmergencyZoneSummary[];
+    total_patients: number;
+  } | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const url = getWebSocketUrl('/ws/emergency/queue/');
@@ -904,7 +914,10 @@ export function useEmergencySocket(
           break;
         }
         case 'critical_update': {
-          const data = emergencyMessage.data as { count: number; patients: EmergencyCriticalPatient[] };
+          const data = emergencyMessage.data as {
+            count: number;
+            patients: EmergencyCriticalPatient[];
+          };
           setCriticalData(data);
           setLastUpdate(new Date());
           options.onCriticalUpdate?.(data);
@@ -912,7 +925,10 @@ export function useEmergencySocket(
           break;
         }
         case 'zones_update': {
-          const data = emergencyMessage.data as { zones: EmergencyZoneSummary[]; total_patients: number };
+          const data = emergencyMessage.data as {
+            zones: EmergencyZoneSummary[];
+            total_patients: number;
+          };
           setZonesData(data);
           setLastUpdate(new Date());
           options.onZonesUpdate?.(data);
@@ -927,7 +943,11 @@ export function useEmergencySocket(
         }
         case 'wait_time_breach': {
           // Wait time breach detected — invalidate breach caches and notify
-          const breachData = emergencyMessage.data as { breaches: unknown[]; count: number; timestamp: string };
+          const breachData = emergencyMessage.data as {
+            breaches: unknown[];
+            count: number;
+            timestamp: string;
+          };
           setLastUpdate(new Date());
           queryClient.invalidateQueries({ queryKey: ['triage', 'breaches'] });
           options.onWaitTimeBreach?.(breachData);
@@ -980,7 +1000,9 @@ export function useLabourPartographSocket(
       if (!partographId) return;
 
       setLastUpdate(new Date());
-      queryClient.invalidateQueries({ queryKey: ['mch-partographs', { registration: registrationId ?? null }] });
+      queryClient.invalidateQueries({
+        queryKey: ['mch-partographs', { registration: registrationId ?? null }],
+      });
       queryClient.invalidateQueries({ queryKey: ['mch-partograph-observations', partographId] });
 
       options.onMessage?.(message);
@@ -1071,7 +1093,11 @@ export function useSchedulingSocket(
     (message: SchedulingWebSocketMessage) => {
       if (!facilityId) return;
 
-      console.log(`[WebSocket] Scheduling facility ${facilityId} event:`, message.event, message.data);
+      console.log(
+        `[WebSocket] Scheduling facility ${facilityId} event:`,
+        message.event,
+        message.data
+      );
 
       switch (message.event) {
         case 'scheduling.appointment_created':
@@ -1115,11 +1141,18 @@ export function useSchedulingSocket(
 
         case 'scheduling.shift_reminder': {
           // Show toast notification for upcoming shift
-          const reminderData = message.data as { title?: string; message?: string; shift_type?: string; start_time?: string };
+          const reminderData = message.data as {
+            title?: string;
+            message?: string;
+            shift_type?: string;
+            start_time?: string;
+          };
           import('@/lib/hooks/use-toast').then(({ toast }) => {
             toast({
               title: reminderData.title ?? '⏰ Shift starting soon',
-              description: reminderData.message ?? `Your shift starts at ${reminderData.start_time ?? 'soon'}. Please clock in.`,
+              description:
+                reminderData.message ??
+                `Your shift starts at ${reminderData.start_time ?? 'soon'}. Please clock in.`,
               duration: 15000,
             });
           });
@@ -1214,7 +1247,11 @@ export function usePharmacySocket(
     (message: PharmacyWebSocketMessage) => {
       if (!facilityId) return;
 
-      console.log(`[WebSocket] Pharmacy facility ${facilityId} event:`, message.event, message.data);
+      console.log(
+        `[WebSocket] Pharmacy facility ${facilityId} event:`,
+        message.event,
+        message.data
+      );
 
       switch (message.event) {
         case 'pharmacy.prescription_created':
@@ -1419,7 +1456,11 @@ export function useSHAClaimSocket(
     (message: SHAClaimWebSocketMessage) => {
       if (!facilityId) return;
 
-      console.log(`[WebSocket] SHA Claims facility ${facilityId} event:`, message.event, message.data);
+      console.log(
+        `[WebSocket] SHA Claims facility ${facilityId} event:`,
+        message.event,
+        message.data
+      );
 
       switch (message.event) {
         case 'sha.claim_submitted':
@@ -1598,7 +1639,11 @@ export function useImmunizationSocket(
     (message: ImmunizationWebSocketMessage) => {
       if (!facilityId) return;
 
-      console.log(`[WebSocket] Immunization facility ${facilityId} event:`, message.event, message.data);
+      console.log(
+        `[WebSocket] Immunization facility ${facilityId} event:`,
+        message.event,
+        message.data
+      );
 
       switch (message.event) {
         case 'immunization.record_administered':
@@ -1881,19 +1926,14 @@ export function useCommentSocket(
   const queryClient = useQueryClient();
 
   const url =
-    entityType && entityId
-      ? getWebSocketUrl(`/ws/comments/${entityType}/${entityId}/`)
-      : null;
+    entityType && entityId ? getWebSocketUrl(`/ws/comments/${entityType}/${entityId}/`) : null;
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
       if (!entityType || !entityId) return;
 
       const commentMessage = message as unknown as CommentWebSocketMessage;
-      console.log(
-        `[WebSocket] Comment ${entityType}/${entityId} event:`,
-        commentMessage.event
-      );
+      console.log(`[WebSocket] Comment ${entityType}/${entityId} event:`, commentMessage.event);
 
       // Invalidate the comments query for this entity
       queryClient.invalidateQueries({ queryKey: ['comments', entityType, entityId] });
@@ -1930,9 +1970,7 @@ interface NotificationWebSocketMessage {
  * when the backend pushes a new notification. This provides instant
  * badge updates and notification list refresh without waiting for polling.
  */
-export function useNotificationSocket(
-  options: UseWebSocketOptions = {}
-): UseWebSocketReturn {
+export function useNotificationSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
   const url = getWebSocketUrl('/ws/notifications/');

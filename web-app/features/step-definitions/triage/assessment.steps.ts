@@ -96,17 +96,14 @@ Given(
   }
 );
 
-Given(
-  'the patient has an active encounter',
-  async function (this: VitoraWorld) {
-    this.encounter = createEncounter({
-      patientId: this.patient?.id || 1,
-      type: 'OPD',
-      status: 'active',
-    });
-    this.store('activeEncounter', this.encounter);
-  }
-);
+Given('the patient has an active encounter', async function (this: VitoraWorld) {
+  this.encounter = createEncounter({
+    patientId: this.patient?.id || 1,
+    type: 'OPD',
+    status: 'active',
+  });
+  this.store('activeEncounter', this.encounter);
+});
 
 /**
  * Assessment data setup
@@ -136,90 +133,76 @@ Given(
   }
 );
 
-Given(
-  'the encounter has vitals:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const rows = safeHashes(dataTable.hashes());
-    const vitals: Record<string, string> = {};
-    for (const row of rows) {
-      const vital = String(row.vital || row.Vital || '').trim();
-      const value = String(row.value || row.Value || '').trim();
-      if (vital) vitals[vital] = value;
-    }
-
-    this.store('encounterVitals', vitals);
-    this.encounter = this.encounter || createEncounter({ patientId: this.patient?.id || 1, type: 'OPD', status: 'active' });
-    this.encounter.vitals = vitals;
+Given('the encounter has vitals:', async function (this: VitoraWorld, dataTable: DataTable) {
+  const rows = safeHashes(dataTable.hashes());
+  const vitals: Record<string, string> = {};
+  for (const row of rows) {
+    const vital = String(row.vital || row.Vital || '').trim();
+    const value = String(row.value || row.Value || '').trim();
+    if (vital) vitals[vital] = value;
   }
-);
 
-Given(
-  'all vitals are within normal range',
-  async function (this: VitoraWorld) {
-    const vitals: Record<string, string> = {
-      temperature: '36.8',
-      spo2: '98',
-      systolic_bp: '120',
-      heart_rate: '80',
-    };
-    this.store('encounterVitals', vitals);
-    this.encounter = this.encounter || createEncounter({ patientId: this.patient?.id || 1, type: 'OPD', status: 'active' });
-    this.encounter.vitals = vitals;
+  this.store('encounterVitals', vitals);
+  this.encounter =
+    this.encounter ||
+    createEncounter({ patientId: this.patient?.id || 1, type: 'OPD', status: 'active' });
+  this.encounter.vitals = vitals;
+});
+
+Given('all vitals are within normal range', async function (this: VitoraWorld) {
+  const vitals: Record<string, string> = {
+    temperature: '36.8',
+    spo2: '98',
+    systolic_bp: '120',
+    heart_rate: '80',
+  };
+  this.store('encounterVitals', vitals);
+  this.encounter =
+    this.encounter ||
+    createEncounter({ patientId: this.patient?.id || 1, type: 'OPD', status: 'active' });
+  this.encounter.vitals = vitals;
+});
+
+Given('the patient is seeking a follow-up or referral', async function (this: VitoraWorld) {
+  const data = this.retrieve<Record<string, string>>('assessmentData') || {};
+  data.follow_up_or_referral = 'true';
+  this.store('assessmentData', data);
+});
+
+Given("I am viewing a patient's triage assessment", async function (this: VitoraWorld) {
+  // Create a patient with existing triage data
+  this.patient = createPatient();
+  this.encounter = createEncounter({
+    patientId: this.patient.id,
+    type: 'OPD',
+    status: 'active',
+  });
+
+  if (this.page) {
+    await this.page.goto(`/triage/assessment/${this.patient.mrn}`);
+    await this.page.waitForLoadState('networkidle');
   }
-);
-
-Given(
-  'the patient is seeking a follow-up or referral',
-  async function (this: VitoraWorld) {
-    const data = this.retrieve<Record<string, string>>('assessmentData') || {};
-    data.follow_up_or_referral = 'true';
-    this.store('assessmentData', data);
-  }
-);
-
-Given(
-  'I am viewing a patient\'s triage assessment',
-  async function (this: VitoraWorld) {
-    // Create a patient with existing triage data
-    this.patient = createPatient();
-    this.encounter = createEncounter({
-      patientId: this.patient.id,
-      type: 'OPD',
-      status: 'active',
-    });
-
-    if (this.page) {
-      await this.page.goto(`/triage/assessment/${this.patient.mrn}`);
-      await this.page.waitForLoadState('networkidle');
-    }
-  }
-);
+});
 
 /**
  * Arrival mode steps
  */
 
-When(
-  'I select arrival mode {string}',
-  async function (this: VitoraWorld, mode: string) {
-    this.store('arrivalMode', mode);
+When('I select arrival mode {string}', async function (this: VitoraWorld, mode: string) {
+  this.store('arrivalMode', mode);
 
-    if (this.page) {
-      await this.page.selectOption('[data-testid="arrival-mode"]', mode);
-    }
+  if (this.page) {
+    await this.page.selectOption('[data-testid="arrival-mode"]', mode);
   }
-);
+});
 
-When(
-  'I enter arrival time as {string}',
-  async function (this: VitoraWorld, time: string) {
-    this.store('arrivalTime', time);
+When('I enter arrival time as {string}', async function (this: VitoraWorld, time: string) {
+  this.store('arrivalTime', time);
 
-    if (this.page) {
-      await this.page.fill('[data-testid="arrival-time"]', time);
-    }
+  if (this.page) {
+    await this.page.fill('[data-testid="arrival-time"]', time);
   }
-);
+});
 
 Then(
   'the arrival mode should be set to {string}',
@@ -228,22 +211,19 @@ Then(
     // Normalize mode to code
     const modeToCode: Record<string, string> = {
       'Walk-in': 'WALK_IN',
-      'Ambulance': 'AMBULANCE',
-      'Police': 'POLICE',
+      Ambulance: 'AMBULANCE',
+      Police: 'POLICE',
       'Referral from another facility': 'REFERRAL',
-      'Other': 'OTHER',
+      Other: 'OTHER',
     };
     expect(modeToCode[arrivalMode] || arrivalMode).toBe(expectedCode);
   }
 );
 
-Then(
-  'the arrival time should be recorded',
-  async function (this: VitoraWorld) {
-    const arrivalTime = this.retrieve('arrivalTime');
-    expect(arrivalTime).toBeDefined();
-  }
-);
+Then('the arrival time should be recorded', async function (this: VitoraWorld) {
+  const arrivalTime = this.retrieve('arrivalTime');
+  expect(arrivalTime).toBeDefined();
+});
 
 /**
  * Chief complaint steps
@@ -279,15 +259,15 @@ Then(
       'Chest Pain': 'CHEST_PAIN',
       'Difficulty Breathing': 'DIFFICULTY_BREATHING',
       'Trauma/Injury': 'TRAUMA',
-      'Fever': 'FEVER',
+      Fever: 'FEVER',
       'Abdominal Pain': 'ABDOMINAL_PAIN',
-      'Headache': 'HEADACHE',
+      Headache: 'HEADACHE',
       'Altered Consciousness': 'ALTERED_CONSCIOUSNESS',
-      'Bleeding': 'BLEEDING',
+      Bleeding: 'BLEEDING',
       'Poisoning/Overdose': 'POISONING',
       'Obstetric Emergency': 'OBSTETRIC',
       'Pediatric Emergency': 'PEDIATRIC',
-      'Other': 'OTHER',
+      Other: 'OTHER',
     };
     expect(categoryToCode[category] || category).toBe(expectedCode);
   }
@@ -301,27 +281,24 @@ Then(
       'Chest Pain': 'CHEST_PAIN',
       'Difficulty Breathing': 'DIFFICULTY_BREATHING',
       'Trauma/Injury': 'TRAUMA',
-      'Fever': 'FEVER',
+      Fever: 'FEVER',
       'Abdominal Pain': 'ABDOMINAL_PAIN',
-      'Headache': 'HEADACHE',
+      Headache: 'HEADACHE',
       'Altered Consciousness': 'ALTERED_CONSCIOUSNESS',
-      'Bleeding': 'BLEEDING',
+      Bleeding: 'BLEEDING',
       'Poisoning/Overdose': 'POISONING',
       'Obstetric Emergency': 'OBSTETRIC',
       'Pediatric Emergency': 'PEDIATRIC',
-      'Other': 'OTHER',
+      Other: 'OTHER',
     };
     expect(categoryToCode[category] || category).toBe(expectedCode);
   }
 );
 
-Then(
-  'the chief complaint text should be saved',
-  async function (this: VitoraWorld) {
-    const details = this.retrieve('chiefComplaintDetails');
-    expect(details).toBeDefined();
-  }
-);
+Then('the chief complaint text should be saved', async function (this: VitoraWorld) {
+  const details = this.retrieve('chiefComplaintDetails');
+  expect(details).toBeDefined();
+});
 
 /**
  * Pain score steps
@@ -338,27 +315,21 @@ When(
   }
 );
 
-When(
-  'I set the pain score to {int}',
-  async function (this: VitoraWorld, score: number) {
-    this.store('painScore', score);
+When('I set the pain score to {int}', async function (this: VitoraWorld, score: number) {
+  this.store('painScore', score);
 
-    if (this.page) {
-      await this.page.fill('[data-testid="pain-score"]', String(score));
-    }
+  if (this.page) {
+    await this.page.fill('[data-testid="pain-score"]', String(score));
   }
-);
+});
 
-When(
-  'I leave the pain score empty',
-  async function (this: VitoraWorld) {
-    this.store('painScore', null);
+When('I leave the pain score empty', async function (this: VitoraWorld) {
+  this.store('painScore', null);
 
-    if (this.page) {
-      await this.page.fill('[data-testid="pain-score"]', '');
-    }
+  if (this.page) {
+    await this.page.fill('[data-testid="pain-score"]', '');
   }
-);
+});
 
 Then(
   'the pain score should be set to {int}',
@@ -368,13 +339,10 @@ Then(
   }
 );
 
-Then(
-  'the pain score should be null',
-  async function (this: VitoraWorld) {
-    const painScore = this.retrieve('painScore');
-    expect(painScore).toBeNull();
-  }
-);
+Then('the pain score should be null', async function (this: VitoraWorld) {
+  const painScore = this.retrieve('painScore');
+  expect(painScore).toBeNull();
+});
 
 Then(
   'the pain indicator should show {string}',
@@ -413,26 +381,23 @@ Then(
  * Mental status (AVPU) steps
  */
 
-When(
-  'I select mental status {string}',
-  async function (this: VitoraWorld, status: string) {
-    this.store('mentalStatus', status);
+When('I select mental status {string}', async function (this: VitoraWorld, status: string) {
+  this.store('mentalStatus', status);
 
-    if (this.page) {
-      await this.page.click(`[data-testid="avpu-${status.toLowerCase()}"]`);
-    }
+  if (this.page) {
+    await this.page.click(`[data-testid="avpu-${status.toLowerCase()}"]`);
   }
-);
+});
 
 Then(
   'the mental status code should be {string}',
   async function (this: VitoraWorld, expectedCode: string) {
     const status = this.retrieve('mentalStatus') as string;
     const statusToCode: Record<string, string> = {
-      'Alert': 'A',
-      'Verbal': 'V',
-      'Pain': 'P',
-      'Unresponsive': 'U',
+      Alert: 'A',
+      Verbal: 'V',
+      Pain: 'P',
+      Unresponsive: 'U',
     };
     expect(statusToCode[status] || status.charAt(0).toUpperCase()).toBe(expectedCode);
   }
@@ -450,51 +415,49 @@ Then(
  * Triage submission steps
  */
 
-When(
-  'I submit the triage assessment',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      await this.page.click('[data-testid="submit-triage"]');
-      await this.page.waitForResponse(resp => resp.url().includes('/api/triage') && resp.status() === 201);
-    }
-    this.store('triageSubmitted', true);
+When('I submit the triage assessment', async function (this: VitoraWorld) {
+  if (this.page) {
+    await this.page.click('[data-testid="submit-triage"]');
+    await this.page.waitForResponse(
+      (resp) => resp.url().includes('/api/triage') && resp.status() === 201
+    );
   }
-);
+  this.store('triageSubmitted', true);
+});
 
-When(
-  'I try to submit the triage assessment',
-  async function (this: VitoraWorld) {
-    this.store('triageSubmitAttempted', true);
-    if (this.page) {
-      await this.page.click('[data-testid="submit-triage"], button:has-text("Submit")');
-      // Do not require success for a "try".
-      await this.page.waitForTimeout(300);
-    }
+When('I try to submit the triage assessment', async function (this: VitoraWorld) {
+  this.store('triageSubmitAttempted', true);
+  if (this.page) {
+    await this.page.click('[data-testid="submit-triage"], button:has-text("Submit")');
+    // Do not require success for a "try".
+    await this.page.waitForTimeout(300);
   }
-);
+});
 
 /**
  * KETA categorization steps
  */
 
-When(
-  'I calculate the triage category',
-  async function (this: VitoraWorld) {
-    const assessmentData = this.retrieve<Record<string, string>>('assessmentData') || {};
-    const vitals = this.retrieve<Record<string, string>>('encounterVitals') || (this.encounter?.vitals as Record<string, string> | undefined) || {};
+When('I calculate the triage category', async function (this: VitoraWorld) {
+  const assessmentData = this.retrieve<Record<string, string>>('assessmentData') || {};
+  const vitals =
+    this.retrieve<Record<string, string>>('encounterVitals') ||
+    (this.encounter?.vitals as Record<string, string> | undefined) ||
+    {};
 
-    const result = calculateKetaCategory(assessmentData, vitals);
-    this.store('suggestedCategory', result.category);
-    this.store('ketaAlerts', result.alerts);
+  const result = calculateKetaCategory(assessmentData, vitals);
+  this.store('suggestedCategory', result.category);
+  this.store('ketaAlerts', result.alerts);
 
-    if (this.page) {
-      const button = this.page.locator('button:has-text("Calculate Triage Category"), [data-testid="calculate-triage-category"]');
-      if (await button.count()) {
-        await button.first().click();
-      }
+  if (this.page) {
+    const button = this.page.locator(
+      'button:has-text("Calculate Triage Category"), [data-testid="calculate-triage-category"]'
+    );
+    if (await button.count()) {
+      await button.first().click();
     }
   }
-);
+});
 
 Then(
   'the suggested category should be {string}',
@@ -512,13 +475,10 @@ Then(
   }
 );
 
-Then(
-  'alerts should include {string}',
-  async function (this: VitoraWorld, expectedAlert: string) {
-    const alerts = this.retrieve<string[]>('ketaAlerts') || [];
-    expect(alerts).toContain(expectedAlert);
-  }
-);
+Then('alerts should include {string}', async function (this: VitoraWorld, expectedAlert: string) {
+  const alerts = this.retrieve<string[]>('ketaAlerts') || [];
+  expect(alerts).toContain(expectedAlert);
+});
 
 Then(
   'an alert should be shown: {string}',
@@ -528,14 +488,11 @@ Then(
   }
 );
 
-Then(
-  'the assessment should be saved successfully',
-  async function (this: VitoraWorld) {
-    const submitted = this.retrieve('triageSubmitted');
-    expect(submitted).toBe(true);
+Then('the assessment should be saved successfully', async function (this: VitoraWorld) {
+  const submitted = this.retrieve('triageSubmitted');
+  expect(submitted).toBe(true);
 
-    if (this.page) {
-      await expect(this.page.locator('[data-testid="success-message"]')).toBeVisible();
-    }
+  if (this.page) {
+    await expect(this.page.locator('[data-testid="success-message"]')).toBeVisible();
   }
-);
+});

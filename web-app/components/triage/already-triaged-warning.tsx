@@ -49,7 +49,12 @@ export function AlreadyTriagedWarning({
   const router = useRouter();
 
   // Fetch the existing assessment for this encounter
-  const { data: assessment, isLoading, isError, refetch } = useTriageAssessmentByEncounter(encounterId);
+  const {
+    data: assessment,
+    isLoading,
+    isError,
+    refetch,
+  } = useTriageAssessmentByEncounter(encounterId);
 
   const handleViewAssessment = () => {
     if (assessment?.id) {
@@ -90,7 +95,8 @@ export function AlreadyTriagedWarning({
             Already Triaged
           </CardTitle>
           <CardDescription>
-            This encounter has already been triaged, but we couldn&apos;t load the assessment details.
+            This encounter has already been triaged, but we couldn&apos;t load the assessment
+            details.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -100,18 +106,18 @@ export function AlreadyTriagedWarning({
             <AlertDescription>
               {patientName
                 ? `${patientName} has already been triaged for this encounter.`
-                : 'This encounter has already been triaged.'}
-              {' '}Creating a new triage assessment is not allowed.
+                : 'This encounter has already been triaged.'}{' '}
+              Creating a new triage assessment is not allowed.
             </AlertDescription>
           </Alert>
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button variant="outline" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="mr-2 h-4 w-4" />
               Retry
             </Button>
             <Button variant="outline" onClick={handleBackToQueue}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Queue
             </Button>
             {onSelectDifferentPatient && (
@@ -144,13 +150,13 @@ export function AlreadyTriagedWarning({
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Triage Already Completed</AlertTitle>
           <AlertDescription>
-            A triage assessment already exists for this encounter. You can view
-            the existing assessment or select a different patient.
+            A triage assessment already exists for this encounter. You can view the existing
+            assessment or select a different patient.
           </AlertDescription>
         </Alert>
 
         {/* Assessment Summary */}
-        <div className="rounded-lg border p-4 space-y-3">
+        <div className="space-y-3 rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Triage Category</span>
             <TriageCategoryBadge category={assessment.triage_category as TriageCategory} />
@@ -159,9 +165,7 @@ export function AlreadyTriagedWarning({
           {assessment.chief_complaint && (
             <div>
               <span className="text-sm font-medium">Chief Complaint</span>
-              <p className="text-sm text-muted-foreground mt-1">
-                {assessment.chief_complaint}
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{assessment.chief_complaint}</p>
             </div>
           )}
 
@@ -184,9 +188,7 @@ export function AlreadyTriagedWarning({
           {assessment.triaged_by_name && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Triaged By</span>
-              <span className="text-sm text-muted-foreground">
-                {assessment.triaged_by_name}
-              </span>
+              <span className="text-sm text-muted-foreground">{assessment.triaged_by_name}</span>
             </div>
           )}
         </div>
@@ -194,7 +196,7 @@ export function AlreadyTriagedWarning({
         {/* Actions */}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={handleBackToQueue}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Queue
           </Button>
           {onSelectDifferentPatient && (
@@ -203,7 +205,7 @@ export function AlreadyTriagedWarning({
             </Button>
           )}
           <Button onClick={handleViewAssessment}>
-            <Eye className="h-4 w-4 mr-2" />
+            <Eye className="mr-2 h-4 w-4" />
             View Assessment
           </Button>
         </div>

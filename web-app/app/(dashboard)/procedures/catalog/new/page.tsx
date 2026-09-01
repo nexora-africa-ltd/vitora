@@ -10,7 +10,7 @@ export default function NewProcedurePage() {
         title="New Procedure"
         helpContent="Add a new procedure to the catalog. Fill in the clinical details, consent requirements, coding, and billing information."
       />
-      <div className="max-w-4xl mx-auto">
+      <div className="mx-auto max-w-4xl">
         <ProcedureForm />
       </div>
     </div>

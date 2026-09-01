@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   BarChart3,
   PieChart,
@@ -8,11 +8,11 @@ import {
   LineChart as LineChartIcon,
   Activity,
   type LucideIcon,
-} from "lucide-react";
+} from 'lucide-react';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
-export type ChartType = "bar" | "pie" | "donut" | "line" | "area" | "generic";
+export type ChartType = 'bar' | 'pie' | 'donut' | 'line' | 'area' | 'generic';
 
 export interface ChartEmptyStateProps {
   /** Type of chart to show appropriate icon */
@@ -41,12 +41,12 @@ const chartTypeIcons: Record<ChartType, LucideIcon> = {
 };
 
 const defaultTitles: Record<ChartType, string> = {
-  bar: "No bar chart data",
-  pie: "No pie chart data",
-  donut: "No chart data",
-  line: "No trend data",
-  area: "No area data",
-  generic: "No data available",
+  bar: 'No bar chart data',
+  pie: 'No pie chart data',
+  donut: 'No chart data',
+  line: 'No trend data',
+  area: 'No area data',
+  generic: 'No data available',
 };
 
 const defaultDescriptions: Record<ChartType, string> = {
@@ -55,7 +55,8 @@ const defaultDescriptions: Record<ChartType, string> = {
   donut: "There's no data to display in this chart. Data will appear here once it's available.",
   line: "There's no trend data to display. Data will appear here once it's available.",
   area: "There's no data to display in this area chart. Data will appear here once it's available.",
-  generic: "There's no data to display in this chart yet. Data will appear here once it's available.",
+  generic:
+    "There's no data to display in this chart yet. Data will appear here once it's available.",
 };
 
 /**
@@ -85,12 +86,12 @@ const defaultDescriptions: Record<ChartType, string> = {
  * ```
  */
 export function ChartEmptyState({
-  chartType = "generic",
+  chartType = 'generic',
   icon,
   title,
   description,
   action,
-  minHeight = "200px",
+  minHeight = '200px',
   className,
 }: ChartEmptyStateProps) {
   const Icon = icon ?? chartTypeIcons[chartType];
@@ -100,18 +101,21 @@ export function ChartEmptyState({
   return (
     <div
       className={cn(
-        "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-lg p-6 text-center md:p-12",
+        'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-lg p-6 text-center md:p-12',
         className
       )}
       style={{ minHeight }}
     >
       {/* Watermark logo */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        aria-hidden="true"
+      >
         <VitoraLogo
           variant="icon"
           tone="teal"
           alt=""
-          className="w-28 sm:w-32 opacity-[0.045] dark:opacity-[0.06]"
+          className="w-28 opacity-[0.045] dark:opacity-[0.06] sm:w-32"
           imageClassName="pointer-events-none select-none"
         />
       </div>
@@ -119,21 +123,21 @@ export function ChartEmptyState({
       <div className="relative z-10 flex max-w-sm flex-col items-center gap-2 text-center">
         <Icon className="mb-1 h-10 w-10 text-muted-foreground/60" />
         <div className="text-base font-medium tracking-tight">{displayTitle}</div>
-        <p className="text-muted-foreground text-sm/relaxed">{displayDescription}</p>
+        <p className="text-sm/relaxed text-muted-foreground">{displayDescription}</p>
       </div>
       {action && <div className="relative z-10 mt-2">{action}</div>}
     </div>
   );
 }
 
-ChartEmptyState.displayName = "ChartEmptyState";
+ChartEmptyState.displayName = 'ChartEmptyState';
 
 /**
  * HOC to wrap chart components with empty state handling
  */
 export function withChartEmptyState<T extends { data: unknown[] }>(
   WrappedChart: React.ComponentType<T>,
-  emptyStateProps?: Omit<ChartEmptyStateProps, "className">
+  emptyStateProps?: Omit<ChartEmptyStateProps, 'className'>
 ) {
   function ChartWithEmptyState(props: T & { emptyStateProps?: ChartEmptyStateProps }) {
     const { data, emptyStateProps: overrideProps, ...rest } = props;
@@ -145,7 +149,7 @@ export function withChartEmptyState<T extends { data: unknown[] }>(
     return <WrappedChart {...({ data, ...rest } as T)} />;
   }
 
-  ChartWithEmptyState.displayName = `WithEmptyState(${WrappedChart.displayName || WrappedChart.name || "Chart"})`;
+  ChartWithEmptyState.displayName = `WithEmptyState(${WrappedChart.displayName || WrappedChart.name || 'Chart'})`;
 
   return ChartWithEmptyState;
 }

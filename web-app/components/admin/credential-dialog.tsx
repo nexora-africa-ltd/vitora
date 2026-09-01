@@ -67,21 +67,22 @@ export function CredentialDialog({
             Account Credentials
           </DialogTitle>
           <DialogDescription>
-            Save these credentials now. The temporary password <strong>cannot be retrieved</strong> after closing this dialog.
+            Save these credentials now. The temporary password <strong>cannot be retrieved</strong>{' '}
+            after closing this dialog.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
-            <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
               The user will be required to change this password on first login.
             </p>
           </div>
 
           {emailSent && (
-            <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3 flex items-start gap-3">
-              <Send className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-              <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+            <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
+              <Send className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
+              <p className="text-sm font-medium text-green-700 dark:text-green-400">
                 Welcome email sent to {email || 'the staff member'} with these credentials.
               </p>
             </div>
@@ -101,7 +102,7 @@ export function CredentialDialog({
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Username</Label>
               <div className="flex gap-2">
-                <Input value={username} readOnly className="font-mono text-sm bg-muted" />
+                <Input value={username} readOnly className="bg-muted font-mono text-sm" />
                 <Button
                   type="button"
                   variant="outline"
@@ -120,7 +121,7 @@ export function CredentialDialog({
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Temporary Password</Label>
               <div className="flex gap-2">
-                <Input value={tempPassword} readOnly className="font-mono text-sm bg-muted" />
+                <Input value={tempPassword} readOnly className="bg-muted font-mono text-sm" />
                 <Button
                   type="button"
                   variant="outline"
@@ -139,12 +140,7 @@ export function CredentialDialog({
         </div>
 
         <DialogFooter className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            type="button"
-            variant="outline"
-            className="gap-2"
-            onClick={copyAll}
-          >
+          <Button type="button" variant="outline" className="gap-2" onClick={copyAll}>
             {copiedField === 'all' ? (
               <Check className="h-4 w-4 text-green-500" />
             ) : (

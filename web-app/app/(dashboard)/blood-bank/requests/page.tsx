@@ -12,7 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useBloodRequests } from '@/lib/hooks/use-blood-bank';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -56,7 +60,7 @@ export default function BloodRequestsPage() {
       sortable: true,
       cell: (item: BloodRequestListItem) => (
         <div className="min-w-0">
-          <p className="font-medium truncate">{item.patient_name}</p>
+          <p className="truncate font-medium">{item.patient_name}</p>
           <p className="text-xs text-muted-foreground">{item.patient_mrn}</p>
         </div>
       ),
@@ -66,7 +70,9 @@ export default function BloodRequestsPage() {
       header: 'Group',
       sortable: true,
       cell: (item: BloodRequestListItem) => (
-        <Badge variant="outline" className="font-bold">{item.blood_group}</Badge>
+        <Badge variant="outline" className="font-bold">
+          {item.blood_group}
+        </Badge>
       ),
     },
     {
@@ -87,9 +93,7 @@ export default function BloodRequestsPage() {
       header: 'Urgency',
       sortable: true,
       cell: (item: BloodRequestListItem) => (
-        <Badge className={`${URGENCY_COLORS[item.urgency]} shrink-0 w-fit`}>
-          {item.urgency}
-        </Badge>
+        <Badge className={`${URGENCY_COLORS[item.urgency]} w-fit shrink-0`}>{item.urgency}</Badge>
       ),
     },
     {
@@ -97,7 +101,7 @@ export default function BloodRequestsPage() {
       header: 'Status',
       sortable: true,
       cell: (item: BloodRequestListItem) => (
-        <Badge className={`${REQUEST_STATUS_COLORS[item.status]} shrink-0 w-fit`}>
+        <Badge className={`${REQUEST_STATUS_COLORS[item.status]} w-fit shrink-0`}>
           {item.status.replace('_', ' ')}
         </Badge>
       ),
@@ -114,15 +118,18 @@ export default function BloodRequestsPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Blood Requests"
           helpContent="View and manage blood product requests. Track from request through cross-matching to transfusion."
           actions={
             hasModule('blood_bank') ? (
               <PermissionGate action="blood_bank.create_request">
-                <Button onClick={() => router.push('/blood-bank/requests/new')} disabled={!canCreateRoute('/blood-bank/requests/new')}>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button
+                  onClick={() => router.push('/blood-bank/requests/new')}
+                  disabled={!canCreateRoute('/blood-bank/requests/new')}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">New Request</span>
                   <span className="sm:hidden">New</span>
                 </Button>
@@ -133,8 +140,8 @@ export default function BloodRequestsPage() {
 
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by patient, MRN..."
               value={search}

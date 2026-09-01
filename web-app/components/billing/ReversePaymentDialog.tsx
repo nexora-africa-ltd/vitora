@@ -66,9 +66,9 @@ export function ReversePaymentDialog({
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             You are about to reverse payment{' '}
-            <span className="font-mono font-medium">{payment.payment_reference}</span>{' '}
-            for <span className="font-medium">{formatCurrency(parseFloat(payment.amount))}</span>.
-            This will restore the invoice balance.
+            <span className="font-mono font-medium">{payment.payment_reference}</span> for{' '}
+            <span className="font-medium">{formatCurrency(parseFloat(payment.amount))}</span>. This
+            will restore the invoice balance.
           </AlertDescription>
         </Alert>
 
@@ -90,11 +90,7 @@ export function ReversePaymentDialog({
           <Button variant="outline" onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            onClick={handleSubmit}
-            disabled={!canSubmit || isLoading}
-          >
+          <Button variant="destructive" onClick={handleSubmit} disabled={!canSubmit || isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

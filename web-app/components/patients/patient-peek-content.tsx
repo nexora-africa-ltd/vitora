@@ -4,15 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/shared/empty-state';
-import {
-  AlertCircle,
-  Calendar,
-  Heart,
-  MapPin,
-  Phone,
-  Shield,
-  User,
-} from 'lucide-react';
+import { AlertCircle, Calendar, Heart, MapPin, Phone, Shield, User } from 'lucide-react';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { usePatientAllergies } from '@/lib/hooks/use-allergies';
 import { calculateAge, formatDate } from '@/lib/utils/format';
@@ -52,7 +44,7 @@ export function PatientPeekContent({ patientId }: PatientPeekContentProps) {
   }
 
   const age = patient.date_of_birth ? calculateAge(patient.date_of_birth) : null;
-  const gender = patient.gender ? GENDER_LABELS[patient.gender] ?? patient.gender : null;
+  const gender = patient.gender ? (GENDER_LABELS[patient.gender] ?? patient.gender) : null;
   const location = [patient.county_name, patient.sub_county_name, patient.ward_name]
     .filter(Boolean)
     .join(' → ');
@@ -60,17 +52,19 @@ export function PatientPeekContent({ patientId }: PatientPeekContentProps) {
   return (
     <div className="space-y-4">
       {/* Header: MRN + Demographics */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Badge variant="outline" className="font-mono text-xs">{patient.mrn}</Badge>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="font-mono text-xs">
+          {patient.mrn}
+        </Badge>
         {age !== null && (
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
             {age}y • {gender}
           </span>
         )}
         {patient.is_sensitive && (
           <Badge variant="destructive" className="text-[10px]">
-            <Shield className="h-3 w-3 mr-0.5" />
+            <Shield className="mr-0.5 h-3 w-3" />
             Sensitive
           </Badge>
         )}
@@ -78,7 +72,7 @@ export function PatientPeekContent({ patientId }: PatientPeekContentProps) {
 
       {/* Name & IDs */}
       <section>
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+        <h4 className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           <User className="h-3 w-3" /> Personal Info
         </h4>
         <div className="space-y-1 text-sm">
@@ -87,18 +81,12 @@ export function PatientPeekContent({ patientId }: PatientPeekContentProps) {
               .filter(Boolean)
               .join(' ')}
           </p>
-          <p className="text-xs text-muted-foreground">
-            DOB: {formatDate(patient.date_of_birth)}
-          </p>
+          <p className="text-xs text-muted-foreground">DOB: {formatDate(patient.date_of_birth)}</p>
           {patient.identification_number && (
-            <p className="text-xs text-muted-foreground">
-              ID: {patient.identification_number}
-            </p>
+            <p className="text-xs text-muted-foreground">ID: {patient.identification_number}</p>
           )}
           {patient.sha_number && (
-            <p className="text-xs text-muted-foreground">
-              SHA: {patient.sha_number}
-            </p>
+            <p className="text-xs text-muted-foreground">SHA: {patient.sha_number}</p>
           )}
         </div>
       </section>
@@ -108,7 +96,7 @@ export function PatientPeekContent({ patientId }: PatientPeekContentProps) {
         <>
           <Separator />
           <section>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <h4 className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Phone className="h-3 w-3" /> Contact
             </h4>
             <div className="space-y-1 text-sm text-muted-foreground">
@@ -124,12 +112,12 @@ export function PatientPeekContent({ patientId }: PatientPeekContentProps) {
         <>
           <Separator />
           <section>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <h4 className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <MapPin className="h-3 w-3" /> Location
             </h4>
             <p className="text-sm text-muted-foreground">{location}</p>
             {patient.village && (
-              <p className="text-xs text-muted-foreground mt-0.5">Village: {patient.village}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Village: {patient.village}</p>
             )}
           </section>
         </>
@@ -140,7 +128,7 @@ export function PatientPeekContent({ patientId }: PatientPeekContentProps) {
         <>
           <Separator />
           <section>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Heart className="h-3 w-3" /> Allergies ({allergies.length})
             </h4>
             <div className="flex flex-wrap gap-1.5">
@@ -169,7 +157,7 @@ export function PatientPeekContent({ patientId }: PatientPeekContentProps) {
         <>
           <Separator />
           <section>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Chronic Conditions
             </h4>
             <p className="text-sm text-muted-foreground">{patient.chronic_conditions_summary}</p>
@@ -182,13 +170,16 @@ export function PatientPeekContent({ patientId }: PatientPeekContentProps) {
         <>
           <Separator />
           <section>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Emergency Contact
             </h4>
             <p className="text-sm">
               {patient.emergency_contact_name}
               {patient.emergency_contact_relationship && (
-                <span className="text-muted-foreground"> ({patient.emergency_contact_relationship})</span>
+                <span className="text-muted-foreground">
+                  {' '}
+                  ({patient.emergency_contact_relationship})
+                </span>
               )}
             </p>
             {patient.emergency_contact_phone && (

@@ -21,7 +21,11 @@ import type { SurveillanceAlertListItem } from '@/lib/types/surveillance';
 
 const ALERT_TYPE_CONFIG: Record<
   string,
-  { label: string; icon: React.ElementType; variant: 'destructive' | 'warning' | 'info' | 'secondary' }
+  {
+    label: string;
+    icon: React.ElementType;
+    variant: 'destructive' | 'warning' | 'info' | 'secondary';
+  }
 > = {
   NEW_CASE: { label: 'New Case', icon: Bell, variant: 'info' },
   OVERDUE: { label: 'Overdue', icon: Clock, variant: 'warning' },
@@ -48,9 +52,9 @@ function AlertCard({
   return (
     <Card className={alert.is_acknowledged ? 'opacity-60' : ''}>
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex gap-3 min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 gap-3">
           <div
-            className={`shrink-0 size-8 rounded-full flex items-center justify-center ${
+            className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
               config.variant === 'destructive'
                 ? 'bg-destructive/10'
                 : config.variant === 'warning'
@@ -69,7 +73,7 @@ function AlertCard({
             />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge variant={config.variant} className="w-fit">
                 {config.label}
               </Badge>
@@ -81,23 +85,19 @@ function AlertCard({
                 </Badge>
               )}
             </div>
-            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{alert.message}</p>
-            <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{alert.message}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span>MRN: {alert.case_patient_mrn}</span>
               <span>{formatDateTime(alert.created_at)}</span>
             </div>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0 self-start sm:self-center">
+        <div className="flex shrink-0 gap-2 self-start sm:self-center">
           <Button variant="outline" size="sm" asChild>
             <Link href={`/surveillance/cases/${alert.case}`}>View Case</Link>
           </Button>
           {!alert.is_acknowledged && (
-            <Button
-              size="sm"
-              onClick={() => onAcknowledge(alert.id)}
-              disabled={acknowledging}
-            >
+            <Button size="sm" onClick={() => onAcknowledge(alert.id)} disabled={acknowledging}>
               <Check className="mr-1 h-4 w-4" />
               Acknowledge
             </Button>

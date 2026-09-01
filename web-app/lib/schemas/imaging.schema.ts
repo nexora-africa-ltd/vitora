@@ -10,16 +10,7 @@ import { z } from 'zod';
 // ENUMS
 // =============================================================================
 
-export const ImagingModalitySchema = z.enum([
-  'XR',
-  'US',
-  'CT',
-  'MRI',
-  'NM',
-  'MG',
-  'FL',
-  'OTHER',
-]);
+export const ImagingModalitySchema = z.enum(['XR', 'US', 'CT', 'MRI', 'NM', 'MG', 'FL', 'OTHER']);
 
 export const ImagingBodyRegionSchema = z.enum([
   'HEAD',
@@ -61,9 +52,9 @@ export const ImagingProcedureSchema = z.object({
   name: z.string(),
   modality: ImagingModalitySchema,
   body_region: ImagingBodyRegionSchema,
-  cost: z.union([z.number(), z.string()]).transform((val) =>
-    typeof val === 'string' ? parseFloat(val) : val
-  ),
+  cost: z
+    .union([z.number(), z.string()])
+    .transform((val) => (typeof val === 'string' ? parseFloat(val) : val)),
   available_in_house: z.boolean(),
   is_active: z.boolean(),
 });
@@ -101,9 +92,9 @@ export const ImagingOrderItemSchema = z.object({
   specific_instructions: z.string().nullable().optional(),
   is_completed: z.boolean(),
   completed_at: z.string().nullable().optional(),
-  unit_cost: z.union([z.number(), z.string()]).transform((val) =>
-    typeof val === 'string' ? parseFloat(val) : val
-  ),
+  unit_cost: z
+    .union([z.number(), z.string()])
+    .transform((val) => (typeof val === 'string' ? parseFloat(val) : val)),
 });
 
 export type ImagingOrderItemSchemaType = z.infer<typeof ImagingOrderItemSchema>;
@@ -129,9 +120,9 @@ export const ImagingOrderSchema = z.object({
   scheduled_room: z.string().nullable().optional(),
   accession_number: z.string().nullable().optional(),
   study_instance_uid: z.string().nullable().optional(),
-  total_cost: z.union([z.number(), z.string()]).transform((val) =>
-    typeof val === 'string' ? parseFloat(val) : val
-  ),
+  total_cost: z
+    .union([z.number(), z.string()])
+    .transform((val) => (typeof val === 'string' ? parseFloat(val) : val)),
   is_paid: z.boolean(),
   items: z.array(ImagingOrderItemSchema),
   ordered_at: z.string(),
@@ -249,13 +240,15 @@ export type WorklistStatsSchemaType = z.infer<typeof WorklistStatsSchema>;
 /**
  * Schema for imaging resource metadata.
  */
-export const ImagingResourceMetadataSchema = z.object({
-  department: z.string().optional(),
-  modalities: z.array(ImagingModalitySchema).optional(),
-  room_number: z.string().optional(),
-  equipment_type: z.string().optional(),
-  capacity: z.number().optional(),
-}).passthrough();
+export const ImagingResourceMetadataSchema = z
+  .object({
+    department: z.string().optional(),
+    modalities: z.array(ImagingModalitySchema).optional(),
+    room_number: z.string().optional(),
+    equipment_type: z.string().optional(),
+    capacity: z.number().optional(),
+  })
+  .passthrough();
 
 export type ImagingResourceMetadataSchemaType = z.infer<typeof ImagingResourceMetadataSchema>;
 
@@ -309,7 +302,9 @@ export const ImagingResourceAvailabilitySchema = z.object({
   booked_slots: z.number(),
 });
 
-export type ImagingResourceAvailabilitySchemaType = z.infer<typeof ImagingResourceAvailabilitySchema>;
+export type ImagingResourceAvailabilitySchemaType = z.infer<
+  typeof ImagingResourceAvailabilitySchema
+>;
 
 /**
  * Schema for department calendar response.
@@ -343,7 +338,9 @@ export const ImagingResourceAvailabilityResponseSchema = z.object({
   slots: z.array(ImagingCalendarSlotSchema),
 });
 
-export type ImagingResourceAvailabilityResponseSchemaType = z.infer<typeof ImagingResourceAvailabilityResponseSchema>;
+export type ImagingResourceAvailabilityResponseSchemaType = z.infer<
+  typeof ImagingResourceAvailabilityResponseSchema
+>;
 
 /**
  * Schema for weekly availability response.
@@ -353,7 +350,9 @@ export const ImagingWeeklyAvailabilityResponseSchema = z.object({
   days: z.array(ImagingWeeklyDaySchema),
 });
 
-export type ImagingWeeklyAvailabilityResponseSchemaType = z.infer<typeof ImagingWeeklyAvailabilityResponseSchema>;
+export type ImagingWeeklyAvailabilityResponseSchemaType = z.infer<
+  typeof ImagingWeeklyAvailabilityResponseSchema
+>;
 
 /**
  * Schema for slot availability check response.
@@ -366,7 +365,9 @@ export const SlotAvailabilityCheckResponseSchema = z.object({
   end_time: z.string(),
 });
 
-export type SlotAvailabilityCheckResponseSchemaType = z.infer<typeof SlotAvailabilityCheckResponseSchema>;
+export type SlotAvailabilityCheckResponseSchemaType = z.infer<
+  typeof SlotAvailabilityCheckResponseSchema
+>;
 
 /**
  * Schema for resources list response.
@@ -376,7 +377,9 @@ export const ImagingResourcesListResponseSchema = z.object({
   results: z.array(ImagingResourceSchema),
 });
 
-export type ImagingResourcesListResponseSchemaType = z.infer<typeof ImagingResourcesListResponseSchema>;
+export type ImagingResourcesListResponseSchemaType = z.infer<
+  typeof ImagingResourcesListResponseSchema
+>;
 
 // =============================================================================
 // DICOM SCHEMAS (Phase C - Sprint C.3)
@@ -516,9 +519,7 @@ export const ImagingIntegrationSettingsSchema = z.object({
   updated_at: z.string(),
 });
 
-export type ImagingIntegrationSettingsSchemaType = z.infer<
-  typeof ImagingIntegrationSettingsSchema
->;
+export type ImagingIntegrationSettingsSchemaType = z.infer<typeof ImagingIntegrationSettingsSchema>;
 
 /**
  * Study share link schema.
@@ -581,10 +582,14 @@ export const DICOMUploadResponseSchema = z.object({
   duplicates_skipped: z.number(),
   instances_created_by_study: z.record(z.string(), z.number()).optional(),
   files_submitted: z.number(),
-  errors: z.array(z.object({
-    file: z.string(),
-    errors: z.array(z.string()),
-  })).optional(),
+  errors: z
+    .array(
+      z.object({
+        file: z.string(),
+        errors: z.array(z.string()),
+      })
+    )
+    .optional(),
 });
 
 export type DICOMUploadResponseSchemaType = z.infer<typeof DICOMUploadResponseSchema>;

@@ -66,7 +66,7 @@ export function EligibilityResultCard({ result }: { result: ParsedEligibility | 
   return (
     <div
       className={cn(
-        'rounded-lg border p-3 space-y-3',
+        'space-y-3 rounded-lg border p-3',
         result.isActive
           ? 'border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/20'
           : 'border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20'
@@ -74,20 +74,21 @@ export function EligibilityResultCard({ result }: { result: ParsedEligibility | 
     >
       <div className="flex flex-wrap items-center gap-2">
         {result.isActive ? (
-          <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
         ) : (
-          <ShieldOff className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <ShieldOff className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
         )}
-        <span className="text-sm font-semibold">
-          {result.fullName || 'Member'}
-        </span>
+        <span className="text-sm font-semibold">{result.fullName || 'Member'}</span>
         {result.memberCrNumber && (
           <Badge variant="outline" className="font-mono text-[10px]">
             {result.memberCrNumber}
           </Badge>
         )}
         {result.whitelistedForOTP && (
-          <Badge variant="outline" className="text-[10px] border-emerald-400 text-emerald-700 dark:text-emerald-300">
+          <Badge
+            variant="outline"
+            className="border-emerald-400 text-[10px] text-emerald-700 dark:text-emerald-300"
+          >
             <CheckCircle2 className="mr-1 h-3 w-3" />
             OTP whitelisted
           </Badge>
@@ -97,7 +98,7 @@ export function EligibilityResultCard({ result }: { result: ParsedEligibility | 
           className={cn(
             'ml-auto',
             result.isActive
-              ? 'bg-emerald-600 hover:bg-emerald-600 text-white'
+              ? 'bg-emerald-600 text-white hover:bg-emerald-600'
               : 'border-amber-400 text-amber-700 dark:text-amber-300'
           )}
         >
@@ -153,9 +154,11 @@ export function EligibilityResultCard({ result }: { result: ParsedEligibility | 
               >
                 {s.coverageStatus || 'UNKNOWN'}
               </Badge>
-              <span className="font-medium truncate">{s.schemeName || 'Unknown scheme'}</span>
+              <span className="truncate font-medium">{s.schemeName || 'Unknown scheme'}</span>
               {s.memberType && (
-                <span className="text-muted-foreground capitalize">· {s.memberType.toLowerCase()}</span>
+                <span className="capitalize text-muted-foreground">
+                  · {s.memberType.toLowerCase()}
+                </span>
               )}
               <span className="ml-auto flex items-center gap-1 text-muted-foreground">
                 <Calendar className="h-3 w-3" />
@@ -176,12 +179,13 @@ export function EligibilityResultCard({ result }: { result: ParsedEligibility | 
 export function FacilityResultCard({ result }: { result: ParsedFacility | null }) {
   if (!result) return <EmptyResult message="No facility found." />;
 
-  const isContracted = result.shaContractStatus === 'ACTIVE' || result.shaContractStatus === 'CONTRACTED';
+  const isContracted =
+    result.shaContractStatus === 'ACTIVE' || result.shaContractStatus === 'CONTRACTED';
 
   return (
-    <div className="rounded-lg border p-3 space-y-3 bg-background">
+    <div className="space-y-3 rounded-lg border bg-background p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Building2 className="h-5 w-5 text-primary shrink-0" />
+        <Building2 className="h-5 w-5 shrink-0 text-primary" />
         <span className="text-sm font-semibold">{result.officialName || 'Unknown facility'}</span>
         {result.kephLevel && (
           <Badge variant="outline" className="text-[10px]">
@@ -225,9 +229,7 @@ export function FacilityResultCard({ result }: { result: ParsedFacility | null }
         {(result.county || result.subCounty) && (
           <div>
             <Label>Location</Label>
-            <Value>
-              {[result.subCounty, result.county].filter(Boolean).join(', ')}
-            </Value>
+            <Value>{[result.subCounty, result.county].filter(Boolean).join(', ')}</Value>
           </div>
         )}
       </div>
@@ -260,12 +262,15 @@ export function FacilityResultCard({ result }: { result: ParsedFacility | null }
 export function ProfessionalResultCard({ result }: { result: ParsedProfessional | null }) {
   if (!result) return <EmptyResult message="No practitioner found." />;
 
-  const isActive = result.licenseStatus === 'ACTIVE' || result.licenseStatus === 'VALID' || result.licenseStatus === 'LICENSED';
+  const isActive =
+    result.licenseStatus === 'ACTIVE' ||
+    result.licenseStatus === 'VALID' ||
+    result.licenseStatus === 'LICENSED';
 
   return (
-    <div className="rounded-lg border p-3 space-y-3 bg-background">
+    <div className="space-y-3 rounded-lg border bg-background p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Stethoscope className="h-5 w-5 text-primary shrink-0" />
+        <Stethoscope className="h-5 w-5 shrink-0 text-primary" />
         <span className="text-sm font-semibold">{result.fullName || 'Unknown practitioner'}</span>
         {result.regulator && (
           <Badge variant="outline" className="text-[10px]">
@@ -322,10 +327,11 @@ export function ProfessionalResultCard({ result }: { result: ParsedProfessional 
 // ============================================================================
 
 export function UtilizationResultCard({ entries }: { entries: ParsedUtilizationEntry[] }) {
-  if (!entries.length) return <EmptyResult message="No utilisation history for this intervention." />;
+  if (!entries.length)
+    return <EmptyResult message="No utilisation history for this intervention." />;
 
   return (
-    <div className="rounded-lg border p-3 space-y-2 bg-background">
+    <div className="space-y-2 rounded-lg border bg-background p-3">
       <div className="flex items-center gap-2">
         <Hash className="h-4 w-4 text-primary" />
         <span className="text-sm font-semibold">
@@ -339,7 +345,9 @@ export function UtilizationResultCard({ entries }: { entries: ParsedUtilizationE
             className="grid grid-cols-1 gap-1 rounded border bg-muted/20 p-2 text-xs sm:grid-cols-4 sm:gap-2"
           >
             <div className="sm:col-span-2">
-              <p className="font-medium truncate">{e.interventionName || e.interventionCode || 'Unknown'}</p>
+              <p className="truncate font-medium">
+                {e.interventionName || e.interventionCode || 'Unknown'}
+              </p>
               {e.interventionCode && e.interventionName && (
                 <p className="font-mono text-[10px] text-muted-foreground">{e.interventionCode}</p>
               )}
@@ -388,9 +396,9 @@ export function PatientLookupResultCard({ result }: { result: ParsedEligibility 
   if (!result) return <EmptyResult message="No patient found in the DHA Client Registry." />;
 
   return (
-    <div className="rounded-lg border p-3 space-y-3 bg-background">
+    <div className="space-y-3 rounded-lg border bg-background p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <UserCheck className="h-5 w-5 text-primary shrink-0" />
+        <UserCheck className="h-5 w-5 shrink-0 text-primary" />
         <span className="text-sm font-semibold">{result.fullName || 'Verified patient'}</span>
         {result.memberCrNumber && (
           <Badge variant="outline" className="font-mono text-[10px]">

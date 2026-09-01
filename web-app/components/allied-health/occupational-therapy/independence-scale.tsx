@@ -13,12 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Slider } from '@/components/ui/slider';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FIM_LEVEL_LABELS, type FIMLevel } from '@/lib/types/occupational-therapy';
 
 // =============================================================================
@@ -28,7 +23,14 @@ import { FIM_LEVEL_LABELS, type FIMLevel } from '@/lib/types/occupational-therap
 /**
  * FIM assessment areas used in OT
  */
-export type FIMArea = 'ADL' | 'IADL' | 'COGNITIVE' | 'MOTOR' | 'SELF_CARE' | 'MOBILITY' | 'COMMUNICATION';
+export type FIMArea =
+  | 'ADL'
+  | 'IADL'
+  | 'COGNITIVE'
+  | 'MOTOR'
+  | 'SELF_CARE'
+  | 'MOBILITY'
+  | 'COMMUNICATION';
 
 /**
  * FIM area configuration
@@ -152,9 +154,7 @@ export function IndependenceScaleDisplay({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge className={cn('cursor-help', getFIMColorClass(level))}>
-              FIM {level}
-            </Badge>
+            <Badge className={cn('cursor-help', getFIMColorClass(level))}>FIM {level}</Badge>
           </TooltipTrigger>
           <TooltipContent className="max-w-[250px]">
             <div className="font-medium">{levelConfig?.label}</div>
@@ -238,15 +238,9 @@ export function IndependenceScaleInput({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Label className="text-sm font-medium">{displayLabel}</Label>
-          {areaConfig && (
-            <HelpPopover content={areaConfig.description} />
-          )}
+          {areaConfig && <HelpPopover content={areaConfig.description} />}
         </div>
-        {value && (
-          <Badge className={getFIMColorClass(value)}>
-            Level {value}
-          </Badge>
-        )}
+        {value && <Badge className={getFIMColorClass(value)}>Level {value}</Badge>}
       </div>
 
       {/* Slider */}
@@ -261,7 +255,7 @@ export function IndependenceScaleInput({
       />
 
       {/* Level indicators */}
-      <div className="flex justify-between text-xs text-muted-foreground px-1">
+      <div className="flex justify-between px-1 text-xs text-muted-foreground">
         <span>1</span>
         <span>2</span>
         <span>3</span>
@@ -273,8 +267,8 @@ export function IndependenceScaleInput({
 
       {/* Current level description */}
       {levelConfig && (
-        <div className="rounded-lg border bg-muted/50 p-3 space-y-1">
-          <div className="font-medium text-sm">{levelConfig.label}</div>
+        <div className="space-y-1 rounded-lg border bg-muted/50 p-3">
+          <div className="text-sm font-medium">{levelConfig.label}</div>
           <p className="text-xs text-muted-foreground">{levelConfig.description}</p>
         </div>
       )}
@@ -319,36 +313,34 @@ export function IndependenceScaleAssessment({
   const isHorizontal = orientation === 'horizontal';
 
   return (
-    <div className={cn(
-      isHorizontal ? 'flex flex-wrap gap-4' : 'space-y-4',
-      className
-    )}>
+    <div className={cn(isHorizontal ? 'flex flex-wrap gap-4' : 'space-y-4', className)}>
       {scores.map((score) => {
         const areaConfig = FIM_AREA_CONFIG[score.area];
-        const improvement = score.baseline && score.current
-          ? score.current - score.baseline
-          : null;
+        const improvement = score.baseline && score.current ? score.current - score.baseline : null;
 
         return (
           <div
             key={score.area}
             className={cn(
-              'rounded-lg border p-3 space-y-2',
-              isHorizontal && 'flex-1 min-w-[200px]'
+              'space-y-2 rounded-lg border p-3',
+              isHorizontal && 'min-w-[200px] flex-1'
             )}
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{areaConfig.label}</span>
               {improvement !== null && (
                 <Badge
-                  variant={improvement > 0 ? 'default' : improvement < 0 ? 'destructive' : 'secondary'}
+                  variant={
+                    improvement > 0 ? 'default' : improvement < 0 ? 'destructive' : 'secondary'
+                  }
                   className={cn(
                     'text-xs',
                     improvement > 0 && 'bg-green-100 text-green-800',
                     improvement < 0 && 'bg-red-100 text-red-800'
                   )}
                 >
-                  {improvement > 0 ? '+' : ''}{improvement}
+                  {improvement > 0 ? '+' : ''}
+                  {improvement}
                 </Badge>
               )}
             </div>
@@ -367,9 +359,7 @@ export function IndependenceScaleAssessment({
               )}
               <div className="flex items-center gap-1">
                 <span className="text-muted-foreground">Current:</span>
-                <Badge className={getFIMColorClass(score.current)}>
-                  {score.current || 'N/A'}
-                </Badge>
+                <Badge className={getFIMColorClass(score.current)}>{score.current || 'N/A'}</Badge>
               </div>
               {showTargets && score.target && (
                 <>
@@ -429,32 +419,25 @@ export function IndependenceScaleLegend({
   const isHorizontal = orientation === 'horizontal';
 
   return (
-    <div className={cn(
-      'rounded-lg border p-3',
-      isHorizontal ? 'flex flex-wrap gap-3' : 'space-y-2',
-      className
-    )}>
-      {!compact && (
-        <div className="text-sm font-medium mb-2">FIM Level Guide</div>
+    <div
+      className={cn(
+        'rounded-lg border p-3',
+        isHorizontal ? 'flex flex-wrap gap-3' : 'space-y-2',
+        className
       )}
+    >
+      {!compact && <div className="mb-2 text-sm font-medium">FIM Level Guide</div>}
       {([1, 2, 3, 4, 5, 6, 7] as FIMLevel[]).map((level) => {
         const config = FIM_LEVEL_LABELS[level];
         return (
           <div
             key={level}
-            className={cn(
-              'flex items-center gap-2',
-              isHorizontal && 'min-w-[140px]'
-            )}
+            className={cn('flex items-center gap-2', isHorizontal && 'min-w-[140px]')}
           >
-            <Badge className={cn('w-8 justify-center', getFIMColorClass(level))}>
-              {level}
-            </Badge>
+            <Badge className={cn('w-8 justify-center', getFIMColorClass(level))}>{level}</Badge>
             <div>
               <span className="text-sm">{config.label}</span>
-              {!compact && (
-                <p className="text-xs text-muted-foreground">{config.description}</p>
-              )}
+              {!compact && <p className="text-xs text-muted-foreground">{config.description}</p>}
             </div>
           </div>
         );

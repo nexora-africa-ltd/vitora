@@ -31,15 +31,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { qcMaterialsApi, qcLotsApi, qcRulesApi, qcViolationsApi } from '@/lib/api/qc';
 import type { QCMaterial, QCLot, QCLotCreateData, QCRuleViolation } from '@/lib/types/qc';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function QCDashboardPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const queryClient = useQueryClient();
   const [showMaterialDialog, setShowMaterialDialog] = useState(false);
-  const [materialForm, setMaterialForm] = useState({ name: '', manufacturer: '', catalog_number: '', storage_conditions: '' });
+  const [materialForm, setMaterialForm] = useState({
+    name: '',
+    manufacturer: '',
+    catalog_number: '',
+    storage_conditions: '',
+  });
   const [showLotDialog, setShowLotDialog] = useState(false);
-  const [lotForm, setLotForm] = useState<{ material: string; lot_number: string; expiry_date: string; storage_conditions: string; notes: string }>({ material: '', lot_number: '', expiry_date: '', storage_conditions: '', notes: '' });
+  const [lotForm, setLotForm] = useState<{
+    material: string;
+    lot_number: string;
+    expiry_date: string;
+    storage_conditions: string;
+    notes: string;
+  }>({ material: '', lot_number: '', expiry_date: '', storage_conditions: '', notes: '' });
 
   const { data: materialsData } = useQuery({
     queryKey: ['qc-materials'],
@@ -76,7 +93,13 @@ export default function QCDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['qc-materials'] });
       queryClient.invalidateQueries({ queryKey: ['qc-lots-expiring'] });
       setShowLotDialog(false);
-      setLotForm({ material: '', lot_number: '', expiry_date: '', storage_conditions: '', notes: '' });
+      setLotForm({
+        material: '',
+        lot_number: '',
+        expiry_date: '',
+        storage_conditions: '',
+        notes: '',
+      });
     },
   });
 
@@ -97,55 +120,67 @@ export default function QCDashboardPage() {
           helpContent="Manage QC materials, lots, and Westgard rules. Monitor QC results and violations for ISO 15189 compliance."
           actions={
             <Button onClick={() => setShowMaterialDialog(true)} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               New Material
             </Button>
           }
         />
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <Package className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Materials</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{materials.length}</p>
+              <p className="mt-1 text-2xl font-bold">{materials.length}</p>
             </CardContent>
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-amber-500" />
                 <span className="text-sm text-muted-foreground">Expiring Lots</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{expiringLots.length}</p>
+              <p className="mt-1 text-2xl font-bold">{expiringLots.length}</p>
             </CardContent>
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-destructive" />
                 <span className="text-sm text-muted-foreground">Violations</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{unackedViolations.length}</p>
+              <p className="mt-1 text-2xl font-bold">{unackedViolations.length}</p>
             </CardContent>
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
                 <span className="text-sm text-muted-foreground">Active Rules</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{rules?.length || 0}</p>
+              <p className="mt-1 text-2xl font-bold">{rules?.length || 0}</p>
             </CardContent>
           </Card>
         </div>
@@ -171,9 +206,9 @@ export default function QCDashboardPage() {
           </TabsList>
 
           <TabsContent value="materials" className="mt-4">
-            <div className="flex justify-end mb-3">
+            <div className="mb-3 flex justify-end">
               <Button size="sm" variant="outline" onClick={() => setShowLotDialog(true)}>
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 New Lot
               </Button>
             </div>
@@ -181,12 +216,34 @@ export default function QCDashboardPage() {
               data={materials}
               keyExtractor={(item: QCMaterial) => item.id}
               columns={[
-                { key: 'name', header: 'Name', sortable: true, cell: (item: QCMaterial) => item.name },
-                { key: 'manufacturer', header: 'Manufacturer', sortable: true, cell: (item: QCMaterial) => item.manufacturer },
-                { key: 'catalog_number', header: 'Catalog #', cell: (item: QCMaterial) => item.catalog_number || '—' },
-                { key: 'lot_count', header: 'Lots', sortable: true, sortType: 'number' as const, cell: (item: QCMaterial) => item.lot_count },
                 {
-                  key: 'is_active', header: 'Status', cell: (item: QCMaterial) => (
+                  key: 'name',
+                  header: 'Name',
+                  sortable: true,
+                  cell: (item: QCMaterial) => item.name,
+                },
+                {
+                  key: 'manufacturer',
+                  header: 'Manufacturer',
+                  sortable: true,
+                  cell: (item: QCMaterial) => item.manufacturer,
+                },
+                {
+                  key: 'catalog_number',
+                  header: 'Catalog #',
+                  cell: (item: QCMaterial) => item.catalog_number || '—',
+                },
+                {
+                  key: 'lot_count',
+                  header: 'Lots',
+                  sortable: true,
+                  sortType: 'number' as const,
+                  cell: (item: QCMaterial) => item.lot_count,
+                },
+                {
+                  key: 'is_active',
+                  header: 'Status',
+                  cell: (item: QCMaterial) => (
                     <Badge variant={item.is_active ? 'default' : 'secondary'}>
                       {item.is_active ? 'Active' : 'Inactive'}
                     </Badge>
@@ -203,17 +260,35 @@ export default function QCDashboardPage() {
               </CardHeader>
               <CardContent>
                 {expiringLots.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No lots expiring soon.</p>
+                  <p className="text-sm text-muted-foreground">No lots expiring soon.</p>
                 ) : (
                   <ResponsiveTable
                     data={expiringLots}
                     keyExtractor={(item: QCLot) => item.id}
                     columns={[
-                      { key: 'material_name', header: 'Material', sortable: true, cell: (item: QCLot) => item.material_name },
-                      { key: 'lot_number', header: 'Lot #', cell: (item: QCLot) => item.lot_number },
-                      { key: 'expiry_date', header: 'Expires', sortable: true, sortType: 'date' as const, cell: (item: QCLot) => item.expiry_date },
                       {
-                        key: 'days_until_expiry', header: 'Days Left', sortable: true, sortType: 'number' as const,
+                        key: 'material_name',
+                        header: 'Material',
+                        sortable: true,
+                        cell: (item: QCLot) => item.material_name,
+                      },
+                      {
+                        key: 'lot_number',
+                        header: 'Lot #',
+                        cell: (item: QCLot) => item.lot_number,
+                      },
+                      {
+                        key: 'expiry_date',
+                        header: 'Expires',
+                        sortable: true,
+                        sortType: 'date' as const,
+                        cell: (item: QCLot) => item.expiry_date,
+                      },
+                      {
+                        key: 'days_until_expiry',
+                        header: 'Days Left',
+                        sortable: true,
+                        sortType: 'number' as const,
                         cell: (item: QCLot) => (
                           <Badge variant={item.days_until_expiry <= 7 ? 'destructive' : 'outline'}>
                             {item.days_until_expiry}d
@@ -234,25 +309,45 @@ export default function QCDashboardPage() {
               </CardHeader>
               <CardContent>
                 {unackedViolations.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No pending violations. All QC is within limits.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No pending violations. All QC is within limits.
+                  </p>
                 ) : (
                   <ResponsiveTable
                     data={unackedViolations}
                     keyExtractor={(item: QCRuleViolation) => item.id}
                     columns={[
-                      { key: 'rule_name', header: 'Rule', cell: (item: QCRuleViolation) => item.rule_name },
                       {
-                        key: 'severity', header: 'Severity',
+                        key: 'rule_name',
+                        header: 'Rule',
+                        cell: (item: QCRuleViolation) => item.rule_name,
+                      },
+                      {
+                        key: 'severity',
+                        header: 'Severity',
                         cell: (item: QCRuleViolation) => (
                           <Badge variant={item.severity === 'REJECT' ? 'destructive' : 'outline'}>
                             {item.severity}
                           </Badge>
                         ),
                       },
-                      { key: 'description', header: 'Details', cell: (item: QCRuleViolation) => (
-                        <span className="text-sm truncate max-w-[200px] block">{item.description}</span>
-                      )},
-                      { key: 'created_at', header: 'When', sortable: true, sortType: 'date' as const, cell: (item: QCRuleViolation) => new Date(item.created_at).toLocaleDateString() },
+                      {
+                        key: 'description',
+                        header: 'Details',
+                        cell: (item: QCRuleViolation) => (
+                          <span className="block max-w-[200px] truncate text-sm">
+                            {item.description}
+                          </span>
+                        ),
+                      },
+                      {
+                        key: 'created_at',
+                        header: 'When',
+                        sortable: true,
+                        sortType: 'date' as const,
+                        cell: (item: QCRuleViolation) =>
+                          new Date(item.created_at).toLocaleDateString(),
+                      },
                     ]}
                   />
                 )}
@@ -272,7 +367,10 @@ export default function QCDashboardPage() {
               </CardHeader>
               <CardContent>
                 {!rules || rules.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No rules configured. Click &quot;Seed Defaults&quot; to add standard Westgard rules.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No rules configured. Click &quot;Seed Defaults&quot; to add standard Westgard
+                    rules.
+                  </p>
                 ) : (
                   <ResponsiveTable
                     data={rules}
@@ -281,7 +379,8 @@ export default function QCDashboardPage() {
                       { key: 'name', header: 'Rule', cell: (item) => item.name },
                       { key: 'rule_type', header: 'Type', cell: (item) => item.rule_type },
                       {
-                        key: 'severity', header: 'Severity',
+                        key: 'severity',
+                        header: 'Severity',
                         cell: (item) => (
                           <Badge variant={item.severity === 'REJECT' ? 'destructive' : 'outline'}>
                             {item.severity}
@@ -289,7 +388,8 @@ export default function QCDashboardPage() {
                         ),
                       },
                       {
-                        key: 'is_active', header: 'Active',
+                        key: 'is_active',
+                        header: 'Active',
                         cell: (item) => (
                           <Badge variant={item.is_active ? 'default' : 'secondary'}>
                             {item.is_active ? 'Yes' : 'No'}
@@ -366,14 +466,21 @@ export default function QCDashboardPage() {
                 Cancel
               </Button>
               <Button
-                onClick={() => createLot.mutate({
-                  material: Number(lotForm.material),
-                  lot_number: lotForm.lot_number,
-                  expiry_date: lotForm.expiry_date,
-                  storage_conditions: lotForm.storage_conditions || undefined,
-                  notes: lotForm.notes || undefined,
-                })}
-                disabled={!lotForm.material || !lotForm.lot_number || !lotForm.expiry_date || createLot.isPending}
+                onClick={() =>
+                  createLot.mutate({
+                    material: Number(lotForm.material),
+                    lot_number: lotForm.lot_number,
+                    expiry_date: lotForm.expiry_date,
+                    storage_conditions: lotForm.storage_conditions || undefined,
+                    notes: lotForm.notes || undefined,
+                  })
+                }
+                disabled={
+                  !lotForm.material ||
+                  !lotForm.lot_number ||
+                  !lotForm.expiry_date ||
+                  createLot.isPending
+                }
               >
                 {createLot.isPending ? 'Creating...' : 'Create'}
               </Button>
@@ -400,7 +507,9 @@ export default function QCDashboardPage() {
                 <Label>Manufacturer *</Label>
                 <Input
                   value={materialForm.manufacturer}
-                  onChange={(e) => setMaterialForm({ ...materialForm, manufacturer: e.target.value })}
+                  onChange={(e) =>
+                    setMaterialForm({ ...materialForm, manufacturer: e.target.value })
+                  }
                   placeholder="e.g., Bio-Rad"
                 />
               </div>
@@ -408,14 +517,18 @@ export default function QCDashboardPage() {
                 <Label>Catalog Number</Label>
                 <Input
                   value={materialForm.catalog_number}
-                  onChange={(e) => setMaterialForm({ ...materialForm, catalog_number: e.target.value })}
+                  onChange={(e) =>
+                    setMaterialForm({ ...materialForm, catalog_number: e.target.value })
+                  }
                 />
               </div>
               <div>
                 <Label>Storage Conditions</Label>
                 <Input
                   value={materialForm.storage_conditions}
-                  onChange={(e) => setMaterialForm({ ...materialForm, storage_conditions: e.target.value })}
+                  onChange={(e) =>
+                    setMaterialForm({ ...materialForm, storage_conditions: e.target.value })
+                  }
                   placeholder="e.g., 2-8°C"
                 />
               </div>
@@ -426,7 +539,9 @@ export default function QCDashboardPage() {
               </Button>
               <Button
                 onClick={() => createMaterial.mutate(materialForm)}
-                disabled={!materialForm.name || !materialForm.manufacturer || createMaterial.isPending}
+                disabled={
+                  !materialForm.name || !materialForm.manufacturer || createMaterial.isPending
+                }
               >
                 {createMaterial.isPending ? 'Creating...' : 'Create'}
               </Button>

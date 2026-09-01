@@ -1384,6 +1384,17 @@ def test_delete_with_permission(self, authenticated_client):
 - Minimum for billing view refactors: targeted SHA API/ILM action tests + full `tests/billing` run green
 - If a refactor changes expected behavior, include before/after assertions in tests and document why the change is intentional
 
+### 16. React Hooks Order Guardrail (Frontend)
+
+> ⚠️ **CRITICAL**: Never place early returns (permission gates, loading gates, feature flags) before hooks in React components.
+
+**Required pattern for page components and forms:**
+- Call all hooks (`useState`, `useMemo`, `useEffect`, `useQuery`, `useMutation`, custom hooks) at top-level, unconditionally, on every render.
+- Compute access booleans first (e.g., `hasCreateAccess`) and place access-denied `return (...)` blocks only **after** hooks are declared.
+- For data hooks that should not fire when access is denied, keep the hook call but gate execution with `enabled: hasAccess`.
+- Do not wrap hook calls in conditionals, loops, nested functions, or branches.
+- During review, run targeted lint for touched pages: `npx eslint "app/(dashboard)/**/new/page.tsx"` and ensure zero `react-hooks/rules-of-hooks` errors.
+
 ## 🔐 Security & Compliance
 
 ### Kenya Data Protection Act 2019 Compliance

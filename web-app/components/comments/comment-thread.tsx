@@ -134,17 +134,11 @@ export function CommentThread({
 
       {/* Loading state */}
       {isLoading && (
-        <div className="text-sm text-muted-foreground py-4 text-center">
-          Loading comments...
-        </div>
+        <div className="py-4 text-center text-sm text-muted-foreground">Loading comments...</div>
       )}
 
       {/* Error state */}
-      {error && (
-        <div className="text-sm text-destructive py-2">
-          Failed to load comments.
-        </div>
-      )}
+      {error && <div className="py-2 text-sm text-destructive">Failed to load comments.</div>}
 
       {/* Empty state */}
       {!isLoading && !error && comments.length === 0 && (
@@ -195,9 +189,7 @@ export function CommentThread({
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                       onReact={handleReact}
-                      onLoadReplies={
-                        nestedReply.replies_count > 0 ? handleLoadReplies : undefined
-                      }
+                      onLoadReplies={nestedReply.replies_count > 0 ? handleLoadReplies : undefined}
                     />
                   </div>
                 ))}
@@ -209,7 +201,7 @@ export function CommentThread({
 
       {/* Pagination hint */}
       {data && data.count > comments.length && (
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-center text-xs text-muted-foreground">
           Showing {comments.length} of {data.count} comments
         </p>
       )}

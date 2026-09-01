@@ -127,7 +127,9 @@ export const mchRegistrationsApi = {
   /**
    * List MCH registrations
    */
-  list: async (params?: MCHRegistrationListParams): Promise<PaginatedResponse<MCHRegistrationListItem>> => {
+  list: async (
+    params?: MCHRegistrationListParams
+  ): Promise<PaginatedResponse<MCHRegistrationListItem>> => {
     const response = await apiClient.get<PaginatedResponse<MCHRegistrationListItem>>(
       `${BASE_URL}/registrations/`,
       { params }
@@ -160,8 +162,14 @@ export const mchRegistrationsApi = {
   /**
    * Update an MCH registration
    */
-  update: async (id: number, data: Partial<MCHRegistrationCreateData>): Promise<MCHRegistration> => {
-    const response = await apiClient.patch<MCHRegistration>(`${BASE_URL}/registrations/${id}/`, data);
+  update: async (
+    id: number,
+    data: Partial<MCHRegistrationCreateData>
+  ): Promise<MCHRegistration> => {
+    const response = await apiClient.patch<MCHRegistration>(
+      `${BASE_URL}/registrations/${id}/`,
+      data
+    );
     return parseResponse(MCHRegistrationSchema, response.data, {
       context: 'mchRegistrationsApi.update',
     });
@@ -190,14 +198,20 @@ export const mchRegistrationsApi = {
   /**
    * Route mother to today's ANC clinic queue
    */
-  routeToANC: async (id: number, data?: { clinic_id?: number; notes?: string }): Promise<{
+  routeToANC: async (
+    id: number,
+    data?: { clinic_id?: number; notes?: string }
+  ): Promise<{
     message: string;
     clinic_visit_id: number;
     queue_number: number;
     clinic: string;
     session_id: number;
   }> => {
-    const response = await apiClient.post(`${BASE_URL}/registrations/${id}/route_to_anc/`, data || {});
+    const response = await apiClient.post(
+      `${BASE_URL}/registrations/${id}/route_to_anc/`,
+      data || {}
+    );
     return parseResponse(RouteToClinicResponseSchema, response.data, {
       context: 'mchRegistrationsApi.routeToANC',
     });
@@ -206,14 +220,20 @@ export const mchRegistrationsApi = {
   /**
    * Route mother to today's PNC clinic queue
    */
-  routeToPNC: async (id: number, data?: { clinic_id?: number; notes?: string }): Promise<{
+  routeToPNC: async (
+    id: number,
+    data?: { clinic_id?: number; notes?: string }
+  ): Promise<{
     message: string;
     clinic_visit_id: number;
     queue_number: number;
     clinic: string;
     session_id: number;
   }> => {
-    const response = await apiClient.post(`${BASE_URL}/registrations/${id}/route_to_pnc/`, data || {});
+    const response = await apiClient.post(
+      `${BASE_URL}/registrations/${id}/route_to_pnc/`,
+      data || {}
+    );
     return parseResponse(RouteToClinicResponseSchema, response.data, {
       context: 'mchRegistrationsApi.routeToPNC',
     });
@@ -222,14 +242,20 @@ export const mchRegistrationsApi = {
   /**
    * Schedule a future ANC visit (creates appointment)
    */
-  scheduleANCVisit: async (id: number, data: { date: string; notes?: string }): Promise<{
+  scheduleANCVisit: async (
+    id: number,
+    data: { date: string; notes?: string }
+  ): Promise<{
     message: string;
     appointment_id: number;
     appointment_number: string;
     scheduled_date: string;
     resource: string;
   }> => {
-    const response = await apiClient.post(`${BASE_URL}/registrations/${id}/schedule_anc_visit/`, data);
+    const response = await apiClient.post(
+      `${BASE_URL}/registrations/${id}/schedule_anc_visit/`,
+      data
+    );
     return parseResponse(ScheduleANCVisitResponseSchema, response.data, {
       context: 'mchRegistrationsApi.scheduleANCVisit',
     });
@@ -327,7 +353,13 @@ export const deliveriesApi = {
   list: async (
     registrationId?: number,
     page = 1,
-    params?: { search?: string; status?: string; delivery_type?: string; delivery_outcome?: string; ordering?: string }
+    params?: {
+      search?: string;
+      status?: string;
+      delivery_type?: string;
+      delivery_outcome?: string;
+      ordering?: string;
+    }
   ): Promise<PaginatedResponse<DeliveryListItem>> => {
     const queryParams: Record<string, unknown> = { page, ...params };
     if (registrationId) queryParams.registration = registrationId;
@@ -381,9 +413,7 @@ export const deliveriesApi = {
    * Get delivery dashboard stats (aggregated stats, upcoming EDDs, trends)
    */
   dashboard: async (): Promise<DeliveryDashboard> => {
-    const response = await apiClient.get<DeliveryDashboard>(
-      `${BASE_URL}/deliveries/dashboard/`
-    );
+    const response = await apiClient.get<DeliveryDashboard>(`${BASE_URL}/deliveries/dashboard/`);
     return parseResponse(DeliveryDashboardSchema, response.data, {
       context: 'deliveriesApi.dashboard',
     });
@@ -415,7 +445,10 @@ export const labourPartographsApi = {
   },
 
   create: async (data: LabourPartographCreateData): Promise<LabourPartograph> => {
-    const response = await apiClient.post<LabourPartograph>(`${BASE_URL}/labour-partographs/`, data);
+    const response = await apiClient.post<LabourPartograph>(
+      `${BASE_URL}/labour-partographs/`,
+      data
+    );
     return parseResponse(LabourPartographSchema, response.data, {
       context: 'labourPartographsApi.create',
     });
@@ -512,7 +545,9 @@ export const growthMeasurementsApi = {
   /**
    * List growth measurements
    */
-  list: async (params?: GrowthMeasurementListParams): Promise<PaginatedResponse<GrowthMeasurementListItem>> => {
+  list: async (
+    params?: GrowthMeasurementListParams
+  ): Promise<PaginatedResponse<GrowthMeasurementListItem>> => {
     const response = await apiClient.get<PaginatedResponse<GrowthMeasurementListItem>>(
       `${BASE_URL}/growth-measurements/`,
       { params }
@@ -526,7 +561,9 @@ export const growthMeasurementsApi = {
    * Get growth measurement by ID
    */
   get: async (id: number): Promise<GrowthMeasurement> => {
-    const response = await apiClient.get<GrowthMeasurement>(`${BASE_URL}/growth-measurements/${id}/`);
+    const response = await apiClient.get<GrowthMeasurement>(
+      `${BASE_URL}/growth-measurements/${id}/`
+    );
     return parseResponse(GrowthMeasurementSchema, response.data, {
       context: 'growthMeasurementsApi.get',
     });
@@ -536,7 +573,10 @@ export const growthMeasurementsApi = {
    * Create a new growth measurement
    */
   create: async (data: GrowthMeasurementCreateData): Promise<GrowthMeasurement> => {
-    const response = await apiClient.post<GrowthMeasurement>(`${BASE_URL}/growth-measurements/`, data);
+    const response = await apiClient.post<GrowthMeasurement>(
+      `${BASE_URL}/growth-measurements/`,
+      data
+    );
     return parseResponse(GrowthMeasurementSchema, response.data, {
       context: 'growthMeasurementsApi.create',
     });
@@ -545,7 +585,10 @@ export const growthMeasurementsApi = {
   /**
    * Update a growth measurement
    */
-  update: async (id: number, data: Partial<GrowthMeasurementCreateData>): Promise<GrowthMeasurement> => {
+  update: async (
+    id: number,
+    data: Partial<GrowthMeasurementCreateData>
+  ): Promise<GrowthMeasurement> => {
     const response = await apiClient.patch<GrowthMeasurement>(
       `${BASE_URL}/growth-measurements/${id}/`,
       data
@@ -587,10 +630,10 @@ export const growthMeasurementsApi = {
    * Export growth chart as PDF
    */
   exportPdf: async (patientId: number): Promise<Blob> => {
-    const response = await apiClient.get(
-      `${BASE_URL}/growth-measurements/export-pdf/`,
-      { params: { patient: patientId }, responseType: 'blob' }
-    );
+    const response = await apiClient.get(`${BASE_URL}/growth-measurements/export-pdf/`, {
+      params: { patient: patientId },
+      responseType: 'blob',
+    });
     return response.data as Blob;
   },
 };
@@ -629,7 +672,9 @@ export const immunizationsApi = {
   /**
    * List immunization records
    */
-  list: async (params?: ImmunizationRecordListParams): Promise<PaginatedResponse<ImmunizationRecordListItem>> => {
+  list: async (
+    params?: ImmunizationRecordListParams
+  ): Promise<PaginatedResponse<ImmunizationRecordListItem>> => {
     const response = await apiClient.get<PaginatedResponse<ImmunizationRecordListItem>>(
       `${BASE_URL}/immunizations/`,
       { params }
@@ -745,10 +790,9 @@ export const aefiApi = {
    * List AEFI reports
    */
   list: async (page = 1): Promise<PaginatedResponse<AEFIListItem>> => {
-    const response = await apiClient.get<PaginatedResponse<AEFIListItem>>(
-      `${BASE_URL}/aefi/`,
-      { params: { page } }
-    );
+    const response = await apiClient.get<PaginatedResponse<AEFIListItem>>(`${BASE_URL}/aefi/`, {
+      params: { page },
+    });
     return parseResponse(PaginatedAEFIListSchema, response.data, {
       context: 'aefiApi.list',
     });
@@ -828,10 +872,7 @@ export const heiFollowUpApi = {
    * Uses the dedicated hei-pcr ViewSet (not an action on HEIFollowUpViewSet).
    */
   recordPCR: async (data: RecordPCRTestData): Promise<HEIPCRTest> => {
-    const response = await apiClient.post<HEIPCRTest>(
-      `${BASE_URL}/hei-pcr/`,
-      data
-    );
+    const response = await apiClient.post<HEIPCRTest>(`${BASE_URL}/hei-pcr/`, data);
     return parseResponse(HEIPCRTestSchema, response.data, {
       context: 'heiFollowUpApi.recordPCR',
     });

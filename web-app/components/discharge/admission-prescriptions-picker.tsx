@@ -40,7 +40,7 @@ export function AdmissionPrescriptionsPicker({
   if (activePrescriptions.length === 0) return null;
 
   return (
-    <div className="space-y-3 mb-4">
+    <div className="mb-4 space-y-3">
       <div className="flex items-center gap-1.5">
         <Label className="text-sm font-medium">From Current Admission</Label>
         <HelpPopover content="Select prescriptions from this admission to include as discharge take-home medications. Choose Internal if the hospital pharmacy will dispense, or External if the patient will fill at an outside pharmacy." />
@@ -54,7 +54,7 @@ export function AdmissionPrescriptionsPicker({
           return (
             <div
               key={rx.id}
-              className={`rounded-lg border transition-colors cursor-pointer ${
+              className={`cursor-pointer rounded-lg border transition-colors ${
                 isSelected
                   ? 'border-primary/40 bg-primary/5'
                   : 'border-border hover:border-muted-foreground/30'
@@ -62,11 +62,16 @@ export function AdmissionPrescriptionsPicker({
               onClick={() => onToggle(rx.id)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(rx.id); } }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onToggle(rx.id);
+                }
+              }}
             >
               {/* Header: checkbox + Rx number + status + dispensing type */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center p-2.5 sm:p-3">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex flex-col gap-2 p-2.5 sm:flex-row sm:items-center sm:p-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                   <div className="shrink-0">
                     {isSelected ? (
                       <CheckCircle2 className="h-4 w-4 text-primary" />
@@ -74,17 +79,20 @@ export function AdmissionPrescriptionsPicker({
                       <Circle className="h-4 w-4 text-muted-foreground" />
                     )}
                   </div>
-                  <span className="text-sm font-medium truncate">{rx.prescription_number}</span>
-                  <Badge variant="outline" className={`text-[10px] shrink-0 ${STATUS_COLORS[rx.effective_status] || ''}`}>
+                  <span className="truncate text-sm font-medium">{rx.prescription_number}</span>
+                  <Badge
+                    variant="outline"
+                    className={`shrink-0 text-[10px] ${STATUS_COLORS[rx.effective_status] || ''}`}
+                  >
                     {rx.effective_status}
                   </Badge>
                   {rx.dispensing_type === 'EXTERNAL' && (
-                    <Badge variant="outline" className="text-[10px] shrink-0">
-                      <ExternalLink className="h-2.5 w-2.5 mr-0.5" />
+                    <Badge variant="outline" className="shrink-0 text-[10px]">
+                      <ExternalLink className="mr-0.5 h-2.5 w-2.5" />
                       External
                     </Badge>
                   )}
-                  <span className="text-xs text-muted-foreground ml-auto shrink-0">
+                  <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                     {activeItems.length} item{activeItems.length !== 1 ? 's' : ''}
                   </span>
                 </div>
@@ -92,20 +100,22 @@ export function AdmissionPrescriptionsPicker({
                 {/* Dispensing type selector (only when selected) */}
                 {isSelected && (
                   <div
-                    className="flex items-center gap-3 sm:shrink-0 ml-6 sm:ml-0"
+                    className="ml-6 flex items-center gap-3 sm:ml-0 sm:shrink-0"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <RadioGroup
                       value={dispensingType}
-                      onValueChange={(v) => onDispensingTypeChange(rx.id, v as 'INTERNAL' | 'EXTERNAL')}
+                      onValueChange={(v) =>
+                        onDispensingTypeChange(rx.id, v as 'INTERNAL' | 'EXTERNAL')
+                      }
                       className="flex items-center gap-3"
                     >
-                      <label className="flex items-center gap-1.5 cursor-pointer">
+                      <label className="flex cursor-pointer items-center gap-1.5">
                         <RadioGroupItem value="INTERNAL" />
                         <Building2 className="h-3 w-3 text-muted-foreground" />
                         <span className="text-xs">Internal</span>
                       </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
+                      <label className="flex cursor-pointer items-center gap-1.5">
                         <RadioGroupItem value="EXTERNAL" />
                         <ExternalLink className="h-3 w-3 text-muted-foreground" />
                         <span className="text-xs">External</span>
@@ -116,11 +126,13 @@ export function AdmissionPrescriptionsPicker({
               </div>
 
               {/* Items list: one row per drug */}
-              <div className="border-t px-2.5 sm:px-3 py-2 space-y-1">
+              <div className="space-y-1 border-t px-2.5 py-2 sm:px-3">
                 {activeItems.map((item) => (
                   <div key={item.id} className="flex items-baseline gap-x-2 text-sm">
-                    <span className="font-medium shrink-0">{item.drug_name || `Drug #${item.drug}`}</span>
-                    <span className="text-muted-foreground text-xs">
+                    <span className="shrink-0 font-medium">
+                      {item.drug_name || `Drug #${item.drug}`}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
                       {item.dosage} · {item.frequency} · {item.duration}
                     </span>
                   </div>

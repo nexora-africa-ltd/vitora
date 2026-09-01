@@ -43,18 +43,14 @@ export default function CrossMatchPage() {
       key: 'unit_number',
       header: 'Unit #',
       sortable: true,
-      cell: (item: CrossMatch) => (
-        <span className="font-mono text-sm">{item.unit_number}</span>
-      ),
+      cell: (item: CrossMatch) => <span className="font-mono text-sm">{item.unit_number}</span>,
     },
     {
       key: 'result',
       header: 'Result',
       sortable: true,
       cell: (item: CrossMatch) => (
-        <Badge className={`${CROSSMATCH_COLORS[item.result]} shrink-0 w-fit`}>
-          {item.result}
-        </Badge>
+        <Badge className={`${CROSSMATCH_COLORS[item.result]} w-fit shrink-0`}>{item.result}</Badge>
       ),
     },
     {
@@ -80,25 +76,28 @@ export default function CrossMatchPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Cross-Match Tests"
           helpContent="Cross-matching verifies compatibility between donor blood and patient serum before transfusion."
-          actions={(
+          actions={
             <PermissionGate action="blood_bank.perform_crossmatch">
-              <Button onClick={() => router.push('/blood-bank/crossmatch/new')} disabled={!canCreateRoute('/blood-bank/crossmatch/new')}>
-                <Plus className="h-4 w-4 mr-2" />
+              <Button
+                onClick={() => router.push('/blood-bank/crossmatch/new')}
+                disabled={!canCreateRoute('/blood-bank/crossmatch/new')}
+              >
+                <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Create Crossmatch</span>
                 <span className="sm:hidden">Create</span>
               </Button>
             </PermissionGate>
-          )}
+          }
         />
 
         {/* Filter */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by unit #, method..."
               value={search}

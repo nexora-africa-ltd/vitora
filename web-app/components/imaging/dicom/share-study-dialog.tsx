@@ -74,8 +74,7 @@ export function ShareStudyDialog({
 
   // Create link mutation
   const createMutation = useMutation({
-    mutationFn: (data: CreateShareLinkData) =>
-      imagingApi.createShareLink(studyUid, data),
+    mutationFn: (data: CreateShareLinkData) => imagingApi.createShareLink(studyUid, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['study-share-links', studyUid] });
       setShowCreateForm(false);
@@ -89,8 +88,7 @@ export function ShareStudyDialog({
 
   // Revoke mutation
   const revokeMutation = useMutation({
-    mutationFn: (linkId: number) =>
-      imagingApi.revokeShareLink(studyUid, linkId),
+    mutationFn: (linkId: number) => imagingApi.revokeShareLink(studyUid, linkId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['study-share-links', studyUid] });
       toast.success('Share link revoked');
@@ -133,7 +131,7 @@ export function ShareStudyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>Share Study</DialogTitle>
@@ -143,7 +141,7 @@ export function ShareStudyDialog({
             Create and manage share links for this DICOM study.
           </DialogDescription>
           {studyDescription && (
-            <p className="text-sm text-muted-foreground truncate">{studyDescription}</p>
+            <p className="truncate text-sm text-muted-foreground">{studyDescription}</p>
           )}
         </DialogHeader>
 
@@ -165,7 +163,7 @@ export function ShareStudyDialog({
 
         {/* Create form */}
         {showCreateForm ? (
-          <div className="space-y-4 border rounded-lg p-4">
+          <div className="space-y-4 rounded-lg border p-4">
             <h4 className="text-sm font-medium">New Share Link</h4>
 
             <div className="grid gap-3">
@@ -259,17 +257,14 @@ export function ShareStudyDialog({
               </div>
 
               <div className="flex items-center gap-2">
-                <Switch
-                  checked={allowDownload}
-                  onCheckedChange={setAllowDownload}
-                />
+                <Switch checked={allowDownload} onCheckedChange={setAllowDownload} />
                 <span className="text-sm font-medium">
                   {allowDownload ? 'Download allowed' : 'View only'}
                 </span>
               </div>
             </div>
 
-            <div className="flex gap-2 justify-end">
+            <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -280,36 +275,28 @@ export function ShareStudyDialog({
               >
                 Cancel
               </Button>
-              <Button
-                size="sm"
-                onClick={handleCreate}
-                disabled={createMutation.isPending}
-              >
+              <Button size="sm" onClick={handleCreate} disabled={createMutation.isPending}>
                 {createMutation.isPending ? 'Creating...' : 'Create Link'}
               </Button>
             </div>
           </div>
         ) : (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => setShowCreateForm(true)}
-          >
-            <Link2 className="h-4 w-4 mr-2" />
+          <Button variant="outline" className="w-full" onClick={() => setShowCreateForm(true)}>
+            <Link2 className="mr-2 h-4 w-4" />
             Create New Share Link
           </Button>
         )}
 
         {/* Revoked links */}
         {revokedLinks.length > 0 && (
-          <div className="space-y-2 mt-4 opacity-60">
+          <div className="mt-4 space-y-2 opacity-60">
             <h4 className="text-xs font-medium text-muted-foreground">
               Revoked ({revokedLinks.length})
             </h4>
             {revokedLinks.slice(0, 3).map((link) => (
               <div
                 key={link.id}
-                className="text-xs text-muted-foreground flex items-center gap-2 px-2 py-1"
+                className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground"
               >
                 <Badge variant="outline" className="text-[10px]">
                   {link.purpose}
@@ -336,12 +323,10 @@ function ShareLinkCard({
   onRevoke: (id: number) => void;
   revoking: boolean;
 }) {
-  const shareUrl = link.token
-    ? `${window.location.origin}/imaging/share/${link.token}`
-    : '';
+  const shareUrl = link.token ? `${window.location.origin}/imaging/share/${link.token}` : '';
 
   return (
-    <div className="border rounded-md p-3 space-y-2">
+    <div className="space-y-2 rounded-md border p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">
@@ -385,14 +370,17 @@ function ShareLinkCard({
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <Eye className="h-3 w-3" />
-          {link.view_count}{link.max_views > 0 ? `/${link.max_views}` : ''} views
+          {link.view_count}
+          {link.max_views > 0 ? `/${link.max_views}` : ''} views
         </span>
         <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
           Expires {formatDate(link.expires_at)}
         </span>
         {link.allow_download && (
-          <Badge variant="outline" className="text-[10px] h-4">DL</Badge>
+          <Badge variant="outline" className="h-4 text-[10px]">
+            DL
+          </Badge>
         )}
       </div>
     </div>

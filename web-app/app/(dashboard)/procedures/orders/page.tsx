@@ -100,7 +100,7 @@ export default function ProcedureOrdersPage() {
       header: 'Priority',
       sortable: true,
       cell: (item: ProcedureOrderListItem) => (
-        <Badge className={`${PROCEDURE_PRIORITY_COLORS[item.priority]} shrink-0 w-fit`}>
+        <Badge className={`${PROCEDURE_PRIORITY_COLORS[item.priority]} w-fit shrink-0`}>
           {item.priority}
         </Badge>
       ),
@@ -123,11 +123,11 @@ export default function ProcedureOrdersPage() {
       sortable: true,
       cell: (item: ProcedureOrderListItem) => (
         <div className="flex items-center gap-1.5">
-          <Badge className={`${PROCEDURE_STATUS_COLORS[item.status]} shrink-0 w-fit`}>
+          <Badge className={`${PROCEDURE_STATUS_COLORS[item.status]} w-fit shrink-0`}>
             {PROCEDURE_STATUS_LABELS[item.status]}
           </Badge>
           {item.is_overdue && (
-            <Badge variant="destructive" className="shrink-0 w-fit text-xs">
+            <Badge variant="destructive" className="w-fit shrink-0 text-xs">
               Overdue
             </Badge>
           )}
@@ -153,7 +153,7 @@ export default function ProcedureOrdersPage() {
           actions={
             canCreateProcedureOrder ? (
               <Button onClick={() => router.push('/procedures/orders/new')}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 New Order
               </Button>
             ) : undefined
@@ -163,7 +163,7 @@ export default function ProcedureOrdersPage() {
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 sm:max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by patient, order #, procedure..."
               value={search}
@@ -217,14 +217,28 @@ export default function ProcedureOrdersPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!hasPrev}
+            >
               Previous
             </Button>
             <span className="text-sm text-muted-foreground">
-              <span className="hidden sm:inline">Page {page} of {totalPages} ({totalCount} orders)</span>
-              <span className="sm:hidden">{page}/{totalPages}</span>
+              <span className="hidden sm:inline">
+                Page {page} of {totalPages} ({totalCount} orders)
+              </span>
+              <span className="sm:hidden">
+                {page}/{totalPages}
+              </span>
             </span>
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNext}
+            >
               Next
             </Button>
           </div>

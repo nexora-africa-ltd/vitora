@@ -37,13 +37,15 @@ export const triageKeys = {
   all: ['triage'] as const,
   assessments: () => [...triageKeys.all, 'assessments'] as const,
   assessment: (id: number) => [...triageKeys.assessments(), id] as const,
-  assessmentByEncounter: (encounterId: number) => [...triageKeys.assessments(), 'encounter', encounterId] as const,
+  assessmentByEncounter: (encounterId: number) =>
+    [...triageKeys.assessments(), 'encounter', encounterId] as const,
   history: () => [...triageKeys.all, 'history'] as const,
   historyFiltered: (filters: TriageHistoryFilters) => [...triageKeys.history(), filters] as const,
   queue: () => [...triageKeys.all, 'queue'] as const,
   queueFiltered: (filters: QueueFilters) => [...triageKeys.queue(), filters] as const,
   waitingQueue: () => [...triageKeys.all, 'waiting'] as const,
-  waitingQueueFiltered: (filters: WaitingQueueFilters) => [...triageKeys.waitingQueue(), filters] as const,
+  waitingQueueFiltered: (filters: WaitingQueueFilters) =>
+    [...triageKeys.waitingQueue(), filters] as const,
   thresholds: () => [...triageKeys.all, 'thresholds'] as const,
   reports: () => [...triageKeys.all, 'reports'] as const,
   reportsFiltered: (filters: ReportFilters) => [...triageKeys.reports(), filters] as const,
@@ -199,7 +201,12 @@ interface WaitTimeStatsResponse {
 // TRIAGE ASSESSMENT HOOKS — Dual-mode: PowerSync + API fallback
 // =============================================================================
 
-type TriageJoinedRow = TriageAssessmentRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string };
+type TriageJoinedRow = TriageAssessmentRow & {
+  id: string;
+  patient_first_name?: string;
+  patient_last_name?: string;
+  patient_mrn?: string;
+};
 
 /**
  * Fetch a single triage assessment by ID.
@@ -239,7 +246,8 @@ export function useTriageAssessmentByEncounter(encounterId: number | undefined) 
       WHERE t.encounter_id = ?
       LIMIT 1`,
     params: [String(encounterId ?? 0)],
-    transform: (rows) => rows.length > 0 ? transformTriageRow(rows[0]!) as unknown as TriageAssessment : null,
+    transform: (rows) =>
+      rows.length > 0 ? (transformTriageRow(rows[0]!) as unknown as TriageAssessment) : null,
     queryKey: triageKeys.assessmentByEncounter(encounterId!),
     queryFn: async () => {
       try {
@@ -392,7 +400,8 @@ export function useUpdateTriageAssessment() {
     buildLocalData: ({ data }) => {
       const fields: Record<string, string | number | null> = {};
       if (data.chief_complaint !== undefined) fields.chief_complaint = data.chief_complaint;
-      if (data.chief_complaint_category !== undefined) fields.chief_complaint_category = data.chief_complaint_category;
+      if (data.chief_complaint_category !== undefined)
+        fields.chief_complaint_category = data.chief_complaint_category;
       if (data.mental_status !== undefined) fields.mental_status = data.mental_status;
       if (data.pain_score !== undefined) fields.pain_score = data.pain_score ?? null;
       if (data.mobility !== undefined) fields.mobility = data.mobility;
@@ -402,17 +411,23 @@ export function useUpdateTriageAssessment() {
       if (data.systolic_bp !== undefined) fields.systolic_bp = data.systolic_bp ?? null;
       if (data.diastolic_bp !== undefined) fields.diastolic_bp = data.diastolic_bp ?? null;
       if (data.temperature !== undefined) fields.temperature = data.temperature ?? null;
-      if (data.respiratory_rate !== undefined) fields.respiratory_rate = data.respiratory_rate ?? null;
+      if (data.respiratory_rate !== undefined)
+        fields.respiratory_rate = data.respiratory_rate ?? null;
       if (data.triage_category !== undefined) fields.triage_category = data.triage_category;
-      if (data.auto_calculated_category !== undefined) fields.auto_calculated_category = data.auto_calculated_category || null;
-      if (data.category_override_reason !== undefined) fields.category_override_reason = data.category_override_reason || null;
+      if (data.auto_calculated_category !== undefined)
+        fields.auto_calculated_category = data.auto_calculated_category || null;
+      if (data.category_override_reason !== undefined)
+        fields.category_override_reason = data.category_override_reason || null;
       if (data.assigned_area !== undefined) fields.assigned_area = data.assigned_area || null;
-      if (data.assigned_clinic !== undefined) fields.assigned_clinic_id = data.assigned_clinic ? String(data.assigned_clinic) : null;
+      if (data.assigned_clinic !== undefined)
+        fields.assigned_clinic_id = data.assigned_clinic ? String(data.assigned_clinic) : null;
       fields.updated_at = new Date().toISOString();
       return fields;
     },
     mutationFn: ({ id, data }) => {
-      return apiClient.patch<TriageAssessment>(`/api/triage/assessments/${id}/`, data).then(r => r.data);
+      return apiClient
+        .patch<TriageAssessment>(`/api/triage/assessments/${id}/`, data)
+        .then((r) => r.data);
     },
     onSuccess: (result, input) => {
       const data = result as TriageAssessment | null;
@@ -554,9 +569,10 @@ export function useTriageQueue(filters: QueueFilters = {}) {
         const arrivalTime = (row.arrival_time as string) || new Date().toISOString();
         const waitMs = Date.now() - new Date(arrivalTime).getTime();
         const waitMinutes = Math.max(0, Math.round(waitMs / 60000));
-        const name = row.patient_first_name && row.patient_last_name
-          ? `${row.patient_first_name} ${row.patient_last_name}`
-          : 'Unknown';
+        const name =
+          row.patient_first_name && row.patient_last_name
+            ? `${row.patient_first_name} ${row.patient_last_name}`
+            : 'Unknown';
         let age = 0;
         if (row.patient_date_of_birth) {
           const dob = new Date(row.patient_date_of_birth as string);
@@ -566,7 +582,9 @@ export function useTriageQueue(filters: QueueFilters = {}) {
         let alerts: TriageAlert[] = [];
         try {
           if (row.alerts) alerts = JSON.parse(row.alerts as string);
-        } catch { /* keep empty */ }
+        } catch {
+          /* keep empty */
+        }
 
         return {
           id: parseInt(row.id, 10) || 0,
@@ -582,7 +600,9 @@ export function useTriageQueue(filters: QueueFilters = {}) {
           assigned_area: ((row.assigned_area as string) || 'WAITING') as AssignedArea,
           assigned_area_label: (row.assigned_area as string) || 'Waiting',
           assigned_area_display: (row.assigned_area as string) || 'Waiting',
-          assigned_clinic: row.assigned_clinic_id ? parseInt(row.assigned_clinic_id as string, 10) : null,
+          assigned_clinic: row.assigned_clinic_id
+            ? parseInt(row.assigned_clinic_id as string, 10)
+            : null,
           assigned_clinic_name: null,
           routing_destination: null,
           arrival_time: arrivalTime,
@@ -693,7 +713,9 @@ export function useTriageVitalThresholds() {
   return useQuery({
     queryKey: triageKeys.thresholds(),
     queryFn: async () => {
-      const response = await apiClient.get<{ results: TriageVitalThreshold[] } | TriageVitalThreshold[]>(
+      const response = await apiClient.get<
+        { results: TriageVitalThreshold[] } | TriageVitalThreshold[]
+      >(
         '/api/triage/vital-thresholds/',
         { params: { page_size: 100 } } // Fetch all thresholds
       );
@@ -1033,7 +1055,13 @@ export function useUpdateTriageSettings() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: { auto_route_to_room?: boolean; triage_department?: number | null } }) => {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: { auto_route_to_room?: boolean; triage_department?: number | null };
+    }) => {
       return triageApi.updateTriageSettings(id, data);
     },
     onSuccess: () => {
@@ -1128,14 +1156,16 @@ export function useERBedActions() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: (data: { bedId: number; status: 'AVAILABLE' | 'OUT_OF_SERVICE'; reason?: string }) =>
-      triageApi.updateERBedStatus(data.bedId, { status: data.status, reason: data.reason }),
+    mutationFn: (data: {
+      bedId: number;
+      status: 'AVAILABLE' | 'OUT_OF_SERVICE';
+      reason?: string;
+    }) => triageApi.updateERBedStatus(data.bedId, { status: data.status, reason: data.reason }),
     onSuccess: invalidateBeds,
   });
 
   const createBed = useMutation({
-    mutationFn: (data: { zone: string; bed_number: string }) =>
-      triageApi.createERBed(data),
+    mutationFn: (data: { zone: string; bed_number: string }) => triageApi.createERBed(data),
     onSuccess: invalidateBeds,
   });
 
@@ -1175,12 +1205,7 @@ export function useWaitTimeBreaches(options?: {
   triageCategory?: string;
   refetchInterval?: number;
 }) {
-  const {
-    activeOnly = true,
-    severity,
-    triageCategory,
-    refetchInterval = 30_000,
-  } = options ?? {};
+  const { activeOnly = true, severity, triageCategory, refetchInterval = 30_000 } = options ?? {};
 
   return useQuery({
     queryKey: [...triageKeys.all, 'breaches', { activeOnly, severity, triageCategory }] as const,
@@ -1245,11 +1270,7 @@ export function useEscalations(options?: {
   escalationType?: string;
   refetchInterval?: number;
 }) {
-  const {
-    activeOnly = true,
-    escalationType,
-    refetchInterval = 30_000,
-  } = options ?? {};
+  const { activeOnly = true, escalationType, refetchInterval = 30_000 } = options ?? {};
 
   return useQuery({
     queryKey: [...triageKeys.all, 'escalations', { activeOnly, escalationType }] as const,

@@ -52,11 +52,11 @@ export function AutoAttachDocumentsButton({
       disabled={mutation.isPending}
     >
       {mutation.isPending ? (
-        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
       ) : mutation.isSuccess ? (
-        <Check className="h-4 w-4 mr-1 text-green-500" />
+        <Check className="mr-1 h-4 w-4 text-green-500" />
       ) : (
-        <Paperclip className="h-4 w-4 mr-1" />
+        <Paperclip className="mr-1 h-4 w-4" />
       )}
       Auto-Attach Documents
     </Button>

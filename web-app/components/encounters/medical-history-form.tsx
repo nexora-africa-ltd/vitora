@@ -1,9 +1,29 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { FileText, AlertCircle, Pill, Heart, Users, Briefcase, ChevronRight, ChevronLeft, BrainCircuit, Loader2, HeartPulse, Plus } from 'lucide-react';
+import {
+  FileText,
+  AlertCircle,
+  Pill,
+  Heart,
+  Users,
+  Briefcase,
+  ChevronRight,
+  ChevronLeft,
+  BrainCircuit,
+  Loader2,
+  HeartPulse,
+  Plus,
+} from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,7 +58,12 @@ interface MedicalHistoryFormContentProps {
  * Content-only version of the Medical History form (no Card wrapper)
  * Used in accordion-based layouts
  */
-export function MedicalHistoryFormContent({ data, onChange, disabled = false, chiefComplaint }: MedicalHistoryFormContentProps) {
+export function MedicalHistoryFormContent({
+  data,
+  onChange,
+  disabled = false,
+  chiefComplaint,
+}: MedicalHistoryFormContentProps) {
   const smartAutopopulate = useFeatureFlag('smart_autopopulate');
   const {
     getFieldSuggestions,
@@ -54,37 +79,41 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false, ch
     if (!chiefComplaint || chiefComplaint.trim().length < 5) return;
     fetchSuggestions({
       chief_complaint: chiefComplaint,
-      clinical_notes: [
-        data.allergies,
-        data.chronic_conditions,
-        data.current_medications,
-      ].filter(Boolean).join('; '),
+      clinical_notes: [data.allergies, data.chronic_conditions, data.current_medications]
+        .filter(Boolean)
+        .join('; '),
     });
-  }, [chiefComplaint, data.allergies, data.chronic_conditions, data.current_medications, fetchSuggestions]);
+  }, [
+    chiefComplaint,
+    data.allergies,
+    data.chronic_conditions,
+    data.current_medications,
+    fetchSuggestions,
+  ]);
 
   // Handle accepting a suggestion — append to the target field
-  const handleAcceptSuggestion = useCallback((suggestion: SmartSuggestionType) => {
-    const fieldMap: Record<string, keyof EncounterFormData> = {
-      allergies: 'allergies',
-      chronic_conditions: 'chronic_conditions',
-      current_medications: 'current_medications',
-      assessment: 'assessment',
-    };
-    const targetField = fieldMap[suggestion.field_name];
-    if (!targetField) {
+  const handleAcceptSuggestion = useCallback(
+    (suggestion: SmartSuggestionType) => {
+      const fieldMap: Record<string, keyof EncounterFormData> = {
+        allergies: 'allergies',
+        chronic_conditions: 'chronic_conditions',
+        current_medications: 'current_medications',
+        assessment: 'assessment',
+      };
+      const targetField = fieldMap[suggestion.field_name];
+      if (!targetField) {
+        accept(suggestion.id);
+        return;
+      }
+      const currentValue = (data[targetField] as string) || '';
+      const suggestedText =
+        typeof suggestion.value === 'string' ? suggestion.value : JSON.stringify(suggestion.value);
+      const newValue = currentValue ? `${currentValue}\n${suggestedText}` : suggestedText;
+      onChange(targetField, newValue);
       accept(suggestion.id);
-      return;
-    }
-    const currentValue = (data[targetField] as string) || '';
-    const suggestedText = typeof suggestion.value === 'string'
-      ? suggestion.value
-      : JSON.stringify(suggestion.value);
-    const newValue = currentValue
-      ? `${currentValue}\n${suggestedText}`
-      : suggestedText;
-    onChange(targetField, newValue);
-    accept(suggestion.id);
-  }, [data, onChange, accept]);
+    },
+    [data, onChange, accept]
+  );
 
   // Helper to render field suggestions below a textarea
   const renderFieldSuggestions = (fieldName: string) => {
@@ -109,32 +138,33 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false, ch
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           Document the patient&apos;s relevant medical background for this encounter
         </p>
-        {smartAutopopulate && isAvailable && chiefComplaint && chiefComplaint.trim().length >= 5 && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleFetchSuggestions}
-            disabled={disabled || isSuggestLoading}
-            className="gap-1.5 text-xs"
-          >
-            {isSuggestLoading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <BrainCircuit className="h-3.5 w-3.5" />
-            )}
-            <span className="hidden sm:inline">
-              {isSuggestLoading ? 'Analyzing...' : 'AI Suggest History'}
-            </span>
-            <span className="sm:hidden">
-              {isSuggestLoading ? '...' : 'Suggest'}
-            </span>
-          </Button>
-        )}
+        {smartAutopopulate &&
+          isAvailable &&
+          chiefComplaint &&
+          chiefComplaint.trim().length >= 5 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleFetchSuggestions}
+              disabled={disabled || isSuggestLoading}
+              className="gap-1.5 text-xs"
+            >
+              {isSuggestLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <BrainCircuit className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">
+                {isSuggestLoading ? 'Analyzing...' : 'AI Suggest History'}
+              </span>
+              <span className="sm:hidden">{isSuggestLoading ? '...' : 'Suggest'}</span>
+            </Button>
+          )}
       </div>
       <div className="grid gap-6 md:grid-cols-2">
         {/* Allergies — Structured from patient record */}
@@ -307,21 +337,19 @@ function AllergySummary({ patientId, disabled }: { patientId?: number; disabled?
 
   if (!hasPatient) {
     return (
-      <p className="text-sm text-muted-foreground italic">
-        Select a patient to view allergies.
-      </p>
+      <p className="text-sm italic text-muted-foreground">Select a patient to view allergies.</p>
     );
   }
 
   if (isLoading) {
-    return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+    return <div className="h-10 animate-pulse rounded bg-muted/40" />;
   }
 
   if (error) {
     return (
       <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <p className="text-xs text-destructive sm:text-sm">{getApiErrorMessage(error)}</p>
       </div>
     );
   }
@@ -331,10 +359,16 @@ function AllergySummary({ patientId, disabled }: { patientId?: number; disabled?
   return (
     <div className="space-y-1.5">
       {items.length === 0 ? (
-        <div className="flex items-center justify-between p-2.5 rounded-lg border border-dashed text-sm text-muted-foreground">
+        <div className="flex items-center justify-between rounded-lg border border-dashed p-2.5 text-sm text-muted-foreground">
           <span>No allergies recorded</span>
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add
             </Button>
           )}
@@ -344,30 +378,34 @@ function AllergySummary({ patientId, disabled }: { patientId?: number; disabled?
           {items.map((allergy) => (
             <div
               key={allergy.id}
-              className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 text-sm"
+              className="flex items-center gap-2 rounded-lg border bg-muted/20 p-2 text-sm"
             >
-              <span className="font-medium truncate">{allergy.substance}</span>
-              <Badge className={`${severityColors[allergy.severity] ?? ''} text-xs shrink-0`}>
+              <span className="truncate font-medium">{allergy.substance}</span>
+              <Badge className={`${severityColors[allergy.severity] ?? ''} shrink-0 text-xs`}>
                 {allergy.severity_display || allergy.severity}
               </Badge>
               {allergy.reaction_type && allergy.reaction_type !== 'other' && (
-                <span className="text-muted-foreground text-xs truncate">{allergy.reaction_type.replace(/_/g, ' ')}</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {allergy.reaction_type.replace(/_/g, ' ')}
+                </span>
               )}
             </div>
           ))}
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add allergy
             </Button>
           )}
         </>
       )}
       {hasPatient && (
-        <AllergyFormDialog
-          open={showAdd}
-          onOpenChange={setShowAdd}
-          patientId={patientId}
-        />
+        <AllergyFormDialog open={showAdd} onOpenChange={setShowAdd} patientId={patientId} />
       )}
     </div>
   );
@@ -398,21 +436,21 @@ function SocialHistorySummary({ patientId, disabled }: { patientId?: number; dis
 
   if (!hasPatient) {
     return (
-      <p className="text-sm text-muted-foreground italic">
+      <p className="text-sm italic text-muted-foreground">
         Select a patient to view structured social history.
       </p>
     );
   }
 
   if (isLoading) {
-    return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+    return <div className="h-10 animate-pulse rounded bg-muted/40" />;
   }
 
   if (error) {
     return (
       <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <p className="text-xs text-destructive sm:text-sm">{getApiErrorMessage(error)}</p>
       </div>
     );
   }
@@ -422,10 +460,16 @@ function SocialHistorySummary({ patientId, disabled }: { patientId?: number; dis
   return (
     <div className="space-y-1.5">
       {items.length === 0 ? (
-        <div className="flex items-center justify-between p-2.5 rounded-lg border border-dashed text-sm text-muted-foreground">
+        <div className="flex items-center justify-between rounded-lg border border-dashed p-2.5 text-sm text-muted-foreground">
           <span>No social history recorded</span>
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add
             </Button>
           )}
@@ -435,31 +479,33 @@ function SocialHistorySummary({ patientId, disabled }: { patientId?: number; dis
           {items.map((obs) => (
             <div
               key={obs.id}
-              className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 text-sm"
+              className="flex items-center gap-2 rounded-lg border bg-muted/20 p-2 text-sm"
             >
               <span aria-hidden="true">{typeIcons[obs.observation_type] ?? '📝'}</span>
               <span className="font-medium">{obs.observation_type_display}</span>
-              <Badge className={`${socialStatusColors[obs.status] ?? ''} text-xs shrink-0`}>
+              <Badge className={`${socialStatusColors[obs.status] ?? ''} shrink-0 text-xs`}>
                 {obs.status_display}
               </Badge>
               {obs.value_text && (
-                <span className="text-muted-foreground truncate">{obs.value_text}</span>
+                <span className="truncate text-muted-foreground">{obs.value_text}</span>
               )}
             </div>
           ))}
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add observation
             </Button>
           )}
         </>
       )}
       {hasPatient && (
-        <SocialHistoryFormDialog
-          open={showAdd}
-          onOpenChange={setShowAdd}
-          patientId={patientId}
-        />
+        <SocialHistoryFormDialog open={showAdd} onOpenChange={setShowAdd} patientId={patientId} />
       )}
     </div>
   );
@@ -476,20 +522,30 @@ const conditionStatusColors: Record<string, string> = {
   UNKNOWN: 'bg-muted text-muted-foreground',
 };
 
-function ChronicConditionsSummary({ patientId, disabled }: { patientId?: number; disabled?: boolean }) {
+function ChronicConditionsSummary({
+  patientId,
+  disabled,
+}: {
+  patientId?: number;
+  disabled?: boolean;
+}) {
   const [showAdd, setShowAdd] = useState(false);
   const { data: conditions, isLoading, error } = usePatientChronicConditions(patientId ?? 0);
   const hasPatient = !!patientId;
 
   if (!hasPatient) {
-    return <p className="text-sm text-muted-foreground italic">Select a patient to view chronic conditions.</p>;
+    return (
+      <p className="text-sm italic text-muted-foreground">
+        Select a patient to view chronic conditions.
+      </p>
+    );
   }
-  if (isLoading) return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+  if (isLoading) return <div className="h-10 animate-pulse rounded bg-muted/40" />;
   if (error) {
     return (
       <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <p className="text-xs text-destructive sm:text-sm">{getApiErrorMessage(error)}</p>
       </div>
     );
   }
@@ -499,10 +555,16 @@ function ChronicConditionsSummary({ patientId, disabled }: { patientId?: number;
   return (
     <div className="space-y-1.5">
       {items.length === 0 ? (
-        <div className="flex items-center justify-between p-2.5 rounded-lg border border-dashed text-sm text-muted-foreground">
+        <div className="flex items-center justify-between rounded-lg border border-dashed p-2.5 text-sm text-muted-foreground">
           <span>No chronic conditions recorded</span>
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add
             </Button>
           )}
@@ -510,20 +572,39 @@ function ChronicConditionsSummary({ patientId, disabled }: { patientId?: number;
       ) : (
         <>
           {items.map((c) => (
-            <div key={c.id} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 text-sm">
-              <span className="font-medium truncate">{c.condition_name}</span>
-              {c.icd10_code && <span className="text-xs text-muted-foreground shrink-0">({c.icd10_code})</span>}
-              <Badge className={`${conditionStatusColors[c.status] ?? ''} text-xs shrink-0`}>{c.status_display}</Badge>
+            <div
+              key={c.id}
+              className="flex items-center gap-2 rounded-lg border bg-muted/20 p-2 text-sm"
+            >
+              <span className="truncate font-medium">{c.condition_name}</span>
+              {c.icd10_code && (
+                <span className="shrink-0 text-xs text-muted-foreground">({c.icd10_code})</span>
+              )}
+              <Badge className={`${conditionStatusColors[c.status] ?? ''} shrink-0 text-xs`}>
+                {c.status_display}
+              </Badge>
             </div>
           ))}
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add condition
             </Button>
           )}
         </>
       )}
-      {hasPatient && <ChronicConditionFormDialog open={showAdd} onOpenChange={setShowAdd} patientId={patientId} />}
+      {hasPatient && (
+        <ChronicConditionFormDialog
+          open={showAdd}
+          onOpenChange={setShowAdd}
+          patientId={patientId}
+        />
+      )}
     </div>
   );
 }
@@ -539,20 +620,30 @@ const medicationStatusColors: Record<string, string> = {
   UNKNOWN: 'bg-muted text-muted-foreground',
 };
 
-function CurrentMedicationsSummary({ patientId, disabled }: { patientId?: number; disabled?: boolean }) {
+function CurrentMedicationsSummary({
+  patientId,
+  disabled,
+}: {
+  patientId?: number;
+  disabled?: boolean;
+}) {
   const [showAdd, setShowAdd] = useState(false);
   const { data: medications, isLoading, error } = usePatientCurrentMedications(patientId ?? 0);
   const hasPatient = !!patientId;
 
   if (!hasPatient) {
-    return <p className="text-sm text-muted-foreground italic">Select a patient to view current medications.</p>;
+    return (
+      <p className="text-sm italic text-muted-foreground">
+        Select a patient to view current medications.
+      </p>
+    );
   }
-  if (isLoading) return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+  if (isLoading) return <div className="h-10 animate-pulse rounded bg-muted/40" />;
   if (error) {
     return (
       <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <p className="text-xs text-destructive sm:text-sm">{getApiErrorMessage(error)}</p>
       </div>
     );
   }
@@ -562,10 +653,16 @@ function CurrentMedicationsSummary({ patientId, disabled }: { patientId?: number
   return (
     <div className="space-y-1.5">
       {items.length === 0 ? (
-        <div className="flex items-center justify-between p-2.5 rounded-lg border border-dashed text-sm text-muted-foreground">
+        <div className="flex items-center justify-between rounded-lg border border-dashed p-2.5 text-sm text-muted-foreground">
           <span>No current medications recorded</span>
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add
             </Button>
           )}
@@ -573,21 +670,42 @@ function CurrentMedicationsSummary({ patientId, disabled }: { patientId?: number
       ) : (
         <>
           {items.map((m) => (
-            <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 text-sm">
-              <span className="font-medium truncate">{m.medication_name}</span>
-              {m.dosage && <span className="text-xs text-muted-foreground shrink-0">{m.dosage}</span>}
-              {m.frequency && <span className="text-xs text-muted-foreground shrink-0">{m.frequency}</span>}
-              <Badge className={`${medicationStatusColors[m.status] ?? ''} text-xs shrink-0`}>{m.status_display}</Badge>
+            <div
+              key={m.id}
+              className="flex items-center gap-2 rounded-lg border bg-muted/20 p-2 text-sm"
+            >
+              <span className="truncate font-medium">{m.medication_name}</span>
+              {m.dosage && (
+                <span className="shrink-0 text-xs text-muted-foreground">{m.dosage}</span>
+              )}
+              {m.frequency && (
+                <span className="shrink-0 text-xs text-muted-foreground">{m.frequency}</span>
+              )}
+              <Badge className={`${medicationStatusColors[m.status] ?? ''} shrink-0 text-xs`}>
+                {m.status_display}
+              </Badge>
             </div>
           ))}
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add medication
             </Button>
           )}
         </>
       )}
-      {hasPatient && <CurrentMedicationFormDialog open={showAdd} onOpenChange={setShowAdd} patientId={patientId} />}
+      {hasPatient && (
+        <CurrentMedicationFormDialog
+          open={showAdd}
+          onOpenChange={setShowAdd}
+          patientId={patientId}
+        />
+      )}
     </div>
   );
 }
@@ -608,14 +726,18 @@ function PastSurgeriesSummary({ patientId, disabled }: { patientId?: number; dis
   const hasPatient = !!patientId;
 
   if (!hasPatient) {
-    return <p className="text-sm text-muted-foreground italic">Select a patient to view past surgeries.</p>;
+    return (
+      <p className="text-sm italic text-muted-foreground">
+        Select a patient to view past surgeries.
+      </p>
+    );
   }
-  if (isLoading) return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+  if (isLoading) return <div className="h-10 animate-pulse rounded bg-muted/40" />;
   if (error) {
     return (
       <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <p className="text-xs text-destructive sm:text-sm">{getApiErrorMessage(error)}</p>
       </div>
     );
   }
@@ -625,10 +747,16 @@ function PastSurgeriesSummary({ patientId, disabled }: { patientId?: number; dis
   return (
     <div className="space-y-1.5">
       {items.length === 0 ? (
-        <div className="flex items-center justify-between p-2.5 rounded-lg border border-dashed text-sm text-muted-foreground">
+        <div className="flex items-center justify-between rounded-lg border border-dashed p-2.5 text-sm text-muted-foreground">
           <span>No past surgeries recorded</span>
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add
             </Button>
           )}
@@ -636,20 +764,35 @@ function PastSurgeriesSummary({ patientId, disabled }: { patientId?: number; dis
       ) : (
         <>
           {items.map((s) => (
-            <div key={s.id} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 text-sm">
-              <span className="font-medium truncate">{s.procedure_name}</span>
-              {s.procedure_date && <span className="text-xs text-muted-foreground shrink-0">({s.procedure_date})</span>}
-              <Badge className={`${outcomeColors[s.outcome] ?? ''} text-xs shrink-0`}>{s.outcome_display}</Badge>
+            <div
+              key={s.id}
+              className="flex items-center gap-2 rounded-lg border bg-muted/20 p-2 text-sm"
+            >
+              <span className="truncate font-medium">{s.procedure_name}</span>
+              {s.procedure_date && (
+                <span className="shrink-0 text-xs text-muted-foreground">({s.procedure_date})</span>
+              )}
+              <Badge className={`${outcomeColors[s.outcome] ?? ''} shrink-0 text-xs`}>
+                {s.outcome_display}
+              </Badge>
             </div>
           ))}
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add surgery
             </Button>
           )}
         </>
       )}
-      {hasPatient && <PastSurgeryFormDialog open={showAdd} onOpenChange={setShowAdd} patientId={patientId} />}
+      {hasPatient && (
+        <PastSurgeryFormDialog open={showAdd} onOpenChange={setShowAdd} patientId={patientId} />
+      )}
     </div>
   );
 }
@@ -664,14 +807,18 @@ function FamilyHistorySummary({ patientId, disabled }: { patientId?: number; dis
   const hasPatient = !!patientId;
 
   if (!hasPatient) {
-    return <p className="text-sm text-muted-foreground italic">Select a patient to view family history.</p>;
+    return (
+      <p className="text-sm italic text-muted-foreground">
+        Select a patient to view family history.
+      </p>
+    );
   }
-  if (isLoading) return <div className="h-10 bg-muted/40 rounded animate-pulse" />;
+  if (isLoading) return <div className="h-10 animate-pulse rounded bg-muted/40" />;
   if (error) {
     return (
       <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-        <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-        <p className="text-xs sm:text-sm text-destructive">{getApiErrorMessage(error)}</p>
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <p className="text-xs text-destructive sm:text-sm">{getApiErrorMessage(error)}</p>
       </div>
     );
   }
@@ -681,10 +828,16 @@ function FamilyHistorySummary({ patientId, disabled }: { patientId?: number; dis
   return (
     <div className="space-y-1.5">
       {items.length === 0 ? (
-        <div className="flex items-center justify-between p-2.5 rounded-lg border border-dashed text-sm text-muted-foreground">
+        <div className="flex items-center justify-between rounded-lg border border-dashed p-2.5 text-sm text-muted-foreground">
           <span>No family history recorded</span>
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add
             </Button>
           )}
@@ -692,21 +845,42 @@ function FamilyHistorySummary({ patientId, disabled }: { patientId?: number; dis
       ) : (
         <>
           {items.map((f) => (
-            <div key={f.id} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 text-sm">
-              <Badge variant="outline" className="text-xs shrink-0">{f.relationship_display}</Badge>
-              <span className="font-medium truncate">{f.condition_name}</span>
-              {f.age_at_onset && <span className="text-xs text-muted-foreground shrink-0">onset ~{f.age_at_onset}</span>}
-              {f.deceased && <Badge variant="secondary" className="text-xs shrink-0">Deceased</Badge>}
+            <div
+              key={f.id}
+              className="flex items-center gap-2 rounded-lg border bg-muted/20 p-2 text-sm"
+            >
+              <Badge variant="outline" className="shrink-0 text-xs">
+                {f.relationship_display}
+              </Badge>
+              <span className="truncate font-medium">{f.condition_name}</span>
+              {f.age_at_onset && (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  onset ~{f.age_at_onset}
+                </span>
+              )}
+              {f.deceased && (
+                <Badge variant="secondary" className="shrink-0 text-xs">
+                  Deceased
+                </Badge>
+              )}
             </div>
           ))}
           {!disabled && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setShowAdd(true)}
+            >
               <Plus className="h-3 w-3" /> Add family history
             </Button>
           )}
         </>
       )}
-      {hasPatient && <FamilyHistoryFormDialog open={showAdd} onOpenChange={setShowAdd} patientId={patientId} />}
+      {hasPatient && (
+        <FamilyHistoryFormDialog open={showAdd} onOpenChange={setShowAdd} patientId={patientId} />
+      )}
     </div>
   );
 }
@@ -723,11 +897,17 @@ interface MedicalHistoryFormProps {
  * Card-wrapped version of the Medical History form
  * Used in tab-based layouts (legacy)
  */
-export function MedicalHistoryForm({ data, onChange, disabled = false, onNext, onPrevious }: MedicalHistoryFormProps) {
+export function MedicalHistoryForm({
+  data,
+  onChange,
+  disabled = false,
+  onNext,
+  onPrevious,
+}: MedicalHistoryFormProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
           <FileText className="h-5 w-5" />
           Medical History (Hx)
         </CardTitle>
@@ -742,7 +922,7 @@ export function MedicalHistoryForm({ data, onChange, disabled = false, onNext, o
       {/* Navigation Footer */}
       {onNext && (
         <CardFooter className="border-t pt-4">
-          <div className="flex justify-end w-full">
+          <div className="flex w-full justify-end">
             <Button onClick={onNext} variant="secondary">
               Continue to HPI →
             </Button>

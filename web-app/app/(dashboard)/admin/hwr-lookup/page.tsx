@@ -41,11 +41,7 @@ export default function HWRLookupPage() {
         helpContent="Search the DHA Health Worker Registry (HWR) by National ID or Passport number to verify practitioner registration, licensing status, and professional details. Click 'Use This Data' to create a new staff member from the registry data."
       />
 
-      <DHAPractitionerSearch
-        showDetailedResult
-        autoSelect={false}
-        onSelect={handleSelect}
-      />
+      <DHAPractitionerSearch showDetailedResult autoSelect={false} onSelect={handleSelect} />
     </div>
   );
 }

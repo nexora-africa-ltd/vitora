@@ -44,10 +44,7 @@ export default function GrowthChartPage() {
   });
 
   // Fetch growth measurements
-  const {
-    data: measurementsData,
-    isLoading: measurementsLoading,
-  } = useQuery({
+  const { data: measurementsData, isLoading: measurementsLoading } = useQuery({
     queryKey: ['growth-measurements', selectedPatientId],
     queryFn: () =>
       growthMeasurementsApi.list({
@@ -71,20 +68,20 @@ export default function GrowthChartPage() {
   }, [patient?.date_of_birth]);
 
   // Fetch chart data with precomputed percentile lines from API
-  const {
-    data: chartData,
-    isLoading: chartLoading,
-  } = useQuery({
+  const { data: chartData, isLoading: chartLoading } = useQuery({
     queryKey: ['growth-chart-data', selectedPatientId, 'weight_for_age', sex, ageRange],
     queryFn: () =>
-      growthMeasurementsApi.getChartData(selectedPatientId!, 'weight_for_age', sex as 'M' | 'F', ageRange),
+      growthMeasurementsApi.getChartData(
+        selectedPatientId!,
+        'weight_for_age',
+        sex as 'M' | 'F',
+        ageRange
+      ),
     enabled: !!selectedPatientId,
   });
 
   // Check for malnutrition alerts
-  const latestMeasurement = measurements.length > 0
-    ? measurements[measurements.length - 1]
-    : null;
+  const latestMeasurement = measurements.length > 0 ? measurements[measurements.length - 1] : null;
   const hasCriticalMeasurement = measurements.some((m) => m.has_critical_flag);
 
   return (
@@ -101,9 +98,7 @@ export default function GrowthChartPage() {
                   <span className="hidden sm:inline">
                     {selectedPatientId ? 'Record Measurement' : 'Create Growth Chart'}
                   </span>
-                  <span className="sm:hidden">
-                    {selectedPatientId ? 'Record' : 'Create'}
-                  </span>
+                  <span className="sm:hidden">{selectedPatientId ? 'Record' : 'Create'}</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
@@ -115,8 +110,8 @@ export default function GrowthChartPage() {
                 {!selectedPatientId ? (
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground">
-                      Search for a child patient to start tracking their growth.
-                      The chart will be created automatically once the first measurement is recorded.
+                      Search for a child patient to start tracking their growth. The chart will be
+                      created automatically once the first measurement is recorded.
                     </p>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Child Patient</label>
@@ -158,13 +153,13 @@ export default function GrowthChartPage() {
           <>
             <Card>
               <CardContent className="py-12 text-center">
-                <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <TrendingUp className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                 <h3 className="text-lg font-medium text-muted-foreground">
                   Select a Child Patient
                 </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Search for a child patient above to view their growth chart,
-                  or browse the WHO reference charts below.
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Search for a child patient above to view their growth chart, or browse the WHO
+                  reference charts below.
                 </p>
               </CardContent>
             </Card>
@@ -195,14 +190,15 @@ export default function GrowthChartPage() {
           <>
             {/* Patient Summary */}
             {patient && (
-              <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-                <div className="flex flex-col gap-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
+              <div className="flex flex-col gap-2 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <p className="truncate text-sm font-medium">
                     {patient.first_name} {patient.last_name}
                     <span className="text-muted-foreground"> • {patient.mrn}</span>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    DOB: {patient.date_of_birth} • Gender: {patient.gender === 'M' ? 'Male' : 'Female'}
+                    DOB: {patient.date_of_birth} • Gender:{' '}
+                    {patient.gender === 'M' ? 'Male' : 'Female'}
                     {measurements.length > 0 && ` • ${measurements.length} measurement(s)`}
                   </p>
                 </div>
@@ -229,7 +225,11 @@ export default function GrowthChartPage() {
                     measurements={measurements}
                     sex={sex}
                     patientDob={patient?.date_of_birth}
-                    apiPercentileLines={chartData?.percentile_lines as Record<string, { x: number; y: number }[]> | undefined}
+                    apiPercentileLines={
+                      chartData?.percentile_lines as
+                        | Record<string, { x: number; y: number }[]>
+                        | undefined
+                    }
                     ageRange={ageRange}
                   />
                 </CardContent>
@@ -240,9 +240,9 @@ export default function GrowthChartPage() {
             {measurements.length > 0 && (
               <Card>
                 <CardContent className="pt-6">
-                  <h3 className="text-base font-medium mb-3">Measurement History</h3>
+                  <h3 className="mb-3 text-base font-medium">Measurement History</h3>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[500px]">
+                    <table className="w-full min-w-[500px] text-sm">
                       <thead>
                         <tr className="border-b text-left">
                           <th className="pb-2 font-medium">Date</th>
@@ -255,7 +255,10 @@ export default function GrowthChartPage() {
                       </thead>
                       <tbody>
                         {[...measurements].reverse().map((m) => (
-                          <tr key={m.id} className={`border-b ${m.has_critical_flag ? 'bg-red-50' : ''}`}>
+                          <tr
+                            key={m.id}
+                            className={`border-b ${m.has_critical_flag ? 'bg-red-50' : ''}`}
+                          >
                             <td className="py-2">{m.measurement_date}</td>
                             <td className="py-2">
                               {m.age_in_days >= 1826

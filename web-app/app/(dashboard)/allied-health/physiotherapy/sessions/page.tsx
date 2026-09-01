@@ -210,7 +210,7 @@ export default function PhysiotherapySessionsPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="h-4 w-4" />
               Filters
             </CardTitle>
@@ -333,16 +333,16 @@ export default function PhysiotherapySessionsPage() {
                       <TableRow
                         key={session.id}
                         className="cursor-pointer"
-                        onClick={() => router.push(`/allied-health/physiotherapy/orders/${session.order}`)}
+                        onClick={() =>
+                          router.push(`/allied-health/physiotherapy/orders/${session.order}`)
+                        }
                       >
                         <TableCell className="font-mono text-sm">
                           {session.session_number}
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{session.patient_name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {session.patient_mrn}
-                          </div>
+                          <div className="text-xs text-muted-foreground">{session.patient_mrn}</div>
                         </TableCell>
                         <TableCell>
                           {format(parseISO(session.scheduled_date), 'MMM d, yyyy')}
@@ -365,13 +365,13 @@ export default function PhysiotherapySessionsPage() {
                             <DropdownMenuContent align="end">
                               {canStart && (
                                 <DropdownMenuItem onClick={() => handleStart(session.id)}>
-                                  <Play className="h-4 w-4 mr-2" />
+                                  <Play className="mr-2 h-4 w-4" />
                                   Start Session
                                 </DropdownMenuItem>
                               )}
                               {canMarkNoShow && (
                                 <DropdownMenuItem onClick={() => handleNoShow(session.id)}>
-                                  <UserX className="h-4 w-4 mr-2" />
+                                  <UserX className="mr-2 h-4 w-4" />
                                   Mark No-Show
                                 </DropdownMenuItem>
                               )}
@@ -380,7 +380,7 @@ export default function PhysiotherapySessionsPage() {
                                   onClick={() => handleCancel(session.id)}
                                   className="text-destructive"
                                 >
-                                  <XCircle className="h-4 w-4 mr-2" />
+                                  <XCircle className="mr-2 h-4 w-4" />
                                   Cancel Session
                                 </DropdownMenuItem>
                               )}
@@ -397,7 +397,8 @@ export default function PhysiotherapySessionsPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t px-4 py-3">
                   <div className="text-sm text-muted-foreground">
-                    Showing {(page - 1) * 20 + 1} - {Math.min(page * 20, totalCount)} of {totalCount}
+                    Showing {(page - 1) * 20 + 1} - {Math.min(page * 20, totalCount)} of{' '}
+                    {totalCount}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button

@@ -126,8 +126,14 @@ export const LabResultSchema = z.object({
   option_value: z.string().nullable().optional(),
   formatted_value: z.string().nullable().optional(),
   result_unit: z.string().nullable().optional(),
-  reference_low: z.union([z.number(), z.string().transform(Number)]).nullable().optional(),
-  reference_high: z.union([z.number(), z.string().transform(Number)]).nullable().optional(),
+  reference_low: z
+    .union([z.number(), z.string().transform(Number)])
+    .nullable()
+    .optional(),
+  reference_high: z
+    .union([z.number(), z.string().transform(Number)])
+    .nullable()
+    .optional(),
   reference_range_text: z.string().nullable().optional(),
   result_flag: ResultFlagSchema.nullable().optional(),
   interpretation: z.string().nullable().optional(),
@@ -378,10 +384,10 @@ export const LabOrderItemSchema = z.object({
   is_panel: z.boolean(),
   result_type: ResultTypeSchema,
   result_options: z.array(z.string()).optional().default([]),
-  result_unit: z.string().optional().default(""),
-  normal_range_male: z.string().optional().default(""),
-  normal_range_female: z.string().optional().default(""),
-  normal_range_child: z.string().optional().default(""),
+  result_unit: z.string().optional().default(''),
+  normal_range_male: z.string().optional().default(''),
+  normal_range_female: z.string().optional().default(''),
+  normal_range_child: z.string().optional().default(''),
   panel_parent: z.number().nullable().optional(),
   unit_cost: z.number(),
   status: LabOrderItemStatusSchema,
@@ -448,7 +454,10 @@ export const LabQueueSchema = z.object({
   sample_type: z.string(),
   sample_id: z.string().nullable().optional(),
   specimen: SpecimenSchema.nullable().optional(),
-  tests: z.array(z.object({ code: z.string(), name: z.string() })).nullable().optional(),
+  tests: z
+    .array(z.object({ code: z.string(), name: z.string() }))
+    .nullable()
+    .optional(),
   collected_at: z.string().nullable().optional(),
   collected_by: z.number().nullable().optional(),
   collected_by_name: z.string().nullable().optional(),
@@ -895,7 +904,15 @@ export const CultureResultSchema = z.object({
   id: z.number(),
   lab_result: z.number(),
   specimen: z.number().nullable(),
-  status: z.enum(['INOCULATED', 'INCUBATING', 'READING', 'PRELIMINARY', 'FINAL', 'NO_GROWTH', 'CANCELLED']),
+  status: z.enum([
+    'INOCULATED',
+    'INCUBATING',
+    'READING',
+    'PRELIMINARY',
+    'FINAL',
+    'NO_GROWTH',
+    'CANCELLED',
+  ]),
   status_display: z.string(),
   culture_medium: z.string(),
   incubation_temperature: z.coerce.number().nullable(),
@@ -953,11 +970,30 @@ export const AntibiogramSchema = z.object({
 // =============================================================================
 
 export const ChannelProtocolSchema = z.enum(['ASTM', 'HL7', 'SERIAL', 'TCP']);
-export const ChannelDirectionSchema = z.enum(['BIDIRECTIONAL', 'HOST_TO_INSTRUMENT', 'INSTRUMENT_TO_HOST']);
+export const ChannelDirectionSchema = z.enum([
+  'BIDIRECTIONAL',
+  'HOST_TO_INSTRUMENT',
+  'INSTRUMENT_TO_HOST',
+]);
 export const ChannelConnectionStatusSchema = z.enum(['CONNECTED', 'DISCONNECTED', 'ERROR', 'IDLE']);
 export const AnalyzerMessageDirectionSchema = z.enum(['INBOUND', 'OUTBOUND']);
-export const AnalyzerMessageTypeSchema = z.enum(['RESULT', 'ORDER_DOWNLOAD', 'QUERY', 'ACK', 'STATUS', 'OTHER']);
-export const AnalyzerMessageStatusSchema = z.enum(['RECEIVED', 'PARSED', 'APPLIED', 'FAILED', 'PENDING', 'SENT', 'TIMEOUT']);
+export const AnalyzerMessageTypeSchema = z.enum([
+  'RESULT',
+  'ORDER_DOWNLOAD',
+  'QUERY',
+  'ACK',
+  'STATUS',
+  'OTHER',
+]);
+export const AnalyzerMessageStatusSchema = z.enum([
+  'RECEIVED',
+  'PARSED',
+  'APPLIED',
+  'FAILED',
+  'PENDING',
+  'SENT',
+  'TIMEOUT',
+]);
 
 export const InstrumentChannelSchema = z.object({
   id: z.number(),

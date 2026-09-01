@@ -18,15 +18,14 @@ import { Users, Clock, User, Stethoscope } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAllClaimedEncounters } from '@/lib/hooks/use-consultation-queue';
 import { buildEncounterHref, getEncounterFocusFromStatus } from '@/lib/utils/encounter-focus';
-import { DashboardEmptyState, DashboardFooterLink, DashboardListSkeleton } from './widget-primitives';
+import {
+  DashboardEmptyState,
+  DashboardFooterLink,
+  DashboardListSkeleton,
+} from './widget-primitives';
 
 const MAX_DISPLAY_ITEMS = 5;
 
@@ -76,7 +75,10 @@ export function AllClaimedEncountersWidget({ enabled = true }: AllClaimedEncount
           {displayItems.map((encounter) => (
             <li key={encounter.id}>
               <Link
-                href={buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status))}
+                href={buildEncounterHref(
+                  encounter.id,
+                  getEncounterFocusFromStatus(encounter.status)
+                )}
                 className="group block rounded-xl border border-border/60 bg-muted/10 p-3 transition-colors hover:border-primary/30 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <div className="flex items-start gap-3">
@@ -96,13 +98,13 @@ export function AllClaimedEncountersWidget({ enabled = true }: AllClaimedEncount
                         <p className="truncate text-sm font-medium text-foreground group-hover:text-primary">
                           {encounter.patient_name || 'Unknown Patient'}
                         </p>
-                        <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                           {encounter.chief_complaint || 'Chief complaint not recorded.'}
                         </p>
                       </div>
                       <Badge
                         variant={encounter.status === 'IN_PROGRESS' ? 'default' : 'secondary'}
-                        className="shrink-0 w-fit self-start"
+                        className="w-fit shrink-0 self-start"
                       >
                         {encounter.status === 'IN_PROGRESS' ? 'Active' : 'Claimed'}
                       </Badge>
@@ -125,7 +127,9 @@ export function AllClaimedEncountersWidget({ enabled = true }: AllClaimedEncount
                           </Badge>
                         </TooltipTrigger>
                         <TooltipContent>
-                          Clinician: {encounter.assigned_clinician_name || encounter.assigned_clinician_username}
+                          Clinician:{' '}
+                          {encounter.assigned_clinician_name ||
+                            encounter.assigned_clinician_username}
                         </TooltipContent>
                       </Tooltip>
 
@@ -145,7 +149,10 @@ export function AllClaimedEncountersWidget({ enabled = true }: AllClaimedEncount
       </TooltipProvider>
 
       {hasMore && (
-        <DashboardFooterLink href="/encounters?filter=all_claimed" label={`View All (${data.count})`} />
+        <DashboardFooterLink
+          href="/encounters?filter=all_claimed"
+          label={`View All (${data.count})`}
+        />
       )}
     </div>
   );

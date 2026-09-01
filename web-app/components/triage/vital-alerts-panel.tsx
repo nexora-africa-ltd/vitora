@@ -23,12 +23,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TriageAlert, AlertSeverity } from '@/lib/types/triage';
 
 // =============================================================================
@@ -115,28 +110,25 @@ function AlertItem({ alert, showClinicalNote, onAcknowledge }: AlertItemProps) {
       className={cn(
         'rounded-lg border p-3 transition-colors',
         isCritical
-          ? 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-          : 'bg-orange-50 border-orange-200 dark:bg-orange-950 dark:border-orange-800'
+          ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
+          : 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950'
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2 flex-1">
+        <div className="flex flex-1 items-start gap-2">
           {/* Severity Icon */}
           {isCritical ? (
-            <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
           ) : (
-            <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
           )}
 
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             {/* Severity Badge + optional source indicator */}
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="mb-1 flex items-center gap-1.5">
               <Badge
                 variant={isCritical ? 'destructive' : 'default'}
-                className={cn(
-                  'text-xs',
-                  !isCritical && 'bg-orange-500 hover:bg-orange-600'
-                )}
+                className={cn('text-xs', !isCritical && 'bg-orange-500 hover:bg-orange-600')}
               >
                 {alert.severity}
               </Badge>
@@ -147,7 +139,7 @@ function AlertItem({ alert, showClinicalNote, onAcknowledge }: AlertItemProps) {
                     <TooltipTrigger asChild>
                       <span
                         className={cn(
-                          'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium gap-0.5 cursor-default',
+                          'inline-flex cursor-default items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
                           source === 'ai'
                             ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'
                             : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
@@ -175,7 +167,9 @@ function AlertItem({ alert, showClinicalNote, onAcknowledge }: AlertItemProps) {
             <p
               className={cn(
                 'text-sm font-medium',
-                isCritical ? 'text-red-800 dark:text-red-200' : 'text-orange-800 dark:text-orange-200'
+                isCritical
+                  ? 'text-red-800 dark:text-red-200'
+                  : 'text-orange-800 dark:text-orange-200'
               )}
             >
               {alert.message}
@@ -185,8 +179,10 @@ function AlertItem({ alert, showClinicalNote, onAcknowledge }: AlertItemProps) {
             {showClinicalNote && alert.clinical_note && (
               <p
                 className={cn(
-                  'text-xs mt-1',
-                  isCritical ? 'text-red-600 dark:text-red-300' : 'text-orange-600 dark:text-orange-300'
+                  'mt-1 text-xs',
+                  isCritical
+                    ? 'text-red-600 dark:text-red-300'
+                    : 'text-orange-600 dark:text-orange-300'
                 )}
               >
                 {alert.clinical_note}
@@ -195,7 +191,7 @@ function AlertItem({ alert, showClinicalNote, onAcknowledge }: AlertItemProps) {
 
             {/* Critical alert notice */}
             {isCritical && onAcknowledge && (
-              <p className="text-xs text-red-500 mt-2 italic">
+              <p className="mt-2 text-xs italic text-red-500">
                 Critical alerts cannot be dismissed
               </p>
             )}
@@ -208,7 +204,7 @@ function AlertItem({ alert, showClinicalNote, onAcknowledge }: AlertItemProps) {
             variant="ghost"
             size="sm"
             onClick={() => onAcknowledge(alert.id)}
-            className="shrink-0 text-orange-600 hover:text-orange-700 hover:bg-orange-100"
+            className="shrink-0 text-orange-600 hover:bg-orange-100 hover:text-orange-700"
           >
             Acknowledge
           </Button>
@@ -317,8 +313,8 @@ export function VitalAlertsPanel({
         data-testid="alerts-header"
         onClick={handleToggleExpanded}
         className={cn(
-          'w-full flex items-center justify-between p-3 text-left',
-          'hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors',
+          'flex w-full items-center justify-between p-3 text-left',
+          'transition-colors hover:bg-gray-50 dark:hover:bg-gray-800',
           'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500',
           compact && 'p-2',
           isExpanded && 'sr-only'
@@ -335,13 +331,9 @@ export function VitalAlertsPanel({
           {/* Collapsed: icon + count only */}
           <div>
             {total > 0 ? (
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {total}
-              </span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{total}</span>
             ) : (
-              <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                ✅
-              </span>
+              <span className="text-sm font-medium text-green-600 dark:text-green-400">✅</span>
             )}
           </div>
         </div>
@@ -357,10 +349,10 @@ export function VitalAlertsPanel({
         data-testid="alerts-content"
         className={cn(
           'overflow-hidden transition-all duration-200',
-          isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 invisible'
+          isExpanded ? 'max-h-[500px] opacity-100' : 'invisible max-h-0 opacity-0'
         )}
       >
-        <div className={cn('p-3 space-y-2', compact && 'p-2')}>
+        <div className={cn('space-y-2 p-3', compact && 'p-2')}>
           {total > 0 ? (
             sortedAlerts.map((alert, index) => (
               <AlertItem
@@ -382,7 +374,7 @@ export function VitalAlertsPanel({
             type="button"
             onClick={handleToggleExpanded}
             title="Collapse alerts"
-            className="w-full flex items-center justify-center pt-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="flex w-full items-center justify-center pt-1 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
           >
             <ChevronUp className="h-4 w-4" />
           </button>

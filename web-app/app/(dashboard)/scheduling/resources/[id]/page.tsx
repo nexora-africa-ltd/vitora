@@ -156,7 +156,7 @@ export default function ResourceDetailPage() {
   if (!resource) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <Box className="h-12 w-12 text-muted-foreground mb-3" />
+        <Box className="mb-3 h-12 w-12 text-muted-foreground" />
         <p className="text-muted-foreground">Resource not found</p>
         <Button variant="outline" className="mt-4" onClick={() => router.back()}>
           Go Back
@@ -172,46 +172,51 @@ export default function ResourceDetailPage() {
         helpContent={`${resource.resource_type} resource: ${resource.description || 'No description'}`}
         actions={
           <Button variant="outline" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
+            <ArrowLeft className="mr-1 h-4 w-4" />
             Back
           </Button>
         }
       />
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <div className="flex items-center gap-3">
-          <div className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1', typeColors[resource.resource_type])}>
+          <div
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-2.5 py-1',
+              typeColors[resource.resource_type]
+            )}
+          >
             {typeIcons[resource.resource_type]}
-            <span className="font-medium text-sm">{resource.resource_type}</span>
+            <span className="text-sm font-medium">{resource.resource_type}</span>
           </div>
-          <code className="text-sm bg-muted px-2 py-0.5 rounded">{resource.code}</code>
+          <code className="rounded bg-muted px-2 py-0.5 text-sm">{resource.code}</code>
           {resource.capacity > 1 && (
-            <span className="text-sm text-muted-foreground">
-              Capacity: {resource.capacity}
-            </span>
+            <span className="text-sm text-muted-foreground">Capacity: {resource.capacity}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
           <Badge
             variant={resource.is_active ? 'default' : 'outline'}
             className={cn(
-              'gap-1 w-fit',
+              'w-fit gap-1',
               resource.is_active
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : '',
+                : ''
             )}
           >
             {resource.is_active ? (
-              <><Power className="h-3 w-3" /> Active</>
+              <>
+                <Power className="h-3 w-3" /> Active
+              </>
             ) : (
-              <><PowerOff className="h-3 w-3" /> Inactive</>
+              <>
+                <PowerOff className="h-3 w-3" /> Inactive
+              </>
             )}
           </Badge>
           {resource.department_name && (
-            <span className="text-sm text-muted-foreground">
-              {resource.department_name}
-            </span>
+            <span className="text-sm text-muted-foreground">{resource.department_name}</span>
           )}
         </div>
       </div>
@@ -242,7 +247,7 @@ export default function ResourceDetailPage() {
         {resource.resource_type === 'PLACE' && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Users className="h-4 w-4 text-green-500" />
                 Active Now
                 {activeShifts.length > 0 && (
@@ -254,7 +259,7 @@ export default function ResourceDetailPage() {
             </CardHeader>
             <CardContent>
               {activeShifts.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
+                <p className="py-4 text-center text-sm text-muted-foreground">
                   No one currently in this room
                 </p>
               ) : (
@@ -266,7 +271,7 @@ export default function ResourceDetailPage() {
                     >
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium text-sm">{shift.staff_resource_name}</span>
+                        <span className="text-sm font-medium">{shift.staff_resource_name}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={shiftStatusColors[shift.status]}>
@@ -288,11 +293,11 @@ export default function ResourceDetailPage() {
         {resource.resource_type === 'PLACE' && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Building2 className="h-4 w-4 text-blue-500" />
                 Linked Clinics
                 {linkedClinics.length > 0 && (
-                  <span className="text-sm font-normal text-muted-foreground ml-auto">
+                  <span className="ml-auto text-sm font-normal text-muted-foreground">
                     {linkedClinics.length}
                   </span>
                 )}
@@ -300,7 +305,7 @@ export default function ResourceDetailPage() {
             </CardHeader>
             <CardContent>
               {linkedClinics.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
+                <p className="py-4 text-center text-sm text-muted-foreground">
                   Not linked to any clinic
                 </p>
               ) : (
@@ -309,11 +314,11 @@ export default function ResourceDetailPage() {
                     <Link
                       key={lc.clinic_room_id}
                       href={`/clinics/${lc.clinic_id}`}
-                      className="flex items-center justify-between rounded-md border px-3 py-2 hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between rounded-md border px-3 py-2 transition-colors hover:bg-muted/50"
                     >
                       <div className="flex items-center gap-2">
                         <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium text-sm">{lc.clinic_name}</span>
+                        <span className="text-sm font-medium">{lc.clinic_name}</span>
                         <code className="text-xs text-muted-foreground">{lc.clinic_code}</code>
                       </div>
                       {lc.is_default && (
@@ -333,11 +338,11 @@ export default function ResourceDetailPage() {
       {/* Today's Schedule */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Calendar className="h-4 w-4" />
             Today&apos;s Schedule
             {todayShifts.length > 0 && (
-              <span className="text-sm font-normal text-muted-foreground ml-auto">
+              <span className="ml-auto text-sm font-normal text-muted-foreground">
                 {todayShifts.length} shift{todayShifts.length !== 1 ? 's' : ''}
               </span>
             )}
@@ -345,7 +350,7 @@ export default function ResourceDetailPage() {
         </CardHeader>
         <CardContent>
           {todayShifts.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
+            <p className="py-4 text-center text-sm text-muted-foreground">
               No shifts scheduled for today
             </p>
           ) : (
@@ -369,7 +374,7 @@ export default function ResourceDetailPage() {
                     {todayShifts.map((shift) => (
                       <TableRow key={shift.id}>
                         <TableCell className="font-medium">{shift.staff_resource_name}</TableCell>
-                        <TableCell className="tabular-nums text-sm">
+                        <TableCell className="text-sm tabular-nums">
                           {shift.start_time.slice(0, 5)} — {shift.end_time.slice(0, 5)}
                         </TableCell>
                         <TableCell>
@@ -394,10 +399,10 @@ export default function ResourceDetailPage() {
       {recentShifts.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Clock className="h-4 w-4" />
               Recent Activity (7 days)
-              <span className="text-sm font-normal text-muted-foreground ml-auto">
+              <span className="ml-auto text-sm font-normal text-muted-foreground">
                 {recentShifts.length} shift{recentShifts.length !== 1 ? 's' : ''}
               </span>
             </CardTitle>
@@ -419,9 +424,11 @@ export default function ResourceDetailPage() {
                 <TableBody>
                   {recentShifts.map((shift) => (
                     <TableRow key={shift.id}>
-                      <TableCell className="tabular-nums text-sm">{shift.shift_date}</TableCell>
-                      <TableCell className="font-medium text-sm">{shift.staff_resource_name}</TableCell>
-                      <TableCell className="hidden sm:table-cell tabular-nums text-sm">
+                      <TableCell className="text-sm tabular-nums">{shift.shift_date}</TableCell>
+                      <TableCell className="text-sm font-medium">
+                        {shift.staff_resource_name}
+                      </TableCell>
+                      <TableCell className="hidden text-sm tabular-nums sm:table-cell">
                         {shift.start_time.slice(0, 5)} — {shift.end_time.slice(0, 5)}
                       </TableCell>
                       <TableCell>
@@ -430,7 +437,7 @@ export default function ResourceDetailPage() {
                         </Badge>
                       </TableCell>
                       {resource.resource_type === 'PERSON' && (
-                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
                           {shift.room_name ?? '—'}
                         </TableCell>
                       )}
@@ -450,7 +457,9 @@ export default function ResourceDetailPage() {
             <CardTitle className="text-base">Description</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{resource.description}</p>
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+              {resource.description}
+            </p>
           </CardContent>
         </Card>
       )}
@@ -469,7 +478,13 @@ const LABEL_HOURS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 
 /** Shift types that are non-working (off/leave/rest) — excluded from timeline bars */
 const OFF_SHIFT_TYPES = new Set([
-  'OFF', 'DAY_OFF', 'NIGHT_OFF', 'AFTERNOON_OFF', 'LEAVE', 'SICK_LEAVE', 'REST',
+  'OFF',
+  'DAY_OFF',
+  'NIGHT_OFF',
+  'AFTERNOON_OFF',
+  'LEAVE',
+  'SICK_LEAVE',
+  'REST',
 ]);
 
 const timelineColors = [
@@ -511,80 +526,83 @@ function ShiftTimeline({ shifts }: { shifts: ShiftListItem[] }) {
 
   return (
     <div className="overflow-x-auto">
-    <div className="relative min-w-[480px]">
-      {/* Hour markers */}
-      <div className="relative flex text-xs text-muted-foreground mb-1 px-0.5" style={{ height: '1.25rem' }}>
-        {LABEL_HOURS.map((h) => {
-          const left = ((h - HOUR_START) / TOTAL_HOURS) * 100;
-          return (
-            <span
-              key={h}
-              className="absolute tabular-nums -translate-x-1/2"
-              style={{ left: `${left}%` }}
-            >
-              {(h % 24).toString().padStart(2, '0')}
-            </span>
-          );
-        })}
-      </div>
-
-      {/* Grid background */}
-      <div className="relative h-auto min-h-[40px] bg-muted/30 rounded-md border overflow-hidden">
-        {/* Grid lines */}
-        {gridHours.map((h) => {
-          const left = ((h - HOUR_START) / TOTAL_HOURS) * 100;
-          return (
-            <div
-              key={h}
-              className={cn(
-                'absolute top-0 bottom-0 border-l',
-                LABEL_HOURS.includes(h)
-                  ? 'border-muted-foreground/20'
-                  : 'border-muted-foreground/5',
-              )}
-              style={{ left: `${left}%` }}
-            />
-          );
-        })}
-
-        {/* Current time marker */}
-        <CurrentTimeMarker />
-
-        {/* Shift bars */}
-        <div className="relative space-y-1 py-1.5 px-0.5">
-          {workingShifts.map((shift, i) => {
-            const startFrac = Math.max(0, timeToFraction(shift.start_time));
-            let endFrac = Math.min(1, timeToFraction(shift.end_time));
-            // Overnight shift (end < start) — extend bar to end of day
-            if (endFrac <= startFrac) endFrac = 1;
-            const width = Math.max(0, endFrac - startFrac);
-            const colorClass = timelineColors[i % timelineColors.length];
-            const isActive = shift.status === 'ACTIVE' || shift.status === 'ON_BREAK';
-
+      <div className="relative min-w-[480px]">
+        {/* Hour markers */}
+        <div
+          className="relative mb-1 flex px-0.5 text-xs text-muted-foreground"
+          style={{ height: '1.25rem' }}
+        >
+          {LABEL_HOURS.map((h) => {
+            const left = ((h - HOUR_START) / TOTAL_HOURS) * 100;
             return (
-              <div key={shift.id} className="relative h-7">
-                <div
-                  className={cn(
-                    'absolute top-0 h-full rounded-sm flex items-center px-2 text-xs font-medium text-white truncate',
-                    colorClass,
-                    isActive && 'ring-2 ring-white/50',
-                    shift.status === 'CANCELLED' && 'opacity-30 line-through',
-                  )}
-                  style={{
-                    left: `${startFrac * 100}%`,
-                    width: `${width * 100}%`,
-                    minWidth: '2rem',
-                  }}
-                  title={`${shift.staff_resource_name}: ${shift.start_time.slice(0, 5)} — ${shift.end_time.slice(0, 5)} (${shift.status_display})`}
-                >
-                  {getShortName(shift.staff_resource_name)}
-                </div>
-              </div>
+              <span
+                key={h}
+                className="absolute -translate-x-1/2 tabular-nums"
+                style={{ left: `${left}%` }}
+              >
+                {(h % 24).toString().padStart(2, '0')}
+              </span>
             );
           })}
         </div>
+
+        {/* Grid background */}
+        <div className="relative h-auto min-h-[40px] overflow-hidden rounded-md border bg-muted/30">
+          {/* Grid lines */}
+          {gridHours.map((h) => {
+            const left = ((h - HOUR_START) / TOTAL_HOURS) * 100;
+            return (
+              <div
+                key={h}
+                className={cn(
+                  'absolute bottom-0 top-0 border-l',
+                  LABEL_HOURS.includes(h)
+                    ? 'border-muted-foreground/20'
+                    : 'border-muted-foreground/5'
+                )}
+                style={{ left: `${left}%` }}
+              />
+            );
+          })}
+
+          {/* Current time marker */}
+          <CurrentTimeMarker />
+
+          {/* Shift bars */}
+          <div className="relative space-y-1 px-0.5 py-1.5">
+            {workingShifts.map((shift, i) => {
+              const startFrac = Math.max(0, timeToFraction(shift.start_time));
+              let endFrac = Math.min(1, timeToFraction(shift.end_time));
+              // Overnight shift (end < start) — extend bar to end of day
+              if (endFrac <= startFrac) endFrac = 1;
+              const width = Math.max(0, endFrac - startFrac);
+              const colorClass = timelineColors[i % timelineColors.length];
+              const isActive = shift.status === 'ACTIVE' || shift.status === 'ON_BREAK';
+
+              return (
+                <div key={shift.id} className="relative h-7">
+                  <div
+                    className={cn(
+                      'absolute top-0 flex h-full items-center truncate rounded-sm px-2 text-xs font-medium text-white',
+                      colorClass,
+                      isActive && 'ring-2 ring-white/50',
+                      shift.status === 'CANCELLED' && 'line-through opacity-30'
+                    )}
+                    style={{
+                      left: `${startFrac * 100}%`,
+                      width: `${width * 100}%`,
+                      minWidth: '2rem',
+                    }}
+                    title={`${shift.staff_resource_name}: ${shift.start_time.slice(0, 5)} — ${shift.end_time.slice(0, 5)} (${shift.status_display})`}
+                  >
+                    {getShortName(shift.staff_resource_name)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
-    </div>
     </div>
   );
 }
@@ -596,10 +614,10 @@ function CurrentTimeMarker() {
 
   return (
     <div
-      className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
+      className="absolute bottom-0 top-0 z-10 w-0.5 bg-red-500"
       style={{ left: `${frac * 100}%` }}
     >
-      <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500" />
+      <div className="absolute -top-1 h-2 w-2 -translate-x-1/2 rounded-full bg-red-500" />
     </div>
   );
 }

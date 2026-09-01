@@ -19,14 +19,8 @@ import type { EncounterFormData } from '@/lib/types/encounter-form';
 
 export default function NewEncounterNotesPage() {
   const router = useRouter();
-  const {
-    getNotes,
-    setNotes,
-    markSectionComplete,
-    getPatient,
-    getDetails,
-    getHistory,
-  } = useNewEncounterStore();
+  const { getNotes, setNotes, markSectionComplete, getPatient, getDetails, getHistory } =
+    useNewEncounterStore();
 
   const notes = getNotes();
   const { data: patientData } = getPatient();
@@ -123,38 +117,38 @@ export default function NewEncounterNotesPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-        {/* Notes Card */}
-        <Card>
-          <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5" />
-              Clinical Notes
-            </CardTitle>
-            <CardDescription>
-              Document history of present illness, physical examination, and assessment.
-              This step is optional for new encounters.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6">
-            <ClinicalNotesFormContent
-              data={formData}
-              onChange={handleFieldChange}
-              showRequiredIndicators={false}
-            />
-          </CardContent>
-        </Card>
+      {/* Notes Card */}
+      <Card>
+        <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5" />
+            Clinical Notes
+          </CardTitle>
+          <CardDescription>
+            Document history of present illness, physical examination, and assessment. This step is
+            optional for new encounters.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6">
+          <ClinicalNotesFormContent
+            data={formData}
+            onChange={handleFieldChange}
+            showRequiredIndicators={false}
+          />
+        </CardContent>
+      </Card>
 
-        {/* Navigation */}
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={handlePrevious}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <Button onClick={handleNext}>
-            Next: Diagnosis
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </div>
+      {/* Navigation */}
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={handlePrevious}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <Button onClick={handleNext}>
+          Next: Diagnosis
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }

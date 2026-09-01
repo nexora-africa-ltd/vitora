@@ -146,7 +146,7 @@ function ServiceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>{isEdit ? 'Edit Service' : 'New Service'}</DialogTitle>
@@ -158,18 +158,31 @@ function ServiceFormDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="svc-name">Name *</Label>
-              <Input id="svc-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Consultation" />
+              <Input
+                id="svc-name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Consultation"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="svc-code">Code *</Label>
-              <Input id="svc-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="CONS-001" />
+              <Input
+                id="svc-code"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value })}
+                placeholder="CONS-001"
+              />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="svc-category">Category *</Label>
-              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+              <Select
+                value={form.category}
+                onValueChange={(v) => setForm({ ...form, category: v })}
+              >
                 <SelectTrigger id="svc-category">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -184,44 +197,81 @@ function ServiceFormDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="svc-price">Unit Price (KES) *</Label>
-              <Input id="svc-price" type="number" step="0.01" min="0" value={form.unit_price} onChange={(e) => setForm({ ...form, unit_price: e.target.value })} placeholder="500.00" />
+              <Input
+                id="svc-price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.unit_price}
+                onChange={(e) => setForm({ ...form, unit_price: e.target.value })}
+                placeholder="500.00"
+              />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="svc-desc">Description</Label>
-            <Input id="svc-desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional description" />
+            <Input
+              id="svc-desc"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Optional description"
+            />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="svc-sha">SHA Code</Label>
-              <Input id="svc-sha" value={form.sha_code} onChange={(e) => setForm({ ...form, sha_code: e.target.value })} placeholder="SHA code for claims" />
+              <Input
+                id="svc-sha"
+                value={form.sha_code}
+                onChange={(e) => setForm({ ...form, sha_code: e.target.value })}
+                placeholder="SHA code for claims"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="svc-icd10">ICD-10 Code</Label>
-              <Input id="svc-icd10" value={form.icd10_code} onChange={(e) => setForm({ ...form, icd10_code: e.target.value })} placeholder="ICD-10 code" />
+              <Input
+                id="svc-icd10"
+                value={form.icd10_code}
+                onChange={(e) => setForm({ ...form, icd10_code: e.target.value })}
+                placeholder="ICD-10 code"
+              />
             </div>
           </div>
 
           <div className="flex flex-wrap gap-6">
             <div className="flex items-center gap-2">
-              <Switch id="svc-active" checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+              <Switch
+                id="svc-active"
+                checked={form.is_active}
+                onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+              />
               <Label htmlFor="svc-active">Active</Label>
             </div>
             <div className="flex items-center gap-2">
-              <Switch id="svc-taxable" checked={form.is_taxable} onCheckedChange={(v) => setForm({ ...form, is_taxable: v })} />
+              <Switch
+                id="svc-taxable"
+                checked={form.is_taxable}
+                onCheckedChange={(v) => setForm({ ...form, is_taxable: v })}
+              />
               <Label htmlFor="svc-taxable">Taxable</Label>
             </div>
             <div className="flex items-center gap-2">
-              <Switch id="svc-qty" checked={form.requires_quantity} onCheckedChange={(v) => setForm({ ...form, requires_quantity: v })} />
+              <Switch
+                id="svc-qty"
+                checked={form.requires_quantity}
+                onCheckedChange={(v) => setForm({ ...form, requires_quantity: v })}
+              />
               <Label htmlFor="svc-qty">Requires Quantity</Label>
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEdit ? 'Save Changes' : 'Create Service'}
@@ -301,33 +351,60 @@ function CategoryFormDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="cat-name">Name *</Label>
-              <Input id="cat-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Consultation" />
+              <Input
+                id="cat-name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Consultation"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="cat-code">Code *</Label>
-              <Input id="cat-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="CONS" />
+              <Input
+                id="cat-code"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value })}
+                placeholder="CONS"
+              />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="cat-desc">Description</Label>
-            <Input id="cat-desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional description" />
+            <Input
+              id="cat-desc"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Optional description"
+            />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="cat-order">Display Order</Label>
-              <Input id="cat-order" type="number" min="0" value={form.display_order} onChange={(e) => setForm({ ...form, display_order: e.target.value })} />
+              <Input
+                id="cat-order"
+                type="number"
+                min="0"
+                value={form.display_order}
+                onChange={(e) => setForm({ ...form, display_order: e.target.value })}
+              />
             </div>
             <div className="flex items-center gap-2 pt-6">
-              <Switch id="cat-active" checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+              <Switch
+                id="cat-active"
+                checked={form.is_active}
+                onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+              />
               <Label htmlFor="cat-active">Active</Label>
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEdit ? 'Save Changes' : 'Create Category'}
@@ -351,14 +428,22 @@ export default function ServicesConfigPage() {
   const pageSize = 20;
 
   // Data
-  const { data: servicesData, isLoading: servicesLoading, refetch: refetchServices } = useServices({
+  const {
+    data: servicesData,
+    isLoading: servicesLoading,
+    refetch: refetchServices,
+  } = useServices({
     search: search || undefined,
     category: categoryFilter !== 'all' ? Number(categoryFilter) : undefined,
     is_active: activeFilter !== 'all' ? activeFilter === 'true' : undefined,
     page,
     page_size: pageSize,
   });
-  const { data: categoriesData, isLoading: categoriesLoading, refetch: refetchCategories } = useServiceCategories();
+  const {
+    data: categoriesData,
+    isLoading: categoriesLoading,
+    refetch: refetchCategories,
+  } = useServiceCategories();
 
   const services = servicesData?.results ?? [];
   const categories = categoriesData?.results ?? [];
@@ -371,14 +456,21 @@ export default function ServicesConfigPage() {
   const [editingService, setEditingService] = useState<Service | undefined>();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ServiceCategory | undefined>();
-  const [deleteTarget, setDeleteTarget] = useState<{ type: 'service' | 'category'; id: number; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'service' | 'category';
+    id: number;
+    name: string;
+  } | null>(null);
 
   // Stats
   const activeServices = services.filter((s) => s.is_active).length;
   const activeCategories = categories.filter((c) => c.is_active).length;
-  const avgPrice = services.length > 0
-    ? (services.reduce((sum, s) => sum + Number(s.unit_price || 0), 0) / services.length).toFixed(0)
-    : '0';
+  const avgPrice =
+    services.length > 0
+      ? (services.reduce((sum, s) => sum + Number(s.unit_price || 0), 0) / services.length).toFixed(
+          0
+        )
+      : '0';
 
   // Pagination
   const totalCount = servicesData?.count ?? 0;
@@ -491,10 +583,19 @@ export default function ServicesConfigPage() {
                       name="svc-search"
                       placeholder="Search services…"
                       value={search}
-                      onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                        setPage(1);
+                      }}
                     />
                   </div>
-                  <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setPage(1); }}>
+                  <Select
+                    value={categoryFilter}
+                    onValueChange={(v) => {
+                      setCategoryFilter(v);
+                      setPage(1);
+                    }}
+                  >
                     <SelectTrigger aria-label="Filter by category">
                       <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                       <SelectValue placeholder="Category" />
@@ -502,11 +603,19 @@ export default function ServicesConfigPage() {
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
                       {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id.toString()}>{cat.name}</SelectItem>
+                        <SelectItem key={cat.id} value={cat.id.toString()}>
+                          {cat.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Select value={activeFilter} onValueChange={(v) => { setActiveFilter(v); setPage(1); }}>
+                  <Select
+                    value={activeFilter}
+                    onValueChange={(v) => {
+                      setActiveFilter(v);
+                      setPage(1);
+                    }}
+                  >
                     <SelectTrigger aria-label="Filter by status">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
@@ -530,7 +639,9 @@ export default function ServicesConfigPage() {
                 <CardTitle className="flex items-center gap-2">
                   <BadgeCent className="h-5 w-5" />
                   Services
-                  <Badge variant="secondary" className="ml-1">{servicesData?.count ?? 0}</Badge>
+                  <Badge variant="secondary" className="ml-1">
+                    {servicesData?.count ?? 0}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -551,7 +662,7 @@ export default function ServicesConfigPage() {
                       <Card className="p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 space-y-1">
-                            <p className="font-medium truncate">{s.name}</p>
+                            <p className="truncate font-medium">{s.name}</p>
                             <p className="font-mono text-sm text-muted-foreground">{s.code}</p>
                           </div>
                           <Badge variant={s.is_active ? 'default' : 'secondary'}>
@@ -560,13 +671,22 @@ export default function ServicesConfigPage() {
                         </div>
                         <div className="mt-2 flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">{s.category_name}</span>
-                          <span className="font-medium">KES {Number(s.unit_price).toLocaleString()}</span>
+                          <span className="font-medium">
+                            KES {Number(s.unit_price).toLocaleString()}
+                          </span>
                         </div>
                         <div className="mt-3 flex gap-2">
                           <Button size="sm" variant="outline" onClick={() => openEditService(s)}>
                             <Edit className="mr-1 h-3 w-3" /> Edit
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget({ type: 'service', id: s.id, name: s.name })}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={() =>
+                              setDeleteTarget({ type: 'service', id: s.id, name: s.name })
+                            }
+                          >
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
@@ -579,8 +699,10 @@ export default function ServicesConfigPage() {
                         sortable: true,
                         cell: (s) => (
                           <div className="min-w-0">
-                            <p className="font-medium truncate">{s.name}</p>
-                            <p className="font-mono text-sm text-muted-foreground truncate">{s.code}</p>
+                            <p className="truncate font-medium">{s.name}</p>
+                            <p className="truncate font-mono text-sm text-muted-foreground">
+                              {s.code}
+                            </p>
                           </div>
                         ),
                       },
@@ -626,7 +748,14 @@ export default function ServicesConfigPage() {
                             <Button size="sm" variant="ghost" onClick={() => openEditService(s)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget({ type: 'service', id: s.id, name: s.name })}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() =>
+                                setDeleteTarget({ type: 'service', id: s.id, name: s.name })
+                              }
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -640,13 +769,23 @@ export default function ServicesConfigPage() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={!hasPrev}
+                >
                   Previous
                 </Button>
                 <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!hasNext}
+                >
                   Next
                 </Button>
               </div>
@@ -667,7 +806,9 @@ export default function ServicesConfigPage() {
                 <CardTitle className="flex items-center gap-2">
                   <FolderOpen className="h-5 w-5" />
                   Service Categories
-                  <Badge variant="secondary" className="ml-1">{categories.length}</Badge>
+                  <Badge variant="secondary" className="ml-1">
+                    {categories.length}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -688,7 +829,7 @@ export default function ServicesConfigPage() {
                       <Card className="p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 space-y-1">
-                            <p className="font-medium truncate">{c.name}</p>
+                            <p className="truncate font-medium">{c.name}</p>
                             <p className="font-mono text-sm text-muted-foreground">{c.code}</p>
                           </div>
                           <Badge variant={c.is_active ? 'default' : 'secondary'}>
@@ -696,13 +837,22 @@ export default function ServicesConfigPage() {
                           </Badge>
                         </div>
                         {c.description && (
-                          <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{c.description}</p>
+                          <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                            {c.description}
+                          </p>
                         )}
                         <div className="mt-3 flex gap-2">
                           <Button size="sm" variant="outline" onClick={() => openEditCategory(c)}>
                             <Edit className="mr-1 h-3 w-3" /> Edit
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget({ type: 'category', id: c.id, name: c.name })}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={() =>
+                              setDeleteTarget({ type: 'category', id: c.id, name: c.name })
+                            }
+                          >
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
@@ -715,8 +865,10 @@ export default function ServicesConfigPage() {
                         sortable: true,
                         cell: (c) => (
                           <div className="min-w-0">
-                            <p className="font-medium truncate">{c.name}</p>
-                            <p className="font-mono text-sm text-muted-foreground truncate">{c.code}</p>
+                            <p className="truncate font-medium">{c.name}</p>
+                            <p className="truncate font-mono text-sm text-muted-foreground">
+                              {c.code}
+                            </p>
                           </div>
                         ),
                       },
@@ -726,7 +878,7 @@ export default function ServicesConfigPage() {
                         sortable: true,
                         hideOnMobile: true,
                         cell: (c) => (
-                          <span className="text-sm text-muted-foreground line-clamp-1">
+                          <span className="line-clamp-1 text-sm text-muted-foreground">
                             {c.description || '—'}
                           </span>
                         ),
@@ -758,7 +910,14 @@ export default function ServicesConfigPage() {
                             <Button size="sm" variant="ghost" onClick={() => openEditCategory(c)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget({ type: 'category', id: c.id, name: c.name })}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() =>
+                                setDeleteTarget({ type: 'category', id: c.id, name: c.name })
+                              }
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -803,12 +962,16 @@ export default function ServicesConfigPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete {deleteTarget?.type}?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete &ldquo;{deleteTarget?.name}&rdquo;. This action cannot be undone.
+                This will permanently delete &ldquo;{deleteTarget?.name}&rdquo;. This action cannot
+                be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>

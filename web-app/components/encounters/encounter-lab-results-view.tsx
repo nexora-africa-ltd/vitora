@@ -8,7 +8,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Beaker, AlertTriangle, CheckCircle, ExternalLink, XCircle } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Beaker,
+  AlertTriangle,
+  CheckCircle,
+  ExternalLink,
+  XCircle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -43,15 +51,50 @@ interface EncounterLabResultsViewProps {
   diagnoses?: string[];
 }
 
-const FLAG_CONFIG: Record<ResultFlag | string, { label: string; color: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' }> = {
-  NORMAL: { label: 'Normal', color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300', variant: 'outline' },
-  LOW: { label: 'Low', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300', variant: 'secondary' },
-  HIGH: { label: 'High', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300', variant: 'secondary' },
-  CRITICAL_LOW: { label: 'Critical Low', color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', variant: 'destructive' },
-  CRITICAL_HIGH: { label: 'Critical High', color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', variant: 'destructive' },
-  ABNORMAL: { label: 'Abnormal', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300', variant: 'secondary' },
-  POSITIVE: { label: 'Positive', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300', variant: 'secondary' },
-  NEGATIVE: { label: 'Negative', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', variant: 'outline' },
+const FLAG_CONFIG: Record<
+  ResultFlag | string,
+  { label: string; color: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' }
+> = {
+  NORMAL: {
+    label: 'Normal',
+    color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+    variant: 'outline',
+  },
+  LOW: {
+    label: 'Low',
+    color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    variant: 'secondary',
+  },
+  HIGH: {
+    label: 'High',
+    color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+    variant: 'secondary',
+  },
+  CRITICAL_LOW: {
+    label: 'Critical Low',
+    color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+    variant: 'destructive',
+  },
+  CRITICAL_HIGH: {
+    label: 'Critical High',
+    color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+    variant: 'destructive',
+  },
+  ABNORMAL: {
+    label: 'Abnormal',
+    color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+    variant: 'secondary',
+  },
+  POSITIVE: {
+    label: 'Positive',
+    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+    variant: 'secondary',
+  },
+  NEGATIVE: {
+    label: 'Negative',
+    color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    variant: 'outline',
+  },
 };
 
 function ResultValue({ item }: { item: LabOrderItem }) {
@@ -67,15 +110,13 @@ function ResultValue({ item }: { item: LabOrderItem }) {
       <span className="font-semibold">
         {value !== null && value !== undefined ? String(value) : '-'}
         {result.result_unit && (
-          <span className="text-muted-foreground font-normal ml-1">{result.result_unit}</span>
+          <span className="ml-1 font-normal text-muted-foreground">{result.result_unit}</span>
         )}
       </span>
       <Badge className={flagConfig?.color} variant={flagConfig?.variant}>
         {flagConfig?.label}
       </Badge>
-      {result.is_critical_result && (
-        <AlertTriangle className="h-4 w-4 text-destructive" />
-      )}
+      {result.is_critical_result && <AlertTriangle className="h-4 w-4 text-destructive" />}
     </div>
   );
 }
@@ -87,7 +128,10 @@ function orderItemsToAILabResults(items: LabOrderItem[]): AILabResultItem[] {
     .map((i) => ({
       // Use snake_case normalized name for TibaBot compatibility
       // e.g., "Random Blood Sugar" → "random_blood_sugar", "Fasting Blood Sugar" → "fasting_blood_sugar"
-      test_name: i.test_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''),
+      test_name: i.test_name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, ''),
       value: i.result!.numeric_value ?? (parseFloat(String(i.result!.text_value)) || 0),
       unit: i.result!.result_unit || '',
       reference_low: i.result!.reference_low ?? undefined,
@@ -109,12 +153,12 @@ function LabOrderResults({
 }) {
   const [isOpen, setIsOpen] = useState(true);
 
-  const completedItems = order.items?.filter(i => i.has_result && !i.is_panel) || [];
-  const pendingItems = order.items?.filter(i => !i.has_result && !i.is_panel) || [];
-  const hasCritical = order.items?.some(i => i.result?.is_critical_result);
+  const completedItems = order.items?.filter((i) => i.has_result && !i.is_panel) || [];
+  const pendingItems = order.items?.filter((i) => !i.has_result && !i.is_panel) || [];
+  const hasCritical = order.items?.some((i) => i.result?.is_critical_result);
 
   // Group items by panel parent for display
-  const panelParents = order.items?.filter(i => i.is_panel) || [];
+  const panelParents = order.items?.filter((i) => i.is_panel) || [];
   const panelChildMap = new Map<number, LabOrderItem[]>();
   for (const item of order.items || []) {
     if (item.panel_parent) {
@@ -124,19 +168,18 @@ function LabOrderResults({
     }
   }
   // Standalone items (not panel parents, not panel children)
-  const standaloneCompleted = completedItems.filter(i => !i.panel_parent);
-  const standalonePending = pendingItems.filter(i => !i.panel_parent);
+  const standaloneCompleted = completedItems.filter((i) => !i.panel_parent);
+  const standalonePending = pendingItems.filter((i) => !i.panel_parent);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className={cn(
-        'border rounded-lg overflow-hidden',
-        hasCritical && 'border-destructive/50'
-      )}>
+      <div
+        className={cn('overflow-hidden rounded-lg border', hasCritical && 'border-destructive/50')}
+      >
         <CollapsibleTrigger asChild>
           <button
             className={cn(
-              'w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors text-left',
+              'flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted/50',
               hasCritical && 'bg-destructive/5'
             )}
           >
@@ -144,21 +187,24 @@ function LabOrderResults({
               <Beaker className="h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{order.order_number}</span>
+                  <span className="text-sm font-medium">{order.order_number}</span>
                   {hasCritical && (
                     <Badge variant="destructive" className="text-xs">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
+                      <AlertTriangle className="mr-1 h-3 w-3" />
                       Critical
                     </Badge>
                   )}
                   {order.status === 'COMPLETED' && (
-                    <Badge variant="outline" className="text-xs bg-green-100/50 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                      <CheckCircle className="h-3 w-3 mr-1" />
+                    <Badge
+                      variant="outline"
+                      className="bg-green-100/50 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                    >
+                      <CheckCircle className="mr-1 h-3 w-3" />
                       Complete
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {completedItems.length} of {order.items?.length || 0} results available
                   {order.completed_at && ` • Completed ${formatDate(order.completed_at)}`}
                 </p>
@@ -180,24 +226,25 @@ function LabOrderResults({
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <div className="border-t p-3 space-y-2 bg-muted/30">
+          <div className="space-y-2 border-t bg-muted/30 p-3">
             {/* Completed Results — Panel groups */}
             {panelParents.map((panel) => {
               const children = panelChildMap.get(panel.id) || [];
-              const completedChildren = children.filter(c => c.has_result);
-              const pendingChildren = children.filter(c => !c.has_result);
+              const completedChildren = children.filter((c) => c.has_result);
+              const pendingChildren = children.filter((c) => !c.has_result);
               if (children.length === 0) return null;
               return (
                 <div key={panel.id} className="space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {panel.test_name}
                   </p>
                   {completedChildren.map((item) => (
                     <div
                       key={item.id}
                       className={cn(
-                        'flex items-center justify-between p-2 rounded-md ml-2',
-                        item.result?.is_critical_result && 'bg-destructive/10 border border-destructive/20'
+                        'ml-2 flex items-center justify-between rounded-md p-2',
+                        item.result?.is_critical_result &&
+                          'border border-destructive/20 bg-destructive/10'
                       )}
                     >
                       <div>
@@ -214,7 +261,7 @@ function LabOrderResults({
                   {pendingChildren.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-2 rounded-md ml-2 bg-muted/50"
+                      className="ml-2 flex items-center justify-between rounded-md bg-muted/50 p-2"
                     >
                       <p className="text-sm">{item.test_name}</p>
                       <Badge variant="outline" className="text-xs">
@@ -233,8 +280,9 @@ function LabOrderResults({
                   <div
                     key={item.id}
                     className={cn(
-                      'flex items-center justify-between p-2 rounded-md',
-                      item.result?.is_critical_result && 'bg-destructive/10 border border-destructive/20'
+                      'flex items-center justify-between rounded-md p-2',
+                      item.result?.is_critical_result &&
+                        'border border-destructive/20 bg-destructive/10'
                     )}
                   >
                     <div>
@@ -253,12 +301,12 @@ function LabOrderResults({
 
             {/* Pending Items — Standalone only (panel pending shown above) */}
             {standalonePending.length > 0 && (
-              <div className="pt-2 border-t space-y-1">
-                <p className="text-xs text-muted-foreground font-medium mb-2">Pending Results</p>
+              <div className="space-y-1 border-t pt-2">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Pending Results</p>
                 {standalonePending.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-2 rounded-md bg-muted/50"
+                    className="flex items-center justify-between rounded-md bg-muted/50 p-2"
                   >
                     <p className="text-sm">{item.test_name}</p>
                     <Badge variant="outline" className="text-xs">
@@ -270,13 +318,13 @@ function LabOrderResults({
             )}
 
             {/* Interpretation notes */}
-            {completedItems.some(i => i.result?.interpretation) && (
-              <div className="pt-2 border-t">
-                <p className="text-xs text-muted-foreground font-medium mb-2">Interpretations</p>
+            {completedItems.some((i) => i.result?.interpretation) && (
+              <div className="border-t pt-2">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Interpretations</p>
                 {completedItems
-                  .filter(i => i.result?.interpretation)
+                  .filter((i) => i.result?.interpretation)
                   .map((item) => (
-                    <div key={item.id} className="text-sm p-2 bg-muted rounded-md mb-1">
+                    <div key={item.id} className="mb-1 rounded-md bg-muted p-2 text-sm">
                       <span className="font-medium">{item.test_name}:</span>{' '}
                       <span className="text-muted-foreground">{item.result?.interpretation}</span>
                     </div>
@@ -286,7 +334,7 @@ function LabOrderResults({
 
             {/* AI Lab Interpretation (per-order) */}
             {completedItems.length > 0 && patientDemographics && (
-              <div className="pt-2 border-t">
+              <div className="border-t pt-2">
                 <LabInterpretPanel
                   labResultId={completedItems[0]?.result?.id}
                   encounterId={encounterId}
@@ -324,30 +372,30 @@ export function EncounterLabResultsView({
   }
 
   const ordersWithResults = orders.filter(
-    o => o.status === 'COMPLETED' || o.items?.some(i => i.has_result)
+    (o) => o.status === 'COMPLETED' || o.items?.some((i) => i.has_result)
   );
 
   if (ordersWithResults.length === 0) {
     return (
-      <div className="text-center py-6 text-muted-foreground">
-        <Beaker className="h-8 w-8 mx-auto mb-2 opacity-50" />
+      <div className="py-6 text-center text-muted-foreground">
+        <Beaker className="mx-auto mb-2 h-8 w-8 opacity-50" />
         <p className="text-sm">No lab results available yet</p>
       </div>
     );
   }
 
   // Check for any critical results across all orders
-  const hasCriticalResults = ordersWithResults.some(
-    o => o.items?.some(i => i.result?.is_critical_result)
+  const hasCriticalResults = ordersWithResults.some((o) =>
+    o.items?.some((i) => i.result?.is_critical_result)
   );
 
   return (
     <div className="space-y-3">
       {hasCriticalResults && (
-        <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
           <AlertTriangle className="h-5 w-5 text-destructive" />
           <div>
-            <p className="font-medium text-destructive text-sm">Critical Results Detected</p>
+            <p className="text-sm font-medium text-destructive">Critical Results Detected</p>
             <p className="text-xs text-destructive/80">
               One or more results require immediate clinical attention.
             </p>

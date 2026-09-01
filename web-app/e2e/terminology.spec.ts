@@ -135,11 +135,7 @@ async function getAuthToken(request: APIRequestContext): Promise<string | null> 
 /**
  * Make authenticated API request
  */
-async function apiGet(
-  request: APIRequestContext,
-  url: string,
-  token: string
-) {
+async function apiGet(request: APIRequestContext, url: string, token: string) {
   return request.get(url, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -219,11 +215,7 @@ test.describe('Terminology API - ICD-11 Diagnosis Codes', () => {
     const token = await getAuthToken(request);
     test.skip(!token, 'Authentication failed - backend may not be running');
 
-    const response = await apiGet(
-      request,
-      `${TERMINOLOGY_API}/icd11/?search=malaria`,
-      token!
-    );
+    const response = await apiGet(request, `${TERMINOLOGY_API}/icd11/?search=malaria`, token!);
 
     // API may return 503 if local ICD-11 container is not running
     if (response.status() === 503) {
@@ -254,11 +246,7 @@ test.describe('Terminology API - ICD-11 Diagnosis Codes', () => {
     const token = await getAuthToken(request);
     test.skip(!token, 'Authentication failed');
 
-    const response = await apiGet(
-      request,
-      `${TERMINOLOGY_API}/icd11/?search=a`,
-      token!
-    );
+    const response = await apiGet(request, `${TERMINOLOGY_API}/icd11/?search=a`, token!);
 
     if (response.status() === 503) {
       test.skip(true, 'ICD-11 API not available');
@@ -301,11 +289,7 @@ test.describe('Terminology API - LOINC Lab Test Codes', () => {
     const token = await getAuthToken(request);
     test.skip(!token, 'Authentication failed');
 
-    const response = await apiGet(
-      request,
-      `${TERMINOLOGY_API}/loinc/?search=glucose`,
-      token!
-    );
+    const response = await apiGet(request, `${TERMINOLOGY_API}/loinc/?search=glucose`, token!);
 
     if (response.status() === 503) {
       test.skip(true, 'LOINC API not available');
@@ -403,11 +387,7 @@ test.describe('Terminology API - ICHI Codes', () => {
     const token = await getAuthToken(request);
     test.skip(!token, 'Authentication failed');
 
-    const response = await apiGet(
-      request,
-      `${TERMINOLOGY_API}/ichi/?search=surgery`,
-      token!
-    );
+    const response = await apiGet(request, `${TERMINOLOGY_API}/ichi/?search=surgery`, token!);
 
     if (response.status() === 503) {
       test.skip(true, 'ICHI API not available');
@@ -438,11 +418,7 @@ test.describe('Terminology API - Drug Products', () => {
     const token = await getAuthToken(request);
     test.skip(!token, 'Authentication failed');
 
-    const response = await apiGet(
-      request,
-      `${TERMINOLOGY_API}/drugs/?search=paracetamol`,
-      token!
-    );
+    const response = await apiGet(request, `${TERMINOLOGY_API}/drugs/?search=paracetamol`, token!);
 
     if (response.status() === 503) {
       test.skip(true, 'Drugs API not available');
@@ -533,11 +509,7 @@ test.describe('Terminology API - Error Handling', () => {
     const token = await getAuthToken(request);
     test.skip(!token, 'Authentication failed');
 
-    const response = await apiGet(
-      request,
-      `${TERMINOLOGY_API}/unknown-type/?search=test`,
-      token!
-    );
+    const response = await apiGet(request, `${TERMINOLOGY_API}/unknown-type/?search=test`, token!);
 
     expect(response.status()).toBe(400);
     const data = await response.json();
@@ -546,9 +518,7 @@ test.describe('Terminology API - Error Handling', () => {
   });
 
   test('should return 401 without authentication', async ({ request }) => {
-    const response = await request.get(
-      `${TERMINOLOGY_API}/icd11/?search=malaria`
-    );
+    const response = await request.get(`${TERMINOLOGY_API}/icd11/?search=malaria`);
 
     expect(response.status()).toBe(401);
   });
@@ -557,11 +527,7 @@ test.describe('Terminology API - Error Handling', () => {
     const token = await getAuthToken(request);
     test.skip(!token, 'Authentication failed');
 
-    const response = await apiGet(
-      request,
-      `${TERMINOLOGY_API}/icd11/?search=`,
-      token!
-    );
+    const response = await apiGet(request, `${TERMINOLOGY_API}/icd11/?search=`, token!);
 
     if (response.status() === 503) {
       test.skip(true, 'API not available');

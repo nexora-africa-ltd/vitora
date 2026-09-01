@@ -105,7 +105,7 @@ export function useSidebarBadges(): SidebarBadges {
     }
 
     // Notifications (uses separate polling hook)
-    const unread = typeof unreadCount === 'number' ? unreadCount : unreadCount?.unread_count ?? 0;
+    const unread = typeof unreadCount === 'number' ? unreadCount : (unreadCount?.unread_count ?? 0);
     if (unread > 0) {
       badges['/notifications'] = unread;
     }

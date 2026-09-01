@@ -36,11 +36,13 @@ const _listeners = new Set<SyncUploadListener>();
 /** Subscribe to upload events. Returns an unsubscribe function. */
 export function onSyncUploadEvent(listener: SyncUploadListener): () => void {
   _listeners.add(listener);
-  return () => { _listeners.delete(listener); };
+  return () => {
+    _listeners.delete(listener);
+  };
 }
 
 function emitSyncEvent(event: SyncUploadEvent) {
-  _listeners.forEach(fn => fn(event));
+  _listeners.forEach((fn) => fn(event));
 }
 
 /**
@@ -146,11 +148,14 @@ export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
             ? (error as { status: number }).status
             : undefined;
 
-      if (httpStatus && httpStatus >= 400 && httpStatus < 500 && httpStatus !== 401 && httpStatus !== 429) {
-        console.error(
-          `[PowerSync] Permanent ${httpStatus} error uploading ${table}:`,
-          error
-        );
+      if (
+        httpStatus &&
+        httpStatus >= 400 &&
+        httpStatus < 500 &&
+        httpStatus !== 401 &&
+        httpStatus !== 429
+      ) {
+        console.error(`[PowerSync] Permanent ${httpStatus} error uploading ${table}:`, error);
         emitSyncEvent({ type: 'upload_error', table, message, permanent: true });
         await transaction.complete();
         return;

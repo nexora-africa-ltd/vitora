@@ -10,11 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Pencil, Trash2, CornerDownRight, SmilePlus } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { ClinicalComment } from '@/lib/types/comments';
 import { CommentInput } from './comment-input';
 
@@ -81,25 +77,21 @@ export function CommentItem({
 
   return (
     <div className={`flex gap-2 ${maxIndent > 0 ? 'ml-6 sm:ml-8' : ''}`}>
-      {maxIndent > 0 && (
-        <CornerDownRight className="h-3 w-3 text-muted-foreground mt-3 shrink-0" />
-      )}
+      {maxIndent > 0 && <CornerDownRight className="mt-3 h-3 w-3 shrink-0 text-muted-foreground" />}
       <div className="flex-1 space-y-1">
         <div className="flex items-start gap-2">
           <Avatar className="h-7 w-7 shrink-0">
             <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium truncate">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="truncate text-sm font-medium">
                 {comment.author.full_name || comment.author.username}
               </span>
               <span className="text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
               </span>
-              {comment.is_edited && (
-                <span className="text-xs text-muted-foreground">(edited)</span>
-              )}
+              {comment.is_edited && <span className="text-xs text-muted-foreground">(edited)</span>}
             </div>
 
             {isEditing ? (
@@ -107,7 +99,7 @@ export function CommentItem({
                 <textarea
                   value={editBody}
                   onChange={(e) => setEditBody(e.target.value)}
-                  className="w-full text-sm border rounded p-2 min-h-[50px] resize-none bg-background"
+                  className="min-h-[50px] w-full resize-none rounded border bg-background p-2 text-sm"
                   autoFocus
                 />
                 <div className="flex gap-2">
@@ -120,24 +112,28 @@ export function CommentItem({
                 </div>
               </div>
             ) : (
-              <p className={`text-sm mt-0.5 ${comment.is_deleted ? 'italic text-muted-foreground' : ''}`}>
+              <p
+                className={`mt-0.5 text-sm ${comment.is_deleted ? 'italic text-muted-foreground' : ''}`}
+              >
                 {comment.display_body}
               </p>
             )}
 
             {/* Reactions display */}
             {comment.reactions && comment.reactions.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
+              <div className="mt-1 flex flex-wrap gap-1">
                 {comment.reactions.map((reaction) => {
-                  const hasReacted = currentUserId ? reaction.user_ids.includes(currentUserId) : false;
+                  const hasReacted = currentUserId
+                    ? reaction.user_ids.includes(currentUserId)
+                    : false;
                   return (
                     <button
                       key={reaction.emoji}
                       onClick={() => handleReact(reaction.emoji)}
-                      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
+                      className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs transition-colors ${
                         hasReacted
-                          ? 'bg-primary/10 border-primary/30 text-primary'
-                          : 'bg-muted/50 border-border hover:bg-muted'
+                          ? 'border-primary/30 bg-primary/10 text-primary'
+                          : 'border-border bg-muted/50 hover:bg-muted'
                       }`}
                     >
                       <span>{reaction.emoji}</span>
@@ -150,7 +146,7 @@ export function CommentItem({
 
             {/* Action buttons */}
             {!comment.is_deleted && !isEditing && (
-              <div className="flex items-center gap-1 mt-1">
+              <div className="mt-1 flex items-center gap-1">
                 {onReact && (
                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                     <PopoverTrigger asChild>
@@ -168,7 +164,7 @@ export function CommentItem({
                           <button
                             key={emoji}
                             onClick={() => handleReact(emoji)}
-                            className="p-1 hover:bg-muted rounded text-lg leading-none"
+                            className="rounded p-1 text-lg leading-none hover:bg-muted"
                           >
                             {emoji}
                           </button>
@@ -183,7 +179,7 @@ export function CommentItem({
                   className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => setShowReplyInput(!showReplyInput)}
                 >
-                  <MessageSquare className="h-3 w-3 mr-1" />
+                  <MessageSquare className="mr-1 h-3 w-3" />
                   Reply
                 </Button>
                 {canModify && (
@@ -196,7 +192,7 @@ export function CommentItem({
                       setIsEditing(true);
                     }}
                   >
-                    <Pencil className="h-3 w-3 mr-1" />
+                    <Pencil className="mr-1 h-3 w-3" />
                     Edit
                   </Button>
                 )}
@@ -207,7 +203,7 @@ export function CommentItem({
                     className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
                     onClick={() => onDelete(comment.id)}
                   >
-                    <Trash2 className="h-3 w-3 mr-1" />
+                    <Trash2 className="mr-1 h-3 w-3" />
                     Delete
                   </Button>
                 )}
@@ -227,11 +223,7 @@ export function CommentItem({
             {/* Reply input */}
             {showReplyInput && (
               <div className="mt-2">
-                <CommentInput
-                  onSubmit={handleReply}
-                  placeholder="Write a reply..."
-                  autoFocus
-                />
+                <CommentInput onSubmit={handleReply} placeholder="Write a reply..." autoFocus />
               </div>
             )}
           </div>

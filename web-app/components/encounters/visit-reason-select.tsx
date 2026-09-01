@@ -49,8 +49,11 @@ export function VisitReasonSelect({
               <div className="flex items-center gap-2">
                 <span>{label}</span>
                 {SKIP_TRIAGE_REASONS.includes(key) && (
-                  <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-300 text-amber-600">
-                    <FastForward className="h-2 w-2 mr-0.5" />
+                  <Badge
+                    variant="outline"
+                    className="border-amber-300 px-1 py-0 text-[9px] text-amber-600"
+                  >
+                    <FastForward className="mr-0.5 h-2 w-2" />
                     Skip Triage
                   </Badge>
                 )}

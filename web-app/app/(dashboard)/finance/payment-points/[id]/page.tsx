@@ -60,11 +60,16 @@ import type { Payment, PaymentPoint as PaymentPointType } from '@/lib/types/bill
 
 function getMethodIcon(method: string) {
   switch (method) {
-    case 'CASH': return <Banknote className="h-5 w-5 text-emerald-600" />;
-    case 'MPESA': return <Smartphone className="h-5 w-5 text-green-600" />;
-    case 'CARD': return <CreditCard className="h-5 w-5 text-blue-600" />;
-    case 'BANK_TRANSFER': return <Wallet className="h-5 w-5 text-purple-600" />;
-    default: return <Wallet className="h-5 w-5 text-muted-foreground" />;
+    case 'CASH':
+      return <Banknote className="h-5 w-5 text-emerald-600" />;
+    case 'MPESA':
+      return <Smartphone className="h-5 w-5 text-green-600" />;
+    case 'CARD':
+      return <CreditCard className="h-5 w-5 text-blue-600" />;
+    case 'BANK_TRANSFER':
+      return <Wallet className="h-5 w-5 text-purple-600" />;
+    default:
+      return <Wallet className="h-5 w-5 text-muted-foreground" />;
   }
 }
 
@@ -84,15 +89,31 @@ function getMethodLabel(method: string) {
 function getStatusBadge(status: string) {
   switch (status) {
     case 'COMPLETED':
-      return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">Completed</Badge>;
+      return (
+        <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+          Completed
+        </Badge>
+      );
     case 'PENDING':
-      return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Pending</Badge>;
+      return (
+        <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+          Pending
+        </Badge>
+      );
     case 'FAILED':
       return <Badge variant="destructive">Failed</Badge>;
     case 'REVERSED':
-      return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Reversed</Badge>;
+      return (
+        <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+          Reversed
+        </Badge>
+      );
     case 'REFUNDED':
-      return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">Refunded</Badge>;
+      return (
+        <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+          Refunded
+        </Badge>
+      );
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -128,11 +149,17 @@ export default function PaymentPointDetailPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const pageSize = 20;
 
-  const { data: paymentPoint, isLoading: ppLoading, refetch: refetchPoint } = usePaymentPoint(
-    isNaN(pointId) ? null : pointId
-  );
+  const {
+    data: paymentPoint,
+    isLoading: ppLoading,
+    refetch: refetchPoint,
+  } = usePaymentPoint(isNaN(pointId) ? null : pointId);
 
-  const { data: paymentsData, isLoading: paymentsLoading, refetch } = usePayments({
+  const {
+    data: paymentsData,
+    isLoading: paymentsLoading,
+    refetch,
+  } = usePayments({
     payment_point: isNaN(pointId) ? undefined : pointId,
     page,
     page_size: pageSize,
@@ -199,11 +226,11 @@ export default function PaymentPointDetailPage() {
         />
 
         {/* Summary Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 items-center gap-3">
             {getMethodIcon(paymentPoint.method)}
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">
+              <p className="truncate text-sm font-medium">
                 {paymentPoint.name}
                 <span className="ml-2 font-mono text-muted-foreground">{paymentPoint.code}</span>
               </p>
@@ -212,11 +239,15 @@ export default function PaymentPointDetailPage() {
                 {paymentPoint.till_number && ` • Till: ${paymentPoint.till_number}`}
                 {paymentPoint.paybill_number && ` • Paybill: ${paymentPoint.paybill_number}`}
                 {paymentPoint.bank_name && ` • ${paymentPoint.bank_name}`}
-                {paymentPoint.bank_account_number && ` • ****${paymentPoint.bank_account_number.slice(-4)}`}
+                {paymentPoint.bank_account_number &&
+                  ` • ****${paymentPoint.bank_account_number.slice(-4)}`}
               </p>
             </div>
           </div>
-          <Badge variant={paymentPoint.is_active ? 'default' : 'secondary'} className="shrink-0 w-fit self-start sm:self-auto">
+          <Badge
+            variant={paymentPoint.is_active ? 'default' : 'secondary'}
+            className="w-fit shrink-0 self-start sm:self-auto"
+          >
             {paymentPoint.is_active ? 'Active' : 'Inactive'}
           </Badge>
         </div>
@@ -239,7 +270,11 @@ export default function PaymentPointDetailPage() {
           <AdminStatCard
             title="Created"
             value={formatDateTime(paymentPoint.created_at)}
-            description={paymentPoint.created_by_username ? `By ${paymentPoint.created_by_username}` : undefined}
+            description={
+              paymentPoint.created_by_username
+                ? `By ${paymentPoint.created_by_username}`
+                : undefined
+            }
             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
           />
         </div>
@@ -262,7 +297,9 @@ export default function PaymentPointDetailPage() {
             <CardTitle className="flex items-center gap-2">
               <Banknote className="h-5 w-5" />
               Payments
-              <Badge variant="secondary" className="ml-1">{totalCount}</Badge>
+              <Badge variant="secondary" className="ml-1">
+                {totalCount}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -284,7 +321,7 @@ export default function PaymentPointDetailPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 space-y-1">
                         <p className="font-medium">{formatCurrency(parseFloat(p.amount))}</p>
-                        <p className="text-sm text-muted-foreground truncate">
+                        <p className="truncate text-sm text-muted-foreground">
                           {p.patient_name || p.invoice_number || `Invoice #${p.invoice}`}
                         </p>
                       </div>
@@ -303,8 +340,8 @@ export default function PaymentPointDetailPage() {
                     sortable: true,
                     cell: (p: Payment) => (
                       <div className="min-w-0">
-                        <p className="font-medium truncate">{p.payment_reference}</p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="truncate font-medium">{p.payment_reference}</p>
+                        <p className="truncate text-xs text-muted-foreground">
                           {p.patient_name || p.invoice_number || `Invoice #${p.invoice}`}
                         </p>
                       </div>
@@ -357,13 +394,23 @@ export default function PaymentPointDetailPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={page <= 1}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={page <= 1}
+            >
               Previous
             </Button>
             <span className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </span>
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page >= totalPages}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= totalPages}
+            >
               Next
             </Button>
           </div>
@@ -375,7 +422,9 @@ export default function PaymentPointDetailPage() {
             open={editDialogOpen}
             onOpenChange={setEditDialogOpen}
             paymentPoint={paymentPoint}
-            onSuccess={() => { refetchPoint(); }}
+            onSuccess={() => {
+              refetchPoint();
+            }}
           />
         )}
       </div>
@@ -452,7 +501,7 @@ function EditPaymentPointDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>Edit Payment Point</DialogTitle>
@@ -464,30 +513,47 @@ function EditPaymentPointDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="pp-name">Name *</Label>
-              <Input id="pp-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Input
+                id="pp-name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="pp-code">Code *</Label>
-              <Input id="pp-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+              <Input
+                id="pp-code"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value })}
+              />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="pp-method">Payment Method *</Label>
-              <Select value={form.method} onValueChange={(v) => setForm({ ...form, method: v as PaymentMethod })}>
+              <Select
+                value={form.method}
+                onValueChange={(v) => setForm({ ...form, method: v as PaymentMethod })}
+              >
                 <SelectTrigger id="pp-method">
                   <SelectValue placeholder="Select method" />
                 </SelectTrigger>
                 <SelectContent>
                   {PAYMENT_METHODS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center gap-2 pt-6">
-              <Switch id="pp-active" checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+              <Switch
+                id="pp-active"
+                checked={form.is_active}
+                onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+              />
               <Label htmlFor="pp-active">Active</Label>
             </div>
           </div>
@@ -496,11 +562,19 @@ function EditPaymentPointDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="pp-till">Till Number</Label>
-                <Input id="pp-till" value={form.till_number} onChange={(e) => setForm({ ...form, till_number: e.target.value })} />
+                <Input
+                  id="pp-till"
+                  value={form.till_number}
+                  onChange={(e) => setForm({ ...form, till_number: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pp-paybill">Paybill Number</Label>
-                <Input id="pp-paybill" value={form.paybill_number} onChange={(e) => setForm({ ...form, paybill_number: e.target.value })} />
+                <Input
+                  id="pp-paybill"
+                  value={form.paybill_number}
+                  onChange={(e) => setForm({ ...form, paybill_number: e.target.value })}
+                />
               </div>
             </div>
           )}
@@ -509,23 +583,38 @@ function EditPaymentPointDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="pp-bank">Bank Name</Label>
-                <Input id="pp-bank" value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} />
+                <Input
+                  id="pp-bank"
+                  value={form.bank_name}
+                  onChange={(e) => setForm({ ...form, bank_name: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pp-acc-num">Account Number</Label>
-                <Input id="pp-acc-num" value={form.bank_account_number} onChange={(e) => setForm({ ...form, bank_account_number: e.target.value })} />
+                <Input
+                  id="pp-acc-num"
+                  value={form.bank_account_number}
+                  onChange={(e) => setForm({ ...form, bank_account_number: e.target.value })}
+                />
               </div>
             </div>
           )}
 
           <div className="space-y-2">
             <Label htmlFor="pp-notes">Notes</Label>
-            <Textarea id="pp-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
+            <Textarea
+              id="pp-notes"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              rows={2}
+            />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={updatePP.isPending}>
             {updatePP.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes

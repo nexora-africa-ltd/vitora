@@ -93,14 +93,20 @@ export function SHAClaimForm({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4" role="form" data-testid="sha-claim-form">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          role="form"
+          data-testid="sha-claim-form"
+        >
           {/* Encounter Required Warning */}
           {!hasEncounter && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>SHA Encounter Required</AlertTitle>
               <AlertDescription>
-                SHA claims require an active encounter. Claims submitted without an encounter will be rejected by SHA.
+                SHA claims require an active encounter. Claims submitted without an encounter will
+                be rejected by SHA.
               </AlertDescription>
             </Alert>
           )}

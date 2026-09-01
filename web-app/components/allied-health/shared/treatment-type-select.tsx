@@ -19,11 +19,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
 import type { PhysiotherapyTreatmentType } from '@/lib/types/physiotherapy';
@@ -135,9 +131,7 @@ export function TreatmentTypeSelect({
   const [searchQuery, setSearchQuery] = React.useState('');
 
   // Get category labels based on module
-  const categoryLabels = module === 'physiotherapy'
-    ? PHYSIO_CATEGORY_LABELS
-    : OT_CATEGORY_LABELS;
+  const categoryLabels = module === 'physiotherapy' ? PHYSIO_CATEGORY_LABELS : OT_CATEGORY_LABELS;
 
   // Filter treatment types based on search
   const filteredTypes = React.useMemo(() => {
@@ -184,7 +178,10 @@ export function TreatmentTypeSelect({
               <span className="truncate">{selectedType.name}</span>
               <Badge
                 variant="secondary"
-                className={cn('ml-1 shrink-0 text-xs', getCategoryConfig(selectedType.category).className)}
+                className={cn(
+                  'ml-1 shrink-0 text-xs',
+                  getCategoryConfig(selectedType.category).className
+                )}
               >
                 {getCategoryConfig(selectedType.category).label}
               </Badge>
@@ -205,7 +202,7 @@ export function TreatmentTypeSelect({
           <CommandList>
             {isLoading ? (
               <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 <span className="text-sm text-muted-foreground">Loading treatment types...</span>
               </div>
             ) : filteredTypes.length === 0 ? (
@@ -223,7 +220,7 @@ export function TreatmentTypeSelect({
                     }}
                     className="flex flex-col items-start gap-1 py-3"
                   >
-                    <div className="flex items-center justify-between w-full">
+                    <div className="flex w-full items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Check
                           className={cn(
@@ -236,7 +233,10 @@ export function TreatmentTypeSelect({
                       </div>
                       <Badge
                         variant="secondary"
-                        className={cn('text-xs shrink-0', getCategoryConfig(type.category).className)}
+                        className={cn(
+                          'shrink-0 text-xs',
+                          getCategoryConfig(type.category).className
+                        )}
                       >
                         {getCategoryConfig(type.category).label}
                       </Badge>
@@ -248,7 +248,7 @@ export function TreatmentTypeSelect({
                       </div>
                     )}
                     {type.description && showDetails && (
-                      <p className="text-xs text-muted-foreground pl-6 line-clamp-2">
+                      <p className="line-clamp-2 pl-6 text-xs text-muted-foreground">
                         {type.description}
                       </p>
                     )}

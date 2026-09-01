@@ -31,10 +31,7 @@ import { formatDate, formatRelativeTime } from '@/lib/utils/format';
 import { useEncounterReferrals } from '@/lib/hooks/use-referrals';
 import { ReferralCreateDialog } from '@/components/encounters/referral-create-dialog';
 import type { EncounterReferralItem, ReferralType } from '@/lib/types/referral';
-import {
-  REFERRAL_STATUS_CONFIG,
-  REFERRAL_PRIORITY_CONFIG,
-} from '@/lib/types/referral';
+import { REFERRAL_STATUS_CONFIG, REFERRAL_PRIORITY_CONFIG } from '@/lib/types/referral';
 
 // Status → CSS color mapping
 const STATUS_COLORS: Record<string, string> = {
@@ -141,13 +138,9 @@ export function EncounterReferralsContent({
 
       {/* Create Referral Button */}
       {!disabled && (
-        <div className="flex pt-2 border-t">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCreateDialog(true)}
-          >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
+        <div className="flex border-t pt-2">
+          <Button variant="outline" size="sm" onClick={() => setShowCreateDialog(true)}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
             Create Referral
           </Button>
         </div>
@@ -173,12 +166,10 @@ function ReferralCard({ referral }: { referral: EncounterReferralItem }) {
   const priorityConfig = REFERRAL_PRIORITY_CONFIG[referral.priority];
 
   return (
-    <div className="flex items-start justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-      <div className="space-y-1 min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-sm truncate">
-            {referral.target_service_display}
-          </span>
+    <div className="flex items-start justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50">
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate text-sm font-medium">{referral.target_service_display}</span>
           <Badge className={STATUS_COLORS[referral.status] || ''}>
             {statusConfig?.label || referral.status}
           </Badge>
@@ -187,19 +178,15 @@ function ReferralCard({ referral }: { referral: EncounterReferralItem }) {
               {priorityConfig?.label || referral.priority}
             </Badge>
           )}
-          {referral.is_sensitive && (
-            <Shield className="h-3 w-3 text-destructive" />
-          )}
+          {referral.is_sensitive && <Shield className="h-3 w-3 text-destructive" />}
         </div>
-        <p className="text-xs text-muted-foreground line-clamp-1">
+        <p className="line-clamp-1 text-xs text-muted-foreground">
           {referral.referral_number} • {referral.reason}
         </p>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Calendar className="h-3 w-3" />
           <span>{formatDate(referral.created_at)}</span>
-          <span className="hidden sm:inline">
-            • {formatRelativeTime(referral.created_at)}
-          </span>
+          <span className="hidden sm:inline">• {formatRelativeTime(referral.created_at)}</span>
           <span>• by {referral.referred_by_name}</span>
         </div>
       </div>

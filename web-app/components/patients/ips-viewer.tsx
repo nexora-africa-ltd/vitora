@@ -2,13 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -171,10 +165,7 @@ function formatFHIRDate(dateStr?: string): string {
   }
 }
 
-function extractResources<T extends FHIRResource>(
-  bundle: FHIRBundle,
-  resourceType: string
-): T[] {
+function extractResources<T extends FHIRResource>(bundle: FHIRBundle, resourceType: string): T[] {
   if (!bundle.entry) return [];
   return bundle.entry
     .filter((e) => e.resource?.resourceType === resourceType)
@@ -217,7 +208,10 @@ function ConditionsSection({ conditions }: { conditions: FHIRCondition[] }) {
   return (
     <IPSSection title="Active Conditions" icon={Heart} count={conditions.length}>
       {conditions.map((c, i) => (
-        <div key={i} className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
+        <div
+          key={i}
+          className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm"
+        >
           <div className="min-w-0">
             <p className="font-medium">{getDisplayText(c.code)}</p>
             {c.onsetDateTime && (
@@ -247,12 +241,17 @@ function AllergiesSection({ allergies }: { allergies: FHIRAllergyIntolerance[] }
   return (
     <IPSSection title="Allergies & Intolerances" icon={AlertTriangle} count={allergies.length}>
       {allergies.map((a, i) => (
-        <div key={i} className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
+        <div
+          key={i}
+          className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm"
+        >
           <div className="min-w-0">
             <p className="font-medium">{getDisplayText(a.code)}</p>
-            <div className="flex flex-wrap gap-1 mt-0.5">
+            <div className="mt-0.5 flex flex-wrap gap-1">
               {a.category?.map((cat, j) => (
-                <span key={j} className="text-xs text-muted-foreground capitalize">{cat}</span>
+                <span key={j} className="text-xs capitalize text-muted-foreground">
+                  {cat}
+                </span>
               ))}
               {a.reaction?.[0]?.manifestation?.[0] && (
                 <span className="text-xs text-muted-foreground">
@@ -276,16 +275,17 @@ function MedicationsSection({ medications }: { medications: FHIRMedicationStatem
   return (
     <IPSSection title="Medications" icon={Pill} count={medications.length}>
       {medications.map((m, i) => (
-        <div key={i} className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
+        <div
+          key={i}
+          className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm"
+        >
           <div className="min-w-0">
             <p className="font-medium">{getDisplayText(m.medicationCodeableConcept)}</p>
             {m.dosage?.[0]?.text && (
               <p className="text-xs text-muted-foreground">{m.dosage[0].text}</p>
             )}
             {m.effectiveDateTime && (
-              <p className="text-xs text-muted-foreground">
-                {formatFHIRDate(m.effectiveDateTime)}
-              </p>
+              <p className="text-xs text-muted-foreground">{formatFHIRDate(m.effectiveDateTime)}</p>
             )}
           </div>
           {m.status && (
@@ -303,7 +303,10 @@ function ImmunizationsSection({ immunizations }: { immunizations: FHIRImmunizati
   return (
     <IPSSection title="Immunizations" icon={Syringe} count={immunizations.length}>
       {immunizations.map((imm, i) => (
-        <div key={i} className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
+        <div
+          key={i}
+          className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm"
+        >
           <div className="min-w-0">
             <p className="font-medium">{getDisplayText(imm.vaccineCode)}</p>
             {imm.occurrenceDateTime && (
@@ -323,9 +326,15 @@ function ImmunizationsSection({ immunizations }: { immunizations: FHIRImmunizati
   );
 }
 
-function LabResultsSection({ observations, reports }: { observations: FHIRObservation[]; reports: FHIRDiagnosticReport[] }) {
-  const labObs = observations.filter(
-    (o) => o.category?.some((c) => c.coding?.some((cd) => cd.code === 'laboratory'))
+function LabResultsSection({
+  observations,
+  reports,
+}: {
+  observations: FHIRObservation[];
+  reports: FHIRDiagnosticReport[];
+}) {
+  const labObs = observations.filter((o) =>
+    o.category?.some((c) => c.coding?.some((cd) => cd.code === 'laboratory'))
   );
   const items = labObs.length > 0 ? labObs : observations;
   const total = items.length + reports.length;
@@ -333,16 +342,17 @@ function LabResultsSection({ observations, reports }: { observations: FHIRObserv
   return (
     <IPSSection title="Laboratory Results" icon={TestTube2} count={total}>
       {items.map((o, i) => (
-        <div key={`obs-${i}`} className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
+        <div
+          key={`obs-${i}`}
+          className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm"
+        >
           <div className="min-w-0">
             <p className="font-medium">{getDisplayText(o.code)}</p>
             {o.effectiveDateTime && (
-              <p className="text-xs text-muted-foreground">
-                {formatFHIRDate(o.effectiveDateTime)}
-              </p>
+              <p className="text-xs text-muted-foreground">{formatFHIRDate(o.effectiveDateTime)}</p>
             )}
           </div>
-          <span className="shrink-0 text-sm font-mono">
+          <span className="shrink-0 font-mono text-sm">
             {o.valueQuantity
               ? `${o.valueQuantity.value} ${o.valueQuantity.unit || ''}`
               : o.valueString || getDisplayText(o.valueCodeableConcept) || '—'}
@@ -350,11 +360,14 @@ function LabResultsSection({ observations, reports }: { observations: FHIRObserv
         </div>
       ))}
       {reports.map((r, i) => (
-        <div key={`rpt-${i}`} className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
+        <div
+          key={`rpt-${i}`}
+          className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm"
+        >
           <div className="min-w-0">
             <p className="font-medium">{getDisplayText(r.code)}</p>
             {r.conclusion && (
-              <p className="text-xs text-muted-foreground line-clamp-2">{r.conclusion}</p>
+              <p className="line-clamp-2 text-xs text-muted-foreground">{r.conclusion}</p>
             )}
           </div>
           {r.status && (
@@ -372,7 +385,10 @@ function ProceduresSection({ procedures }: { procedures: FHIRProcedure[] }) {
   return (
     <IPSSection title="Procedures" icon={Stethoscope} count={procedures.length}>
       {procedures.map((p, i) => (
-        <div key={i} className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
+        <div
+          key={i}
+          className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm"
+        >
           <div className="min-w-0">
             <p className="font-medium">{getDisplayText(p.code)}</p>
             {(p.performedDateTime || p.performedPeriod?.start) && (
@@ -393,15 +409,18 @@ function ProceduresSection({ procedures }: { procedures: FHIRProcedure[] }) {
 }
 
 function SocialHistorySection({ observations }: { observations: FHIRObservation[] }) {
-  const socialObs = observations.filter(
-    (o) => o.category?.some((c) => c.coding?.some((cd) => cd.code === 'social-history'))
+  const socialObs = observations.filter((o) =>
+    o.category?.some((c) => c.coding?.some((cd) => cd.code === 'social-history'))
   );
   if (socialObs.length === 0) return null;
 
   return (
     <IPSSection title="Social History" icon={Users} count={socialObs.length}>
       {socialObs.map((o, i) => (
-        <div key={i} className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
+        <div
+          key={i}
+          className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm"
+        >
           <p className="font-medium">{getDisplayText(o.code)}</p>
           <span className="shrink-0 text-sm text-muted-foreground">
             {o.valueString || getDisplayText(o.valueCodeableConcept) || '—'}
@@ -417,15 +436,17 @@ function PregnancySection({ observations }: { observations: FHIRObservation[] })
     (o) =>
       o.code?.coding?.some(
         (c) => c.system === 'http://loinc.org' && ['82810-3', '11636-8'].includes(c.code || '')
-      ) ||
-      getDisplayText(o.code).toLowerCase().includes('pregnan')
+      ) || getDisplayText(o.code).toLowerCase().includes('pregnan')
   );
   if (pregnancyObs.length === 0) return null;
 
   return (
     <IPSSection title="Pregnancy Status" icon={Baby} count={pregnancyObs.length}>
       {pregnancyObs.map((o, i) => (
-        <div key={i} className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
+        <div
+          key={i}
+          className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm"
+        >
           <p className="font-medium">{getDisplayText(o.code)}</p>
           <span className="shrink-0 text-sm text-muted-foreground">
             {o.valueString || getDisplayText(o.valueCodeableConcept) || '—'}
@@ -448,7 +469,11 @@ interface IPSViewerProps {
 export function IPSViewer({ patientId, patientMrn }: IPSViewerProps) {
   const [open, setOpen] = useState(false);
 
-  const { data: bundle, isLoading, error } = useQuery<FHIRBundle>({
+  const {
+    data: bundle,
+    isLoading,
+    error,
+  } = useQuery<FHIRBundle>({
     queryKey: ['ips', patientId],
     queryFn: async () => {
       const { apiClient } = await import('@/lib/api/client');
@@ -476,8 +501,12 @@ export function IPSViewer({ patientId, patientMrn }: IPSViewerProps) {
 
   // Extract resources from bundle
   const conditions = bundle ? extractResources<FHIRCondition>(bundle, 'Condition') : [];
-  const allergies = bundle ? extractResources<FHIRAllergyIntolerance>(bundle, 'AllergyIntolerance') : [];
-  const medications = bundle ? extractResources<FHIRMedicationStatement>(bundle, 'MedicationStatement') : [];
+  const allergies = bundle
+    ? extractResources<FHIRAllergyIntolerance>(bundle, 'AllergyIntolerance')
+    : [];
+  const medications = bundle
+    ? extractResources<FHIRMedicationStatement>(bundle, 'MedicationStatement')
+    : [];
   const immunizations = bundle ? extractResources<FHIRImmunization>(bundle, 'Immunization') : [];
   const observations = bundle ? extractResources<FHIRObservation>(bundle, 'Observation') : [];
   const reports = bundle ? extractResources<FHIRDiagnosticReport>(bundle, 'DiagnosticReport') : [];
@@ -504,7 +533,7 @@ export function IPSViewer({ patientId, patientMrn }: IPSViewerProps) {
           <span className="hidden sm:inline">Patient Summary</span>
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader className="space-y-1">
           <SheetTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />

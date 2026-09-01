@@ -38,21 +38,10 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  User,
-  AlertCircle,
-  Check,
-  ChevronsUpDown,
-  Heart,
-  Shield,
-} from 'lucide-react';
+import { User, AlertCircle, Check, ChevronsUpDown, Heart, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useCounsellingTypes,
@@ -85,7 +74,9 @@ const riskLevels: RiskLevel[] = ['LOW', 'MODERATE', 'HIGH', 'CRITICAL'];
 
 const referralSchema = z.object({
   patient_id: z.number({ required_error: 'Patient is required' }).min(1, 'Patient is required'),
-  counselling_type_id: z.number({ required_error: 'Counselling type is required' }).min(1, 'Counselling type is required'),
+  counselling_type_id: z
+    .number({ required_error: 'Counselling type is required' })
+    .min(1, 'Counselling type is required'),
   presenting_concern: z
     .string({ required_error: 'Presenting concern is required' })
     .min(10, 'Presenting concern must be at least 10 characters'),
@@ -157,7 +148,7 @@ export function CounsellingReferralForm({
 
   const counsellingTypes = useMemo(() => typesData?.results || [], [typesData?.results]);
   const patients = patientsData?.results || [];
-  const selectedType = counsellingTypes.find(t => t.id === selectedTypeId);
+  const selectedType = counsellingTypes.find((t) => t.id === selectedTypeId);
 
   // Form setup
   const form = useForm<ReferralFormData>({
@@ -169,9 +160,9 @@ export function CounsellingReferralForm({
       background_history: referral?.background_history || '',
       risk_assessment: referral?.risk_assessment || '',
       risk_level: (referral?.risk_level as RiskLevel) || 'LOW',
-      priority: (referral?.priority as typeof priorities[number]) || 'ROUTINE',
+      priority: (referral?.priority as (typeof priorities)[number]) || 'ROUTINE',
       recommended_sessions: referral?.recommended_sessions || 6,
-      preferred_modality: referral?.preferred_modality as SessionModality || undefined,
+      preferred_modality: (referral?.preferred_modality as SessionModality) || undefined,
       special_considerations: referral?.special_considerations || '',
       encounter_id: encounterId,
     },
@@ -186,25 +177,31 @@ export function CounsellingReferralForm({
   }, [patientId, form]);
 
   // Handle patient selection
-  const handlePatientSelect = useCallback((id: number) => {
-    setSelectedPatientId(id);
-    form.setValue('patient_id', id);
-    setPatientOpen(false);
-    setPatientSearch('');
-  }, [form]);
+  const handlePatientSelect = useCallback(
+    (id: number) => {
+      setSelectedPatientId(id);
+      form.setValue('patient_id', id);
+      setPatientOpen(false);
+      setPatientSearch('');
+    },
+    [form]
+  );
 
   // Handle type selection
-  const handleTypeSelect = useCallback((id: number) => {
-    setSelectedTypeId(id);
-    form.setValue('counselling_type_id', id);
-    setTypeOpen(false);
+  const handleTypeSelect = useCallback(
+    (id: number) => {
+      setSelectedTypeId(id);
+      form.setValue('counselling_type_id', id);
+      setTypeOpen(false);
 
-    // Auto-populate recommended sessions from type
-    const type = counsellingTypes.find(t => t.id === id);
-    if (type && !isEditMode) {
-      form.setValue('recommended_sessions', type.recommended_sessions);
-    }
-  }, [form, counsellingTypes, isEditMode]);
+      // Auto-populate recommended sessions from type
+      const type = counsellingTypes.find((t) => t.id === id);
+      if (type && !isEditMode) {
+        form.setValue('recommended_sessions', type.recommended_sessions);
+      }
+    },
+    [form, counsellingTypes, isEditMode]
+  );
 
   // Handle form submission
   const handleSubmit = async (data: ReferralFormData) => {
@@ -283,7 +280,7 @@ export function CounsellingReferralForm({
           {/* Patient Selection */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <User className="h-4 w-4 sm:h-5 sm:w-5" />
                 Patient
               </CardTitle>
@@ -299,17 +296,22 @@ export function CounsellingReferralForm({
                       {patientId ? (
                         <div className="space-y-1">
                           {patientLoading ? (
-                            <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                            <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-2">
                               <LoadingSpinner className="h-4 w-4" />
-                              <span className="text-sm text-muted-foreground">Loading patient...</span>
+                              <span className="text-sm text-muted-foreground">
+                                Loading patient...
+                              </span>
                             </div>
                           ) : selectedPatient ? (
-                            <div className="p-2 border rounded-md bg-muted/50">
-                              <p className="font-medium">{selectedPatient.full_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}</p>
+                            <div className="rounded-md border bg-muted/50 p-2">
+                              <p className="font-medium">
+                                {selectedPatient.full_name ||
+                                  `${selectedPatient.first_name} ${selectedPatient.last_name}`}
+                              </p>
                               <p className="text-sm text-muted-foreground">{selectedPatient.mrn}</p>
                             </div>
                           ) : (
-                            <div className="p-2 border rounded-md bg-muted/50">
+                            <div className="rounded-md border bg-muted/50 p-2">
                               <p className="text-sm text-muted-foreground">Patient #{patientId}</p>
                             </div>
                           )}
@@ -339,7 +341,7 @@ export function CounsellingReferralForm({
                               <CommandList>
                                 {patientsLoading ? (
                                   <div className="p-2 text-center">
-                                    <LoadingSpinner className="h-4 w-4 mx-auto" />
+                                    <LoadingSpinner className="mx-auto h-4 w-4" />
                                   </div>
                                 ) : patients.length === 0 ? (
                                   <CommandEmpty>No patients found.</CommandEmpty>
@@ -354,14 +356,19 @@ export function CounsellingReferralForm({
                                         <Check
                                           className={cn(
                                             'mr-2 h-4 w-4',
-                                            selectedPatientId === patient.id ? 'opacity-100' : 'opacity-0'
+                                            selectedPatientId === patient.id
+                                              ? 'opacity-100'
+                                              : 'opacity-0'
                                           )}
                                         />
                                         <div>
                                           <p className="font-medium">
-                                            {patient.full_name || `${patient.first_name} ${patient.last_name}`}
+                                            {patient.full_name ||
+                                              `${patient.first_name} ${patient.last_name}`}
                                           </p>
-                                          <p className="text-sm text-muted-foreground">{patient.mrn}</p>
+                                          <p className="text-sm text-muted-foreground">
+                                            {patient.mrn}
+                                          </p>
                                         </div>
                                       </CommandItem>
                                     ))}
@@ -383,7 +390,7 @@ export function CounsellingReferralForm({
           {/* Counselling Type */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
                 Counselling Type
               </CardTitle>
@@ -431,7 +438,8 @@ export function CounsellingReferralForm({
                                     <div>
                                       <p className="font-medium">{type.name}</p>
                                       <p className="text-sm text-muted-foreground">
-                                        {COUNSELLING_CATEGORY_LABELS[type.category] || type.category}
+                                        {COUNSELLING_CATEGORY_LABELS[type.category] ||
+                                          type.category}
                                       </p>
                                     </div>
                                   </CommandItem>
@@ -497,10 +505,7 @@ export function CounsellingReferralForm({
                   <FormItem>
                     <FormLabel>Background History</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Relevant background and history..."
-                        {...field}
-                      />
+                      <Textarea placeholder="Relevant background and history..." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -512,7 +517,7 @@ export function CounsellingReferralForm({
           {/* Risk Assessment */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
                 Risk Assessment
                 <HelpPopover content="Assess the patient's current risk level for safety planning." />
@@ -566,9 +571,7 @@ export function CounsellingReferralForm({
           {/* Session Details */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg">
-                Session Details
-              </CardTitle>
+              <CardTitle className="text-base sm:text-lg">Session Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -648,11 +651,7 @@ export function CounsellingReferralForm({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="w-full sm:w-auto"
-            >
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending && <LoadingSpinner className="mr-2 h-4 w-4" />}
               {isEditMode ? 'Update Referral' : 'Create Referral'}
             </Button>

@@ -33,16 +33,8 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  FileText,
-  AlertCircle,
-  Check,
-  CalendarIcon,
-} from 'lucide-react';
-import {
-  useCreateCaseNote,
-  useUpdateCaseNote,
-} from '@/lib/hooks/use-social-work';
+import { FileText, AlertCircle, Check, CalendarIcon } from 'lucide-react';
+import { useCreateCaseNote, useUpdateCaseNote } from '@/lib/hooks/use-social-work';
 import type { CaseNote, ContactMethod } from '@/lib/types/social-work';
 import { useToast } from '@/lib/hooks/use-toast';
 
@@ -152,7 +144,8 @@ export function CaseNoteForm({
         duration_minutes: data.duration_minutes ? Number(data.duration_minutes) : undefined,
         subject: data.subject,
         content: data.note_content,
-        participant_names: [data.contact_with, data.participant_names].filter(Boolean).join(', ') || undefined,
+        participant_names:
+          [data.contact_with, data.participant_names].filter(Boolean).join(', ') || undefined,
         follow_up_required: data.follow_up_required,
         follow_up_actions: data.follow_up_actions,
         follow_up_date: data.follow_up_required ? data.follow_up_date : undefined,
@@ -182,13 +175,11 @@ export function CaseNoteForm({
   return (
     <Card>
       <CardHeader className="py-3 sm:py-4">
-        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
           <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
           {isEditMode ? 'Edit Case Note' : 'Add Case Note'}
           {caseNumber && (
-            <span className="text-sm font-normal text-muted-foreground">
-              — {caseNumber}
-            </span>
+            <span className="text-sm font-normal text-muted-foreground">— {caseNumber}</span>
           )}
           <HelpPopover content="Record a contact, assessment, progress update, or other note for this social work case." />
         </CardTitle>
@@ -238,7 +229,7 @@ export function CaseNoteForm({
                     <FormLabel>Contact Date *</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <CalendarIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input type="date" className="pl-10" {...field} />
                       </div>
                     </FormControl>
@@ -314,10 +305,7 @@ export function CaseNoteForm({
                   <FormItem>
                     <FormLabel>Other Participants</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Names of other participants (if any)"
-                        {...field}
-                      />
+                      <Input placeholder="Names of other participants (if any)" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -349,7 +337,7 @@ export function CaseNoteForm({
                   <FormLabel>Note Content *</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Record the details of the contact, observations, client&apos;s response, and any relevant information..."
+                      placeholder="Record the details of the contact, observations, client's response, and any relevant information..."
                       rows={6}
                       {...field}
                     />
@@ -392,10 +380,7 @@ export function CaseNoteForm({
                       </FormDescription>
                     </div>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                   </FormItem>
                 )}
@@ -411,7 +396,7 @@ export function CaseNoteForm({
                         <FormLabel>Follow-up Date</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <CalendarIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input type="date" className="pl-10" {...field} />
                           </div>
                         </FormControl>
@@ -448,15 +433,10 @@ export function CaseNoteForm({
                 <FormItem className="flex items-center justify-between gap-4 rounded-lg border p-4">
                   <div>
                     <FormLabel>Confidential Note</FormLabel>
-                    <FormDescription>
-                      Restrict visibility to the case team only
-                    </FormDescription>
+                    <FormDescription>Restrict visibility to the case team only</FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                 </FormItem>
               )}
@@ -474,7 +454,7 @@ export function CaseNoteForm({
                   <>Saving...</>
                 ) : (
                   <>
-                    <Check className="h-4 w-4 mr-2" />
+                    <Check className="mr-2 h-4 w-4" />
                     {isEditMode ? 'Update Note' : 'Save Note'}
                   </>
                 )}

@@ -68,19 +68,17 @@ export default function ReportsIndexPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Billing Reports</h1>
-        <p className="text-muted-foreground">
-          Access financial and billing reports
-        </p>
+        <p className="text-muted-foreground">Access financial and billing reports</p>
       </div>
 
       {/* Report Cards */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {reports.map((report) => (
           <Link key={report.href} href={report.href}>
-            <Card className="h-full hover:border-primary/50 hover:shadow-md transition-all cursor-pointer">
+            <Card className="h-full cursor-pointer transition-all hover:border-primary/50 hover:shadow-md">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-muted ${report.color}`}>
+                  <div className={`rounded-lg bg-muted p-2 ${report.color}`}>
                     <report.icon className="h-5 w-5" />
                   </div>
                   <CardTitle className="text-lg">{report.title}</CardTitle>

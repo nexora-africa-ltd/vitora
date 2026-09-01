@@ -24,14 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/shared/page-header';
-import {
-  Banknote,
-  CheckCircle2,
-  Clock,
-  FileText,
-  RefreshCw,
-  TrendingUp,
-} from 'lucide-react';
+import { Banknote, CheckCircle2, Clock, FileText, RefreshCw, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/format';
 import { shaApi } from '@/lib/api/sha';
 import type { CapitationSummary } from '@/lib/api/sha';
@@ -69,7 +62,7 @@ export default function CapitationReportPage() {
 
   if (!isAdmin) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <p className="text-muted-foreground">You do not have permission to view this page.</p>
       </div>
     );
@@ -84,7 +77,7 @@ export default function CapitationReportPage() {
 
       {/* Date Filters */}
       <Card>
-        <CardContent className="pt-4 pb-4">
+        <CardContent className="pb-4 pt-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
             <div className="space-y-1">
               <label className="text-sm font-medium">From</label>
@@ -111,7 +104,7 @@ export default function CapitationReportPage() {
               disabled={isFetching}
               className="w-full sm:w-auto"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
@@ -159,11 +152,7 @@ export default function CapitationReportPage() {
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(data.claims_by_status).map(([st, count]) => (
-                      <Badge
-                        key={st}
-                        variant="secondary"
-                        className={STATUS_COLORS[st] || ''}
-                      >
+                      <Badge key={st} variant="secondary" className={STATUS_COLORS[st] || ''}>
                         {st}: {count}
                       </Badge>
                     ))}
@@ -219,7 +208,7 @@ export default function CapitationReportPage() {
           {/* Monthly Breakdown */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Clock className="h-4 w-4" />
                 Monthly Breakdown
               </CardTitle>
@@ -274,12 +263,12 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
         aria-hidden="true"
       />
-      <CardContent className="relative pt-4 pb-4">
-        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+      <CardContent className="relative pb-4 pt-4">
+        <div className="mb-1 flex items-center gap-2 text-muted-foreground">
           {icon}
           <span className="text-xs font-medium">{label}</span>
         </div>
-        <p className="text-lg font-bold truncate">{value}</p>
+        <p className="truncate text-lg font-bold">{value}</p>
       </CardContent>
     </Card>
   );

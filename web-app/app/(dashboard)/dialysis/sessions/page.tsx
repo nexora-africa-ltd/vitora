@@ -12,7 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useDialysisSessions } from '@/lib/hooks/use-dialysis';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -60,14 +64,15 @@ export default function DialysisSessionsPage() {
       header: 'Type',
       sortable: true,
       hideOnMobile: true,
-      cell: (item: DialysisSession) => DIALYSIS_TYPE_LABELS[item.dialysis_type] || item.dialysis_type,
+      cell: (item: DialysisSession) =>
+        DIALYSIS_TYPE_LABELS[item.dialysis_type] || item.dialysis_type,
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
       cell: (item: DialysisSession) => (
-        <Badge className={`${SESSION_STATUS_COLORS[item.status]} shrink-0 w-fit`}>
+        <Badge className={`${SESSION_STATUS_COLORS[item.status]} w-fit shrink-0`}>
           {item.status.replace('_', ' ')}
         </Badge>
       ),
@@ -79,7 +84,9 @@ export default function DialysisSessionsPage() {
       sortType: 'number' as const,
       hideOnMobile: true,
       cell: (item: DialysisSession) =>
-        item.actual_duration_minutes ? `${Math.floor(item.actual_duration_minutes / 60)}h ${item.actual_duration_minutes % 60}m` : '—',
+        item.actual_duration_minutes
+          ? `${Math.floor(item.actual_duration_minutes / 60)}h ${item.actual_duration_minutes % 60}m`
+          : '—',
     },
     {
       key: 'machine_number',
@@ -91,14 +98,17 @@ export default function DialysisSessionsPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Dialysis Sessions"
           helpContent="Track individual dialysis treatment sessions. Sessions progress: Scheduled → In Progress → Completed."
           actions={
             <PermissionGate action="dialysis.perform_session">
-              <Button onClick={() => router.push('/dialysis/sessions/new')} disabled={!canCreateRoute('/dialysis/sessions/new')}>
-                <Plus className="h-4 w-4 mr-2" />
+              <Button
+                onClick={() => router.push('/dialysis/sessions/new')}
+                disabled={!canCreateRoute('/dialysis/sessions/new')}
+              >
+                <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">New Session</span>
                 <span className="sm:hidden">New</span>
               </Button>
@@ -108,8 +118,8 @@ export default function DialysisSessionsPage() {
 
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by session #, patient..."
               value={search}

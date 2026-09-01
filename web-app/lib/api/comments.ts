@@ -142,11 +142,9 @@ export const commentsApi = {
     const response = await apiClient.get<{ count: number }>('/api/comments/count/', {
       params: { entity_type: entityType, entity_id: entityId },
     });
-    const parsed = parseResponse(
-      z.object({ count: z.number().optional() }),
-      response.data,
-      { context: `commentsApi.count(${entityType}, ${entityId})` }
-    );
+    const parsed = parseResponse(z.object({ count: z.number().optional() }), response.data, {
+      context: `commentsApi.count(${entityType}, ${entityId})`,
+    });
     return parsed.count ?? 0;
   },
 };

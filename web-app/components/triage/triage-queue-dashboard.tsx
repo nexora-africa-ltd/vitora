@@ -231,15 +231,15 @@ function QueueCard({
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           {/* Patient Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold truncate">{item.patient_name}</h3>
-              <Badge variant="outline" className="text-xs shrink-0">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex items-center gap-2">
+              <h3 className="truncate font-semibold">{item.patient_name}</h3>
+              <Badge variant="outline" className="shrink-0 text-xs">
                 {item.patient_age} yrs • {genderDisplay}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mb-2">{item.patient_mrn}</p>
-            <p className="text-sm mb-2 line-clamp-1">
+            <p className="mb-2 text-sm text-muted-foreground">{item.patient_mrn}</p>
+            <p className="mb-2 line-clamp-1 text-sm">
               <span className="font-medium">CC:</span> {item.chief_complaint || 'Chest pain'}
             </p>
             <div className="flex items-center gap-2 text-sm">
@@ -248,7 +248,7 @@ function QueueCard({
           </div>
 
           {/* Right Side: Category, Status, Wait Time */}
-          <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex shrink-0 flex-col items-end gap-2">
             {/* Category Badge */}
             <div data-testid={`category-badge-${item.id}`}>
               <TriageCategoryBadge category={item.triage_category} size="sm" />
@@ -280,14 +280,12 @@ function QueueCard({
             >
               <Clock className="h-3 w-3" />
               <span>{formatWaitTime(item.wait_time_minutes)}</span>
-              {isWaitTimeExceeded(item.triage_category, item.wait_time_minutes) && (
-                <span>⚠️</span>
-              )}
+              {isWaitTimeExceeded(item.triage_category, item.wait_time_minutes) && <span>⚠️</span>}
             </div>
 
             {/* Alerts Indicator */}
             {item.alerts_count > 0 && (
-              <div className="flex items-center gap-1 text-red-600 text-xs">
+              <div className="flex items-center gap-1 text-xs text-red-600">
                 <AlertCircle className="h-3 w-3" />
                 <span>{item.alerts_count} alerts</span>
               </div>
@@ -297,36 +295,36 @@ function QueueCard({
 
         {/* Action Buttons */}
         <div
-          className="flex items-center gap-2 mt-3 pt-3 border-t"
+          className="mt-3 flex items-center gap-2 border-t pt-3"
           onClick={(e) => e.stopPropagation()}
         >
           {item.status === 'WAITING' && (
             <>
               <Button size="sm" variant="default" onClick={onCall}>
-                <Phone className="h-3 w-3 mr-1" />
+                <Phone className="mr-1 h-3 w-3" />
                 Call
               </Button>
               <Button size="sm" variant="outline" onClick={onLWBS}>
-                <LogOut className="h-3 w-3 mr-1" />
+                <LogOut className="mr-1 h-3 w-3" />
                 LWBS
               </Button>
             </>
           )}
           {item.status === 'CALLED' && (
             <Button size="sm" variant="default" onClick={onWithClinician}>
-              <UserCheck className="h-3 w-3 mr-1" />
+              <UserCheck className="mr-1 h-3 w-3" />
               With Doctor
             </Button>
           )}
           {item.status === 'WITH_CLINICIAN' && (
             <Button size="sm" variant="default" onClick={onComplete}>
-              <CheckCircle className="h-3 w-3 mr-1" />
+              <CheckCircle className="mr-1 h-3 w-3" />
               Complete
             </Button>
           )}
           <Button size="sm" variant="ghost" className="ml-auto">
             View Details
-            <ChevronRight className="h-3 w-3 ml-1" />
+            <ChevronRight className="ml-1 h-3 w-3" />
           </Button>
         </div>
       </CardContent>
@@ -470,13 +468,13 @@ export function TriageQueueDashboard({
           )}
         </div>
         <Button onClick={onRefresh} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
         {/* Total */}
         <Card>
           <CardContent className="p-4">
@@ -526,12 +524,12 @@ export function TriageQueueDashboard({
         <CardContent className="p-4">
           <div className="flex flex-wrap items-end gap-4">
             {/* Search */}
-            <div className="flex-1 min-w-[200px]">
+            <div className="min-w-[200px] flex-1">
               <Label htmlFor="search" className="sr-only">
                 Search patients
               </Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="search"
                   placeholder="Search by name or MRN..."
@@ -552,13 +550,13 @@ export function TriageQueueDashboard({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Areas</SelectItem>
-                  {(Object.entries(ASSIGNED_AREA_CONFIG) as [AssignedArea, { label: string }][]).map(
-                    ([value, config]) => (
-                      <SelectItem key={value} value={value}>
-                        {config.label}
-                      </SelectItem>
-                    )
-                  )}
+                  {(
+                    Object.entries(ASSIGNED_AREA_CONFIG) as [AssignedArea, { label: string }][]
+                  ).map(([value, config]) => (
+                    <SelectItem key={value} value={value}>
+                      {config.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -584,7 +582,7 @@ export function TriageQueueDashboard({
             {/* Clear Filters */}
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <X className="h-4 w-4 mr-1" />
+                <X className="mr-1 h-4 w-4" />
                 Clear
               </Button>
             )}
@@ -598,8 +596,8 @@ export function TriageQueueDashboard({
       ) : filteredItems.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">
+            <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="mb-2 text-lg font-medium">
               {hasActiveFilters ? 'No patients found' : 'No patients in queue'}
             </h3>
             <p className="text-muted-foreground">

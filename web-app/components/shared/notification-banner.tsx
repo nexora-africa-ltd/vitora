@@ -35,12 +35,15 @@ interface NotificationBannerProps {
   persistKey?: string;
 }
 
-const variantStyles: Record<BannerVariant, {
-  container: string;
-  icon: string;
-  title: string;
-  description: string;
-}> = {
+const variantStyles: Record<
+  BannerVariant,
+  {
+    container: string;
+    icon: string;
+    title: string;
+    description: string;
+  }
+> = {
   info: {
     container: 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950',
     icon: 'text-blue-600 dark:text-blue-400',
@@ -126,31 +129,24 @@ export function NotificationBanner({
   const IconComponent = variantIcons[variant];
 
   return (
-    <div
-      className={cn(
-        'border-b rounded-lg',
-        styles.container,
-        className
-      )}
-      role="alert"
-    >
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 gap-2 sm:gap-3">
-        <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-          {icon || <IconComponent className={cn('h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5 sm:mt-0', styles.icon)} />}
+    <div className={cn('rounded-lg border-b', styles.container, className)} role="alert">
+      <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-4">
+        <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center sm:gap-3">
+          {icon || (
+            <IconComponent
+              className={cn('mt-0.5 h-4 w-4 shrink-0 sm:mt-0 sm:h-5 sm:w-5', styles.icon)}
+            />
+          )}
           <div className="min-w-0 flex-1">
-            <h4 className={cn('font-medium text-sm sm:text-base', styles.title)}>
-              {title}
-            </h4>
+            <h4 className={cn('text-sm font-medium sm:text-base', styles.title)}>{title}</h4>
             {description && (
-              <p className={cn('text-xs sm:text-sm mt-0.5', styles.description)}>
-                {description}
-              </p>
+              <p className={cn('mt-0.5 text-xs sm:text-sm', styles.description)}>{description}</p>
             )}
           </div>
           {/* Dismiss button - top right on mobile */}
           {onDismiss && (
             <Button
-              className="h-6 w-6 sm:hidden shrink-0"
+              className="h-6 w-6 shrink-0 sm:hidden"
               size="icon"
               variant="ghost"
               onClick={handleDismiss}
@@ -160,17 +156,17 @@ export function NotificationBanner({
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
           {/* "Don't show again" checkbox */}
           {persistKey && onDismiss && (
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <label className="flex cursor-pointer select-none items-center gap-1.5">
               <input
                 type="checkbox"
                 checked={dontShowAgain}
                 onChange={(e) => setDontShowAgain(e.target.checked)}
                 className="h-3.5 w-3.5 rounded border-current accent-current"
               />
-              <span className={cn('text-xs whitespace-nowrap', styles.description)}>
+              <span className={cn('whitespace-nowrap text-xs', styles.description)}>
                 Don&apos;t show again
               </span>
             </label>
@@ -188,7 +184,7 @@ export function NotificationBanner({
           {/* Dismiss button - right side on desktop */}
           {onDismiss && (
             <Button
-              className="h-8 w-8 hidden sm:flex"
+              className="hidden h-8 w-8 sm:flex"
               size="icon"
               variant="ghost"
               onClick={handleDismiss}

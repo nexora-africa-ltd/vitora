@@ -12,7 +12,17 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Syringe, ExternalLink, Clock, CheckCircle2, AlertCircle, XCircle, PlayCircle, Send } from 'lucide-react';
+import {
+  Plus,
+  Syringe,
+  ExternalLink,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  PlayCircle,
+  Send,
+} from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -76,10 +86,7 @@ export function EncounterProcedureOrders({
     enabled: !!(encounterId || clinicVisitId || admissionId),
   });
 
-  const {
-    data: externalRequestsData,
-    isLoading: externalLoading,
-  } = useQuery({
+  const { data: externalRequestsData, isLoading: externalLoading } = useQuery({
     queryKey: ['procedure-external-requests', filterParams],
     queryFn: () => proceduresApi.listExternalRequests({ ...filterParams, page_size: '50' }),
     enabled: !!encounterId,
@@ -98,7 +105,7 @@ export function EncounterProcedureOrders({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Syringe className="h-5 w-5" />
             Procedure Orders
           </CardTitle>
@@ -117,7 +124,7 @@ export function EncounterProcedureOrders({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Syringe className="h-5 w-5" />
             Procedure Orders
           </CardTitle>
@@ -129,9 +136,7 @@ export function EncounterProcedureOrders({
     );
   }
 
-  const activeOrders = orders.filter(
-    (o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED',
-  );
+  const activeOrders = orders.filter((o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
   const completedOrders = orders.filter((o) => o.status === 'COMPLETED');
   const cancelledOrders = orders.filter((o) => o.status === 'CANCELLED');
 
@@ -139,7 +144,7 @@ export function EncounterProcedureOrders({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Syringe className="h-5 w-5" />
             Procedure Orders
             {orders.length + externalRequests.length > 0 && (
@@ -148,14 +153,17 @@ export function EncounterProcedureOrders({
           </CardTitle>
           {!disabled && (
             <Button size="sm" onClick={() => setShowOrderForm(true)}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">Order Procedure</span>
               <span className="sm:hidden">Order</span>
             </Button>
           )}
         </div>
         {orders.length === 0 && externalRequests.length === 0 && (
-          <CardDescription>No procedure orders for this {encounterId ? 'encounter' : clinicVisitId ? 'visit' : 'admission'}</CardDescription>
+          <CardDescription>
+            No procedure orders for this{' '}
+            {encounterId ? 'encounter' : clinicVisitId ? 'visit' : 'admission'}
+          </CardDescription>
         )}
       </CardHeader>
 
@@ -220,7 +228,7 @@ export function EncounterProcedureOrders({
 
       {/* New Procedure Order Sheet */}
       <Sheet open={showOrderForm} onOpenChange={setShowOrderForm}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+        <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
           <SheetHeader className="sr-only">
             <SheetTitle>New Procedure Order</SheetTitle>
           </SheetHeader>
@@ -263,7 +271,11 @@ export function EncounterProcedureOrdersContent({
     return params;
   }, [encounterId, clinicVisitId, admissionId]);
 
-  const { data: ordersData, isLoading, error } = useQuery({
+  const {
+    data: ordersData,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['procedure-orders-content', filterParams],
     queryFn: () => proceduresApi.listOrders({ ...filterParams, page_size: '50' }),
     enabled: !!(encounterId || clinicVisitId || admissionId),
@@ -297,9 +309,7 @@ export function EncounterProcedureOrdersContent({
     return <p className="text-sm text-muted-foreground">Failed to load procedure orders.</p>;
   }
 
-  const activeOrders = orders.filter(
-    (o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED',
-  );
+  const activeOrders = orders.filter((o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
   const completedOrders = orders.filter((o) => o.status === 'COMPLETED');
 
   return (
@@ -312,16 +322,19 @@ export function EncounterProcedureOrdersContent({
       {!disabled && (
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setShowOrderForm(true)}>
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="mr-1 h-4 w-4" />
             Order Procedure
           </Button>
         </div>
       )}
 
       {orders.length === 0 && externalRequests.length === 0 ? (
-        <div className="text-center py-4 text-muted-foreground">
-          <Syringe className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No procedure orders for this {encounterId ? 'encounter' : clinicVisitId ? 'visit' : 'admission'}</p>
+        <div className="py-4 text-center text-muted-foreground">
+          <Syringe className="mx-auto mb-2 h-8 w-8 opacity-50" />
+          <p className="text-sm">
+            No procedure orders for this{' '}
+            {encounterId ? 'encounter' : clinicVisitId ? 'visit' : 'admission'}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -366,7 +379,7 @@ export function EncounterProcedureOrdersContent({
 
       {/* New Procedure Order Sheet */}
       <Sheet open={showOrderForm} onOpenChange={setShowOrderForm}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+        <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
           <SheetHeader className="sr-only">
             <SheetTitle>New Procedure Order</SheetTitle>
           </SheetHeader>
@@ -396,19 +409,19 @@ function ExternalProcedureRequestCard({ request }: { request: ExternalProcedureO
   };
 
   return (
-    <div className="rounded-lg border p-3 bg-muted/20">
+    <div className="rounded-lg border bg-muted/20 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-sm">{request.request_number}</span>
             <Badge className={statusColors[request.status] || ''}>{request.status}</Badge>
             <Badge variant="outline" className="text-[10px]">
-              <Send className="h-2.5 w-2.5 mr-0.5" /> External
+              <Send className="mr-0.5 h-2.5 w-2.5" /> External
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground line-clamp-1 mt-1">{request.indication}</p>
+          <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{request.indication}</p>
           {request.rejection_reason && (
-            <p className="text-xs text-red-600 mt-1">Reason: {request.rejection_reason}</p>
+            <p className="mt-1 text-xs text-red-600">Reason: {request.rejection_reason}</p>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -434,28 +447,22 @@ function ProcedureOrderCard({ order }: { order: ProcedureOrderListItem }) {
   return (
     <Link
       href={`/procedures/orders/${order.id}`}
-      className="block rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+      className="block rounded-lg border p-3 transition-colors hover:bg-muted/50"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-2 min-w-0">
-          <StatusIcon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+        <div className="flex min-w-0 items-start gap-2">
+          <StatusIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate">
-              {order.procedure_name}
-            </p>
+            <p className="truncate text-sm font-medium">{order.procedure_name}</p>
             <p className="text-xs text-muted-foreground">
               {order.order_number}
               {order.scheduled_date && ` · ${order.scheduled_date}`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Badge className={`text-xs ${priorityColor}`}>
-            {order.priority}
-          </Badge>
-          <Badge className={`text-xs ${statusColor}`}>
-            {statusLabel}
-          </Badge>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Badge className={`text-xs ${priorityColor}`}>{order.priority}</Badge>
+          <Badge className={`text-xs ${statusColor}`}>{statusLabel}</Badge>
           <ExternalLink className="h-3 w-3 text-muted-foreground" />
         </div>
       </div>

@@ -33,7 +33,10 @@ const STATUS_BADGE_VARIANTS: Record<string, 'secondary' | 'success' | 'warning' 
   RETIRED: 'outline',
 };
 
-const PRIORITY_BADGE_VARIANTS: Record<string, 'destructive' | 'warning' | 'info' | 'secondary' | 'outline'> = {
+const PRIORITY_BADGE_VARIANTS: Record<
+  string,
+  'destructive' | 'warning' | 'info' | 'secondary' | 'outline'
+> = {
   CRITICAL: 'destructive',
   HIGH: 'warning',
   MEDIUM: 'info',
@@ -69,9 +72,11 @@ export default function CDSRulesPage() {
   const queryParams: CDSRuleListParams = useMemo(() => {
     const params: CDSRuleListParams = { page, page_size: PAGE_SIZE };
     if (search.trim()) params.search = search.trim();
-    if (filters.category !== 'all') params.category = filters.category as CDSRuleListParams['category'];
+    if (filters.category !== 'all')
+      params.category = filters.category as CDSRuleListParams['category'];
     if (filters.status !== 'all') params.status = filters.status as CDSRuleListParams['status'];
-    if (filters.priority !== 'all') params.priority = filters.priority as CDSRuleListParams['priority'];
+    if (filters.priority !== 'all')
+      params.priority = filters.priority as CDSRuleListParams['priority'];
     return params;
   }, [filters, page, search]);
 
@@ -88,7 +93,9 @@ export default function CDSRulesPage() {
         <PageHeader title="CDS Rules" />
         <Card className="p-6 text-center">
           <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">You do not have permission to view CDS rules.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to view CDS rules.
+          </p>
         </Card>
       </div>
     );
@@ -104,13 +111,15 @@ export default function CDSRulesPage() {
         <PageHeader
           title="CDS Rules"
           helpContent="Manage clinical decision support rules. Rules define conditions that trigger alerts during clinical workflows — drug-allergy checks, critical lab values, vital sign thresholds, and more."
-          actions={canCreateCDSRules ? (
-            <Button size="sm" onClick={() => router.push('/cds/rules/new')}>
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">New Rule</span>
-              <span className="sm:hidden">New</span>
-            </Button>
-          ) : undefined}
+          actions={
+            canCreateCDSRules ? (
+              <Button size="sm" onClick={() => router.push('/cds/rules/new')}>
+                <Plus className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">New Rule</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            ) : undefined
+          }
         />
 
         {/* Filters */}
@@ -118,12 +127,18 @@ export default function CDSRulesPage() {
           <Input
             placeholder="Search by code, name..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="w-full sm:max-w-xs"
           />
           <Select
             value={filters.category}
-            onValueChange={(value) => { setFilters((f) => ({ ...f, category: value })); setPage(1); }}
+            onValueChange={(value) => {
+              setFilters((f) => ({ ...f, category: value }));
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Category" />
@@ -141,7 +156,10 @@ export default function CDSRulesPage() {
           </Select>
           <Select
             value={filters.status}
-            onValueChange={(value) => { setFilters((f) => ({ ...f, status: value })); setPage(1); }}
+            onValueChange={(value) => {
+              setFilters((f) => ({ ...f, status: value }));
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="Status" />
@@ -156,7 +174,10 @@ export default function CDSRulesPage() {
           </Select>
           <Select
             value={filters.priority}
-            onValueChange={(value) => { setFilters((f) => ({ ...f, priority: value })); setPage(1); }}
+            onValueChange={(value) => {
+              setFilters((f) => ({ ...f, priority: value }));
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="Priority" />
@@ -234,16 +255,23 @@ export default function CDSRulesPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <span className="font-mono text-xs text-muted-foreground">{item.code}</span>
-                  <p className="font-medium truncate">{item.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {CATEGORY_LABELS[item.category] ?? item.category} • Level {item.evidence_level} • {item.trigger_count} triggers
+                  <p className="truncate font-medium">{item.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {CATEGORY_LABELS[item.category] ?? item.category} • Level {item.evidence_level}{' '}
+                    • {item.trigger_count} triggers
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <Badge variant={PRIORITY_BADGE_VARIANTS[item.priority] ?? 'secondary'} className="text-xs">
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <Badge
+                    variant={PRIORITY_BADGE_VARIANTS[item.priority] ?? 'secondary'}
+                    className="text-xs"
+                  >
                     {item.priority}
                   </Badge>
-                  <Badge variant={STATUS_BADGE_VARIANTS[item.status] ?? 'secondary'} className="text-xs">
+                  <Badge
+                    variant={STATUS_BADGE_VARIANTS[item.status] ?? 'secondary'}
+                    className="text-xs"
+                  >
                     {item.status}
                   </Badge>
                 </div>
@@ -255,13 +283,23 @@ export default function CDSRulesPage() {
         {/* Pagination */}
         {data && data.count > PAGE_SIZE && (
           <div className="flex justify-center gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
               Previous
             </Button>
             <span className="flex items-center text-sm text-muted-foreground">
               Page {page} of {Math.ceil(data.count / PAGE_SIZE)}
             </span>
-            <Button variant="outline" size="sm" disabled={!data.next} onClick={() => setPage((p) => p + 1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!data.next}
+              onClick={() => setPage((p) => p + 1)}
+            >
               Next
             </Button>
           </div>

@@ -24,7 +24,7 @@ export function ensureString(value: string | undefined, defaultValue = ''): stri
  * Converts DataTable hashes to type-safe rows with guaranteed string values
  */
 export function safeHashes(hashes: Array<Record<string, string | undefined>>): DataTableRow[] {
-  return hashes.map(row => {
+  return hashes.map((row) => {
     const safeRow: DataTableRow = {};
     for (const [key, value] of Object.entries(row)) {
       safeRow[key] = value ?? '';
@@ -113,10 +113,7 @@ export const PERMISSIONS = {
  * Create a test user with specified role
  * Accepts any string role name - will use role's permissions if known, or custom permissions
  */
-export function createUser(
-  role: string,
-  overrides: Partial<UserContext> = {}
-): UserContext {
+export function createUser(role: string, overrides: Partial<UserContext> = {}): UserContext {
   const knownRole = role as keyof typeof PERMISSIONS;
   const basePermissions = PERMISSIONS[knownRole] ?? PERMISSIONS.doctor;
   return {
@@ -135,7 +132,9 @@ export function createPatient(overrides: Partial<PatientContext> = {}): PatientC
   const today = new Date();
   const dateParts = today.toISOString().split('T')[0];
   const dateStr = dateParts ? dateParts.replace(/-/g, '') : '20260107';
-  const seq = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+  const seq = Math.floor(Math.random() * 9999)
+    .toString()
+    .padStart(4, '0');
 
   return {
     mrn: `MRN-${dateStr}-${seq}`,
@@ -157,10 +156,10 @@ export function createPatientData(overrides: Record<string, string> = {}): Recor
     'First Name': 'Jane',
     'Last Name': 'Wanjiku',
     'Date of Birth': '1985-05-20',
-    'Gender': 'Female',
+    Gender: 'Female',
     'National ID': '12345678',
     'Phone Number': '+254712345678',
-    'County': 'Nairobi',
+    County: 'Nairobi',
     'Sub-County': 'Westlands',
     ...overrides,
   };
@@ -192,7 +191,9 @@ export function createEncounter(overrides: Partial<EncounterContext> = {}): Enco
 /**
  * Create vitals data
  */
-export function createVitals(overrides: Record<string, number | string> = {}): Record<string, number | string> {
+export function createVitals(
+  overrides: Record<string, number | string> = {}
+): Record<string, number | string> {
   return {
     Temperature: 37.2,
     Pulse: 78,
@@ -246,7 +247,7 @@ export const SAMPLE_DRUGS = [
  * Create prescription data
  */
 export function createPrescriptionItem(
-  drug: typeof SAMPLE_DRUGS[number],
+  drug: (typeof SAMPLE_DRUGS)[number],
   overrides: Record<string, string | number> = {}
 ): Record<string, string | number> {
   return {

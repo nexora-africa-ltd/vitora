@@ -89,31 +89,37 @@ function InterpretTab() {
   const [rawFindings, setRawFindings] = useState('');
 
   const handleSubmit = () => {
-    const payload: ECGInterpretRequest = mode === 'freetext'
-      ? { raw_findings: rawFindings, clinical_context: clinicalContext || undefined, age: age ? Number(age) : undefined, sex: (sex as 'male' | 'female') || undefined }
-      : {
-          heart_rate: heartRate ? Number(heartRate) : undefined,
-          rhythm: rhythm || undefined,
-          axis: axis || undefined,
-          pr_interval: prInterval ? Number(prInterval) : undefined,
-          qrs_duration: qrsDuration ? Number(qrsDuration) : undefined,
-          qtc_interval: qtcInterval ? Number(qtcInterval) : undefined,
-          st_segment: stSegment || undefined,
-          t_wave: tWave || undefined,
-          bundle_branch: bundleBranch || undefined,
-          clinical_context: clinicalContext || undefined,
-          age: age ? Number(age) : undefined,
-          sex: (sex as 'male' | 'female') || undefined,
-        };
+    const payload: ECGInterpretRequest =
+      mode === 'freetext'
+        ? {
+            raw_findings: rawFindings,
+            clinical_context: clinicalContext || undefined,
+            age: age ? Number(age) : undefined,
+            sex: (sex as 'male' | 'female') || undefined,
+          }
+        : {
+            heart_rate: heartRate ? Number(heartRate) : undefined,
+            rhythm: rhythm || undefined,
+            axis: axis || undefined,
+            pr_interval: prInterval ? Number(prInterval) : undefined,
+            qrs_duration: qrsDuration ? Number(qrsDuration) : undefined,
+            qtc_interval: qtcInterval ? Number(qtcInterval) : undefined,
+            st_segment: stSegment || undefined,
+            t_wave: tWave || undefined,
+            bundle_branch: bundleBranch || undefined,
+            clinical_context: clinicalContext || undefined,
+            age: age ? Number(age) : undefined,
+            sex: (sex as 'male' | 'female') || undefined,
+          };
     mutate(payload);
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       {/* Input form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Activity className="h-4 w-4" />
             ECG Input
           </CardTitle>
@@ -150,12 +156,19 @@ function InterpretTab() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Heart Rate (bpm)</Label>
-                <Input type="number" value={heartRate} onChange={(e) => setHeartRate(e.target.value)} placeholder="e.g. 88" />
+                <Input
+                  type="number"
+                  value={heartRate}
+                  onChange={(e) => setHeartRate(e.target.value)}
+                  placeholder="e.g. 88"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Rhythm</Label>
                 <Select value={rhythm} onValueChange={setRhythm}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="regular">Regular</SelectItem>
                     <SelectItem value="irregularly irregular">Irregularly irregular</SelectItem>
@@ -166,7 +179,9 @@ function InterpretTab() {
               <div className="space-y-1">
                 <Label className="text-xs">Axis</Label>
                 <Select value={axis} onValueChange={setAxis}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="normal">Normal</SelectItem>
                     <SelectItem value="LAD">Left axis deviation</SelectItem>
@@ -177,28 +192,53 @@ function InterpretTab() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">PR Interval (ms)</Label>
-                <Input type="number" value={prInterval} onChange={(e) => setPrInterval(e.target.value)} placeholder="120-200" />
+                <Input
+                  type="number"
+                  value={prInterval}
+                  onChange={(e) => setPrInterval(e.target.value)}
+                  placeholder="120-200"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">QRS Duration (ms)</Label>
-                <Input type="number" value={qrsDuration} onChange={(e) => setQrsDuration(e.target.value)} placeholder="60-120" />
+                <Input
+                  type="number"
+                  value={qrsDuration}
+                  onChange={(e) => setQrsDuration(e.target.value)}
+                  placeholder="60-120"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">QTc (ms)</Label>
-                <Input type="number" value={qtcInterval} onChange={(e) => setQtcInterval(e.target.value)} placeholder="350-450" />
+                <Input
+                  type="number"
+                  value={qtcInterval}
+                  onChange={(e) => setQtcInterval(e.target.value)}
+                  placeholder="350-450"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">ST Segment</Label>
-                <Input value={stSegment} onChange={(e) => setStSegment(e.target.value)} placeholder="e.g. elevation_anterior" />
+                <Input
+                  value={stSegment}
+                  onChange={(e) => setStSegment(e.target.value)}
+                  placeholder="e.g. elevation_anterior"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">T-Wave</Label>
-                <Input value={tWave} onChange={(e) => setTWave(e.target.value)} placeholder="e.g. inverted_lateral" />
+                <Input
+                  value={tWave}
+                  onChange={(e) => setTWave(e.target.value)}
+                  placeholder="e.g. inverted_lateral"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Bundle Branch</Label>
                 <Select value={bundleBranch} onValueChange={setBundleBranch}>
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="RBBB">RBBB</SelectItem>
                     <SelectItem value="LBBB">LBBB</SelectItem>
@@ -222,12 +262,19 @@ function InterpretTab() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Age</Label>
-                <Input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Years" />
+                <Input
+                  type="number"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="Years"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Sex</Label>
                 <Select value={sex} onValueChange={setSex}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="male">Male</SelectItem>
                     <SelectItem value="female">Female</SelectItem>
@@ -252,27 +299,40 @@ function InterpretTab() {
         </Card>
       )}
 
-      {data && <InterpretResult result={data} onDownloadPDF={() => {
-        reportMutation.mutate({
-          interpretation: data,
-          facility_name: undefined,
-          provider_name: undefined,
-        });
-      }} />}
+      {data && (
+        <InterpretResult
+          result={data}
+          onDownloadPDF={() => {
+            reportMutation.mutate({
+              interpretation: data,
+              facility_name: undefined,
+              provider_name: undefined,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function InterpretResult({ result, onDownloadPDF }: { result: ECGInterpretResponse; onDownloadPDF: () => void }) {
+function InterpretResult({
+  result,
+  onDownloadPDF,
+}: {
+  result: ECGInterpretResponse;
+  onDownloadPDF: () => void;
+}) {
   return (
     <div className="space-y-3">
       {/* Summary card */}
       <Card>
-        <CardContent className="pt-4 space-y-3">
+        <CardContent className="space-y-3 pt-4">
           <div className="flex items-start justify-between gap-2">
             <div>
               <h3 className="font-semibold">{result.rhythm_diagnosis}</h3>
-              <p className="text-sm text-muted-foreground">{result.rate_category} • Confidence: {Math.round(result.confidence * 100)}%</p>
+              <p className="text-sm text-muted-foreground">
+                {result.rate_category} • Confidence: {Math.round(result.confidence * 100)}%
+              </p>
             </div>
             <UrgencyBadge urgency={result.urgency} />
           </div>
@@ -290,8 +350,8 @@ function InterpretResult({ result, onDownloadPDF }: { result: ECGInterpretRespon
           <CardContent>
             <ul className="space-y-1">
               {result.action_required.map((action, i) => (
-                <li key={i} className="text-sm flex items-start gap-2">
-                  <span className="text-primary mt-0.5">•</span>
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <span className="mt-0.5 text-primary">•</span>
                   {action}
                 </li>
               ))}
@@ -309,13 +369,20 @@ function InterpretResult({ result, onDownloadPDF }: { result: ECGInterpretRespon
           <CardContent>
             <div className="space-y-2">
               {result.differentials.map((d, i) => (
-                <div key={i} className="flex items-start justify-between text-sm border-b pb-2 last:border-0">
+                <div
+                  key={i}
+                  className="flex items-start justify-between border-b pb-2 text-sm last:border-0"
+                >
                   <div>
                     <span className="font-medium">{d.condition}</span>
-                    <span className="text-muted-foreground ml-2">({d.icd10})</span>
-                    <p className="text-xs text-muted-foreground">{d.supporting_evidence.join(', ')}</p>
+                    <span className="ml-2 text-muted-foreground">({d.icd10})</span>
+                    <p className="text-xs text-muted-foreground">
+                      {d.supporting_evidence.join(', ')}
+                    </p>
                   </div>
-                  <Badge variant="outline" className="text-xs shrink-0">{d.probability}</Badge>
+                  <Badge variant="outline" className="shrink-0 text-xs">
+                    {d.probability}
+                  </Badge>
                 </div>
               ))}
             </div>
@@ -332,14 +399,17 @@ function InterpretResult({ result, onDownloadPDF }: { result: ECGInterpretRespon
           <CardContent>
             <div className="space-y-2">
               {result.findings.map((f, i) => (
-                <div key={i} className="text-sm border-b pb-2 last:border-0">
+                <div key={i} className="border-b pb-2 text-sm last:border-0">
                   <div className="flex justify-between">
                     <span className="font-medium capitalize">{f.component}</span>
-                    <Badge variant="outline" className={`text-xs ${f.severity === 'critical' ? 'border-red-600 bg-red-50 text-red-700 dark:bg-red-950/30' : f.severity === 'abnormal' ? 'text-red-600' : f.severity === 'borderline' ? 'text-amber-600' : ''}`}>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${f.severity === 'critical' ? 'border-red-600 bg-red-50 text-red-700 dark:bg-red-950/30' : f.severity === 'abnormal' ? 'text-red-600' : f.severity === 'borderline' ? 'text-amber-600' : ''}`}
+                    >
                       {f.severity}
                     </Badge>
                   </div>
-                  <p className="text-muted-foreground text-xs">{f.interpretation}</p>
+                  <p className="text-xs text-muted-foreground">{f.interpretation}</p>
                 </div>
               ))}
             </div>
@@ -354,7 +424,7 @@ function InterpretResult({ result, onDownloadPDF }: { result: ECGInterpretRespon
       </Button>
 
       {/* Disclaimer */}
-      <p className="text-xs text-muted-foreground italic">{result.disclaimer}</p>
+      <p className="text-xs italic text-muted-foreground">{result.disclaimer}</p>
     </div>
   );
 }
@@ -364,8 +434,18 @@ function InterpretResult({ result, onDownloadPDF }: { result: ECGInterpretRespon
 // =============================================================================
 
 function UploadTab() {
-  const { mutate: upload, data: uploadData, isPending: isUploading, error: uploadError } = useECGUpload();
-  const { mutate: reinterpret, data: reinterpretData, isPending: isReinterpreting, error: reinterpretError } = useECGInterpret();
+  const {
+    mutate: upload,
+    data: uploadData,
+    isPending: isUploading,
+    error: uploadError,
+  } = useECGUpload();
+  const {
+    mutate: reinterpret,
+    data: reinterpretData,
+    isPending: isReinterpreting,
+    error: reinterpretError,
+  } = useECGInterpret();
   const [file, setFile] = useState<File | null>(null);
 
   // Patient context (sent with re-interpret)
@@ -417,7 +497,12 @@ function UploadTab() {
       clinical_context: clinicalContext || undefined,
       age: age ? Number(age) : undefined,
       sex: (sex as 'male' | 'female') || undefined,
-      medications: medications ? medications.split(',').map((m) => m.trim()).filter(Boolean) : undefined,
+      medications: medications
+        ? medications
+            .split(',')
+            .map((m) => m.trim())
+            .filter(Boolean)
+        : undefined,
     };
     reinterpret(payload);
   };
@@ -429,11 +514,11 @@ function UploadTab() {
   const error = uploadError || reinterpretError;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       {/* Upload form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <FileUp className="h-4 w-4" />
             Upload ECG
           </CardTitle>
@@ -453,16 +538,25 @@ function UploadTab() {
 
           {/* Patient context (collapsible) */}
           <div className="space-y-2 border-t pt-3">
-            <Label className="text-xs font-medium">Patient Context (optional — improves accuracy)</Label>
+            <Label className="text-xs font-medium">
+              Patient Context (optional — improves accuracy)
+            </Label>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Age</Label>
-                <Input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Years" />
+                <Input
+                  type="number"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="Years"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Sex</Label>
                 <Select value={sex} onValueChange={setSex}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="male">Male</SelectItem>
                     <SelectItem value="female">Female</SelectItem>
@@ -513,11 +607,15 @@ function UploadTab() {
                   <span>Image Quality</span>
                   <span className="font-medium">{Math.round(uploadData.quality_score * 100)}%</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Format: {uploadData.source_format}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Format: {uploadData.source_format}
+                </p>
                 {uploadData.warnings.length > 0 && (
                   <div className="mt-2 space-y-1">
                     {uploadData.warnings.map((w, i) => (
-                      <p key={i} className="text-xs text-amber-600">{w}</p>
+                      <p key={i} className="text-xs text-amber-600">
+                        {w}
+                      </p>
                     ))}
                   </div>
                 )}
@@ -540,60 +638,102 @@ function UploadTab() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Review machine-extracted values. Edit if incorrect and re-interpret for better results.
+                Review machine-extracted values. Edit if incorrect and re-interpret for better
+                results.
               </p>
             </CardHeader>
             {showEditor && (
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Heart Rate</Label>
-                    <Input type="number" value={editedParams.heart_rate || ''} onChange={(e) => updateParam('heart_rate', e.target.value)} placeholder="bpm" />
+                    <Input
+                      type="number"
+                      value={editedParams.heart_rate || ''}
+                      onChange={(e) => updateParam('heart_rate', e.target.value)}
+                      placeholder="bpm"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Rhythm</Label>
-                    <Input value={editedParams.rhythm || ''} onChange={(e) => updateParam('rhythm', e.target.value)} placeholder="e.g. regular" />
+                    <Input
+                      value={editedParams.rhythm || ''}
+                      onChange={(e) => updateParam('rhythm', e.target.value)}
+                      placeholder="e.g. regular"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Axis</Label>
-                    <Input value={editedParams.axis || ''} onChange={(e) => updateParam('axis', e.target.value)} placeholder="e.g. normal" />
+                    <Input
+                      value={editedParams.axis || ''}
+                      onChange={(e) => updateParam('axis', e.target.value)}
+                      placeholder="e.g. normal"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">PR (ms)</Label>
-                    <Input type="number" value={editedParams.pr_interval || ''} onChange={(e) => updateParam('pr_interval', e.target.value)} />
+                    <Input
+                      type="number"
+                      value={editedParams.pr_interval || ''}
+                      onChange={(e) => updateParam('pr_interval', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">QRS (ms)</Label>
-                    <Input type="number" value={editedParams.qrs_duration || ''} onChange={(e) => updateParam('qrs_duration', e.target.value)} />
+                    <Input
+                      type="number"
+                      value={editedParams.qrs_duration || ''}
+                      onChange={(e) => updateParam('qrs_duration', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">QTc (ms)</Label>
-                    <Input type="number" value={editedParams.qtc_interval || ''} onChange={(e) => updateParam('qtc_interval', e.target.value)} />
+                    <Input
+                      type="number"
+                      value={editedParams.qtc_interval || ''}
+                      onChange={(e) => updateParam('qtc_interval', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">ST Segment</Label>
-                    <Input value={editedParams.st_segment || ''} onChange={(e) => updateParam('st_segment', e.target.value)} />
+                    <Input
+                      value={editedParams.st_segment || ''}
+                      onChange={(e) => updateParam('st_segment', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">T-Wave</Label>
-                    <Input value={editedParams.t_wave || ''} onChange={(e) => updateParam('t_wave', e.target.value)} />
+                    <Input
+                      value={editedParams.t_wave || ''}
+                      onChange={(e) => updateParam('t_wave', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Bundle Branch</Label>
-                    <Input value={editedParams.bundle_branch || ''} onChange={(e) => updateParam('bundle_branch', e.target.value)} />
+                    <Input
+                      value={editedParams.bundle_branch || ''}
+                      onChange={(e) => updateParam('bundle_branch', e.target.value)}
+                    />
                   </div>
                 </div>
-                <Button onClick={handleReinterpret} disabled={isReinterpreting} className="w-full" variant="secondary">
+                <Button
+                  onClick={handleReinterpret}
+                  disabled={isReinterpreting}
+                  className="w-full"
+                  variant="secondary"
+                >
                   {isReinterpreting ? 'Re-interpreting...' : 'Re-interpret with corrections'}
                 </Button>
               </CardContent>
             )}
             {!showEditor && Object.keys(extractedParams).length > 0 && (
               <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-xs">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
                   {Object.entries(extractedParams).map(([k, v]) => (
                     <div key={k} className="flex justify-between">
-                      <span className="text-muted-foreground capitalize">{k.replace(/_/g, ' ')}</span>
+                      <span className="capitalize text-muted-foreground">
+                        {k.replace(/_/g, ' ')}
+                      </span>
                       <span className="font-medium">{String(v)}</span>
                     </div>
                   ))}
@@ -643,42 +783,107 @@ function CompareTab() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <ArrowRightLeft className="h-4 w-4" />
             Serial Comparison
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
-            <Label className="font-medium text-sm">Baseline ECG</Label>
+            <Label className="text-sm font-medium">Baseline ECG</Label>
             <div className="grid grid-cols-3 gap-2">
-              <div className="space-y-1"><Label className="text-xs">HR</Label><Input type="number" value={baselineHR} onChange={(e) => setBaselineHR(e.target.value)} placeholder="bpm" /></div>
-              <div className="space-y-1"><Label className="text-xs">PR (ms)</Label><Input type="number" value={baselinePR} onChange={(e) => setBaselinePR(e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-xs">QRS (ms)</Label><Input type="number" value={baselineQRS} onChange={(e) => setBaselineQRS(e.target.value)} /></div>
+              <div className="space-y-1">
+                <Label className="text-xs">HR</Label>
+                <Input
+                  type="number"
+                  value={baselineHR}
+                  onChange={(e) => setBaselineHR(e.target.value)}
+                  placeholder="bpm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">PR (ms)</Label>
+                <Input
+                  type="number"
+                  value={baselinePR}
+                  onChange={(e) => setBaselinePR(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">QRS (ms)</Label>
+                <Input
+                  type="number"
+                  value={baselineQRS}
+                  onChange={(e) => setBaselineQRS(e.target.value)}
+                />
+              </div>
             </div>
           </div>
           <div className="space-y-3">
-            <Label className="font-medium text-sm">Current ECG</Label>
+            <Label className="text-sm font-medium">Current ECG</Label>
             <div className="grid grid-cols-3 gap-2">
-              <div className="space-y-1"><Label className="text-xs">HR</Label><Input type="number" value={currentHR} onChange={(e) => setCurrentHR(e.target.value)} placeholder="bpm" /></div>
-              <div className="space-y-1"><Label className="text-xs">PR (ms)</Label><Input type="number" value={currentPR} onChange={(e) => setCurrentPR(e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-xs">QRS (ms)</Label><Input type="number" value={currentQRS} onChange={(e) => setCurrentQRS(e.target.value)} /></div>
+              <div className="space-y-1">
+                <Label className="text-xs">HR</Label>
+                <Input
+                  type="number"
+                  value={currentHR}
+                  onChange={(e) => setCurrentHR(e.target.value)}
+                  placeholder="bpm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">PR (ms)</Label>
+                <Input
+                  type="number"
+                  value={currentPR}
+                  onChange={(e) => setCurrentPR(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">QRS (ms)</Label>
+                <Input
+                  type="number"
+                  value={currentQRS}
+                  onChange={(e) => setCurrentQRS(e.target.value)}
+                />
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label className="text-xs">Interval (hours)</Label><Input type="number" value={intervalHours} onChange={(e) => setIntervalHours(e.target.value)} /></div>
+            <div className="space-y-1">
+              <Label className="text-xs">Interval (hours)</Label>
+              <Input
+                type="number"
+                value={intervalHours}
+                onChange={(e) => setIntervalHours(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="space-y-1"><Label className="text-xs">Clinical Context</Label><Textarea value={context} onChange={(e) => setContext(e.target.value)} rows={2} placeholder="e.g. Post cardiac catheterization" /></div>
+          <div className="space-y-1">
+            <Label className="text-xs">Clinical Context</Label>
+            <Textarea
+              value={context}
+              onChange={(e) => setContext(e.target.value)}
+              rows={2}
+              placeholder="e.g. Post cardiac catheterization"
+            />
+          </div>
           <Button onClick={handleSubmit} disabled={isPending} className="w-full">
             {isPending ? 'Comparing...' : 'Compare ECGs'}
           </Button>
         </CardContent>
       </Card>
 
-      {error && <Card className="border-destructive"><CardContent className="pt-4"><p className="text-sm text-destructive">{(error as Error).message}</p></CardContent></Card>}
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="pt-4">
+            <p className="text-sm text-destructive">{(error as Error).message}</p>
+          </CardContent>
+        </Card>
+      )}
       {data && <CompareResult result={data} />}
     </div>
   );
@@ -694,10 +899,12 @@ function CompareResult({ result }: { result: ECGCompareResponse }) {
   return (
     <div className="space-y-3">
       <Card>
-        <CardContent className="pt-4 space-y-2">
-          <div className="flex justify-between items-center">
+        <CardContent className="space-y-2 pt-4">
+          <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Progression</span>
-            <span className={`text-sm font-semibold capitalize ${progressionColors[result.progression] || ''}`}>
+            <span
+              className={`text-sm font-semibold capitalize ${progressionColors[result.progression] || ''}`}
+            >
               {result.progression.replace('_', ' ')}
             </span>
           </div>
@@ -706,18 +913,25 @@ function CompareResult({ result }: { result: ECGCompareResponse }) {
       </Card>
       {result.changes.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Changes Detected</CardTitle></CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Changes Detected</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {result.changes.map((c, i) => (
-                <div key={i} className="text-sm border-b pb-2 last:border-0">
+                <div key={i} className="border-b pb-2 text-sm last:border-0">
                   <div className="flex justify-between">
                     <span className="font-medium capitalize">{c.component.replace('_', ' ')}</span>
-                    <Badge variant="outline" className={`text-xs ${c.significance === 'critical' ? 'text-red-600' : c.significance === 'notable' ? 'text-amber-600' : ''}`}>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${c.significance === 'critical' ? 'text-red-600' : c.significance === 'notable' ? 'text-amber-600' : ''}`}
+                    >
                       {c.significance}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">{c.baseline_value} → {c.current_value}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {c.baseline_value} → {c.current_value}
+                  </p>
                   <p className="text-xs">{c.interpretation}</p>
                 </div>
               ))}
@@ -727,9 +941,18 @@ function CompareResult({ result }: { result: ECGCompareResponse }) {
       )}
       {result.action_required.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Recommended Actions</CardTitle></CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Recommended Actions</CardTitle>
+          </CardHeader>
           <CardContent>
-            <ul className="space-y-1">{result.action_required.map((a, i) => <li key={i} className="text-sm flex gap-2"><span className="text-primary">•</span>{a}</li>)}</ul>
+            <ul className="space-y-1">
+              {result.action_required.map((a, i) => (
+                <li key={i} className="flex gap-2 text-sm">
+                  <span className="text-primary">•</span>
+                  {a}
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       )}
@@ -766,22 +989,32 @@ function ScoresTab() {
   const [alcohol, setAlcohol] = useState(false);
 
   return (
-    <div className="max-w-5xl mx-auto grid gap-4 lg:grid-cols-2">
+    <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-2">
       {/* CHA2DS2-VASc */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Heart className="h-4 w-4" />
             CHA₂DS₂-VASc (Stroke Risk)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label className="text-xs">Age</Label><Input type="number" value={scoreAge} onChange={(e) => setScoreAge(e.target.value)} placeholder="Years" /></div>
+            <div className="space-y-1">
+              <Label className="text-xs">Age</Label>
+              <Input
+                type="number"
+                value={scoreAge}
+                onChange={(e) => setScoreAge(e.target.value)}
+                placeholder="Years"
+              />
+            </div>
             <div className="space-y-1">
               <Label className="text-xs">Sex</Label>
               <Select value={scoreSex} onValueChange={(v) => setScoreSex(v as 'male' | 'female')}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
@@ -797,27 +1030,49 @@ function ScoresTab() {
               { label: 'Vascular Disease', state: vascular, set: setVascular },
               { label: 'Diabetes', state: diabetes, set: setDiabetes },
             ].map(({ label, state, set }) => (
-              <label key={label} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={state} onChange={(e) => set(e.target.checked)} className="rounded" />
+              <label key={label} className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={state}
+                  onChange={(e) => set(e.target.checked)}
+                  className="rounded"
+                />
                 {label}
               </label>
             ))}
           </div>
           <Button
-            onClick={() => cha2Mutation.mutate({ age: Number(scoreAge), sex: scoreSex, congestive_heart_failure: chf, hypertension: htn, stroke_tia_thromboembolism: stroke, vascular_disease: vascular, diabetes })}
+            onClick={() =>
+              cha2Mutation.mutate({
+                age: Number(scoreAge),
+                sex: scoreSex,
+                congestive_heart_failure: chf,
+                hypertension: htn,
+                stroke_tia_thromboembolism: stroke,
+                vascular_disease: vascular,
+                diabetes,
+              })
+            }
             disabled={!scoreAge || cha2Mutation.isPending}
             className="w-full"
           >
             {cha2Mutation.isPending ? 'Calculating...' : 'Calculate Score'}
           </Button>
-          {cha2Mutation.data && <ScoreResult title="CHA₂DS₂-VASc" data={cha2Mutation.data} riskField="annual_stroke_risk_percent" riskLabel="Annual stroke risk" />}
+          {cha2Mutation.data && (
+            <ScoreResult
+              title="CHA₂DS₂-VASc"
+              data={cha2Mutation.data}
+              riskField="annual_stroke_risk_percent"
+              riskLabel="Annual stroke risk"
+            />
+          )}
         </CardContent>
       </Card>
 
       {/* HAS-BLED */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <ShieldAlert className="h-4 w-4" />
             HAS-BLED (Bleeding Risk)
           </CardTitle>
@@ -825,7 +1080,11 @@ function ScoresTab() {
         <CardContent className="space-y-3">
           <div className="space-y-2">
             {[
-              { label: 'Hypertension (uncontrolled, SBP >160)', state: htnUncontrolled, set: setHtnUncontrolled },
+              {
+                label: 'Hypertension (uncontrolled, SBP >160)',
+                state: htnUncontrolled,
+                set: setHtnUncontrolled,
+              },
               { label: 'Renal Disease', state: renal, set: setRenal },
               { label: 'Liver Disease', state: liver, set: setLiver },
               { label: 'Stroke History', state: strokeHx, set: setStrokeHx },
@@ -835,38 +1094,80 @@ function ScoresTab() {
               { label: 'Drugs (NSAIDs, antiplatelets)', state: drugs, set: setDrugs },
               { label: 'Alcohol (≥8 drinks/week)', state: alcohol, set: setAlcohol },
             ].map(({ label, state, set }) => (
-              <label key={label} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={state} onChange={(e) => set(e.target.checked)} className="rounded" />
+              <label key={label} className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={state}
+                  onChange={(e) => set(e.target.checked)}
+                  className="rounded"
+                />
                 {label}
               </label>
             ))}
           </div>
           <Button
-            onClick={() => hasBledMutation.mutate({ hypertension_uncontrolled: htnUncontrolled, renal_disease: renal, liver_disease: liver, stroke_history: strokeHx, bleeding_history: bleeding, labile_inr: labileInr, age_over_65: elderly, drugs_predisposing: drugs, alcohol_excess: alcohol })}
+            onClick={() =>
+              hasBledMutation.mutate({
+                hypertension_uncontrolled: htnUncontrolled,
+                renal_disease: renal,
+                liver_disease: liver,
+                stroke_history: strokeHx,
+                bleeding_history: bleeding,
+                labile_inr: labileInr,
+                age_over_65: elderly,
+                drugs_predisposing: drugs,
+                alcohol_excess: alcohol,
+              })
+            }
             disabled={hasBledMutation.isPending}
             className="w-full"
           >
             {hasBledMutation.isPending ? 'Calculating...' : 'Calculate Score'}
           </Button>
-          {hasBledMutation.data && <ScoreResult title="HAS-BLED" data={hasBledMutation.data} riskField="annual_bleed_risk_percent" riskLabel="Annual bleed risk" />}
+          {hasBledMutation.data && (
+            <ScoreResult
+              title="HAS-BLED"
+              data={hasBledMutation.data}
+              riskField="annual_bleed_risk_percent"
+              riskLabel="Annual bleed risk"
+            />
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function ScoreResult({ title, data, riskField, riskLabel }: { title: string; data: CHA2DS2VAScResponse | HASBLEDResponse; riskField: string; riskLabel: string }) {
-  const riskColors: Record<string, string> = { low: 'text-green-600', moderate: 'text-amber-600', high: 'text-red-600' };
+function ScoreResult({
+  title,
+  data,
+  riskField,
+  riskLabel,
+}: {
+  title: string;
+  data: CHA2DS2VAScResponse | HASBLEDResponse;
+  riskField: string;
+  riskLabel: string;
+}) {
+  const riskColors: Record<string, string> = {
+    low: 'text-green-600',
+    moderate: 'text-amber-600',
+    high: 'text-red-600',
+  };
   const riskValue = (data as unknown as Record<string, number>)[riskField];
   return (
-    <div className="mt-3 border-t pt-3 space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="font-medium">{title}: {data.score}/{data.max_score}</span>
+    <div className="mt-3 space-y-2 border-t pt-3">
+      <div className="flex items-center justify-between">
+        <span className="font-medium">
+          {title}: {data.score}/{data.max_score}
+        </span>
         <Badge variant="outline" className={riskColors[data.risk_category] || ''}>
           {data.risk_category}
         </Badge>
       </div>
-      <p className="text-xs text-muted-foreground">{riskLabel}: {riskValue}%</p>
+      <p className="text-xs text-muted-foreground">
+        {riskLabel}: {riskValue}%
+      </p>
       <p className="text-sm">{data.recommendation}</p>
     </div>
   );

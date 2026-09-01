@@ -6,12 +6,7 @@
  */
 
 import type { Receipt, ReceiptLineItem } from '@/lib/types/billing';
-import type {
-  FacilityInfo,
-  PatientInfo,
-  LayoutType,
-  RenderContext,
-} from './types';
+import type { FacilityInfo, PatientInfo, LayoutType, RenderContext } from './types';
 import { receiptSchema, receiptDefaults } from './schemas/receipt.schema';
 import {
   renderDocumentAsync,
@@ -315,13 +310,7 @@ function buildLineItemsHtml(receipt: Receipt): string {
  * @returns Promise that resolves to the print window, or null if failed
  */
 export async function printReceipt(options: PrintReceiptOptions): Promise<Window | null> {
-  const {
-    receipt,
-    patient,
-    facility,
-    layout = 'thermal-80mm',
-    theme = 'default',
-  } = options;
+  const { receipt, patient, facility, layout = 'thermal-80mm', theme = 'default' } = options;
 
   // Validate required data
   if (!receipt) {
@@ -370,18 +359,10 @@ export async function printReceipt(options: PrintReceiptOptions): Promise<Window
   const lineItemsHtml = buildLineItemsHtml(receipt);
 
   // Render template
-  let bodyHtml = await renderDocumentAsync(
-    RECEIPT_TEMPLATE,
-    receiptSchema,
-    context,
-    qrContent
-  );
+  let bodyHtml = await renderDocumentAsync(RECEIPT_TEMPLATE, receiptSchema, context, qrContent);
 
   // Replace line items in table (since repeater may not work for dynamic rows)
-  bodyHtml = bodyHtml.replace(
-    /<tbody>[\s\S]*?<\/tbody>/,
-    `<tbody>\n${lineItemsHtml}\n</tbody>`
-  );
+  bodyHtml = bodyHtml.replace(/<tbody>[\s\S]*?<\/tbody>/, `<tbody>\n${lineItemsHtml}\n</tbody>`);
 
   // Hide optional rows if empty
   if (!receipt.payment_reference) {
@@ -416,13 +397,7 @@ export async function printReceipt(options: PrintReceiptOptions): Promise<Window
  * Returns the generated HTML for inspection
  */
 export async function previewReceipt(options: PrintReceiptOptions): Promise<string> {
-  const {
-    receipt,
-    patient,
-    facility,
-    layout = 'thermal-80mm',
-    theme = 'default',
-  } = options;
+  const { receipt, patient, facility, layout = 'thermal-80mm', theme = 'default' } = options;
 
   const qrContent = getReceiptQRContent(receipt);
 
@@ -454,17 +429,9 @@ export async function previewReceipt(options: PrintReceiptOptions): Promise<stri
 
   const lineItemsHtml = buildLineItemsHtml(receipt);
 
-  let bodyHtml = await renderDocumentAsync(
-    RECEIPT_TEMPLATE,
-    receiptSchema,
-    context,
-    qrContent
-  );
+  let bodyHtml = await renderDocumentAsync(RECEIPT_TEMPLATE, receiptSchema, context, qrContent);
 
-  bodyHtml = bodyHtml.replace(
-    /<tbody>[\s\S]*?<\/tbody>/,
-    `<tbody>\n${lineItemsHtml}\n</tbody>`
-  );
+  bodyHtml = bodyHtml.replace(/<tbody>[\s\S]*?<\/tbody>/, `<tbody>\n${lineItemsHtml}\n</tbody>`);
 
   // Hide optional rows if empty
   if (!receipt.mpesa_phone_display) {

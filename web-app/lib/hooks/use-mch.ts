@@ -1,8 +1,14 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { labourPartographObservationsApi, labourPartographsApi, mchRegistrationsApi, deliveriesApi } from '@/lib/api/mch';
-import type { MCHRegistration,
+import {
+  labourPartographObservationsApi,
+  labourPartographsApi,
+  mchRegistrationsApi,
+  deliveriesApi,
+} from '@/lib/api/mch';
+import type {
+  MCHRegistration,
   MCHRegistrationListParams,
   Delivery,
   LabourPartographCreateData,

@@ -1,25 +1,19 @@
-'use client'
+'use client';
 
-import * as React from 'react'
-import { toast, Toaster as SonnerToaster } from 'sonner'
-import {
-  CircleCheckIcon,
-  InfoIcon,
-  OctagonXIcon,
-  TriangleAlertIcon,
-  XIcon,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import * as React from 'react';
+import { toast, Toaster as SonnerToaster } from 'sonner';
+import { CircleCheckIcon, InfoIcon, OctagonXIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
-type ToastType = 'success' | 'error' | 'warning' | 'info'
+type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 interface CustomToastProps {
-  id: string | number
-  type: ToastType
-  message: string
-  description?: string
-  duration?: number
+  id: string | number;
+  type: ToastType;
+  message: string;
+  description?: string;
+  duration?: number;
 }
 
 const config: Record<
@@ -30,31 +24,25 @@ const config: Record<
   error: { icon: OctagonXIcon, progressColor: 'bg-red-500', iconColor: 'text-red-500' },
   warning: { icon: TriangleAlertIcon, progressColor: 'bg-amber-500', iconColor: 'text-amber-500' },
   info: { icon: InfoIcon, progressColor: 'bg-blue-500', iconColor: 'text-blue-500' },
-}
+};
 
-export function CustomToast({
-  id,
-  type,
-  message,
-  description,
-  duration = 4000,
-}: CustomToastProps) {
-  const [progress, setProgress] = React.useState(100)
-  const { icon: Icon, progressColor, iconColor } = config[type]
+export function CustomToast({ id, type, message, description, duration = 4000 }: CustomToastProps) {
+  const [progress, setProgress] = React.useState(100);
+  const { icon: Icon, progressColor, iconColor } = config[type];
 
   React.useEffect(() => {
-    const startTime = Date.now()
+    const startTime = Date.now();
     const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime
-      const remaining = Math.max(0, 100 - (elapsed / duration) * 100)
-      setProgress(remaining)
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
+      setProgress(remaining);
       if (remaining === 0) {
-        clearInterval(interval)
-        toast.dismiss(id)
+        clearInterval(interval);
+        toast.dismiss(id);
       }
-    }, 16)
-    return () => clearInterval(interval)
-  }, [duration, id])
+    }, 16);
+    return () => clearInterval(interval);
+  }, [duration, id]);
 
   return (
     <div
@@ -72,7 +60,7 @@ export function CustomToast({
       <div className="flex-1 space-y-1">
         <p className="text-base font-medium leading-tight">{message}</p>
         {description && (
-          <p className="text-sm text-muted-foreground whitespace-pre-line">{description}</p>
+          <p className="whitespace-pre-line text-sm text-muted-foreground">{description}</p>
         )}
       </div>
 
@@ -93,7 +81,7 @@ export function CustomToast({
         />
       </div>
     </div>
-  )
+  );
 }
 
 // -------------------- Combined Toaster --------------------
@@ -113,9 +101,9 @@ export function Toaster() {
             toast: 'bg-popover p-0 shadow-lg',
           },
         }}
-       />
+      />
     </>
-  )
+  );
 }
 
 // -------------------- Usage --------------------
@@ -128,4 +116,4 @@ toast.custom((id) => (
     message="Saved!"
     description="All changes have been synced."
   />
-))
+));

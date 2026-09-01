@@ -36,15 +36,32 @@ export { GenderSchema, EncounterStatusSchema };
 
 export const DiagnosisTypeSchema = z.enum(['PRIMARY', 'SECONDARY', 'DIFFERENTIAL', 'WORKING']);
 
-export const DiagnosisCertaintySchema = z.enum(['confirmed', 'provisional', 'ruled_out', 'suspected']);
+export const DiagnosisCertaintySchema = z.enum([
+  'confirmed',
+  'provisional',
+  'ruled_out',
+  'suspected',
+]);
 
 export const TreatmentPlanStatusSchema = z.enum(['DRAFT', 'ACTIVE', 'COMPLETED', 'DISCONTINUED']);
 
-export const TriageStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'BYPASSED', 'NOT_APPLICABLE']);
+export const TriageStatusSchema = z.enum([
+  'PENDING',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'BYPASSED',
+  'NOT_APPLICABLE',
+]);
 
 export const TriageRequirementSchema = z.enum(['MANDATORY', 'OPTIONAL', 'NOT_REQUIRED']);
 
-export const ConsultationStatusSchema = z.enum(['WAITING', 'CALLED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']);
+export const ConsultationStatusSchema = z.enum([
+  'WAITING',
+  'CALLED',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+]);
 
 export const VitalsSourceSchema = z.enum(['TRIAGE', 'CONSULTATION', 'NURSING']);
 
@@ -71,14 +88,16 @@ export const EncounterDispositionSchema = z.enum([
   'LEFT_AMA',
 ]);
 
-export const TriageBypassReasonSchema = z.enum([
-  'STABLE_FOLLOW_UP',
-  'CONSULTANT_DECISION',
-  'CHRONIC_CARE_REVIEW',
-  'STAFF_SHORTAGE',
-  'PATIENT_PREFERENCE',
-  'OTHER',
-]).or(z.literal(''));
+export const TriageBypassReasonSchema = z
+  .enum([
+    'STABLE_FOLLOW_UP',
+    'CONSULTANT_DECISION',
+    'CHRONIC_CARE_REVIEW',
+    'STAFF_SHORTAGE',
+    'PATIENT_PREFERENCE',
+    'OTHER',
+  ])
+  .or(z.literal(''));
 
 // Re-export from triage.schema to avoid duplicates
 export { TriageCategorySchema };
@@ -381,7 +400,9 @@ export const MyClaimedEncountersResponseSchema = z.object({
   count: z.number(),
 });
 
-export type MyClaimedEncountersResponseSchemaType = z.infer<typeof MyClaimedEncountersResponseSchema>;
+export type MyClaimedEncountersResponseSchemaType = z.infer<
+  typeof MyClaimedEncountersResponseSchema
+>;
 
 // Alias for all claimed encounters (same structure)
 export const AllClaimedEncountersResponseSchema = MyClaimedEncountersResponseSchema;
@@ -392,22 +413,22 @@ export const AllClaimedEncountersResponseSchema = MyClaimedEncountersResponseSch
 
 export const ConsultationQueueItemSchema = z.object({
   id: z.number(),
-  patient_id: z.number().optional(),  // May be accessed via `patient` in some contexts
-  patient: z.number().optional(),     // Alternative FK reference
+  patient_id: z.number().optional(), // May be accessed via `patient` in some contexts
+  patient: z.number().optional(), // Alternative FK reference
   patient_name: z.string(),
   patient_mrn: z.string(),
-  patient_age: z.number().nullable().optional(),  // May be null if DOB not set
+  patient_age: z.number().nullable().optional(), // May be null if DOB not set
   patient_gender: GenderSchema,
   encounter_type: z.string(),
-  encounter_type_display: z.string().optional(),  // May not always be present
+  encounter_type_display: z.string().optional(), // May not always be present
   chief_complaint: z.string(),
   triage_status: TriageStatusSchema,
-  triage_category: TriageCategorySchema.nullable().optional(),  // From TriageAssessment, may be absent
+  triage_category: TriageCategorySchema.nullable().optional(), // From TriageAssessment, may be absent
   triage_bypass_reason: TriageBypassReasonSchema.nullable().optional(),
   consultation_status: ConsultationStatusSchema,
-  arrival_time: z.string().optional(),  // Alias for created_at
-  created_at: z.string().optional(),    // May be used instead of arrival_time
-  triage_completed_at: z.string().nullable().optional(),  // From TriageAssessment, may be absent
+  arrival_time: z.string().optional(), // Alias for created_at
+  created_at: z.string().optional(), // May be used instead of arrival_time
+  triage_completed_at: z.string().nullable().optional(), // From TriageAssessment, may be absent
   wait_time_minutes: z.number().nullable().optional(),
   called_at: z.string().nullable(),
   assigned_clinician: z.number().optional().nullable(),
@@ -495,7 +516,7 @@ export const PaginatedEncounterSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
   previous: z.string().nullable(),
-  results: z.array(EncounterListItemSchema),  // Uses lightweight list schema
+  results: z.array(EncounterListItemSchema), // Uses lightweight list schema
 });
 
 export const PaginatedICD10CodeSchema = z.object({

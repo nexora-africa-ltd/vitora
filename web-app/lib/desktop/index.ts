@@ -3,8 +3,9 @@
  * Falls back gracefully in browser mode (all functions return false/undefined).
  */
 
-const DEFAULT_DESKTOP_API_URL =
-  (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088').trim().replace(/\/+$/, '');
+const DEFAULT_DESKTOP_API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088')
+  .trim()
+  .replace(/\/+$/, '');
 
 declare global {
   interface Window {
@@ -21,7 +22,10 @@ declare global {
 
 /** Returns true if running inside a Tauri desktop shell. */
 export function isDesktop(): boolean {
-  return typeof window !== 'undefined' && (window.__TAURI__ !== undefined || window.__TAURI_INTERNALS__ !== undefined);
+  return (
+    typeof window !== 'undefined' &&
+    (window.__TAURI__ !== undefined || window.__TAURI_INTERNALS__ !== undefined)
+  );
 }
 
 /** Get the Tauri invoke function, or null if not in Tauri. */
@@ -56,10 +60,7 @@ interface PrinterInfo {
  * Print a receipt via native ESC/POS printer.
  * Falls back to window.print() in browser mode.
  */
-export async function printReceipt(
-  content: string,
-  printerName?: string
-): Promise<PrintResult> {
+export async function printReceipt(content: string, printerName?: string): Promise<PrintResult> {
   const invoke = getInvoke();
   if (!invoke) {
     window.print();
@@ -174,10 +175,7 @@ export async function setApiUrl(url: string): Promise<string | null> {
  * Show a native desktop notification.
  * Falls back to Web Notifications API in browser mode.
  */
-export async function showNotification(
-  title: string,
-  body?: string
-): Promise<void> {
+export async function showNotification(title: string, body?: string): Promise<void> {
   const invoke = getInvoke();
   if (!invoke) {
     // Browser fallback
@@ -212,9 +210,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
  * Listen for deep link events (vitora:// URLs).
  * Only works in desktop mode. Returns an unlisten function.
  */
-export function onDeepLink(
-  callback: (urls: string[]) => void
-): (() => void) | null {
+export function onDeepLink(callback: (urls: string[]) => void): (() => void) | null {
   if (!isDesktop()) return null;
 
   // Listen for the 'deep-link' event emitted by the Rust side

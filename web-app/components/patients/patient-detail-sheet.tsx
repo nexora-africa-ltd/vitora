@@ -3,15 +3,17 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  User, Phone, Mail, MapPin, Calendar, Shield, AlertTriangle,
-  Heart, ExternalLink,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  Shield,
+  AlertTriangle,
+  Heart,
+  ExternalLink,
 } from 'lucide-react';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -46,19 +48,25 @@ export function PatientDetailSheet({ patientId, open, onOpenChange }: PatientDet
     }
     let cancelled = false;
     setIsLoading(true);
-    patientsApi.getPatient(patientId).then((data) => {
-      if (!cancelled) setPatient(data);
-    }).catch(() => {
-      // Silently fail — user can navigate to full page instead
-    }).finally(() => {
-      if (!cancelled) setIsLoading(false);
-    });
-    return () => { cancelled = true; };
+    patientsApi
+      .getPatient(patientId)
+      .then((data) => {
+        if (!cancelled) setPatient(data);
+      })
+      .catch(() => {
+        // Silently fail — user can navigate to full page instead
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open, patientId]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
@@ -67,7 +75,7 @@ export function PatientDetailSheet({ patientId, open, onOpenChange }: PatientDet
         </SheetHeader>
 
         {isLoading ? (
-          <div className="space-y-4 mt-4">
+          <div className="mt-4 space-y-4">
             <Skeleton className="h-6 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
             <Skeleton className="h-4 w-full" />
@@ -75,29 +83,35 @@ export function PatientDetailSheet({ patientId, open, onOpenChange }: PatientDet
             <Skeleton className="h-20 w-full" />
           </div>
         ) : patient ? (
-          <div className="space-y-4 mt-4">
+          <div className="mt-4 space-y-4">
             {/* Name & MRN */}
             <div>
               <h3 className="text-lg font-semibold">
-                {patient.full_name || `${patient.first_name} ${patient.middle_name ? patient.middle_name + ' ' : ''}${patient.last_name}`}
+                {patient.full_name ||
+                  `${patient.first_name} ${patient.middle_name ? patient.middle_name + ' ' : ''}${patient.last_name}`}
               </h3>
-              <p className="text-sm text-muted-foreground font-mono">{patient.mrn}</p>
+              <p className="font-mono text-sm text-muted-foreground">{patient.mrn}</p>
             </div>
 
             {/* Key Info */}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="text-muted-foreground text-xs">Age / DOB</p>
-                  <p>{calculateAge(patient.date_of_birth)}y &middot; {formatDate(patient.date_of_birth)}</p>
+                  <p className="text-xs text-muted-foreground">Age / DOB</p>
+                  <p>
+                    {calculateAge(patient.date_of_birth)}y &middot;{' '}
+                    {formatDate(patient.date_of_birth)}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                <User className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="text-muted-foreground text-xs">Gender</p>
-                  <p>{patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}</p>
+                  <p className="text-xs text-muted-foreground">Gender</p>
+                  <p>
+                    {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -109,20 +123,24 @@ export function PatientDetailSheet({ patientId, open, onOpenChange }: PatientDet
               <h4 className="text-sm font-medium">Contact</h4>
               {patient.phone_number && (
                 <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span>{patient.phone_number}</span>
                 </div>
               )}
               {patient.email && (
                 <div className="flex items-center gap-2 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">{patient.email}</span>
                 </div>
               )}
               {(patient.county_name || patient.sub_county_name) && (
                 <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span>{[patient.ward_name, patient.sub_county_name, patient.county_name].filter(Boolean).join(', ')}</span>
+                  <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span>
+                    {[patient.ward_name, patient.sub_county_name, patient.county_name]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </span>
                 </div>
               )}
             </div>
@@ -134,12 +152,14 @@ export function PatientDetailSheet({ patientId, open, onOpenChange }: PatientDet
               <h4 className="text-sm font-medium">Clinical Summary</h4>
               {patient.allergy_summary && patient.allergy_summary.length > 0 && (
                 <div className="flex items-start gap-2 text-sm">
-                  <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                   <div>
                     <p className="text-xs text-muted-foreground">Allergies</p>
-                    <div className="flex flex-wrap gap-1 mt-0.5">
+                    <div className="mt-0.5 flex flex-wrap gap-1">
                       {patient.allergy_summary.map((a) => (
-                        <Badge key={a} variant="destructive" className="text-xs">{a}</Badge>
+                        <Badge key={a} variant="destructive" className="text-xs">
+                          {a}
+                        </Badge>
                       ))}
                     </div>
                   </div>
@@ -147,16 +167,19 @@ export function PatientDetailSheet({ patientId, open, onOpenChange }: PatientDet
               )}
               {patient.chronic_conditions_summary && (
                 <div className="flex items-start gap-2 text-sm">
-                  <Heart className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                  <Heart className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                   <div>
                     <p className="text-xs text-muted-foreground">Chronic Conditions</p>
                     <p className="mt-0.5">{patient.chronic_conditions_summary}</p>
                   </div>
                 </div>
               )}
-              {(!patient.allergy_summary || patient.allergy_summary.length === 0) && !patient.chronic_conditions_summary && (
-                <p className="text-sm text-muted-foreground">No allergies or chronic conditions recorded.</p>
-              )}
+              {(!patient.allergy_summary || patient.allergy_summary.length === 0) &&
+                !patient.chronic_conditions_summary && (
+                  <p className="text-sm text-muted-foreground">
+                    No allergies or chronic conditions recorded.
+                  </p>
+                )}
             </div>
 
             {/* Flags */}
@@ -187,10 +210,14 @@ export function PatientDetailSheet({ patientId, open, onOpenChange }: PatientDet
                   <h4 className="text-sm font-medium">Emergency Contact</h4>
                   <p className="text-sm">{patient.emergency_contact_name}</p>
                   {patient.emergency_contact_phone && (
-                    <p className="text-sm text-muted-foreground">{patient.emergency_contact_phone}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {patient.emergency_contact_phone}
+                    </p>
                   )}
                   {patient.emergency_contact_relationship && (
-                    <p className="text-xs text-muted-foreground">({patient.emergency_contact_relationship})</p>
+                    <p className="text-xs text-muted-foreground">
+                      ({patient.emergency_contact_relationship})
+                    </p>
                   )}
                 </div>
               </>
@@ -201,13 +228,13 @@ export function PatientDetailSheet({ patientId, open, onOpenChange }: PatientDet
             {/* Full Profile Link */}
             <Button asChild variant="outline" className="w-full">
               <Link href={`/patients/${patient.id}`}>
-                <ExternalLink className="h-4 w-4 mr-2" />
+                <ExternalLink className="mr-2 h-4 w-4" />
                 View Full Profile
               </Link>
             </Button>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground mt-4">Unable to load patient details.</p>
+          <p className="mt-4 text-sm text-muted-foreground">Unable to load patient details.</p>
         )}
       </SheetContent>
     </Sheet>

@@ -188,30 +188,41 @@ function buildQueryString<T extends object>(params: T): string {
 // Service Categories API
 // ============================================================================
 
-async function getServiceCategories(
-  params?: { is_active?: boolean }
-): Promise<PaginatedServiceCategories> {
+async function getServiceCategories(params?: {
+  is_active?: boolean;
+}): Promise<PaginatedServiceCategories> {
   const queryString = params ? buildQueryString(params) : '';
   const url = queryString
     ? `/api/billing/service-categories/?${queryString}`
     : '/api/billing/service-categories/';
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedServiceCategorySchema, response.data, { context: 'billingApi.getServiceCategories' });
+  return parseResponse(PaginatedServiceCategorySchema, response.data, {
+    context: 'billingApi.getServiceCategories',
+  });
 }
 
 async function getServiceCategory(id: number): Promise<ServiceCategory> {
   const response = await apiClient.get(`/api/billing/service-categories/${id}/`);
-  return parseResponse(ServiceCategorySchema, response.data, { context: 'billingApi.getServiceCategory' });
+  return parseResponse(ServiceCategorySchema, response.data, {
+    context: 'billingApi.getServiceCategory',
+  });
 }
 
 async function createServiceCategory(data: ServiceCategoryCreateData): Promise<ServiceCategory> {
   const response = await apiClient.post('/api/billing/service-categories/', data);
-  return parseResponse(ServiceCategorySchema, response.data, { context: 'billingApi.createServiceCategory' });
+  return parseResponse(ServiceCategorySchema, response.data, {
+    context: 'billingApi.createServiceCategory',
+  });
 }
 
-async function updateServiceCategory(id: number, data: ServiceCategoryUpdateData): Promise<ServiceCategory> {
+async function updateServiceCategory(
+  id: number,
+  data: ServiceCategoryUpdateData
+): Promise<ServiceCategory> {
   const response = await apiClient.patch(`/api/billing/service-categories/${id}/`, data);
-  return parseResponse(ServiceCategorySchema, response.data, { context: 'billingApi.updateServiceCategory' });
+  return parseResponse(ServiceCategorySchema, response.data, {
+    context: 'billingApi.updateServiceCategory',
+  });
 }
 
 async function deleteServiceCategory(id: number): Promise<void> {
@@ -226,7 +237,9 @@ async function getServices(params?: ServiceListParams): Promise<PaginatedService
   const queryString = params ? buildQueryString(params) : '';
   const url = `/api/billing/services/?${queryString}`;
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedServiceSchema, response.data, { context: 'billingApi.getServices' });
+  return parseResponse(PaginatedServiceSchema, response.data, {
+    context: 'billingApi.getServices',
+  });
 }
 
 async function getCatalogItems(params?: {
@@ -241,7 +254,9 @@ async function getCatalogItems(params?: {
     ? `/api/billing/catalog-items/?${queryString}`
     : '/api/billing/catalog-items/';
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedBillingCatalogItemSchema, response.data, { context: 'billingApi.getCatalogItems' });
+  return parseResponse(PaginatedBillingCatalogItemSchema, response.data, {
+    context: 'billingApi.getCatalogItems',
+  });
 }
 
 async function getService(id: number): Promise<Service> {
@@ -254,10 +269,7 @@ async function createService(data: ServiceCreateData): Promise<Service> {
   return parseResponse(ServiceSchema, response.data, { context: 'billingApi.createService' });
 }
 
-async function updateService(
-  id: number,
-  data: ServiceUpdateData
-): Promise<Service> {
+async function updateService(id: number, data: ServiceUpdateData): Promise<Service> {
   const response = await apiClient.patch(`/api/billing/services/${id}/`, data);
   return parseResponse(ServiceSchema, response.data, { context: 'billingApi.updateService' });
 }
@@ -274,14 +286,18 @@ async function getInvoices(params?: InvoiceListParams): Promise<PaginatedInvoice
   const queryString = params ? buildQueryString(params) : '';
   const url = `/api/billing/invoices/?${queryString}`;
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedInvoiceSchema, response.data, { context: 'billingApi.getInvoices' });
+  return parseResponse(PaginatedInvoiceSchema, response.data, {
+    context: 'billingApi.getInvoices',
+  });
 }
 
 async function getDhaInvoices(params?: InvoiceListParams): Promise<PaginatedDHAInvoices> {
   const queryString = params ? buildQueryString(params) : '';
   const url = `/api/billing/invoices/dha/?${queryString}`;
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedDHAInvoiceSchema, response.data, { context: 'billingApi.getDhaInvoices' });
+  return parseResponse(PaginatedDHAInvoiceSchema, response.data, {
+    context: 'billingApi.getDhaInvoices',
+  });
 }
 
 async function getInvoice(id: IdParam): Promise<Invoice> {
@@ -294,10 +310,7 @@ async function createInvoice(data: InvoiceCreateData): Promise<Invoice> {
   return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.createInvoice' });
 }
 
-async function updateInvoice(
-  id: IdParam,
-  data: InvoiceUpdateData
-): Promise<Invoice> {
+async function updateInvoice(id: IdParam, data: InvoiceUpdateData): Promise<Invoice> {
   const response = await apiClient.patch(`/api/billing/invoices/${id}/`, data);
   return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.updateInvoice' });
 }
@@ -311,13 +324,18 @@ async function createCopayProforma(
   id: IdParam,
   data?: { amount?: string; reason?: string }
 ): Promise<Invoice> {
-  const response = await apiClient.post(`/api/billing/invoices/${id}/create-copay-proforma/`, data || {});
+  const response = await apiClient.post(
+    `/api/billing/invoices/${id}/create-copay-proforma/`,
+    data || {}
+  );
   return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.createCopayProforma' });
 }
 
 async function finalizeAndApplyCopay(id: IdParam): Promise<Invoice> {
   const response = await apiClient.post(`/api/billing/invoices/${id}/finalize-and-apply-copay/`);
-  return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.finalizeAndApplyCopay' });
+  return parseResponse(InvoiceSchema, response.data, {
+    context: 'billingApi.finalizeAndApplyCopay',
+  });
 }
 
 async function cancelInvoice(id: IdParam, reason: string): Promise<Invoice> {
@@ -331,20 +349,12 @@ async function addInvoiceItem(
   invoiceId: IdParam,
   data: InvoiceItemCreateData
 ): Promise<InvoiceItem> {
-  const response = await apiClient.post(
-    `/api/billing/invoices/${invoiceId}/items/`,
-    data
-  );
+  const response = await apiClient.post(`/api/billing/invoices/${invoiceId}/items/`, data);
   return parseResponse(InvoiceItemSchema, response.data, { context: 'billingApi.addInvoiceItem' });
 }
 
-async function removeInvoiceItem(
-  invoiceId: IdParam,
-  itemId: number
-): Promise<void> {
-  await apiClient.delete(
-    `/api/billing/invoices/${invoiceId}/items/${itemId}/`
-  );
+async function removeInvoiceItem(invoiceId: IdParam, itemId: number): Promise<void> {
+  await apiClient.delete(`/api/billing/invoices/${invoiceId}/items/${itemId}/`);
 }
 
 async function updateInvoiceItemAllocation(
@@ -360,23 +370,21 @@ async function updateInvoiceItemAllocation(
     `/api/billing/invoices/${invoiceId}/items/${itemId}/allocation/`,
     data
   );
-  return parseResponse(InvoiceItemSchema, response.data, { context: 'billingApi.updateInvoiceItemAllocation' });
+  return parseResponse(InvoiceItemSchema, response.data, {
+    context: 'billingApi.updateInvoiceItemAllocation',
+  });
 }
 
-async function applyDiscount(
-  invoiceId: IdParam,
-  data: ApplyDiscountData
-): Promise<Invoice> {
-  const response = await apiClient.post(
-    `/api/billing/invoices/${invoiceId}/apply_discount/`,
-    data
-  );
+async function applyDiscount(invoiceId: IdParam, data: ApplyDiscountData): Promise<Invoice> {
+  const response = await apiClient.post(`/api/billing/invoices/${invoiceId}/apply_discount/`, data);
   return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.applyDiscount' });
 }
 
 async function getOverdueInvoices(): Promise<PaginatedInvoices> {
   const response = await apiClient.get('/api/billing/invoices/overdue/');
-  return parseResponse(PaginatedInvoiceSchema, response.data, { context: 'billingApi.getOverdueInvoices' });
+  return parseResponse(PaginatedInvoiceSchema, response.data, {
+    context: 'billingApi.getOverdueInvoices',
+  });
 }
 
 // ============================================================================
@@ -397,9 +405,7 @@ async function getProformas(params?: InvoiceListParams): Promise<PaginatedInvoic
  * @returns The newly created Invoice
  */
 async function convertProforma(id: IdParam): Promise<Invoice> {
-  const response = await apiClient.post(
-    `/api/billing/invoices/${id}/convert/`
-  );
+  const response = await apiClient.post(`/api/billing/invoices/${id}/convert/`);
   return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.convertProforma' });
 }
 
@@ -409,16 +415,12 @@ async function convertProforma(id: IdParam): Promise<Invoice> {
  * @param itemIds - Specific item IDs to convert
  * @returns The newly created Invoice
  */
-async function convertProformaItems(
-  id: IdParam,
-  itemIds: number[]
-): Promise<Invoice> {
+async function convertProformaItems(id: IdParam, itemIds: number[]): Promise<Invoice> {
   const data: ProformaConvertRequest = { item_ids: itemIds };
-  const response = await apiClient.post(
-    `/api/billing/invoices/${id}/convert/`,
-    data
-  );
-  return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.convertProformaItems' });
+  const response = await apiClient.post(`/api/billing/invoices/${id}/convert/`, data);
+  return parseResponse(InvoiceSchema, response.data, {
+    context: 'billingApi.convertProformaItems',
+  });
 }
 
 /**
@@ -427,15 +429,9 @@ async function convertProformaItems(
  * @param validityDays - Optional: custom validity period (default 30 days)
  * @returns The newly created proforma Invoice
  */
-async function renewProforma(
-  id: IdParam,
-  validityDays?: number
-): Promise<Invoice> {
+async function renewProforma(id: IdParam, validityDays?: number): Promise<Invoice> {
   const data: ProformaRenewRequest = validityDays ? { validity_days: validityDays } : {};
-  const response = await apiClient.post(
-    `/api/billing/invoices/${id}/renew/`,
-    data
-  );
+  const response = await apiClient.post(`/api/billing/invoices/${id}/renew/`, data);
   return parseResponse(InvoiceSchema, response.data, { context: 'billingApi.renewProforma' });
 }
 
@@ -447,7 +443,9 @@ async function getPayments(params?: PaymentListParams): Promise<PaginatedPayment
   const queryString = params ? buildQueryString(params) : '';
   const url = `/api/billing/payments/?${queryString}`;
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedPaymentSchema, response.data, { context: 'billingApi.getPayments' });
+  return parseResponse(PaginatedPaymentSchema, response.data, {
+    context: 'billingApi.getPayments',
+  });
 }
 
 async function getPayment(id: number): Promise<Payment> {
@@ -471,25 +469,19 @@ async function createPayment(data: PaymentCreateData): Promise<Payment> {
 }
 
 async function getPaymentReceipt(paymentId: number): Promise<Receipt> {
-  const response = await apiClient.get(
-    `/api/billing/payments/${paymentId}/receipt/`
-  );
+  const response = await apiClient.get(`/api/billing/payments/${paymentId}/receipt/`);
   return parseResponse(ReceiptSchema, response.data, { context: 'billingApi.getPaymentReceipt' });
 }
 
 async function downloadReceiptPdf(paymentId: number): Promise<Blob> {
-  const response = await apiClient.get(
-    `/api/billing/payments/${paymentId}/receipt/pdf/`,
-    { responseType: 'blob' }
-  );
+  const response = await apiClient.get(`/api/billing/payments/${paymentId}/receipt/pdf/`, {
+    responseType: 'blob',
+  });
   return response.data as Blob;
 }
 
 async function reversePayment(paymentId: number, reason: string): Promise<Payment> {
-  const response = await apiClient.post(
-    `/api/billing/payments/${paymentId}/reverse/`,
-    { reason }
-  );
+  const response = await apiClient.post(`/api/billing/payments/${paymentId}/reverse/`, { reason });
   return parseResponse(PaymentSchema, response.data, { context: 'billingApi.reversePayment' });
 }
 
@@ -497,9 +489,7 @@ async function reversePayment(paymentId: number, reason: string): Promise<Paymen
 // Payment Points API
 // ============================================================================
 
-async function getPaymentPoints(
-  params?: PaymentPointListParams
-): Promise<PaginatedPaymentPoints> {
+async function getPaymentPoints(params?: PaymentPointListParams): Promise<PaginatedPaymentPoints> {
   const mappedParams: Record<string, unknown> = { ...params };
   if (params?.method) {
     mappedParams.method = paymentMethodToBackend(params.method);
@@ -511,7 +501,9 @@ async function getPaymentPoints(
     : '/api/billing/payment-points/';
 
   const response = await apiClient.get(url);
-  const validated = parseResponse(PaginatedPaymentPointSchema, response.data, { context: 'billingApi.getPaymentPoints' });
+  const validated = parseResponse(PaginatedPaymentPointSchema, response.data, {
+    context: 'billingApi.getPaymentPoints',
+  });
 
   // Map backend method values to UI enum values
   return {
@@ -526,16 +518,26 @@ async function getPaymentPoints(
 async function createPaymentPoint(data: PaymentPointCreateData): Promise<PaymentPoint> {
   const payload = { ...data, method: paymentMethodToBackend(data.method) };
   const response = await apiClient.post('/api/billing/payment-points/', payload);
-  const validated = parseResponse(PaymentPointSchema, response.data, { context: 'billingApi.createPaymentPoint' });
-  return { ...validated, method: paymentMethodFromBackend(validated.method) as PaymentPoint['method'] };
+  const validated = parseResponse(PaymentPointSchema, response.data, {
+    context: 'billingApi.createPaymentPoint',
+  });
+  return {
+    ...validated,
+    method: paymentMethodFromBackend(validated.method) as PaymentPoint['method'],
+  };
 }
 
 async function updatePaymentPoint(id: number, data: PaymentPointUpdateData): Promise<PaymentPoint> {
   const payload: Record<string, unknown> = { ...data };
   if (data.method) payload.method = paymentMethodToBackend(data.method);
   const response = await apiClient.patch(`/api/billing/payment-points/${id}/`, payload);
-  const validated = parseResponse(PaymentPointSchema, response.data, { context: 'billingApi.updatePaymentPoint' });
-  return { ...validated, method: paymentMethodFromBackend(validated.method) as PaymentPoint['method'] };
+  const validated = parseResponse(PaymentPointSchema, response.data, {
+    context: 'billingApi.updatePaymentPoint',
+  });
+  return {
+    ...validated,
+    method: paymentMethodFromBackend(validated.method) as PaymentPoint['method'],
+  };
 }
 
 async function deletePaymentPoint(id: number): Promise<void> {
@@ -544,28 +546,31 @@ async function deletePaymentPoint(id: number): Promise<void> {
 
 async function getPaymentPoint(id: number): Promise<PaymentPoint> {
   const response = await apiClient.get(`/api/billing/payment-points/${id}/`);
-  const validated = parseResponse(PaymentPointSchema, response.data, { context: 'billingApi.getPaymentPoint' });
-  return { ...validated, method: paymentMethodFromBackend(validated.method) as PaymentPoint['method'] };
+  const validated = parseResponse(PaymentPointSchema, response.data, {
+    context: 'billingApi.getPaymentPoint',
+  });
+  return {
+    ...validated,
+    method: paymentMethodFromBackend(validated.method) as PaymentPoint['method'],
+  };
 }
 
 // ============================================================================
 // M-Pesa API
 // ============================================================================
 
-async function initiateMpesaSTKPush(
-  data: MpesaSTKPushRequest
-): Promise<MpesaSTKPushResponse> {
+async function initiateMpesaSTKPush(data: MpesaSTKPushRequest): Promise<MpesaSTKPushResponse> {
   const response = await apiClient.post('/api/billing/mpesa/initiate/', data);
-  return parseResponse(MpesaSTKPushResponseSchema, response.data, { context: 'billingApi.initiateMpesaSTKPush' });
+  return parseResponse(MpesaSTKPushResponseSchema, response.data, {
+    context: 'billingApi.initiateMpesaSTKPush',
+  });
 }
 
-async function queryMpesaTransaction(
-  checkoutRequestId: string
-): Promise<MpesaQueryResponse> {
-  const response = await apiClient.get(
-    `/api/billing/mpesa/query/${checkoutRequestId}/`
-  );
-  return parseResponse(MpesaQueryResponseSchema, response.data, { context: 'billingApi.queryMpesaTransaction' });
+async function queryMpesaTransaction(checkoutRequestId: string): Promise<MpesaQueryResponse> {
+  const response = await apiClient.get(`/api/billing/mpesa/query/${checkoutRequestId}/`);
+  return parseResponse(MpesaQueryResponseSchema, response.data, {
+    context: 'billingApi.queryMpesaTransaction',
+  });
 }
 
 /**
@@ -587,13 +592,13 @@ async function verifyMpesaTransaction(
 // Credit Notes API
 // ============================================================================
 
-async function getCreditNotes(
-  params?: CreditNoteListParams
-): Promise<PaginatedCreditNotes> {
+async function getCreditNotes(params?: CreditNoteListParams): Promise<PaginatedCreditNotes> {
   const queryString = params ? buildQueryString(params) : '';
   const url = `/api/billing/credit-notes/?${queryString}`;
   const response = await apiClient.get(url);
-  return parseResponse(PaginatedCreditNoteSchema, response.data, { context: 'billingApi.getCreditNotes' });
+  return parseResponse(PaginatedCreditNoteSchema, response.data, {
+    context: 'billingApi.getCreditNotes',
+  });
 }
 
 async function getCreditNote(id: number): Promise<CreditNote> {
@@ -607,31 +612,21 @@ async function createCreditNote(data: CreditNoteCreateData): Promise<CreditNote>
 }
 
 async function approveCreditNote(id: number): Promise<CreditNote> {
-  const response = await apiClient.post(
-    `/api/billing/credit-notes/${id}/approve/`
-  );
-  return parseResponse(CreditNoteSchema, response.data, { context: 'billingApi.approveCreditNote' });
+  const response = await apiClient.post(`/api/billing/credit-notes/${id}/approve/`);
+  return parseResponse(CreditNoteSchema, response.data, {
+    context: 'billingApi.approveCreditNote',
+  });
 }
 
-async function rejectCreditNote(
-  id: number,
-  rejectionReason: string
-): Promise<CreditNote> {
-  const response = await apiClient.post(
-    `/api/billing/credit-notes/${id}/reject/`,
-    { reason: rejectionReason }
-  );
+async function rejectCreditNote(id: number, rejectionReason: string): Promise<CreditNote> {
+  const response = await apiClient.post(`/api/billing/credit-notes/${id}/reject/`, {
+    reason: rejectionReason,
+  });
   return parseResponse(CreditNoteSchema, response.data, { context: 'billingApi.rejectCreditNote' });
 }
 
-async function processRefund(
-  id: number,
-  data: CreditNoteRefundData
-): Promise<CreditNote> {
-  const response = await apiClient.post(
-    `/api/billing/credit-notes/${id}/refund/`,
-    data
-  );
+async function processRefund(id: number, data: CreditNoteRefundData): Promise<CreditNote> {
+  const response = await apiClient.post(`/api/billing/credit-notes/${id}/refund/`, data);
   return parseResponse(CreditNoteSchema, response.data, { context: 'billingApi.processRefund' });
 }
 
@@ -639,30 +634,27 @@ async function processRefund(
 // Reports API
 // ============================================================================
 
-async function getDailyCollectionReport(
-  date: string
-): Promise<DailyCollectionReport> {
-  const response = await apiClient.get(
-    `/api/billing/reports/daily-collection/?date=${date}`
-  );
-  return parseResponse(DailyCollectionReportSchema, response.data, { context: 'billingApi.getDailyCollectionReport' });
+async function getDailyCollectionReport(date: string): Promise<DailyCollectionReport> {
+  const response = await apiClient.get(`/api/billing/reports/daily-collection/?date=${date}`);
+  return parseResponse(DailyCollectionReportSchema, response.data, {
+    context: 'billingApi.getDailyCollectionReport',
+  });
 }
 
-async function getRevenueSummary(
-  startDate: string,
-  endDate: string
-): Promise<RevenueSummary> {
+async function getRevenueSummary(startDate: string, endDate: string): Promise<RevenueSummary> {
   const response = await apiClient.get(
     `/api/billing/reports/revenue-summary/?start_date=${startDate}&end_date=${endDate}`
   );
-  return parseResponse(RevenueSummarySchema, response.data, { context: 'billingApi.getRevenueSummary' });
+  return parseResponse(RevenueSummarySchema, response.data, {
+    context: 'billingApi.getRevenueSummary',
+  });
 }
 
 async function getOutstandingBalances(): Promise<OutstandingBalance[]> {
-  const response = await apiClient.get(
-    '/api/billing/reports/outstanding-balances/'
-  );
-  return parseResponse(z.array(OutstandingBalanceSchema), response.data, { context: 'billingApi.getOutstandingBalances' });
+  const response = await apiClient.get('/api/billing/reports/outstanding-balances/');
+  return parseResponse(z.array(OutstandingBalanceSchema), response.data, {
+    context: 'billingApi.getOutstandingBalances',
+  });
 }
 
 async function getServiceUtilization(
@@ -672,7 +664,9 @@ async function getServiceUtilization(
   const response = await apiClient.get(
     `/api/billing/reports/service-utilization/?start_date=${startDate}&end_date=${endDate}`
   );
-  return parseResponse(z.array(ServiceUtilizationSchema), response.data, { context: 'billingApi.getServiceUtilization' });
+  return parseResponse(z.array(ServiceUtilizationSchema), response.data, {
+    context: 'billingApi.getServiceUtilization',
+  });
 }
 
 async function getPaymentMethodAnalysis(
@@ -682,7 +676,9 @@ async function getPaymentMethodAnalysis(
   const response = await apiClient.get(
     `/api/billing/reports/payment-analysis/?start_date=${startDate}&end_date=${endDate}`
   );
-  return parseResponse(PaymentMethodAnalysisSchema, response.data, { context: 'billingApi.getPaymentMethodAnalysis' });
+  return parseResponse(PaymentMethodAnalysisSchema, response.data, {
+    context: 'billingApi.getPaymentMethodAnalysis',
+  });
 }
 
 // Daily Closure Report
@@ -703,10 +699,10 @@ export interface DailyClosureReport {
 async function getDailyClosureReport(date: string, facility?: number): Promise<DailyClosureReport> {
   const params = new URLSearchParams({ date });
   if (facility) params.set('facility', String(facility));
-  const response = await apiClient.get(
-    `/api/billing/reports/daily-closure/?${params.toString()}`
-  );
-  return parseResponse(DailyClosureReportSchema, response.data, { context: 'billingApi.getDailyClosureReport' });
+  const response = await apiClient.get(`/api/billing/reports/daily-closure/?${params.toString()}`);
+  return parseResponse(DailyClosureReportSchema, response.data, {
+    context: 'billingApi.getDailyClosureReport',
+  });
 }
 
 // Billing Discrepancies
@@ -726,7 +722,9 @@ export interface BillingDiscrepancy {
 
 async function getBillingDiscrepancies(): Promise<BillingDiscrepancy[]> {
   const response = await apiClient.get('/api/billing/reports/discrepancies/');
-  return parseResponse(z.array(BillingDiscrepancySchema), response.data, { context: 'billingApi.getBillingDiscrepancies' });
+  return parseResponse(z.array(BillingDiscrepancySchema), response.data, {
+    context: 'billingApi.getBillingDiscrepancies',
+  });
 }
 
 // Unbilled Services
@@ -738,42 +736,65 @@ export interface UnbilledService {
 
 async function getUnbilledServices(): Promise<UnbilledService[]> {
   const response = await apiClient.get('/api/billing/reports/unbilled-services/');
-  return parseResponse(z.array(UnbilledServiceSchema), response.data, { context: 'billingApi.getUnbilledServices' });
+  return parseResponse(z.array(UnbilledServiceSchema), response.data, {
+    context: 'billingApi.getUnbilledServices',
+  });
 }
 
 // ============================================================================
 // Facility Billing Config
 // ============================================================================
 
-async function getFacilityBillingConfigs(params?: FacilityBillingConfigListParams): Promise<PaginatedFacilityBillingConfigs> {
+async function getFacilityBillingConfigs(
+  params?: FacilityBillingConfigListParams
+): Promise<PaginatedFacilityBillingConfigs> {
   const qs = params ? `?${buildQueryString(params)}` : '';
   const response = await apiClient.get(`/api/billing/facility-configs/${qs}`);
-  return parseResponse(PaginatedFacilityBillingConfigSchema, response.data, { context: 'billingApi.getFacilityBillingConfigs' });
+  return parseResponse(PaginatedFacilityBillingConfigSchema, response.data, {
+    context: 'billingApi.getFacilityBillingConfigs',
+  });
 }
 
 async function getFacilityBillingConfig(id: number): Promise<FacilityBillingConfig> {
   const response = await apiClient.get(`/api/billing/facility-configs/${id}/`);
-  return parseResponse(FacilityBillingConfigSchema, response.data, { context: 'billingApi.getFacilityBillingConfig' });
+  return parseResponse(FacilityBillingConfigSchema, response.data, {
+    context: 'billingApi.getFacilityBillingConfig',
+  });
 }
 
-async function createFacilityBillingConfig(data: FacilityBillingConfigCreateData): Promise<FacilityBillingConfig> {
+async function createFacilityBillingConfig(
+  data: FacilityBillingConfigCreateData
+): Promise<FacilityBillingConfig> {
   const response = await apiClient.post('/api/billing/facility-configs/', data);
-  return parseResponse(FacilityBillingConfigSchema, response.data, { context: 'billingApi.createFacilityBillingConfig' });
+  return parseResponse(FacilityBillingConfigSchema, response.data, {
+    context: 'billingApi.createFacilityBillingConfig',
+  });
 }
 
-async function updateFacilityBillingConfig(id: number, data: FacilityBillingConfigUpdateData): Promise<FacilityBillingConfig> {
+async function updateFacilityBillingConfig(
+  id: number,
+  data: FacilityBillingConfigUpdateData
+): Promise<FacilityBillingConfig> {
   const response = await apiClient.patch(`/api/billing/facility-configs/${id}/`, data);
-  return parseResponse(FacilityBillingConfigSchema, response.data, { context: 'billingApi.updateFacilityBillingConfig' });
+  return parseResponse(FacilityBillingConfigSchema, response.data, {
+    context: 'billingApi.updateFacilityBillingConfig',
+  });
 }
 
 async function getSHAContractSummaries(): Promise<SHAContractSummary[]> {
   const response = await apiClient.get('/api/billing/facility-configs/sha-contracts/');
-  return parseResponse(z.array(SHAContractSummarySchema), response.data, { context: 'billingApi.getSHAContractSummaries' });
+  return parseResponse(z.array(SHAContractSummarySchema), response.data, {
+    context: 'billingApi.getSHAContractSummaries',
+  });
 }
 
 async function getAdmissionServiceGuard(facility: number): Promise<AdmissionServiceGuard> {
-  const response = await apiClient.get(`/api/billing/facility-configs/guards/admission-services/?facility=${facility}`);
-  return parseResponse(AdmissionServiceGuardSchema, response.data, { context: 'billingApi.getAdmissionServiceGuard' });
+  const response = await apiClient.get(
+    `/api/billing/facility-configs/guards/admission-services/?facility=${facility}`
+  );
+  return parseResponse(AdmissionServiceGuardSchema, response.data, {
+    context: 'billingApi.getAdmissionServiceGuard',
+  });
 }
 
 // ============================================================================
@@ -868,43 +889,64 @@ export const billingApi = {
   supplierBills: {
     list: async (params?: SupplierBillListParams): Promise<PaginatedSupplierBills> => {
       const response = await apiClient.get('/api/billing/supplier-bills/', { params });
-      return parseResponse(PaginatedSupplierBillSchema, response.data, { context: 'billingApi.supplierBills.list' });
+      return parseResponse(PaginatedSupplierBillSchema, response.data, {
+        context: 'billingApi.supplierBills.list',
+      });
     },
     get: async (id: number): Promise<SupplierBill> => {
       const response = await apiClient.get(`/api/billing/supplier-bills/${id}/`);
-      return parseResponse(SupplierBillSchema, response.data, { context: 'billingApi.supplierBills.get' });
+      return parseResponse(SupplierBillSchema, response.data, {
+        context: 'billingApi.supplierBills.get',
+      });
     },
     create: async (data: SupplierBillCreateData): Promise<SupplierBill> => {
       const response = await apiClient.post('/api/billing/supplier-bills/', data);
-      return parseResponse(SupplierBillSchema, response.data, { context: 'billingApi.supplierBills.create' });
+      return parseResponse(SupplierBillSchema, response.data, {
+        context: 'billingApi.supplierBills.create',
+      });
     },
     update: async (id: number, data: SupplierBillUpdateData): Promise<SupplierBill> => {
       const response = await apiClient.patch(`/api/billing/supplier-bills/${id}/`, data);
-      return parseResponse(SupplierBillSchema, response.data, { context: 'billingApi.supplierBills.update' });
+      return parseResponse(SupplierBillSchema, response.data, {
+        context: 'billingApi.supplierBills.update',
+      });
     },
     approve: async (id: number): Promise<SupplierBill> => {
       const response = await apiClient.post(`/api/billing/supplier-bills/${id}/approve/`);
-      return parseResponse(SupplierBillSchema, response.data, { context: 'billingApi.supplierBills.approve' });
+      return parseResponse(SupplierBillSchema, response.data, {
+        context: 'billingApi.supplierBills.approve',
+      });
     },
     cancel: async (id: number): Promise<SupplierBill> => {
       const response = await apiClient.post(`/api/billing/supplier-bills/${id}/cancel/`);
-      return parseResponse(SupplierBillSchema, response.data, { context: 'billingApi.supplierBills.cancel' });
+      return parseResponse(SupplierBillSchema, response.data, {
+        context: 'billingApi.supplierBills.cancel',
+      });
     },
     agingSummary: async (): Promise<SupplierBillAgingSummary> => {
       const response = await apiClient.get('/api/billing/supplier-bills/aging_summary/');
-      return parseResponse(SupplierBillAgingSummarySchema, response.data, { context: 'billingApi.supplierBills.agingSummary' });
+      return parseResponse(SupplierBillAgingSummarySchema, response.data, {
+        context: 'billingApi.supplierBills.agingSummary',
+      });
     },
     recordPayment: async (data: SupplierPaymentCreateData): Promise<SupplierBill> => {
       const response = await apiClient.post('/api/billing/supplier-payments/', data);
       // After payment, fetch the updated bill
       const billResponse = await apiClient.get(`/api/billing/supplier-bills/${data.bill}/`);
-      return parseResponse(SupplierBillSchema, billResponse.data, { context: 'billingApi.supplierBills.recordPayment' });
+      return parseResponse(SupplierBillSchema, billResponse.data, {
+        context: 'billingApi.supplierBills.recordPayment',
+      });
     },
   },
 
   // SHA Tariffs
   shaTariffs: {
-    search: async (params?: { search?: string; category?: string; is_active?: boolean; page_size?: number }): Promise<{ results: SHATariffItem[]; count: number }> => {
+    search: async (params?: {
+      search?: string;
+      category?: string;
+      is_active?: boolean;
+      page_size?: number;
+    }): Promise<{ results: SHATariffItem[]; count: number }> => {
       const searchParams = new URLSearchParams();
       if (params?.search) searchParams.set('search', params.search);
       if (params?.category) searchParams.set('category', params.category);

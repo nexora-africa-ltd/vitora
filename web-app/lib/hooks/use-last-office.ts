@@ -84,8 +84,7 @@ export function useReportToCivilRegistry() {
 export function useVoidDeathRecord() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: VoidData }) =>
-      lastOfficeApi.void(id, data),
+    mutationFn: ({ id, data }: { id: number; data: VoidData }) => lastOfficeApi.void(id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: lastOfficeQueryKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: lastOfficeQueryKeys.lists() });

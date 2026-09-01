@@ -7,10 +7,26 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, Pill, ExternalLink, Clock, CheckCircle2, AlertCircle, Package, Building2 } from 'lucide-react';
+import {
+  Plus,
+  Pill,
+  ExternalLink,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Package,
+  Building2,
+} from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -27,15 +43,43 @@ interface EncounterPrescriptionsProps {
   onPrevious?: () => void;
 }
 
-const STATUS_CONFIG: Record<PrescriptionStatus, { label: string; color: string; icon: React.ElementType }> = {
-  PENDING: { label: 'Pending', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', icon: Clock },
-  PARTIAL: { label: 'Partial', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300', icon: Package },
-  DISPENSED: { label: 'Dispensed', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300', icon: CheckCircle2 },
-  CANCELLED: { label: 'Cancelled', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300', icon: AlertCircle },
-  EXPIRED: { label: 'Expired', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300', icon: AlertCircle },
+const STATUS_CONFIG: Record<
+  PrescriptionStatus,
+  { label: string; color: string; icon: React.ElementType }
+> = {
+  PENDING: {
+    label: 'Pending',
+    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+    icon: Clock,
+  },
+  PARTIAL: {
+    label: 'Partial',
+    color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
+    icon: Package,
+  },
+  DISPENSED: {
+    label: 'Dispensed',
+    color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+    icon: CheckCircle2,
+  },
+  CANCELLED: {
+    label: 'Cancelled',
+    color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
+    icon: AlertCircle,
+  },
+  EXPIRED: {
+    label: 'Expired',
+    color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+    icon: AlertCircle,
+  },
 };
 
-export function EncounterPrescriptions({ encounterId, patientId, disabled = false, onPrevious }: EncounterPrescriptionsProps) {
+export function EncounterPrescriptions({
+  encounterId,
+  patientId,
+  disabled = false,
+  onPrevious,
+}: EncounterPrescriptionsProps) {
   const queryClient = useQueryClient();
   const { data: prescriptions, isLoading, error } = useEncounterPrescriptions(encounterId);
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
@@ -49,7 +93,7 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Pill className="h-5 w-5" />
             Prescriptions
           </CardTitle>
@@ -68,7 +112,7 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Pill className="h-5 w-5" />
             Prescriptions
           </CardTitle>
@@ -82,15 +126,19 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
 
   // Ensure prescriptions is always an array (handle edge cases)
   const prescriptionsList = Array.isArray(prescriptions) ? prescriptions : [];
-  const pendingPrescriptions = prescriptionsList.filter(p => p.status === 'PENDING' || p.status === 'PARTIAL');
-  const completedPrescriptions = prescriptionsList.filter(p => p.status === 'DISPENSED');
-  const otherPrescriptions = prescriptionsList.filter(p => p.status === 'CANCELLED' || p.status === 'EXPIRED');
+  const pendingPrescriptions = prescriptionsList.filter(
+    (p) => p.status === 'PENDING' || p.status === 'PARTIAL'
+  );
+  const completedPrescriptions = prescriptionsList.filter((p) => p.status === 'DISPENSED');
+  const otherPrescriptions = prescriptionsList.filter(
+    (p) => p.status === 'CANCELLED' || p.status === 'EXPIRED'
+  );
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Pill className="h-5 w-5" />
             Prescriptions
             {prescriptionsList.length > 0 && (
@@ -99,7 +147,7 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
           </CardTitle>
           {!disabled && (
             <Button size="sm" onClick={() => setShowPrescriptionForm(true)}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               New Prescription
             </Button>
           )}
@@ -114,7 +162,9 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
           {/* Pending Prescriptions */}
           {pendingPrescriptions.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Awaiting Dispensing ({pendingPrescriptions.length})</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Awaiting Dispensing ({pendingPrescriptions.length})
+              </h4>
               <div className="space-y-2">
                 {pendingPrescriptions.map((prescription) => (
                   <PrescriptionCard key={prescription.id} prescription={prescription} />
@@ -126,7 +176,9 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
           {/* Completed Prescriptions */}
           {completedPrescriptions.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Dispensed ({completedPrescriptions.length})</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Dispensed ({completedPrescriptions.length})
+              </h4>
               <div className="space-y-2">
                 {completedPrescriptions.map((prescription) => (
                   <PrescriptionCard key={prescription.id} prescription={prescription} />
@@ -138,7 +190,9 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
           {/* Cancelled/Expired */}
           {otherPrescriptions.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Other ({otherPrescriptions.length})</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Other ({otherPrescriptions.length})
+              </h4>
               <div className="space-y-2">
                 {otherPrescriptions.map((prescription) => (
                   <PrescriptionCard key={prescription.id} prescription={prescription} />
@@ -150,9 +204,13 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
       )}
 
       {prescriptions && prescriptions.length === 0 && !disabled && (
-        <CardFooter className="pt-0 flex-col gap-3">
-          <Button variant="outline" className="w-full" onClick={() => setShowPrescriptionForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+        <CardFooter className="flex-col gap-3 pt-0">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setShowPrescriptionForm(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
             Create First Prescription
           </Button>
           {onPrevious && (
@@ -174,7 +232,7 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
 
       {/* New Prescription Sheet */}
       <Sheet open={showPrescriptionForm} onOpenChange={setShowPrescriptionForm}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+        <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
           <SheetHeader className="sr-only">
             <SheetTitle>New Prescription</SheetTitle>
           </SheetHeader>
@@ -232,36 +290,40 @@ export function EncounterPrescriptionsContent({
   }
 
   const prescriptionsList = Array.isArray(prescriptions) ? prescriptions : [];
-  const pendingPrescriptions = prescriptionsList.filter(p => p.status === 'PENDING' || p.status === 'PARTIAL');
-  const completedPrescriptions = prescriptionsList.filter(p => p.status === 'DISPENSED');
-  const otherPrescriptions = prescriptionsList.filter(p => p.status === 'CANCELLED' || p.status === 'EXPIRED');
+  const pendingPrescriptions = prescriptionsList.filter(
+    (p) => p.status === 'PENDING' || p.status === 'PARTIAL'
+  );
+  const completedPrescriptions = prescriptionsList.filter((p) => p.status === 'DISPENSED');
+  const otherPrescriptions = prescriptionsList.filter(
+    (p) => p.status === 'CANCELLED' || p.status === 'EXPIRED'
+  );
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Medications and pharmacy orders
-      </p>
+      <p className="text-sm text-muted-foreground">Medications and pharmacy orders</p>
 
       {/* Action button */}
       {!disabled && (
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setShowPrescriptionForm(true)}>
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="mr-1 h-4 w-4" />
             New Prescription
           </Button>
         </div>
       )}
 
       {prescriptionsList.length === 0 ? (
-        <div className="text-center py-4 text-muted-foreground">
-          <Pill className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <div className="py-4 text-center text-muted-foreground">
+          <Pill className="mx-auto mb-2 h-8 w-8 opacity-50" />
           <p className="text-sm">No prescriptions for this encounter</p>
         </div>
       ) : (
         <div className="space-y-4">
           {pendingPrescriptions.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Awaiting Dispensing ({pendingPrescriptions.length})</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Awaiting Dispensing ({pendingPrescriptions.length})
+              </h4>
               <div className="space-y-2">
                 {pendingPrescriptions.map((prescription) => (
                   <PrescriptionCard key={prescription.id} prescription={prescription} />
@@ -271,7 +333,9 @@ export function EncounterPrescriptionsContent({
           )}
           {completedPrescriptions.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Dispensed ({completedPrescriptions.length})</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Dispensed ({completedPrescriptions.length})
+              </h4>
               <div className="space-y-2">
                 {completedPrescriptions.map((prescription) => (
                   <PrescriptionCard key={prescription.id} prescription={prescription} />
@@ -281,7 +345,9 @@ export function EncounterPrescriptionsContent({
           )}
           {otherPrescriptions.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Other ({otherPrescriptions.length})</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Other ({otherPrescriptions.length})
+              </h4>
               <div className="space-y-2">
                 {otherPrescriptions.map((prescription) => (
                   <PrescriptionCard key={prescription.id} prescription={prescription} />
@@ -294,7 +360,7 @@ export function EncounterPrescriptionsContent({
 
       {/* New Prescription Sheet */}
       <Sheet open={showPrescriptionForm} onOpenChange={setShowPrescriptionForm}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+        <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
           <SheetHeader className="sr-only">
             <SheetTitle>New Prescription</SheetTitle>
           </SheetHeader>
@@ -319,46 +385,49 @@ function PrescriptionCard({ prescription }: { prescription: Prescription }) {
   const StatusIcon = statusConfig.icon;
 
   // Get medication names from items
-  const medicationNames = prescription.items?.map(item => item.drug_name).join(', ') || 'No medications';
+  const medicationNames =
+    prescription.items?.map((item) => item.drug_name).join(', ') || 'No medications';
   const itemCount = prescription.items?.length || 0;
 
   return (
     <Link href={`/pharmacy/prescriptions/${prescription.id}`}>
-      <div className="p-3 rounded-md border hover:bg-muted/50 transition-colors">
+      <div className="rounded-md border p-3 transition-colors hover:bg-muted/50">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-sm">{prescription.prescription_number || `Prescription #${prescription.id}`}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">
+                {prescription.prescription_number || `Prescription #${prescription.id}`}
+              </span>
               <Badge className={statusConfig.color} variant="secondary">
-                <StatusIcon className="h-3 w-3 mr-1" />
+                <StatusIcon className="mr-1 h-3 w-3" />
                 {statusConfig.label}
               </Badge>
               {prescription.dispensing_type === 'EXTERNAL' ? (
                 <Badge variant="outline" className="text-[10px]">
-                  <ExternalLink className="h-2.5 w-2.5 mr-0.5" />
+                  <ExternalLink className="mr-0.5 h-2.5 w-2.5" />
                   External
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-[10px]">
-                  <Building2 className="h-2.5 w-2.5 mr-0.5" />
+                  <Building2 className="mr-0.5 h-2.5 w-2.5" />
                   Internal
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground mt-1 truncate">
+            <p className="mt-1 truncate text-sm text-muted-foreground">
               {itemCount} medication{itemCount !== 1 ? 's' : ''}: {medicationNames}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Prescribed {formatDate(prescription.prescribed_date)}
               {prescription.prescriber_name && ` by ${prescription.prescriber_name}`}
             </p>
           </div>
-          <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+          <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
         </div>
 
         {/* Show validity warning */}
         {prescription.status === 'PENDING' && prescription.valid_until && (
-          <div className="mt-2 pt-2 border-t">
+          <div className="mt-2 border-t pt-2">
             <p className="text-xs text-muted-foreground">
               Valid until {formatDate(prescription.valid_until)}
             </p>

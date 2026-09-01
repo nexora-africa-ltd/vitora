@@ -27,10 +27,8 @@ interface VitalsAlertsProps {
 
 export function VitalsAlerts({ alerts, compact = false, className }: VitalsAlertsProps) {
   // Normalize severity to lowercase for comparison
-  const isCritical = (a: VitalsAlert) =>
-    a.severity === 'critical' || a.severity === 'CRITICAL';
-  const isWarning = (a: VitalsAlert) =>
-    a.severity === 'warning' || a.severity === 'WARNING';
+  const isCritical = (a: VitalsAlert) => a.severity === 'critical' || a.severity === 'CRITICAL';
+  const isWarning = (a: VitalsAlert) => a.severity === 'warning' || a.severity === 'WARNING';
 
   const criticalAlerts = alerts.filter(isCritical);
   const warningAlerts = alerts.filter(isWarning);
@@ -56,19 +54,21 @@ export function VitalsAlerts({ alerts, compact = false, className }: VitalsAlert
                 key={i}
                 className={cn(
                   'flex items-start gap-2 rounded-lg border-2 border-red-600 dark:border-red-500',
-                  'bg-red-600 dark:bg-red-600 text-white',
+                  'bg-red-600 text-white dark:bg-red-600',
                   'shadow-sm',
                   compact ? 'px-2.5 py-1.5' : 'px-3 py-2',
                   'max-w-xs'
                 )}
               >
-                <AlertCircle className={cn('shrink-0 mt-0.5', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
+                <AlertCircle
+                  className={cn('mt-0.5 shrink-0', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
+                />
                 <div className="min-w-0">
                   <p className={cn('font-medium leading-tight', compact ? 'text-xs' : 'text-sm')}>
                     {alert.message}
                   </p>
                   {alert.clinical_note && !compact && (
-                    <p className="text-xs mt-0.5 text-red-100">{alert.clinical_note}</p>
+                    <p className="mt-0.5 text-xs text-red-100">{alert.clinical_note}</p>
                   )}
                 </div>
               </div>
@@ -92,19 +92,21 @@ export function VitalsAlerts({ alerts, compact = false, className }: VitalsAlert
                 key={i}
                 className={cn(
                   'flex items-start gap-2 rounded-lg border-2 border-orange-500 dark:border-orange-400',
-                  'bg-orange-500 dark:bg-orange-600 text-white',
+                  'bg-orange-500 text-white dark:bg-orange-600',
                   'shadow-sm',
                   compact ? 'px-2.5 py-1.5' : 'px-3 py-2',
                   'max-w-xs'
                 )}
               >
-                <AlertTriangle className={cn('shrink-0 mt-0.5', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
+                <AlertTriangle
+                  className={cn('mt-0.5 shrink-0', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
+                />
                 <div className="min-w-0">
                   <p className={cn('font-medium leading-tight', compact ? 'text-xs' : 'text-sm')}>
                     {alert.message}
                   </p>
                   {alert.clinical_note && !compact && (
-                    <p className="text-xs mt-0.5 text-orange-100">{alert.clinical_note}</p>
+                    <p className="mt-0.5 text-xs text-orange-100">{alert.clinical_note}</p>
                   )}
                 </div>
               </div>

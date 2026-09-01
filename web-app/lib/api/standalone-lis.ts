@@ -60,7 +60,10 @@ export const standaloneLisApi = {
     });
   },
 
-  async updateWalkInPatient(id: number, data: Partial<WalkInPatientCreateData>): Promise<WalkInPatient> {
+  async updateWalkInPatient(
+    id: number,
+    data: Partial<WalkInPatientCreateData>
+  ): Promise<WalkInPatient> {
     const response = await apiClient.patch(`${BASE}/walkin-patients/${id}/`, data);
     return parseResponse(WalkInPatientSchema, response.data, {
       context: 'standaloneLisApi.updateWalkInPatient',

@@ -19,10 +19,6 @@ export function UmamiAnalytics() {
   if (!umamiUrl || !websiteId) return null;
 
   return (
-    <Script
-      src={`${umamiUrl}/script.js`}
-      data-website-id={websiteId}
-      strategy="afterInteractive"
-    />
+    <Script src={`${umamiUrl}/script.js`} data-website-id={websiteId} strategy="afterInteractive" />
   );
 }

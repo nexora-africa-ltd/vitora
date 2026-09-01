@@ -50,11 +50,7 @@ export default function HEIFollowUpPage() {
   const [statusFilter, setStatusFilter] = useState<HEIStatus | ''>('');
   const [page, setPage] = useState(1);
 
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['hei-followups-list', page, statusFilter],
     queryFn: () =>
       heiFollowUpApi.list({
@@ -111,7 +107,7 @@ export default function HEIFollowUpPage() {
         </div>
 
         {error ? (
-          <div className="text-center py-12">
+          <div className="py-12 text-center">
             <p className="text-destructive">Failed to load HEI follow-up records.</p>
           </div>
         ) : followups.length === 0 ? (
@@ -128,9 +124,7 @@ export default function HEIFollowUpPage() {
                 {
                   key: 'hei_number',
                   header: 'HEI Number',
-                  cell: (item) => (
-                    <span className="font-medium">{item.hei_number}</span>
-                  ),
+                  cell: (item) => <span className="font-medium">{item.hei_number}</span>,
                 },
                 {
                   key: 'infant_name',
@@ -138,9 +132,7 @@ export default function HEIFollowUpPage() {
                   cell: (item) => (
                     <div>
                       <span>{item.infant_name}</span>
-                      <span className="text-muted-foreground text-xs ml-1">
-                        {item.infant_mrn}
-                      </span>
+                      <span className="ml-1 text-xs text-muted-foreground">{item.infant_mrn}</span>
                     </div>
                   ),
                 },
@@ -166,7 +158,7 @@ export default function HEIFollowUpPage() {
                   key: 'status',
                   header: 'Status',
                   cell: (item) => (
-                    <Badge className={`${statusColors[item.status]} shrink-0 w-fit`}>
+                    <Badge className={`${statusColors[item.status]} w-fit shrink-0`}>
                       {item.status.replace(/_/g, ' ')}
                     </Badge>
                   ),
@@ -174,19 +166,19 @@ export default function HEIFollowUpPage() {
               ]}
               mobileCard={(item) => (
                 <Card className="p-3">
-                  <div className="flex justify-between items-start">
+                  <div className="flex items-start justify-between">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <Shield className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="font-medium truncate">{item.hei_number}</span>
+                        <span className="truncate font-medium">{item.hei_number}</span>
                       </div>
-                      <p className="text-sm mt-1 truncate">{item.infant_name}</p>
+                      <p className="mt-1 truncate text-sm">{item.infant_name}</p>
                       <p className="text-xs text-muted-foreground">{item.infant_mrn}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Enrolled {formatDate(item.enrollment_date)}
                       </p>
                     </div>
-                    <Badge className={`${statusColors[item.status]} shrink-0 w-fit self-start`}>
+                    <Badge className={`${statusColors[item.status]} w-fit shrink-0 self-start`}>
                       {item.status.replace(/_/g, ' ')}
                     </Badge>
                   </div>

@@ -28,10 +28,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { standalonePharmacyApi } from '@/lib/api/standalone-pharmacy';
-import type {
-  WalkInCustomer,
-  WalkInCustomerCreateData,
-} from '@/lib/types/standalone-pharmacy';
+import type { WalkInCustomer, WalkInCustomerCreateData } from '@/lib/types/standalone-pharmacy';
 import { toast } from 'sonner';
 
 export default function WalkInCustomersPage() {
@@ -42,8 +39,7 @@ export default function WalkInCustomersPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['walkin-customers', search],
-    queryFn: () =>
-      standalonePharmacyApi.listWalkInCustomers({ search: search || undefined }),
+    queryFn: () => standalonePharmacyApi.listWalkInCustomers({ search: search || undefined }),
   });
 
   const createMutation = useMutation({
@@ -71,9 +67,7 @@ export default function WalkInCustomersPage() {
       header: 'Name',
       sortable: true,
       sortFn: (a: WalkInCustomer, b: WalkInCustomer) =>
-        `${a.first_name} ${a.last_name}`.localeCompare(
-          `${b.first_name} ${b.last_name}`,
-        ),
+        `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`),
       cell: (item: WalkInCustomer) => (
         <div className="flex items-center gap-2">
           <User className="h-4 w-4 text-muted-foreground" />
@@ -101,7 +95,7 @@ export default function WalkInCustomersPage() {
       cell: (item: WalkInCustomer) =>
         item.linked_patient ? (
           <Badge variant="outline" className="text-green-600">
-            <LinkIcon className="h-3 w-3 mr-1" /> Linked
+            <LinkIcon className="mr-1 h-3 w-3" /> Linked
           </Badge>
         ) : (
           <Badge variant="outline" className="text-muted-foreground">
@@ -114,8 +108,7 @@ export default function WalkInCustomersPage() {
       header: 'Registered',
       sortable: true,
       sortType: 'date' as const,
-      cell: (item: WalkInCustomer) =>
-        new Date(item.created_at).toLocaleDateString(),
+      cell: (item: WalkInCustomer) => new Date(item.created_at).toLocaleDateString(),
       hideOnMobile: true,
     },
   ];
@@ -130,7 +123,7 @@ export default function WalkInCustomersPage() {
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
               <DialogTrigger asChild>
                 <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" /> Register
+                  <Plus className="mr-1 h-4 w-4" /> Register
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
@@ -204,9 +197,7 @@ function WalkInCreateForm({
             id="first_name"
             required
             value={formData.first_name}
-            onChange={(e) =>
-              setFormData({ ...formData, first_name: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
           />
         </div>
         <div>
@@ -215,9 +206,7 @@ function WalkInCreateForm({
             id="last_name"
             required
             value={formData.last_name}
-            onChange={(e) =>
-              setFormData({ ...formData, last_name: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
           />
         </div>
       </div>
@@ -226,9 +215,7 @@ function WalkInCreateForm({
           <Label htmlFor="gender">Gender</Label>
           <Select
             value={formData.gender || ''}
-            onValueChange={(v) =>
-              setFormData({ ...formData, gender: v as 'M' | 'F' | 'O' })
-            }
+            onValueChange={(v) => setFormData({ ...formData, gender: v as 'M' | 'F' | 'O' })}
           >
             <SelectTrigger id="gender">
               <SelectValue placeholder="Select" />
@@ -260,9 +247,7 @@ function WalkInCreateForm({
         <Input
           id="national_id"
           value={formData.national_id || ''}
-          onChange={(e) =>
-            setFormData({ ...formData, national_id: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, national_id: e.target.value })}
         />
       </div>
       <div>
@@ -270,9 +255,7 @@ function WalkInCreateForm({
         <Input
           id="phone"
           value={formData.phone_number || ''}
-          onChange={(e) =>
-            setFormData({ ...formData, phone_number: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
         />
       </div>
       <div>
@@ -280,9 +263,7 @@ function WalkInCreateForm({
         <Input
           id="referring_facility"
           value={formData.referring_facility || ''}
-          onChange={(e) =>
-            setFormData({ ...formData, referring_facility: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, referring_facility: e.target.value })}
         />
       </div>
       <div>
@@ -290,9 +271,7 @@ function WalkInCreateForm({
         <Input
           id="referring_clinician"
           value={formData.referring_clinician || ''}
-          onChange={(e) =>
-            setFormData({ ...formData, referring_clinician: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, referring_clinician: e.target.value })}
         />
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>

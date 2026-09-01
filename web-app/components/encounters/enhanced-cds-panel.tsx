@@ -36,12 +36,7 @@ import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFormularySearch, useSmpcDetail } from '@/lib/hooks/use-formulary';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AICDSAlertItem, AICDSEvaluateRequest, AICDSEvaluateResponse } from '@/lib/types/ai';
@@ -89,13 +84,16 @@ export interface EnhancedCDSPanelProps {
 // SEVERITY STYLES
 // =============================================================================
 
-const SEVERITY_CONFIG: Record<string, {
-  label: string;
-  color: string;
-  bgColor: string;
-  borderColor: string;
-  icon: typeof AlertTriangle;
-}> = {
+const SEVERITY_CONFIG: Record<
+  string,
+  {
+    label: string;
+    color: string;
+    bgColor: string;
+    borderColor: string;
+    icon: typeof AlertTriangle;
+  }
+> = {
   critical: {
     label: 'Critical',
     color: 'text-red-700 dark:text-red-400',
@@ -139,46 +137,54 @@ const CATEGORY_LABELS: Record<string, string> = {
 // SUB-COMPONENTS
 // =============================================================================
 
-function CDSAlertCard({ alert, onViewSmpc }: { alert: AICDSAlertItem; onViewSmpc?: (drugName: string) => void }) {
+function CDSAlertCard({
+  alert,
+  onViewSmpc,
+}: {
+  alert: AICDSAlertItem;
+  onViewSmpc?: (drugName: string) => void;
+}) {
   const config = SEVERITY_CONFIG[alert.severity] ?? SEVERITY_CONFIG.low!;
   const { icon: Icon, bgColor, borderColor, color, label: severityLabel } = config!;
 
   return (
-    <div className={cn('rounded-md p-2.5 border text-sm', bgColor, borderColor)}>
+    <div className={cn('rounded-md border p-2.5 text-sm', bgColor, borderColor)}>
       <div className="flex items-start gap-2">
-        <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', color)} />
+        <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', color)} />
         <div className="min-w-0 space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className={cn('text-xs px-1.5 py-0 shrink-0', color)}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className={cn('shrink-0 px-1.5 py-0 text-xs', color)}>
               {severityLabel}
             </Badge>
-            <span className="text-xs text-muted-foreground uppercase tracking-wide">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {CATEGORY_LABELS[alert.category] ?? alert.category}
             </span>
           </div>
-          <p className="font-medium text-sm">{alert.title}</p>
+          <p className="text-sm font-medium">{alert.title}</p>
           <p className="text-sm text-muted-foreground">{alert.message}</p>
           {alert.recommendation && (
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="mt-1 text-xs text-muted-foreground">
               <span className="font-medium">Recommendation:</span> {alert.recommendation}
             </p>
           )}
           {alert.evidence_level && (
-            <p className="text-xs text-muted-foreground">
-              Evidence: {alert.evidence_level}
-            </p>
+            <p className="text-xs text-muted-foreground">Evidence: {alert.evidence_level}</p>
           )}
           {/* Formulary/interaction alerts — link to SmPC monograph */}
-          {(alert.category === 'formulary' || alert.category === 'drug-interaction' || alert.category === 'contraindication') && onViewSmpc && alert.title && (
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-0.5"
-              onClick={() => onViewSmpc(alert.title)}
-            >
-              <BookOpen className="h-3 w-3" />
-              View SmPC Monograph
-            </button>
-          )}
+          {(alert.category === 'formulary' ||
+            alert.category === 'drug-interaction' ||
+            alert.category === 'contraindication') &&
+            onViewSmpc &&
+            alert.title && (
+              <button
+                type="button"
+                className="mt-0.5 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                onClick={() => onViewSmpc(alert.title)}
+              >
+                <BookOpen className="h-3 w-3" />
+                View SmPC Monograph
+              </button>
+            )}
         </div>
       </div>
     </div>
@@ -219,7 +225,9 @@ export function EnhancedCDSPanel({
   // Formulary search for SmPC linking
   const { data: formularyData } = useFormularySearch(smpcSearchQuery);
   const smpcDocId = formularyData?.smpc?.[0]?.id ?? null;
-  const { data: smpcDetail, isLoading: smpcLoading } = useSmpcDetail(smpcModalOpen ? smpcDocId : null);
+  const { data: smpcDetail, isLoading: smpcLoading } = useSmpcDetail(
+    smpcModalOpen ? smpcDocId : null
+  );
 
   const handleViewSmpc = React.useCallback((drugName: string) => {
     // Extract a useful drug name from the alert title
@@ -232,8 +240,8 @@ export function EnhancedCDSPanel({
   // Load stored CDS results
   const { data: storedResults } = useStoredCDSResults(encounterId);
   const latestStored = storedResults?.[0];
-  const displayResult: AICDSEvaluateResponse | undefined = result
-    ?? (latestStored?.result_data as unknown as AICDSEvaluateResponse | undefined);
+  const displayResult: AICDSEvaluateResponse | undefined =
+    result ?? (latestStored?.result_data as unknown as AICDSEvaluateResponse | undefined);
 
   // Show success toast when evaluation completes
   React.useEffect(() => {
@@ -241,9 +249,10 @@ export function EnhancedCDSPanel({
       const alertCount = result.alerts?.length ?? 0;
       const recCount = result.recommendations?.length ?? 0;
       toast.success('Safety check complete', {
-        description: alertCount > 0
-          ? `${alertCount} alert(s), ${recCount} recommendation(s)`
-          : 'No safety concerns detected',
+        description:
+          alertCount > 0
+            ? `${alertCount} alert(s), ${recCount} recommendation(s)`
+            : 'No safety concerns detected',
       });
       if (encounterId) {
         queryClient.invalidateQueries({ queryKey: aiKeys.storedCDS(encounterId) });
@@ -268,7 +277,21 @@ export function EnhancedCDSPanel({
     };
 
     mutate(payload);
-  }, [mutate, encounterId, medications, diagnoses, symptoms, pendingProcedures, labResults, allergies, patientAge, patientSex, isPregnant, region, facilityLevel]);
+  }, [
+    mutate,
+    encounterId,
+    medications,
+    diagnoses,
+    symptoms,
+    pendingProcedures,
+    labResults,
+    allergies,
+    patientAge,
+    patientSex,
+    isPregnant,
+    region,
+    facilityLevel,
+  ]);
 
   // Auto-run on mount if requested
   React.useEffect(() => {
@@ -284,7 +307,7 @@ export function EnhancedCDSPanel({
       handleEvaluate();
       onAutoTriggerConsumed?.();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoTrigger]);
 
   // Group alerts by severity
@@ -306,10 +329,13 @@ export function EnhancedCDSPanel({
   const isFallback = displayResult?.mode === 'fallback';
 
   return (
-    <Card className={cn(
-      'transition-colors duration-500',
-      (hasResult || noAlerts) && 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/50 dark:bg-emerald-950/20'
-    )}>
+    <Card
+      className={cn(
+        'transition-colors duration-500',
+        (hasResult || noAlerts) &&
+          'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/50 dark:bg-emerald-950/20'
+      )}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -354,7 +380,7 @@ export function EnhancedCDSPanel({
 
         {/* Loading */}
         {isPending && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground p-3">
+          <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Evaluating safety rules...
           </div>
@@ -362,7 +388,7 @@ export function EnhancedCDSPanel({
 
         {/* No Alerts — All Clear */}
         {noAlerts && (
-          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 rounded-md p-3 border border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400">
             <ShieldCheck className="h-4 w-4" />
             <span>No safety concerns detected.</span>
           </div>
@@ -378,7 +404,11 @@ export function EnhancedCDSPanel({
               return (
                 <div key={severity} className="space-y-2">
                   {alerts.map((alert, i) => (
-                    <CDSAlertCard key={`${severity}-${i}`} alert={alert} onViewSmpc={handleViewSmpc} />
+                    <CDSAlertCard
+                      key={`${severity}-${i}`}
+                      alert={alert}
+                      onViewSmpc={handleViewSmpc}
+                    />
                   ))}
                 </div>
               );
@@ -395,7 +425,11 @@ export function EnhancedCDSPanel({
                   className="w-full justify-between text-muted-foreground hover:text-foreground"
                 >
                   <span className="text-sm">Recommendations ({recCount})</span>
-                  {showRecommendations ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {showRecommendations ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
                 </Button>
                 {showRecommendations && (
                   <div className="space-y-2">
@@ -412,15 +446,18 @@ export function EnhancedCDSPanel({
         {/* Processing Stats */}
         {displayResult && (
           <p className="text-xs text-muted-foreground">
-            Evaluated {displayResult.rules_evaluated} rules in {displayResult.processing_time_ms.toFixed(0)}ms
+            Evaluated {displayResult.rules_evaluated} rules in{' '}
+            {displayResult.processing_time_ms.toFixed(0)}ms
           </p>
         )}
 
         {/* Advisory */}
         {(hasResult || noAlerts) && (
-          <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
-            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <span>AI-generated safety check. Does not replace pharmacist review or clinical judgment.</span>
+          <div className="flex items-start gap-2 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              AI-generated safety check. Does not replace pharmacist review or clinical judgment.
+            </span>
           </div>
         )}
 
@@ -443,7 +480,10 @@ export function EnhancedCDSPanel({
               variant="ghost"
               size="sm"
               disabled={disabled || isPending}
-              onClick={() => { reset(); handleEvaluate(); }}
+              onClick={() => {
+                reset();
+                handleEvaluate();
+              }}
               className="gap-1.5 text-xs"
             >
               <ShieldCheck className="h-3.5 w-3.5" />
@@ -454,8 +494,8 @@ export function EnhancedCDSPanel({
 
         {/* Error */}
         {isError && !displayResult && (
-          <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
+          <div className="flex items-start gap-2 rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
             <div>
               <p>Failed to run safety check. Please try again.</p>
               <Button
@@ -466,7 +506,11 @@ export function EnhancedCDSPanel({
                 disabled={isPending}
                 className="mt-2 gap-1.5"
               >
-                {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                {isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                )}
                 Retry
               </Button>
             </div>
@@ -476,7 +520,7 @@ export function EnhancedCDSPanel({
 
       {/* SmPC Monograph Modal — triggered from CDS alert "View SmPC" links */}
       <Dialog open={smpcModalOpen} onOpenChange={setSmpcModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh]">
+        <DialogContent className="max-h-[85vh] max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-base">
               {smpcLoading ? 'Loading...' : smpcDetail?.product_name || `SmPC — ${smpcSearchQuery}`}
@@ -495,39 +539,82 @@ export function EnhancedCDSPanel({
             ) : smpcDetail ? (
               <div className="space-y-3 text-sm">
                 {smpcDetail.pharmaceutical_form && (
-                  <p><span className="font-medium text-xs text-muted-foreground">Form:</span> {smpcDetail.pharmaceutical_form}</p>
+                  <p>
+                    <span className="text-xs font-medium text-muted-foreground">Form:</span>{' '}
+                    {smpcDetail.pharmaceutical_form}
+                  </p>
                 )}
                 {smpcDetail.active_ingredients.length > 0 && (
-                  <p><span className="font-medium text-xs text-muted-foreground">Active Ingredients:</span> {smpcDetail.active_ingredients.join(', ')}</p>
+                  <p>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Active Ingredients:
+                    </span>{' '}
+                    {smpcDetail.active_ingredients.join(', ')}
+                  </p>
                 )}
                 {smpcDetail.indications && (
-                  <div><h4 className="text-xs font-medium mb-0.5">Indications</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.indications}</p></div>
+                  <div>
+                    <h4 className="mb-0.5 text-xs font-medium">Indications</h4>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {smpcDetail.indications}
+                    </p>
+                  </div>
                 )}
                 {smpcDetail.contraindications && (
-                  <div><h4 className="text-xs font-medium mb-0.5">Contraindications</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.contraindications}</p></div>
+                  <div>
+                    <h4 className="mb-0.5 text-xs font-medium">Contraindications</h4>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {smpcDetail.contraindications}
+                    </p>
+                  </div>
                 )}
                 {smpcDetail.interactions && (
-                  <div><h4 className="text-xs font-medium mb-0.5">Drug Interactions</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.interactions}</p></div>
+                  <div>
+                    <h4 className="mb-0.5 text-xs font-medium">Drug Interactions</h4>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {smpcDetail.interactions}
+                    </p>
+                  </div>
                 )}
                 {smpcDetail.warnings && (
-                  <div><h4 className="text-xs font-medium mb-0.5">Warnings</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.warnings}</p></div>
+                  <div>
+                    <h4 className="mb-0.5 text-xs font-medium">Warnings</h4>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {smpcDetail.warnings}
+                    </p>
+                  </div>
                 )}
                 {smpcDetail.adverse_effects && (
-                  <div><h4 className="text-xs font-medium mb-0.5">Adverse Effects</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.adverse_effects}</p></div>
+                  <div>
+                    <h4 className="mb-0.5 text-xs font-medium">Adverse Effects</h4>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {smpcDetail.adverse_effects}
+                    </p>
+                  </div>
                 )}
                 {smpcDetail.pregnancy_lactation && (
-                  <div><h4 className="text-xs font-medium mb-0.5">Pregnancy & Lactation</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.pregnancy_lactation}</p></div>
+                  <div>
+                    <h4 className="mb-0.5 text-xs font-medium">Pregnancy & Lactation</h4>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {smpcDetail.pregnancy_lactation}
+                    </p>
+                  </div>
                 )}
                 {smpcDetail.posology && (
-                  <div><h4 className="text-xs font-medium mb-0.5">Posology</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{smpcDetail.posology}</p></div>
+                  <div>
+                    <h4 className="mb-0.5 text-xs font-medium">Posology</h4>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {smpcDetail.posology}
+                    </p>
+                  </div>
                 )}
               </div>
             ) : formularyData && formularyData.total_results === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
+              <p className="py-4 text-center text-sm text-muted-foreground">
                 No SmPC monograph found for &ldquo;{smpcSearchQuery}&rdquo;
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">
+              <p className="py-4 text-center text-sm text-muted-foreground">
                 Searching formulary...
               </p>
             )}

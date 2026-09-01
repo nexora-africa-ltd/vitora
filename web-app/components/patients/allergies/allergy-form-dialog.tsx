@@ -11,12 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, Search } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -317,11 +312,14 @@ export function AllergyFormDialog({
                               }
                             }}
                           />
-                          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         </div>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <PopoverContent
+                      className="w-[var(--radix-popover-trigger-width)] p-0"
+                      align="start"
+                    >
                       <Command>
                         <CommandInput
                           placeholder="Search substances..."
@@ -578,7 +576,7 @@ export function AllergyFormDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditMode ? 'Update Allergy' : 'Add Allergy'}
               </Button>
             </div>

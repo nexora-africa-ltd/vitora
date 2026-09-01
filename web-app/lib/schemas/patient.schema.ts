@@ -43,7 +43,19 @@ export const PaymentModeSchema = z.enum([
   'mixed',
 ]);
 
-export const EncounterStatusSchema = z.enum(['CREATED', 'CHECKED_IN', 'TRIAGED', 'IN_PROGRESS', 'ON_HOLD', 'ORDERS_PLACED', 'RESULTS_PENDING', 'READY_TO_CLOSE', 'CLOSED', 'COMPLETED', 'CANCELLED']);
+export const EncounterStatusSchema = z.enum([
+  'CREATED',
+  'CHECKED_IN',
+  'TRIAGED',
+  'IN_PROGRESS',
+  'ON_HOLD',
+  'ORDERS_PLACED',
+  'RESULTS_PENDING',
+  'READY_TO_CLOSE',
+  'CLOSED',
+  'COMPLETED',
+  'CANCELLED',
+]);
 
 // =============================================================================
 // EMERGENCY CONTACT SCHEMA
@@ -327,7 +339,11 @@ export const PatientQRCodeSchema = z.object({
 
 export const VitalsDataPointSchema = z.object({
   timestamp: z.string(),
-  source: z.string().nullable().optional().transform((v) => v ?? undefined),
+  source: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? undefined),
   temperature: z.number().nullable().optional(),
   heart_rate: z.number().nullable().optional(),
   spo2: z.number().nullable().optional(),

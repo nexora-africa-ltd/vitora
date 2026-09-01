@@ -23,7 +23,10 @@ interface WipeCheckResponse {
 /**
  * Check if a remote wipe has been requested for this device.
  */
-export async function checkRemoteWipe(apiUrl: string, authToken: string): Promise<WipeCheckResponse> {
+export async function checkRemoteWipe(
+  apiUrl: string,
+  authToken: string
+): Promise<WipeCheckResponse> {
   try {
     const response = await fetch(`${apiUrl}/api/hub/wipe-check/`, {
       headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},

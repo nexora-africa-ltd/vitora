@@ -68,9 +68,11 @@ export default function PatientsPage() {
   const patients = (data?.results ?? []).map((patient) => ({
     ...patient,
     registered_at_facility_name:
-      patient.registered_at_facility_name
-      ?? (patient.registered_at_facility ? facilityNameById.get(patient.registered_at_facility) : null)
-      ?? (patient.registered_at_facility === facility?.id ? (facility?.name ?? null) : null),
+      patient.registered_at_facility_name ??
+      (patient.registered_at_facility
+        ? facilityNameById.get(patient.registered_at_facility)
+        : null) ??
+      (patient.registered_at_facility === facility?.id ? (facility?.name ?? null) : null),
   }));
 
   const totalPages = data ? Math.ceil(data.count / pageSize) : 0;
@@ -89,7 +91,7 @@ export default function PatientsPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         {/* Select mode banner */}
         {selectMode && (
           <Alert>
@@ -100,103 +102,105 @@ export default function PatientsPage() {
         )}
 
         <PageHeader
-          title={selectMode ? "Select Patient" : "Patients"}
-          helpContent={selectMode
-            ? "Choose a patient for the admission. Click on any patient row to select them."
-            : `${data?.count ?? 0} patients registered. Search and manage patient records.`
+          title={selectMode ? 'Select Patient' : 'Patients'}
+          helpContent={
+            selectMode
+              ? 'Choose a patient for the admission. Click on any patient row to select them.'
+              : `${data?.count ?? 0} patients registered. Search and manage patient records.`
           }
           actions={
-            !selectMode && (
-              canCreatePatient ? (
-                <Button onClick={() => router.push('/patients/new')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Register Patient
-                </Button>
-              ) : undefined
-            )
+            !selectMode &&
+            (canCreatePatient ? (
+              <Button onClick={() => router.push('/patients/new')}>
+                <Plus className="mr-2 h-4 w-4" />
+                Register Patient
+              </Button>
+            ) : undefined)
           }
         />
 
-      {/* Filters */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search by name, MRN, or phone..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
+        {/* Filters */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search by name, MRN, or phone..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="pl-9"
+            />
+          </div>
+
+          <Select
+            value={gender}
+            onValueChange={(value) => {
+              setGender(value === 'all' ? '' : value);
               setPage(1);
             }}
-            className="pl-9"
-          />
+          >
+            <SelectTrigger className="w-[150px]">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Gender" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Genders</SelectItem>
+              {GENDER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <ViewToggle value={viewMode} onChange={setViewMode} />
+
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex w-fit cursor-default items-center gap-2 rounded-md border px-3 py-2">
+                  <Switch
+                    checked={currentFacilityOnly}
+                    onCheckedChange={(checked) => {
+                      setCurrentFacilityOnly(checked);
+                      setPage(1);
+                    }}
+                  />
+                  <span className="text-sm font-medium">
+                    {currentFacilityOnly
+                      ? facility
+                        ? `${facility.name}`
+                        : 'Current Facility'
+                      : 'All Organization Patients'}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {currentFacilityOnly
+                    ? 'Switch to all patients in this organization'
+                    : `Switch to ${facility?.name ?? 'the current facility'} only`}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
-        <Select
-          value={gender}
-          onValueChange={(value) => {
-            setGender(value === 'all' ? '' : value);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-[150px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Gender" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Genders</SelectItem>
-            {GENDER_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <ViewToggle value={viewMode} onChange={setViewMode} />
-
-        <TooltipProvider delayDuration={300}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-2 w-fit cursor-default rounded-md border px-3 py-2">
-                <Switch
-                  checked={currentFacilityOnly}
-                  onCheckedChange={(checked) => {
-                    setCurrentFacilityOnly(checked);
-                    setPage(1);
-                  }}
-                />
-                <span className="text-sm font-medium">
-                  {currentFacilityOnly
-                    ? (facility ? `${facility.name}` : 'Current Facility')
-                    : 'All Organization Patients'}
-                </span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>
-                {currentFacilityOnly
-                  ? 'Switch to all patients in this organization'
-                  : `Switch to ${facility?.name ?? 'the current facility'} only`}
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-
-      {/* Patient table/grid */}
-      <PatientTable
-        patients={patients}
-        isLoading={isLoading}
-        error={error as Error | null}
-        page={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        selectMode={selectMode}
-        onSelect={handlePatientSelect}
-        viewMode={viewMode}
-      />
+        {/* Patient table/grid */}
+        <PatientTable
+          patients={patients}
+          isLoading={isLoading}
+          error={error as Error | null}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          selectMode={selectMode}
+          onSelect={handlePatientSelect}
+          viewMode={viewMode}
+        />
       </div>
     </PullToRefresh>
   );

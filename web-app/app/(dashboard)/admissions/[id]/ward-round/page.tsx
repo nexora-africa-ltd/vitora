@@ -45,7 +45,8 @@ export default function WardRoundHistoryPage() {
 
   const { data: admission, isLoading: admissionLoading } = useAdmission(admissionRouteId);
   const admissionId = admission?.id ?? 0;
-  const { data: wardRoundsResponse, isLoading: wardRoundsLoading } = useAdmissionWardRounds(admissionId);
+  const { data: wardRoundsResponse, isLoading: wardRoundsLoading } =
+    useAdmissionWardRounds(admissionId);
 
   const wardRounds = wardRoundsResponse?.results || [];
   const isLoading = admissionLoading || wardRoundsLoading;
@@ -58,7 +59,7 @@ export default function WardRoundHistoryPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <p className="text-xl font-semibold">Admission not found</p>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Cannot view ward rounds without an active admission.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
@@ -69,7 +70,7 @@ export default function WardRoundHistoryPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="Ward Rounds"
         helpContent={`Ward round history for ${admission.patient_name}. Document clinical assessments and treatment plans.`}
@@ -77,7 +78,7 @@ export default function WardRoundHistoryPage() {
           admission.admission_status === 'ACTIVE' ? (
             <Button asChild>
               <Link href={`/admissions/${admissionId}/ward-round/new`}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 New Ward Round
               </Link>
             </Button>
@@ -98,18 +99,24 @@ export default function WardRoundHistoryPage() {
             </div>
             <div>
               <p className="text-sm text-accent-foreground">Ward / Bed</p>
-              <p className="font-medium">{admission.ward_name} - {admission.bed_number}</p>
+              <p className="font-medium">
+                {admission.ward_name} - {admission.bed_number}
+              </p>
             </div>
             <div>
               <p className="text-sm text-accent-foreground">Diagnosis</p>
-              <p className="font-medium">{admission.admitting_diagnosis_text || admission.admitting_diagnosis}</p>
+              <p className="font-medium">
+                {admission.admitting_diagnosis_text || admission.admitting_diagnosis}
+              </p>
             </div>
             <div>
               <p className="text-sm text-accent-foreground">Days Admitted</p>
               <p className="font-medium">
                 {Math.ceil(
-                  (new Date().getTime() - new Date(admission.admission_date).getTime()) / (1000 * 60 * 60 * 24)
-                )} days
+                  (new Date().getTime() - new Date(admission.admission_date).getTime()) /
+                    (1000 * 60 * 60 * 24)
+                )}{' '}
+                days
               </p>
             </div>
           </div>
@@ -118,7 +125,7 @@ export default function WardRoundHistoryPage() {
 
       {/* Ward Round History */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
           <Stethoscope className="h-5 w-5" />
           Ward Round History
         </h2>
@@ -126,15 +133,15 @@ export default function WardRoundHistoryPage() {
         {wardRounds.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <Stethoscope className="h-12 w-12 mx-auto text-accent-foreground mb-4" />
+              <Stethoscope className="mx-auto mb-4 h-12 w-12 text-accent-foreground" />
               <h3 className="text-lg font-medium">No Ward Rounds Recorded</h3>
-              <p className="text-accent-foreground mt-1">
+              <p className="mt-1 text-accent-foreground">
                 Start documenting ward rounds for this admission.
               </p>
               {admission.admission_status === 'ACTIVE' && (
                 <Button asChild className="mt-4">
                   <Link href={`/admissions/${admissionId}/ward-round/new`}>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     Create First Ward Round
                   </Link>
                 </Button>
@@ -145,133 +152,154 @@ export default function WardRoundHistoryPage() {
           <div className="space-y-4">
             {wardRounds.map((wardRound) => {
               const vitals = getVitalSigns(wardRound);
-              const conductedByName = wardRound.conducted_by_name || wardRound.conducted_by_username || 'Unknown';
+              const conductedByName =
+                wardRound.conducted_by_name || wardRound.conducted_by_username || 'Unknown';
 
               return (
-                <Link key={wardRound.id} href={`/admissions/${admissionId}/ward-round/${wardRound.id}`}>
-                  <Card data-testid="ward-round-card" className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <Link
+                  key={wardRound.id}
+                  href={`/admissions/${admissionId}/ward-round/${wardRound.id}`}
+                >
+                  <Card
+                    data-testid="ward-round-card"
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
+                  >
                     <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          {wardRound.round_date}
-                          <span className="text-accent-foreground font-normal">
-                            at {wardRound.round_time}
-                          </span>
-                        </CardTitle>
-                        <CardDescription className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          {conductedByName}
-                        </CardDescription>
-                      </div>
-                      {wardRound.condition_status && (
-                        <Badge variant={CONDITION_STATUS_VARIANTS[wardRound.condition_status] || 'secondary'}>
-                          {wardRound.condition_status_display || wardRound.condition_status}
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Vital Signs */}
-                    {(vitals.temperature || vitals.pulse || vitals.blood_pressure || vitals.respiratory_rate || vitals.spo2) && (
-                      <div className="bg-muted/50 rounded-lg p-4">
-                        <h4 className="text-sm font-medium flex items-center gap-2 mb-3">
-                          <Activity className="h-4 w-4" />
-                          Vital Signs
-                        </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                          {vitals.temperature && (
-                            <div>
-                              <p className="text-xs text-accent-foreground">Temperature</p>
-                              <p className="font-medium">{vitals.temperature}°C</p>
-                            </div>
-                          )}
-                          {vitals.pulse && (
-                            <div>
-                              <p className="text-xs text-accent-foreground">Pulse</p>
-                              <p className="font-medium">{vitals.pulse} BPM</p>
-                            </div>
-                          )}
-                          {vitals.blood_pressure && (
-                            <div>
-                              <p className="text-xs text-accent-foreground">Blood Pressure</p>
-                              <p className="font-medium">{vitals.blood_pressure}</p>
-                            </div>
-                          )}
-                          {vitals.respiratory_rate && (
-                            <div>
-                              <p className="text-xs text-accent-foreground">Respiratory Rate</p>
-                              <p className="font-medium">{vitals.respiratory_rate}/min</p>
-                            </div>
-                          )}
-                          {vitals.spo2 && (
-                            <div>
-                              <p className="text-xs text-accent-foreground">SpO2</p>
-                              <p className="font-medium">{vitals.spo2}%</p>
-                            </div>
-                          )}
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <CardTitle className="flex items-center gap-2 text-base">
+                            <Calendar className="h-4 w-4" />
+                            {wardRound.round_date}
+                            <span className="font-normal text-accent-foreground">
+                              at {wardRound.round_time}
+                            </span>
+                          </CardTitle>
+                          <CardDescription className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            {conductedByName}
+                          </CardDescription>
                         </div>
+                        {wardRound.condition_status && (
+                          <Badge
+                            variant={
+                              CONDITION_STATUS_VARIANTS[wardRound.condition_status] || 'secondary'
+                            }
+                          >
+                            {wardRound.condition_status_display || wardRound.condition_status}
+                          </Badge>
+                        )}
                       </div>
-                    )}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Vital Signs */}
+                      {(vitals.temperature ||
+                        vitals.pulse ||
+                        vitals.blood_pressure ||
+                        vitals.respiratory_rate ||
+                        vitals.spo2) && (
+                        <div className="rounded-lg bg-muted/50 p-4">
+                          <h4 className="mb-3 flex items-center gap-2 text-sm font-medium">
+                            <Activity className="h-4 w-4" />
+                            Vital Signs
+                          </h4>
+                          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+                            {vitals.temperature && (
+                              <div>
+                                <p className="text-xs text-accent-foreground">Temperature</p>
+                                <p className="font-medium">{vitals.temperature}°C</p>
+                              </div>
+                            )}
+                            {vitals.pulse && (
+                              <div>
+                                <p className="text-xs text-accent-foreground">Pulse</p>
+                                <p className="font-medium">{vitals.pulse} BPM</p>
+                              </div>
+                            )}
+                            {vitals.blood_pressure && (
+                              <div>
+                                <p className="text-xs text-accent-foreground">Blood Pressure</p>
+                                <p className="font-medium">{vitals.blood_pressure}</p>
+                              </div>
+                            )}
+                            {vitals.respiratory_rate && (
+                              <div>
+                                <p className="text-xs text-accent-foreground">Respiratory Rate</p>
+                                <p className="font-medium">{vitals.respiratory_rate}/min</p>
+                              </div>
+                            )}
+                            {vitals.spo2 && (
+                              <div>
+                                <p className="text-xs text-accent-foreground">SpO2</p>
+                                <p className="font-medium">{vitals.spo2}%</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
-                    {/* Clinical Notes / SOAP Notes */}
-                    {wardRound.clinical_notes && (
-                      <div>
-                        <h4 className="text-sm font-medium mb-1">Clinical Notes</h4>
-                        <p className="text-sm text-accent-foreground">{wardRound.clinical_notes}</p>
-                      </div>
-                    )}
-
-                    {/* SOAP Format */}
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {wardRound.subjective && (
+                      {/* Clinical Notes / SOAP Notes */}
+                      {wardRound.clinical_notes && (
                         <div>
-                          <h4 className="text-sm font-medium mb-1">Subjective</h4>
-                          <p className="text-sm text-accent-foreground">{wardRound.subjective}</p>
+                          <h4 className="mb-1 text-sm font-medium">Clinical Notes</h4>
+                          <p className="text-sm text-accent-foreground">
+                            {wardRound.clinical_notes}
+                          </p>
                         </div>
                       )}
-                      {wardRound.objective && (
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Objective</h4>
-                          <p className="text-sm text-accent-foreground">{wardRound.objective}</p>
-                        </div>
-                      )}
-                    </div>
 
-                    {wardRound.assessment && (
-                      <div>
-                        <h4 className="text-sm font-medium mb-1">Assessment</h4>
-                        <p className="text-sm text-accent-foreground">{wardRound.assessment}</p>
-                      </div>
-                    )}
-
-                    {wardRound.plan && (
-                      <div>
-                        <h4 className="text-sm font-medium mb-1">Plan</h4>
-                        <p className="text-sm text-accent-foreground">{wardRound.plan}</p>
-                      </div>
-                    )}
-
-                    {/* Additional Orders */}
-                    {(wardRound.diet_orders || wardRound.activity_level) && (
-                      <div className="grid md:grid-cols-2 gap-4 pt-2 border-t">
-                        {wardRound.diet_orders && (
+                      {/* SOAP Format */}
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {wardRound.subjective && (
                           <div>
-                            <h4 className="text-sm font-medium mb-1">Diet Orders</h4>
-                            <p className="text-sm text-accent-foreground">{wardRound.diet_orders}</p>
+                            <h4 className="mb-1 text-sm font-medium">Subjective</h4>
+                            <p className="text-sm text-accent-foreground">{wardRound.subjective}</p>
                           </div>
                         )}
-                        {wardRound.activity_level && (
+                        {wardRound.objective && (
                           <div>
-                            <h4 className="text-sm font-medium mb-1">Activity Level</h4>
-                            <p className="text-sm text-accent-foreground">{wardRound.activity_level}</p>
+                            <h4 className="mb-1 text-sm font-medium">Objective</h4>
+                            <p className="text-sm text-accent-foreground">{wardRound.objective}</p>
                           </div>
                         )}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+
+                      {wardRound.assessment && (
+                        <div>
+                          <h4 className="mb-1 text-sm font-medium">Assessment</h4>
+                          <p className="text-sm text-accent-foreground">{wardRound.assessment}</p>
+                        </div>
+                      )}
+
+                      {wardRound.plan && (
+                        <div>
+                          <h4 className="mb-1 text-sm font-medium">Plan</h4>
+                          <p className="text-sm text-accent-foreground">{wardRound.plan}</p>
+                        </div>
+                      )}
+
+                      {/* Additional Orders */}
+                      {(wardRound.diet_orders || wardRound.activity_level) && (
+                        <div className="grid gap-4 border-t pt-2 md:grid-cols-2">
+                          {wardRound.diet_orders && (
+                            <div>
+                              <h4 className="mb-1 text-sm font-medium">Diet Orders</h4>
+                              <p className="text-sm text-accent-foreground">
+                                {wardRound.diet_orders}
+                              </p>
+                            </div>
+                          )}
+                          {wardRound.activity_level && (
+                            <div>
+                              <h4 className="mb-1 text-sm font-medium">Activity Level</h4>
+                              <p className="text-sm text-accent-foreground">
+                                {wardRound.activity_level}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </Link>
               );
             })}
@@ -284,7 +312,7 @@ export default function WardRoundHistoryPage() {
 
 function WardRoundHistorySkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-10" />
         <Skeleton className="h-4 w-32" />

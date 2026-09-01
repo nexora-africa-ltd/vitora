@@ -29,11 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DatePicker } from '@/components/ui/date-picker';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Dispensing } from '@/lib/types/pharmacy';
 import { ReturnDialog } from './dispensing/return-dialog';
@@ -69,11 +65,17 @@ export function DispensingHistoryTable({
   const [drugSearch, setDrugSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [returnDialog, setReturnDialog] = useState<{ isOpen: boolean; dispensing: Dispensing | null }>({
+  const [returnDialog, setReturnDialog] = useState<{
+    isOpen: boolean;
+    dispensing: Dispensing | null;
+  }>({
     isOpen: false,
     dispensing: null,
   });
-  const [labelDialog, setLabelDialog] = useState<{ isOpen: boolean; dispensing: Dispensing | null }>({
+  const [labelDialog, setLabelDialog] = useState<{
+    isOpen: boolean;
+    dispensing: Dispensing | null;
+  }>({
     isOpen: false,
     dispensing: null,
   });
@@ -119,7 +121,7 @@ export function DispensingHistoryTable({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <Package className="h-12 w-12 text-destructive mb-4" />
+        <Package className="mb-4 h-12 w-12 text-destructive" />
         <p className="text-destructive">{error.message}</p>
       </div>
     );
@@ -128,26 +130,26 @@ export function DispensingHistoryTable({
   // Mobile card renderer
   const renderMobileCard = (dispensing: Dispensing) => (
     <Card>
-      <CardContent className="p-4 space-y-3">
+      <CardContent className="space-y-3 p-4">
         {/* Drug and Patient */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{dispensing.drug_name}</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium">{dispensing.drug_name}</p>
             {dispensing.drug_code && (
-              <p className="text-xs text-muted-foreground font-mono">{dispensing.drug_code}</p>
+              <p className="font-mono text-xs text-muted-foreground">{dispensing.drug_code}</p>
             )}
           </div>
-          <Badge variant="outline" className="font-mono shrink-0">
+          <Badge variant="outline" className="shrink-0 font-mono">
             x{dispensing.quantity}
           </Badge>
         </div>
 
         {/* Patient info */}
         <div className="flex items-center gap-2 text-sm">
-          <User className="h-4 w-4 text-muted-foreground shrink-0" />
+          <User className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="truncate">{dispensing.patient_name}</span>
           {dispensing.patient_mrn && (
-            <span className="text-muted-foreground shrink-0">({dispensing.patient_mrn})</span>
+            <span className="shrink-0 text-muted-foreground">({dispensing.patient_mrn})</span>
           )}
         </div>
 
@@ -167,19 +169,21 @@ export function DispensingHistoryTable({
           </div>
           <div>
             <span className="text-muted-foreground">Cost:</span>
-            <span className="ml-1 font-medium">KSh {Number(dispensing.total_price).toFixed(0)}</span>
+            <span className="ml-1 font-medium">
+              KSh {Number(dispensing.total_price).toFixed(0)}
+            </span>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-2 border-t">
+        <div className="flex items-center gap-2 border-t pt-2">
           <Button
             variant="outline"
             size="sm"
             className="flex-1"
             onClick={() => setReturnDialog({ isOpen: true, dispensing })}
           >
-            <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
             Return
           </Button>
           <Button
@@ -188,7 +192,7 @@ export function DispensingHistoryTable({
             className="flex-1"
             onClick={() => setLabelDialog({ isOpen: true, dispensing })}
           >
-            <Printer className="h-3.5 w-3.5 mr-1.5" />
+            <Printer className="mr-1.5 h-3.5 w-3.5" />
             Label
           </Button>
         </div>
@@ -280,7 +284,7 @@ export function DispensingHistoryTable({
             size="sm"
             onClick={() => setReturnDialog({ isOpen: true, dispensing })}
           >
-            <RotateCcw className="h-3.5 w-3.5 mr-1" />
+            <RotateCcw className="mr-1 h-3.5 w-3.5" />
             <span className="hidden lg:inline">Return</span>
           </Button>
           <Button
@@ -288,7 +292,7 @@ export function DispensingHistoryTable({
             size="sm"
             onClick={() => setLabelDialog({ isOpen: true, dispensing })}
           >
-            <Printer className="h-3.5 w-3.5 mr-1" />
+            <Printer className="mr-1 h-3.5 w-3.5" />
             <span className="hidden lg:inline">Label</span>
           </Button>
         </div>
@@ -299,7 +303,7 @@ export function DispensingHistoryTable({
 
   // Filter panel content
   const filterContent = (
-    <div className="grid grid-cols-1 gap-4 p-4 border rounded-md bg-muted/30 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 rounded-md border bg-muted/30 p-4 sm:grid-cols-2 lg:grid-cols-4">
       <div className="space-y-2">
         <Label htmlFor="patient-filter" className="flex items-center gap-2">
           <User className="h-4 w-4" />
@@ -366,7 +370,7 @@ export function DispensingHistoryTable({
         <Collapsible open={showFilters} onOpenChange={setShowFilters}>
           <CollapsibleTrigger asChild>
             <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Show'}</span> Filters
             </Button>
           </CollapsibleTrigger>
@@ -375,9 +379,7 @@ export function DispensingHistoryTable({
 
       {/* Filters */}
       <Collapsible open={showFilters} onOpenChange={setShowFilters}>
-        <CollapsibleContent>
-          {filterContent}
-        </CollapsibleContent>
+        <CollapsibleContent>{filterContent}</CollapsibleContent>
       </Collapsible>
 
       {/* Table / Cards */}
@@ -392,7 +394,7 @@ export function DispensingHistoryTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground text-center sm:text-left">
+          <p className="text-center text-sm text-muted-foreground sm:text-left">
             Page {page} of {totalPages}
           </p>
           <div className="flex items-center justify-center gap-2">

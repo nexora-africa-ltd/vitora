@@ -41,10 +41,7 @@ import {
   TriageAssessmentEditForm,
 } from '@/components/triage';
 import type { TriageEditPermissions } from '@/components/triage';
-import {
-  useTriageAssessment,
-  useUpdateTriageAssessment,
-} from '@/lib/hooks/use-triage';
+import { useTriageAssessment, useUpdateTriageAssessment } from '@/lib/hooks/use-triage';
 import { useEncounter } from '@/lib/hooks/use-encounters';
 import { useAuth } from '@/lib/auth';
 import { usePermissions } from '@/lib/hooks/use-permissions';
@@ -75,17 +72,25 @@ interface VitalCardProps {
   isCritical?: boolean;
 }
 
-function VitalCard({ label, value, unit, icon, normalRange, isAbnormal, isCritical }: VitalCardProps) {
+function VitalCard({
+  label,
+  value,
+  unit,
+  icon,
+  normalRange,
+  isAbnormal,
+  isCritical,
+}: VitalCardProps) {
   return (
     <div
       className={cn(
-        'p-3 rounded-lg border transition-colors',
+        'rounded-lg border p-3 transition-colors',
         isCritical && value != null && 'border-destructive bg-destructive/5',
         isAbnormal && !isCritical && value != null && 'border-amber-500 bg-amber-500/5',
         !isAbnormal && !isCritical && 'border-border'
       )}
     >
-      <div className="flex items-center gap-2 text-muted-foreground mb-1">
+      <div className="mb-1 flex items-center gap-2 text-muted-foreground">
         {icon}
         <span className="text-xs">{label}</span>
       </div>
@@ -99,13 +104,9 @@ function VitalCard({ label, value, unit, icon, normalRange, isAbnormal, isCritic
         >
           {value ?? '—'}
         </span>
-        {value != null && unit && (
-          <span className="text-xs text-muted-foreground">{unit}</span>
-        )}
+        {value != null && unit && <span className="text-xs text-muted-foreground">{unit}</span>}
       </div>
-      {normalRange && (
-        <p className="text-xs text-muted-foreground mt-1">Normal: {normalRange}</p>
-      )}
+      {normalRange && <p className="mt-1 text-xs text-muted-foreground">Normal: {normalRange}</p>}
     </div>
   );
 }
@@ -151,21 +152,20 @@ export default function TriageAssessmentDetailPage() {
     }
 
     // Check base triage permission
-    const hasTriagePermission = hasPermission('change_triageassessment') ||
-                                hasPermission('triage.change_triageassessment');
+    const hasTriagePermission =
+      hasPermission('change_triageassessment') || hasPermission('triage.change_triageassessment');
     const canEditAssessment = isSuperuser || hasTriagePermission;
     const canEditCategory = canEditAssessment;
 
     // For vitals editing, require ownership + permission
     // Encounter must not be CLOSED or CANCELLED
     const encounterStatus = encounter?.status;
-    const isEncounterEditable = !encounterStatus ||
-                                encounterStatus === 'CREATED' ||
-                                encounterStatus === 'IN_PROGRESS';
+    const isEncounterEditable =
+      !encounterStatus || encounterStatus === 'CREATED' || encounterStatus === 'IN_PROGRESS';
 
     // Check ownership: user is the encounter creator or assigned clinician
     const isEncounterOwner = encounter
-      ? (encounter.created_by === user.id || encounter.assigned_clinician === user.id)
+      ? encounter.created_by === user.id || encounter.assigned_clinician === user.id
       : false;
 
     // Superusers can always edit vitals
@@ -254,7 +254,8 @@ export default function TriageAssessmentDetailPage() {
     if (assessment.routing_destination) return assessment.routing_destination;
     if (assessment.assigned_clinic_name) return assessment.assigned_clinic_name;
     if (assessment.assigned_area && assessment.assigned_area in ASSIGNED_AREA_CONFIG) {
-      return ASSIGNED_AREA_CONFIG[assessment.assigned_area as keyof typeof ASSIGNED_AREA_CONFIG].label;
+      return ASSIGNED_AREA_CONFIG[assessment.assigned_area as keyof typeof ASSIGNED_AREA_CONFIG]
+        .label;
     }
     return assessment.assigned_area || 'Not assigned';
   }, [assessment]);
@@ -279,16 +280,28 @@ export default function TriageAssessmentDetailPage() {
         isCritical: assessment.spo2 != null && assessment.spo2 < 90,
       },
       heartRate: {
-        isAbnormal: assessment.heart_rate != null && (assessment.heart_rate < 60 || assessment.heart_rate > 100),
-        isCritical: assessment.heart_rate != null && (assessment.heart_rate < 50 || assessment.heart_rate > 120),
+        isAbnormal:
+          assessment.heart_rate != null &&
+          (assessment.heart_rate < 60 || assessment.heart_rate > 100),
+        isCritical:
+          assessment.heart_rate != null &&
+          (assessment.heart_rate < 50 || assessment.heart_rate > 120),
       },
       temperature: {
-        isAbnormal: assessment.temperature != null && (assessment.temperature < 36.5 || assessment.temperature > 37.5),
-        isCritical: assessment.temperature != null && (assessment.temperature < 35 || assessment.temperature >= 40),
+        isAbnormal:
+          assessment.temperature != null &&
+          (assessment.temperature < 36.5 || assessment.temperature > 37.5),
+        isCritical:
+          assessment.temperature != null &&
+          (assessment.temperature < 35 || assessment.temperature >= 40),
       },
       respiratoryRate: {
-        isAbnormal: assessment.respiratory_rate != null && (assessment.respiratory_rate < 12 || assessment.respiratory_rate > 20),
-        isCritical: assessment.respiratory_rate != null && (assessment.respiratory_rate < 8 || assessment.respiratory_rate > 30),
+        isAbnormal:
+          assessment.respiratory_rate != null &&
+          (assessment.respiratory_rate < 12 || assessment.respiratory_rate > 20),
+        isCritical:
+          assessment.respiratory_rate != null &&
+          (assessment.respiratory_rate < 8 || assessment.respiratory_rate > 30),
       },
     };
   }, [assessment]);
@@ -299,8 +312,8 @@ export default function TriageAssessmentDetailPage() {
       <div className="space-y-4 sm:space-y-6">
         <Skeleton className="h-10 w-48 sm:w-64" />
         <Skeleton className="h-16 w-full" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          <div className="lg:col-span-2 space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+          <div className="space-y-4 lg:col-span-2">
             <Skeleton className="h-64" />
             <Skeleton className="h-48" />
           </div>
@@ -322,9 +335,9 @@ export default function TriageAssessmentDetailPage() {
           helpContent="The requested triage assessment could not be found in the system."
         />
         <Card className="p-8 text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Triage Assessment Not Found</h3>
-          <p className="text-muted-foreground mb-4">
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+          <h3 className="mb-2 text-lg font-semibold">Triage Assessment Not Found</h3>
+          <p className="mb-4 text-muted-foreground">
             The assessment you&apos;re looking for may have been deleted or doesn&apos;t exist.
           </p>
           <Button asChild>
@@ -343,19 +356,23 @@ export default function TriageAssessmentDetailPage() {
           <Button
             variant="outline"
             onClick={() => setEmergencyDialogOpen(true)}
-            className="w-full sm:w-auto bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300"
+            className="w-full border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50 sm:w-auto"
           >
-            <Siren className="h-4 w-4 mr-2" />
+            <Siren className="mr-2 h-4 w-4" />
             <span className="sm:hidden">ER</span>
             <span className="hidden sm:inline">Send to ER</span>
           </Button>
-          <Button variant="outline" onClick={() => setRouteDialogOpen(true)} className="w-full sm:w-auto">
-            <Building2 className="h-4 w-4 mr-2" />
+          <Button
+            variant="outline"
+            onClick={() => setRouteDialogOpen(true)}
+            className="w-full sm:w-auto"
+          >
+            <Building2 className="mr-2 h-4 w-4" />
             <span className="sm:hidden">Clinic</span>
             <span className="hidden sm:inline">Route to Clinic</span>
           </Button>
           <Button onClick={handleEdit} className="w-full sm:w-auto">
-            <Edit2 className="h-4 w-4 mr-2" />
+            <Edit2 className="mr-2 h-4 w-4" />
             Edit
           </Button>
         </>
@@ -373,14 +390,14 @@ export default function TriageAssessmentDetailPage() {
       />
 
       {/* Patient Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <div className="flex items-center gap-1.5 text-sm font-medium">
             <User className="h-4 w-4 shrink-0" />
             <span className="truncate">{assessment.patient_name ?? 'Unknown Patient'}</span>
             <span className="text-muted-foreground">({assessment.encounter_mrn ?? 'No MRN'})</span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:text-sm">
             <span className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
               {formattedArrivalTime}
@@ -400,9 +417,9 @@ export default function TriageAssessmentDetailPage() {
       )}
 
       {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-6 lg:col-span-2">
           {isEditing ? (
             <TriageAssessmentEditForm
               assessment={assessment}
@@ -413,17 +430,17 @@ export default function TriageAssessmentDetailPage() {
             />
           ) : (
             <Tabs defaultValue="vitals" className="space-y-4">
-              <TabsList className="flex flex-wrap h-auto gap-1 p-1 justify-start">
-                <TabsTrigger value="vitals" className="text-xs sm:text-sm gap-1.5">
+              <TabsList className="flex h-auto flex-wrap justify-start gap-1 p-1">
+                <TabsTrigger value="vitals" className="gap-1.5 text-xs sm:text-sm">
                   <Activity className="h-3.5 w-3.5" />
                   <span className="sm:hidden">Vitals</span>
                   <span className="hidden sm:inline">Vital Signs</span>
                 </TabsTrigger>
-                <TabsTrigger value="assessment" className="text-xs sm:text-sm gap-1.5">
+                <TabsTrigger value="assessment" className="gap-1.5 text-xs sm:text-sm">
                   <Stethoscope className="h-3.5 w-3.5" />
                   Assessment
                 </TabsTrigger>
-                <TabsTrigger value="history" className="text-xs sm:text-sm gap-1.5">
+                <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm">
                   <Clock className="h-3.5 w-3.5" />
                   History
                 </TabsTrigger>
@@ -432,14 +449,14 @@ export default function TriageAssessmentDetailPage() {
               {/* Vitals Tab */}
               <TabsContent value="vitals" className="space-y-4">
                 <Card>
-                  <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
                       Vital Signs at Triage
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="px-3 sm:px-6">
-                    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                       <VitalCard
                         label="SpO2"
                         value={assessment.spo2}
@@ -497,38 +514,43 @@ export default function TriageAssessmentDetailPage() {
               {/* Assessment Tab */}
               <TabsContent value="assessment" className="space-y-4">
                 <Card>
-                  <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
                       Clinical Assessment
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="px-3 sm:px-6 space-y-4">
+                  <CardContent className="space-y-4 px-3 sm:px-6">
                     {/* Chief Complaint */}
                     <div>
-                      <h4 className="text-sm font-medium text-muted-foreground mb-1">Chief Complaint</h4>
+                      <h4 className="mb-1 text-sm font-medium text-muted-foreground">
+                        Chief Complaint
+                      </h4>
                       <p className="text-sm sm:text-base">{assessment.chief_complaint}</p>
                     </div>
 
                     {/* Details Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2">
                       <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                        <h4 className="mb-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                           <Ambulance className="h-3.5 w-3.5" />
                           Arrival Mode
                         </h4>
                         <p className="text-sm capitalize">
-                          {ARRIVAL_MODE_CONFIG[assessment.arrival_mode]?.label ?? assessment.arrival_mode?.replace(/_/g, ' ')}
+                          {ARRIVAL_MODE_CONFIG[assessment.arrival_mode]?.label ??
+                            assessment.arrival_mode?.replace(/_/g, ' ')}
                         </p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Mental Status (AVPU)</h4>
+                        <h4 className="mb-1 text-sm font-medium text-muted-foreground">
+                          Mental Status (AVPU)
+                        </h4>
                         <Badge variant="outline" className="font-medium">
                           {AVPU_CONFIG[assessment.mental_status]?.label ?? assessment.mental_status}
                         </Badge>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                        <h4 className="mb-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                           <PersonStanding className="h-3.5 w-3.5" />
                           Mobility
                         </h4>
@@ -539,19 +561,22 @@ export default function TriageAssessmentDetailPage() {
                             MOBILITY_CONFIG[assessment.mobility]?.colors.text
                           )}
                         >
-                          {MOBILITY_CONFIG[assessment.mobility]?.label ?? assessment.mobility?.replace(/_/g, ' ')}
+                          {MOBILITY_CONFIG[assessment.mobility]?.label ??
+                            assessment.mobility?.replace(/_/g, ' ')}
                         </Badge>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Assigned To</h4>
+                        <h4 className="mb-1 text-sm font-medium text-muted-foreground">
+                          Assigned To
+                        </h4>
                         <p className="text-sm">{routingDestination}</p>
                       </div>
                     </div>
 
                     {/* Category Override Reason */}
                     {assessment.category_override_reason && (
-                      <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
-                        <h4 className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-1">
+                      <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-800 dark:bg-orange-950/30">
+                        <h4 className="mb-1 text-sm font-medium text-orange-800 dark:text-orange-200">
                           Category Override Reason
                         </h4>
                         <p className="text-sm text-orange-700 dark:text-orange-300">
@@ -566,36 +591,38 @@ export default function TriageAssessmentDetailPage() {
               {/* History Tab */}
               <TabsContent value="history">
                 <Card>
-                  <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                       Assessment Timeline
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="px-3 sm:px-6">
                     <div className="space-y-3 text-sm">
-                      <div className="flex justify-between py-2 border-b">
+                      <div className="flex justify-between border-b py-2">
                         <span className="text-muted-foreground">Arrival Time</span>
                         <span>{formattedArrivalTime}</span>
                       </div>
-                      <div className="flex justify-between py-2 border-b">
+                      <div className="flex justify-between border-b py-2">
                         <span className="text-muted-foreground">Triage Started</span>
                         <span>{new Date(assessment.triage_start_time).toLocaleString()}</span>
                       </div>
                       {assessment.triage_end_time && (
-                        <div className="flex justify-between py-2 border-b">
+                        <div className="flex justify-between border-b py-2">
                           <span className="text-muted-foreground">Triage Completed</span>
                           <span>{new Date(assessment.triage_end_time).toLocaleString()}</span>
                         </div>
                       )}
-                      <div className="flex justify-between py-2 border-b">
+                      <div className="flex justify-between border-b py-2">
                         <span className="text-muted-foreground">Triaged By</span>
                         <span>{assessment.triaged_by_name ?? 'Staff'}</span>
                       </div>
                       {assessment.seen_by_clinician_time && (
-                        <div className="flex justify-between py-2 border-b">
+                        <div className="flex justify-between border-b py-2">
                           <span className="text-muted-foreground">Seen by Clinician</span>
-                          <span>{new Date(assessment.seen_by_clinician_time).toLocaleString()}</span>
+                          <span>
+                            {new Date(assessment.seen_by_clinician_time).toLocaleString()}
+                          </span>
                         </div>
                       )}
                       <div className="flex justify-between py-2">
@@ -611,13 +638,13 @@ export default function TriageAssessmentDetailPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="space-y-4 lg:col-span-1">
           {/* Triage Category Card */}
           <Card>
-            <CardHeader className="pb-2 px-3 sm:px-6">
+            <CardHeader className="px-3 pb-2 sm:px-6">
               <CardTitle className="text-base">Triage Category</CardTitle>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6 space-y-3">
+            <CardContent className="space-y-3 px-3 sm:px-6">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Final Category</span>
                 <TriageCategoryBadge category={assessment.triage_category} />
@@ -627,7 +654,7 @@ export default function TriageAssessmentDetailPage() {
                 <TriageCategoryBadge category={assessment.auto_calculated_category} />
               </div>
               {assessment.triage_category !== assessment.auto_calculated_category && (
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                <p className="mt-2 text-xs text-orange-600 dark:text-orange-400">
                   Category was manually overridden from auto-calculated value
                 </p>
               )}
@@ -636,9 +663,9 @@ export default function TriageAssessmentDetailPage() {
 
           {/* Allergies Card */}
           {assessment.allergies_noted && (
-            <Card className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
-              <CardHeader className="pb-2 px-3 sm:px-6">
-                <CardTitle className="text-base text-red-600 dark:text-red-400 flex items-center gap-2">
+            <Card className="border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20">
+              <CardHeader className="px-3 pb-2 sm:px-6">
+                <CardTitle className="flex items-center gap-2 text-base text-red-600 dark:text-red-400">
                   <AlertCircle className="h-4 w-4" />
                   Known Allergies
                 </CardTitle>
@@ -651,10 +678,10 @@ export default function TriageAssessmentDetailPage() {
 
           {/* Patient Info Card */}
           <Card>
-            <CardHeader className="pb-2 px-3 sm:px-6">
+            <CardHeader className="px-3 pb-2 sm:px-6">
               <CardTitle className="text-base">Patient Info</CardTitle>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6 space-y-2 text-sm">
+            <CardContent className="space-y-2 px-3 text-sm sm:px-6">
               {assessment.patient_age != null && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Age</span>
@@ -679,17 +706,17 @@ export default function TriageAssessmentDetailPage() {
 
           {/* Quick Actions */}
           <Card>
-            <CardHeader className="pb-2 px-3 sm:px-6">
+            <CardHeader className="px-3 pb-2 sm:px-6">
               <CardTitle className="text-base">Quick Actions</CardTitle>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6 space-y-2">
+            <CardContent className="space-y-2 px-3 sm:px-6">
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full justify-start bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300"
+                className="w-full justify-start border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
                 onClick={() => setEmergencyDialogOpen(true)}
               >
-                <Siren className="h-4 w-4 mr-2" />
+                <Siren className="mr-2 h-4 w-4" />
                 Send to Emergency
               </Button>
               <Button
@@ -698,7 +725,7 @@ export default function TriageAssessmentDetailPage() {
                 className="w-full justify-start"
                 onClick={() => setRouteDialogOpen(true)}
               >
-                <Building2 className="h-4 w-4 mr-2" />
+                <Building2 className="mr-2 h-4 w-4" />
                 Route to Clinic
               </Button>
             </CardContent>

@@ -55,10 +55,13 @@ export default function TransactionsPaymentsPage() {
     await refetch();
   };
 
-  const handleFilter = useCallback((filters: { method?: PaymentMethod; status?: PaymentStatus }) => {
-    setPaymentMethod(filters.method);
-    setPaymentStatus(filters.status);
-  }, []);
+  const handleFilter = useCallback(
+    (filters: { method?: PaymentMethod; status?: PaymentStatus }) => {
+      setPaymentMethod(filters.method);
+      setPaymentStatus(filters.status);
+    },
+    []
+  );
 
   return (
     <PullToRefresh onRefresh={handleRefresh} isRefreshing={isFetching}>
@@ -69,7 +72,7 @@ export default function TransactionsPaymentsPage() {
           actions={
             <ReceivePaymentModal
               trigger={
-                <Button className="gap-2 w-full sm:w-auto">
+                <Button className="w-full gap-2 sm:w-auto">
                   <Banknote className="h-4 w-4" />
                   Receive Payment
                 </Button>
@@ -88,7 +91,9 @@ export default function TransactionsPaymentsPage() {
 
         <ReversePaymentDialog
           open={reverseTarget !== null}
-          onOpenChange={(open) => { if (!open) setReverseTarget(null); }}
+          onOpenChange={(open) => {
+            if (!open) setReverseTarget(null);
+          }}
           payment={reverseTarget}
           onReverse={handleReversePayment}
           isLoading={reversePayment.isPending}

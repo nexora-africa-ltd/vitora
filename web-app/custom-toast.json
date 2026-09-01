@@ -4,13 +4,8 @@
   "type": "registry:ui",
   "title": "Custom Toast",
   "description": "Beautiful toast with progress bar and colored variants.",
-  "dependencies": [
-    "sonner",
-    "lucide-react"
-  ],
-  "registryDependencies": [
-    "button"
-  ],
+  "dependencies": ["sonner", "lucide-react"],
+  "registryDependencies": ["button"],
   "files": [
     {
       "path": "registry/new-york/ui/custom-toast.tsx",

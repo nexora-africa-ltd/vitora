@@ -39,7 +39,10 @@ export interface WalkInOptionLike {
 export type PickedPatient =
   | { mode: 'inline' }
   | { mode: 'walkin'; walkin: WalkInOptionLike }
-  | { mode: 'patient'; patient: Pick<Patient, 'id' | 'mrn' | 'first_name' | 'last_name' | 'phone_number'> };
+  | {
+      mode: 'patient';
+      patient: Pick<Patient, 'id' | 'mrn' | 'first_name' | 'last_name' | 'phone_number'>;
+    };
 
 interface StandalonePatientPickerProps {
   value: PickedPatient;
@@ -113,19 +116,17 @@ export function StandalonePatientPicker({
   if (value.mode === 'walkin') {
     return (
       <div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
-        <UserCheck className="h-4 w-4 text-primary shrink-0" />
-        <div className="flex-1 min-w-0">
+        <UserCheck className="h-4 w-4 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{value.walkin.full_name}</span>
+            <span className="truncate font-medium">{value.walkin.full_name}</span>
             <Badge variant="outline" className="shrink-0 text-xs">
               Walk-in · {value.walkin.registration_number}
             </Badge>
           </div>
           {(value.walkin.phone_number || value.walkin.national_id) && (
-            <div className="text-xs text-muted-foreground truncate">
-              {[value.walkin.phone_number, value.walkin.national_id]
-                .filter(Boolean)
-                .join(' · ')}
+            <div className="truncate text-xs text-muted-foreground">
+              {[value.walkin.phone_number, value.walkin.national_id].filter(Boolean).join(' · ')}
             </div>
           )}
         </div>
@@ -139,10 +140,10 @@ export function StandalonePatientPicker({
   if (value.mode === 'patient') {
     return (
       <div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
-        <UserCheck className="h-4 w-4 text-primary shrink-0" />
-        <div className="flex-1 min-w-0">
+        <UserCheck className="h-4 w-4 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium truncate">
+            <span className="truncate font-medium">
               {value.patient.first_name} {value.patient.last_name}
             </span>
             <Badge variant="outline" className="shrink-0 text-xs">
@@ -150,7 +151,7 @@ export function StandalonePatientPicker({
             </Badge>
           </div>
           {value.patient.phone_number && (
-            <div className="text-xs text-muted-foreground truncate">
+            <div className="truncate text-xs text-muted-foreground">
               {value.patient.phone_number}
             </div>
           )}
@@ -195,9 +196,7 @@ export function StandalonePatientPicker({
               autoFocus
             />
             <ScrollArea className="h-80 rounded-md border">
-              {walkInLoading && (
-                <div className="p-4 text-sm text-muted-foreground">Searching…</div>
-              )}
+              {walkInLoading && <div className="p-4 text-sm text-muted-foreground">Searching…</div>}
               {!walkInLoading && (walkInData?.results.length ?? 0) === 0 && (
                 <div className="p-4 text-sm text-muted-foreground">
                   No walk-in {walkInNoun}s found. Use the form below to register a new one.
@@ -210,10 +209,10 @@ export function StandalonePatientPicker({
                   onClick={() => pickWalkIn(w)}
                   className="flex w-full items-center gap-3 border-b px-3 py-2 text-left hover:bg-accent"
                 >
-                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{w.full_name}</div>
-                    <div className="text-xs text-muted-foreground truncate">
+                  <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{w.full_name}</div>
+                    <div className="truncate text-xs text-muted-foreground">
                       {[w.registration_number, w.phone_number, w.national_id]
                         .filter(Boolean)
                         .join(' · ')}
@@ -255,12 +254,12 @@ export function StandalonePatientPicker({
                   onClick={() => pickPatient(p)}
                   className="flex w-full items-center gap-3 border-b px-3 py-2 text-left hover:bg-accent"
                 >
-                  <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">
+                  <UserCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">
                       {p.first_name} {p.last_name}
                     </div>
-                    <div className="text-xs text-muted-foreground truncate">
+                    <div className="truncate text-xs text-muted-foreground">
                       {[p.mrn, p.phone_number].filter(Boolean).join(' · ')}
                     </div>
                   </div>

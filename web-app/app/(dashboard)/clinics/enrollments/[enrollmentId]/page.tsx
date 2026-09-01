@@ -24,7 +24,11 @@ export default function EnrollmentDetailPage() {
   const router = useRouter();
   const enrollmentId = Number(params.enrollmentId);
 
-  const { data: enrollment, isLoading: enrollmentLoading, refetch: refetchEnrollment } = useClinicEnrollment(enrollmentId);
+  const {
+    data: enrollment,
+    isLoading: enrollmentLoading,
+    refetch: refetchEnrollment,
+  } = useClinicEnrollment(enrollmentId);
   const { data: clinic, isLoading: clinicLoading } = useClinic(enrollment?.clinic);
   const { mutateAsync: addToQueue, isPending: recording } = useAddToQueue();
 
@@ -50,10 +54,18 @@ export default function EnrollmentDetailPage() {
       });
 
       router.push(`/clinics/${enrollment.clinic}/queue`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const description =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { detail?: string } } }).response?.data?.detail ===
+          'string'
+          ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : 'Failed to record visit. Please try again.';
       toast({
         title: 'Error',
-        description: error?.response?.data?.detail || 'Failed to record visit. Please try again.',
+        description,
         variant: 'destructive',
       });
     }
@@ -89,10 +101,12 @@ export default function EnrollmentDetailPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Enrollment Detail</h1>
-          <p className="text-muted-foreground">{enrollment.patient_name} • {enrollment.patient_mrn}</p>
+          <p className="text-muted-foreground">
+            {enrollment.patient_name} • {enrollment.patient_mrn}
+          </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetchEnrollment()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
       </div>
@@ -113,7 +127,11 @@ export default function EnrollmentDetailPage() {
           </div>
           <div className="text-sm">
             <span className="text-muted-foreground">Next appointment: </span>
-            <span>{enrollment.next_appointment_date ? new Date(enrollment.next_appointment_date).toLocaleDateString() : '--'}</span>
+            <span>
+              {enrollment.next_appointment_date
+                ? new Date(enrollment.next_appointment_date).toLocaleDateString()
+                : '--'}
+            </span>
           </div>
           <div className="text-sm">
             <span className="text-muted-foreground">Visit count: </span>
@@ -125,7 +143,7 @@ export default function EnrollmentDetailPage() {
               <Link href={`/patients/${enrollment.patient}`}>View Patient</Link>
             </Button>
             <Button onClick={handleRecordVisit} disabled={recording}>
-              <ClipboardList className="h-4 w-4 mr-2" />
+              <ClipboardList className="mr-2 h-4 w-4" />
               {recording ? 'Recording...' : 'Record Visit'}
             </Button>
           </div>

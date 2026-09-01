@@ -14,41 +14,32 @@ import { createUser, PERMISSIONS } from '../../support/fixtures';
  * Dispensing navigation
  */
 
-Given(
-  'I am on the pharmacy dispensing page',
-  async function (this: VitoraWorld) {
-    this.currentPage = 'dispensing';
+Given('I am on the pharmacy dispensing page', async function (this: VitoraWorld) {
+  this.currentPage = 'dispensing';
 
-    if (this.page) {
-      await this.page.goto('/pharmacy/dispensing');
-      await this.page.waitForLoadState('networkidle');
-    }
+  if (this.page) {
+    await this.page.goto('/pharmacy/dispensing');
+    await this.page.waitForLoadState('networkidle');
   }
-);
+});
 
-Given(
-  'I am on the prescription queue',
-  async function (this: VitoraWorld) {
-    this.currentPage = 'prescription queue';
+Given('I am on the prescription queue', async function (this: VitoraWorld) {
+  this.currentPage = 'prescription queue';
 
-    if (this.page) {
-      await this.page.goto('/pharmacy/prescriptions');
-      await this.page.waitForLoadState('networkidle');
-    }
+  if (this.page) {
+    await this.page.goto('/pharmacy/prescriptions');
+    await this.page.waitForLoadState('networkidle');
   }
-);
+});
 
-Given(
-  'I have basic pharmacy permissions',
-  async function (this: VitoraWorld) {
-    const user = createUser('pharmacist', {
-      username: 'basic_pharmacy_user',
-      email: 'pharmacy@vitora.health',
-      permissions: [...PERMISSIONS.pharmacist],
-    });
-    this.setUser(user);
-  }
-);
+Given('I have basic pharmacy permissions', async function (this: VitoraWorld) {
+  const user = createUser('pharmacist', {
+    username: 'basic_pharmacy_user',
+    email: 'pharmacy@vitora.health',
+    permissions: [...PERMISSIONS.pharmacist],
+  });
+  this.setUser(user);
+});
 
 /**
  * Prescription selection
@@ -63,20 +54,14 @@ Given(
   }
 );
 
-Given(
-  'I am completing a dispensing',
-  async function (this: VitoraWorld) {
-    this.store('completingDispensing', true);
-  }
-);
+Given('I am completing a dispensing', async function (this: VitoraWorld) {
+  this.store('completingDispensing', true);
+});
 
-Given(
-  'the prescription contains:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const prescriptionItems = safeHashes(dataTable.hashes());
-    this.store('prescriptionItems', prescriptionItems);
-  }
-);
+Given('the prescription contains:', async function (this: VitoraWorld, dataTable: DataTable) {
+  const prescriptionItems = safeHashes(dataTable.hashes());
+  this.store('prescriptionItems', prescriptionItems);
+});
 
 When(
   'I select the prescription for {string}',
@@ -100,7 +85,9 @@ Then(
 
       for (const item of expectedItems) {
         const drugName = item.drug || item.Drug;
-        const itemRow = detailsPanel.locator(`[data-testid="prescription-item"]:has-text("${drugName}")`);
+        const itemRow = detailsPanel.locator(
+          `[data-testid="prescription-item"]:has-text("${drugName}")`
+        );
         await expect(itemRow).toBeVisible();
       }
     }
@@ -150,27 +137,21 @@ When(
   }
 );
 
-When(
-  'I confirm the dispensing',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      await this.page.click('[data-testid="confirm-dispense"]');
-      await this.page.waitForResponse(resp =>
-        resp.url().includes('/api/pharmacy/dispense') && resp.status() === 201
-      );
-    }
+When('I confirm the dispensing', async function (this: VitoraWorld) {
+  if (this.page) {
+    await this.page.click('[data-testid="confirm-dispense"]');
+    await this.page.waitForResponse(
+      (resp) => resp.url().includes('/api/pharmacy/dispense') && resp.status() === 201
+    );
   }
-);
+});
 
-Then(
-  'the dispensing should be recorded',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const successMessage = this.page.locator('[data-testid="success-message"]');
-      await expect(successMessage).toBeVisible();
-    }
+Then('the dispensing should be recorded', async function (this: VitoraWorld) {
+  if (this.page) {
+    const successMessage = this.page.locator('[data-testid="success-message"]');
+    await expect(successMessage).toBeVisible();
   }
-);
+});
 
 Then(
   'stock should be reduced by {int} for {string}',
@@ -192,24 +173,18 @@ Given(
   }
 );
 
-Given(
-  'only {int} units are available',
-  async function (this: VitoraWorld, available: number) {
-    this.store('availableQuantity', available);
-  }
-);
+Given('only {int} units are available', async function (this: VitoraWorld, available: number) {
+  this.store('availableQuantity', available);
+});
 
-When(
-  'I dispense the available {int} units',
-  async function (this: VitoraWorld, quantity: number) {
-    this.store('partialDispenseQuantity', quantity);
+When('I dispense the available {int} units', async function (this: VitoraWorld, quantity: number) {
+  this.store('partialDispenseQuantity', quantity);
 
-    if (this.page) {
-      await this.page.fill('[data-testid="dispense-quantity"]', String(quantity));
-      await this.page.click('[data-testid="partial-dispense"]');
-    }
+  if (this.page) {
+    await this.page.fill('[data-testid="dispense-quantity"]', String(quantity));
+    await this.page.click('[data-testid="partial-dispense"]');
   }
-);
+});
 
 Then(
   'the prescription should show {string} status',
@@ -255,38 +230,29 @@ When(
   }
 );
 
-Then(
-  'I should see an allergy alert',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const allergyAlert = this.page.locator('[data-testid="allergy-alert"]');
-      await expect(allergyAlert).toBeVisible();
-    }
+Then('I should see an allergy alert', async function (this: VitoraWorld) {
+  if (this.page) {
+    const allergyAlert = this.page.locator('[data-testid="allergy-alert"]');
+    await expect(allergyAlert).toBeVisible();
   }
-);
+});
 
-Then(
-  'dispensing should require override confirmation',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const overrideButton = this.page.locator('[data-testid="override-allergy"]');
-      await expect(overrideButton).toBeVisible();
-    }
+Then('dispensing should require override confirmation', async function (this: VitoraWorld) {
+  if (this.page) {
+    const overrideButton = this.page.locator('[data-testid="override-allergy"]');
+    await expect(overrideButton).toBeVisible();
   }
-);
+});
 
 /**
  * Receipt printing
  */
 
-When(
-  'I click print receipt',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      await this.page.click('[data-testid="print-receipt"]');
-    }
+When('I click print receipt', async function (this: VitoraWorld) {
+  if (this.page) {
+    await this.page.click('[data-testid="print-receipt"]');
   }
-);
+});
 
 Then(
   'a receipt should be generated with:',
@@ -320,15 +286,12 @@ When(
   }
 );
 
-Then(
-  'I should see all previous dispensings',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const historyTable = this.page.locator('[data-testid="dispensing-history"]');
-      await expect(historyTable).toBeVisible();
-    }
+Then('I should see all previous dispensings', async function (this: VitoraWorld) {
+  if (this.page) {
+    const historyTable = this.page.locator('[data-testid="dispensing-history"]');
+    await expect(historyTable).toBeVisible();
   }
-);
+});
 
 Then(
   'each entry should show date, drug, quantity, and dispensed by',

@@ -921,7 +921,12 @@ export interface AIClerkingStructureResponse {
 // Phase 6 — Clinical Document Generation
 // =============================================================================
 
-export type ClinicalDocumentType = 'discharge_summary' | 'soap' | 'progress_note' | 'referral_letter' | 'clerking_note';
+export type ClinicalDocumentType =
+  | 'discharge_summary'
+  | 'soap'
+  | 'progress_note'
+  | 'referral_letter'
+  | 'clerking_note';
 export type ClinicalDocOutputFormat = 'markdown' | 'structured' | 'fhir';
 export type ClinicalDocGenerationMode = 'suggest' | 'generate';
 export type ClinicalDocDischargeType = 'NORMAL' | 'AMA' | 'TRANSFER' | 'DEATH' | 'DAMA';

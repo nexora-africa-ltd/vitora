@@ -8,7 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   useCheckClaimRemittance,
   useInsuranceClaims,
@@ -73,11 +79,12 @@ export default function InsuranceRemittancesPage() {
   const [selectedClaimId, setSelectedClaimId] = useState('');
   const [lookupResult, setLookupResult] = useState<Record<string, unknown> | null>(null);
   const [lookupError, setLookupError] = useState<RemittanceLookupError | null>(null);
-  const [drilldownResult, setDrilldownResult] =
-    useState<InsuranceRemittanceClaimsDrilldown | null>(null);
+  const [drilldownResult, setDrilldownResult] = useState<InsuranceRemittanceClaimsDrilldown | null>(
+    null
+  );
 
-  const remittances = data?.results ?? [];
-  const claims = claimsData?.results ?? [];
+  const remittances = useMemo(() => data?.results ?? [], [data?.results]);
+  const claims = useMemo(() => claimsData?.results ?? [], [claimsData?.results]);
 
   const totals = useMemo(() => {
     const claimsAmount = remittances.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
@@ -180,7 +187,7 @@ export default function InsuranceRemittancesPage() {
         <CardHeader>
           <CardTitle className="text-base">Claim Remittance Lookup</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
             <Label>Claim</Label>
             <Select value={selectedClaimId} onValueChange={setSelectedClaimId}>
@@ -196,14 +203,17 @@ export default function InsuranceRemittancesPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="md:col-span-2 flex items-end justify-end">
-            <Button onClick={() => void handleClaimRemittanceLookup()} disabled={checkClaimRemittance.isPending}>
+          <div className="flex items-end justify-end md:col-span-2">
+            <Button
+              onClick={() => void handleClaimRemittanceLookup()}
+              disabled={checkClaimRemittance.isPending}
+            >
               {checkClaimRemittance.isPending ? 'Checking...' : 'Check Claim Remittance'}
             </Button>
           </div>
 
           {lookupError && (
-            <div className="md:col-span-3 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive space-y-1">
+            <div className="space-y-1 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive md:col-span-3">
               <p className="font-medium">{lookupError.message}</p>
               {lookupError.action && <p>{lookupError.action}</p>}
               {(lookupError.upstreamPath || lookupError.upstreamStatus) && (
@@ -216,12 +226,14 @@ export default function InsuranceRemittancesPage() {
           )}
 
           {remittancePayload && (
-            <div className="md:col-span-3 rounded-lg border p-4 space-y-3">
+            <div className="space-y-3 rounded-lg border p-4 md:col-span-3">
               <p className="text-sm font-medium">Latest claim remittance payload</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Provider Invoice No</p>
-                  <p className="font-medium">{String(remittancePayload.provider_invoice_no || '-')}</p>
+                  <p className="font-medium">
+                    {String(remittancePayload.provider_invoice_no || '-')}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Proposed Amount</p>
@@ -233,11 +245,15 @@ export default function InsuranceRemittancesPage() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Balanced Paid Amount</p>
-                  <p className="font-medium">{String(remittancePayload.balanced_paid_amount || '-')}</p>
+                  <p className="font-medium">
+                    {String(remittancePayload.balanced_paid_amount || '-')}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Balance Invoiced Amount</p>
-                  <p className="font-medium">{String(remittancePayload.balance_invoiced_amount || '-')}</p>
+                  <p className="font-medium">
+                    {String(remittancePayload.balance_invoiced_amount || '-')}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Copay Amount</p>

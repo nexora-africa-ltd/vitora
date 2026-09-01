@@ -22,16 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Calendar,
-  User,
-  Activity,
-  Scale,
-  Apple,
-  CheckCircle,
-  XCircle,
-  Edit,
-} from 'lucide-react';
+import { Calendar, User, Activity, Scale, Apple, CheckCircle, XCircle, Edit } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
@@ -74,9 +65,7 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
 
   if (error || !consultation) {
     return (
-      <div className="p-4 text-center text-destructive">
-        Failed to load consultation details
-      </div>
+      <div className="p-4 text-center text-destructive">Failed to load consultation details</div>
     );
   }
 
@@ -119,13 +108,13 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
       />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
             <OrderStatusBadge status={consultation.status} />
             <PriorityBadge priority={consultation.priority} showIcon />
           </div>
-          <p className="text-muted-foreground mt-1">
+          <p className="mt-1 text-muted-foreground">
             Created {format(parseISO(consultation.created_at), 'PPP')}
           </p>
         </div>
@@ -134,27 +123,29 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
           {canEdit && (
             <Button
               variant="outline"
-              onClick={() => router.push(`/allied-health/nutrition/consultations/${consultationId}/edit`)}
+              onClick={() =>
+                router.push(`/allied-health/nutrition/consultations/${consultationId}/edit`)
+              }
             >
-              <Edit className="h-4 w-4 mr-2" />
+              <Edit className="mr-2 h-4 w-4" />
               Edit
             </Button>
           )}
           {canApprove && (
             <Button onClick={() => setConfirmAction('approve')}>
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle className="mr-2 h-4 w-4" />
               Approve
             </Button>
           )}
           {canComplete && (
             <Button onClick={() => setConfirmAction('complete')}>
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle className="mr-2 h-4 w-4" />
               Complete
             </Button>
           )}
           {canCancel && (
             <Button variant="ghost" onClick={() => setConfirmAction('cancel')}>
-              <XCircle className="h-4 w-4 mr-2" />
+              <XCircle className="mr-2 h-4 w-4" />
               Cancel
             </Button>
           )}
@@ -163,7 +154,7 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Info */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* Patient & Referral */}
           <Card>
             <CardHeader>
@@ -181,7 +172,9 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Referral Reason</h4>
                 <p className="font-medium">
-                  {REFERRAL_REASON_LABELS[consultation.referral_reason as keyof typeof REFERRAL_REASON_LABELS] || consultation.referral_reason}
+                  {REFERRAL_REASON_LABELS[
+                    consultation.referral_reason as keyof typeof REFERRAL_REASON_LABELS
+                  ] || consultation.referral_reason}
                 </p>
               </div>
               <div>
@@ -190,9 +183,7 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Assigned Dietitian</h4>
-                <p className="font-medium">
-                  {consultation.dietitian_name || 'Not assigned'}
-                </p>
+                <p className="font-medium">{consultation.dietitian_name || 'Not assigned'}</p>
               </div>
             </CardContent>
           </Card>
@@ -206,7 +197,9 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap">{consultation.referral_notes || 'No referral notes'}</p>
+              <p className="whitespace-pre-wrap">
+                {consultation.referral_notes || 'No referral notes'}
+              </p>
             </CardContent>
           </Card>
 
@@ -239,7 +232,9 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
                     {consultation.bmi_classification && (
                       <Badge
                         variant="outline"
-                        className={BMI_CLASSIFICATION_CONFIG[consultation.bmi_classification]?.color}
+                        className={
+                          BMI_CLASSIFICATION_CONFIG[consultation.bmi_classification]?.color
+                        }
                       >
                         {BMI_CLASSIFICATION_CONFIG[consultation.bmi_classification]?.label}
                       </Badge>
@@ -263,9 +258,7 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
                     <h4 className="text-sm font-medium text-muted-foreground">MUAC</h4>
                     <p className="font-medium">{consultation.mid_upper_arm_circumference} cm</p>
                     {consultation.muac_classification && (
-                      <Badge variant="outline">
-                        {consultation.muac_classification}
-                      </Badge>
+                      <Badge variant="outline">{consultation.muac_classification}</Badge>
                     )}
                   </div>
                 )}
@@ -284,34 +277,38 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
             <CardContent className="space-y-4">
               {consultation.food_allergies && (
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Food Allergies</h4>
+                  <h4 className="mb-1 text-sm font-medium text-muted-foreground">Food Allergies</h4>
                   <p className="whitespace-pre-wrap">{consultation.food_allergies}</p>
                 </div>
               )}
               {consultation.dietary_history && (
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Dietary History</h4>
+                  <h4 className="mb-1 text-sm font-medium text-muted-foreground">
+                    Dietary History
+                  </h4>
                   <p className="whitespace-pre-wrap">{consultation.dietary_history}</p>
                 </div>
               )}
               {consultation.current_diet && (
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Current Diet</h4>
+                  <h4 className="mb-1 text-sm font-medium text-muted-foreground">Current Diet</h4>
                   <p className="whitespace-pre-wrap">{consultation.current_diet}</p>
                 </div>
               )}
               {consultation.recommendations && (
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Recommendations</h4>
+                  <h4 className="mb-1 text-sm font-medium text-muted-foreground">
+                    Recommendations
+                  </h4>
                   <p className="whitespace-pre-wrap">{consultation.recommendations}</p>
                 </div>
               )}
               {!consultation.food_allergies &&
-               !consultation.dietary_history &&
-               !consultation.current_diet &&
-               !consultation.recommendations && (
-                <p className="text-muted-foreground">No dietary information recorded</p>
-              )}
+                !consultation.dietary_history &&
+                !consultation.current_diet &&
+                !consultation.recommendations && (
+                  <p className="text-muted-foreground">No dietary information recorded</p>
+                )}
             </CardContent>
           </Card>
         </div>
@@ -331,19 +328,25 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
                 {consultation.basal_metabolic_rate && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">BMR</span>
-                    <span className="font-medium">{Math.round(Number(consultation.basal_metabolic_rate))} kcal</span>
+                    <span className="font-medium">
+                      {Math.round(Number(consultation.basal_metabolic_rate))} kcal
+                    </span>
                   </div>
                 )}
                 {consultation.total_daily_energy_expenditure && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">TDEE</span>
-                    <span className="font-medium">{Math.round(Number(consultation.total_daily_energy_expenditure))} kcal</span>
+                    <span className="font-medium">
+                      {Math.round(Number(consultation.total_daily_energy_expenditure))} kcal
+                    </span>
                   </div>
                 )}
                 {consultation.ideal_body_weight && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Ideal Weight</span>
-                    <span className="font-medium">{Number(consultation.ideal_body_weight).toFixed(1)} kg</span>
+                    <span className="font-medium">
+                      {Number(consultation.ideal_body_weight).toFixed(1)} kg
+                    </span>
                   </div>
                 )}
               </CardContent>
@@ -380,7 +383,9 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
               {consultation.consultation_date && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Consultation</span>
-                  <span className="text-sm">{format(parseISO(consultation.consultation_date), 'PP')}</span>
+                  <span className="text-sm">
+                    {format(parseISO(consultation.consultation_date), 'PP')}
+                  </span>
                 </div>
               )}
             </CardContent>
@@ -400,8 +405,7 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
             <AlertDialogDescription>
               {confirmAction === 'approve' &&
                 'This will approve the consultation and allow scheduling.'}
-              {confirmAction === 'complete' &&
-                'This will mark the consultation as completed.'}
+              {confirmAction === 'complete' && 'This will mark the consultation as completed.'}
               {confirmAction === 'cancel' &&
                 'This will cancel the consultation. This action cannot be undone.'}
             </AlertDialogDescription>

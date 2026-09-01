@@ -10,7 +10,17 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import { Search, Globe, Upload, Activity, FileText, Network, FlaskConical, BookOpen, Stethoscope } from 'lucide-react';
+import {
+  Search,
+  Globe,
+  Upload,
+  Activity,
+  FileText,
+  Network,
+  FlaskConical,
+  BookOpen,
+  Stethoscope,
+} from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -73,7 +83,9 @@ export default function InteroperabilityPage() {
   // SDMX Import
   const [sdmxFile, setSdmxFile] = useState<File | null>(null);
   const [sdmxImporting, setSdmxImporting] = useState(false);
-  const [sdmxResult, setSdmxResult] = useState<{ imported: number; dataset_id: string } | null>(null);
+  const [sdmxResult, setSdmxResult] = useState<{ imported: number; dataset_id: string } | null>(
+    null
+  );
   const [sdmxError, setSdmxError] = useState('');
 
   // Benchmarks
@@ -82,19 +94,25 @@ export default function InteroperabilityPage() {
 
   // SNOMED CT Search
   const [snomedQuery, setSnomedQuery] = useState('');
-  const [snomedResults, setSnomedResults] = useState<Array<{ concept_id: string; display: string; semantic_tag?: string }>>([]);
+  const [snomedResults, setSnomedResults] = useState<
+    Array<{ concept_id: string; display: string; semantic_tag?: string }>
+  >([]);
   const [snomedLoading, setSnomedLoading] = useState(false);
   const debouncedSnomedQuery = useDebounce(snomedQuery, 400);
 
   // ICD-10 Search
   const [icd10Query, setIcd10Query] = useState('');
-  const [icd10Results, setIcd10Results] = useState<Array<{ id: number; code: string; description: string }>>([]);
+  const [icd10Results, setIcd10Results] = useState<
+    Array<{ id: number; code: string; description: string }>
+  >([]);
   const [icd10Loading, setIcd10Loading] = useState(false);
   const debouncedIcd10Query = useDebounce(icd10Query, 400);
 
   // ICD-11 Search
   const [icd11Query, setIcd11Query] = useState('');
-  const [icd11Results, setIcd11Results] = useState<Array<{ code: string; title: string; definition?: string }>>([]);
+  const [icd11Results, setIcd11Results] = useState<
+    Array<{ code: string; title: string; definition?: string }>
+  >([]);
   const [icd11Loading, setIcd11Loading] = useState(false);
   const debouncedIcd11Query = useDebounce(icd11Query, 400);
 
@@ -166,15 +184,21 @@ export default function InteroperabilityPage() {
 
   // SNOMED CT search
   const searchSNOMED = useCallback(async (query: string) => {
-    if (!query.trim() || query.length < 2) { setSnomedResults([]); return; }
+    if (!query.trim() || query.length < 2) {
+      setSnomedResults([]);
+      return;
+    }
     setSnomedLoading(true);
     try {
-      const response = await apiClient.get<{ results: Array<{ concept_id: string; display: string; semantic_tag?: string }> }>(
-        '/api/encounters/snomed/search/', { params: { q: query, limit: 20 } }
-      );
+      const response = await apiClient.get<{
+        results: Array<{ concept_id: string; display: string; semantic_tag?: string }>;
+      }>('/api/encounters/snomed/search/', { params: { q: query, limit: 20 } });
       setSnomedResults(response.data.results || []);
-    } catch { setSnomedResults([]); }
-    finally { setSnomedLoading(false); }
+    } catch {
+      setSnomedResults([]);
+    } finally {
+      setSnomedLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -184,15 +208,21 @@ export default function InteroperabilityPage() {
 
   // ICD-10 search
   const searchICD10 = useCallback(async (query: string) => {
-    if (!query.trim() || query.length < 2) { setIcd10Results([]); return; }
+    if (!query.trim() || query.length < 2) {
+      setIcd10Results([]);
+      return;
+    }
     setIcd10Loading(true);
     try {
-      const response = await apiClient.get<{ results: Array<{ id: number; code: string; description: string }> }>(
-        '/api/icd10-codes/', { params: { search: query, page_size: 20 } }
-      );
+      const response = await apiClient.get<{
+        results: Array<{ id: number; code: string; description: string }>;
+      }>('/api/icd10-codes/', { params: { search: query, page_size: 20 } });
       setIcd10Results(response.data.results || []);
-    } catch { setIcd10Results([]); }
-    finally { setIcd10Loading(false); }
+    } catch {
+      setIcd10Results([]);
+    } finally {
+      setIcd10Loading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -202,15 +232,23 @@ export default function InteroperabilityPage() {
 
   // ICD-11 search
   const searchICD11 = useCallback(async (query: string) => {
-    if (!query.trim() || query.length < 2) { setIcd11Results([]); return; }
+    if (!query.trim() || query.length < 2) {
+      setIcd11Results([]);
+      return;
+    }
     setIcd11Loading(true);
     try {
-      const response = await apiClient.get<{ results: Array<{ code: string; title: string; definition?: string }> }>(
-        '/api/sha/terminology/search/', { params: { type: 'icd11', search: query, page_size: 20 } }
-      );
+      const response = await apiClient.get<{
+        results: Array<{ code: string; title: string; definition?: string }>;
+      }>('/api/sha/terminology/search/', {
+        params: { type: 'icd11', search: query, page_size: 20 },
+      });
       setIcd11Results(response.data.results || []);
-    } catch { setIcd11Results([]); }
-    finally { setIcd11Loading(false); }
+    } catch {
+      setIcd11Results([]);
+    } finally {
+      setIcd11Loading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -227,9 +265,12 @@ export default function InteroperabilityPage() {
         />
 
         {/* Connection Status Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-primary/10 p-2">
@@ -237,14 +278,22 @@ export default function InteroperabilityPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">FHIR R4</p>
-                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Active</Badge>
+                  <Badge
+                    variant="outline"
+                    className="border-green-200 bg-green-50 text-xs text-green-700"
+                  >
+                    Active
+                  </Badge>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-primary/10 p-2">
@@ -252,14 +301,22 @@ export default function InteroperabilityPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">HL7 v2.5.1</p>
-                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Active</Badge>
+                  <Badge
+                    variant="outline"
+                    className="border-green-200 bg-green-50 text-xs text-green-700"
+                  >
+                    Active
+                  </Badge>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-primary/10 p-2">
@@ -267,14 +324,22 @@ export default function InteroperabilityPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">LOINC</p>
-                  <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">Local</Badge>
+                  <Badge
+                    variant="outline"
+                    className="border-yellow-200 bg-yellow-50 text-xs text-yellow-700"
+                  >
+                    Local
+                  </Badge>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-primary/10 p-2">
@@ -282,7 +347,12 @@ export default function InteroperabilityPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">SNOMED CT</p>
-                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Active</Badge>
+                  <Badge
+                    variant="outline"
+                    className="border-green-200 bg-green-50 text-xs text-green-700"
+                  >
+                    Active
+                  </Badge>
                 </div>
               </div>
             </CardContent>
@@ -291,7 +361,7 @@ export default function InteroperabilityPage() {
 
         {/* Main Tabs */}
         <Tabs defaultValue="fhir-search" className="space-y-4">
-          <TabsList className="w-full flex overflow-x-auto">
+          <TabsList className="flex w-full overflow-x-auto">
             <TabsTrigger value="fhir-search" className="gap-2">
               <Search className="h-4 w-4" />
               <span className="sm:hidden">FHIR</span>
@@ -337,7 +407,7 @@ export default function InteroperabilityPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search LOINC codes (e.g. hemoglobin, glucose)..."
                     value={loincQuery}
@@ -352,20 +422,25 @@ export default function InteroperabilityPage() {
                 </div>
 
                 {loincExternalAvailable && (
-                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                  <Badge
+                    variant="outline"
+                    className="border-green-200 bg-green-50 text-xs text-green-700"
+                  >
                     External LOINC FHIR server connected
                   </Badge>
                 )}
 
                 {loincResults.length > 0 && (
-                  <div className="border rounded-lg divide-y max-h-96 overflow-y-auto">
+                  <div className="max-h-96 divide-y overflow-y-auto rounded-lg border">
                     {loincResults.map((result, i) => (
                       <div key={result.code || i} className="p-3">
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="font-mono text-xs">
                             {result.code}
                           </Badge>
-                          <span className="text-sm font-medium">{result.display || result.component}</span>
+                          <span className="text-sm font-medium">
+                            {result.display || result.component}
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -395,31 +470,39 @@ export default function InteroperabilityPage() {
                 {snomedLoading && <p className="text-sm text-muted-foreground">Searching...</p>}
 
                 {snomedResults.length > 0 && (
-                  <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
+                  <div className="max-h-[400px] divide-y overflow-y-auto rounded-lg border">
                     {snomedResults.map((r) => (
                       <div key={r.concept_id} className="p-3 hover:bg-muted/50">
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="font-mono text-xs shrink-0">{r.concept_id}</Badge>
+                          <Badge variant="outline" className="shrink-0 font-mono text-xs">
+                            {r.concept_id}
+                          </Badge>
                           <span className="text-sm font-medium">{r.display}</span>
                         </div>
                         {r.semantic_tag && (
-                          <span className="text-xs text-muted-foreground ml-[88px]">{r.semantic_tag}</span>
+                          <span className="ml-[88px] text-xs text-muted-foreground">
+                            {r.semantic_tag}
+                          </span>
                         )}
                       </div>
                     ))}
                   </div>
                 )}
 
-                {!snomedLoading && snomedResults.length === 0 && debouncedSnomedQuery.length >= 2 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No concepts found</p>
-                )}
+                {!snomedLoading &&
+                  snomedResults.length === 0 &&
+                  debouncedSnomedQuery.length >= 2 && (
+                    <p className="py-4 text-center text-sm text-muted-foreground">
+                      No concepts found
+                    </p>
+                  )}
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* ICD-10/11 Search Tab */}
           <TabsContent value="icd" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {/* ICD-10 */}
               <Card>
                 <CardHeader>
@@ -439,11 +522,13 @@ export default function InteroperabilityPage() {
                   {icd10Loading && <p className="text-sm text-muted-foreground">Searching...</p>}
 
                   {icd10Results.length > 0 && (
-                    <div className="border rounded-lg divide-y max-h-[350px] overflow-y-auto">
+                    <div className="max-h-[350px] divide-y overflow-y-auto rounded-lg border">
                       {icd10Results.map((r) => (
                         <div key={r.id} className="p-2.5 hover:bg-muted/50">
                           <div className="flex items-center gap-2">
-                            <Badge className="font-mono text-xs shrink-0 bg-blue-100 text-blue-800">{r.code}</Badge>
+                            <Badge className="shrink-0 bg-blue-100 font-mono text-xs text-blue-800">
+                              {r.code}
+                            </Badge>
                             <span className="text-sm">{r.description}</span>
                           </div>
                         </div>
@@ -451,9 +536,13 @@ export default function InteroperabilityPage() {
                     </div>
                   )}
 
-                  {!icd10Loading && icd10Results.length === 0 && debouncedIcd10Query.length >= 2 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No codes found</p>
-                  )}
+                  {!icd10Loading &&
+                    icd10Results.length === 0 &&
+                    debouncedIcd10Query.length >= 2 && (
+                      <p className="py-4 text-center text-sm text-muted-foreground">
+                        No codes found
+                      </p>
+                    )}
                 </CardContent>
               </Card>
 
@@ -476,24 +565,32 @@ export default function InteroperabilityPage() {
                   {icd11Loading && <p className="text-sm text-muted-foreground">Searching...</p>}
 
                   {icd11Results.length > 0 && (
-                    <div className="border rounded-lg divide-y max-h-[350px] overflow-y-auto">
+                    <div className="max-h-[350px] divide-y overflow-y-auto rounded-lg border">
                       {icd11Results.map((r, i) => (
                         <div key={`${r.code}-${i}`} className="p-2.5 hover:bg-muted/50">
                           <div className="flex items-center gap-2">
-                            <Badge className="font-mono text-xs shrink-0 bg-purple-100 text-purple-800">{r.code}</Badge>
+                            <Badge className="shrink-0 bg-purple-100 font-mono text-xs text-purple-800">
+                              {r.code}
+                            </Badge>
                             <span className="text-sm">{r.title}</span>
                           </div>
                           {r.definition && (
-                            <p className="text-xs text-muted-foreground mt-1 ml-[72px] line-clamp-2">{r.definition}</p>
+                            <p className="ml-[72px] mt-1 line-clamp-2 text-xs text-muted-foreground">
+                              {r.definition}
+                            </p>
                           )}
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {!icd11Loading && icd11Results.length === 0 && debouncedIcd11Query.length >= 2 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No codes found</p>
-                  )}
+                  {!icd11Loading &&
+                    icd11Results.length === 0 &&
+                    debouncedIcd11Query.length >= 2 && (
+                      <p className="py-4 text-center text-sm text-muted-foreground">
+                        No codes found
+                      </p>
+                    )}
                 </CardContent>
               </Card>
             </div>
@@ -507,10 +604,11 @@ export default function InteroperabilityPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Upload SDMX-ML 2.1 files from KHIS/DHIS2 to import benchmark data for facility comparison.
+                  Upload SDMX-ML 2.1 files from KHIS/DHIS2 to import benchmark data for facility
+                  comparison.
                 </p>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <Input
                     type="file"
                     accept=".xml,.sdmx"
@@ -522,16 +620,14 @@ export default function InteroperabilityPage() {
                   </Button>
                 </div>
 
-                {sdmxError && (
-                  <p className="text-sm text-destructive">{sdmxError}</p>
-                )}
+                {sdmxError && <p className="text-sm text-destructive">{sdmxError}</p>}
 
                 {sdmxResult && (
-                  <div className="border rounded-lg p-4 bg-green-50 dark:bg-green-950/20">
+                  <div className="rounded-lg border bg-green-50 p-4 dark:bg-green-950/20">
                     <p className="text-sm font-medium text-green-700 dark:text-green-300">
                       Successfully imported {sdmxResult.imported} observations
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Dataset: {sdmxResult.dataset_id}
                     </p>
                   </div>
@@ -552,33 +648,35 @@ export default function InteroperabilityPage() {
               <CardContent>
                 {benchmarks.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[500px]">
+                    <table className="w-full min-w-[500px] text-sm">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-2 px-2">Indicator</th>
-                          <th className="text-left py-2 px-2">Period</th>
-                          <th className="text-left py-2 px-2">Facility</th>
-                          <th className="text-left py-2 px-2">Source</th>
-                          <th className="text-right py-2 px-2">Value</th>
+                          <th className="px-2 py-2 text-left">Indicator</th>
+                          <th className="px-2 py-2 text-left">Period</th>
+                          <th className="px-2 py-2 text-left">Facility</th>
+                          <th className="px-2 py-2 text-left">Source</th>
+                          <th className="px-2 py-2 text-right">Value</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
                         {benchmarks.map((b, i) => (
                           <tr key={i}>
-                            <td className="py-2 px-2 font-mono text-xs">{b.indicator_code}</td>
-                            <td className="py-2 px-2">{b.time_period}</td>
-                            <td className="py-2 px-2">{b.facility_code || '—'}</td>
-                            <td className="py-2 px-2">
-                              <Badge variant="outline" className="text-xs">{b.source}</Badge>
+                            <td className="px-2 py-2 font-mono text-xs">{b.indicator_code}</td>
+                            <td className="px-2 py-2">{b.time_period}</td>
+                            <td className="px-2 py-2">{b.facility_code || '—'}</td>
+                            <td className="px-2 py-2">
+                              <Badge variant="outline" className="text-xs">
+                                {b.source}
+                              </Badge>
                             </td>
-                            <td className="py-2 px-2 text-right font-medium">{b.value}</td>
+                            <td className="px-2 py-2 text-right font-medium">{b.value}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">
+                  <p className="py-8 text-center text-sm text-muted-foreground">
                     No benchmarks imported yet. Use the SDMX Import tab to upload data.
                   </p>
                 )}

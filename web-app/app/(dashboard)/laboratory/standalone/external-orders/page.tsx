@@ -7,12 +7,7 @@ import { Inbox, Check, X, ExternalLink, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/shared/page-header';
@@ -79,7 +74,7 @@ export default function ExternalOrdersPage() {
       cell: (item: ExternalOrderRequest) => (
         <div className="flex items-center gap-1">
           <ExternalLink className="h-3 w-3 text-muted-foreground" />
-          <span className="truncate max-w-[150px]">{item.sending_facility}</span>
+          <span className="max-w-[150px] truncate">{item.sending_facility}</span>
         </div>
       ),
     },
@@ -93,9 +88,7 @@ export default function ExternalOrdersPage() {
       key: 'tests',
       header: 'Tests',
       cell: (item: ExternalOrderRequest) => (
-        <span className="text-sm text-muted-foreground">
-          {item.requested_tests.length} test(s)
-        </span>
+        <span className="text-sm text-muted-foreground">{item.requested_tests.length} test(s)</span>
       ),
     },
     {
@@ -124,18 +117,24 @@ export default function ExternalOrdersPage() {
               size="sm"
               variant="outline"
               className="h-7 text-green-600"
-              onClick={(e) => { e.stopPropagation(); acceptMutation.mutate(item.id); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                acceptMutation.mutate(item.id);
+              }}
               disabled={acceptMutation.isPending}
             >
-              <Check className="h-3 w-3 mr-1" /> Accept
+              <Check className="mr-1 h-3 w-3" /> Accept
             </Button>
             <Button
               size="sm"
               variant="outline"
               className="h-7 text-red-600"
-              onClick={(e) => { e.stopPropagation(); setRejectDialog(item); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setRejectDialog(item);
+              }}
             >
-              <X className="h-3 w-3 mr-1" /> Reject
+              <X className="mr-1 h-3 w-3" /> Reject
             </Button>
           </div>
         ) : null,
@@ -191,7 +190,9 @@ export default function ExternalOrdersPage() {
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Rejecting order <span className="font-mono">{rejectDialog?.placer_order_number}</span> from {rejectDialog?.sending_facility}
+                Rejecting order{' '}
+                <span className="font-mono">{rejectDialog?.placer_order_number}</span> from{' '}
+                {rejectDialog?.sending_facility}
               </p>
               <div>
                 <Label>Reason for rejection *</Label>
@@ -209,7 +210,10 @@ export default function ExternalOrdersPage() {
                 <Button
                   variant="destructive"
                   disabled={!rejectReason.trim() || rejectMutation.isPending}
-                  onClick={() => rejectDialog && rejectMutation.mutate({ id: rejectDialog.id, reason: rejectReason })}
+                  onClick={() =>
+                    rejectDialog &&
+                    rejectMutation.mutate({ id: rejectDialog.id, reason: rejectReason })
+                  }
                 >
                   Reject Order
                 </Button>

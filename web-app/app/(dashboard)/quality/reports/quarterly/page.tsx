@@ -70,10 +70,12 @@ export default function QuarterlyReportsPage() {
             year: Number(genYear),
             quarter: Number(genQuarter),
           })
-        : qualityApi.generateAllQuarterlyReports({
-            year: Number(genYear),
-            quarter: Number(genQuarter),
-          }).then((reports) => reports[0]),
+        : qualityApi
+            .generateAllQuarterlyReports({
+              year: Number(genYear),
+              quarter: Number(genQuarter),
+            })
+            .then((reports) => reports[0]),
     onSuccess: () => {
       toast({ title: 'Report generated successfully' });
       queryClient.invalidateQueries({ queryKey: ['quarterly-reports'] });
@@ -98,7 +100,7 @@ export default function QuarterlyReportsPage() {
           helpContent="Quarterly reports aggregate 3 months of clinic data. Generate reports from existing monthly reports or submit to DHIS2."
           actions={
             <Button size="sm" onClick={() => setShowGenerateDialog(true)}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">Generate Report</span>
               <span className="sm:hidden">Generate</span>
             </Button>
@@ -108,18 +110,32 @@ export default function QuarterlyReportsPage() {
         {/* Filters */}
         <Card className="p-3 sm:p-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Select value={year} onValueChange={(v) => { setYear(v); setPage(1); }}>
+            <Select
+              value={year}
+              onValueChange={(v) => {
+                setYear(v);
+                setPage(1);
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Year" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Years</SelectItem>
                 {years.map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  <SelectItem key={y} value={String(y)}>
+                    {y}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={quarter} onValueChange={(v) => { setQuarter(v); setPage(1); }}>
+            <Select
+              value={quarter}
+              onValueChange={(v) => {
+                setQuarter(v);
+                setPage(1);
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Quarter" />
               </SelectTrigger>
@@ -181,7 +197,7 @@ export default function QuarterlyReportsPage() {
               cell: (item) => (
                 <Badge
                   variant={item.dhis2_submitted ? 'default' : 'secondary'}
-                  className="shrink-0 w-fit"
+                  className="w-fit shrink-0"
                 >
                   {item.dhis2_submitted ? 'Submitted' : 'Pending'}
                 </Badge>
@@ -190,18 +206,14 @@ export default function QuarterlyReportsPage() {
           ]}
           mobileCard={(item) => (
             <Card className="p-3">
-              <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="mb-2 flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-medium text-sm truncate">
-                    {item.clinic_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {item.quarter_display}
-                  </p>
+                  <p className="truncate text-sm font-medium">{item.clinic_name}</p>
+                  <p className="text-xs text-muted-foreground">{item.quarter_display}</p>
                 </div>
                 <Badge
                   variant={item.dhis2_submitted ? 'default' : 'secondary'}
-                  className="shrink-0 w-fit self-start"
+                  className="w-fit shrink-0 self-start"
                 >
                   {item.dhis2_submitted ? 'Submitted' : 'Pending'}
                 </Badge>
@@ -221,11 +233,23 @@ export default function QuarterlyReportsPage() {
               {data?.count ?? 0} report{(data?.count ?? 0) !== 1 ? 's' : ''}
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 Previous
               </Button>
-              <span className="text-sm">{page} / {totalPages}</span>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <span className="text-sm">
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 Next
               </Button>
             </div>
@@ -252,7 +276,7 @@ export default function QuarterlyReportsPage() {
                   onChange={(e) => setGenClinicId(e.target.value)}
                 />
               </div>
-              <div className="grid gap-4 grid-cols-2">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Year</Label>
                   <Select value={genYear} onValueChange={setGenYear}>
@@ -261,7 +285,9 @@ export default function QuarterlyReportsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {years.map((y) => (
-                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        <SelectItem key={y} value={String(y)}>
+                          {y}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -287,7 +313,7 @@ export default function QuarterlyReportsPage() {
                 Cancel
               </Button>
               <Button onClick={() => generateReport()} disabled={isGenerating}>
-                {isGenerating && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                {isGenerating && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                 Generate
               </Button>
             </DialogFooter>

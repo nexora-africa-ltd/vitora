@@ -234,8 +234,15 @@ export default function TheatreEquipmentPage() {
           title="Equipment Types"
           helpContent="Manage the catalogue of surgical equipment types available at this facility. Equipment types can be linked to scheduling resources and assigned to surgery cases."
           actions={
-            <Button onClick={() => { setEditingId(null); setForm(DEFAULT_FORM); setFormErrors({}); setOpen(true); }}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button
+              onClick={() => {
+                setEditingId(null);
+                setForm(DEFAULT_FORM);
+                setFormErrors({});
+                setOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">Add Equipment Type</span>
               <span className="sm:hidden">Add</span>
             </Button>
@@ -243,41 +250,57 @@ export default function TheatreEquipmentPage() {
         />
 
         {/* Stats */}
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <p className="text-xs text-muted-foreground">Total Types</p>
-              <p className="text-xl sm:text-2xl font-bold">{allEquipment.length}</p>
+              <p className="text-xl font-bold sm:text-2xl">{allEquipment.length}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <p className="text-xs text-muted-foreground">Active</p>
-              <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{activeCount}</p>
+              <p className="text-xl font-bold text-green-600 dark:text-green-400 sm:text-2xl">
+                {activeCount}
+              </p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <p className="text-xs text-muted-foreground">Portable</p>
-              <p className="text-xl sm:text-2xl font-bold">{portableCount}</p>
+              <p className="text-xl font-bold sm:text-2xl">{portableCount}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <p className="text-xs text-muted-foreground">Categories</p>
-              <p className="text-xl sm:text-2xl font-bold">{Object.keys(categoryBreakdown).length}</p>
+              <p className="text-xl font-bold sm:text-2xl">
+                {Object.keys(categoryBreakdown).length}
+              </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Filters */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search equipment..."
               value={search}
@@ -285,18 +308,26 @@ export default function TheatreEquipmentPage() {
               className="pl-9"
             />
           </div>
-          <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as EquipmentCategory | 'ALL')}>
+          <Select
+            value={categoryFilter}
+            onValueChange={(v) => setCategoryFilter(v as EquipmentCategory | 'ALL')}
+          >
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All Categories</SelectItem>
               {EQUIPMENT_CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>{EQUIPMENT_CATEGORY_LABELS[c] || c}</SelectItem>
+                <SelectItem key={c} value={c}>
+                  {EQUIPMENT_CATEGORY_LABELS[c] || c}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'ALL' | 'ACTIVE' | 'INACTIVE')}>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as 'ALL' | 'ACTIVE' | 'INACTIVE')}
+          >
             <SelectTrigger className="w-full sm:w-[140px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -330,7 +361,7 @@ export default function TheatreEquipmentPage() {
                 <div className="min-w-0">
                   <span className="font-medium">{eq.name}</span>
                   {eq.parent_name && (
-                    <span className="text-xs text-muted-foreground ml-1">
+                    <span className="ml-1 text-xs text-muted-foreground">
                       <ChevronRight className="inline h-3 w-3" />
                       {eq.parent_name}
                     </span>
@@ -346,7 +377,7 @@ export default function TheatreEquipmentPage() {
                 const Icon = EQUIPMENT_CATEGORY_ICONS[eq.category] || Package;
                 return (
                   <Badge className={`text-xs ${CATEGORY_BADGE_STYLES[eq.category] || ''}`}>
-                    <Icon className="h-3 w-3 mr-1" />
+                    <Icon className="mr-1 h-3 w-3" />
                     {EQUIPMENT_CATEGORY_LABELS[eq.category] || eq.category}
                   </Badge>
                 );
@@ -355,7 +386,14 @@ export default function TheatreEquipmentPage() {
             {
               key: 'is_portable',
               header: 'Portable',
-              cell: (eq) => eq.is_portable ? <Badge variant="outline" className="text-xs">Yes</Badge> : <span className="text-muted-foreground text-xs">No</span>,
+              cell: (eq) =>
+                eq.is_portable ? (
+                  <Badge variant="outline" className="text-xs">
+                    Yes
+                  </Badge>
+                ) : (
+                  <span className="text-xs text-muted-foreground">No</span>
+                ),
               hideOnMobile: true,
             },
             {
@@ -363,7 +401,13 @@ export default function TheatreEquipmentPage() {
               header: 'Status',
               sortable: true,
               cell: (eq) => (
-                <Badge className={eq.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs' : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300 text-xs'}>
+                <Badge
+                  className={
+                    eq.is_active
+                      ? 'bg-green-100 text-xs text-green-800 dark:bg-green-900 dark:text-green-300'
+                      : 'bg-gray-100 text-xs text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+                  }
+                >
                   {eq.is_active ? 'Active' : 'Inactive'}
                 </Badge>
               ),
@@ -371,30 +415,43 @@ export default function TheatreEquipmentPage() {
           ]}
           mobileCard={(eq) => (
             <Card className="p-3">
-              <div className="flex justify-between items-start gap-2">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{eq.name}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{eq.code}</p>
+                  <p className="truncate font-medium">{eq.name}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{eq.code}</p>
                   {eq.parent_name && (
-                    <p className="text-xs text-muted-foreground mt-0.5">Sub-type of {eq.parent_name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Sub-type of {eq.parent_name}
+                    </p>
                   )}
                 </div>
-                <Badge className={`text-xs shrink-0 ${eq.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'}`}>
+                <Badge
+                  className={`shrink-0 text-xs ${eq.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'}`}
+                >
                   {eq.is_active ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="mt-2 flex items-center gap-2">
                 <Badge className={`text-xs ${CATEGORY_BADGE_STYLES[eq.category] || ''}`}>
                   {EQUIPMENT_CATEGORY_LABELS[eq.category] || eq.category}
                 </Badge>
-                {eq.is_portable && <Badge variant="outline" className="text-xs">Portable</Badge>}
+                {eq.is_portable && (
+                  <Badge variant="outline" className="text-xs">
+                    Portable
+                  </Badge>
+                )}
               </div>
             </Card>
           )}
         />
 
         {/* Create/Edit Dialog */}
-        <Dialog open={open} onOpenChange={(v) => { if (!v) closeDialog(); }}>
+        <Dialog
+          open={open}
+          onOpenChange={(v) => {
+            if (!v) closeDialog();
+          }}
+        >
           <DialogContent className="max-w-md">
             <DialogHeader>
               <div className="flex items-center gap-2">
@@ -427,13 +484,18 @@ export default function TheatreEquipmentPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Category</Label>
-                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+                <Select
+                  value={form.category}
+                  onValueChange={(v) => setForm({ ...form, category: v })}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {EQUIPMENT_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>{EQUIPMENT_CATEGORY_LABELS[c] || c}</SelectItem>
+                      <SelectItem key={c} value={c}>
+                        {EQUIPMENT_CATEGORY_LABELS[c] || c}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -442,7 +504,9 @@ export default function TheatreEquipmentPage() {
                 <Label>Parent Type</Label>
                 <Select
                   value={form.parent != null ? String(form.parent) : '__none__'}
-                  onValueChange={(v) => setForm({ ...form, parent: v === '__none__' ? undefined : parseInt(v) })}
+                  onValueChange={(v) =>
+                    setForm({ ...form, parent: v === '__none__' ? undefined : parseInt(v) })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="None (root type)" />
@@ -458,7 +522,9 @@ export default function TheatreEquipmentPage() {
                       ))}
                   </SelectContent>
                 </Select>
-                {formErrors.parent && <p className="text-xs text-destructive">{formErrors.parent}</p>}
+                {formErrors.parent && (
+                  <p className="text-xs text-destructive">{formErrors.parent}</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="eq-desc">Description</Label>
@@ -478,7 +544,9 @@ export default function TheatreEquipmentPage() {
                     type="number"
                     min={0}
                     value={form.setup_time_minutes ?? 0}
-                    onChange={(e) => setForm({ ...form, setup_time_minutes: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setForm({ ...form, setup_time_minutes: parseInt(e.target.value) || 0 })
+                    }
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -488,7 +556,9 @@ export default function TheatreEquipmentPage() {
                     type="number"
                     min={0}
                     value={form.cleanup_time_minutes ?? 0}
-                    onChange={(e) => setForm({ ...form, cleanup_time_minutes: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setForm({ ...form, cleanup_time_minutes: parseInt(e.target.value) || 0 })
+                    }
                   />
                 </div>
               </div>
@@ -499,7 +569,9 @@ export default function TheatreEquipmentPage() {
                     checked={form.is_portable ?? false}
                     onCheckedChange={(v) => setForm({ ...form, is_portable: v })}
                   />
-                  <Label htmlFor="eq-portable" className="text-sm">Portable</Label>
+                  <Label htmlFor="eq-portable" className="text-sm">
+                    Portable
+                  </Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
@@ -507,7 +579,9 @@ export default function TheatreEquipmentPage() {
                     checked={form.is_active ?? true}
                     onCheckedChange={(v) => setForm({ ...form, is_active: v })}
                   />
-                  <Label htmlFor="eq-active" className="text-sm">Active</Label>
+                  <Label htmlFor="eq-active" className="text-sm">
+                    Active
+                  </Label>
                 </div>
               </div>
               {formErrors.non_field_errors && (
@@ -518,8 +592,12 @@ export default function TheatreEquipmentPage() {
               <Button variant="outline" onClick={closeDialog} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button onClick={handleSubmit} disabled={isSaving || !form.name || !form.code} className="w-full sm:w-auto">
-                {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Button
+                onClick={handleSubmit}
+                disabled={isSaving || !form.name || !form.code}
+                className="w-full sm:w-auto"
+              >
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingId ? 'Save Changes' : 'Create'}
               </Button>
             </DialogFooter>

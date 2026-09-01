@@ -21,7 +21,7 @@ export function LabCriticalValuesCard({ data, isLoading }: LabCriticalValuesCard
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-medium">
               <AlertTriangle className="h-4 w-4 text-destructive" />
               Critical Values
             </CardTitle>
@@ -30,8 +30,8 @@ export function LabCriticalValuesCard({ data, isLoading }: LabCriticalValuesCard
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-3">
-            <div className="h-12 bg-muted rounded" />
-            <div className="h-24 bg-muted rounded" />
+            <div className="h-12 rounded bg-muted" />
+            <div className="h-24 rounded bg-muted" />
           </div>
         </CardContent>
       </Card>
@@ -42,7 +42,7 @@ export function LabCriticalValuesCard({ data, isLoading }: LabCriticalValuesCard
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base font-medium">
             <AlertTriangle className="h-4 w-4 text-destructive" />
             Critical Values
           </CardTitle>
@@ -59,20 +59,20 @@ export function LabCriticalValuesCard({ data, isLoading }: LabCriticalValuesCard
         {/* Test breakdown */}
         {data.by_test.length > 0 ? (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               By Test Type
             </p>
-            <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+            <div className="max-h-[200px] space-y-1.5 overflow-y-auto">
               {data.by_test.map((item) => (
                 <div
                   key={item.test_code}
-                  className="flex items-center justify-between py-1.5 px-2 rounded-md bg-muted/50"
+                  className="flex items-center justify-between rounded-md bg-muted/50 px-2 py-1.5"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
                     <Badge variant="outline" className="shrink-0 text-xs">
                       {item.test_code}
                     </Badge>
-                    <span className="text-sm truncate">{item.test_name}</span>
+                    <span className="truncate text-sm">{item.test_name}</span>
                   </div>
                   <Badge variant="destructive" className="shrink-0">
                     {item.critical_count}
@@ -82,9 +82,17 @@ export function LabCriticalValuesCard({ data, isLoading }: LabCriticalValuesCard
             </div>
           </div>
         ) : data.total_critical === 0 ? (
-          <ChartEmptyState chartType="generic" title="No critical values" description="No critical values reported in this period" />
+          <ChartEmptyState
+            chartType="generic"
+            title="No critical values"
+            description="No critical values reported in this period"
+          />
         ) : (
-          <ChartEmptyState chartType="generic" title="No breakdown" description="No breakdown data available" />
+          <ChartEmptyState
+            chartType="generic"
+            title="No breakdown"
+            description="No breakdown data available"
+          />
         )}
       </CardContent>
     </Card>

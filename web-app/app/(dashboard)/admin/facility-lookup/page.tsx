@@ -1,20 +1,12 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import {
-  Search,
-  Loader2,
-  AlertCircle,
-} from 'lucide-react';
+import { Search, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -96,10 +88,10 @@ export default function FacilityLookupPage() {
 
       {/* Search Card */}
       <Card>
-        <CardContent className="pt-6 space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
-            <KenyaCoatOfArms size={28} className="shrink-0 hidden sm:block self-center" />
-            <div className="w-full sm:w-48 space-y-1.5">
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end">
+            <KenyaCoatOfArms size={28} className="hidden shrink-0 self-center sm:block" />
+            <div className="w-full space-y-1.5 sm:w-48">
               <Label>Identifier Type</Label>
               <Select value={identifierType} onValueChange={setIdentifierType}>
                 <SelectTrigger>
@@ -114,15 +106,23 @@ export default function FacilityLookupPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex-1 space-y-1.5 w-full">
+            <div className="w-full flex-1 space-y-1.5">
               <Label htmlFor="facility-identifier">Identifier</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="facility-identifier"
                   value={identifier}
-                  onChange={(e) => { setIdentifier(e.target.value); if (status !== 'idle') resetResults(); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch(); } }}
+                  onChange={(e) => {
+                    setIdentifier(e.target.value);
+                    if (status !== 'idle') resetResults();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
                   placeholder={
                     identifierType === 'fr-code'
                       ? 'Enter MFL or FR code (e.g., 24979 or FID-22-107992-6)'
@@ -135,7 +135,11 @@ export default function FacilityLookupPage() {
                 />
               </div>
             </div>
-            <Button onClick={handleSearch} disabled={!canSearch} className="shrink-0 w-full sm:w-auto">
+            <Button
+              onClick={handleSearch}
+              disabled={!canSearch}
+              className="w-full shrink-0 sm:w-auto"
+            >
               {status === 'searching' ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -156,7 +160,7 @@ export default function FacilityLookupPage() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{status === 'error' ? 'Error' : 'Not Found'}</AlertTitle>
           <AlertDescription>
-            <ul className="list-disc list-inside">
+            <ul className="list-inside list-disc">
               {errors.map((err, i) => (
                 <li key={i}>{err}</li>
               ))}
@@ -170,9 +174,7 @@ export default function FacilityLookupPage() {
         <Card>
           <CardContent className="py-8 text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="mt-3 text-sm text-muted-foreground">
-              Searching DHA registry...
-            </p>
+            <p className="mt-3 text-sm text-muted-foreground">Searching DHA registry...</p>
           </CardContent>
         </Card>
       )}

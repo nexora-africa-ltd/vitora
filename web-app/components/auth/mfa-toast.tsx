@@ -20,7 +20,8 @@ export type MFAToastVariant = 'success' | 'error' | 'warning' | 'info';
 const MFA_ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
   invalid_token: {
     title: 'Invalid Code',
-    description: 'The code you entered is incorrect. Please check your authenticator app and try again.',
+    description:
+      'The code you entered is incorrect. Please check your authenticator app and try again.',
   },
   token_expired: {
     title: 'Code Expired',
@@ -36,7 +37,7 @@ const MFA_ERROR_MESSAGES: Record<string, { title: string; description: string }>
   },
   too_many_attempts: {
     title: 'Too Many Attempts',
-    description: 'You\'ve made too many attempts. Please wait a few minutes before trying again.',
+    description: "You've made too many attempts. Please wait a few minutes before trying again.",
   },
   session_expired: {
     title: 'Session Expired',
@@ -162,7 +163,8 @@ export const mfaToast = {
   lowBackupCodesWarning: showLowBackupCodesWarning,
   expired: () => {
     toast.warning('Verification Expired', {
-      description: 'The verification window has expired. Please sign in again to generate a new code.',
+      description:
+        'The verification window has expired. Please sign in again to generate a new code.',
       duration: 6000,
     });
   },

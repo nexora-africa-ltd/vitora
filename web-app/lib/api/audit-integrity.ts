@@ -9,14 +9,8 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
-import {
-  AuditChainStatusSchema,
-  AuditIntegrityResultSchema,
-} from '@/lib/schemas/security.schema';
-import type {
-  AuditChainStatus,
-  AuditIntegrityResult,
-} from '@/lib/types/security';
+import { AuditChainStatusSchema, AuditIntegrityResultSchema } from '@/lib/schemas/security.schema';
+import type { AuditChainStatus, AuditIntegrityResult } from '@/lib/types/security';
 
 export const auditIntegrityApi = {
   /**
@@ -33,7 +27,9 @@ export const auditIntegrityApi = {
    * Trigger an on-demand integrity verification (admin only).
    */
   verifyIntegrity: async (): Promise<AuditIntegrityResult> => {
-    const response = await apiClient.post<AuditIntegrityResult>('/api/core/auditlogs/verify_integrity/');
+    const response = await apiClient.post<AuditIntegrityResult>(
+      '/api/core/auditlogs/verify_integrity/'
+    );
     return parseResponse(AuditIntegrityResultSchema, response.data, {
       context: 'auditIntegrityApi.verifyIntegrity',
     });

@@ -2,10 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Plus,
-  Search,
-} from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { AxiosError } from 'axios';
 import Link from 'next/link';
 import { PageHeader } from '@/components/shared/page-header';
@@ -115,12 +112,17 @@ export default function TheatreSettingsPage() {
     },
     onError: (error: unknown) => {
       setFormErrors(extractFieldErrors(error));
-      toast({ title: 'Failed to create theatre', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Failed to create theatre',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<OperatingTheatreCreateData> }) => theatreApi.updateTheatre(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<OperatingTheatreCreateData> }) =>
+      theatreApi.updateTheatre(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['theatre-settings-theatres'] });
       toast({ title: 'Operating theatre updated' });
@@ -128,7 +130,11 @@ export default function TheatreSettingsPage() {
     },
     onError: (error: unknown) => {
       setFormErrors(extractFieldErrors(error));
-      toast({ title: 'Failed to update theatre', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Failed to update theatre',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -140,7 +146,11 @@ export default function TheatreSettingsPage() {
       toast({ title: variables.is_active ? 'Theatre activated' : 'Theatre deactivated' });
     },
     onError: (error: unknown) => {
-      toast({ title: 'Failed to update theatre status', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Failed to update theatre status',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -180,7 +190,10 @@ export default function TheatreSettingsPage() {
     });
   }
 
-  function updateForm<K extends keyof OperatingTheatreCreateData>(key: K, value: OperatingTheatreCreateData[K]) {
+  function updateForm<K extends keyof OperatingTheatreCreateData>(
+    key: K,
+    value: OperatingTheatreCreateData[K]
+  ) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
@@ -206,8 +219,13 @@ export default function TheatreSettingsPage() {
           />
           <Card>
             <CardContent className="space-y-4 py-10 text-center">
-              <p className="text-base font-medium">Theatre setup is restricted to theatre administrators.</p>
-              <p className="text-sm text-muted-foreground">You need the theatre setup permission to manage operating rooms, capabilities, and scheduling linkage.</p>
+              <p className="text-base font-medium">
+                Theatre setup is restricted to theatre administrators.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                You need the theatre setup permission to manage operating rooms, capabilities, and
+                scheduling linkage.
+              </p>
               <div className="flex justify-center">
                 <Button variant="outline" asChild>
                   <Link href="/theatre">Back to Theatre Dashboard</Link>
@@ -254,18 +272,26 @@ export default function TheatreSettingsPage() {
                 placeholder="Search by code, name, or location"
               />
             </div>
-            <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as TheatreType | 'ALL')}>
+            <Select
+              value={typeFilter}
+              onValueChange={(value) => setTypeFilter(value as TheatreType | 'ALL')}
+            >
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Types</SelectItem>
                 {THEATRE_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>{THEATRE_TYPE_LABELS[type]}</SelectItem>
+                  <SelectItem key={type} value={type}>
+                    {THEATRE_TYPE_LABELS[type]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'ALL' | 'ACTIVE' | 'INACTIVE')}>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => setStatusFilter(value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
+            >
               <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue />
               </SelectTrigger>
@@ -282,7 +308,9 @@ export default function TheatreSettingsPage() {
             isLoading={theatresQuery.isLoading}
             isToggling={toggleMutation.isPending}
             onEdit={openEditDialog}
-            onToggle={(theatre) => toggleMutation.mutate({ id: theatre.id, is_active: !theatre.is_active })}
+            onToggle={(theatre) =>
+              toggleMutation.mutate({ id: theatre.id, is_active: !theatre.is_active })
+            }
           />
 
           <OperatingTheatreFormDialog

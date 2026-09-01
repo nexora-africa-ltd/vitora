@@ -3,9 +3,24 @@
  */
 
 // Status enums
-export type UnitStatus = 'COLLECTED' | 'TESTING' | 'AVAILABLE' | 'RESERVED' | 'ISSUED' | 'EXPIRED' | 'DISCARDED' | 'QUARANTINED';
+export type UnitStatus =
+  | 'COLLECTED'
+  | 'TESTING'
+  | 'AVAILABLE'
+  | 'RESERVED'
+  | 'ISSUED'
+  | 'EXPIRED'
+  | 'DISCARDED'
+  | 'QUARANTINED';
 export type UnitStatusChangeSource = 'MANUAL' | 'AUTOMATED' | 'SYSTEM';
-export type RequestStatus = 'PENDING' | 'CROSSMATCH_PENDING' | 'READY' | 'ISSUED' | 'TRANSFUSED' | 'CANCELLED' | 'RETURNED';
+export type RequestStatus =
+  | 'PENDING'
+  | 'CROSSMATCH_PENDING'
+  | 'READY'
+  | 'ISSUED'
+  | 'TRANSFUSED'
+  | 'CANCELLED'
+  | 'RETURNED';
 export type RequestUrgency = 'ROUTINE' | 'URGENT' | 'EMERGENCY';
 export type CrossMatchResult = 'COMPATIBLE' | 'INCOMPATIBLE' | 'PENDING';
 export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';

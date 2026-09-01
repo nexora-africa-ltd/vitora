@@ -1,6 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Activity, Thermometer, Heart, Wind, Droplets, Scale, Ruler, ShieldAlert } from 'lucide-react';
+import {
+  Activity,
+  Thermometer,
+  Heart,
+  Wind,
+  Droplets,
+  Scale,
+  Ruler,
+  ShieldAlert,
+} from 'lucide-react';
 import { Encounter, VitalSign } from '@/lib/types/encounter';
 import type { InlineCDSAlert } from '@/lib/types/encounter';
 import { cn } from '@/lib/utils/cn';
@@ -46,12 +55,8 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
       value: encounter.pulse,
       unit: 'bpm',
       normalRange: '60-100',
-      isAbnormal: encounter.pulse
-        ? encounter.pulse < 60 || encounter.pulse > 100
-        : false,
-      isCritical: encounter.pulse
-        ? encounter.pulse < 50 || encounter.pulse > 120
-        : false,
+      isAbnormal: encounter.pulse ? encounter.pulse < 60 || encounter.pulse > 100 : false,
+      isCritical: encounter.pulse ? encounter.pulse < 50 || encounter.pulse > 120 : false,
     },
     {
       name: 'Blood Pressure',
@@ -118,17 +123,15 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
     <Card className={cn(hasCriticalVitals && 'border-destructive')}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Activity className="h-5 w-5" />
             Vital Signs
           </CardTitle>
-          {hasCriticalVitals && (
-            <Badge variant="destructive">Critical Values</Badge>
-          )}
+          {hasCriticalVitals && <Badge variant="destructive">Critical Values</Badge>}
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
           {vitals.map((vital) => {
             const Icon = icons[vital.name] || Activity;
             const vitalCdsAlerts = getVitalAlerts(vital.name, cdsAlerts);
@@ -138,12 +141,15 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
               <div
                 key={vital.name}
                 className={cn(
-                  'p-3 rounded-lg border',
+                  'rounded-lg border p-3',
                   vital.isCritical && vital.value !== null && 'border-destructive bg-destructive/5',
-                  vital.isAbnormal && !vital.isCritical && vital.value !== null && 'border-amber-500 bg-amber-500/5'
+                  vital.isAbnormal &&
+                    !vital.isCritical &&
+                    vital.value !== null &&
+                    'border-amber-500 bg-amber-500/5'
                 )}
               >
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <div className="mb-1 flex items-center gap-2 text-muted-foreground">
                   <Icon className="h-4 w-4" />
                   <span className="text-xs">{vital.name}</span>
                 </div>
@@ -152,7 +158,10 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
                     className={cn(
                       'text-xl font-semibold',
                       vital.isCritical && vital.value !== null && 'text-destructive',
-                      vital.isAbnormal && !vital.isCritical && vital.value !== null && 'text-amber-600'
+                      vital.isAbnormal &&
+                        !vital.isCritical &&
+                        vital.value !== null &&
+                        'text-amber-600'
                     )}
                   >
                     {vital.value ?? '—'}
@@ -162,13 +171,11 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
                   )}
                 </div>
                 {vital.normalRange && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Normal: {vital.normalRange}
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Normal: {vital.normalRange}</p>
                 )}
                 {/* Contextual CDS callout */}
                 {hasCdsAlert && (
-                  <div className="mt-2 pt-1.5 border-t border-dashed border-current/20">
+                  <div className="border-current/20 mt-2 border-t border-dashed pt-1.5">
                     {vitalCdsAlerts.map((alert) => (
                       <div
                         key={alert.id}
@@ -178,7 +185,7 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
                         )}
                         title={alert.suggestion}
                       >
-                        <ShieldAlert className="h-3 w-3 shrink-0 mt-0.5" />
+                        <ShieldAlert className="mt-0.5 h-3 w-3 shrink-0" />
                         <span>{alert.message}</span>
                       </div>
                     ))}

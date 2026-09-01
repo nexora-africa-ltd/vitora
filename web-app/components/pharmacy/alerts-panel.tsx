@@ -49,7 +49,12 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { StockAlert, AlertType, AlertSeverity } from '@/lib/types/pharmacy';
-import { useAcknowledgeAlert, useResolveAlert, useAlertSettings, useUpdateAlertSettings } from '@/lib/hooks/use-pharmacy';
+import {
+  useAcknowledgeAlert,
+  useResolveAlert,
+  useAlertSettings,
+  useUpdateAlertSettings,
+} from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 
@@ -288,8 +293,18 @@ export function AlertsPanel({
         const exportAlerts = allAlerts.filter(matchesCurrentFilters);
 
         // Create CSV content
-        const headers = ['Item Name', 'Item Code', 'Alert Type', 'Severity', 'Message', 'Batch Number', 'Created At', 'Acknowledged', 'Resolved'];
-        const rows = exportAlerts.map(alert => [
+        const headers = [
+          'Item Name',
+          'Item Code',
+          'Alert Type',
+          'Severity',
+          'Message',
+          'Batch Number',
+          'Created At',
+          'Acknowledged',
+          'Resolved',
+        ];
+        const rows = exportAlerts.map((alert) => [
           alert.drug_name || '',
           alert.drug_code || '',
           alert.alert_type,
@@ -303,14 +318,17 @@ export function AlertsPanel({
 
         const csvContent = [
           headers.join(','),
-          ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+          ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
         ].join('\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', `stock-alerts-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`);
+        link.setAttribute(
+          'download',
+          `stock-alerts-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`
+        );
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -345,7 +363,7 @@ export function AlertsPanel({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <XCircle className="h-12 w-12 text-destructive mb-4" />
+        <XCircle className="mb-4 h-12 w-12 text-destructive" />
         <p className="text-destructive">{error.message}</p>
       </div>
     );
@@ -354,9 +372,11 @@ export function AlertsPanel({
   if (totalCount === 0 && alerts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+        <CheckCircle className="mb-4 h-12 w-12 text-green-500" />
         <p className="text-muted-foreground">No active alerts</p>
-        <p className="text-sm text-muted-foreground mt-1">All stock levels are within normal range</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          All stock levels are within normal range
+        </p>
       </div>
     );
   }
@@ -364,12 +384,15 @@ export function AlertsPanel({
   return (
     <div className="space-y-4">
       {/* Filters and controls */}
-      <div className="flex flex-wrap gap-4 items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap gap-4">
           {/* Type filter */}
           <div className="flex items-center gap-2">
             <Label htmlFor="type-filter">Type</Label>
-            <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as AlertType | 'all')}>
+            <Select
+              value={typeFilter}
+              onValueChange={(value) => setTypeFilter(value as AlertType | 'all')}
+            >
               <SelectTrigger id="type-filter" data-testid="alert-type-filter" className="w-[180px]">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
@@ -388,8 +411,15 @@ export function AlertsPanel({
           {/* Severity filter */}
           <div className="flex items-center gap-2">
             <Label htmlFor="severity-filter">Severity</Label>
-            <Select value={severityFilter} onValueChange={(value) => setSeverityFilter(value as AlertSeverity | 'all')}>
-              <SelectTrigger id="severity-filter" data-testid="severity-filter" className="w-[150px]">
+            <Select
+              value={severityFilter}
+              onValueChange={(value) => setSeverityFilter(value as AlertSeverity | 'all')}
+            >
+              <SelectTrigger
+                id="severity-filter"
+                data-testid="severity-filter"
+                className="w-[150px]"
+              >
                 <SelectValue placeholder="All Severities" />
               </SelectTrigger>
               <SelectContent>
@@ -414,18 +444,22 @@ export function AlertsPanel({
           </div>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           {/* Export button */}
-            <Button
-              variant="outline"
-              size="sm"
-              data-testid="export-alerts-button"
-              onClick={handleExport}
-              disabled={totalCount === 0 || isExporting}
-            >
-              {isExporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
-              {isExporting ? 'Exporting...' : 'Export CSV'}
-            </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="export-alerts-button"
+            onClick={handleExport}
+            disabled={totalCount === 0 || isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-1 h-4 w-4" />
+            )}
+            {isExporting ? 'Exporting...' : 'Export CSV'}
+          </Button>
 
           {/* Quick filters */}
           <Button
@@ -453,7 +487,7 @@ export function AlertsPanel({
             onClick={handleRefresh}
             disabled={isRefreshing}
           >
-            <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`mr-1 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
 
@@ -464,7 +498,7 @@ export function AlertsPanel({
             data-testid="alert-settings-button"
             onClick={() => setSettingsDialogOpen(true)}
           >
-            <Settings className="h-4 w-4 mr-1" />
+            <Settings className="mr-1 h-4 w-4" />
             Settings
           </Button>
         </div>
@@ -499,7 +533,7 @@ export function AlertsPanel({
                       {/* Icon */}
                       <div
                         data-testid={testId}
-                        className={`p-2 rounded-full ${SEVERITY_ICON_BG[alert.severity]}`}
+                        className={`rounded-full p-2 ${SEVERITY_ICON_BG[alert.severity]}`}
                       >
                         <Icon className={`h-5 w-5 ${SEVERITY_ICON_FG[alert.severity]}`} />
                       </div>
@@ -530,42 +564,48 @@ export function AlertsPanel({
                         <p className="text-sm text-muted-foreground">{alert.message}</p>
 
                         {/* Status badges */}
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex flex-wrap items-center gap-2">
                           {/* Auto-generated badge - all stock alerts are system generated */}
                           <Badge variant="outline" className="text-xs">
                             System Generated
                           </Badge>
                           {alert.acknowledged && (
                             <Badge variant="outline" className="text-xs">
-                              <CheckCircle className="h-3 w-3 mr-1" />
+                              <CheckCircle className="mr-1 h-3 w-3" />
                               Acknowledged by {alert.acknowledged_by_name} on{' '}
                               {alert.acknowledged_at && formatDate(alert.acknowledged_at, 'MMM d')}
                             </Badge>
                           )}
                           {alert.batch_number && alert.stock_batch && (
                             <Link href={`/pharmacy?tab=inventory&batch=${alert.stock_batch}`}>
-                              <Badge variant="outline" className="text-xs hover:bg-accent cursor-pointer">
-                                <Package className="h-3 w-3 mr-1" />
+                              <Badge
+                                variant="outline"
+                                className="cursor-pointer text-xs hover:bg-accent"
+                              >
+                                <Package className="mr-1 h-3 w-3" />
                                 {alert.batch_number}
                               </Badge>
                             </Link>
                           )}
                           {alert.batch_number && !alert.stock_batch && (
                             <Badge variant="outline" className="text-xs">
-                              <Package className="h-3 w-3 mr-1" />
+                              <Package className="mr-1 h-3 w-3" />
                               {alert.batch_number}
                             </Badge>
                           )}
                           {alert.resolved && (
-                            <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950/30">
-                              <CheckCircle className="h-3 w-3 mr-1 text-green-600 dark:text-green-300" />
+                            <Badge
+                              variant="outline"
+                              className="bg-green-50 text-xs dark:bg-green-950/30"
+                            >
+                              <CheckCircle className="mr-1 h-3 w-3 text-green-600 dark:text-green-300" />
                               Resolved
                             </Badge>
                           )}
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2 pt-2 flex-wrap">
+                        <div className="flex flex-wrap items-center gap-2 pt-2">
                           {!alert.acknowledged && !alert.resolved && (
                             <Button
                               variant="outline"
@@ -575,9 +615,9 @@ export function AlertsPanel({
                               disabled={acknowledgeAlert.isPending}
                             >
                               {acknowledgeAlert.isPending ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                               ) : (
-                                <CheckCircle className="h-4 w-4 mr-1" />
+                                <CheckCircle className="mr-1 h-4 w-4" />
                               )}
                               Acknowledge
                             </Button>
@@ -594,14 +634,15 @@ export function AlertsPanel({
                               disabled={resolveAlert.isPending}
                             >
                               {resolveAlert.isPending ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                               ) : (
-                                <CheckCircle className="h-4 w-4 mr-1" />
+                                <CheckCircle className="mr-1 h-4 w-4" />
                               )}
                               Resolve
                             </Button>
                           )}
-                          {(alert.alert_type === 'LOW_STOCK' || alert.alert_type === 'OUT_OF_STOCK') && (
+                          {(alert.alert_type === 'LOW_STOCK' ||
+                            alert.alert_type === 'OUT_OF_STOCK') && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -614,22 +655,21 @@ export function AlertsPanel({
                                 });
                               }}
                             >
-                              <ShoppingCart className="h-4 w-4 mr-1" />
+                              <ShoppingCart className="mr-1 h-4 w-4" />
                               Reorder
                             </Button>
                           )}
-                          {(alert.alert_type === 'EXPIRING_SOON' || alert.alert_type === 'EXPIRING_CRITICAL' || alert.alert_type === 'EXPIRED') && alert.stock_batch && (
-                            <Link href={`/pharmacy?tab=inventory&batch=${alert.stock_batch}`}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                data-testid="view-batch-button"
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                View Batch
-                              </Button>
-                            </Link>
-                          )}
+                          {(alert.alert_type === 'EXPIRING_SOON' ||
+                            alert.alert_type === 'EXPIRING_CRITICAL' ||
+                            alert.alert_type === 'EXPIRED') &&
+                            alert.stock_batch && (
+                              <Link href={`/pharmacy?tab=inventory&batch=${alert.stock_batch}`}>
+                                <Button variant="outline" size="sm" data-testid="view-batch-button">
+                                  <Eye className="mr-1 h-4 w-4" />
+                                  View Batch
+                                </Button>
+                              </Link>
+                            )}
                         </div>
                       </div>
                     </div>
@@ -642,9 +682,10 @@ export function AlertsPanel({
       </Tabs>
 
       {totalPages > 1 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
-          <p className="text-sm text-muted-foreground text-center sm:text-left">
-            Showing {alerts.length} of {isDefaultFilterView ? totalCount : filteredAlerts.length} alerts (Page {page} of {totalPages})
+        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-center text-sm text-muted-foreground sm:text-left">
+            Showing {alerts.length} of {isDefaultFilterView ? totalCount : filteredAlerts.length}{' '}
+            alerts (Page {page} of {totalPages})
           </p>
           <div className="flex items-center justify-center gap-2">
             <Button
@@ -653,7 +694,7 @@ export function AlertsPanel({
               onClick={() => onPageChange(page - 1)}
               disabled={page <= 1}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ChevronLeft className="mr-1 h-4 w-4" />
               Previous
             </Button>
             <Button
@@ -663,7 +704,7 @@ export function AlertsPanel({
               disabled={page >= totalPages}
             >
               Next
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -674,9 +715,7 @@ export function AlertsPanel({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Resolve Alert</DialogTitle>
-            <DialogDescription>
-              Enter notes about how this alert was resolved.
-            </DialogDescription>
+            <DialogDescription>Enter notes about how this alert was resolved.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -704,7 +743,7 @@ export function AlertsPanel({
             <Button onClick={handleResolve} disabled={resolveAlert.isPending}>
               {resolveAlert.isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Resolving...
                 </>
               ) : (
@@ -753,10 +792,7 @@ export function AlertsPanel({
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setSettingsDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setSettingsDialogOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -783,7 +819,7 @@ export function AlertsPanel({
             >
               {updateSettings.isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
                 </>
               ) : (

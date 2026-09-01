@@ -169,7 +169,7 @@ export default function LOINCMappingPage() {
       ) : tests.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <FlaskConical className="h-12 w-12 text-muted-foreground mb-4" />
+            <FlaskConical className="mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">No tests found</p>
           </CardContent>
         </Card>
@@ -181,16 +181,20 @@ export default function LOINCMappingPage() {
                 {/* Test Info */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{test.name}</span>
-                    <Badge variant="outline" className="text-xs shrink-0">{test.code}</Badge>
-                    <Badge variant="secondary" className="text-xs shrink-0">{test.category}</Badge>
+                    <span className="text-sm font-medium">{test.name}</span>
+                    <Badge variant="outline" className="shrink-0 text-xs">
+                      {test.code}
+                    </Badge>
+                    <Badge variant="secondary" className="shrink-0 text-xs">
+                      {test.category}
+                    </Badge>
                   </div>
                 </div>
 
                 {/* LOINC Assignment */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   {editingCode === test.code ? (
-                    <div className="flex items-center gap-2 w-[300px]">
+                    <div className="flex w-[300px] items-center gap-2">
                       <LOINCSelect
                         value={test.loinc_code ? { code: test.loinc_code, name: '' } : null}
                         onSelect={(loinc) => handleAssignLOINC(test, loinc.code)}
@@ -208,8 +212,8 @@ export default function LOINCMappingPage() {
                     </div>
                   ) : test.loinc_code ? (
                     <div className="flex items-center gap-2">
-                      <Badge className="font-mono text-xs bg-green-100 text-green-800 hover:bg-green-200">
-                        <Check className="h-3 w-3 mr-1" />
+                      <Badge className="bg-green-100 font-mono text-xs text-green-800 hover:bg-green-200">
+                        <Check className="mr-1 h-3 w-3" />
                         {test.loinc_code}
                       </Badge>
                       <Button
@@ -235,7 +239,7 @@ export default function LOINCMappingPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 text-xs gap-1"
+                      className="h-7 gap-1 text-xs"
                       onClick={() => setEditingCode(test.code)}
                       disabled={saving === test.code}
                     >

@@ -20,19 +20,12 @@ import { BedDouble } from 'lucide-react';
 import type { TriageCategory } from '@/lib/types/triage';
 import { EmergencyAlertsProvider } from '@/components/emergency';
 
-export default function EmergencyLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function EmergencyLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
   // Real-time zone counts via WebSocket, polling fallback
-  const {
-    isConnected,
-    zonesData: wsZonesData,
-  } = useEmergencySocket();
+  const { isConnected, zonesData: wsZonesData } = useEmergencySocket();
 
   const { data: polledZonesData } = useZonesSummary({ enabled: !isConnected });
 
@@ -69,20 +62,17 @@ export default function EmergencyLayout({
     <div className="space-y-0">
       {/* Zone Tabs - only show when we're in a zone page or always for navigation */}
       {isOnZonePage && (
-        <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
-          <div className="overflow-x-auto scrollbar-hide">
-            <nav
-              className="flex gap-1 px-2 py-1.5 min-w-max"
-              aria-label="Emergency zone tabs"
-            >
+        <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="scrollbar-hide overflow-x-auto">
+            <nav className="flex min-w-max gap-1 px-2 py-1.5" aria-label="Emergency zone tabs">
               {/* Dashboard tab */}
               <button
                 onClick={() => router.push('/emergency')}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                  'flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   activeSegment === 'dashboard'
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >
                 Overview
@@ -104,10 +94,10 @@ export default function EmergencyLayout({
                     key={zone.route}
                     onClick={() => router.push(`/emergency/${zone.route}`)}
                     className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                      'flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                       isActive
                         ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
                   >
                     {/* Short label on mobile, full on sm+ */}
@@ -119,7 +109,7 @@ export default function EmergencyLayout({
                         className={cn(
                           'h-5 min-w-[1.25rem] px-1 text-xs',
                           !isActive && categoryColor.bg,
-                          !isActive && categoryColor.text,
+                          !isActive && categoryColor.text
                         )}
                       >
                         {count}
@@ -133,10 +123,10 @@ export default function EmergencyLayout({
               <button
                 onClick={() => router.push('/emergency/bed-board')}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                  'flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   activeSegment === 'bed-board'
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >
                 <BedDouble className="h-3.5 w-3.5" />
@@ -150,9 +140,7 @@ export default function EmergencyLayout({
 
       {/* Page content */}
       <div className={cn(isOnZonePage && 'pt-4')}>
-        <EmergencyAlertsProvider>
-          {children}
-        </EmergencyAlertsProvider>
+        <EmergencyAlertsProvider>{children}</EmergencyAlertsProvider>
       </div>
     </div>
   );

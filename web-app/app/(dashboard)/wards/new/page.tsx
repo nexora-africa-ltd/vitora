@@ -41,20 +41,34 @@ const GENDER_OPTIONS = [
 ];
 
 /** Ward-type defaults applied client-side for preview, backend enforces on save */
-const WARD_TYPE_DEFAULTS: Record<string, {
-  gender_restriction?: string;
-  isolation_capable?: boolean;
-  oxygen_equipped?: boolean;
-  ventilator_capable?: boolean;
-  maternity_designated?: boolean;
-  min_age_years?: number | null;
-  max_age_years?: number | null;
-}> = {
-  MATERNITY: { gender_restriction: 'FEMALE_ONLY', maternity_designated: true, min_age_years: 12, max_age_years: 55 },
+const WARD_TYPE_DEFAULTS: Record<
+  string,
+  {
+    gender_restriction?: string;
+    isolation_capable?: boolean;
+    oxygen_equipped?: boolean;
+    ventilator_capable?: boolean;
+    maternity_designated?: boolean;
+    min_age_years?: number | null;
+    max_age_years?: number | null;
+  }
+> = {
+  MATERNITY: {
+    gender_restriction: 'FEMALE_ONLY',
+    maternity_designated: true,
+    min_age_years: 12,
+    max_age_years: 55,
+  },
   ISOLATION: { isolation_capable: true },
   HDU: { isolation_capable: true, oxygen_equipped: true, ventilator_capable: false },
   ICU: { isolation_capable: true, oxygen_equipped: true, ventilator_capable: true },
-  NBU: { isolation_capable: true, oxygen_equipped: true, ventilator_capable: false, min_age_years: 0, max_age_years: 1 },
+  NBU: {
+    isolation_capable: true,
+    oxygen_equipped: true,
+    ventilator_capable: false,
+    min_age_years: 0,
+    max_age_years: 1,
+  },
   PEDIATRIC: { min_age_years: 0, max_age_years: 14 },
 };
 
@@ -86,10 +100,14 @@ export default function NewWardPage() {
       if (defaults.gender_restriction) setGenderRestriction(defaults.gender_restriction);
       if (defaults.isolation_capable !== undefined) setIsolationCapable(defaults.isolation_capable);
       if (defaults.oxygen_equipped !== undefined) setOxygenEquipped(defaults.oxygen_equipped);
-      if (defaults.ventilator_capable !== undefined) setVentilatorCapable(defaults.ventilator_capable);
-      if (defaults.maternity_designated !== undefined) setMaternityDesignated(defaults.maternity_designated);
-      if (defaults.min_age_years !== undefined) setMinAge(defaults.min_age_years !== null ? String(defaults.min_age_years) : '');
-      if (defaults.max_age_years !== undefined) setMaxAge(defaults.max_age_years !== null ? String(defaults.max_age_years) : '');
+      if (defaults.ventilator_capable !== undefined)
+        setVentilatorCapable(defaults.ventilator_capable);
+      if (defaults.maternity_designated !== undefined)
+        setMaternityDesignated(defaults.maternity_designated);
+      if (defaults.min_age_years !== undefined)
+        setMinAge(defaults.min_age_years !== null ? String(defaults.min_age_years) : '');
+      if (defaults.max_age_years !== undefined)
+        setMaxAge(defaults.max_age_years !== null ? String(defaults.max_age_years) : '');
     } else {
       // Reset to defaults for generic types
       setGenderRestriction('ANY');
@@ -102,7 +120,13 @@ export default function NewWardPage() {
     }
   };
 
-  const canSubmit = name.trim() && code.trim() && capacity && Number(capacity) > 0 && dailyRate && Number(dailyRate) > 0;
+  const canSubmit =
+    name.trim() &&
+    code.trim() &&
+    capacity &&
+    Number(capacity) > 0 &&
+    dailyRate &&
+    Number(dailyRate) > 0;
 
   const handleSubmit = async () => {
     try {
@@ -132,7 +156,7 @@ export default function NewWardPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="New Ward"
         helpContent="Create a new hospital ward. Beds are auto-generated based on the capacity you set. Ward type selection pre-fills appropriate constraints."
@@ -168,13 +192,18 @@ export default function NewWardPage() {
 
             <div className="space-y-2">
               <Label>Ward Type *</Label>
-              <Select value={wardType} onValueChange={(v) => handleWardTypeChange(v as InpatientWardType)}>
+              <Select
+                value={wardType}
+                onValueChange={(v) => handleWardTypeChange(v as InpatientWardType)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {WARD_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -245,7 +274,9 @@ export default function NewWardPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {GENDER_OPTIONS.map((g) => (
-                    <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                    <SelectItem key={g.value} value={g.value}>
+                      {g.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -276,41 +307,69 @@ export default function NewWardPage() {
               </div>
             </div>
 
-            <div className="space-y-3 pt-2 border-t">
+            <div className="space-y-3 border-t pt-2">
               <Label className="text-sm font-medium">Equipment & Capabilities</Label>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label htmlFor="isolation" className="text-sm">Isolation Capable</Label>
-                    <p className="text-xs text-muted-foreground">Can handle infectious/isolated patients</p>
+                    <Label htmlFor="isolation" className="text-sm">
+                      Isolation Capable
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Can handle infectious/isolated patients
+                    </p>
                   </div>
-                  <Switch id="isolation" checked={isolationCapable} onCheckedChange={setIsolationCapable} />
+                  <Switch
+                    id="isolation"
+                    checked={isolationCapable}
+                    onCheckedChange={setIsolationCapable}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label htmlFor="oxygen" className="text-sm">Oxygen Equipped</Label>
+                    <Label htmlFor="oxygen" className="text-sm">
+                      Oxygen Equipped
+                    </Label>
                     <p className="text-xs text-muted-foreground">Beds have piped oxygen supply</p>
                   </div>
-                  <Switch id="oxygen" checked={oxygenEquipped} onCheckedChange={setOxygenEquipped} />
+                  <Switch
+                    id="oxygen"
+                    checked={oxygenEquipped}
+                    onCheckedChange={setOxygenEquipped}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label htmlFor="ventilator" className="text-sm">Ventilator Capable</Label>
-                    <p className="text-xs text-muted-foreground">Supports mechanically ventilated patients</p>
+                    <Label htmlFor="ventilator" className="text-sm">
+                      Ventilator Capable
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Supports mechanically ventilated patients
+                    </p>
                   </div>
-                  <Switch id="ventilator" checked={ventilatorCapable} onCheckedChange={setVentilatorCapable} />
+                  <Switch
+                    id="ventilator"
+                    checked={ventilatorCapable}
+                    onCheckedChange={setVentilatorCapable}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label htmlFor="maternity" className="text-sm">Maternity Designated</Label>
+                    <Label htmlFor="maternity" className="text-sm">
+                      Maternity Designated
+                    </Label>
                     <p className="text-xs text-muted-foreground">Enforces female-only admission</p>
                   </div>
-                  <Switch id="maternity" checked={maternityDesignated} onCheckedChange={setMaternityDesignated} />
+                  <Switch
+                    id="maternity"
+                    checked={maternityDesignated}
+                    onCheckedChange={setMaternityDesignated}
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2 pt-2 border-t">
+            <div className="space-y-2 border-t pt-2">
               <div className="flex items-center gap-1.5">
                 <Label htmlFor="buffer">Emergency Buffer (%)</Label>
                 <HelpPopover content="Percentage of beds reserved for emergency admissions. These beds won't be offered to elective admissions." />
@@ -333,11 +392,8 @@ export default function NewWardPage() {
         <Button variant="outline" onClick={() => router.push('/wards')}>
           Cancel
         </Button>
-        <Button
-          disabled={!canSubmit || createWard.isPending}
-          onClick={handleSubmit}
-        >
-          <Save className="h-4 w-4 mr-2" />
+        <Button disabled={!canSubmit || createWard.isPending} onClick={handleSubmit}>
+          <Save className="mr-2 h-4 w-4" />
           {createWard.isPending ? 'Creating...' : 'Create Ward'}
         </Button>
       </div>

@@ -2,7 +2,18 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, Filter, Calendar, Users, ClipboardList, Activity, Clock, Play, UserX, Search } from 'lucide-react';
+import {
+  Plus,
+  Filter,
+  Calendar,
+  Users,
+  ClipboardList,
+  Activity,
+  Clock,
+  Play,
+  UserX,
+  Search,
+} from 'lucide-react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -21,17 +32,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { EncounterTable } from '@/components/encounters/encounter-table';
 import { EncounterTypeChips } from '@/components/encounters/encounter-type-chips';
 import { ConsultationQueueContainer } from '@/components/encounters/consultation-queue-container';
 import { useEncounters } from '@/lib/hooks/use-encounters';
-import { useMyClaimedEncounters, useAllClaimedEncounters, useReleaseEncounter } from '@/lib/hooks/use-consultation-queue';
+import {
+  useMyClaimedEncounters,
+  useAllClaimedEncounters,
+  useReleaseEncounter,
+} from '@/lib/hooks/use-consultation-queue';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -132,18 +142,9 @@ export default function EncountersPage() {
   const canCreateEncounter = hasPermission('encounters.add_encounter');
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const initialTab = useMemo(
-    () => resolveEncounterTab(searchParams.get('tab')),
-    [searchParams]
-  );
-  const initialStatus = useMemo(
-    () => searchParams.get('status') ?? '',
-    [searchParams]
-  );
-  const initialWorkflowDate = useMemo(
-    () => searchParams.get('date') ?? '',
-    [searchParams]
-  );
+  const initialTab = useMemo(() => resolveEncounterTab(searchParams.get('tab')), [searchParams]);
+  const initialStatus = useMemo(() => searchParams.get('status') ?? '', [searchParams]);
+  const initialWorkflowDate = useMemo(() => searchParams.get('date') ?? '', [searchParams]);
 
   const [activeTab, setActiveTab] = useState<EncountersTab>(initialTab);
   const [status, setStatus] = useState<string>(initialStatus);
@@ -185,14 +186,21 @@ export default function EncountersPage() {
   });
 
   // Active encounters queries
-  const { data: myClaimedData, isLoading: isMyClaimedLoading, error: myClaimedError } = useMyClaimedEncounters(
-    undefined,
-    { pollingInterval: activeTab === 'active' ? 15000 : false }
-  );
-  const { data: allClaimedData, isLoading: isAllClaimedLoading, error: allClaimedError } = useAllClaimedEncounters(
-    undefined,
-    { pollingInterval: activeTab === 'active' && !showOnlyMine ? 15000 : false, enabled: !showOnlyMine }
-  );
+  const {
+    data: myClaimedData,
+    isLoading: isMyClaimedLoading,
+    error: myClaimedError,
+  } = useMyClaimedEncounters(undefined, {
+    pollingInterval: activeTab === 'active' ? 15000 : false,
+  });
+  const {
+    data: allClaimedData,
+    isLoading: isAllClaimedLoading,
+    error: allClaimedError,
+  } = useAllClaimedEncounters(undefined, {
+    pollingInterval: activeTab === 'active' && !showOnlyMine ? 15000 : false,
+    enabled: !showOnlyMine,
+  });
 
   const releaseMutation = useReleaseEncounter();
 
@@ -223,14 +231,14 @@ export default function EncountersPage() {
   const totalPages = data ? Math.ceil(data.count / pageSize) : 0;
 
   return (
-    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-6">
       <PageHeader
         title={workflowPresentation.title}
         helpContent={workflowPresentation.helpContent}
         actions={
           canCreateEncounter ? (
             <Button onClick={() => router.push('/encounters/new')} className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               <span className="sm:hidden">New</span>
               <span className="hidden sm:inline">New Encounter</span>
             </Button>
@@ -250,15 +258,25 @@ export default function EncountersPage() {
         }}
       />
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EncountersTab)} className="space-y-4">
-        <TabsList className="grid w-full max-w-lg grid-cols-3 h-auto">
-          <TabsTrigger value="queue" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2">
-            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as EncountersTab)}
+        className="space-y-4"
+      >
+        <TabsList className="grid h-auto w-full max-w-lg grid-cols-3">
+          <TabsTrigger
+            value="queue"
+            className="flex items-center gap-1.5 py-2 text-xs sm:gap-2 sm:text-sm"
+          >
+            <Users className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
             <span className="sm:hidden">Queue</span>
             <span className="hidden sm:inline">Queue</span>
           </TabsTrigger>
-          <TabsTrigger value="active" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2">
-            <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+          <TabsTrigger
+            value="active"
+            className="flex items-center gap-1.5 py-2 text-xs sm:gap-2 sm:text-sm"
+          >
+            <Activity className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
             <span className="sm:hidden">Active</span>
             <span className="hidden sm:inline">Active</span>
             {(activeEncountersCount ?? 0) > 0 && (
@@ -267,8 +285,11 @@ export default function EncountersPage() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="all" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2">
-            <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+          <TabsTrigger
+            value="all"
+            className="flex items-center gap-1.5 py-2 text-xs sm:gap-2 sm:text-sm"
+          >
+            <ClipboardList className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
             <span className="sm:hidden">All</span>
             <span className="hidden sm:inline">All</span>
           </TabsTrigger>
@@ -284,12 +305,8 @@ export default function EncountersPage() {
           {/* Filter toggle */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Switch
-                id="only-mine"
-                checked={showOnlyMine}
-                onCheckedChange={setShowOnlyMine}
-              />
-              <Label htmlFor="only-mine" className="text-sm cursor-pointer">
+              <Switch id="only-mine" checked={showOnlyMine} onCheckedChange={setShowOnlyMine} />
+              <Label htmlFor="only-mine" className="cursor-pointer text-sm">
                 Only show my encounters
               </Label>
             </div>
@@ -320,23 +337,24 @@ export default function EncountersPage() {
           ) : activeError ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <Activity className="h-12 w-12 text-destructive/60 mb-4" />
+                <Activity className="mb-4 h-12 w-12 text-destructive/60" />
                 <p className="text-lg font-medium text-destructive">
                   Failed to load active encounters
                 </p>
-                <p className="text-sm text-muted-foreground mt-1 max-w-md text-center">
-                  {activeError.message || 'An unexpected error occurred. Please try refreshing the page.'}
+                <p className="mt-1 max-w-md text-center text-sm text-muted-foreground">
+                  {activeError.message ||
+                    'An unexpected error occurred. Please try refreshing the page.'}
                 </p>
               </CardContent>
             </Card>
           ) : !activeEncounters?.length ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <Activity className="h-12 w-12 text-muted-foreground mb-4" />
+                <Activity className="mb-4 h-12 w-12 text-muted-foreground" />
                 <p className="text-lg font-medium text-muted-foreground">
                   {showOnlyMine ? 'No active encounters' : 'No encounters in progress'}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {showOnlyMine
                     ? 'Claim an encounter from the queue to start consultation'
                     : 'No clinicians are currently seeing patients'}
@@ -347,14 +365,17 @@ export default function EncountersPage() {
             <div className="space-y-3">
               <TooltipProvider delayDuration={200}>
                 {activeEncounters.map((encounter: Encounter) => (
-                  <Card key={encounter.id} className="hover:bg-muted/30 transition-colors">
+                  <Card key={encounter.id} className="transition-colors hover:bg-muted/30">
                     <CardContent className="p-4">
                       <Link
-                        href={buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status))}
+                        href={buildEncounterHref(
+                          encounter.id,
+                          getEncounterFocusFromStatus(encounter.status)
+                        )}
                         className="flex items-center gap-3"
                       >
                         <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                          <AvatarFallback className="bg-primary/10 text-sm text-primary">
                             {encounter.patient_name
                               ?.split(' ')
                               .map((n: string) => n[0])
@@ -363,20 +384,20 @@ export default function EncountersPage() {
                           </AvatarFallback>
                         </Avatar>
 
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium truncate">
+                            <p className="truncate text-sm font-medium">
                               {encounter.patient_name || 'Unknown Patient'}
                             </p>
                             <Badge variant="outline" className="shrink-0 text-xs">
                               {encounter.encounter_type}
                             </Badge>
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="truncate text-xs text-muted-foreground">
                             {encounter.patient_mrn} • {encounter.chief_complaint?.slice(0, 40)}
                             {(encounter.chief_complaint?.length || 0) > 40 ? '...' : ''}
                           </p>
-                          <div className="flex items-center gap-3 mt-1">
+                          <div className="mt-1 flex items-center gap-3">
                             <span className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               {encounter.claimed_at
@@ -393,21 +414,24 @@ export default function EncountersPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex shrink-0 items-center gap-2">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 variant="default"
                                 size="sm"
                                 className="h-8"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    router.push(
-                                      buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status))
-                                    );
-                                  }}
-                                >
-                                <Play className="h-3.5 w-3.5 mr-1" />
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  router.push(
+                                    buildEncounterHref(
+                                      encounter.id,
+                                      getEncounterFocusFromStatus(encounter.status)
+                                    )
+                                  );
+                                }}
+                              >
+                                <Play className="mr-1 h-3.5 w-3.5" />
                                 <span className="hidden sm:inline">Continue</span>
                               </Button>
                             </TooltipTrigger>
@@ -454,7 +478,7 @@ export default function EncountersPage() {
                   setEncounterSearch(e.target.value);
                   setPage(1);
                 }}
-                className="pl-9 w-full sm:w-64"
+                className="w-full pl-9 sm:w-64"
               />
             </div>
             <Select
@@ -466,7 +490,7 @@ export default function EncountersPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[180px]">
-                <Filter className="h-4 w-4 mr-2 shrink-0" />
+                <Filter className="mr-2 h-4 w-4 shrink-0" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -487,7 +511,7 @@ export default function EncountersPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[180px]">
-                <Calendar className="h-4 w-4 mr-2 shrink-0" />
+                <Calendar className="mr-2 h-4 w-4 shrink-0" />
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>

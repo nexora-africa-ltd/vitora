@@ -6,15 +6,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  FileCheck,
-  Plus,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Ban,
-  Search,
-} from 'lucide-react';
+import { FileCheck, Plus, Clock, CheckCircle2, XCircle, Ban, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -78,12 +70,20 @@ function getDoctorConsentBadge(state: string) {
   if (!state) return null;
   switch (state.toUpperCase()) {
     case 'APPROVED':
-      return <Badge className="bg-green-100 text-green-800 text-xs">Dr. Approved</Badge>;
+      return <Badge className="bg-green-100 text-xs text-green-800">Dr. Approved</Badge>;
     case 'REJECTED':
     case 'FAILED':
-      return <Badge variant="destructive" className="text-xs">Dr. Rejected</Badge>;
+      return (
+        <Badge variant="destructive" className="text-xs">
+          Dr. Rejected
+        </Badge>
+      );
     case 'REQUESTED':
-      return <Badge variant="secondary" className="text-xs">Awaiting Dr.</Badge>;
+      return (
+        <Badge variant="secondary" className="text-xs">
+          Awaiting Dr.
+        </Badge>
+      );
     default:
       return null;
   }
@@ -142,7 +142,11 @@ export default function PreauthsListPage() {
           title="Pre-authorizations"
           helpContent="Pre-authorization requests submitted to SHA for restricted services. Track approval status and manage pending requests."
           actions={
-            <Button onClick={() => router.push('/transactions/preauths/new')} disabled={!canCreateRoute('/transactions/preauths/new')} size="sm">
+            <Button
+              onClick={() => router.push('/transactions/preauths/new')}
+              disabled={!canCreateRoute('/transactions/preauths/new')}
+              size="sm"
+            >
               <Plus className="mr-1 h-4 w-4" />
               New Preauth
             </Button>
@@ -150,30 +154,54 @@ export default function PreauthsListPage() {
         />
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="relative overflow-hidden cursor-pointer" onClick={() => setStatusFilter('all')}>
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Card
+            className="relative cursor-pointer overflow-hidden"
+            onClick={() => setStatusFilter('all')}
+          >
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3">
               <p className="text-xs text-muted-foreground">Total</p>
               <p className="text-2xl font-bold">{stats.total}</p>
             </CardContent>
           </Card>
-          <Card className="relative overflow-hidden cursor-pointer" onClick={() => setStatusFilter('submitted')}>
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <Card
+            className="relative cursor-pointer overflow-hidden"
+            onClick={() => setStatusFilter('submitted')}
+          >
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3">
               <p className="text-xs text-muted-foreground">Pending</p>
               <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
             </CardContent>
           </Card>
-          <Card className="relative overflow-hidden cursor-pointer" onClick={() => setStatusFilter('approved')}>
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <Card
+            className="relative cursor-pointer overflow-hidden"
+            onClick={() => setStatusFilter('approved')}
+          >
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3">
               <p className="text-xs text-muted-foreground">Approved</p>
               <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
             </CardContent>
           </Card>
-          <Card className="relative overflow-hidden cursor-pointer" onClick={() => setStatusFilter('denied')}>
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <Card
+            className="relative cursor-pointer overflow-hidden"
+            onClick={() => setStatusFilter('denied')}
+          >
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3">
               <p className="text-xs text-muted-foreground">Denied</p>
               <p className="text-2xl font-bold text-destructive">{stats.denied}</p>
@@ -245,8 +273,7 @@ export default function PreauthsListPage() {
               sortable: true,
               sortType: 'date' as const,
               hideOnMobile: true,
-              cell: (p) =>
-                p.decided_at ? format(parseISO(p.decided_at), 'dd MMM yyyy') : '—',
+              cell: (p) => (p.decided_at ? format(parseISO(p.decided_at), 'dd MMM yyyy') : '—'),
             },
           ]}
           defaultSortColumn="created_at"
@@ -256,7 +283,7 @@ export default function PreauthsListPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-mono text-sm font-medium">{p.intervention_code}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {p.created_at ? format(parseISO(p.created_at), 'dd MMM yyyy') : ''}
                   </p>
                 </div>

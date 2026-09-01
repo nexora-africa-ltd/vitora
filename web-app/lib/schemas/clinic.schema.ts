@@ -15,10 +15,7 @@ import { z } from 'zod';
  * Backend may return "" for optional enum fields.
  */
 function enumOrEmpty<const T extends readonly [string, ...string[]]>(values: T) {
-  return z.union([
-    z.enum(values),
-    z.literal('').transform(() => null),
-  ]);
+  return z.union([z.enum(values), z.literal('').transform(() => null)]);
 }
 
 // =============================================================================
@@ -26,47 +23,116 @@ function enumOrEmpty<const T extends readonly [string, ...string[]]>(values: T) 
 // =============================================================================
 
 export const ClinicTypeSchema = z.enum([
-  'GENERAL_OPD', 'FILTER_CLINIC', 'ANC', 'PNC', 'FP', 'CWC', 'IMMUNIZATION',
-  'NUTRITION', 'DENTAL', 'EYE', 'ENT', 'SURGICAL', 'ORTHO', 'PHYSIO',
-  'OT', 'SOCIAL_WORK', 'COUNSELLING', // Allied Health
-  'DERM', 'CCC', 'TB', 'DIABETIC', 'HYPERTENSION', 'MENTAL_HEALTH', 'ONCOLOGY',
-  'DIALYSIS', 'PROCEDURE', 'DRESSING', 'INJECTION', 'OTHER',
+  'GENERAL_OPD',
+  'FILTER_CLINIC',
+  'ANC',
+  'PNC',
+  'FP',
+  'CWC',
+  'IMMUNIZATION',
+  'NUTRITION',
+  'DENTAL',
+  'EYE',
+  'ENT',
+  'SURGICAL',
+  'ORTHO',
+  'PHYSIO',
+  'OT',
+  'SOCIAL_WORK',
+  'COUNSELLING', // Allied Health
+  'DERM',
+  'CCC',
+  'TB',
+  'DIABETIC',
+  'HYPERTENSION',
+  'MENTAL_HEALTH',
+  'ONCOLOGY',
+  'DIALYSIS',
+  'PROCEDURE',
+  'DRESSING',
+  'INJECTION',
+  'OTHER',
 ]);
 
 export const ClinicStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'TEMPORARILY_CLOSED']);
 
 export const ClinicVisitStatusSchema = z.enum([
-  'REGISTERED', 'WAITING', 'CALLED', 'IN_CONSULTATION', 'COMPLETED', 'REFERRED', 'NO_SHOW', 'CANCELLED', 'CLOSED',
+  'REGISTERED',
+  'WAITING',
+  'CALLED',
+  'IN_CONSULTATION',
+  'COMPLETED',
+  'REFERRED',
+  'NO_SHOW',
+  'CANCELLED',
+  'CLOSED',
 ]);
 
 // Priority can be either clinical priorities OR triage category colors
 export const ClinicVisitPrioritySchema = z.enum([
-  'EMERGENCY', 'URGENT', 'PRIORITY', 'STANDARD', 'NON_URGENT',
+  'EMERGENCY',
+  'URGENT',
+  'PRIORITY',
+  'STANDARD',
+  'NON_URGENT',
   // Triage category colors (when patient comes from triage)
-  'RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE',
+  'RED',
+  'ORANGE',
+  'YELLOW',
+  'GREEN',
+  'BLUE',
 ]);
 
 export const ClinicVisitTypeSchema = z.enum([
-  'NEW', 'RETURN', 'FOLLOW_UP', 'REFERRAL', 'SCHEDULED', 'EMERGENCY',
+  'NEW',
+  'RETURN',
+  'FOLLOW_UP',
+  'REFERRAL',
+  'SCHEDULED',
+  'EMERGENCY',
 ]);
 
 export const ClinicVisitSourceSchema = z.enum([
-  'TRIAGE', 'DIRECT', 'REFERRAL', 'APPOINTMENT', 'INPATIENT',
+  'TRIAGE',
+  'DIRECT',
+  'REFERRAL',
+  'APPOINTMENT',
+  'INPATIENT',
 ]);
 
 export const ClinicSessionStatusSchema = z.enum(['SCHEDULED', 'OPEN', 'CLOSED', 'CANCELLED']);
 
 export const EnrollmentStatusSchema = z.enum([
-  'ACTIVE', 'INACTIVE', 'TRANSFERRED', 'LOST_TO_FOLLOW_UP', 'DECEASED', 'COMPLETED', 'TRANSFERRED_OUT', 'SUSPENDED',
+  'ACTIVE',
+  'INACTIVE',
+  'TRANSFERRED',
+  'LOST_TO_FOLLOW_UP',
+  'DECEASED',
+  'COMPLETED',
+  'TRANSFERRED_OUT',
+  'SUSPENDED',
 ]);
 
-export const ClinicStaffRoleSchema = z.enum(['LEAD', 'DOCTOR', 'NURSE', 'COUNSELOR', 'NUTRITIONIST', 'CLERK', 'OTHER']);
+export const ClinicStaffRoleSchema = z.enum([
+  'LEAD',
+  'DOCTOR',
+  'NURSE',
+  'COUNSELOR',
+  'NUTRITIONIST',
+  'CLERK',
+  'OTHER',
+]);
 
 // Chronic care enums - use enumOrEmpty to handle backend returning ""
 export const BloodGroupSchema = enumOrEmpty(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
 export const RhesusFactorSchema = enumOrEmpty(['POSITIVE', 'NEGATIVE']);
 export const HivStatusSchema = enumOrEmpty(['POSITIVE', 'NEGATIVE', 'UNKNOWN']);
-export const PartnerHivStatusSchema = enumOrEmpty(['POSITIVE', 'NEGATIVE', 'UNKNOWN', 'NOT_TESTED']);
+export const PartnerHivStatusSchema = enumOrEmpty([
+  'POSITIVE',
+  'NEGATIVE',
+  'UNKNOWN',
+  'NOT_TESTED',
+]);
 export const DiabetesTypeSchema = enumOrEmpty(['TYPE_1', 'TYPE_2', 'GESTATIONAL', 'OTHER']);
 export const ArtRegimenLineSchema = enumOrEmpty(['FIRST_LINE', 'SECOND_LINE', 'THIRD_LINE']);
 export const WhoClinicalStageSchema = z.enum(['1', '2', '3', '4']);
@@ -227,13 +293,15 @@ export const ClinicQueueStatsSchema = z.object({
   total_registered: z.number().optional(),
   cancelled: z.number().optional(),
   avg_wait_time_minutes: z.number().optional(),
-  by_priority: z.object({
-    EMERGENCY: z.number(),
-    URGENT: z.number(),
-    PRIORITY: z.number(),
-    STANDARD: z.number(),
-    NON_URGENT: z.number(),
-  }).optional(),
+  by_priority: z
+    .object({
+      EMERGENCY: z.number(),
+      URGENT: z.number(),
+      PRIORITY: z.number(),
+      STANDARD: z.number(),
+      NON_URGENT: z.number(),
+    })
+    .optional(),
 });
 
 // =============================================================================
@@ -341,7 +409,10 @@ export const ClinicEnrollmentSchema = z.object({
   days_since_last_visit: z.union([z.number(), z.string()]).nullable().optional(),
   days_overdue: z.union([z.number(), z.string()]).nullable().optional(),
   enrollment_type: z.string().nullable().optional(),
-  clinic_specific_summary: z.union([z.string(), z.record(z.unknown())]).nullable().optional(),
+  clinic_specific_summary: z
+    .union([z.string(), z.record(z.unknown())])
+    .nullable()
+    .optional(),
 
   // ===========================================
   // CCC (HIV/AIDS) FIELDS

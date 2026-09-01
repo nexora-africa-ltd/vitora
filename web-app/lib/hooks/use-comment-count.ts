@@ -8,7 +8,10 @@ import type { CommentableEntity } from '@/lib/types/comments';
  * Hook to fetch comment count for an entity.
  * Returns 0 while loading or if no comments exist.
  */
-export function useCommentCount(entityType: CommentableEntity, entityId: number | string | undefined) {
+export function useCommentCount(
+  entityType: CommentableEntity,
+  entityId: number | string | undefined
+) {
   const { data: count = 0 } = useQuery({
     queryKey: ['comment-count', entityType, entityId],
     queryFn: () => commentsApi.count(entityType, entityId!),

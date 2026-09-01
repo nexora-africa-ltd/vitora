@@ -74,22 +74,16 @@ export function SearchableSelect({
           className={cn(
             'w-full justify-between font-normal',
             !selected && 'text-muted-foreground',
-            className,
+            className
           )}
         >
-          <span className="truncate">
-            {selected ? selected.label : placeholder}
-          </span>
+          <span className="truncate">{selected ? selected.label : placeholder}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput
-            placeholder={searchPlaceholder}
-            value={query}
-            onValueChange={setQuery}
-          />
+          <CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
@@ -107,13 +101,13 @@ export function SearchableSelect({
                   <Check
                     className={cn(
                       'mr-2 h-4 w-4 shrink-0',
-                      value === option.value ? 'opacity-100' : 'opacity-0',
+                      value === option.value ? 'opacity-100' : 'opacity-0'
                     )}
                   />
                   <div className="min-w-0">
                     <span className="truncate">{option.label}</span>
                     {option.sublabel && (
-                      <span className="ml-2 text-muted-foreground text-xs">{option.sublabel}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">{option.sublabel}</span>
                     )}
                   </div>
                 </CommandItem>

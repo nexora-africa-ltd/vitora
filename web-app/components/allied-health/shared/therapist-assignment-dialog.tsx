@@ -205,7 +205,7 @@ export function TherapistAssignmentDialog({
         </DialogHeader>
 
         {/* Order Summary */}
-        <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
+        <div className="space-y-2 rounded-lg border bg-muted/50 p-4">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">{order.orderNumber}</span>
             <Badge className={priorityConfig?.className ?? 'bg-gray-100 text-gray-800'}>
@@ -214,7 +214,7 @@ export function TherapistAssignmentDialog({
           </div>
           <div className="text-sm">
             <span className="font-medium">{order.patientName}</span>
-            <span className="text-muted-foreground ml-2">({order.patientMrn})</span>
+            <span className="ml-2 text-muted-foreground">({order.patientMrn})</span>
           </div>
           {order.treatmentTypeName && (
             <div className="text-sm text-muted-foreground">
@@ -223,7 +223,8 @@ export function TherapistAssignmentDialog({
           )}
           {isReassignment && order.currentTherapistName && (
             <div className="text-sm text-muted-foreground">
-              Currently assigned to: <span className="font-medium">{order.currentTherapistName}</span>
+              Currently assigned to:{' '}
+              <span className="font-medium">{order.currentTherapistName}</span>
             </div>
           )}
         </div>
@@ -285,20 +286,13 @@ export function TherapistAssignmentDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isLoading}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isLoading || !selectedTherapistId}
-          >
+          <Button onClick={handleSubmit} disabled={isLoading || !selectedTherapistId}>
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Assigning...
               </>
             ) : isReassignment ? (

@@ -29,11 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -107,12 +103,15 @@ interface ClaimTrackingProps {
 // ============================================================================
 
 export function ClaimStatusBadge({ status, className }: ClaimStatusBadgeProps) {
-  const config: Record<ClaimStatus, {
-    label: string;
-    variant: 'default' | 'secondary' | 'destructive' | 'outline';
-    icon: React.ReactNode;
-    className: string;
-  }> = {
+  const config: Record<
+    ClaimStatus,
+    {
+      label: string;
+      variant: 'default' | 'secondary' | 'destructive' | 'outline';
+      icon: React.ReactNode;
+      className: string;
+    }
+  > = {
     draft: {
       label: 'Draft',
       variant: 'outline',
@@ -220,10 +219,7 @@ export function ClaimStatusBadge({ status, className }: ClaimStatusBadgeProps) {
   const { label, icon, className: statusClassName } = config[status];
 
   return (
-    <Badge
-      variant="outline"
-      className={cn('flex items-center gap-1', statusClassName, className)}
-    >
+    <Badge variant="outline" className={cn('flex items-center gap-1', statusClassName, className)}>
       {icon}
       {label}
     </Badge>
@@ -244,17 +240,8 @@ function CopyReferenceButton({ reference }: { reference: string }) {
   }, [reference]);
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={handleCopy}
-      className="h-6 px-2"
-    >
-      {copied ? (
-        <Check className="h-3 w-3 text-green-600" />
-      ) : (
-        <Copy className="h-3 w-3" />
-      )}
+    <Button variant="ghost" size="sm" onClick={handleCopy} className="h-6 px-2">
+      {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
     </Button>
   );
 }
@@ -316,14 +303,13 @@ export function ClaimSubmissionButton({
         <div className="flex items-center gap-2">
           <ClaimStatusBadge status={claim.status} />
           {claim.sha_reference && (
-            <span className="text-sm text-muted-foreground font-mono">
-              {claim.sha_reference}
-            </span>
+            <span className="font-mono text-sm text-muted-foreground">{claim.sha_reference}</span>
           )}
         </div>
         {claim.sha_reference && (
           <p className="text-xs text-muted-foreground">
-            Submitted on {claim.submitted_at && format(parseISO(claim.submitted_at), 'MMM d, yyyy h:mm a')}
+            Submitted on{' '}
+            {claim.submitted_at && format(parseISO(claim.submitted_at), 'MMM d, yyyy h:mm a')}
           </p>
         )}
       </div>
@@ -343,9 +329,9 @@ export function ClaimSubmissionButton({
         <DialogTrigger asChild>
           <Button disabled={disabled || isSubmitting}>
             {isSubmitting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="mr-2 h-4 w-4" />
             )}
             Submit to SHA
           </Button>
@@ -354,8 +340,8 @@ export function ClaimSubmissionButton({
           <DialogHeader>
             <DialogTitle>Submit Claim to SHA</DialogTitle>
             <DialogDescription>
-              This will create a FHIR R4 bundle and submit the claim to SHA for processing.
-              This action cannot be undone.
+              This will create a FHIR R4 bundle and submit the claim to SHA for processing. This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -364,9 +350,9 @@ export function ClaimSubmissionButton({
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Send className="h-4 w-4 mr-2" />
+                <Send className="mr-2 h-4 w-4" />
               )}
               Confirm Submission
             </Button>
@@ -429,10 +415,10 @@ export function ClaimStatusCard({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               SHA Claim
               {claim.claim_number && (
-                <span className="text-sm font-mono text-muted-foreground">
+                <span className="font-mono text-sm text-muted-foreground">
                   #{claim.claim_number}
                 </span>
               )}
@@ -460,12 +446,10 @@ export function ClaimStatusCard({
         )}
 
         {/* Amounts */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
           <div>
             <p className="text-muted-foreground">Total</p>
-            <p className="font-semibold">
-              {formatCurrency(parseFloat(claim.total_amount ?? '0'))}
-            </p>
+            <p className="font-semibold">{formatCurrency(parseFloat(claim.total_amount ?? '0'))}</p>
           </div>
           {claim.approved_amount && (
             <div>
@@ -503,7 +487,7 @@ export function ClaimStatusCard({
         )}
 
         {/* Timestamps */}
-        <div className="text-xs text-muted-foreground space-y-1">
+        <div className="space-y-1 text-xs text-muted-foreground">
           {claim.submitted_at && (
             <p>Submitted: {format(parseISO(claim.submitted_at), 'MMM d, yyyy h:mm a')}</p>
           )}
@@ -523,20 +507,16 @@ export function ClaimStatusCard({
                 disabled={isResubmitting}
               >
                 {isResubmitting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className="mr-2 h-4 w-4" />
                 )}
                 Resubmit
               </Button>
             )}
             {onRefresh && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onRefresh}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <Button variant="ghost" size="sm" onClick={onRefresh}>
+                <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh Status
               </Button>
             )}
@@ -629,13 +609,7 @@ export function ClaimTracking({
     return null;
   }
 
-  return (
-    <ClaimStatusCard
-      claim={claim}
-      onRefresh={fetchClaim}
-      className={className}
-    />
-  );
+  return <ClaimStatusCard claim={claim} onRefresh={fetchClaim} className={className} />;
 }
 
 // ============================================================================
@@ -651,7 +625,7 @@ export function ClaimListItem({ claim, onClick }: ClaimListItemProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors',
+        'flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50',
         onClick && 'cursor-pointer'
       )}
       onClick={onClick}
@@ -667,20 +641,15 @@ export function ClaimListItem({ claim, onClick }: ClaimListItemProps) {
           {claim.patient_name} • {claim.patient_mrn}
         </p>
         {claim.sha_reference && (
-          <p className="text-xs text-muted-foreground font-mono">
-            Ref: {claim.sha_reference}
-          </p>
+          <p className="font-mono text-xs text-muted-foreground">Ref: {claim.sha_reference}</p>
         )}
       </div>
       <div className="text-right">
-        <p className="font-semibold">
-          {formatCurrency(parseFloat(claim.total_amount ?? '0'))}
-        </p>
+        <p className="font-semibold">{formatCurrency(parseFloat(claim.total_amount ?? '0'))}</p>
         <p className="text-xs text-muted-foreground">
           {claim.submitted_at
             ? format(parseISO(claim.submitted_at), 'MMM d, yyyy')
-            : format(parseISO(claim.created_at), 'MMM d, yyyy')
-          }
+            : format(parseISO(claim.created_at), 'MMM d, yyyy')}
         </p>
       </div>
     </div>

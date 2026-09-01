@@ -78,7 +78,8 @@ export default function DisplaysPage() {
         </CardHeader>
         <CardContent className="relative space-y-3">
           <p className="text-sm text-muted-foreground">
-            Shows patients waiting for triage with position numbers, status, and assigned room. No patient names or identifiers are shown.
+            Shows patients waiting for triage with position numbers, status, and assigned room. No
+            patient names or identifiers are shown.
           </p>
           {triageUrl ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -91,7 +92,11 @@ export default function DisplaysPage() {
                   size="sm"
                   onClick={() => copyToClipboard(triageUrl, 'triage')}
                 >
-                  {copiedId === 'triage' ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+                  {copiedId === 'triage' ? (
+                    <Check className="mr-1 h-4 w-4" />
+                  ) : (
+                    <Copy className="mr-1 h-4 w-4" />
+                  )}
                   {copiedId === 'triage' ? 'Copied' : 'Copy'}
                 </Button>
                 <Button size="sm" asChild>
@@ -103,12 +108,18 @@ export default function DisplaysPage() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground italic">No facility selected.</p>
+            <p className="text-sm italic text-muted-foreground">No facility selected.</p>
           )}
           <div className="flex flex-wrap gap-2 pt-1">
-            <Badge variant="outline" className="text-xs">No auth required</Badge>
-            <Badge variant="outline" className="text-xs">Auto-refreshes 10s</Badge>
-            <Badge variant="outline" className="text-xs">No PII</Badge>
+            <Badge variant="outline" className="text-xs">
+              No auth required
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              Auto-refreshes 10s
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              No PII
+            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -129,22 +140,23 @@ export default function DisplaysPage() {
         </CardHeader>
         <CardContent className="relative space-y-3">
           <p className="text-sm text-muted-foreground">
-            Shows the queue for a specific clinic session with queue numbers, call status, and room assignments.
+            Shows the queue for a specific clinic session with queue numbers, call status, and room
+            assignments.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="w-full sm:flex-1 sm:max-w-md">
-            <Select value={selectedClinic} onValueChange={setSelectedClinic}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a clinic" />
-              </SelectTrigger>
-              <SelectContent>
-                {(clinics?.results ?? []).map((clinic) => (
-                  <SelectItem key={clinic.id} value={clinic.id.toString()}>
-                    {clinic.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="w-full sm:max-w-md sm:flex-1">
+              <Select value={selectedClinic} onValueChange={setSelectedClinic}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a clinic" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(clinics?.results ?? []).map((clinic) => (
+                    <SelectItem key={clinic.id} value={clinic.id.toString()}>
+                      {clinic.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           {clinicUrl && (
@@ -158,7 +170,11 @@ export default function DisplaysPage() {
                   size="sm"
                   onClick={() => copyToClipboard(clinicUrl, 'clinic')}
                 >
-                  {copiedId === 'clinic' ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+                  {copiedId === 'clinic' ? (
+                    <Check className="mr-1 h-4 w-4" />
+                  ) : (
+                    <Copy className="mr-1 h-4 w-4" />
+                  )}
                   {copiedId === 'clinic' ? 'Copied' : 'Copy'}
                 </Button>
                 <Button size="sm" asChild>
@@ -171,9 +187,15 @@ export default function DisplaysPage() {
             </div>
           )}
           <div className="flex flex-wrap gap-2 pt-1">
-            <Badge variant="outline" className="text-xs">No auth required</Badge>
-            <Badge variant="outline" className="text-xs">Auto-refreshes 10s</Badge>
-            <Badge variant="outline" className="text-xs">No PII</Badge>
+            <Badge variant="outline" className="text-xs">
+              No auth required
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              Auto-refreshes 10s
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              No PII
+            </Badge>
           </div>
         </CardContent>
       </Card>

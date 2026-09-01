@@ -4,13 +4,12 @@ import { MOHReportsDashboard } from '@/components/moh-reports/moh-reports-dashbo
 
 export const metadata: Metadata = {
   title: 'MOH Reports | Vitora HMIS',
-  description:
-    'Generate and submit MOH 705, 711, and 717 monthly reports to DHIS2/KHIS.',
+  description: 'Generate and submit MOH 705, 711, and 717 monthly reports to DHIS2/KHIS.',
 };
 
 export default function MOHReportsPage() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title="MOH Reports"
         helpContent="Generate Kenya MOH mandatory monthly reports (705 — Outpatient Morbidity, 711 — Integrated RH/HIV/Malaria/Nutrition, 717 — Workload Summary). Reports are generated as drafts, then reviewed and submitted to DHIS2/KHIS."

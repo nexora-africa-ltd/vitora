@@ -262,16 +262,22 @@ export const licensingAdminApi = {
   /** Email the activation code to the organization's contact email. */
   async sendCode(
     id: number,
-    payload?: { to_email: string; subject?: string; body?: string },
+    payload?: { to_email: string; subject?: string; body?: string }
   ): Promise<{ sent_to: string; organization: string }> {
-    const response = await apiClient.post(`/api/licensing/installations/${id}/send-code/`, payload || {});
+    const response = await apiClient.post(
+      `/api/licensing/installations/${id}/send-code/`,
+      payload || {}
+    );
     return parseResponse(SendCodeResponseSchema, response.data, {
       context: 'licensingAdminApi.sendCode',
     });
   },
 
   /** Update installation fields (e.g., link a facility). */
-  async patch(id: number, data: { facility?: number | null; name?: string }): Promise<InstallationDetail> {
+  async patch(
+    id: number,
+    data: { facility?: number | null; name?: string }
+  ): Promise<InstallationDetail> {
     const response = await apiClient.patch(`/api/licensing/installations/${id}/`, data);
     return parseResponse(InstallationDetailSchema, response.data, {
       context: 'licensingAdminApi.patch',

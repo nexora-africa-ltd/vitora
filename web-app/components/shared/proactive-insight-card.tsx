@@ -68,14 +68,11 @@ interface ProactiveInsightCardProps {
   className?: string;
 }
 
-export function ProactiveInsightCard({
-  insight,
-  onDismiss,
-  className,
-}: ProactiveInsightCardProps) {
+export function ProactiveInsightCard({ insight, onDismiss, className }: ProactiveInsightCardProps) {
   const [isExiting, setIsExiting] = useState(false);
   const severity = severityConfig[insight.severity] || severityConfig.info;
-  const source = sourceConfig[insight.source as keyof typeof sourceConfig] || sourceConfig.rules_engine;
+  const source =
+    sourceConfig[insight.source as keyof typeof sourceConfig] || sourceConfig.rules_engine;
   const SeverityIcon = severity.icon;
   const SourceIcon = source.icon;
 
@@ -90,36 +87,32 @@ export function ProactiveInsightCard({
         'relative rounded-lg border p-3 transition-all duration-200',
         severity.border,
         severity.bg,
-        isExiting && 'opacity-0 scale-95',
-        className,
+        isExiting && 'scale-95 opacity-0',
+        className
       )}
       role="alert"
       aria-label={`${insight.severity} insight: ${insight.title}`}
     >
       {/* Header row */}
       <div className="flex items-start gap-2">
-        <SeverityIcon className={cn('h-4 w-4 mt-0.5 shrink-0', severity.iconColor)} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium leading-tight">
-              {insight.title}
-            </span>
+        <SeverityIcon className={cn('mt-0.5 h-4 w-4 shrink-0', severity.iconColor)} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium leading-tight">{insight.title}</span>
             {/* Source badge */}
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
+            <Badge variant="outline" className="h-4 gap-0.5 px-1.5 py-0 text-[10px]">
               <SourceIcon className="h-2.5 w-2.5" />
               {source.label}
             </Badge>
             {/* Confidence badge (only for non-deterministic) */}
             {insight.confidence < 1.0 && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+              <Badge variant="outline" className="h-4 px-1.5 py-0 text-[10px]">
                 {Math.round(insight.confidence * 100)}%
               </Badge>
             )}
           </div>
           {/* Message */}
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-            {insight.message}
-          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{insight.message}</p>
         </div>
         {/* Dismiss button */}
         <Button
@@ -167,17 +160,14 @@ export function ProactiveInsightsPanel({
   if (isLoading && insights.length === 0) {
     return (
       <div className={cn('space-y-2', className)}>
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Analyzing encounter
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
         </span>
         {[1, 2].map((i) => (
-          <div
-            key={i}
-            className="rounded-lg border border-muted p-3 animate-pulse"
-          >
+          <div key={i} className="animate-pulse rounded-lg border border-muted p-3">
             <div className="flex items-start gap-2">
-              <div className="h-4 w-4 rounded bg-muted mt-0.5" />
+              <div className="mt-0.5 h-4 w-4 rounded bg-muted" />
               <div className="flex-1 space-y-2">
                 <div className="h-3.5 w-2/3 rounded bg-muted" />
                 <div className="h-3 w-full rounded bg-muted" />
@@ -194,20 +184,21 @@ export function ProactiveInsightsPanel({
     return (
       <div className={cn('flex flex-col gap-2', className)}>
         {error && (
-          <p className="text-xs text-destructive bg-destructive/10 rounded px-2.5 py-1.5">
+          <p className="rounded bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
             {error}
           </p>
         )}
         {noInsightsFound && !error && (
-          <p className="text-xs text-muted-foreground bg-muted/50 rounded px-2.5 py-1.5">
-            No clinical insights found for this encounter context. Insights are generated based on vitals, complaints, diagnoses, and medications.
+          <p className="rounded bg-muted/50 px-2.5 py-1.5 text-xs text-muted-foreground">
+            No clinical insights found for this encounter context. Insights are generated based on
+            vitals, complaints, diagnoses, and medications.
           </p>
         )}
         {onGenerate && (
           <Button
             variant="outline"
             size="sm"
-            className="gap-1.5 text-xs w-fit"
+            className="w-fit gap-1.5 text-xs"
             onClick={onGenerate}
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -223,14 +214,14 @@ export function ProactiveInsightsPanel({
       {/* Header */}
       {insights.length > 0 && (
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Clinical Insights
             {isLoading && (
               <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
             )}
           </span>
           {loadedFromCache && !isLoading && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+            <Badge variant="outline" className="h-4 px-1.5 py-0 text-[10px]">
               Loaded from cache
             </Badge>
           )}
@@ -238,7 +229,7 @@ export function ProactiveInsightsPanel({
             <Button
               variant="ghost"
               size="sm"
-              className="h-5 text-[10px] px-1.5 text-muted-foreground"
+              className="h-5 px-1.5 text-[10px] text-muted-foreground"
               onClick={onDismissAll}
             >
               Dismiss all
@@ -248,11 +239,7 @@ export function ProactiveInsightsPanel({
       )}
       {/* Cards */}
       {insights.map((insight) => (
-        <ProactiveInsightCard
-          key={insight.id}
-          insight={insight}
-          onDismiss={onDismiss}
-        />
+        <ProactiveInsightCard key={insight.id} insight={insight} onDismiss={onDismiss} />
       ))}
     </div>
   );

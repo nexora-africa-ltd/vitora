@@ -28,14 +28,21 @@ export interface DischargeSummarySection {
 
 /** Section IDs that get routed to dedicated form fields instead of summary cards. */
 export const ROUTED_SECTION_IDS = new Set([
-  'discharge_medications', 'follow_up', 'follow_up_plan',
-  'discharge_instructions', 'patient_education',
+  'discharge_medications',
+  'follow_up',
+  'follow_up_plan',
+  'discharge_instructions',
+  'patient_education',
 ]);
 
 /** Sections that duplicate existing page UI and should be hidden from cards entirely. */
 export const HIDDEN_SECTION_IDS = new Set([
-  'patient_information', 'reason_for_admission', 'discharge_diagnosis',
-  'patient_demographics', 'admission_details', 'diagnosis',
+  'patient_information',
+  'reason_for_admission',
+  'discharge_diagnosis',
+  'patient_demographics',
+  'admission_details',
+  'diagnosis',
 ]);
 
 /**
@@ -68,7 +75,11 @@ export const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
   { value: 'ABSCONDED', label: 'Absconded/Left Without Notice' },
 ];
 
-export const MATERNITY_CONTINUITY_ACTIONS: { value: MaternityContinuityAction; label: string; description: string }[] = [
+export const MATERNITY_CONTINUITY_ACTIONS: {
+  value: MaternityContinuityAction;
+  label: string;
+  description: string;
+}[] = [
   {
     value: 'SCHEDULE_EARLY_PNC',
     label: 'Schedule Early PNC',

@@ -64,10 +64,9 @@ export const standalonePharmacyApi = {
   },
 
   async linkWalkInToPatient(walkInId: number, patientId: number): Promise<WalkInCustomer> {
-    const response = await apiClient.post(
-      `${BASE}/walkin-customers/${walkInId}/link-patient/`,
-      { patient_id: patientId }
-    );
+    const response = await apiClient.post(`${BASE}/walkin-customers/${walkInId}/link-patient/`, {
+      patient_id: patientId,
+    });
     return parseResponse(WalkInCustomerSchema, response.data, {
       context: 'standalonePharmacyApi.linkWalkInToPatient',
     });
@@ -97,20 +96,18 @@ export const standalonePharmacyApi = {
   },
 
   async acceptExternalPrescription(id: number, autoCreateWalkin = true) {
-    const response = await apiClient.post(
-      `${BASE}/external-prescriptions/${id}/accept/`,
-      { auto_create_walkin: autoCreateWalkin }
-    );
+    const response = await apiClient.post(`${BASE}/external-prescriptions/${id}/accept/`, {
+      auto_create_walkin: autoCreateWalkin,
+    });
     return parseResponse(AcceptExternalPrescriptionResponseSchema, response.data, {
       context: 'standalonePharmacyApi.acceptExternalPrescription',
     });
   },
 
   async rejectExternalPrescription(id: number, reason: string) {
-    const response = await apiClient.post(
-      `${BASE}/external-prescriptions/${id}/reject/`,
-      { reason }
-    );
+    const response = await apiClient.post(`${BASE}/external-prescriptions/${id}/reject/`, {
+      reason,
+    });
     return parseResponse(ExternalPrescriptionRequestSchema, response.data, {
       context: 'standalonePharmacyApi.rejectExternalPrescription',
     });

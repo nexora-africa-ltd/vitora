@@ -2,7 +2,21 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, BadgeCheck, CheckCircle2, ChevronDown, ChevronRight, KeyRound, Loader2, Mail, Search, Settings, Shield, User as UserIcon, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  BadgeCheck,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  KeyRound,
+  Loader2,
+  Mail,
+  Search,
+  Settings,
+  Shield,
+  User as UserIcon,
+  XCircle,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { DHAPractitionerSearch } from '@/components/sha';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -124,7 +138,8 @@ function isProfileMatch(user: User | null, practitioner: DHAPractitioner | null)
 
   const userEmail = normalizeValue(user.email);
   const practitionerEmail = normalizeValue(practitioner.contacts.email);
-  const emailMatches = userEmail.length > 0 && practitionerEmail.length > 0 && userEmail === practitionerEmail;
+  const emailMatches =
+    userEmail.length > 0 && practitionerEmail.length > 0 && userEmail === practitionerEmail;
 
   return namesMatch || emailMatches;
 }
@@ -137,7 +152,8 @@ function getComplianceTone(isCompliant: boolean): {
 } {
   if (isCompliant) {
     return {
-      badge: 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300',
+      badge:
+        'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300',
       panel: 'border-green-200 bg-green-50/60 dark:border-green-900 dark:bg-green-950/20',
       icon: CheckCircle2,
       label: 'Compliant',
@@ -145,7 +161,8 @@ function getComplianceTone(isCompliant: boolean): {
   }
 
   return {
-    badge: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300',
+    badge:
+      'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300',
     panel: 'border-amber-200 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/20',
     icon: AlertTriangle,
     label: 'Needs review',
@@ -159,7 +176,9 @@ export default function ProfilePage() {
   const [permSearch, setPermSearch] = useState('');
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
   const [verifiedPractitioner, setVerifiedPractitioner] = useState<DHAPractitioner | null>(null);
-  const [validatedHwrPractitioner, setValidatedHwrPractitioner] = useState<PractitionerInfo | null>(null);
+  const [validatedHwrPractitioner, setValidatedHwrPractitioner] = useState<PractitionerInfo | null>(
+    null
+  );
   const [isValidatingHwr, setIsValidatingHwr] = useState(false);
   const [hwrValidationError, setHwrValidationError] = useState<string | null>(null);
 
@@ -226,7 +245,9 @@ export default function ProfilePage() {
         }
 
         setValidatedHwrPractitioner(null);
-        setHwrValidationError(error instanceof Error ? error.message : 'Unable to validate HWR number');
+        setHwrValidationError(
+          error instanceof Error ? error.message : 'Unable to validate HWR number'
+        );
       } finally {
         if (isActive) {
           setIsValidatingHwr(false);
@@ -246,14 +267,14 @@ export default function ProfilePage() {
       <PageHeader
         title="Profile"
         helpContent="Review your account details, role access, and security-related settings."
-        actions={(
+        actions={
           <Button asChild variant="outline">
             <Link href="/settings">
               <Settings className="h-4 w-4" />
               Open Settings
             </Link>
           </Button>
-        )}
+        }
       />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
@@ -269,8 +290,12 @@ export default function ProfilePage() {
                 </Avatar>
                 <div className="space-y-2">
                   <div>
-                    <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{displayName}</h2>
-                    <p className="text-sm text-muted-foreground">@{user?.username || 'unknown-user'}</p>
+                    <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                      {displayName}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      @{user?.username || 'unknown-user'}
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary">{roleLabel}</Badge>
@@ -299,7 +324,9 @@ export default function ProfilePage() {
                   <UserIcon className="h-4 w-4 text-primary" />
                   Username
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">{user?.username || 'Not available'}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {user?.username || 'Not available'}
+                </p>
               </div>
 
               <div className="rounded-lg border bg-muted/30 p-4">
@@ -317,7 +344,9 @@ export default function ProfilePage() {
                   <BadgeCheck className="h-4 w-4 text-primary" />
                   HWR ID
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">{staffProfile?.hwr_id || 'Not linked'}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {staffProfile?.hwr_id || 'Not linked'}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -335,11 +364,15 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center justify-between rounded-lg border px-3 py-2">
                 <span className="text-sm text-muted-foreground">Staff Access</span>
-                <span className="text-sm font-medium">{user?.is_staff ? 'Enabled' : 'Disabled'}</span>
+                <span className="text-sm font-medium">
+                  {user?.is_staff ? 'Enabled' : 'Disabled'}
+                </span>
               </div>
               <div className="flex items-center justify-between rounded-lg border px-3 py-2">
                 <span className="text-sm text-muted-foreground">Superuser Access</span>
-                <span className="text-sm font-medium">{user?.is_superuser ? 'Enabled' : 'Disabled'}</span>
+                <span className="text-sm font-medium">
+                  {user?.is_superuser ? 'Enabled' : 'Disabled'}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -356,20 +389,30 @@ export default function ProfilePage() {
                 <span className="text-sm text-muted-foreground">Registry status</span>
                 <Badge className={complianceTone.badge} variant="outline">
                   <ComplianceIcon className="h-3.5 w-3.5" />
-                  {verifiedPractitioner ? complianceTone.label : (validatedHwrPractitioner ? 'Verified by HWR ID' : 'Not verified')}
+                  {verifiedPractitioner
+                    ? complianceTone.label
+                    : validatedHwrPractitioner
+                      ? 'Verified by HWR ID'
+                      : 'Not verified'}
                 </Badge>
               </div>
               <div className="flex items-center justify-between rounded-lg border bg-background/70 px-3 py-2">
                 <span className="text-sm text-muted-foreground">License window</span>
-                <span className={`text-sm font-medium ${verifiedPractitioner ? licenseState.tone : validatedHwrPractitioner ? 'text-green-600' : 'text-muted-foreground'}`}>
-                  {verifiedPractitioner ? licenseState.label : validatedHwrPractitioner?.license_status || 'Not verified'}
+                <span
+                  className={`text-sm font-medium ${verifiedPractitioner ? licenseState.tone : validatedHwrPractitioner ? 'text-green-600' : 'text-muted-foreground'}`}
+                >
+                  {verifiedPractitioner
+                    ? licenseState.label
+                    : validatedHwrPractitioner?.license_status || 'Not verified'}
                 </span>
               </div>
               <div className="flex items-center justify-between rounded-lg border bg-background/70 px-3 py-2">
                 <span className="text-sm text-muted-foreground">Profile match</span>
                 <span className="text-sm font-medium">
                   {verifiedPractitioner
-                    ? (profileMatchesRegistry ? 'Matched' : 'Review required')
+                    ? profileMatchesRegistry
+                      ? 'Matched'
+                      : 'Review required'
                     : validatedHwrPractitioner
                       ? 'Matched via staff HWR link'
                       : 'Pending lookup'}
@@ -379,7 +422,8 @@ export default function ProfilePage() {
                 <div className="rounded-lg border bg-background/70 px-3 py-3 text-sm">
                   <p className="font-medium">{verifiedPractitioner.membership.registration_id}</p>
                   <p className="text-muted-foreground">
-                    {verifiedPractitioner.professional_details.professional_cadre} at {verifiedPractitioner.membership.licensing_body}
+                    {verifiedPractitioner.professional_details.professional_cadre} at{' '}
+                    {verifiedPractitioner.membership.licensing_body}
                   </p>
                 </div>
               ) : validatedHwrPractitioner ? (
@@ -387,7 +431,9 @@ export default function ProfilePage() {
                   <p className="font-medium">{validatedHwrPractitioner.hwr_number}</p>
                   <p className="text-muted-foreground">
                     {validatedHwrPractitioner.cadre}
-                    {validatedHwrPractitioner.registration_board ? ` at ${validatedHwrPractitioner.registration_board}` : ''}
+                    {validatedHwrPractitioner.registration_board
+                      ? ` at ${validatedHwrPractitioner.registration_board}`
+                      : ''}
                   </p>
                 </div>
               ) : (
@@ -462,11 +508,19 @@ export default function ProfilePage() {
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <div className="rounded-lg border bg-muted/30 p-4">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  {hwrCompliant ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <XCircle className="h-4 w-4 text-destructive" />}
+                  {hwrCompliant ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-destructive" />
+                  )}
                   Registry compliance
                 </div>
-                <p className="mt-2 text-sm font-medium">{hwrCompliant ? 'Active and licensed' : 'Non-compliant or inactive'}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{verifiedPractitioner.membership.status}</p>
+                <p className="mt-2 text-sm font-medium">
+                  {hwrCompliant ? 'Active and licensed' : 'Non-compliant or inactive'}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {verifiedPractitioner.membership.status}
+                </p>
               </div>
 
               <div className="rounded-lg border bg-muted/30 p-4">
@@ -474,8 +528,12 @@ export default function ProfilePage() {
                   <Shield className="h-4 w-4 text-primary" />
                   Regulatory body
                 </div>
-                <p className="mt-2 text-sm font-medium">{verifiedPractitioner.membership.licensing_body}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{verifiedPractitioner.professional_details.professional_cadre}</p>
+                <p className="mt-2 text-sm font-medium">
+                  {verifiedPractitioner.membership.licensing_body}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {verifiedPractitioner.professional_details.professional_cadre}
+                </p>
               </div>
 
               <div className="rounded-lg border bg-muted/30 p-4">
@@ -483,8 +541,14 @@ export default function ProfilePage() {
                   <UserIcon className="h-4 w-4 text-primary" />
                   Account alignment
                 </div>
-                <p className="mt-2 text-sm font-medium">{profileMatchesRegistry ? 'User profile matches registry' : 'Review name/email alignment'}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{verifiedPractitioner.contacts.email || 'No registry email on file'}</p>
+                <p className="mt-2 text-sm font-medium">
+                  {profileMatchesRegistry
+                    ? 'User profile matches registry'
+                    : 'Review name/email alignment'}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {verifiedPractitioner.contacts.email || 'No registry email on file'}
+                </p>
               </div>
             </div>
           )}
@@ -501,8 +565,9 @@ export default function ProfilePage() {
             <CardTitle className="text-base sm:text-lg">Assigned Permissions</CardTitle>
             {permissions.length > 0 && (
               <span className="text-sm text-muted-foreground">
-                {permissions.length} permission{permissions.length !== 1 ? 's' : ''}
-                {' '}across {groupPermissionsByDomain(permissions).size} module{groupPermissionsByDomain(permissions).size !== 1 ? 's' : ''}
+                {permissions.length} permission{permissions.length !== 1 ? 's' : ''} across{' '}
+                {groupPermissionsByDomain(permissions).size} module
+                {groupPermissionsByDomain(permissions).size !== 1 ? 's' : ''}
               </span>
             )}
           </div>
@@ -513,7 +578,7 @@ export default function ProfilePage() {
                 value={permSearch}
                 onChange={(e) => setPermSearch(e.target.value)}
                 placeholder="Filter permissions..."
-                className="pl-9 h-9"
+                className="h-9 pl-9"
               />
             </div>
           )}
@@ -524,18 +589,19 @@ export default function ProfilePage() {
               {[...filteredGrouped.entries()].map(([domain, actions]) => {
                 const isExpanded = expandedDomains.has(domain);
                 return (
-                  <div key={domain} className="border rounded-lg">
+                  <div key={domain} className="rounded-lg border">
                     <button
                       type="button"
                       onClick={() => toggleDomain(domain)}
-                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50 rounded-lg transition-colors"
+                      className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {isExpanded
-                          ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                          : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        }
-                        <span className="font-medium truncate">{formatLabel(domain)}</span>
+                      <div className="flex min-w-0 items-center gap-2">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        )}
+                        <span className="truncate font-medium">{formatLabel(domain)}</span>
                       </div>
                       <Badge variant="secondary" className="shrink-0 text-xs">
                         {actions.length}
@@ -545,7 +611,11 @@ export default function ProfilePage() {
                       <div className="px-3 pb-2 pl-9">
                         <div className="flex flex-wrap gap-1.5">
                           {actions.map((action) => (
-                            <Badge key={`${domain}.${action}`} variant="outline" className="py-0.5 text-xs font-normal">
+                            <Badge
+                              key={`${domain}.${action}`}
+                              variant="outline"
+                              className="py-0.5 text-xs font-normal"
+                            >
                               {formatLabel(action)}
                             </Badge>
                           ))}
@@ -556,7 +626,7 @@ export default function ProfilePage() {
                 );
               })}
               {filteredGrouped.size === 0 && permSearch && (
-                <p className="text-sm text-muted-foreground py-4 text-center">
+                <p className="py-4 text-center text-sm text-muted-foreground">
                   No permissions match &ldquo;{permSearch}&rdquo;
                 </p>
               )}

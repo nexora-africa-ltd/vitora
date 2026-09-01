@@ -50,7 +50,8 @@ export const clinicKeys = {
   all: ['clinics'] as const,
   lists: () => [...clinicKeys.all, 'list'] as const,
   list: (params?: ClinicListParams) => [...clinicKeys.lists(), params] as const,
-  infiniteList: (params?: Omit<ClinicListParams, 'page'>) => [...clinicKeys.lists(), 'infinite', params] as const,
+  infiniteList: (params?: Omit<ClinicListParams, 'page'>) =>
+    [...clinicKeys.lists(), 'infinite', params] as const,
   details: () => [...clinicKeys.all, 'detail'] as const,
   detail: (id: number) => [...clinicKeys.details(), id] as const,
   dashboard: (id: number) => [...clinicKeys.all, 'dashboard', id] as const,
@@ -76,7 +77,8 @@ export const clinicKeys = {
 
   // Enrollments
   enrollments: () => [...clinicKeys.all, 'enrollments'] as const,
-  enrollmentsList: (params?: ClinicEnrollmentListParams) => [...clinicKeys.enrollments(), 'list', params] as const,
+  enrollmentsList: (params?: ClinicEnrollmentListParams) =>
+    [...clinicKeys.enrollments(), 'list', params] as const,
   enrollment: (id: number) => [...clinicKeys.enrollments(), id] as const,
   overdueEnrollments: () => [...clinicKeys.enrollments(), 'overdue'] as const,
   defaulters: () => [...clinicKeys.enrollments(), 'defaulters'] as const,
@@ -109,8 +111,7 @@ export function useInfiniteClinics(params?: Omit<ClinicListParams, 'page'>) {
         ...params,
         page: pageParam as number,
       }),
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.next ? allPages.length + 1 : undefined,
+    getNextPageParam: (lastPage, allPages) => (lastPage.next ? allPages.length + 1 : undefined),
     initialPageParam: 1,
   });
 }
@@ -159,7 +160,8 @@ export function useUpdateClinic() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Clinic> }) => clinicsApi.update(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<Clinic> }) =>
+      clinicsApi.update(id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: clinicKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: clinicKeys.lists() });
@@ -188,7 +190,10 @@ export function useDeleteClinic() {
 /**
  * Fetch sessions for a clinic
  */
-export function useClinicSessions(clinicId: number | undefined, params?: { date_from?: string; date_to?: string; page?: number; page_size?: number }) {
+export function useClinicSessions(
+  clinicId: number | undefined,
+  params?: { date_from?: string; date_to?: string; page?: number; page_size?: number }
+) {
   return useQuery({
     queryKey: [...clinicKeys.sessions(clinicId!), params],
     queryFn: () => clinicsApi.listSessions(clinicId!, params),

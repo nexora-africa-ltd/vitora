@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function AnalyticsPage() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title="Analytics"
         helpContent="Facility-level operational intelligence. The Dashboard tab shows encounter volumes, revenue trends, top diagnoses, and demographics. The Explore tab provides embedded Metabase dashboards for ad-hoc analysis."

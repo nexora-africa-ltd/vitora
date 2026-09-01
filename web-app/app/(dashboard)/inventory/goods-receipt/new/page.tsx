@@ -140,7 +140,7 @@ export default function NewGoodsReceiptPage() {
   const watchedItems = form.watch('items');
   const grandTotal = watchedItems.reduce(
     (sum, item) => sum + (Number(item.quantity_received) || 0) * (Number(item.cost_price) || 0),
-    0,
+    0
   );
 
   async function onSubmit(data: GRNFormValues) {
@@ -174,26 +174,36 @@ export default function NewGoodsReceiptPage() {
       toast({ variant: 'success', title: 'Goods receipt created' });
       router.push(`/inventory/goods-receipt/${created.id}`);
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Failed to create GRN', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to create GRN',
+        description: getApiErrorMessage(err),
+      });
     }
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto">
+    <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
       <PageHeader
         title="New Goods Receipt"
         helpContent="Record a delivery of goods. Link to a purchase order or create a standalone receipt. Enter batch numbers and expiry dates for each item."
       />
       <div className="flex flex-wrap gap-2">
-        <Badge variant="outline" className="w-fit">Receive GRN: {canReceiveFromCapabilities ? 'Enabled' : 'Disabled'}</Badge>
-        <Badge variant="outline" className="w-fit">Pricing: {unifiedPricingEnabled ? 'Unified' : 'Manual'}</Badge>
+        <Badge variant="outline" className="w-fit">
+          Receive GRN: {canReceiveFromCapabilities ? 'Enabled' : 'Disabled'}
+        </Badge>
+        <Badge variant="outline" className="w-fit">
+          Pricing: {unifiedPricingEnabled ? 'Unified' : 'Manual'}
+        </Badge>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
           {/* Header */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Receipt Details</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Receipt Details</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <FormField
@@ -203,7 +213,11 @@ export default function NewGoodsReceiptPage() {
                     <FormItem>
                       <FormLabel>Supplier *</FormLabel>
                       <SearchableSelect
-                        options={suppliers.map((s) => ({ value: String(s.id), label: s.name, sublabel: s.code }))}
+                        options={suppliers.map((s) => ({
+                          value: String(s.id),
+                          label: s.name,
+                          sublabel: s.code,
+                        }))}
                         value={String(field.value || '')}
                         onValueChange={field.onChange}
                         placeholder="Select supplier"
@@ -220,7 +234,9 @@ export default function NewGoodsReceiptPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Received Date *</FormLabel>
-                      <FormControl><Input type="date" {...field} /></FormControl>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -231,7 +247,9 @@ export default function NewGoodsReceiptPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Delivery Note #</FormLabel>
-                      <FormControl><Input placeholder="DN number" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="DN number" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -242,7 +260,9 @@ export default function NewGoodsReceiptPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Invoice #</FormLabel>
-                      <FormControl><Input placeholder="Invoice number" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="Invoice number" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -250,7 +270,8 @@ export default function NewGoodsReceiptPage() {
               </div>
               {linkedPO && (
                 <p className="text-sm text-muted-foreground">
-                  Linked to PO <span className="font-mono font-medium">{linkedPO.po_number}</span> — items pre-filled from order.
+                  Linked to PO <span className="font-mono font-medium">{linkedPO.po_number}</span> —
+                  items pre-filled from order.
                 </p>
               )}
               <FormField
@@ -259,7 +280,9 @@ export default function NewGoodsReceiptPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Notes</FormLabel>
-                    <FormControl><Textarea placeholder="Additional notes" rows={2} {...field} /></FormControl>
+                    <FormControl>
+                      <Textarea placeholder="Additional notes" rows={2} {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -284,16 +307,20 @@ export default function NewGoodsReceiptPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {form.formState.errors.items?.root && (
-                <p className="text-sm text-destructive">{form.formState.errors.items.root.message}</p>
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.items.root.message}
+                </p>
               )}
               {fields.map((field, index) => {
                 const qty = Number(watchedItems[index]?.quantity_received) || 0;
                 const cost = Number(watchedItems[index]?.cost_price) || 0;
                 const lineTotal = qty * cost;
                 return (
-                  <div key={field.id} className="rounded-lg border p-3 sm:p-4 space-y-3">
+                  <div key={field.id} className="space-y-3 rounded-lg border p-3 sm:p-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">Item {index + 1}</span>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Item {index + 1}
+                      </span>
                       <Button
                         type="button"
                         variant="ghost"
@@ -313,7 +340,11 @@ export default function NewGoodsReceiptPage() {
                           <FormItem>
                             <FormLabel className="text-xs">Drug *</FormLabel>
                             <SearchableSelect
-                              options={drugs.map((d) => ({ value: String(d.id), label: d.generic_name, sublabel: d.code }))}
+                              options={drugs.map((d) => ({
+                                value: String(d.id),
+                                label: d.generic_name,
+                                sublabel: d.code,
+                              }))}
                               value={String(drugField.value || '')}
                               onValueChange={drugField.onChange}
                               placeholder="Select drug"
@@ -331,7 +362,9 @@ export default function NewGoodsReceiptPage() {
                         render={({ field: batchField }) => (
                           <FormItem>
                             <FormLabel className="text-xs">Batch # *</FormLabel>
-                            <FormControl><Input placeholder="e.g. BN2026001" className="h-9" {...batchField} /></FormControl>
+                            <FormControl>
+                              <Input placeholder="e.g. BN2026001" className="h-9" {...batchField} />
+                            </FormControl>
                             <FormMessage className="text-xs" />
                           </FormItem>
                         )}
@@ -342,7 +375,9 @@ export default function NewGoodsReceiptPage() {
                         render={({ field: expiryField }) => (
                           <FormItem>
                             <FormLabel className="text-xs">Expiry Date *</FormLabel>
-                            <FormControl><Input type="date" className="h-9" {...expiryField} /></FormControl>
+                            <FormControl>
+                              <Input type="date" className="h-9" {...expiryField} />
+                            </FormControl>
                             <FormMessage className="text-xs" />
                           </FormItem>
                         )}
@@ -353,7 +388,9 @@ export default function NewGoodsReceiptPage() {
                         render={({ field: qtyField }) => (
                           <FormItem>
                             <FormLabel className="text-xs">Quantity *</FormLabel>
-                            <FormControl><Input type="number" min={1} className="h-9" {...qtyField} /></FormControl>
+                            <FormControl>
+                              <Input type="number" min={1} className="h-9" {...qtyField} />
+                            </FormControl>
                             <FormMessage className="text-xs" />
                           </FormItem>
                         )}
@@ -399,13 +436,16 @@ export default function NewGoodsReceiptPage() {
                         )}
                       />
                     </div>
-                    <p className="text-xs text-right text-muted-foreground">
-                      Line total: <span className="font-medium text-foreground">{formatCurrency(lineTotal)}</span>
+                    <p className="text-right text-xs text-muted-foreground">
+                      Line total:{' '}
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(lineTotal)}
+                      </span>
                     </p>
                   </div>
                 );
               })}
-              <div className="flex justify-end pt-2 border-t">
+              <div className="flex justify-end border-t pt-2">
                 <p className="text-sm font-bold">Grand Total: {formatCurrency(grandTotal)}</p>
               </div>
             </CardContent>
@@ -413,10 +453,19 @@ export default function NewGoodsReceiptPage() {
 
           {/* Actions */}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !canReceiveFromCapabilities} className="w-full sm:w-auto">
+            <Button
+              type="submit"
+              disabled={isSubmitting || !canReceiveFromCapabilities}
+              className="w-full sm:w-auto"
+            >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Goods Receipt
             </Button>

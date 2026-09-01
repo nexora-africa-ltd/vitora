@@ -149,9 +149,7 @@ test.describe('DICOM Frame Rendering API', () => {
   test('should return 401 or 404 without auth', async ({ request }) => {
     // Backend may return 404 (route not matched) or 401 (unauthorized)
     // depending on URL parsing order
-    const response = await request.get(
-      `${API_BASE}/api/imaging/dicom/1.2.3.4.5/frame/`
-    );
+    const response = await request.get(`${API_BASE}/api/imaging/dicom/1.2.3.4.5/frame/`);
     expect([401, 404]).toContain(response.status());
   });
 });
@@ -210,9 +208,7 @@ test.describe('DICOM Study Detail Page', () => {
     await page.goto('/imaging/studies/1.2.3.4.5.nonexistent');
 
     // Should show error heading (use specific heading to avoid matching multiple elements)
-    await expect(
-      page.getByRole('heading', { name: /not found/i })
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /not found/i })).toBeVisible({ timeout: 10000 });
   });
 
   test('should have viewer and details tabs', async ({ page }) => {

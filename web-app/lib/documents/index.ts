@@ -139,17 +139,9 @@ export {
   type PrintLabelOptions,
 } from './print-label';
 
-export {
-  printReceipt,
-  previewReceipt,
-  type PrintReceiptOptions,
-} from './print-receipt';
+export { printReceipt, previewReceipt, type PrintReceiptOptions } from './print-receipt';
 
-export {
-  printInvoice,
-  previewInvoice,
-  type PrintInvoiceOptions,
-} from './print-invoice';
+export { printInvoice, previewInvoice, type PrintInvoiceOptions } from './print-invoice';
 
 export {
   printRadiologyReport,
@@ -157,31 +149,16 @@ export {
   type PrintRadiologyReportData,
 } from './print-report';
 
-export {
-  printLabReport,
-  type PrintLabReportData,
-} from './print-lab-report';
-export {
-  printPartographReport,
-  type PrintPartographReportData,
-} from './print-partograph-report';
+export { printLabReport, type PrintLabReportData } from './print-lab-report';
+export { printPartographReport, type PrintPartographReportData } from './print-partograph-report';
 
-export {
-  printDischargeDocument,
-  type DischargeDocumentData,
-} from './print-discharge';
+export { printDischargeDocument, type DischargeDocumentData } from './print-discharge';
 
 export {
   printDischargePrescription,
   type PrintDischargePrescriptionOptions,
 } from './print-discharge-prescription';
 
-export {
-  printSickNote,
-  type PrintSickNoteOptions,
-} from './print-sick-note';
+export { printSickNote, type PrintSickNoteOptions } from './print-sick-note';
 
-export {
-  printReferralLetter,
-  type PrintReferralOptions,
-} from './print-referral';
+export { printReferralLetter, type PrintReferralOptions } from './print-referral';

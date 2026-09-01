@@ -50,13 +50,19 @@ export function LabWorkloadChart({ data }: LabWorkloadChartProps) {
   }, [data.by_technician]);
 
   if (dailyData.length === 0 && technicianData.length === 0) {
-    return <ChartEmptyState chartType="bar" title="No workload data" description="No workload data available for this period" />;
+    return (
+      <ChartEmptyState
+        chartType="bar"
+        title="No workload data"
+        description="No workload data available for this period"
+      />
+    );
   }
 
   return (
     <div className="space-y-4">
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-        <TabsList className="grid w-full grid-cols-2 max-w-[240px]">
+        <TabsList className="grid w-full max-w-[240px] grid-cols-2">
           <TabsTrigger value="by_day">By Day</TabsTrigger>
           <TabsTrigger value="by_technician">By Technician</TabsTrigger>
         </TabsList>
@@ -77,7 +83,11 @@ export function LabWorkloadChart({ data }: LabWorkloadChartProps) {
             minHeight="250px"
           />
         ) : (
-          <ChartEmptyState chartType="line" title="No daily data" description="No daily workload data available" />
+          <ChartEmptyState
+            chartType="line"
+            title="No daily data"
+            description="No daily workload data available"
+          />
         )
       ) : technicianData.length > 0 ? (
         <BarChart
@@ -92,17 +102,19 @@ export function LabWorkloadChart({ data }: LabWorkloadChartProps) {
           minHeight="250px"
         />
       ) : (
-        <ChartEmptyState chartType="bar" title="No technician data" description="No technician workload data available" />
+        <ChartEmptyState
+          chartType="bar"
+          title="No technician data"
+          description="No technician workload data available"
+        />
       )}
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground px-2">
+      <div className="flex items-center justify-between px-2 text-sm text-muted-foreground">
         <span>
-          Total Entered:{' '}
-          <strong className="text-foreground">{data.totals.tests_entered}</strong>
+          Total Entered: <strong className="text-foreground">{data.totals.tests_entered}</strong>
         </span>
         <span>
-          Total Verified:{' '}
-          <strong className="text-foreground">{data.totals.tests_verified}</strong>
+          Total Verified: <strong className="text-foreground">{data.totals.tests_verified}</strong>
         </span>
       </div>
     </div>

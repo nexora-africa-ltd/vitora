@@ -26,10 +26,7 @@ export default function NewOTOrderPage() {
         helpContent="Create an occupational therapy referral order. Assess ADL/IADL baselines, set short/long term goals, and specify equipment needs."
       />
 
-      <OTOrderForm
-        patientId={patientId}
-        encounterId={encounterId}
-      />
+      <OTOrderForm patientId={patientId} encounterId={encounterId} />
     </div>
   );
 }

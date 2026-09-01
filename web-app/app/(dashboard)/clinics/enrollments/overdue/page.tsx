@@ -62,9 +62,7 @@ export default function OverdueEnrollmentsPage() {
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            Overdue Appointments
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Overdue Appointments</h1>
           <p className="text-muted-foreground">
             Patients who have missed their scheduled appointments
           </p>
@@ -85,7 +83,7 @@ export default function OverdueEnrollmentsPage() {
             });
           }}
         >
-          <Send className="h-4 w-4 mr-2" />
+          <Send className="mr-2 h-4 w-4" />
           Send Overdue SMS
         </Button>
         <Button
@@ -103,11 +101,11 @@ export default function OverdueEnrollmentsPage() {
             });
           }}
         >
-          <Send className="h-4 w-4 mr-2" />
+          <Send className="mr-2 h-4 w-4" />
           Send Upcoming SMS
         </Button>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
       </div>
@@ -120,8 +118,8 @@ export default function OverdueEnrollmentsPage() {
             {enrollments.length} Patients Overdue
           </CardTitle>
           <CardDescription className="text-orange-600 dark:text-orange-400">
-            These patients have missed their scheduled follow-up appointments and may need
-            outreach or rescheduling.
+            These patients have missed their scheduled follow-up appointments and may need outreach
+            or rescheduling.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -135,11 +133,9 @@ export default function OverdueEnrollmentsPage() {
             </div>
           ) : enrollments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <Calendar className="h-12 w-12 text-green-500 mb-4" />
-              <h3 className="text-lg font-semibold mb-2 text-green-600">
-                No overdue patients!
-              </h3>
-              <p className="text-muted-foreground text-center">
+              <Calendar className="mb-4 h-12 w-12 text-green-500" />
+              <h3 className="mb-2 text-lg font-semibold text-green-600">No overdue patients!</h3>
+              <p className="text-center text-muted-foreground">
                 All enrolled patients are up to date with their appointments.
               </p>
             </div>
@@ -170,9 +166,7 @@ export default function OverdueEnrollmentsPage() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{enrollment.patient_name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {enrollment.patient_mrn}
-                          </p>
+                          <p className="text-sm text-muted-foreground">{enrollment.patient_mrn}</p>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -186,9 +180,7 @@ export default function OverdueEnrollmentsPage() {
                       <TableCell>
                         <Badge
                           variant={isUrgent ? 'destructive' : 'outline'}
-                          className={cn(
-                            !isUrgent && 'border-orange-500 text-orange-600'
-                          )}
+                          className={cn(!isUrgent && 'border-orange-500 text-orange-600')}
                         >
                           {daysOverdue} days
                         </Badge>
@@ -201,18 +193,16 @@ export default function OverdueEnrollmentsPage() {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button variant="outline" size="sm">
-                            <Phone className="h-3 w-3 mr-1" />
+                            <Phone className="mr-1 h-3 w-3" />
                             Contact
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() =>
-                              router.push(`/patients/${enrollment.patient}`)
-                            }
+                            onClick={() => router.push(`/patients/${enrollment.patient}`)}
                           >
                             View
-                            <ChevronRight className="h-4 w-4 ml-1" />
+                            <ChevronRight className="ml-1 h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>

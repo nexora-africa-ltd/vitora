@@ -18,6 +18,7 @@ import logging
 
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db import OperationalError, ProgrammingError
 from django.db.models.fields.files import FieldFile
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
@@ -726,9 +727,15 @@ def auto_queue_for_sync(sender, instance, created, raw=False, **kwargs):  # noqa
     if entry is None:
         return
 
-    data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+    try:
+        data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+        organization, facility = get_tenant_context(instance)
+    except (AttributeError, TypeError, OperationalError, ProgrammingError):
+        # During migrations/bootstrap, model fields and columns may be missing
+        # temporarily. Skip auto-queueing instead of aborting the save path.
+        return
+
     data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
-    organization, facility = get_tenant_context(instance)
 
     _create_sync_queue_entry(
         operation="CREATE" if created else "UPDATE",
@@ -755,7 +762,10 @@ def auto_queue_delete_for_sync(sender, instance, **kwargs):  # noqa: ARG001
     if entry is None:
         return
 
-    organization, facility = get_tenant_context(instance)
+    try:
+        organization, facility = get_tenant_context(instance)
+    except (AttributeError, TypeError, OperationalError, ProgrammingError):
+        return
     _create_sync_queue_entry(
         operation="DELETE",
         organization=organization,
@@ -798,9 +808,13 @@ def requeue_org_membership_on_facility_m2m(sender, instance, action, **kwargs): 
     if entry is None:
         return
 
-    data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+    try:
+        data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
+        organization, facility = get_tenant_context(instance)
+    except (AttributeError, TypeError, OperationalError, ProgrammingError):
+        return
+
     data = add_sync_meta(data, direction=entry.direction, priority=entry.priority)
-    organization, facility = get_tenant_context(instance)
     _create_sync_queue_entry(
         operation="UPDATE",
         organization=organization,

@@ -37,25 +37,10 @@ export default function NewProcedureOrderPage() {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
   const canCreateProcedureOrder = hasPermission('procedures.add_procedureorder');
-
-  if (!canCreateProcedureOrder) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Procedure Order" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create procedure orders.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  const hasProcedureOrderAccess = canCreateProcedureOrder;
 
   // Pre-fill from URL params (e.g., linked from encounter, clinic visit, or admission)
-  const prePatientId = searchParams.get('patient')
-    ? parseInt(searchParams.get('patient')!)
-    : null;
+  const prePatientId = searchParams.get('patient') ? parseInt(searchParams.get('patient')!) : null;
   const preEncounterId = searchParams.get('encounter')
     ? parseInt(searchParams.get('encounter')!)
     : null;
@@ -100,7 +85,7 @@ export default function NewProcedureOrderPage() {
 
   const catalogResults = useMemo(
     () => (procResults?.results || []) as ProcedureCatalogEntry[],
-    [procResults],
+    [procResults]
   );
 
   const { data: catalogGuardData, isLoading: catalogGuardLoading } = useQuery({
@@ -111,13 +96,10 @@ export default function NewProcedureOrderPage() {
 
   const isCatalogUnseeded = !catalogGuardLoading && (catalogGuardData?.count ?? 0) === 0;
 
-  const handlePatientChange = useCallback(
-    (id: number | null, patient: Patient | null) => {
-      setPatientId(id);
-      setSelectedPatient(patient);
-    },
-    [],
-  );
+  const handlePatientChange = useCallback((id: number | null, patient: Patient | null) => {
+    setPatientId(id);
+    setSelectedPatient(patient);
+  }, []);
 
   const handleSelectProcedure = useCallback((proc: ProcedureCatalogEntry) => {
     setSelectedProcedure(proc);
@@ -208,6 +190,20 @@ export default function NewProcedureOrderPage() {
     await createOrder();
   };
 
+  if (!hasProcedureOrderAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Procedure Order" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to create procedure orders.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
@@ -215,7 +211,7 @@ export default function NewProcedureOrderPage() {
         helpContent="Order a procedure for a patient. Select the patient and procedure, provide clinical indication, then submit."
       />
 
-      <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
+      <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
         {/* Step 1: Patient */}
         <Card>
           <CardHeader>
@@ -240,23 +236,28 @@ export default function NewProcedureOrderPage() {
               <Alert>
                 <AlertTitle>Procedure catalog not seeded for this tenant</AlertTitle>
                 <AlertDescription>
-                  No active procedure catalog entries were found for your organization. Seed the procedure catalog before placing procedure orders.
+                  No active procedure catalog entries were found for your organization. Seed the
+                  procedure catalog before placing procedure orders.
                 </AlertDescription>
               </Alert>
             )}
             {selectedProcedure ? (
-              <div className="flex items-start justify-between gap-3 p-3 rounded-lg border bg-muted/30">
+              <div className="flex items-start justify-between gap-3 rounded-lg border bg-muted/30 p-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Syringe className="h-4 w-4 text-primary shrink-0" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Syringe className="h-4 w-4 shrink-0 text-primary" />
                     <p className="font-medium">{selectedProcedure.name}</p>
                     <span className="font-mono text-xs text-muted-foreground">
                       {selectedProcedure.code}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mt-1.5 flex-wrap text-sm text-muted-foreground">
-                    <Badge variant="outline" className="text-xs">{selectedProcedure.category}</Badge>
-                    <Badge className={`${RISK_LEVEL_COLORS[selectedProcedure.risk_level] || ''} text-xs`}>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <Badge variant="outline" className="text-xs">
+                      {selectedProcedure.category}
+                    </Badge>
+                    <Badge
+                      className={`${RISK_LEVEL_COLORS[selectedProcedure.risk_level] || ''} text-xs`}
+                    >
                       {selectedProcedure.risk_level}
                     </Badge>
                     <span>{selectedProcedure.typical_duration_minutes} min</span>
@@ -270,18 +271,14 @@ export default function NewProcedureOrderPage() {
                     )}
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedProcedure(null)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setSelectedProcedure(null)}>
                   Change
                 </Button>
               </div>
             ) : (
               <div className="space-y-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search by procedure name or code..."
                     value={procSearch}
@@ -290,7 +287,7 @@ export default function NewProcedureOrderPage() {
                   />
                 </div>
                 {debouncedProcSearch.length >= 2 && (
-                  <div className="border rounded-md max-h-64 overflow-y-auto">
+                  <div className="max-h-64 overflow-y-auto rounded-md border">
                     {procSearching ? (
                       <div className="p-4 text-center text-sm text-muted-foreground">
                         Searching...
@@ -306,18 +303,21 @@ export default function NewProcedureOrderPage() {
                         <button
                           key={proc.id}
                           type="button"
-                          className="w-full text-left px-3 py-2.5 hover:bg-muted/50 border-b last:border-0 transition-colors"
+                          className="w-full border-b px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-muted/50"
                           onClick={() => handleSelectProcedure(proc)}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="font-medium text-sm truncate">{proc.name}</p>
+                              <p className="truncate text-sm font-medium">{proc.name}</p>
                               <p className="text-xs text-muted-foreground">
-                                {proc.code} &bull; {proc.category} &bull; {proc.typical_duration_minutes} min
+                                {proc.code} &bull; {proc.category} &bull;{' '}
+                                {proc.typical_duration_minutes} min
                               </p>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <Badge className={`${RISK_LEVEL_COLORS[proc.risk_level] || ''} text-xs`}>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <Badge
+                                className={`${RISK_LEVEL_COLORS[proc.risk_level] || ''} text-xs`}
+                              >
                                 {proc.risk_level}
                               </Badge>
                               {proc.base_fee != null && (
@@ -463,14 +463,14 @@ export default function NewProcedureOrderPage() {
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isPending
               ? requestMode === 'EXTERNAL_REQUEST'
                 ? 'Submitting request...'
                 : 'Ordering...'
               : requestMode === 'EXTERNAL_REQUEST'
-              ? 'Create External Request'
-              : 'Place Order'}
+                ? 'Create External Request'
+                : 'Place Order'}
           </Button>
         </div>
       </div>

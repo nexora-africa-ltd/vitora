@@ -6,7 +6,13 @@ import { mfaApi } from '@/lib/api/mfa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 interface MFASetupWizardProps {
@@ -94,27 +100,26 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
             ) : setupData ? (
               <>
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Scan this QR code with your authenticator app (Google Authenticator, Authy,
+                    etc.)
                   </p>
 
                   {setupData.qr_code && (
-                    <div className="flex justify-center mb-4">
+                    <div className="mb-4 flex justify-center">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={`data:image/png;base64,${setupData.qr_code}`}
                         alt="QR Code for MFA setup"
-                        className="border rounded-lg"
+                        className="rounded-lg border"
                       />
                     </div>
                   )}
 
                   <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      Or manually enter this code:
-                    </p>
+                    <p className="text-xs text-muted-foreground">Or manually enter this code:</p>
                     <div className="flex items-center gap-2">
-                      <code className="flex-1 p-2 bg-muted rounded text-sm font-mono">
+                      <code className="flex-1 rounded bg-muted p-2 font-mono text-sm">
                         {setupData.secret}
                       </code>
                       <Button
@@ -128,7 +133,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                     {setupData.provisioning_uri && (
                       <a
                         href={setupData.provisioning_uri}
-                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
+                        className="mt-1 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                       >
                         Open in Authenticator App →
                       </a>
@@ -233,7 +238,8 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
               MFA Setup Complete!
             </DialogTitle>
             <DialogDescription>
-              Save these backup codes in a secure place. You can use them to access your account if you lose your device.
+              Save these backup codes in a secure place. You can use them to access your account if
+              you lose your device.
             </DialogDescription>
           </DialogHeader>
 
@@ -241,7 +247,8 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Important:</strong> These codes are shown only once. Store them securely and don't share them.
+                <strong>Important:</strong> These codes are shown only once. Store them securely and
+                don't share them.
               </AlertDescription>
             </Alert>
 
@@ -259,10 +266,7 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
 
               <div className="grid grid-cols-2 gap-2">
                 {backupCodes.map((code, index) => (
-                  <div
-                    key={index}
-                    className="p-2 bg-muted rounded font-mono text-sm text-center"
-                  >
+                  <div key={index} className="rounded bg-muted p-2 text-center font-mono text-sm">
                     {showBackupCodes ? code : '••••••••'}
                   </div>
                 ))}
@@ -282,7 +286,8 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
             <Alert>
               <Shield className="h-4 w-4" />
               <AlertDescription>
-                Two-factor authentication is now enabled for your account. You'll need your authenticator app or a backup code for future logins.
+                Two-factor authentication is now enabled for your account. You'll need your
+                authenticator app or a backup code for future logins.
               </AlertDescription>
             </Alert>
 

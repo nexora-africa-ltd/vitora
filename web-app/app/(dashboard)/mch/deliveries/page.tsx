@@ -3,15 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Baby,
-  Search,
-  AlertTriangle,
-  Calendar,
-  Heart,
-  Clock,
-  TrendingUp,
-} from 'lucide-react';
+import { Baby, Search, AlertTriangle, Calendar, Heart, Clock, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { StatsCard } from '@/components/dashboard/stats-card';
@@ -120,10 +112,7 @@ export default function DeliveriesDashboardPage() {
   });
 
   // Delivery list
-  const {
-    data: deliveriesData,
-    isLoading: listLoading,
-  } = useQuery({
+  const { data: deliveriesData, isLoading: listLoading } = useQuery({
     queryKey: ['deliveries-list', page, debouncedSearch, statusFilter, outcomeFilter, typeFilter],
     queryFn: () =>
       deliveriesApi.list(undefined, page, {
@@ -140,10 +129,23 @@ export default function DeliveriesDashboardPage() {
 
   // Urgency tag for upcoming deliveries
   const getEddUrgency = (daysUntil: number) => {
-    if (daysUntil < 0) return { label: `${Math.abs(daysUntil)}d overdue`, className: 'bg-destructive text-destructive-foreground' };
-    if (daysUntil === 0) return { label: 'Due today', className: 'bg-destructive text-destructive-foreground' };
-    if (daysUntil <= 7) return { label: `${daysUntil}d`, className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' };
-    if (daysUntil <= 14) return { label: `${daysUntil}d`, className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' };
+    if (daysUntil < 0)
+      return {
+        label: `${Math.abs(daysUntil)}d overdue`,
+        className: 'bg-destructive text-destructive-foreground',
+      };
+    if (daysUntil === 0)
+      return { label: 'Due today', className: 'bg-destructive text-destructive-foreground' };
+    if (daysUntil <= 7)
+      return {
+        label: `${daysUntil}d`,
+        className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+      };
+    if (daysUntil <= 14)
+      return {
+        label: `${daysUntil}d`,
+        className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+      };
     return { label: `${daysUntil}d`, className: 'bg-muted text-muted-foreground' };
   };
 
@@ -156,7 +158,7 @@ export default function DeliveriesDashboardPage() {
         />
 
         {/* Stats Cards */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <StatsCard
             title="Active Pregnancies"
             value={stats?.active_pregnancies ?? '—'}
@@ -195,8 +197,8 @@ export default function DeliveriesDashboardPage() {
         {/* High-risk alert banner */}
         {stats && stats.high_risk_due_soon > 0 && (
           <Card className="border-destructive/50 bg-destructive/5">
-            <CardContent className="py-3 px-4 flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+            <CardContent className="flex items-center gap-3 px-4 py-3">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
               <div className="text-sm">
                 <span className="font-semibold text-destructive">
                   {stats.high_risk_due_soon} high-risk
@@ -241,7 +243,7 @@ export default function DeliveriesDashboardPage() {
                 {/* Overdue section */}
                 {dashboard.upcoming_deliveries.some((d) => d.days_until_edd < 0) && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-destructive flex items-center gap-2">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-destructive">
                       <AlertTriangle className="h-4 w-4" />
                       Overdue
                     </h3>
@@ -261,9 +263,11 @@ export default function DeliveriesDashboardPage() {
                 )}
 
                 {/* Due this week */}
-                {dashboard.upcoming_deliveries.some((d) => d.days_until_edd >= 0 && d.days_until_edd <= 7) && (
+                {dashboard.upcoming_deliveries.some(
+                  (d) => d.days_until_edd >= 0 && d.days_until_edd <= 7
+                ) && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-orange-700 dark:text-orange-400 flex items-center gap-2">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-orange-700 dark:text-orange-400">
                       <Clock className="h-4 w-4" />
                       Due This Week
                     </h3>
@@ -283,9 +287,11 @@ export default function DeliveriesDashboardPage() {
                 )}
 
                 {/* Due within 30 days */}
-                {dashboard.upcoming_deliveries.some((d) => d.days_until_edd > 7 && d.days_until_edd <= 30) && (
+                {dashboard.upcoming_deliveries.some(
+                  (d) => d.days_until_edd > 7 && d.days_until_edd <= 30
+                ) && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                       <Calendar className="h-4 w-4" />
                       Due Within 30 Days
                     </h3>
@@ -307,7 +313,7 @@ export default function DeliveriesDashboardPage() {
                 {/* Later */}
                 {dashboard.upcoming_deliveries.some((d) => d.days_until_edd > 30) && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                       <Calendar className="h-4 w-4" />
                       Later
                     </h3>
@@ -339,8 +345,8 @@ export default function DeliveriesDashboardPage() {
           <TabsContent value="recent" className="space-y-4">
             {/* Filters */}
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="relative min-w-[200px] max-w-sm flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search mother, MRN, MCH no..."
                   value={search}
@@ -351,7 +357,13 @@ export default function DeliveriesDashboardPage() {
                   className="pl-9"
                 />
               </div>
-              <Select value={outcomeFilter} onValueChange={(v) => { setOutcomeFilter(v); setPage(1); }}>
+              <Select
+                value={outcomeFilter}
+                onValueChange={(v) => {
+                  setOutcomeFilter(v);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="All Outcomes" />
                 </SelectTrigger>
@@ -363,7 +375,13 @@ export default function DeliveriesDashboardPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
+              <Select
+                value={typeFilter}
+                onValueChange={(v) => {
+                  setTypeFilter(v);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
@@ -375,7 +393,13 @@ export default function DeliveriesDashboardPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setStatusFilter(v);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
@@ -401,7 +425,7 @@ export default function DeliveriesDashboardPage() {
                   header: 'Mother',
                   cell: (d) => (
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{d.mother_name}</p>
+                      <p className="truncate font-medium">{d.mother_name}</p>
                       <p className="text-xs text-muted-foreground">{d.mother_mrn}</p>
                     </div>
                   ),
@@ -409,7 +433,9 @@ export default function DeliveriesDashboardPage() {
                 {
                   key: 'mch_number',
                   header: 'MCH No.',
-                  cell: (d) => <span className="text-sm font-mono">{d.registration_mch_number}</span>,
+                  cell: (d) => (
+                    <span className="font-mono text-sm">{d.registration_mch_number}</span>
+                  ),
                   hideOnMobile: true,
                 },
                 {
@@ -427,7 +453,7 @@ export default function DeliveriesDashboardPage() {
                   key: 'outcome',
                   header: 'Outcome',
                   cell: (d) => (
-                    <Badge className={`${OUTCOME_COLORS[d.delivery_outcome]} shrink-0 w-fit`}>
+                    <Badge className={`${OUTCOME_COLORS[d.delivery_outcome]} w-fit shrink-0`}>
                       {OUTCOME_LABELS[d.delivery_outcome]}
                     </Badge>
                   ),
@@ -437,9 +463,15 @@ export default function DeliveriesDashboardPage() {
                   header: 'Baby',
                   cell: (d) => (
                     <div className="text-sm">
-                      <span>{d.baby_gender === 'M' ? '♂ Male' : d.baby_gender === 'F' ? '♀ Female' : '—'}</span>
+                      <span>
+                        {d.baby_gender === 'M'
+                          ? '♂ Male'
+                          : d.baby_gender === 'F'
+                            ? '♀ Female'
+                            : '—'}
+                      </span>
                       {d.birth_weight && (
-                        <span className="text-muted-foreground ml-2">{d.birth_weight} kg</span>
+                        <span className="ml-2 text-muted-foreground">{d.birth_weight} kg</span>
                       )}
                     </div>
                   ),
@@ -456,16 +488,16 @@ export default function DeliveriesDashboardPage() {
               ]}
               mobileCard={(d) => (
                 <Card className="p-3" onClick={() => router.push(`/mch/deliveries/${d.id}`)}>
-                  <div className="flex justify-between items-start gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{d.mother_name}</p>
+                      <p className="truncate font-medium">{d.mother_name}</p>
                       <p className="text-xs text-muted-foreground">
                         {d.mother_mrn} • {d.registration_mch_number}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {formatDate(d.delivery_date)} • {TYPE_LABELS[d.delivery_type]}
                       </p>
-                      <div className="flex items-center gap-2 mt-1.5">
+                      <div className="mt-1.5 flex items-center gap-2">
                         <span className="text-xs">
                           {d.baby_gender === 'M' ? '♂' : d.baby_gender === 'F' ? '♀' : '—'}
                           {d.birth_weight ? ` ${d.birth_weight} kg` : ''}
@@ -473,7 +505,9 @@ export default function DeliveriesDashboardPage() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <Badge className={`${OUTCOME_COLORS[d.delivery_outcome]} shrink-0 w-fit text-xs`}>
+                      <Badge
+                        className={`${OUTCOME_COLORS[d.delivery_outcome]} w-fit shrink-0 text-xs`}
+                      >
                         {OUTCOME_LABELS[d.delivery_outcome]}
                       </Badge>
                       {d.alerts.length > 0 && (
@@ -494,14 +528,14 @@ export default function DeliveriesDashboardPage() {
                 </span>
                 <div className="flex gap-2">
                   <button
-                    className="px-3 py-1 border rounded-md disabled:opacity-50 hover:bg-muted"
+                    className="rounded-md border px-3 py-1 hover:bg-muted disabled:opacity-50"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
                     Previous
                   </button>
                   <button
-                    className="px-3 py-1 border rounded-md disabled:opacity-50 hover:bg-muted"
+                    className="rounded-md border px-3 py-1 hover:bg-muted disabled:opacity-50"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >
@@ -548,17 +582,14 @@ interface UpcomingDeliveryCardProps {
 
 function UpcomingDeliveryCard({ delivery, urgency, onClick }: UpcomingDeliveryCardProps) {
   return (
-    <Card
-      className="cursor-pointer hover:bg-muted/50 transition-colors"
-      onClick={onClick}
-    >
-      <CardContent className="py-3 px-4">
+    <Card className="cursor-pointer transition-colors hover:bg-muted/50" onClick={onClick}>
+      <CardContent className="px-4 py-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="font-medium truncate">{delivery.mother_name}</p>
+              <p className="truncate font-medium">{delivery.mother_name}</p>
               {delivery.is_high_risk && (
-                <Badge variant="destructive" className="text-xs shrink-0">
+                <Badge variant="destructive" className="shrink-0 text-xs">
                   High Risk
                 </Badge>
               )}
@@ -567,23 +598,21 @@ function UpcomingDeliveryCard({ delivery, urgency, onClick }: UpcomingDeliveryCa
               {delivery.mother_mrn} • {delivery.mch_number}
             </p>
             {delivery.gestation_display && (
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {delivery.gestation_display}
                 {delivery.trimester ? ` • T${delivery.trimester}` : ''}
               </p>
             )}
             {delivery.is_high_risk && delivery.risk_factors && (
-              <p className="text-xs text-destructive/80 mt-0.5 truncate">
-                <AlertTriangle className="h-3 w-3 inline mr-1" />
+              <p className="mt-0.5 truncate text-xs text-destructive/80">
+                <AlertTriangle className="mr-1 inline h-3 w-3" />
                 {delivery.risk_factors}
               </p>
             )}
           </div>
           <div className="flex items-center gap-2 sm:flex-col sm:items-end">
-            <Badge className={`${urgency.className} shrink-0 w-fit`}>{urgency.label}</Badge>
-            <span className="text-xs text-muted-foreground">
-              EDD: {formatDate(delivery.edd)}
-            </span>
+            <Badge className={`${urgency.className} w-fit shrink-0`}>{urgency.label}</Badge>
+            <span className="text-xs text-muted-foreground">EDD: {formatDate(delivery.edd)}</span>
           </div>
         </div>
       </CardContent>

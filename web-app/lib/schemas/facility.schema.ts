@@ -51,7 +51,13 @@ export const FacilityListItemSchema = z.object({
   branch_code: z.string().default(''),
   sha_contracted: z.boolean(),
   operating_mode: z
-    .enum(['FULL_HMIS', 'STANDALONE_LAB', 'STANDALONE_PHARMACY', 'STANDALONE_IMAGING', 'STANDALONE_DIAGNOSTIC'])
+    .enum([
+      'FULL_HMIS',
+      'STANDALONE_LAB',
+      'STANDALONE_PHARMACY',
+      'STANDALONE_IMAGING',
+      'STANDALONE_DIAGNOSTIC',
+    ])
     .optional(),
   is_active: z.boolean(),
 });

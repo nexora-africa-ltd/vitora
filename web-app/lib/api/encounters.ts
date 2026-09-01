@@ -73,7 +73,9 @@ export const encountersApi = {
     const response = await apiClient.get<PaginatedResponse<Encounter>>('/api/encounters/', {
       params,
     });
-    return parseResponse(PaginatedEncounterSchema, response.data, { context: 'encountersApi.list' });
+    return parseResponse(PaginatedEncounterSchema, response.data, {
+      context: 'encountersApi.list',
+    });
   },
 
   /**
@@ -130,14 +132,13 @@ export const encountersApi = {
     patientId: number,
     options?: { chief_complaint?: string; encounter_type?: string }
   ): Promise<Encounter> {
-    const response = await apiClient.post<Encounter>(
-      '/api/encounters/quick_consultation/',
-      {
-        patient: patientId,
-        ...options,
-      }
-    );
-    return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.quickConsultation' });
+    const response = await apiClient.post<Encounter>('/api/encounters/quick_consultation/', {
+      patient: patientId,
+      ...options,
+    });
+    return parseResponse(EncounterSchema, response.data, {
+      context: 'encountersApi.quickConsultation',
+    });
   },
 
   // ===========================================================================
@@ -154,7 +155,10 @@ export const encountersApi = {
    * @returns Transition details including previous status and timestamp
    * @throws 400 Bad Request if the transition is invalid
    */
-  async transition(id: IdParam, data: EncounterTransitionRequest): Promise<EncounterTransitionResponse> {
+  async transition(
+    id: IdParam,
+    data: EncounterTransitionRequest
+  ): Promise<EncounterTransitionResponse> {
     const response = await apiClient.post<EncounterTransitionResponse>(
       `/api/encounters/${id}/transition/`,
       data
@@ -175,9 +179,7 @@ export const encountersApi = {
    * @returns List of related encounters
    */
   async getRelated(id: IdParam): Promise<RelatedEncounter[]> {
-    const response = await apiClient.get<RelatedEncounter[]>(
-      `/api/encounters/${id}/related/`
-    );
+    const response = await apiClient.get<RelatedEncounter[]>(`/api/encounters/${id}/related/`);
     return parseResponse(z.array(RelatedEncounterSchema), response.data, {
       context: 'encountersApi.getRelated',
     }) as RelatedEncounter[];
@@ -217,10 +219,10 @@ export const encountersApi = {
    * @throws 400 Bad Request if encounter status is invalid
    */
   async claim(id: IdParam): Promise<EncounterClaimResponse> {
-    const response = await apiClient.post<EncounterClaimResponse>(
-      `/api/encounters/${id}/claim/`
-    );
-    return parseResponse(EncounterClaimResponseSchema, response.data, { context: 'encountersApi.claim' });
+    const response = await apiClient.post<EncounterClaimResponse>(`/api/encounters/${id}/claim/`);
+    return parseResponse(EncounterClaimResponseSchema, response.data, {
+      context: 'encountersApi.claim',
+    });
   },
 
   /**
@@ -238,7 +240,9 @@ export const encountersApi = {
     const response = await apiClient.post<EncounterReleaseResponse>(
       `/api/encounters/${id}/release/`
     );
-    return parseResponse(EncounterReleaseResponseSchema, response.data, { context: 'encountersApi.release' });
+    return parseResponse(EncounterReleaseResponseSchema, response.data, {
+      context: 'encountersApi.release',
+    });
   },
 
   /**
@@ -255,7 +259,9 @@ export const encountersApi = {
       '/api/encounters/my_claimed/',
       { params }
     );
-    return parseResponse(MyClaimedEncountersResponseSchema, response.data, { context: 'encountersApi.getMyClaimed' });
+    return parseResponse(MyClaimedEncountersResponseSchema, response.data, {
+      context: 'encountersApi.getMyClaimed',
+    });
   },
 
   /**
@@ -273,7 +279,9 @@ export const encountersApi = {
       '/api/encounters/all_claimed/',
       { params }
     );
-    return parseResponse(AllClaimedEncountersResponseSchema, response.data, { context: 'encountersApi.getAllClaimed' });
+    return parseResponse(AllClaimedEncountersResponseSchema, response.data, {
+      context: 'encountersApi.getAllClaimed',
+    });
   },
 
   /**
@@ -297,7 +305,9 @@ export const encountersApi = {
       `/api/encounters/${encounterId}/diagnoses/`,
       data
     );
-    return parseResponse(DiagnosisSchema, response.data, { context: 'encountersApi.createDiagnosis' });
+    return parseResponse(DiagnosisSchema, response.data, {
+      context: 'encountersApi.createDiagnosis',
+    });
   },
 
   /**
@@ -310,12 +320,18 @@ export const encountersApi = {
   /**
    * Update a diagnosis (e.g., change certainty after lab results).
    */
-  async updateDiagnosis(encounterId: IdParam, diagnosisId: number, data: Partial<CreateDiagnosisData>): Promise<Diagnosis> {
+  async updateDiagnosis(
+    encounterId: IdParam,
+    diagnosisId: number,
+    data: Partial<CreateDiagnosisData>
+  ): Promise<Diagnosis> {
     const response = await apiClient.patch<Diagnosis>(
       `/api/encounters/${encounterId}/diagnoses/${diagnosisId}/`,
       data
     );
-    return parseResponse(DiagnosisSchema, response.data, { context: 'encountersApi.updateDiagnosis' });
+    return parseResponse(DiagnosisSchema, response.data, {
+      context: 'encountersApi.updateDiagnosis',
+    });
   },
 
   /**
@@ -326,7 +342,9 @@ export const encountersApi = {
       const response = await apiClient.get<TreatmentPlan>(
         `/api/encounters/${encounterId}/treatment-plan/`
       );
-      return parseResponse(TreatmentPlanSchema, response.data, { context: 'encountersApi.getTreatmentPlan' }) as TreatmentPlan;
+      return parseResponse(TreatmentPlanSchema, response.data, {
+        context: 'encountersApi.getTreatmentPlan',
+      }) as TreatmentPlan;
     } catch (error: unknown) {
       const axiosError = error as { response?: { status?: number } };
       if (axiosError.response?.status === 404) {
@@ -345,12 +363,16 @@ export const encountersApi = {
    *
    * Sorted by arrival time (created_at) ascending.
    */
-  async getPreTriageQueue(params?: PreTriageQueueParams): Promise<PaginatedResponse<PreTriageQueueItem>> {
+  async getPreTriageQueue(
+    params?: PreTriageQueueParams
+  ): Promise<PaginatedResponse<PreTriageQueueItem>> {
     const response = await apiClient.get<PaginatedResponse<PreTriageQueueItem>>(
       '/api/encounters/pre_triage_queue/',
       { params }
     );
-    return parseResponse(PaginatedPreTriageQueueSchema, response.data, { context: 'encountersApi.getPreTriageQueue' });
+    return parseResponse(PaginatedPreTriageQueueSchema, response.data, {
+      context: 'encountersApi.getPreTriageQueue',
+    });
   },
 
   /**
@@ -370,7 +392,9 @@ export const encountersApi = {
       `/api/encounters/${encounterId}/edit_chief_complaint/`,
       data
     );
-    return parseResponse(EncounterSchema, response.data, { context: 'encountersApi.editChiefComplaint' });
+    return parseResponse(EncounterSchema, response.data, {
+      context: 'encountersApi.editChiefComplaint',
+    });
   },
 
   // ===========================================================================
@@ -394,7 +418,9 @@ export const encountersApi = {
       `/api/encounters/${encounterId}/populate-template/`,
       { params }
     );
-    return parseResponse(TemplatePopulateResponseSchema, response.data, { context: 'encountersApi.populateTemplate' });
+    return parseResponse(TemplatePopulateResponseSchema, response.data, {
+      context: 'encountersApi.populateTemplate',
+    });
   },
 
   /**
@@ -413,7 +439,9 @@ export const encountersApi = {
         template_data: templateData,
       }
     );
-    return parseResponse(TemplateSyncResponseSchema, response.data, { context: 'encountersApi.syncTemplate' });
+    return parseResponse(TemplateSyncResponseSchema, response.data, {
+      context: 'encountersApi.syncTemplate',
+    });
   },
 
   /**
@@ -423,7 +451,9 @@ export const encountersApi = {
     const response = await apiClient.get<TemplateSnapshot[]>(
       `/api/encounters/${encounterId}/template-snapshots/`
     );
-    return parseResponse(TemplateSnapshotArraySchema, response.data, { context: 'encountersApi.listTemplateSnapshots' });
+    return parseResponse(TemplateSnapshotArraySchema, response.data, {
+      context: 'encountersApi.listTemplateSnapshots',
+    });
   },
 
   /**
@@ -442,7 +472,9 @@ export const encountersApi = {
         template_data: templateData,
       }
     );
-    return parseResponse(TemplateSnapshotSchema, response.data, { context: 'encountersApi.createTemplateSnapshot' });
+    return parseResponse(TemplateSnapshotSchema, response.data, {
+      context: 'encountersApi.createTemplateSnapshot',
+    });
   },
 
   // ============ SNOMED CT Search ============
@@ -456,7 +488,9 @@ export const encountersApi = {
     const response = await apiClient.get('/api/encounters/snomed/search/', {
       params: { q: query },
     });
-    return parseResponse(SNOMEDSearchResponseSchema, response.data, { context: 'encountersApi.searchSNOMED' });
+    return parseResponse(SNOMEDSearchResponseSchema, response.data, {
+      context: 'encountersApi.searchSNOMED',
+    });
   },
 };
 

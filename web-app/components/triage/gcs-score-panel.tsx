@@ -119,13 +119,18 @@ function calculateTotal(scores: GCSScores): number | null {
   return null;
 }
 
-function getSeverity(total: number | null): { label: string; description: string; color: string; bgColor: string } {
+function getSeverity(total: number | null): {
+  label: string;
+  description: string;
+  color: string;
+  bgColor: string;
+} {
   if (total === null) {
     return {
       label: 'Incomplete',
       description: 'Complete all three components to calculate total',
       color: 'text-muted-foreground',
-      bgColor: 'bg-muted'
+      bgColor: 'bg-muted',
     };
   }
   if (total <= 8) {
@@ -133,7 +138,7 @@ function getSeverity(total: number | null): { label: string; description: string
       label: 'Severe Brain Injury',
       description: 'GCS 3-8: Coma - May require intubation',
       color: 'text-red-700 dark:text-red-300',
-      bgColor: 'bg-red-100 dark:bg-red-950'
+      bgColor: 'bg-red-100 dark:bg-red-950',
     };
   }
   if (total <= 12) {
@@ -141,14 +146,14 @@ function getSeverity(total: number | null): { label: string; description: string
       label: 'Moderate Brain Injury',
       description: 'GCS 9-12: Close neurological monitoring required',
       color: 'text-orange-700 dark:text-orange-300',
-      bgColor: 'bg-orange-100 dark:bg-orange-950'
+      bgColor: 'bg-orange-100 dark:bg-orange-950',
     };
   }
   return {
     label: 'Mild Brain Injury',
     description: 'GCS 13-15: Normal or mild impairment',
     color: 'text-green-700 dark:text-green-300',
-    bgColor: 'bg-green-100 dark:bg-green-950'
+    bgColor: 'bg-green-100 dark:bg-green-950',
   };
 }
 
@@ -194,13 +199,10 @@ function GCSComponentSelector({ config, value, onChange, disabled }: GCSComponen
                   : 'border-border hover:bg-muted/50'
               )}
             >
-              <RadioGroupItem
-                value={option.value.toString()}
-                className="sr-only"
-              />
+              <RadioGroupItem value={option.value.toString()} className="sr-only" />
               <span className="text-lg font-bold">{option.value}</span>
               <span className="text-xs font-medium">{option.label}</span>
-              <span className="mt-1 text-[10px] text-muted-foreground line-clamp-2">
+              <span className="mt-1 line-clamp-2 text-[10px] text-muted-foreground">
                 {option.description}
               </span>
             </label>
@@ -240,10 +242,10 @@ export function GCSScorePanel({
           <div className="flex items-center gap-2">
             {/* Total Score Badge */}
             <div className={cn('rounded-lg px-3 py-1.5 text-center', severity.bgColor)}>
-              <div className="text-2xl font-bold tabular-nums">
-                {total ?? '-'}
-              </div>
-              <div className={cn('text-[10px] font-medium uppercase tracking-wide', severity.color)}>
+              <div className="text-2xl font-bold tabular-nums">{total ?? '-'}</div>
+              <div
+                className={cn('text-[10px] font-medium uppercase tracking-wide', severity.color)}
+              >
                 {severity.label}
               </div>
             </div>
@@ -267,8 +269,8 @@ export function GCSScorePanel({
           <Alert className="border-orange-500 bg-orange-50 text-orange-900 dark:bg-orange-950 dark:text-orange-100">
             <AlertTriangle className="h-4 w-4 text-orange-600" />
             <AlertDescription>
-              <strong>Moderate brain injury (GCS 9-12).</strong> Close neurological monitoring required.
-              Consider CT head scan.
+              <strong>Moderate brain injury (GCS 9-12).</strong> Close neurological monitoring
+              required. Consider CT head scan.
             </AlertDescription>
           </Alert>
         )}
@@ -291,9 +293,7 @@ export function GCSScorePanel({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Total:</span>
-            <span className={cn('text-lg font-bold', severity.color)}>
-              {total ?? 'Incomplete'}
-            </span>
+            <span className={cn('text-lg font-bold', severity.color)}>{total ?? 'Incomplete'}</span>
           </div>
         </div>
       </CardContent>

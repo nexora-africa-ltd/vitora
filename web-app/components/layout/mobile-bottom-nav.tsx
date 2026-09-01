@@ -3,14 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
-import {
-  Stethoscope,
-  LayoutDashboard,
-  UserCheck,
-  Thermometer,
-  Pill,
-  Users,
-} from 'lucide-react';
+import { Stethoscope, LayoutDashboard, UserCheck, Thermometer, Pill, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
 import { usePermissions } from '@/lib/hooks/use-permissions';
@@ -68,14 +61,14 @@ export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
     [todayCheckins?.count, waitingTriageQueue?.count]
   );
 
-  const hasTriageWorkflow = canAccessModule('triage' as never)
-    && canPerformAction('triage.view_queue' as never);
-  const hasPharmacyWorkflow = canAccessModule('pharmacy' as never)
-    && canPerformAction('pharmacy.dispense' as never);
+  const hasTriageWorkflow =
+    canAccessModule('triage' as never) && canPerformAction('triage.view_queue' as never);
+  const hasPharmacyWorkflow =
+    canAccessModule('pharmacy' as never) && canPerformAction('pharmacy.dispense' as never);
 
-  const visibleTabs = useMemo(
-    () => {
-      const workflowTab: BottomTab | null = hasPharmacyWorkflow && !hasTriageWorkflow
+  const visibleTabs = useMemo(() => {
+    const workflowTab: BottomTab | null =
+      hasPharmacyWorkflow && !hasTriageWorkflow
         ? PHARMACY_TAB
         : hasTriageWorkflow
           ? TRIAGE_TAB
@@ -90,32 +83,30 @@ export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
                 }
               : null;
 
-      const tabs: BottomTab[] = [];
+    const tabs: BottomTab[] = [];
 
-      for (const tab of STATIC_TABS.slice(0, 2)) {
-        if (canAccessModule(tab.moduleKey as never)) {
-          tabs.push({
-            ...tab,
-            badgeKey: tab.href === '/patients/checkin' ? 'checkin' : undefined,
-          });
-        }
+    for (const tab of STATIC_TABS.slice(0, 2)) {
+      if (canAccessModule(tab.moduleKey as never)) {
+        tabs.push({
+          ...tab,
+          badgeKey: tab.href === '/patients/checkin' ? 'checkin' : undefined,
+        });
       }
+    }
 
-      if (workflowTab && canAccessModule(workflowTab.moduleKey as never)) {
-        tabs.push(workflowTab);
+    if (workflowTab && canAccessModule(workflowTab.moduleKey as never)) {
+      tabs.push(workflowTab);
+    }
+
+    for (const tab of STATIC_TABS.slice(2)) {
+      if (workflowTab?.href === tab.href) continue;
+      if (canAccessModule(tab.moduleKey as never)) {
+        tabs.push(tab);
       }
+    }
 
-      for (const tab of STATIC_TABS.slice(2)) {
-        if (workflowTab?.href === tab.href) continue;
-        if (canAccessModule(tab.moduleKey as never)) {
-          tabs.push(tab);
-        }
-      }
-
-      return tabs.slice(0, 5);
-    },
-    [canAccessModule, hasPharmacyWorkflow, hasTriageWorkflow]
-  );
+    return tabs.slice(0, 5);
+  }, [canAccessModule, hasPharmacyWorkflow, hasTriageWorkflow]);
 
   if (hidden || visibleTabs.length === 0) return null;
 
@@ -134,64 +125,60 @@ export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
         />
 
         <div className="relative flex items-end justify-around gap-1">
-        {visibleTabs.map((tab, index) => {
-          const isActive = tab.href === '/'
-            ? pathname === '/' || pathname === '/dashboard'
-            : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
-          const isPrimary = index === primaryIndex;
-          const badgeCount = tab.badgeKey ? badgeCounts[tab.badgeKey] : 0;
+          {visibleTabs.map((tab, index) => {
+            const isActive =
+              tab.href === '/'
+                ? pathname === '/' || pathname === '/dashboard'
+                : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+            const isPrimary = index === primaryIndex;
+            const badgeCount = tab.badgeKey ? badgeCounts[tab.badgeKey] : 0;
 
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={cn(
-                'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 text-[9px] sm:text-[10px] transition-all duration-200',
-                isPrimary && 'mx-0.5 scale-[1.05]',
-                isActive
-                  ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/15'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-              )}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              {badgeCount > 0 && (
-                <Badge
-                  variant={tab.badgeKey === 'triage' ? 'destructive' : 'default'}
-                  size="sm"
-                  className="absolute -top-0.5 left-1/2 ml-2 min-w-[18px] justify-center px-1 text-[9px] leading-none h-[18px]"
-                >
-                  {badgeCount > 99 ? '99+' : badgeCount}
-                </Badge>
-              )}
-              <span
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
                 className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-full transition-all duration-200',
-                  isPrimary && 'h-9 w-9 shadow-lg',
-                  isPrimary && isActive && 'bg-primary text-primary-foreground',
-                  isPrimary && !isActive && 'bg-card ring-1 ring-border/80',
-                  !isPrimary && isActive ? 'bg-primary/12' : !isPrimary ? 'bg-transparent' : ''
+                  'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 text-[9px] transition-all duration-200 sm:text-[10px]',
+                  isPrimary && 'mx-0.5 scale-[1.05]',
+                  isActive
+                    ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/15'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                 )}
+                aria-current={isActive ? 'page' : undefined}
               >
-                <tab.icon
+                {badgeCount > 0 && (
+                  <Badge
+                    variant={tab.badgeKey === 'triage' ? 'destructive' : 'default'}
+                    size="sm"
+                    className="absolute -top-0.5 left-1/2 ml-2 h-[18px] min-w-[18px] justify-center px-1 text-[9px] leading-none"
+                  >
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </Badge>
+                )}
+                <span
                   className={cn(
-                    'h-4.5 w-4.5 shrink-0',
-                    isPrimary && 'h-5 w-5',
-                    isPrimary && isActive ? 'text-primary-foreground' : '',
-                    isActive && 'stroke-[2.5]'
+                    'flex h-7 w-7 items-center justify-center rounded-full transition-all duration-200',
+                    isPrimary && 'h-9 w-9 shadow-lg',
+                    isPrimary && isActive && 'bg-primary text-primary-foreground',
+                    isPrimary && !isActive && 'bg-card ring-1 ring-border/80',
+                    !isPrimary && isActive ? 'bg-primary/12' : !isPrimary ? 'bg-transparent' : ''
                   )}
-                />
-              </span>
-              <span
-                className={cn(
-                  'max-w-full truncate font-medium',
-                  isPrimary && 'text-[10px]'
-                )}
-              >
-                {tab.label}
-              </span>
-            </Link>
-          );
-        })}
+                >
+                  <tab.icon
+                    className={cn(
+                      'h-4.5 w-4.5 shrink-0',
+                      isPrimary && 'h-5 w-5',
+                      isPrimary && isActive ? 'text-primary-foreground' : '',
+                      isActive && 'stroke-[2.5]'
+                    )}
+                  />
+                </span>
+                <span className={cn('max-w-full truncate font-medium', isPrimary && 'text-[10px]')}>
+                  {tab.label}
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </div>
 

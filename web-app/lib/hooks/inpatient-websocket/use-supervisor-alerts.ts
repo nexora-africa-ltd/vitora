@@ -94,11 +94,7 @@ export function useSupervisorAlerts(
   }, [onAlert, onConnectionChange]);
 
   // WebSocket connection
-  const {
-    isConnected,
-    connectionState,
-    reconnect,
-  } = useSupervisorAlertsSocket({
+  const { isConnected, connectionState, reconnect } = useSupervisorAlertsSocket({
     onMessage: (message) => {
       const wsMessage = message as unknown as SupervisorWebSocketMessage;
       if (wsMessage.data && !seenAlertIdsRef.current.has(wsMessage.data.admission_id)) {

@@ -12,11 +12,7 @@ import type { ClinicType } from '@/lib/types/clinic';
 // Enums & Constants
 // =============================================================================
 
-export type ReferralType =
-  | 'ALLIED_HEALTH'
-  | 'SPECIALTY_CLINIC'
-  | 'ADMISSION'
-  | 'EXTERNAL';
+export type ReferralType = 'ALLIED_HEALTH' | 'SPECIALTY_CLINIC' | 'ADMISSION' | 'EXTERNAL';
 
 export type ReferralTargetService =
   // Allied Health
@@ -194,17 +190,18 @@ export const SPECIALTY_CLINIC_SERVICES: ReferralTargetService[] = [
   'DIALYSIS',
 ];
 
-export const REFERRAL_SPECIALTY_TO_CLINIC_TYPE: Partial<Record<ReferralTargetService, ClinicType>> = {
-  DENTAL: 'DENTAL',
-  EYE: 'EYE',
-  ENT: 'ENT',
-  SURGICAL: 'SURGICAL',
-  ORTHO: 'ORTHO',
-  DERM: 'DERM',
-  ONCOLOGY: 'ONCOLOGY',
-  MENTAL_HEALTH: 'MENTAL_HEALTH',
-  DIALYSIS: 'DIALYSIS',
-};
+export const REFERRAL_SPECIALTY_TO_CLINIC_TYPE: Partial<Record<ReferralTargetService, ClinicType>> =
+  {
+    DENTAL: 'DENTAL',
+    EYE: 'EYE',
+    ENT: 'ENT',
+    SURGICAL: 'SURGICAL',
+    ORTHO: 'ORTHO',
+    DERM: 'DERM',
+    ONCOLOGY: 'ONCOLOGY',
+    MENTAL_HEALTH: 'MENTAL_HEALTH',
+    DIALYSIS: 'DIALYSIS',
+  };
 
 // =============================================================================
 // Interfaces

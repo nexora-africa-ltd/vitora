@@ -14,7 +14,14 @@ export type KENHDDResourceType =
   | 'MCH_VISIT';
 
 export type KENHDDRequirementLevel = 'MANDATORY' | 'CONDITIONAL' | 'OPTIONAL';
-export type KENHDDDataType = 'STRING' | 'DATE' | 'INTEGER' | 'DECIMAL' | 'CODED' | 'BOOLEAN' | 'IDENTIFIER';
+export type KENHDDDataType =
+  | 'STRING'
+  | 'DATE'
+  | 'INTEGER'
+  | 'DECIMAL'
+  | 'CODED'
+  | 'BOOLEAN'
+  | 'IDENTIFIER';
 export type KENHDDValidationStatus = 'PASS' | 'FAIL' | 'WARNING' | 'SKIPPED';
 
 export interface KENHDDDataElement {

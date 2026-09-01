@@ -144,15 +144,15 @@ export default function VerifyPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
+      <div className="container mx-auto max-w-2xl px-4 py-12">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+        <div className="mb-8 text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900">
               <Shield className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="mb-2 text-3xl font-bold text-gray-900 dark:text-white">
             Document Verification
           </h1>
           <p className="text-gray-600 dark:text-gray-300">
@@ -182,7 +182,7 @@ export default function VerifyPage() {
               </TabsList>
 
               {/* QR Code Tab */}
-              <TabsContent value="qr" className="space-y-4 mt-4">
+              <TabsContent value="qr" className="mt-4 space-y-4">
                 <QRScannerDialog
                   raw
                   onScan={(text) => {
@@ -205,7 +205,7 @@ export default function VerifyPage() {
                       .finally(() => setIsLoading(false));
                   }}
                   trigger={
-                    <Button variant="outline" className="w-full h-11">
+                    <Button variant="outline" className="h-11 w-full">
                       <Camera className="mr-2 h-4 w-4" />
                       Scan with Camera
                     </Button>
@@ -239,7 +239,7 @@ export default function VerifyPage() {
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Verifying...
                     </>
                   ) : (
@@ -249,7 +249,7 @@ export default function VerifyPage() {
               </TabsContent>
 
               {/* Manual Entry Tab */}
-              <TabsContent value="manual" className="space-y-4 mt-4">
+              <TabsContent value="manual" className="mt-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="doc-type">Document Type</Label>
@@ -304,7 +304,9 @@ export default function VerifyPage() {
                     id="signature"
                     placeholder="AB12CD34"
                     value={manualData.signature}
-                    onChange={(e) => setManualData({ ...manualData, signature: e.target.value.toUpperCase() })}
+                    onChange={(e) =>
+                      setManualData({ ...manualData, signature: e.target.value.toUpperCase() })
+                    }
                     maxLength={8}
                     className="font-mono uppercase"
                   />
@@ -326,7 +328,7 @@ export default function VerifyPage() {
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Verifying...
                     </>
                   ) : (
@@ -351,7 +353,7 @@ export default function VerifyPage() {
                   <AlertDescription>
                     <p className="mb-2">{result.message}</p>
                     {result.document_number && (
-                      <div className="mt-3 p-3 bg-muted rounded-md text-sm space-y-1">
+                      <div className="mt-3 space-y-1 rounded-md bg-muted p-3 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Type:</span>
                           <span className="font-medium">{result.document_type}</span>
@@ -380,12 +382,10 @@ export default function VerifyPage() {
         {/* Info Section */}
         <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
           <p className="mb-2">
-            This verification service confirms that a document was issued by Vitora HMIS
-            and has not been tampered with.
+            This verification service confirms that a document was issued by Vitora HMIS and has not
+            been tampered with.
           </p>
-          <p>
-            For support, contact your healthcare facility.
-          </p>
+          <p>For support, contact your healthcare facility.</p>
         </div>
       </div>
     </div>

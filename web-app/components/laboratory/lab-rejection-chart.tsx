@@ -33,7 +33,8 @@ export function LabRejectionChart({ data }: LabRejectionChartProps) {
     const keys = data.reasons.map((item) => item.reason);
     const colors: Record<string, string> = {};
     data.reasons.forEach((item, index) => {
-      colors[item.reason] = REJECTION_COLORS[index % REJECTION_COLORS.length] ?? 'hsl(var(--chart-1))';
+      colors[item.reason] =
+        REJECTION_COLORS[index % REJECTION_COLORS.length] ?? 'hsl(var(--chart-1))';
     });
     return createChartConfig(keys, { colors });
   }, [data.reasons]);
@@ -45,7 +46,11 @@ export function LabRejectionChart({ data }: LabRejectionChartProps) {
           <span className="text-2xl font-bold text-success">0%</span>
           <span className="text-sm text-muted-foreground">rejection rate</span>
         </div>
-        <ChartEmptyState chartType="pie" title="No rejections" description="No sample rejections in this period" />
+        <ChartEmptyState
+          chartType="pie"
+          title="No rejections"
+          description="No sample rejections in this period"
+        />
       </div>
     );
   }
@@ -59,7 +64,11 @@ export function LabRejectionChart({ data }: LabRejectionChartProps) {
         <div className="flex items-baseline gap-2">
           <span
             className={`text-2xl font-bold ${
-              rejectionRate > 5 ? 'text-destructive' : rejectionRate > 2 ? 'text-warning' : 'text-success'
+              rejectionRate > 5
+                ? 'text-destructive'
+                : rejectionRate > 2
+                  ? 'text-warning'
+                  : 'text-success'
             }`}
           >
             {rejectionRate}%

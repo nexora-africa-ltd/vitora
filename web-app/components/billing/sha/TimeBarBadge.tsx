@@ -9,12 +9,7 @@
 import React from 'react';
 import { AlertTriangle, Clock, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Claim } from '@/lib/types/sha';
 
 interface TimeBarBadgeProps {
@@ -39,7 +34,10 @@ function formatTimeRemaining(hours: number): string {
 /**
  * Get severity level based on remaining hours.
  */
-function getSeverity(hours: number | null | undefined, isTimeBarred: boolean | undefined): 'expired' | 'critical' | 'warning' | 'safe' | null {
+function getSeverity(
+  hours: number | null | undefined,
+  isTimeBarred: boolean | undefined
+): 'expired' | 'critical' | 'warning' | 'safe' | null {
   if (isTimeBarred) return 'expired';
   if (hours == null) return null;
   if (hours <= 0) return 'expired';
@@ -53,24 +51,28 @@ const severityConfig = {
     icon: XCircle,
     label: 'Time-Barred',
     className: 'bg-destructive/10 text-destructive border-destructive/20',
-    tooltipText: 'This claim has exceeded the DHA time-barring deadline and can no longer be submitted.',
+    tooltipText:
+      'This claim has exceeded the DHA time-barring deadline and can no longer be submitted.',
   },
   critical: {
     icon: AlertTriangle,
     label: 'Expiring Soon',
-    className: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
+    className:
+      'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
     tooltipText: 'Less than 6 hours remaining before DHA time-barring deadline.',
   },
   warning: {
     icon: Clock,
     label: 'Deadline Near',
-    className: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+    className:
+      'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
     tooltipText: 'Less than 12 hours remaining before DHA time-barring deadline.',
   },
   safe: {
     icon: Clock,
     label: 'On Track',
-    className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
+    className:
+      'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
     tooltipText: 'Claim is within the DHA time-barring window.',
   },
 };
@@ -83,16 +85,19 @@ export function TimeBarBadge({ claim, compact = false }: TimeBarBadgeProps) {
 
   const config = severityConfig[severity];
   const Icon = config.icon;
-  const timeText = claim.hours_until_time_barred != null
-    ? formatTimeRemaining(claim.hours_until_time_barred)
-    : config.label;
+  const timeText =
+    claim.hours_until_time_barred != null
+      ? formatTimeRemaining(claim.hours_until_time_barred)
+      : config.label;
 
   if (compact) {
     return (
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border ${config.className}`}>
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${config.className}`}
+            >
               <Icon className="h-3 w-3" />
               {timeText}
             </span>
@@ -100,7 +105,7 @@ export function TimeBarBadge({ claim, compact = false }: TimeBarBadgeProps) {
           <TooltipContent>
             <p className="text-sm">{config.tooltipText}</p>
             {claim.time_barring_deadline && (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Deadline: {new Date(claim.time_barring_deadline).toLocaleString()}
               </p>
             )}
@@ -126,7 +131,7 @@ export function TimeBarBadge({ claim, compact = false }: TimeBarBadgeProps) {
         </TooltipTrigger>
         <TooltipContent>
           <p className="text-sm font-medium">{config.label}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{config.tooltipText}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{config.tooltipText}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

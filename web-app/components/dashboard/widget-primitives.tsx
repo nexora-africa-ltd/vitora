@@ -30,7 +30,11 @@ export function DashboardListSkeleton({
   className,
 }: DashboardListSkeletonProps) {
   return (
-    <div className={cn('space-y-3', className)} aria-live="polite" aria-label="Loading widget content">
+    <div
+      className={cn('space-y-3', className)}
+      aria-live="polite"
+      aria-label="Loading widget content"
+    >
       {Array.from({ length: rows }).map((_, index) => (
         <div
           key={`widget-skeleton-${index}`}
@@ -66,12 +70,15 @@ export function DashboardEmptyState({
       aria-live="polite"
     >
       {/* Watermark logo */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        aria-hidden="true"
+      >
         <VitoraLogo
           variant="icon"
           tone="teal"
           alt=""
-          className="w-24 sm:w-28 opacity-[0.045] dark:opacity-[0.06]"
+          className="w-24 opacity-[0.045] dark:opacity-[0.06] sm:w-28"
           imageClassName="pointer-events-none select-none"
         />
       </div>
@@ -81,7 +88,7 @@ export function DashboardEmptyState({
           <Icon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
         </div>
         <p className="text-sm font-medium text-foreground">{title}</p>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground text-pretty">{description}</p>
+        <p className="mt-1 max-w-sm text-pretty text-sm text-muted-foreground">{description}</p>
       </div>
     </div>
   );

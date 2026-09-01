@@ -39,10 +39,13 @@ export default function OrganizationsPage() {
     queryFn: () => organizationsApi.list(search ? { search } : undefined),
   });
 
-  const organizations = data?.results ?? [] as OrganizationListItem[];
+  const organizations = data?.results ?? ([] as OrganizationListItem[]);
   const totalOrgs = data?.count ?? 0;
   const activeOrgs = organizations.filter((o: OrganizationListItem) => o.is_active).length;
-  const totalFacilities = organizations.reduce((sum: number, o: OrganizationListItem) => sum + o.facility_count, 0);
+  const totalFacilities = organizations.reduce(
+    (sum: number, o: OrganizationListItem) => sum + o.facility_count,
+    0
+  );
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
@@ -53,7 +56,7 @@ export default function OrganizationsPage() {
           actions={
             <Button asChild size="sm">
               <CreateRouteLink href="/admin/organizations/new">
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 New Organization
               </CreateRouteLink>
             </Button>
@@ -61,7 +64,7 @@ export default function OrganizationsPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           <AdminStatCard
             title="Organizations"
             value={isLoading ? '...' : totalOrgs}
@@ -94,7 +97,9 @@ export default function OrganizationsPage() {
         {/* Table */}
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
           </div>
         ) : (
           <ResponsiveTable
@@ -122,7 +127,9 @@ export default function OrganizationsPage() {
                 cell: (org) => (
                   <div>
                     <Badge className={tierColors[org.subscription_tier]}>
-                      {org.plan_name ?? org.subscription_tier.charAt(0) + org.subscription_tier.slice(1).toLowerCase()}
+                      {org.plan_name ??
+                        org.subscription_tier.charAt(0) +
+                          org.subscription_tier.slice(1).toLowerCase()}
                     </Badge>
                   </div>
                 ),
@@ -167,14 +174,16 @@ export default function OrganizationsPage() {
             mobileCard={(org: OrganizationListItem) => (
               <div className="flex items-center justify-between p-3">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{org.name}</p>
+                  <p className="truncate font-medium">{org.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {org.facility_count} facilities · {org.staff_count} staff
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   <Badge className={tierColors[org.subscription_tier]}>
-                    {org.plan_name ?? org.subscription_tier.charAt(0) + org.subscription_tier.slice(1).toLowerCase()}
+                    {org.plan_name ??
+                      org.subscription_tier.charAt(0) +
+                        org.subscription_tier.slice(1).toLowerCase()}
                   </Badge>
                 </div>
               </div>

@@ -77,21 +77,12 @@ export type PatientStage =
 /**
  * Triage status for encounter (matches backend Encounter.triage_status)
  */
-export type TriageStatus =
-  | 'PENDING'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'BYPASSED'
-  | 'NOT_APPLICABLE';
+export type TriageStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BYPASSED' | 'NOT_APPLICABLE';
 
 /**
  * Consultation status for encounter (matches backend Encounter.consultation_status)
  */
-export type ConsultationStatus =
-  | 'WAITING'
-  | 'CALLED'
-  | 'IN_PROGRESS'
-  | 'COMPLETED';
+export type ConsultationStatus = 'WAITING' | 'CALLED' | 'IN_PROGRESS' | 'COMPLETED';
 
 /**
  * Triage bypass reasons (matches backend Encounter.TRIAGE_BYPASS_REASON_CHOICES)
@@ -107,11 +98,7 @@ export type TriageBypassReason =
 /**
  * Order/Request status for ancillary services
  */
-export type OrderStatus =
-  | 'PENDING'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'CANCELLED';
+export type OrderStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
 /**
  * Lab order tracking
@@ -485,12 +472,20 @@ interface PatientJourneyState {
   /**
    * Add lab order for patient
    */
-  addLabOrder: (patientId: number, order: Omit<LabOrder, 'ordered_at' | 'collected_at' | 'completed_at' | 'result_available'>) => void;
+  addLabOrder: (
+    patientId: number,
+    order: Omit<LabOrder, 'ordered_at' | 'collected_at' | 'completed_at' | 'result_available'>
+  ) => void;
 
   /**
    * Update lab order status
    */
-  updateLabOrder: (patientId: number, orderId: number, status: OrderStatus, resultAvailable?: boolean) => void;
+  updateLabOrder: (
+    patientId: number,
+    orderId: number,
+    status: OrderStatus,
+    resultAvailable?: boolean
+  ) => void;
 
   /**
    * Mark lab sample collected
@@ -509,7 +504,10 @@ interface PatientJourneyState {
   /**
    * Add imaging order for patient
    */
-  addImagingOrder: (patientId: number, order: Omit<ImagingOrder, 'ordered_at' | 'performed_at' | 'reported_at'>) => void;
+  addImagingOrder: (
+    patientId: number,
+    order: Omit<ImagingOrder, 'ordered_at' | 'performed_at' | 'reported_at'>
+  ) => void;
 
   /**
    * Update imaging order status
@@ -533,12 +531,19 @@ interface PatientJourneyState {
   /**
    * Add pharmacy order for patient
    */
-  addPharmacyOrder: (patientId: number, order: Omit<PharmacyOrder, 'ordered_at' | 'ready_at' | 'dispensed_at'>) => void;
+  addPharmacyOrder: (
+    patientId: number,
+    order: Omit<PharmacyOrder, 'ordered_at' | 'ready_at' | 'dispensed_at'>
+  ) => void;
 
   /**
    * Update pharmacy order status
    */
-  updatePharmacyOrder: (patientId: number, orderId: number, status: PharmacyOrder['status']) => void;
+  updatePharmacyOrder: (
+    patientId: number,
+    orderId: number,
+    status: PharmacyOrder['status']
+  ) => void;
 
   /**
    * Mark medications ready
@@ -562,7 +567,11 @@ interface PatientJourneyState {
   /**
    * Update billing status
    */
-  updateBillingStatus: (patientId: number, status: BillingInfo['payment_status'], amountPaid?: number) => void;
+  updateBillingStatus: (
+    patientId: number,
+    status: BillingInfo['payment_status'],
+    amountPaid?: number
+  ) => void;
 
   // ==========================================================================
   // Actions - Admission
@@ -571,11 +580,14 @@ interface PatientJourneyState {
   /**
    * Recommend patient for admission
    */
-  recommendAdmission: (patientId: number, recommendation: {
-    recommendation_id: number;
-    recommended_by: string;
-    reason: string;
-  }) => void;
+  recommendAdmission: (
+    patientId: number,
+    recommendation: {
+      recommendation_id: number;
+      recommended_by: string;
+      reason: string;
+    }
+  ) => void;
 
   /**
    * Assign bed to patient
@@ -642,11 +654,7 @@ interface PatientJourneyState {
   /**
    * Set encounter for a patient
    */
-  setEncounter: (
-    patientId: number,
-    encounterId: number,
-    encounterType: string
-  ) => void;
+  setEncounter: (patientId: number, encounterId: number, encounterType: string) => void;
 
   /**
    * Update patient data
@@ -800,7 +808,7 @@ export function deriveStageFromStatuses(
  */
 export function deriveStageFromAdmission(
   admissionStatus: string,
-  hasDischargeStarted?: boolean,
+  hasDischargeStarted?: boolean
 ): PatientStage {
   switch (admissionStatus) {
     case 'ACTIVE':
@@ -1159,13 +1167,16 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
                 ...patient,
                 triage_status: encounterData.triage_status,
                 consultation_status: encounterData.consultation_status,
-                triage_bypass_reason: encounterData.triage_bypass_reason ?? patient.triage_bypass_reason,
+                triage_bypass_reason:
+                  encounterData.triage_bypass_reason ?? patient.triage_bypass_reason,
                 triage_category: encounterData.triage_category ?? patient.triage_category,
                 // Only update stage if it can be derived, otherwise keep current stage
-                ...(derivedStage ? {
-                  previous_stage: patient.stage,
-                  stage: derivedStage,
-                } : {}),
+                ...(derivedStage
+                  ? {
+                      previous_stage: patient.stage,
+                      stage: derivedStage,
+                    }
+                  : {}),
                 last_updated: now,
               },
             },
@@ -1187,7 +1198,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
 
           const derivedStage = deriveStageFromAdmission(
             admissionData.admission_status,
-            admissionData.has_discharge_started,
+            admissionData.has_discharge_started
           );
 
           return {
@@ -1207,7 +1218,8 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
                   ward: admissionData.ward_name ?? patient.admission?.ward ?? null,
                   admitted_at: patient.admission?.admitted_at ?? now,
                   expected_discharge: patient.admission?.expected_discharge ?? null,
-                  admission_id: admissionData.admission_id ?? patient.admission?.admission_id ?? null,
+                  admission_id:
+                    admissionData.admission_id ?? patient.admission?.admission_id ?? null,
                 },
                 last_updated: now,
               },
@@ -1321,10 +1333,14 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
           const patient = state.activePatients[patientId];
           if (!patient) return state;
 
-          const updatedOrders = patient.lab_orders.map(o =>
-            o.id === orderId ? { ...o, status, result_available: resultAvailable ?? o.result_available } : o
+          const updatedOrders = patient.lab_orders.map((o) =>
+            o.id === orderId
+              ? { ...o, status, result_available: resultAvailable ?? o.result_available }
+              : o
           );
-          const hasPending = updatedOrders.some(o => o.status === 'PENDING' || o.status === 'IN_PROGRESS');
+          const hasPending = updatedOrders.some(
+            (o) => o.status === 'PENDING' || o.status === 'IN_PROGRESS'
+          );
 
           return {
             activePatients: {
@@ -1346,7 +1362,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
           const patient = state.activePatients[patientId];
           if (!patient) return state;
 
-          const updatedOrders = patient.lab_orders.map(o =>
+          const updatedOrders = patient.lab_orders.map((o) =>
             o.id === orderId ? { ...o, status: 'IN_PROGRESS' as OrderStatus, collected_at: now } : o
           );
 
@@ -1373,10 +1389,19 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
           const patient = state.activePatients[patientId];
           if (!patient) return state;
 
-          const updatedOrders = patient.lab_orders.map(o =>
-            o.id === orderId ? { ...o, status: 'COMPLETED' as OrderStatus, completed_at: now, result_available: true } : o
+          const updatedOrders = patient.lab_orders.map((o) =>
+            o.id === orderId
+              ? {
+                  ...o,
+                  status: 'COMPLETED' as OrderStatus,
+                  completed_at: now,
+                  result_available: true,
+                }
+              : o
           );
-          const hasPending = updatedOrders.some(o => o.status === 'PENDING' || o.status === 'IN_PROGRESS');
+          const hasPending = updatedOrders.some(
+            (o) => o.status === 'PENDING' || o.status === 'IN_PROGRESS'
+          );
 
           return {
             activePatients: {
@@ -1436,10 +1461,12 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
           const patient = state.activePatients[patientId];
           if (!patient) return state;
 
-          const updatedOrders = patient.imaging_orders.map(o =>
+          const updatedOrders = patient.imaging_orders.map((o) =>
             o.id === orderId ? { ...o, status } : o
           );
-          const hasPending = updatedOrders.some(o => o.status === 'PENDING' || o.status === 'IN_PROGRESS');
+          const hasPending = updatedOrders.some(
+            (o) => o.status === 'PENDING' || o.status === 'IN_PROGRESS'
+          );
 
           return {
             activePatients: {
@@ -1461,7 +1488,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
           const patient = state.activePatients[patientId];
           if (!patient) return state;
 
-          const updatedOrders = patient.imaging_orders.map(o =>
+          const updatedOrders = patient.imaging_orders.map((o) =>
             o.id === orderId ? { ...o, status: 'IN_PROGRESS' as OrderStatus, performed_at: now } : o
           );
 
@@ -1488,10 +1515,12 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
           const patient = state.activePatients[patientId];
           if (!patient) return state;
 
-          const updatedOrders = patient.imaging_orders.map(o =>
+          const updatedOrders = patient.imaging_orders.map((o) =>
             o.id === orderId ? { ...o, status: 'COMPLETED' as OrderStatus, reported_at: now } : o
           );
-          const hasPending = updatedOrders.some(o => o.status === 'PENDING' || o.status === 'IN_PROGRESS');
+          const hasPending = updatedOrders.some(
+            (o) => o.status === 'PENDING' || o.status === 'IN_PROGRESS'
+          );
 
           return {
             activePatients: {
@@ -1551,11 +1580,11 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
           const patient = state.activePatients[patientId];
           if (!patient) return state;
 
-          const updatedOrders = patient.pharmacy_orders.map(o =>
+          const updatedOrders = patient.pharmacy_orders.map((o) =>
             o.id === orderId ? { ...o, status } : o
           );
-          const hasPending = updatedOrders.some(o =>
-            o.status === 'PENDING' || o.status === 'PREPARING' || o.status === 'READY'
+          const hasPending = updatedOrders.some(
+            (o) => o.status === 'PENDING' || o.status === 'PREPARING' || o.status === 'READY'
           );
 
           return {
@@ -1578,8 +1607,10 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
           const patient = state.activePatients[patientId];
           if (!patient) return state;
 
-          const updatedOrders = patient.pharmacy_orders.map(o =>
-            o.id === orderId ? { ...o, status: 'READY' as PharmacyOrder['status'], ready_at: now } : o
+          const updatedOrders = patient.pharmacy_orders.map((o) =>
+            o.id === orderId
+              ? { ...o, status: 'READY' as PharmacyOrder['status'], ready_at: now }
+              : o
           );
 
           return {
@@ -1605,11 +1636,13 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
           const patient = state.activePatients[patientId];
           if (!patient) return state;
 
-          const updatedOrders = patient.pharmacy_orders.map(o =>
-            o.id === orderId ? { ...o, status: 'DISPENSED' as PharmacyOrder['status'], dispensed_at: now } : o
+          const updatedOrders = patient.pharmacy_orders.map((o) =>
+            o.id === orderId
+              ? { ...o, status: 'DISPENSED' as PharmacyOrder['status'], dispensed_at: now }
+              : o
           );
-          const hasPending = updatedOrders.some(o =>
-            o.status === 'PENDING' || o.status === 'PREPARING' || o.status === 'READY'
+          const hasPending = updatedOrders.some(
+            (o) => o.status === 'PENDING' || o.status === 'PREPARING' || o.status === 'READY'
           );
 
           return {
@@ -2016,9 +2049,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
 
       getPatientsAwaitingConsultation: () => {
         const { activePatients } = get();
-        return Object.values(activePatients).filter(
-          (p) => p.stage === 'AWAITING_CONSULTATION'
-        );
+        return Object.values(activePatients).filter((p) => p.stage === 'AWAITING_CONSULTATION');
       },
 
       getPatientsAwaitingLab: () => {
@@ -2038,7 +2069,10 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
       getPatientsAwaitingPharmacy: () => {
         const { activePatients } = get();
         return Object.values(activePatients).filter(
-          (p) => p.stage === 'AWAITING_PHARMACY' || p.stage === 'PHARMACY_DISPENSING' || p.stage === 'PHARMACY_READY'
+          (p) =>
+            p.stage === 'AWAITING_PHARMACY' ||
+            p.stage === 'PHARMACY_DISPENSING' ||
+            p.stage === 'PHARMACY_READY'
         );
       },
 
@@ -2075,8 +2109,7 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
 // Selectors (for optimized re-renders)
 // ============================================================================
 
-export const selectActivePatients = (state: PatientJourneyState) =>
-  state.activePatients;
+export const selectActivePatients = (state: PatientJourneyState) => state.activePatients;
 
 export const selectSelectedPatient = (state: PatientJourneyState) => {
   if (!state.selectedPatientId) return undefined;
@@ -2089,9 +2122,7 @@ export const selectPatientsAwaitingTriage = (state: PatientJourneyState) =>
   );
 
 export const selectPatientsAwaitingConsultation = (state: PatientJourneyState) =>
-  Object.values(state.activePatients).filter(
-    (p) => p.stage === 'AWAITING_CONSULTATION'
-  );
+  Object.values(state.activePatients).filter((p) => p.stage === 'AWAITING_CONSULTATION');
 
 export const selectPatientsAwaitingLab = (state: PatientJourneyState) =>
   Object.values(state.activePatients).filter(
@@ -2105,7 +2136,10 @@ export const selectPatientsAwaitingImaging = (state: PatientJourneyState) =>
 
 export const selectPatientsAwaitingPharmacy = (state: PatientJourneyState) =>
   Object.values(state.activePatients).filter(
-    (p) => p.stage === 'AWAITING_PHARMACY' || p.stage === 'PHARMACY_DISPENSING' || p.stage === 'PHARMACY_READY'
+    (p) =>
+      p.stage === 'AWAITING_PHARMACY' ||
+      p.stage === 'PHARMACY_DISPENSING' ||
+      p.stage === 'PHARMACY_READY'
   );
 
 export const selectPatientsAwaitingAdmission = (state: PatientJourneyState) =>

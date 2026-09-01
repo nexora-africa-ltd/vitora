@@ -36,18 +36,11 @@ export function VisibilityToggle({
       variant="ghost"
       size={size === 'sm' ? 'icon' : 'default'}
       onClick={onToggle}
-      className={cn(
-        size === 'sm' && 'h-8 w-8',
-        className
-      )}
+      className={cn(size === 'sm' && 'h-8 w-8', className)}
       aria-label={isVisible ? `Hide ${label}` : `Show ${label}`}
       aria-expanded={isVisible}
     >
-      {isVisible ? (
-        <EyeClosed className={iconSize} />
-      ) : (
-        <Eye className={iconSize} />
-      )}
+      {isVisible ? <EyeClosed className={iconSize} /> : <Eye className={iconSize} />}
     </Button>
   );
 }

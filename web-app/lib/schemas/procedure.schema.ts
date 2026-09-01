@@ -10,12 +10,7 @@ const ProcedureOrderStatusSchema = z.enum([
   'CANCELLED',
 ]);
 
-const ProcedurePrioritySchema = z.enum([
-  'EMERGENCY',
-  'URGENT',
-  'ROUTINE',
-  'ELECTIVE',
-]);
+const ProcedurePrioritySchema = z.enum(['EMERGENCY', 'URGENT', 'ROUTINE', 'ELECTIVE']);
 
 const ExternalProcedureRequestStatusSchema = z.enum(['RECEIVED', 'ACCEPTED', 'REJECTED']);
 
@@ -43,11 +38,16 @@ export const ProcedureCatalogListSchema = z.object({
   consent_required: z.boolean(),
   is_active: z.boolean(),
   default_clinics: z.array(z.number()).optional().default([]),
-  default_clinics_detail: z.array(z.object({
-    id: z.number(),
-    name: z.string(),
-    clinic_type: z.string(),
-  })).optional().default([]),
+  default_clinics_detail: z
+    .array(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+        clinic_type: z.string(),
+      })
+    )
+    .optional()
+    .default([]),
 });
 
 export const ProcedureCatalogDetailSchema = ProcedureCatalogListSchema.extend({

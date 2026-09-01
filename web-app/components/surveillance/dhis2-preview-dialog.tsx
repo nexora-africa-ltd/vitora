@@ -64,9 +64,7 @@ export function DHIS2PreviewDialog({ reportId, open, onOpenChange }: DHIS2Previe
           </div>
         ) : (
           <ScrollArea className="h-[320px] rounded-md border bg-muted/20">
-            <pre className="p-4 text-xs whitespace-pre-wrap break-words">
-              {payloadString}
-            </pre>
+            <pre className="whitespace-pre-wrap break-words p-4 text-xs">{payloadString}</pre>
           </ScrollArea>
         )}
 

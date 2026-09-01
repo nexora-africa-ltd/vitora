@@ -12,13 +12,7 @@ export type HL7EndpointType = 'LIS' | 'RIS' | 'PAS' | 'PHARMACY' | 'OTHER';
 export type HL7MessageDirection = 'IN' | 'OUT';
 
 // HL7 message status
-export type HL7MessageStatus =
-  | 'PENDING'
-  | 'SENDING'
-  | 'SENT'
-  | 'ACK'
-  | 'FAILED'
-  | 'DEAD';
+export type HL7MessageStatus = 'PENDING' | 'SENDING' | 'SENT' | 'ACK' | 'FAILED' | 'DEAD';
 
 /**
  * HL7 Endpoint (facility-scoped connection config)

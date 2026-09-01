@@ -17,7 +17,8 @@ interface ClaimOverviewTabProps {
   claim: Claim;
 }
 
-const RADIAL = 'bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]';
+const RADIAL =
+  'bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]';
 
 interface StatProps {
   label: string;
@@ -38,9 +39,11 @@ function StatCard({ label, value, tone = 'default' }: StatProps) {
   return (
     <Card className="relative overflow-hidden">
       <div className={`pointer-events-none absolute inset-0 ${RADIAL}`} aria-hidden="true" />
-      <CardContent className="relative p-3 sm:p-4 text-center">
-        <p className="text-[11px] sm:text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className={`text-lg sm:text-xl font-semibold mt-1 ${toneClass}`}>{value}</p>
+      <CardContent className="relative p-3 text-center sm:p-4">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground sm:text-xs">
+          {label}
+        </p>
+        <p className={`mt-1 text-lg font-semibold sm:text-xl ${toneClass}`}>{value}</p>
       </CardContent>
     </Card>
   );
@@ -55,10 +58,9 @@ export function ClaimOverviewTab({ claim }: ClaimOverviewTabProps) {
   const diagnosisCodes: string[] = Array.isArray(claim.secondary_diagnosis_codes)
     ? (claim.secondary_diagnosis_codes as string[])
     : [];
-  const allDiagnoses = [
-    claim.primary_diagnosis_code,
-    ...diagnosisCodes,
-  ].filter(Boolean) as string[];
+  const allDiagnoses = [claim.primary_diagnosis_code, ...diagnosisCodes].filter(
+    Boolean
+  ) as string[];
   const dischargeSnapshot =
     claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
       ? (claim.dha_discharge_snapshot as Record<string, unknown>)
@@ -70,7 +72,7 @@ export function ClaimOverviewTab({ claim }: ClaimOverviewTabProps) {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Stats grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Claimed" value={formatCurrency(total)} />
         <StatCard label="Approved" value={formatCurrency(approved)} tone="success" />
         <StatCard label="Co-pay" value={formatCurrency(copay)} tone="warning" />
@@ -91,12 +93,12 @@ export function ClaimOverviewTab({ claim }: ClaimOverviewTabProps) {
       {claim.rejection_reason && (
         <Card className="border-amber-200 dark:border-amber-800/60">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2 text-amber-800 dark:text-amber-300">
+            <CardTitle className="flex items-center gap-2 text-base text-amber-800 dark:text-amber-300">
               <AlertCircle className="h-4 w-4" />
               Rejection details
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm space-y-2">
+          <CardContent className="space-y-2 text-sm">
             <p>{claim.rejection_reason}</p>
             {claim.rejection_codes && claim.rejection_codes.length > 0 && (
               <div className="flex flex-wrap gap-1">
@@ -117,7 +119,7 @@ export function ClaimOverviewTab({ claim }: ClaimOverviewTabProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Adjudication notes</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">
+          <CardContent className="whitespace-pre-wrap text-sm text-muted-foreground">
             {claim.adjudication_notes}
           </CardContent>
         </Card>
@@ -138,7 +140,7 @@ export function ClaimOverviewTab({ claim }: ClaimOverviewTabProps) {
             )}
             {allDiagnoses.length > 0 && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Diagnosis codes</p>
+                <p className="mb-1 text-xs text-muted-foreground">Diagnosis codes</p>
                 <div className="flex flex-wrap gap-1">
                   {allDiagnoses.map((code) => (
                     <Badge key={code} variant="secondary" className="font-mono text-xs">
@@ -173,7 +175,7 @@ export function ClaimOverviewTab({ claim }: ClaimOverviewTabProps) {
                 <p className="text-xs text-muted-foreground">Invoice</p>
                 <Link
                   href={`/transactions/invoices/${claim.invoice_id ?? claim.invoice}`}
-                  className="text-primary hover:underline font-medium"
+                  className="font-medium text-primary hover:underline"
                 >
                   {claim.invoice_number || `#${claim.invoice_id ?? claim.invoice}`}
                 </Link>
@@ -188,13 +190,13 @@ export function ClaimOverviewTab({ claim }: ClaimOverviewTabProps) {
             {claim.dha_external_id && (
               <div>
                 <p className="text-xs text-muted-foreground">DHA external ID</p>
-                <p className="font-mono text-xs break-all">{claim.dha_external_id}</p>
+                <p className="break-all font-mono text-xs">{claim.dha_external_id}</p>
               </div>
             )}
             {dischargeWorkflowState && (
               <div>
                 <p className="text-xs text-muted-foreground">DHA discharge state</p>
-                <p className="font-medium text-xs">{dischargeWorkflowState}</p>
+                <p className="text-xs font-medium">{dischargeWorkflowState}</p>
               </div>
             )}
             {dischargeVisitEnd && (
@@ -212,7 +214,7 @@ export function ClaimOverviewTab({ claim }: ClaimOverviewTabProps) {
             {claim.fhir_bundle_id && (
               <div>
                 <p className="text-xs text-muted-foreground">FHIR bundle</p>
-                <p className="font-mono text-xs break-all">{claim.fhir_bundle_id}</p>
+                <p className="break-all font-mono text-xs">{claim.fhir_bundle_id}</p>
               </div>
             )}
             {claim.submitted_by_username && (

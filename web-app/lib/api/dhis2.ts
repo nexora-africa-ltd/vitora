@@ -41,10 +41,7 @@ export const dhis2Api = {
     });
   },
 
-  async update(
-    id: number,
-    data: DHIS2ConfigUpdateData
-  ): Promise<DHIS2ConfigDetail> {
+  async update(id: number, data: DHIS2ConfigUpdateData): Promise<DHIS2ConfigDetail> {
     const response = await apiClient.patch(`/api/dhis2-configs/${id}/`, data);
     return parseResponse(DHIS2ConfigDetailSchema, response.data, {
       context: 'dhis2Api.update',
@@ -56,9 +53,7 @@ export const dhis2Api = {
   },
 
   async testConnection(id: number): Promise<DHIS2ConnectionTestResult> {
-    const response = await apiClient.post(
-      `/api/dhis2-configs/${id}/test-connection/`
-    );
+    const response = await apiClient.post(`/api/dhis2-configs/${id}/test-connection/`);
     return parseResponse(DHIS2ConnectionTestResultSchema, response.data, {
       context: 'dhis2Api.testConnection',
     });

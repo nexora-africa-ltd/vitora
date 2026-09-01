@@ -4,7 +4,11 @@
  * Uses the same dedicated-template approach as other printable clinical documents.
  */
 
-import type { LabourPartograph, LabourPartographObservation, MCHRegistration } from '@/lib/types/mch';
+import type {
+  LabourPartograph,
+  LabourPartographObservation,
+  MCHRegistration,
+} from '@/lib/types/mch';
 import type { FacilityInfo, SignatureInfo, LayoutType } from './types';
 import {
   buildPrintDocument,
@@ -367,24 +371,38 @@ function replaceTemplatePlaceholders(
 function buildObservationRows(observations: LabourPartographObservation[]): string {
   return observations
     .map((observation) => {
-      const contractionText = observation.contractions_per_10_min != null
-        ? `${observation.contractions_per_10_min}/10 min${observation.contraction_duration_seconds != null ? ` x ${observation.contraction_duration_seconds}s` : ''}${observation.contraction_intensity ? ` (${observation.contraction_intensity.toLowerCase()})` : ''}`
-        : '—';
-      const maternalText = [
-        observation.maternal_pulse != null ? `P ${observation.maternal_pulse}` : null,
-        observation.maternal_blood_pressure ? `BP ${observation.maternal_blood_pressure}` : null,
-        observation.maternal_temperature != null ? `T ${observation.maternal_temperature}°C` : null,
-      ].filter(Boolean).join(' · ') || '—';
-      const urineText = [
-        observation.urine_volume_ml != null ? `${observation.urine_volume_ml} mL` : null,
-        observation.urine_protein ? `Prot ${observation.urine_protein}` : null,
-        observation.urine_acetone ? `Ace ${observation.urine_acetone}` : null,
-      ].filter(Boolean).join(' · ') || '—';
-      const interventions = [
-        observation.oxytocin_drops_per_min != null ? `Oxytocin ${observation.oxytocin_drops_per_min} dpm` : null,
-        observation.medications || null,
-        observation.notes || null,
-      ].filter(Boolean).join(' | ') || '—';
+      const contractionText =
+        observation.contractions_per_10_min != null
+          ? `${observation.contractions_per_10_min}/10 min${observation.contraction_duration_seconds != null ? ` x ${observation.contraction_duration_seconds}s` : ''}${observation.contraction_intensity ? ` (${observation.contraction_intensity.toLowerCase()})` : ''}`
+          : '—';
+      const maternalText =
+        [
+          observation.maternal_pulse != null ? `P ${observation.maternal_pulse}` : null,
+          observation.maternal_blood_pressure ? `BP ${observation.maternal_blood_pressure}` : null,
+          observation.maternal_temperature != null
+            ? `T ${observation.maternal_temperature}°C`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ') || '—';
+      const urineText =
+        [
+          observation.urine_volume_ml != null ? `${observation.urine_volume_ml} mL` : null,
+          observation.urine_protein ? `Prot ${observation.urine_protein}` : null,
+          observation.urine_acetone ? `Ace ${observation.urine_acetone}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ') || '—';
+      const interventions =
+        [
+          observation.oxytocin_drops_per_min != null
+            ? `Oxytocin ${observation.oxytocin_drops_per_min} dpm`
+            : null,
+          observation.medications || null,
+          observation.notes || null,
+        ]
+          .filter(Boolean)
+          .join(' | ') || '—';
 
       return `
         <tr>
@@ -405,7 +423,9 @@ function buildObservationRows(observations: LabourPartographObservation[]): stri
 
 function getPartographQRContent(data: PrintPartographReportData): QRContent {
   return {
-    data: data.verificationUrl || `PARTOGRAPH:${data.partograph.id}|MCH:${data.registration.mch_number}|STATUS:${data.partograph.status}`,
+    data:
+      data.verificationUrl ||
+      `PARTOGRAPH:${data.partograph.id}|MCH:${data.registration.mch_number}|STATUS:${data.partograph.status}`,
     isVerifiable: Boolean(data.verificationUrl),
     label: `Partograph ${data.registration.mch_number}`,
   };
@@ -416,7 +436,7 @@ function getPartographQRContent(data: PrintPartographReportData): QRContent {
  */
 function buildCervicographSVG(observations: LabourPartographObservation[]): string {
   const dilationObs = observations.filter(
-    (o) => o.cervical_dilation_cm != null || o.descent_fifths != null,
+    (o) => o.cervical_dilation_cm != null || o.descent_fifths != null
   );
   if (dilationObs.length < 2) return '';
 
@@ -457,11 +477,13 @@ function buildCervicographSVG(observations: LabourPartographObservation[]): stri
   // Dilation line
   const dilPoints = dilationObs
     .filter((o) => o.cervical_dilation_cm != null)
-    .map((o) => `${x(new Date(o.observation_time).getTime())},${yDil(Number(o.cervical_dilation_cm))}`)
+    .map(
+      (o) => `${x(new Date(o.observation_time).getTime())},${yDil(Number(o.cervical_dilation_cm))}`
+    )
     .join(' ');
   const dilationLine = dilPoints
-    ? `<polyline points="${dilPoints}" fill="none" stroke="#0d9488" stroke-width="2"/>`
-    + dilationObs
+    ? `<polyline points="${dilPoints}" fill="none" stroke="#0d9488" stroke-width="2"/>` +
+      dilationObs
         .filter((o) => o.cervical_dilation_cm != null)
         .map((o) => {
           const cx = x(new Date(o.observation_time).getTime());
@@ -477,8 +499,8 @@ function buildCervicographSVG(observations: LabourPartographObservation[]): stri
     .map((o) => `${x(new Date(o.observation_time).getTime())},${yDesc(o.descent_fifths!)}`)
     .join(' ');
   const descentLine = descPoints
-    ? `<polyline points="${descPoints}" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4 1 1 1"/>`
-    + dilationObs
+    ? `<polyline points="${descPoints}" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4 1 1 1"/>` +
+      dilationObs
         .filter((o) => o.descent_fifths != null)
         .map((o) => {
           const cx = x(new Date(o.observation_time).getTime());
@@ -490,7 +512,7 @@ function buildCervicographSVG(observations: LabourPartographObservation[]): stri
 
   // WHO Alert & Action lines
   const firstActive = dilationObs.find(
-    (o) => o.cervical_dilation_cm != null && Number(o.cervical_dilation_cm) >= 4,
+    (o) => o.cervical_dilation_cm != null && Number(o.cervical_dilation_cm) >= 4
   );
   let alertLine = '';
   let actionLine = '';
@@ -537,7 +559,9 @@ function buildCervicographSVG(observations: LabourPartographObservation[]): stri
 
 function buildTemplateData(data: PrintPartographReportData): Record<string, unknown> {
   const latestObservation = data.observations.at(-1) ?? data.partograph.latest_observation;
-  const latestAlerts = latestObservation?.alerts?.length ? latestObservation.alerts.join(' | ') : '';
+  const latestAlerts = latestObservation?.alerts?.length
+    ? latestObservation.alerts.join(' | ')
+    : '';
 
   return {
     facility: {
@@ -555,21 +579,39 @@ function buildTemplateData(data: PrintPartographReportData): Record<string, unkn
     },
     partograph: {
       started_at: escapeHtml(formatDateTime(data.partograph.started_at)),
-      completed_at: escapeHtml(data.partograph.completed_at ? formatDateTime(data.partograph.completed_at) : 'In progress'),
+      completed_at: escapeHtml(
+        data.partograph.completed_at ? formatDateTime(data.partograph.completed_at) : 'In progress'
+      ),
       status_label: partographReportStatusLabels[data.partograph.status] || data.partograph.status,
       status_class: partographReportStatusClasses[data.partograph.status] || '',
       parity: escapeHtml(data.partograph.parity != null ? String(data.partograph.parity) : '—'),
-      gestation_weeks: escapeHtml(data.partograph.gestation_weeks != null ? String(data.partograph.gestation_weeks) : '—'),
+      gestation_weeks: escapeHtml(
+        data.partograph.gestation_weeks != null ? String(data.partograph.gestation_weeks) : '—'
+      ),
       membranes: escapeHtml(data.partograph.membrane_status || 'Not recorded'),
       liquor: escapeHtml(data.partograph.liquor || 'Not recorded'),
       notes: escapeHtml(data.partograph.notes || ''),
     },
     summary: {
       total_observations: escapeHtml(String(data.observations.length)),
-      latest_fhr: escapeHtml(latestObservation?.fetal_heart_rate != null ? `${latestObservation.fetal_heart_rate} BPM` : '—'),
-      latest_dilation: escapeHtml(latestObservation?.cervical_dilation_cm ? `${latestObservation.cervical_dilation_cm} cm` : '—'),
-      latest_contractions: escapeHtml(latestObservation?.contractions_per_10_min != null ? `${latestObservation.contractions_per_10_min}/10 min` : '—'),
-      latest_maternal_pulse: escapeHtml(latestObservation?.maternal_pulse != null ? `${latestObservation.maternal_pulse} BPM` : '—'),
+      latest_fhr: escapeHtml(
+        latestObservation?.fetal_heart_rate != null
+          ? `${latestObservation.fetal_heart_rate} BPM`
+          : '—'
+      ),
+      latest_dilation: escapeHtml(
+        latestObservation?.cervical_dilation_cm
+          ? `${latestObservation.cervical_dilation_cm} cm`
+          : '—'
+      ),
+      latest_contractions: escapeHtml(
+        latestObservation?.contractions_per_10_min != null
+          ? `${latestObservation.contractions_per_10_min}/10 min`
+          : '—'
+      ),
+      latest_maternal_pulse: escapeHtml(
+        latestObservation?.maternal_pulse != null ? `${latestObservation.maternal_pulse} BPM` : '—'
+      ),
       latest_alerts: escapeHtml(latestAlerts),
     },
     alerts: {
@@ -589,12 +631,29 @@ function buildTemplateData(data: PrintPartographReportData): Record<string, unkn
       rows: buildObservationRows(data.observations),
     },
     signature: {
-      name: data.signature?.signer_full_name || escapeHtml(latestObservation?.recorded_by_name || data.partograph.created_by_name || data.registration.registered_by_name || ''),
+      name:
+        data.signature?.signer_full_name ||
+        escapeHtml(
+          latestObservation?.recorded_by_name ||
+            data.partograph.created_by_name ||
+            data.registration.registered_by_name ||
+            ''
+        ),
       credentials: partographReportDefaults.signature_credentials,
-      datetime: data.signature?.signed_at ? formatDateTime(data.signature.signed_at) : escapeHtml(latestObservation ? formatDateTime(latestObservation.observation_time) : formatDateTime(data.partograph.started_at)),
+      datetime: data.signature?.signed_at
+        ? formatDateTime(data.signature.signed_at)
+        : escapeHtml(
+            latestObservation
+              ? formatDateTime(latestObservation.observation_time)
+              : formatDateTime(data.partograph.started_at)
+          ),
       status: data.signature
-        ? (data.signature.is_valid !== false ? '✓ Digitally Signed' : '⚠ Signature Invalid')
-        : (data.partograph.status === 'COMPLETED' ? 'Labour chart completed' : 'Live labour monitoring record'),
+        ? data.signature.is_valid !== false
+          ? '✓ Digitally Signed'
+          : '⚠ Signature Invalid'
+        : data.partograph.status === 'COMPLETED'
+          ? 'Labour chart completed'
+          : 'Live labour monitoring record',
     },
     system: {
       name: partographReportDefaults.system_name,

@@ -23,11 +23,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -140,19 +136,17 @@ export function DrugProductSelect({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'w-full justify-between h-auto min-h-10 py-2',
+            'h-auto min-h-10 w-full justify-between py-2',
             !value && 'text-muted-foreground',
             className
           )}
         >
           {value ? (
-            <div className="flex items-center gap-2 text-left flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
               <span className="font-mono text-xs">{value.code}</span>
-              <span className="text-sm truncate">{value.name}</span>
+              <span className="truncate text-sm">{value.name}</span>
               {showPrice && value.price && (
-                <span className="text-xs text-green-600">
-                  {formatCurrency(value.price)}
-                </span>
+                <span className="text-xs text-green-600">{formatCurrency(value.price)}</span>
               )}
             </div>
           ) : (
@@ -179,7 +173,7 @@ export function DrugProductSelect({
                 Type at least {minSearchLength} characters to search...
               </div>
             ) : isLoading ? (
-              <div className="p-4 space-y-2">
+              <div className="space-y-2 p-4">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
@@ -198,14 +192,12 @@ export function DrugProductSelect({
                     >
                       <Check
                         className={cn(
-                          'h-4 w-4 mt-0.5',
+                          'mt-0.5 h-4 w-4',
                           value?.code === drug.code ? 'opacity-100' : 'opacity-0'
                         )}
                       />
-                      <div className="flex-1 min-w-0">
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {drug.code}
-                        </span>
+                      <div className="min-w-0 flex-1">
+                        <span className="font-mono text-xs text-muted-foreground">{drug.code}</span>
                         <p className="text-sm font-medium">{drug.name}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           {drug.generic_name && <span>{drug.generic_name}</span>}
@@ -213,7 +205,7 @@ export function DrugProductSelect({
                           {drug.strength && <span>• {drug.strength}</span>}
                         </div>
                         {showPrice && drug.price && (
-                          <span className="text-xs text-green-600 font-medium">
+                          <span className="text-xs font-medium text-green-600">
                             {formatCurrency(drug.price)}
                           </span>
                         )}

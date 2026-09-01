@@ -75,7 +75,7 @@ export function EncounterTable({
     return (
       <Card
         className={cn(
-          'p-3 hover:bg-muted/50 transition-colors',
+          'p-3 transition-colors hover:bg-muted/50',
           isCritical && 'border-destructive/50 bg-destructive/10'
         )}
       >
@@ -83,20 +83,14 @@ export function EncounterTable({
           {/* Top row: Patient name + Status */}
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="font-medium truncate">{encounter.patient_name}</p>
-              <p className="text-xs text-muted-foreground font-mono">
-                {encounter.patient_mrn}
-              </p>
+              <p className="truncate font-medium">{encounter.patient_name}</p>
+              <p className="font-mono text-xs text-muted-foreground">{encounter.patient_mrn}</p>
             </div>
-            <Badge className={cn(status?.color, 'shrink-0 text-xs w-fit')}>
-              {status?.label}
-            </Badge>
+            <Badge className={cn(status?.color, 'w-fit shrink-0 text-xs')}>{status?.label}</Badge>
           </div>
 
           {/* Chief complaint */}
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {encounter.chief_complaint}
-          </p>
+          <p className="line-clamp-2 text-sm text-muted-foreground">{encounter.chief_complaint}</p>
 
           {/* Bottom row: Type, Date, Vitals */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -125,13 +119,12 @@ export function EncounterTable({
       key: 'patient',
       header: 'Patient',
       sortable: true,
-      sortFn: (a: Encounter, b: Encounter) => (a.patient_name || '').localeCompare(b.patient_name || ''),
+      sortFn: (a: Encounter, b: Encounter) =>
+        (a.patient_name || '').localeCompare(b.patient_name || ''),
       cell: (encounter: Encounter) => (
         <div>
           <p className="font-medium">{encounter.patient_name}</p>
-          <p className="text-xs text-muted-foreground font-mono">
-            {encounter.patient_mrn}
-          </p>
+          <p className="font-mono text-xs text-muted-foreground">{encounter.patient_mrn}</p>
         </div>
       ),
     },
@@ -139,7 +132,8 @@ export function EncounterTable({
       key: 'type',
       header: 'Type',
       sortable: true,
-      sortFn: (a: Encounter, b: Encounter) => (a.encounter_type || '').localeCompare(b.encounter_type || ''),
+      sortFn: (a: Encounter, b: Encounter) =>
+        (a.encounter_type || '').localeCompare(b.encounter_type || ''),
       cell: (encounter: Encounter) => {
         const type = ENCOUNTER_TYPES.find((t) => t.value === encounter.encounter_type);
         return <Badge variant="outline">{type?.label}</Badge>;
@@ -200,20 +194,20 @@ export function EncounterTable({
         columns={columns}
         keyExtractor={(encounter) => encounter.id}
         onRowClick={(encounter) =>
-          router.push(buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status)))
+          router.push(
+            buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status))
+          )
         }
         isLoading={isLoading}
         emptyMessage={emptyTitle}
         mobileCard={renderMobileCard}
-        rowClassName={(encounter) =>
-          hasCriticalVitals(encounter) ? 'bg-destructive/10' : ''
-        }
+        rowClassName={(encounter) => (hasCriticalVitals(encounter) ? 'bg-destructive/10' : '')}
       />
 
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
+          <p className="text-center text-xs text-muted-foreground sm:text-left sm:text-sm">
             Page {page} of {totalPages}
           </p>
           <div className="flex items-center justify-center gap-2">

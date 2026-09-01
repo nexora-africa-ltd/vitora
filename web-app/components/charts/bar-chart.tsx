@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   Bar,
   BarChart as RechartsBarChart,
@@ -8,8 +8,8 @@ import {
   XAxis,
   YAxis,
   ResponsiveContainer,
-} from "recharts";
-import type { ValueType, NameType } from "recharts/types/component/DefaultTooltipContent";
+} from 'recharts';
+import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import {
   ChartContainer,
   ChartTooltip,
@@ -17,8 +17,8 @@ import {
   ChartLegend,
   ChartLegendContent,
   type ChartConfig,
-} from "@/components/ui/chart";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/chart';
+import { cn } from '@/lib/utils';
 
 export interface BarChartProps<T extends Record<string, unknown>> {
   /** Chart data array */
@@ -48,7 +48,7 @@ export interface BarChartProps<T extends Record<string, unknown>> {
   /** Stack the bars */
   stacked?: boolean;
   /** Layout direction */
-  layout?: "horizontal" | "vertical";
+  layout?: 'horizontal' | 'vertical';
   /** Minimum height for the chart container */
   minHeight?: string;
   /** Additional className for the container */
@@ -66,7 +66,7 @@ export interface BarChartProps<T extends Record<string, unknown>> {
     payload: unknown
   ) => React.ReactNode;
   /** Tooltip indicator style */
-  tooltipIndicator?: "line" | "dot" | "dashed";
+  tooltipIndicator?: 'line' | 'dot' | 'dashed';
   /** Hide tooltip label */
   hideTooltipLabel?: boolean;
   /** Width of Y-axis (useful for vertical layouts with long labels) */
@@ -117,17 +117,17 @@ export function BarChart<T extends Record<string, unknown>>({
   showLegend = false,
   barRadius = 4,
   stacked = false,
-  layout = "horizontal",
-  minHeight = "200px",
+  layout = 'horizontal',
+  minHeight = '200px',
   className,
   xAxisFormatter,
   yAxisFormatter,
   tooltipFormatter,
-  tooltipIndicator = "dot",
+  tooltipIndicator = 'dot',
   hideTooltipLabel = false,
   yAxisWidth = 80,
   barGap = 4,
-  categoryGap = "20%",
+  categoryGap = '20%',
   onBarClick,
 }: BarChartProps<T>) {
   const defaultXFormatter = (value: string) => {
@@ -136,16 +136,14 @@ export function BarChart<T extends Record<string, unknown>>({
   };
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn('w-full', className)}>
       {(title || description) && (
         <div className="mb-4">
           {title && <h3 className="text-lg font-semibold">{title}</h3>}
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
       )}
-      <ChartContainer config={config} className={cn(`min-h-[${minHeight}]`, "w-full")}>
+      <ChartContainer config={config} className={cn(`min-h-[${minHeight}]`, 'w-full')}>
         <RechartsBarChart
           accessibilityLayer
           data={data}
@@ -155,32 +153,32 @@ export function BarChart<T extends Record<string, unknown>>({
         >
           {showGrid && (
             <CartesianGrid
-              vertical={layout === "vertical"}
-              horizontal={layout === "horizontal"}
+              vertical={layout === 'vertical'}
+              horizontal={layout === 'horizontal'}
               strokeDasharray="3 3"
               className="stroke-muted"
             />
           )}
           {showXAxis && (
             <XAxis
-              dataKey={layout === "horizontal" ? xAxisKey : undefined}
-              type={layout === "horizontal" ? "category" : "number"}
+              dataKey={layout === 'horizontal' ? xAxisKey : undefined}
+              type={layout === 'horizontal' ? 'category' : 'number'}
               tickLine={false}
               tickMargin={10}
               axisLine={false}
               tickFormatter={xAxisFormatter ?? defaultXFormatter}
-              className="text-xs fill-muted-foreground"
+              className="fill-muted-foreground text-xs"
             />
           )}
           {showYAxis && (
             <YAxis
-              dataKey={layout === "vertical" ? xAxisKey : undefined}
-              type={layout === "vertical" ? "category" : "number"}
+              dataKey={layout === 'vertical' ? xAxisKey : undefined}
+              type={layout === 'vertical' ? 'category' : 'number'}
               tickLine={false}
               tickMargin={10}
               axisLine={false}
               tickFormatter={yAxisFormatter}
-              className="text-xs fill-muted-foreground"
+              className="fill-muted-foreground text-xs"
               width={yAxisWidth}
             />
           )}
@@ -202,9 +200,9 @@ export function BarChart<T extends Record<string, unknown>>({
               dataKey={key}
               fill={`var(--color-${key})`}
               radius={barRadius}
-              stackId={stacked ? "stack" : undefined}
+              stackId={stacked ? 'stack' : undefined}
               onClick={onBarClick ? (data) => onBarClick(data as T, index) : undefined}
-              className={onBarClick ? "cursor-pointer" : undefined}
+              className={onBarClick ? 'cursor-pointer' : undefined}
             />
           ))}
         </RechartsBarChart>
@@ -213,4 +211,4 @@ export function BarChart<T extends Record<string, unknown>>({
   );
 }
 
-BarChart.displayName = "BarChart";
+BarChart.displayName = 'BarChart';

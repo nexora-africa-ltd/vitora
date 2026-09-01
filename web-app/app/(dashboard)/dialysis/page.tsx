@@ -13,14 +13,17 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 
 export default function DialysisDashboardPage() {
   const { refresh, isRefreshing } = usePageRefresh();
-  const { data: sessionsData, isLoading: sessionsLoading } = useDialysisSessions({ page_size: 100 });
+  const { data: sessionsData, isLoading: sessionsLoading } = useDialysisSessions({
+    page_size: 100,
+  });
   const { data: ordersData, isLoading: ordersLoading } = useDialysisOrders({ page_size: 100 });
 
   const stats = useMemo(() => {
     const sessions = sessionsData?.results || [];
     const orders = ordersData?.results || [];
     return {
-      todaySessions: sessions.filter((s) => s.status === 'SCHEDULED' || s.status === 'IN_PROGRESS').length,
+      todaySessions: sessions.filter((s) => s.status === 'SCHEDULED' || s.status === 'IN_PROGRESS')
+        .length,
       inProgress: sessions.filter((s) => s.status === 'IN_PROGRESS').length,
       activeOrders: orders.filter((o) => o.status === 'ACTIVE').length,
       completedToday: sessions.filter((s) => s.status === 'COMPLETED').length,
@@ -31,14 +34,14 @@ export default function DialysisDashboardPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Dialysis Unit"
           helpContent="Manage hemodialysis sessions, standing orders, and vascular access for renal patients."
         />
 
         {/* Stats */}
-        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
           <StatsCard
             title="Today's Sessions"
             value={isLoading ? '-' : stats.todaySessions}
@@ -73,7 +76,7 @@ export default function DialysisDashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Activity className="h-4 w-4 text-primary" />
                 Sessions
               </CardTitle>
@@ -90,7 +93,7 @@ export default function DialysisDashboardPage() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <ClipboardList className="h-4 w-4 text-amber-500" />
                 Standing Orders
               </CardTitle>
@@ -107,7 +110,7 @@ export default function DialysisDashboardPage() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <CircleDot className="h-4 w-4 text-green-500" />
                 Vascular Access
               </CardTitle>

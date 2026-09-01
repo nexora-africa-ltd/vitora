@@ -1,21 +1,46 @@
 'use client';
 
 import Link from 'next/link';
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BedDouble, Baby, HeartPulse } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  BedDouble,
+  Baby,
+  HeartPulse,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { inpatientApi } from '@/lib/api/inpatient';
 import { useFacility } from '@/lib/context/facility-context';
 import { useCriticalCareWorkflowHealth } from '@/lib/hooks/use-inpatient';
-import type { Admission, CriticalCareTransferMatrixRow, CriticalCareWardLoad } from '@/lib/types/inpatient';
+import type {
+  Admission,
+  CriticalCareTransferMatrixRow,
+  CriticalCareWardLoad,
+} from '@/lib/types/inpatient';
 
 function WardTypeBadge({ wardType }: { wardType: string }) {
   const variant = wardType === 'ICU' ? 'destructive' : wardType === 'HDU' ? 'default' : 'secondary';
@@ -25,7 +50,8 @@ function WardTypeBadge({ wardType }: { wardType: string }) {
 export default function CriticalCareWorkflowPage() {
   const { hasModule } = useFacility();
   const { data, isLoading } = useCriticalCareWorkflowHealth(30);
-  const [selectedTransferRow, setSelectedTransferRow] = useState<CriticalCareTransferMatrixRow | null>(null);
+  const [selectedTransferRow, setSelectedTransferRow] =
+    useState<CriticalCareTransferMatrixRow | null>(null);
   const [selectedWard, setSelectedWard] = useState<CriticalCareWardLoad | null>(null);
 
   const transferRows = useMemo(
@@ -34,25 +60,31 @@ export default function CriticalCareWorkflowPage() {
   );
 
   const transferDrilldown = useQuery({
-    queryKey: ['critical-care-transfer-drilldown', selectedTransferRow?.from_ward_type, selectedTransferRow?.to_ward_type],
+    queryKey: [
+      'critical-care-transfer-drilldown',
+      selectedTransferRow?.from_ward_type,
+      selectedTransferRow?.to_ward_type,
+    ],
     enabled: Boolean(selectedTransferRow),
-    queryFn: () => inpatientApi.listTransfers({
-      source_ward_type: selectedTransferRow?.from_ward_type,
-      destination_ward_type: selectedTransferRow?.to_ward_type,
-      ordering: '-transfer_date',
-      page_size: 20,
-    }),
+    queryFn: () =>
+      inpatientApi.listTransfers({
+        source_ward_type: selectedTransferRow?.from_ward_type,
+        destination_ward_type: selectedTransferRow?.to_ward_type,
+        ordering: '-transfer_date',
+        page_size: 20,
+      }),
   });
 
   const wardAdmissionsDrilldown = useQuery({
     queryKey: ['critical-care-ward-drilldown', selectedWard?.ward_id],
     enabled: Boolean(selectedWard),
-    queryFn: () => inpatientApi.listAdmissions({
-      ward: selectedWard?.ward_id,
-      admission_status: 'ACTIVE',
-      ordering: '-admission_date',
-      page_size: 20,
-    }),
+    queryFn: () =>
+      inpatientApi.listAdmissions({
+        ward: selectedWard?.ward_id,
+        admission_status: 'ACTIVE',
+        ordering: '-admission_date',
+        page_size: 20,
+      }),
   });
 
   const transferDetails = transferDrilldown.data?.results ?? [];
@@ -60,7 +92,7 @@ export default function CriticalCareWorkflowPage() {
   const criticalCareEnabled = hasModule('icu') || hasModule('hdu') || hasModule('nbu');
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title="Critical Care Workflow Health"
         helpContent="Phase 3 monitoring dashboard for ICU/HDU/NBU transfer safety, review backlogs, and current ward load."
@@ -134,10 +166,22 @@ export default function CriticalCareWorkflowPage() {
                 <CardTitle className="text-base">Current ICU/HDU/NBU Load</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm"><span>ICU</span><span>{data?.totals.current_icu ?? 0}</span></div>
-                <div className="flex justify-between text-sm"><span>HDU</span><span>{data?.totals.current_hdu ?? 0}</span></div>
-                <div className="flex justify-between text-sm"><span>NBU</span><span>{data?.totals.current_nbu ?? 0}</span></div>
-                <div className="flex justify-between text-sm font-medium pt-2 border-t"><span>Total Critical</span><span>{data?.totals.critical_admissions ?? 0}</span></div>
+                <div className="flex justify-between text-sm">
+                  <span>ICU</span>
+                  <span>{data?.totals.current_icu ?? 0}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>HDU</span>
+                  <span>{data?.totals.current_hdu ?? 0}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>NBU</span>
+                  <span>{data?.totals.current_nbu ?? 0}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2 text-sm font-medium">
+                  <span>Total Critical</span>
+                  <span>{data?.totals.critical_admissions ?? 0}</span>
+                </div>
               </CardContent>
             </Card>
 
@@ -146,10 +190,26 @@ export default function CriticalCareWorkflowPage() {
                 <CardTitle className="text-base">Transfer Mix</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm"><span>Total</span><span>{data?.totals.transfers_total ?? 0}</span></div>
-                <div className="flex justify-between text-sm items-center"><span className="inline-flex items-center gap-1"><ArrowUpRight className="h-3.5 w-3.5" /> Step-Up</span><span>{data?.totals.step_up_transfers ?? 0}</span></div>
-                <div className="flex justify-between text-sm items-center"><span className="inline-flex items-center gap-1"><ArrowDownRight className="h-3.5 w-3.5" /> Step-Down</span><span>{data?.totals.step_down_transfers ?? 0}</span></div>
-                <div className="flex justify-between text-sm"><span>Lateral</span><span>{data?.totals.lateral_transfers ?? 0}</span></div>
+                <div className="flex justify-between text-sm">
+                  <span>Total</span>
+                  <span>{data?.totals.transfers_total ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="inline-flex items-center gap-1">
+                    <ArrowUpRight className="h-3.5 w-3.5" /> Step-Up
+                  </span>
+                  <span>{data?.totals.step_up_transfers ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="inline-flex items-center gap-1">
+                    <ArrowDownRight className="h-3.5 w-3.5" /> Step-Down
+                  </span>
+                  <span>{data?.totals.step_down_transfers ?? 0}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Lateral</span>
+                  <span>{data?.totals.lateral_transfers ?? 0}</span>
+                </div>
               </CardContent>
             </Card>
 
@@ -158,9 +218,21 @@ export default function CriticalCareWorkflowPage() {
                 <CardTitle className="text-base">Review Queue</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm items-center"><span className="inline-flex items-center gap-1"><HeartPulse className="h-3.5 w-3.5" /> Pending</span><span>{data?.totals.review_requests_pending ?? 0}</span></div>
-                <div className="flex justify-between text-sm items-center"><span className="inline-flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> Overdue</span><span>{data?.totals.review_requests_overdue ?? 0}</span></div>
-                <p className="text-xs text-muted-foreground pt-2 border-t">Tracks urgent/STAT review backlogs across critical-care admissions.</p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="inline-flex items-center gap-1">
+                    <HeartPulse className="h-3.5 w-3.5" /> Pending
+                  </span>
+                  <span>{data?.totals.review_requests_pending ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="inline-flex items-center gap-1">
+                    <AlertTriangle className="h-3.5 w-3.5" /> Overdue
+                  </span>
+                  <span>{data?.totals.review_requests_overdue ?? 0}</span>
+                </div>
+                <p className="border-t pt-2 text-xs text-muted-foreground">
+                  Tracks urgent/STAT review backlogs across critical-care admissions.
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -168,7 +240,10 @@ export default function CriticalCareWorkflowPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Transfer Transition Matrix</CardTitle>
-              <CardDescription>Most frequent source-to-destination transitions. Click a transfer count to open drill-down details.</CardDescription>
+              <CardDescription>
+                Most frequent source-to-destination transitions. Click a transfer count to open
+                drill-down details.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -182,25 +257,33 @@ export default function CriticalCareWorkflowPage() {
                 <TableBody>
                   {transferRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-muted-foreground">No transfers recorded for this period.</TableCell>
-                    </TableRow>
-                  ) : transferRows.map((row) => (
-                    <TableRow key={`${row.from_ward_type}-${row.to_ward_type}`}>
-                      <TableCell><WardTypeBadge wardType={row.from_ward_type} /></TableCell>
-                      <TableCell><WardTypeBadge wardType={row.to_ward_type} /></TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 font-medium"
-                          onClick={() => setSelectedTransferRow(row)}
-                        >
-                          {row.count}
-                        </Button>
+                      <TableCell colSpan={3} className="text-muted-foreground">
+                        No transfers recorded for this period.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    transferRows.map((row) => (
+                      <TableRow key={`${row.from_ward_type}-${row.to_ward_type}`}>
+                        <TableCell>
+                          <WardTypeBadge wardType={row.from_ward_type} />
+                        </TableCell>
+                        <TableCell>
+                          <WardTypeBadge wardType={row.to_ward_type} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 font-medium"
+                            onClick={() => setSelectedTransferRow(row)}
+                          >
+                            {row.count}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -209,7 +292,10 @@ export default function CriticalCareWorkflowPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Critical-Care Ward Load</CardTitle>
-              <CardDescription>Current occupancy pressure in ICU/HDU/NBU wards. Click active count to inspect current admissions.</CardDescription>
+              <CardDescription>
+                Current occupancy pressure in ICU/HDU/NBU wards. Click active count to inspect
+                current admissions.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -227,7 +313,13 @@ export default function CriticalCareWorkflowPage() {
                       <TableCell className="font-medium">{ward.ward_name}</TableCell>
                       <TableCell>
                         <span className="inline-flex items-center gap-1">
-                          {ward.ward_type === 'ICU' ? <BedDouble className="h-3.5 w-3.5" /> : ward.ward_type === 'NBU' ? <Baby className="h-3.5 w-3.5" /> : <HeartPulse className="h-3.5 w-3.5" />}
+                          {ward.ward_type === 'ICU' ? (
+                            <BedDouble className="h-3.5 w-3.5" />
+                          ) : ward.ward_type === 'NBU' ? (
+                            <Baby className="h-3.5 w-3.5" />
+                          ) : (
+                            <HeartPulse className="h-3.5 w-3.5" />
+                          )}
                           <WardTypeBadge wardType={ward.ward_type} />
                         </span>
                       </TableCell>
@@ -249,11 +341,13 @@ export default function CriticalCareWorkflowPage() {
               </Table>
             </CardContent>
           </Card>
-
         </>
       )}
 
-      <Dialog open={Boolean(selectedTransferRow)} onOpenChange={(open) => !open && setSelectedTransferRow(null)}>
+      <Dialog
+        open={Boolean(selectedTransferRow)}
+        onOpenChange={(open) => !open && setSelectedTransferRow(null)}
+      >
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Transfer Drill-Down</DialogTitle>
@@ -266,7 +360,9 @@ export default function CriticalCareWorkflowPage() {
           {transferDrilldown.isFetching ? (
             <Skeleton className="h-28" />
           ) : transferDetails.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No matching transfers found in this period.</p>
+            <p className="text-sm text-muted-foreground">
+              No matching transfers found in this period.
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -281,7 +377,10 @@ export default function CriticalCareWorkflowPage() {
                 {transferDetails.map((transfer) => (
                   <TableRow key={transfer.id}>
                     <TableCell>
-                      <Link href={`/admissions/${transfer.admission}`} className="text-primary hover:underline">
+                      <Link
+                        href={`/admissions/${transfer.admission}`}
+                        className="text-primary hover:underline"
+                      >
                         {transfer.admission_number || `Admission #${transfer.admission}`}
                       </Link>
                     </TableCell>
@@ -309,7 +408,9 @@ export default function CriticalCareWorkflowPage() {
           {wardAdmissionsDrilldown.isFetching ? (
             <Skeleton className="h-28" />
           ) : wardAdmissions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No active admissions in this ward right now.</p>
+            <p className="text-sm text-muted-foreground">
+              No active admissions in this ward right now.
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -324,14 +425,19 @@ export default function CriticalCareWorkflowPage() {
                 {wardAdmissions.map((admission: Admission) => (
                   <TableRow key={admission.id}>
                     <TableCell>
-                      <Link href={`/admissions/${admission.id}`} className="text-primary hover:underline">
+                      <Link
+                        href={`/admissions/${admission.id}`}
+                        className="text-primary hover:underline"
+                      >
                         {admission.admission_number}
                       </Link>
                     </TableCell>
                     <TableCell>{admission.patient_name || '-'}</TableCell>
                     <TableCell>{admission.bed_number || '-'}</TableCell>
                     <TableCell>
-                      <Badge variant={admission.admission_status === 'ACTIVE' ? 'secondary' : 'outline'}>
+                      <Badge
+                        variant={admission.admission_status === 'ACTIVE' ? 'secondary' : 'outline'}
+                      >
                         {admission.admission_status}
                       </Badge>
                     </TableCell>

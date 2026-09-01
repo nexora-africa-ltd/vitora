@@ -42,12 +42,7 @@ export function SHALogo({ size = 'md', className, muted = false }: SHALogoProps)
       alt="SHA"
       width={sizeConfig.px}
       height={sizeConfig.px}
-      className={cn(
-        sizeConfig.class,
-        'object-contain',
-        muted && 'opacity-60 grayscale',
-        className
-      )}
+      className={cn(sizeConfig.class, 'object-contain', muted && 'opacity-60 grayscale', className)}
       priority={size === 'lg' || size === 'xl'}
     />
   );

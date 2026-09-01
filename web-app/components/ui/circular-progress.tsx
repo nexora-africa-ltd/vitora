@@ -34,7 +34,10 @@ export function CircularProgress({
   const offset = circumference - (clamped / 100) * circumference;
 
   return (
-    <div className={cn('relative inline-flex items-center justify-center', className)} style={{ width: size, height: size }}>
+    <div
+      className={cn('relative inline-flex items-center justify-center', className)}
+      style={{ width: size, height: size }}
+    >
       <svg width={size} height={size} className="-rotate-90">
         {/* Track */}
         <circle
@@ -55,13 +58,14 @@ export function CircularProgress({
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          className={cn('stroke-primary transition-[stroke-dashoffset] duration-500 ease-out', indicatorClassName)}
+          className={cn(
+            'stroke-primary transition-[stroke-dashoffset] duration-500 ease-out',
+            indicatorClassName
+          )}
         />
       </svg>
       {children && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          {children}
-        </div>
+        <div className="absolute inset-0 flex items-center justify-center">{children}</div>
       )}
     </div>
   );

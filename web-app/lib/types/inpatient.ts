@@ -242,10 +242,7 @@ export type MaternityContinuityAction =
   | 'SCHEDULE_EARLY_PNC'
   | 'ROUTE_TO_PNC_QUEUE';
 
-export type MaternityContinuityStatus =
-  | 'NOT_APPLICABLE'
-  | 'SCHEDULED'
-  | 'QUEUED';
+export type MaternityContinuityStatus = 'NOT_APPLICABLE' | 'SCHEDULED' | 'QUEUED';
 
 export type DiagnosisRole = 'PRIMARY' | 'SECONDARY' | 'COMPLICATION';
 
@@ -588,7 +585,12 @@ export interface InterFacilityTransferArrivalAutoAdmitData {
 // ============================================================================
 
 export type ConditionStatus = 'STABLE' | 'IMPROVING' | 'DETERIORATING' | 'CRITICAL';
-export type ReviewType = 'WARD_ROUND' | 'URGENT_REVIEW' | 'CONSULTANT_REVIEW' | 'TRANSFER_REVIEW' | 'PRE_DISCHARGE';
+export type ReviewType =
+  | 'WARD_ROUND'
+  | 'URGENT_REVIEW'
+  | 'CONSULTANT_REVIEW'
+  | 'TRANSFER_REVIEW'
+  | 'PRE_DISCHARGE';
 export type ReviewRequestStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 export type ReviewUrgency = 'ROUTINE' | 'URGENT' | 'STAT';
 
@@ -652,12 +654,12 @@ export interface WardRoundCreateData {
   round_date: string;
   round_time: string;
   conducted_by: number;
-  review_type?: ReviewType;  // Defaults to WARD_ROUND
-  review_request?: number;   // Link to review request if fulfilling one
-  subjective: string;       // Required - SOAP 'S' (SHA/FHIR compliance)
-  objective: string;        // Required - SOAP 'O' (SHA/FHIR compliance)
-  assessment: string;       // Required - SOAP 'A' (SHA/FHIR compliance)
-  plan: string;             // Required - SOAP 'P' (SHA/FHIR compliance)
+  review_type?: ReviewType; // Defaults to WARD_ROUND
+  review_request?: number; // Link to review request if fulfilling one
+  subjective: string; // Required - SOAP 'S' (SHA/FHIR compliance)
+  objective: string; // Required - SOAP 'O' (SHA/FHIR compliance)
+  assessment: string; // Required - SOAP 'A' (SHA/FHIR compliance)
+  plan: string; // Required - SOAP 'P' (SHA/FHIR compliance)
   maternity_continuity_action?: MaternityContinuityAction;
   maternity_continuity_notes?: string;
   condition_status: ConditionStatus;
@@ -810,7 +812,11 @@ export interface KardexFieldChange {
 
 export type KardexCodeStatus = 'FULL_CODE' | 'DNR' | 'DNI' | 'LIMITED' | 'UNKNOWN';
 
-export type KardexScheduleItemType = 'TREATMENT' | 'DIAGNOSTIC_TEST' | 'VITALS_CHECK' | 'MEDICATION';
+export type KardexScheduleItemType =
+  | 'TREATMENT'
+  | 'DIAGNOSTIC_TEST'
+  | 'VITALS_CHECK'
+  | 'MEDICATION';
 export type KardexScheduleItemStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
 
 export interface KardexScheduleItem {
@@ -1781,7 +1787,10 @@ export const DERMATOLOGICAL_REACTION_OPTIONS: { value: DermatologicalReaction; l
   { value: 'OTHER_SKIN_RASH', label: 'Other Skin Rash' },
 ];
 
-export const CARDIAC_RESPIRATORY_REACTION_OPTIONS: { value: CardiacRespiratoryReaction; label: string }[] = [
+export const CARDIAC_RESPIRATORY_REACTION_OPTIONS: {
+  value: CardiacRespiratoryReaction;
+  label: string;
+}[] = [
   { value: 'CHEST_PAIN', label: 'Chest Pain' },
   { value: 'DYSPNOEA', label: 'Dyspnoea' },
   { value: 'HYPOTENSION', label: 'Hypotension' },

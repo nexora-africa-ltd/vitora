@@ -80,8 +80,8 @@ export default function ActivatePage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="max-w-md w-full">
-        <CardHeader className="text-center pb-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="pb-4 text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
             <KeyRound className="h-7 w-7 text-primary" />
           </div>
@@ -106,7 +106,7 @@ export default function ActivatePage() {
                   placeholder="XXXX-XXXX-XXXX-XXXX"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  className="font-mono text-center tracking-widest"
+                  className="text-center font-mono tracking-widest"
                   required
                   disabled={isSubmitting}
                   autoFocus
@@ -130,8 +130,8 @@ export default function ActivatePage() {
               </div>
 
               {error && (
-                <div className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <div className="flex items-start gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
@@ -139,7 +139,8 @@ export default function ActivatePage() {
               <div className="space-y-2 rounded-md border border-border p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground">
-                    Hub EULA version: <span className="font-mono">{eulaVersion || 'unavailable'}</span>
+                    Hub EULA version:{' '}
+                    <span className="font-mono">{eulaVersion || 'unavailable'}</span>
                   </span>
                   <Button
                     type="button"
@@ -152,7 +153,7 @@ export default function ActivatePage() {
                 </div>
 
                 {showEula ? (
-                  <pre className="max-h-56 overflow-auto rounded-md bg-muted p-3 text-[11px] whitespace-pre-wrap">
+                  <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-[11px]">
                     {eulaText}
                   </pre>
                 ) : null}
@@ -177,7 +178,7 @@ export default function ActivatePage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Activating...
                   </>
                 ) : (
@@ -185,7 +186,7 @@ export default function ActivatePage() {
                 )}
               </Button>
 
-              <p className="text-xs text-center text-muted-foreground pt-2">
+              <p className="pt-2 text-center text-xs text-muted-foreground">
                 Need an activation code?{' '}
                 <a
                   href="mailto:support@nexora.africa?subject=Activation%20Code%20Request"

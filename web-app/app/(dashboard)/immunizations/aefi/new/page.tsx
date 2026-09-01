@@ -20,11 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
   CommandEmpty,
@@ -46,14 +42,46 @@ import type {
 
 // MOH AEFI Reporting Form event type checkboxes
 const EVENT_TYPE_OPTIONS: { value: AEFIEventType; label: string; description: string }[] = [
-  { value: 'BCG_LYMPHADENITIS', label: 'BCG Lymphadenitis', description: 'Enlarged lymph node from BCG vaccine' },
-  { value: 'INJECTION_SITE_ABSCESS', label: 'Injection Site Abscess', description: 'Abscess at injection site (sterile or septic)' },
-  { value: 'CONVULSION', label: 'Convulsion / Seizure', description: 'Febrile or afebrile convulsions' },
-  { value: 'HIGH_FEVER', label: 'High Fever (≥38.5°C)', description: 'Temperature ≥38.5°C within 48h of vaccination' },
-  { value: 'SEVERE_LOCAL_REACTION', label: 'Severe Local Reaction', description: 'Redness/swelling >3cm or lasting >3 days' },
-  { value: 'GENERALIZED_URTICARIA', label: 'Generalized Urticaria', description: 'Widespread hives/rash' },
-  { value: 'ANAPHYLAXIS', label: 'Anaphylaxis', description: 'Acute severe allergic reaction — EMERGENCY' },
-  { value: 'ENCEPHALOPATHY', label: 'Encephalopathy', description: 'Acute onset of brain dysfunction' },
+  {
+    value: 'BCG_LYMPHADENITIS',
+    label: 'BCG Lymphadenitis',
+    description: 'Enlarged lymph node from BCG vaccine',
+  },
+  {
+    value: 'INJECTION_SITE_ABSCESS',
+    label: 'Injection Site Abscess',
+    description: 'Abscess at injection site (sterile or septic)',
+  },
+  {
+    value: 'CONVULSION',
+    label: 'Convulsion / Seizure',
+    description: 'Febrile or afebrile convulsions',
+  },
+  {
+    value: 'HIGH_FEVER',
+    label: 'High Fever (≥38.5°C)',
+    description: 'Temperature ≥38.5°C within 48h of vaccination',
+  },
+  {
+    value: 'SEVERE_LOCAL_REACTION',
+    label: 'Severe Local Reaction',
+    description: 'Redness/swelling >3cm or lasting >3 days',
+  },
+  {
+    value: 'GENERALIZED_URTICARIA',
+    label: 'Generalized Urticaria',
+    description: 'Widespread hives/rash',
+  },
+  {
+    value: 'ANAPHYLAXIS',
+    label: 'Anaphylaxis',
+    description: 'Acute severe allergic reaction — EMERGENCY',
+  },
+  {
+    value: 'ENCEPHALOPATHY',
+    label: 'Encephalopathy',
+    description: 'Acute onset of brain dysfunction',
+  },
   { value: 'PARALYSIS', label: 'Paralysis', description: 'Acute flaccid paralysis (AFP)' },
   { value: 'TOXIC_SHOCK', label: 'Toxic Shock Syndrome', description: 'Acute onset of shock' },
   { value: 'OTHER', label: 'Other', description: 'Specify below' },
@@ -92,7 +120,11 @@ export default function AEFICreatePage() {
 
   const { data: recordsData, isLoading: recordsLoading } = useQuery({
     queryKey: ['immunization-records-search', recordSearch],
-    queryFn: () => immunizationRecordsApi.list({ page_size: 20, ...(recordSearch ? { search: recordSearch } : {}) }),
+    queryFn: () =>
+      immunizationRecordsApi.list({
+        page_size: 20,
+        ...(recordSearch ? { search: recordSearch } : {}),
+      }),
     enabled: recordComboOpen,
     staleTime: 30_000,
   });
@@ -102,7 +134,9 @@ export default function AEFICreatePage() {
 
   // Form state
   const [guardianName, setGuardianName] = useState('');
-  const [vaccinationServiceType, setVaccinationServiceType] = useState<VaccinationServiceType | ''>('');
+  const [vaccinationServiceType, setVaccinationServiceType] = useState<VaccinationServiceType | ''>(
+    ''
+  );
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]!);
   const [onsetTime, setOnsetTime] = useState('');
   const [eventTypes, setEventTypes] = useState<AEFIEventType[]>([]);
@@ -119,7 +153,7 @@ export default function AEFICreatePage() {
 
   const toggleEventType = (type: AEFIEventType) => {
     setEventTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
     );
   };
 
@@ -127,11 +161,18 @@ export default function AEFICreatePage() {
     mutationFn: (data: AEFICreateData) => aefiApi.create(data),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['aefi'] });
-      toast({ title: 'AEFI Reported', description: 'Adverse event has been recorded successfully.' });
+      toast({
+        title: 'AEFI Reported',
+        description: 'Adverse event has been recorded successfully.',
+      });
       router.push(`/immunizations/aefi/${result.id}`);
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to submit AEFI report.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to submit AEFI report.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -178,9 +219,11 @@ export default function AEFICreatePage() {
           <CardTitle className="text-base sm:text-lg">1. Patient & Immunization Record</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <Label>Immunization Record <span className="text-destructive">*</span></Label>
+              <Label>
+                Immunization Record <span className="text-destructive">*</span>
+              </Label>
               <Popover open={recordComboOpen} onOpenChange={setRecordComboOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -206,12 +249,14 @@ export default function AEFICreatePage() {
                     />
                     <CommandList>
                       {recordsLoading ? (
-                        <div className="p-4 text-sm text-muted-foreground text-center">
+                        <div className="p-4 text-center text-sm text-muted-foreground">
                           Searching...
                         </div>
                       ) : immunizationRecords.length === 0 ? (
                         <CommandEmpty>
-                          {recordSearch ? 'No records found.' : 'Type to search immunization records...'}
+                          {recordSearch
+                            ? 'No records found.'
+                            : 'Type to search immunization records...'}
                         </CommandEmpty>
                       ) : (
                         <CommandGroup>
@@ -229,20 +274,21 @@ export default function AEFICreatePage() {
                                   'mr-2 h-4 w-4',
                                   immunizationRecordId === record.id.toString()
                                     ? 'opacity-100'
-                                    : 'opacity-0',
+                                    : 'opacity-0'
                                 )}
                               />
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium text-sm">#{record.id}</span>
+                                  <span className="text-sm font-medium">#{record.id}</span>
                                   <span className="text-sm">{record.vaccine_name}</span>
-                                  <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                  <Badge variant="outline" className="px-1 py-0 text-[10px]">
                                     {record.status}
                                   </Badge>
                                 </div>
-                                <p className="text-xs text-muted-foreground truncate">
+                                <p className="truncate text-xs text-muted-foreground">
                                   Dose {record.dose_number} · {record.vaccine_code}
-                                  {record.scheduled_date && ` · Scheduled: ${record.scheduled_date}`}
+                                  {record.scheduled_date &&
+                                    ` · Scheduled: ${record.scheduled_date}`}
                                 </p>
                               </div>
                             </CommandItem>
@@ -253,8 +299,9 @@ export default function AEFICreatePage() {
                   </Command>
                 </PopoverContent>
               </Popover>
-              <p className="text-xs text-muted-foreground mt-1">
-                Patient details, vaccine info, and facility data are auto-populated from this record.
+              <p className="mt-1 text-xs text-muted-foreground">
+                Patient details, vaccine info, and facility data are auto-populated from this
+                record.
               </p>
             </div>
             <div>
@@ -289,7 +336,9 @@ export default function AEFICreatePage() {
               </SelectTrigger>
               <SelectContent>
                 {SERVICE_TYPE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -308,11 +357,11 @@ export default function AEFICreatePage() {
           <p className="text-sm text-muted-foreground">
             Select all that apply (as per MOH AEFI Reporting Form).
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {EVENT_TYPE_OPTIONS.map((opt) => (
               <label
                 key={opt.value}
-                className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
                   eventTypes.includes(opt.value)
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:bg-muted/50'
@@ -332,7 +381,9 @@ export default function AEFICreatePage() {
           </div>
           {eventTypes.includes('OTHER') && (
             <div className="mt-2">
-              <Label>Specify Other Event Type <span className="text-destructive">*</span></Label>
+              <Label>
+                Specify Other Event Type <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={otherEventTypeDetail}
                 onChange={(e) => setOtherEventTypeDetail(e.target.value)}
@@ -349,39 +400,39 @@ export default function AEFICreatePage() {
           <CardTitle className="text-base sm:text-lg">4. Event Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <Label>Event Date <span className="text-destructive">*</span></Label>
-              <Input
-                type="date"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-              />
+              <Label>
+                Event Date <span className="text-destructive">*</span>
+              </Label>
+              <Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
             </div>
             <div>
               <Label>Onset Time</Label>
-              <Input
-                type="time"
-                value={onsetTime}
-                onChange={(e) => setOnsetTime(e.target.value)}
-              />
+              <Input type="time" value={onsetTime} onChange={(e) => setOnsetTime(e.target.value)} />
             </div>
             <div>
-              <Label>Severity <span className="text-destructive">*</span></Label>
+              <Label>
+                Severity <span className="text-destructive">*</span>
+              </Label>
               <Select value={severity} onValueChange={(v) => setSeverity(v as AEFISeverity)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select severity" />
                 </SelectTrigger>
                 <SelectContent>
                   {SEVERITY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <div>
-            <Label>Description / Timeline <span className="text-destructive">*</span></Label>
+            <Label>
+              Description / Timeline <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -470,7 +521,9 @@ export default function AEFICreatePage() {
             </SelectTrigger>
             <SelectContent>
               {OUTCOME_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -483,7 +536,7 @@ export default function AEFICreatePage() {
           <CardTitle className="text-base sm:text-lg">9. Reporter</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-3">
+          <p className="mb-3 text-sm text-muted-foreground">
             Your name is auto-recorded. Enter your designation below.
           </p>
           <div>
@@ -499,21 +552,18 @@ export default function AEFICreatePage() {
 
       {/* Validation Summary */}
       {severity === 'SEVERE' && (
-        <Badge variant="destructive" className="text-sm px-3 py-1.5">
+        <Badge variant="destructive" className="px-3 py-1.5 text-sm">
           Severe AEFI — must be reported to national authorities within 24 hours
         </Badge>
       )}
 
       {/* Action Buttons */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end pb-6">
+      <div className="flex flex-col gap-2 pb-6 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={!canSubmit || createMutation.isPending}
-        >
-          {createMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+        <Button onClick={handleSubmit} disabled={!canSubmit || createMutation.isPending}>
+          {createMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
           Submit AEFI Report
         </Button>
       </div>

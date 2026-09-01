@@ -5,11 +5,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import Link from 'next/link';
-import {
-  useState as useReactState,
-  type Dispatch,
-  type SetStateAction,
-} from 'react';
+import { useState as useReactState, type Dispatch, type SetStateAction } from 'react';
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -59,8 +55,6 @@ function NavLinks({ onNavigate }: NavLinksProps) {
   );
 }
 
-function useState<T>(
-  initialState: T | (() => T)
-): [T, Dispatch<SetStateAction<T>>] {
+function useState<T>(initialState: T | (() => T)): [T, Dispatch<SetStateAction<T>>] {
   return useReactState(initialState);
 }

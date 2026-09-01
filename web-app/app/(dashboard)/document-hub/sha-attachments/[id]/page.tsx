@@ -91,7 +91,8 @@ export default function ShaAttachmentPreviewPage() {
     }
 
     setInlinePreviewLoading(true);
-    void apiClient.get<Blob>(previewFetchPath, { responseType: 'blob' })
+    void apiClient
+      .get<Blob>(previewFetchPath, { responseType: 'blob' })
       .then((response) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(response.data);
@@ -138,30 +139,58 @@ export default function ShaAttachmentPreviewPage() {
       />
 
       <Card>
-        <CardContent className="pt-4 space-y-3 text-sm">
-          <div className="flex items-center gap-2 flex-wrap">
+        <CardContent className="space-y-3 pt-4 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{data.attachment_type_display || data.attachment_type}</Badge>
             <Badge variant="secondary">Claim {data.claim_number || data.claim_id}</Badge>
             {fileKind === 'pdf' ? (
-              <Badge variant="outline" className="inline-flex items-center gap-1"><FileText className="h-3 w-3" />PDF</Badge>
+              <Badge variant="outline" className="inline-flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                PDF
+              </Badge>
             ) : null}
             {fileKind === 'image' ? (
-              <Badge variant="outline" className="inline-flex items-center gap-1"><ImageIcon className="h-3 w-3" />Image</Badge>
+              <Badge variant="outline" className="inline-flex items-center gap-1">
+                <ImageIcon className="h-3 w-3" />
+                Image
+              </Badge>
             ) : null}
           </div>
 
-          <p><span className="text-muted-foreground">Description:</span> {data.description || 'N/A'}</p>
-          <p><span className="text-muted-foreground">Original filename:</span> {data.original_filename || 'N/A'}</p>
-          <p><span className="text-muted-foreground">MIME type:</span> {data.mime_type || 'N/A'}</p>
-          <p><span className="text-muted-foreground">Size:</span> {formatBytes(data.file_size)}</p>
-          <p><span className="text-muted-foreground">Uploaded by:</span> {data.uploaded_by_name || 'Unknown'}</p>
-          <p><span className="text-muted-foreground">Uploaded at:</span> {new Date(data.created_at).toLocaleString()}</p>
-          <p className="break-all"><span className="text-muted-foreground">SHA-256:</span> {data.checksum || 'N/A'}</p>
+          <p>
+            <span className="text-muted-foreground">Description:</span> {data.description || 'N/A'}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Original filename:</span>{' '}
+            {data.original_filename || 'N/A'}
+          </p>
+          <p>
+            <span className="text-muted-foreground">MIME type:</span> {data.mime_type || 'N/A'}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Size:</span> {formatBytes(data.file_size)}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Uploaded by:</span>{' '}
+            {data.uploaded_by_name || 'Unknown'}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Uploaded at:</span>{' '}
+            {new Date(data.created_at).toLocaleString()}
+          </p>
+          <p className="break-all">
+            <span className="text-muted-foreground">SHA-256:</span> {data.checksum || 'N/A'}
+          </p>
 
           {data.file_url ? (
             <div className="pt-2">
               <Button asChild size="sm" variant="outline">
-                <Link href={data.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1">
+                <Link
+                  href={data.file_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1"
+                >
                   <ExternalLink className="h-4 w-4" />
                   Open Source File
                 </Link>
@@ -182,7 +211,7 @@ export default function ShaAttachmentPreviewPage() {
               <iframe
                 title={`SHA attachment ${data.id}`}
                 src={inlinePreviewUrl}
-                className="w-full h-[65vh] rounded-md border"
+                className="h-[65vh] w-full rounded-md border"
               />
             ) : (
               <div className="text-sm text-muted-foreground">

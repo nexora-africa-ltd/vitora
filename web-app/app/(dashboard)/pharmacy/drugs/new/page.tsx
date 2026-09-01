@@ -29,7 +29,7 @@ export default function NewDrugPage() {
         <PageHeader title="Add to Catalog" />
         <Card className="p-6 text-center">
           <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             You do not have permission to add catalog items.
           </p>
         </Card>
@@ -44,7 +44,7 @@ export default function NewDrugPage() {
         helpContent="Add a medication, consumable, or reagent to the catalog. Choose the item type first, then fill in the relevant details."
       />
 
-      <div className="max-w-3xl mx-auto">
+      <div className="mx-auto max-w-3xl">
         <DrugForm onCancel={() => router.push('/pharmacy?tab=drugs')} />
       </div>
     </div>

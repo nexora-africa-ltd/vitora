@@ -14,7 +14,11 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { DiagnosisEntry } from '@/components/shared';
-import type { DischargeMedication, DischargeType, MaternityContinuityAction } from '@/lib/types/inpatient';
+import type {
+  DischargeMedication,
+  DischargeType,
+  MaternityContinuityAction,
+} from '@/lib/types/inpatient';
 import type { DischargeSummarySection } from '@/lib/discharge/types';
 import type { ClinicalDocGenerationMode } from '@/lib/types/ai';
 
@@ -83,7 +87,7 @@ function writeDraft(admissionId: number, data: DischargeDraftData) {
 export function useDischargeDraft(
   admissionId: number,
   currentValues: Omit<DischargeDraftData, 'savedAt'>,
-  setters: DischargeDraftSetters,
+  setters: DischargeDraftSetters
 ) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restoredRef = useRef(false);

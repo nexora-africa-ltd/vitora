@@ -106,14 +106,18 @@ export default function ProcedureOrderDetailPage() {
   const [scheduleClinicId, setScheduleClinicId] = useState<number | null>(null);
 
   // Fetch available slots when the catalog has default clinics and a date is picked
-  const hasClinics = (order?.procedure as any)?.default_clinics_detail?.length > 0;
+  const hasClinics = Array.isArray(
+    (order?.procedure as { default_clinics_detail?: unknown } | undefined)?.default_clinics_detail
+  );
   const catalogId = order?.procedure?.id;
   const { data: slotsData, isLoading: loadingSlots } = useQuery({
     queryKey: ['procedure-available-slots', catalogId, scheduleDate],
     queryFn: () => proceduresApi.getAvailableSlots(catalogId!, scheduleDate),
     enabled: !!catalogId && !!scheduleDate && hasClinics,
   });
-  const availableSlots = (slotsData?.slots ?? []).filter((s: ProcedureAvailableSlot) => s.available);
+  const availableSlots = (slotsData?.slots ?? []).filter(
+    (s: ProcedureAvailableSlot) => s.available
+  );
 
   // Reschedule form
   const [rescheduleDate, setRescheduleDate] = useState('');
@@ -127,7 +131,9 @@ export default function ProcedureOrderDetailPage() {
     queryFn: () => proceduresApi.getAvailableSlots(catalogId!, rescheduleDate),
     enabled: !!catalogId && !!rescheduleDate && hasClinics && rescheduleOpen,
   });
-  const rescheduleSlots = (rescheduleSlotsData?.slots ?? []).filter((s: ProcedureAvailableSlot) => s.available);
+  const rescheduleSlots = (rescheduleSlotsData?.slots ?? []).filter(
+    (s: ProcedureAvailableSlot) => s.available
+  );
 
   // Cancel form
   const [cancelReason, setCancelReason] = useState('');
@@ -159,7 +165,11 @@ export default function ProcedureOrderDetailPage() {
       setScheduleOpen(false);
     },
     onError: (err) => {
-      toast({ title: 'Schedule failed', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Schedule failed',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -177,7 +187,11 @@ export default function ProcedureOrderDetailPage() {
       setRescheduleOpen(false);
     },
     onError: (err) => {
-      toast({ title: 'Reschedule failed', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Reschedule failed',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -188,7 +202,11 @@ export default function ProcedureOrderDetailPage() {
       invalidateOrder();
     },
     onError: (err) => {
-      toast({ title: 'Failed to start', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Failed to start',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -198,7 +216,9 @@ export default function ProcedureOrderDetailPage() {
         status: completeStatus,
         ...(completeOutcome ? { immediate_outcome: completeOutcome } : {}),
         complications_occurred: complications,
-        ...(complications && complicationDetails ? { complication_details: complicationDetails } : {}),
+        ...(complications && complicationDetails
+          ? { complication_details: complicationDetails }
+          : {}),
       }),
     onSuccess: () => {
       toast({ title: 'Procedure completed', description: 'The procedure has been recorded.' });
@@ -206,7 +226,11 @@ export default function ProcedureOrderDetailPage() {
       setCompleteOpen(false);
     },
     onError: (err) => {
-      toast({ title: 'Completion failed', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Completion failed',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -218,7 +242,11 @@ export default function ProcedureOrderDetailPage() {
       setCancelOpen(false);
     },
     onError: (err) => {
-      toast({ title: 'Cancellation failed', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Cancellation failed',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -229,7 +257,11 @@ export default function ProcedureOrderDetailPage() {
       invalidateOrder();
     },
     onError: (err) => {
-      toast({ title: 'Failed to sign consent', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Failed to sign consent',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -250,12 +282,19 @@ export default function ProcedureOrderDetailPage() {
         witness_name: witnessName,
       }),
     onSuccess: () => {
-      toast({ title: 'Consent created', description: 'Consent record has been created. It can now be signed.' });
+      toast({
+        title: 'Consent created',
+        description: 'Consent record has been created. It can now be signed.',
+      });
       invalidateOrder();
       setCreateConsentOpen(false);
     },
     onError: (err) => {
-      toast({ title: 'Failed to create consent', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Failed to create consent',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -283,10 +322,12 @@ export default function ProcedureOrderDetailPage() {
     );
   }
 
-  const canSchedule = ['ORDERED', 'CONSENT_PENDING'].includes(order.status) &&
+  const canSchedule =
+    ['ORDERED', 'CONSENT_PENDING'].includes(order.status) &&
     (!order.procedure.consent_required || order.consent?.status === 'SIGNED');
   const canReschedule = ['SCHEDULED', 'READY'].includes(order.status);
-  const canStart = ['SCHEDULED', 'READY'].includes(order.status) &&
+  const canStart =
+    ['SCHEDULED', 'READY'].includes(order.status) &&
     (!order.procedure.consent_required || order.consent?.status === 'SIGNED');
   const canComplete = order.status === 'IN_PROGRESS' && order.log;
   const canCancel = !['COMPLETED', 'CANCELLED'].includes(order.status);
@@ -299,12 +340,10 @@ export default function ProcedureOrderDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-base sm:text-lg font-semibold truncate">
-            {order.procedure.name}
-          </p>
-          <p className="text-sm text-muted-foreground truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-base font-semibold sm:text-lg">{order.procedure.name}</p>
+          <p className="truncate text-sm text-muted-foreground">
             Patient ID: {order.patient}
             {order.body_site && <> &bull; Site: {order.body_site}</>}
             {order.laterality !== 'NA' && <> ({order.laterality})</>}
@@ -312,13 +351,15 @@ export default function ProcedureOrderDetailPage() {
           <p className="text-xs text-muted-foreground">
             Ordered {formatDateTime(order.ordered_at)}
             {order.scheduled_date && (
-              <> &bull; Scheduled {formatDate(order.scheduled_date)}
+              <>
+                {' '}
+                &bull; Scheduled {formatDate(order.scheduled_date)}
                 {order.scheduled_time && ` at ${formatTime(order.scheduled_time)}`}
               </>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+        <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
           <Badge className={`${PROCEDURE_STATUS_COLORS[order.status]} w-fit`}>
             {PROCEDURE_STATUS_LABELS[order.status]}
           </Badge>
@@ -326,7 +367,9 @@ export default function ProcedureOrderDetailPage() {
             {order.priority}
           </Badge>
           {order.is_overdue && (
-            <Badge variant="destructive" className="w-fit">Overdue</Badge>
+            <Badge variant="destructive" className="w-fit">
+              Overdue
+            </Badge>
           )}
         </div>
       </div>
@@ -335,37 +378,40 @@ export default function ProcedureOrderDetailPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         {canSchedule && (
           <Button variant="outline" onClick={() => setScheduleOpen(true)}>
-            <Calendar className="h-4 w-4 mr-2" />
+            <Calendar className="mr-2 h-4 w-4" />
             Schedule
           </Button>
         )}
         {canReschedule && (
-          <Button variant="outline" onClick={() => {
-            setRescheduleDate(order.scheduled_date || '');
-            setRescheduleTime(order.scheduled_time || '');
-            setRescheduleLocation(order.scheduled_location || '');
-            setRescheduleClinicId(order.scheduled_clinic || null);
-            setRescheduleOpen(true);
-          }}>
-            <Calendar className="h-4 w-4 mr-2" />
+          <Button
+            variant="outline"
+            onClick={() => {
+              setRescheduleDate(order.scheduled_date || '');
+              setRescheduleTime(order.scheduled_time || '');
+              setRescheduleLocation(order.scheduled_location || '');
+              setRescheduleClinicId(order.scheduled_clinic || null);
+              setRescheduleOpen(true);
+            }}
+          >
+            <Calendar className="mr-2 h-4 w-4" />
             Reschedule
           </Button>
         )}
         {canStart && (
           <Button onClick={() => startProcedure()} disabled={starting}>
-            <PlayCircle className="h-4 w-4 mr-2" />
+            <PlayCircle className="mr-2 h-4 w-4" />
             {starting ? 'Starting...' : 'Start Procedure'}
           </Button>
         )}
         {canComplete && (
           <Button onClick={() => setCompleteOpen(true)}>
-            <CheckCircle2 className="h-4 w-4 mr-2" />
+            <CheckCircle2 className="mr-2 h-4 w-4" />
             Complete
           </Button>
         )}
         {canCancel && (
           <Button variant="destructive" onClick={() => setCancelOpen(true)}>
-            <XCircle className="h-4 w-4 mr-2" />
+            <XCircle className="mr-2 h-4 w-4" />
             Cancel
           </Button>
         )}
@@ -373,7 +419,7 @@ export default function ProcedureOrderDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="w-full grid grid-cols-4 h-auto">
+        <TabsList className="grid h-auto w-full grid-cols-4">
           <TabsTrigger value="overview" className="gap-1.5">
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">Overview</span>
@@ -446,18 +492,20 @@ export default function ProcedureOrderDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Indication</span>
-                  <span className="text-right max-w-[60%]">{order.indication}</span>
+                  <span className="max-w-[60%] text-right">{order.indication}</span>
                 </div>
                 {order.clinical_notes && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Clinical Notes</span>
-                    <span className="text-right max-w-[60%]">{order.clinical_notes}</span>
+                    <span className="max-w-[60%] text-right">{order.clinical_notes}</span>
                   </div>
                 )}
                 {order.body_site && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Body Site</span>
-                    <span>{order.body_site} {order.laterality !== 'NA' ? `(${order.laterality})` : ''}</span>
+                    <span>
+                      {order.body_site} {order.laterality !== 'NA' ? `(${order.laterality})` : ''}
+                    </span>
                   </div>
                 )}
                 {order.scheduled_location && (
@@ -488,7 +536,7 @@ export default function ProcedureOrderDetailPage() {
               <CardHeader>
                 <CardTitle className="text-base text-destructive">Cancelled</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm space-y-2">
+              <CardContent className="space-y-2 text-sm">
                 <p>{order.cancellation_reason}</p>
                 {order.cancelled_at && (
                   <p className="text-muted-foreground">
@@ -505,7 +553,7 @@ export default function ProcedureOrderDetailPage() {
           {!order.procedure.consent_required ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                <ClipboardCheck className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <ClipboardCheck className="mx-auto mb-2 h-8 w-8 opacity-50" />
                 <p>Consent is not required for this procedure.</p>
               </CardContent>
             </Card>
@@ -514,14 +562,14 @@ export default function ProcedureOrderDetailPage() {
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <AlertTriangle className="mx-auto mb-2 h-8 w-8 opacity-50" />
                 <p>Consent has not been created yet.</p>
-                <p className="text-xs mt-1">
+                <p className="mt-1 text-xs">
                   Consent must be obtained before the procedure can begin.
                 </p>
                 {!['COMPLETED', 'CANCELLED'].includes(order.status) && (
                   <Button className="mt-4" onClick={() => setCreateConsentOpen(true)}>
-                    <ClipboardCheck className="h-4 w-4 mr-2" />
+                    <ClipboardCheck className="mr-2 h-4 w-4" />
                     Obtain Consent
                   </Button>
                 )}
@@ -537,15 +585,11 @@ export default function ProcedureOrderDetailPage() {
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                <Stethoscope className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <Stethoscope className="mx-auto mb-2 h-8 w-8 opacity-50" />
                 <p>Procedure has not started yet.</p>
                 {canStart && (
-                  <Button
-                    className="mt-4"
-                    onClick={() => startProcedure()}
-                    disabled={starting}
-                  >
-                    <PlayCircle className="h-4 w-4 mr-2" />
+                  <Button className="mt-4" onClick={() => startProcedure()} disabled={starting}>
+                    <PlayCircle className="mr-2 h-4 w-4" />
                     {starting ? 'Starting...' : 'Start Procedure'}
                   </Button>
                 )}
@@ -566,10 +610,13 @@ export default function ProcedureOrderDetailPage() {
           <DialogHeader>
             <div className="flex items-center gap-2">
               <DialogTitle>Schedule Procedure</DialogTitle>
-              <HelpPopover content={hasClinics
-                ? "Select a date to see available slots from configured procedure clinics. Staff will be auto-assigned."
-                : "Set the date, time, and location for this procedure."
-              } />
+              <HelpPopover
+                content={
+                  hasClinics
+                    ? 'Select a date to see available slots from configured procedure clinics. Staff will be auto-assigned.'
+                    : 'Set the date, time, and location for this procedure.'
+                }
+              />
             </div>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -604,16 +651,17 @@ export default function ProcedureOrderDetailPage() {
               <div>
                 <Label>Available Slots</Label>
                 {loadingSlots ? (
-                  <div className="space-y-2 mt-2">
+                  <div className="mt-2 space-y-2">
                     <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
                   </div>
                 ) : availableSlots.length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    No available slots for this date. Try a different date or use manual scheduling below.
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    No available slots for this date. Try a different date or use manual scheduling
+                    below.
                   </p>
                 ) : (
-                  <div className="grid gap-2 mt-2 max-h-48 overflow-y-auto">
+                  <div className="mt-2 grid max-h-48 gap-2 overflow-y-auto">
                     {availableSlots.map((slot: ProcedureAvailableSlot, idx: number) => (
                       <button
                         key={`${slot.clinic_id}-${slot.start_time}-${idx}`}
@@ -623,13 +671,15 @@ export default function ProcedureOrderDetailPage() {
                           setScheduleTime(slot.start_time);
                           setScheduleLocation(slot.clinic_name);
                         }}
-                        className={`flex items-center justify-between p-2.5 rounded-lg border text-left text-sm transition-colors ${
+                        className={`flex items-center justify-between rounded-lg border p-2.5 text-left text-sm transition-colors ${
                           scheduleClinicId === slot.clinic_id && scheduleTime === slot.start_time
                             ? 'border-primary bg-primary/5 ring-1 ring-primary'
                             : 'hover:bg-muted/50'
                         }`}
                       >
-                        <span className="font-medium">{slot.start_time} – {slot.end_time}</span>
+                        <span className="font-medium">
+                          {slot.start_time} – {slot.end_time}
+                        </span>
                         <span className="text-muted-foreground">{slot.clinic_name}</span>
                       </button>
                     ))}
@@ -663,10 +713,18 @@ export default function ProcedureOrderDetailPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setScheduleOpen(false)}>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setScheduleOpen(false)}
+            >
               Cancel
             </Button>
-            <Button className="w-full sm:w-auto" onClick={() => scheduleOrder()} disabled={scheduling || !scheduleDate}>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => scheduleOrder()}
+              disabled={scheduling || !scheduleDate}
+            >
               {scheduling ? 'Scheduling...' : 'Schedule'}
             </Button>
           </DialogFooter>
@@ -718,16 +776,17 @@ export default function ProcedureOrderDetailPage() {
               <div>
                 <Label>Available Slots</Label>
                 {loadingRescheduleSlots ? (
-                  <div className="space-y-2 mt-2">
+                  <div className="mt-2 space-y-2">
                     <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
                   </div>
                 ) : rescheduleSlots.length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    No available slots for this date. Try a different date or use manual scheduling below.
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    No available slots for this date. Try a different date or use manual scheduling
+                    below.
                   </p>
                 ) : (
-                  <div className="grid gap-2 mt-2 max-h-48 overflow-y-auto">
+                  <div className="mt-2 grid max-h-48 gap-2 overflow-y-auto">
                     {rescheduleSlots.map((slot: ProcedureAvailableSlot, idx: number) => (
                       <button
                         key={`${slot.clinic_id}-${slot.start_time}-${idx}`}
@@ -737,13 +796,16 @@ export default function ProcedureOrderDetailPage() {
                           setRescheduleTime(slot.start_time);
                           setRescheduleLocation(slot.clinic_name);
                         }}
-                        className={`flex items-center justify-between p-2.5 rounded-lg border text-left text-sm transition-colors ${
-                          rescheduleClinicId === slot.clinic_id && rescheduleTime === slot.start_time
+                        className={`flex items-center justify-between rounded-lg border p-2.5 text-left text-sm transition-colors ${
+                          rescheduleClinicId === slot.clinic_id &&
+                          rescheduleTime === slot.start_time
                             ? 'border-primary bg-primary/5 ring-1 ring-primary'
                             : 'hover:bg-muted/50'
                         }`}
                       >
-                        <span className="font-medium">{slot.start_time} – {slot.end_time}</span>
+                        <span className="font-medium">
+                          {slot.start_time} – {slot.end_time}
+                        </span>
                         <span className="text-muted-foreground">{slot.clinic_name}</span>
                       </button>
                     ))}
@@ -764,34 +826,45 @@ export default function ProcedureOrderDetailPage() {
               </div>
             )}
 
-            {hasClinics && rescheduleSlots.length === 0 && rescheduleDate && !loadingRescheduleSlots && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="reschedule_time_fallback">Time (manual)</Label>
-                  <Input
-                    id="reschedule_time_fallback"
-                    type="time"
-                    value={rescheduleTime}
-                    onChange={(e) => setRescheduleTime(e.target.value)}
-                  />
+            {hasClinics &&
+              rescheduleSlots.length === 0 &&
+              rescheduleDate &&
+              !loadingRescheduleSlots && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="reschedule_time_fallback">Time (manual)</Label>
+                    <Input
+                      id="reschedule_time_fallback"
+                      type="time"
+                      value={rescheduleTime}
+                      onChange={(e) => setRescheduleTime(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="reschedule_location_fallback">Location</Label>
+                    <Input
+                      id="reschedule_location_fallback"
+                      placeholder="e.g., Procedure Room 1"
+                      value={rescheduleLocation}
+                      onChange={(e) => setRescheduleLocation(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="reschedule_location_fallback">Location</Label>
-                  <Input
-                    id="reschedule_location_fallback"
-                    placeholder="e.g., Procedure Room 1"
-                    value={rescheduleLocation}
-                    onChange={(e) => setRescheduleLocation(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
+              )}
           </div>
           <DialogFooter>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setRescheduleOpen(false)}>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setRescheduleOpen(false)}
+            >
               Cancel
             </Button>
-            <Button className="w-full sm:w-auto" onClick={() => rescheduleOrder()} disabled={rescheduling || !rescheduleDate}>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => rescheduleOrder()}
+              disabled={rescheduling || !rescheduleDate}
+            >
               {rescheduling ? 'Rescheduling...' : 'Reschedule'}
             </Button>
           </DialogFooter>
@@ -816,7 +889,11 @@ export default function ProcedureOrderDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setCancelOpen(false)}>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setCancelOpen(false)}
+            >
               Back
             </Button>
             <Button
@@ -869,7 +946,9 @@ export default function ProcedureOrderDetailPage() {
                 checked={complications}
                 onCheckedChange={(v) => setComplications(!!v)}
               />
-              <Label htmlFor="complications" className="!mt-0">Complications occurred</Label>
+              <Label htmlFor="complications" className="!mt-0">
+                Complications occurred
+              </Label>
             </div>
             {complications && (
               <div>
@@ -884,10 +963,18 @@ export default function ProcedureOrderDetailPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setCompleteOpen(false)}>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setCompleteOpen(false)}
+            >
               Cancel
             </Button>
-            <Button className="w-full sm:w-auto" onClick={() => completeProcedure()} disabled={completing}>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => completeProcedure()}
+              disabled={completing}
+            >
               {completing ? 'Completing...' : 'Complete Procedure'}
             </Button>
           </DialogFooter>
@@ -896,7 +983,7 @@ export default function ProcedureOrderDetailPage() {
 
       {/* Create Consent Dialog */}
       <Dialog open={createConsentOpen} onOpenChange={setCreateConsentOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <DialogTitle>Obtain Consent</DialogTitle>
@@ -922,7 +1009,7 @@ export default function ProcedureOrderDetailPage() {
             {/* Informed Consent Checklist */}
             <div className="space-y-1">
               <Label className="text-sm font-medium">Informed Consent Checklist</Label>
-              <p className="text-xs text-muted-foreground mb-2">
+              <p className="mb-2 text-xs text-muted-foreground">
                 Confirm each item was discussed with the patient.
               </p>
               <div className="space-y-3 rounded-md border p-3">
@@ -932,7 +1019,7 @@ export default function ProcedureOrderDetailPage() {
                     checked={procedureExplained}
                     onCheckedChange={(v) => setProcedureExplained(!!v)}
                   />
-                  <Label htmlFor="proc_explained" className="text-sm !mt-0">
+                  <Label htmlFor="proc_explained" className="!mt-0 text-sm">
                     Procedure explained to patient
                   </Label>
                 </div>
@@ -942,7 +1029,7 @@ export default function ProcedureOrderDetailPage() {
                     checked={risksExplained}
                     onCheckedChange={(v) => setRisksExplained(!!v)}
                   />
-                  <Label htmlFor="risks_explained" className="text-sm !mt-0">
+                  <Label htmlFor="risks_explained" className="!mt-0 text-sm">
                     Risks and complications explained
                   </Label>
                 </div>
@@ -952,7 +1039,7 @@ export default function ProcedureOrderDetailPage() {
                     checked={alternativesExplained}
                     onCheckedChange={(v) => setAlternativesExplained(!!v)}
                   />
-                  <Label htmlFor="alts_explained" className="text-sm !mt-0">
+                  <Label htmlFor="alts_explained" className="!mt-0 text-sm">
                     Alternative treatments discussed
                   </Label>
                 </div>
@@ -962,7 +1049,7 @@ export default function ProcedureOrderDetailPage() {
                     checked={questionsAnswered}
                     onCheckedChange={(v) => setQuestionsAnswered(!!v)}
                   />
-                  <Label htmlFor="questions_answered" className="text-sm !mt-0">
+                  <Label htmlFor="questions_answered" className="!mt-0 text-sm">
                     Patient&apos;s questions answered
                   </Label>
                 </div>
@@ -977,7 +1064,7 @@ export default function ProcedureOrderDetailPage() {
                   checked={signedByPatient}
                   onCheckedChange={(v) => setSignedByPatient(!!v)}
                 />
-                <Label htmlFor="signed_patient" className="text-sm !mt-0 font-medium">
+                <Label htmlFor="signed_patient" className="!mt-0 text-sm font-medium">
                   Patient signed consent form
                 </Label>
               </div>
@@ -989,14 +1076,16 @@ export default function ProcedureOrderDetailPage() {
                   checked={signedByGuardian}
                   onCheckedChange={(v) => setSignedByGuardian(!!v)}
                 />
-                <Label htmlFor="signed_guardian" className="text-sm !mt-0">
+                <Label htmlFor="signed_guardian" className="!mt-0 text-sm">
                   Guardian signed (for minors)
                 </Label>
               </div>
               {signedByGuardian && (
-                <div className="grid gap-3 sm:grid-cols-2 pl-6">
+                <div className="grid gap-3 pl-6 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor="guardian_name" className="text-xs">Guardian Name</Label>
+                    <Label htmlFor="guardian_name" className="text-xs">
+                      Guardian Name
+                    </Label>
                     <Input
                       id="guardian_name"
                       value={guardianName}
@@ -1005,7 +1094,9 @@ export default function ProcedureOrderDetailPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="guardian_rel" className="text-xs">Relationship</Label>
+                    <Label htmlFor="guardian_rel" className="text-xs">
+                      Relationship
+                    </Label>
                     <Input
                       id="guardian_rel"
                       value={guardianRelationship}
@@ -1025,13 +1116,15 @@ export default function ProcedureOrderDetailPage() {
                   checked={witnessRequired}
                   onCheckedChange={(v) => setWitnessRequired(!!v)}
                 />
-                <Label htmlFor="witness_req" className="text-sm !mt-0">
+                <Label htmlFor="witness_req" className="!mt-0 text-sm">
                   Witness present
                 </Label>
               </div>
               {witnessRequired && (
                 <div className="pl-6">
-                  <Label htmlFor="witness_name" className="text-xs">Witness Name</Label>
+                  <Label htmlFor="witness_name" className="text-xs">
+                    Witness Name
+                  </Label>
                   <Input
                     id="witness_name"
                     value={witnessName}
@@ -1043,7 +1136,11 @@ export default function ProcedureOrderDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setCreateConsentOpen(false)}>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setCreateConsentOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -1088,9 +1185,7 @@ function ConsentCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Consent Record</CardTitle>
-          <Badge className={`${statusColor[consent.status] || ''} w-fit`}>
-            {consent.status}
-          </Badge>
+          <Badge className={`${statusColor[consent.status] || ''} w-fit`}>{consent.status}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
@@ -1129,7 +1224,7 @@ function ConsentCard({
           </div>
         </div>
 
-        <div className="flex justify-between pt-2 border-t">
+        <div className="flex justify-between border-t pt-2">
           <span className="text-muted-foreground">Type</span>
           <span>{consent.consent_type}</span>
         </div>
@@ -1151,9 +1246,9 @@ function ConsentCard({
         )}
 
         {consent.status === 'PENDING' && (
-          <div className="pt-3 border-t">
+          <div className="border-t pt-3">
             <Button onClick={onSign} disabled={signing} className="w-full sm:w-auto">
-              <ClipboardCheck className="h-4 w-4 mr-2" />
+              <ClipboardCheck className="mr-2 h-4 w-4" />
               {signing ? 'Signing...' : 'Sign Consent'}
             </Button>
           </div>
@@ -1198,22 +1293,24 @@ function PerformanceCard({ log }: { log: ProcedureLog }) {
           </div>
 
           {log.anesthesia_used && (
-            <div className="pt-2 border-t space-y-1">
+            <div className="space-y-1 border-t pt-2">
               <p className="font-medium">Anesthesia</p>
-              <p>{log.anesthesia_type} {log.anesthesia_type && '—'} used</p>
+              <p>
+                {log.anesthesia_type} {log.anesthesia_type && '—'} used
+              </p>
             </div>
           )}
 
           {log.immediate_outcome && (
-            <div className="pt-2 border-t space-y-1">
+            <div className="space-y-1 border-t pt-2">
               <p className="font-medium">Immediate Outcome</p>
               <p>{log.immediate_outcome}</p>
             </div>
           )}
 
           {log.complications_occurred && (
-            <div className="pt-2 border-t space-y-1 text-destructive">
-              <p className="font-medium flex items-center gap-1.5">
+            <div className="space-y-1 border-t pt-2 text-destructive">
+              <p className="flex items-center gap-1.5 font-medium">
                 <AlertTriangle className="h-4 w-4" />
                 Complications
               </p>
@@ -1234,18 +1331,18 @@ function PerformanceCard({ log }: { log: ProcedureLog }) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-muted-foreground">
-                    <th className="text-left py-2 pr-4">Item</th>
-                    <th className="text-right py-2 px-4">Qty</th>
-                    <th className="text-right py-2 px-4">Unit Cost</th>
-                    <th className="text-right py-2 pl-4">Total</th>
+                    <th className="py-2 pr-4 text-left">Item</th>
+                    <th className="px-4 py-2 text-right">Qty</th>
+                    <th className="px-4 py-2 text-right">Unit Cost</th>
+                    <th className="py-2 pl-4 text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {log.consumables.map((c) => (
                     <tr key={c.id} className="border-b last:border-0">
                       <td className="py-2 pr-4">{c.drug_name}</td>
-                      <td className="py-2 px-4 text-right">{c.quantity}</td>
-                      <td className="py-2 px-4 text-right">
+                      <td className="px-4 py-2 text-right">{c.quantity}</td>
+                      <td className="px-4 py-2 text-right">
                         {c.unit_cost != null ? formatCurrency(c.unit_cost) : '—'}
                       </td>
                       <td className="py-2 pl-4 text-right font-medium">
@@ -1266,9 +1363,7 @@ function PerformanceCard({ log }: { log: ProcedureLog }) {
 function OutcomesTab({ orderId, orderStatus }: { orderId: number; orderStatus: string }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [assessmentDate, setAssessmentDate] = useState(
-    new Date().toISOString().split('T')[0],
-  );
+  const [assessmentDate, setAssessmentDate] = useState(new Date().toISOString().split('T')[0]);
   const [outcome, setOutcome] = useState('SUCCESSFUL');
   const [findings, setFindings] = useState('');
   const [notes, setNotes] = useState('');
@@ -1300,7 +1395,11 @@ function OutcomesTab({ orderId, orderStatus }: { orderId: number; orderStatus: s
       setFollowUpNotes('');
     },
     onError: (err) => {
-      toast({ title: 'Failed to record outcome', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Failed to record outcome',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -1316,7 +1415,7 @@ function OutcomesTab({ orderId, orderStatus }: { orderId: number; orderStatus: s
       {canAddOutcome && !showForm && (
         <div className="flex justify-end">
           <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             <span className="hidden sm:inline">Add Outcome Assessment</span>
             <span className="sm:hidden">Add Outcome</span>
           </Button>
@@ -1421,9 +1520,9 @@ function OutcomesTab({ orderId, orderStatus }: { orderId: number; orderStatus: s
       {(!outcomes || outcomes.length === 0) && !showForm && (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <CheckCircle2 className="mx-auto mb-2 h-8 w-8 opacity-50" />
             <p>No outcomes recorded yet.</p>
-            <p className="text-xs mt-1">
+            <p className="mt-1 text-xs">
               {canAddOutcome
                 ? 'Click "Add Outcome Assessment" to record a follow-up.'
                 : 'Outcomes can be added after the procedure is completed.'}
@@ -1437,15 +1536,15 @@ function OutcomesTab({ orderId, orderStatus }: { orderId: number; orderStatus: s
         <div className="space-y-3">
           {outcomes.map((outcomeItem) => (
             <Card key={outcomeItem.id}>
-              <CardContent className="pt-4 space-y-2 text-sm">
+              <CardContent className="space-y-2 pt-4 text-sm">
                 <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
                   <span className="font-medium">{formatDate(outcomeItem.assessment_date)}</span>
-                  <Badge variant="outline" className="w-fit shrink-0">{outcomeItem.outcome}</Badge>
+                  <Badge variant="outline" className="w-fit shrink-0">
+                    {outcomeItem.outcome}
+                  </Badge>
                 </div>
                 <p>{outcomeItem.findings}</p>
-                {outcomeItem.notes && (
-                  <p className="text-muted-foreground">{outcomeItem.notes}</p>
-                )}
+                {outcomeItem.notes && <p className="text-muted-foreground">{outcomeItem.notes}</p>}
                 {outcomeItem.next_follow_up && (
                   <p className="text-xs text-muted-foreground">
                     Next follow-up: {formatDate(outcomeItem.next_follow_up)}

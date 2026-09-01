@@ -7,15 +7,8 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
-import {
-  VersionHistoryArraySchema,
-  VersionCountSchema,
-} from '@/lib/schemas/history.schema';
-import type {
-  VersionHistoryItem,
-  VersionCountResponse,
-  HistoryParams,
-} from '@/lib/types/history';
+import { VersionHistoryArraySchema, VersionCountSchema } from '@/lib/schemas/history.schema';
+import type { VersionHistoryItem, VersionCountResponse, HistoryParams } from '@/lib/types/history';
 
 /**
  * Supported model types for history tracking

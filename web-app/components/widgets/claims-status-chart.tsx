@@ -60,44 +60,46 @@ const statusLabels: Record<ClaimStatus, string> = {
 export function ClaimsStatusChart({
   data,
   showLegend = true,
-  showByAmount = false
+  showByAmount = false,
 }: ClaimsStatusChartProps) {
   // Transform data for DonutChart format
   const chartData = useMemo(
-    () => (data ?? [])
-      .filter((item) => (showByAmount ? item.amount > 0 : item.count > 0))
-      .map((item) => ({
-        name: item.status,
-        value: showByAmount ? item.amount : item.count,
-      })),
+    () =>
+      (data ?? [])
+        .filter((item) => (showByAmount ? item.amount > 0 : item.count > 0))
+        .map((item) => ({
+          name: item.status,
+          value: showByAmount ? item.amount : item.count,
+        })),
     [data, showByAmount]
   );
 
   // Create dynamic config based on statuses present
   const chartConfig = useMemo(
-    () => createChartConfig(
-      chartData.map((d) => d.name),
-      {
-        labels: Object.fromEntries(
-          chartData.map((d) => [d.name, statusLabels[d.name as ClaimStatus] || d.name])
-        ),
-        colors: Object.fromEntries(
-          chartData.map((d) => [d.name, statusColors[d.name as ClaimStatus] || 'hsl(var(--chart-1))'])
-        ),
-      }
-    ),
+    () =>
+      createChartConfig(
+        chartData.map((d) => d.name),
+        {
+          labels: Object.fromEntries(
+            chartData.map((d) => [d.name, statusLabels[d.name as ClaimStatus] || d.name])
+          ),
+          colors: Object.fromEntries(
+            chartData.map((d) => [
+              d.name,
+              statusColors[d.name as ClaimStatus] || 'hsl(var(--chart-1))',
+            ])
+          ),
+        }
+      ),
     [chartData]
   );
 
   // Calculate total for center label
-  const total = useMemo(
-    () => chartData.reduce((sum, item) => sum + item.value, 0),
-    [chartData]
-  );
+  const total = useMemo(() => chartData.reduce((sum, item) => sum + item.value, 0), [chartData]);
 
   if (!data || chartData.length === 0) {
     return (
-      <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+      <div className="flex h-[250px] items-center justify-center text-muted-foreground">
         No claims data available
       </div>
     );

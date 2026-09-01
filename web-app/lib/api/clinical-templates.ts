@@ -11,10 +11,7 @@ import {
   ClinicalTemplateCreateData,
 } from '@/lib/types/clinical-template';
 import { parseResponse } from '@/lib/schemas/validation';
-import {
-  ClinicalTemplateSchema,
-  PaginatedClinicalTemplateSchema,
-} from '@/lib/schemas/core.schema';
+import { ClinicalTemplateSchema, PaginatedClinicalTemplateSchema } from '@/lib/schemas/core.schema';
 import { z } from 'zod';
 
 const ClinicalTemplateArraySchema = z.array(ClinicalTemplateSchema);
@@ -37,9 +34,7 @@ export const clinicalTemplatesApi = {
    * Get a single clinical template by ID.
    */
   async get(id: number): Promise<ClinicalTemplate> {
-    const response = await apiClient.get<ClinicalTemplate>(
-      `/api/clinical-templates/${id}/`
-    );
+    const response = await apiClient.get<ClinicalTemplate>(`/api/clinical-templates/${id}/`);
     return parseResponse(ClinicalTemplateSchema, response.data, {
       context: 'clinicalTemplatesApi.get',
     }) as ClinicalTemplate;
@@ -102,10 +97,7 @@ export const clinicalTemplatesApi = {
    * Create a new clinical template.
    */
   async create(data: ClinicalTemplateCreateData): Promise<ClinicalTemplate> {
-    const response = await apiClient.post<ClinicalTemplate>(
-      '/api/clinical-templates/',
-      data
-    );
+    const response = await apiClient.post<ClinicalTemplate>('/api/clinical-templates/', data);
     return parseResponse(ClinicalTemplateSchema, response.data, {
       context: 'clinicalTemplatesApi.create',
     }) as ClinicalTemplate;
@@ -114,10 +106,7 @@ export const clinicalTemplatesApi = {
   /**
    * Update a clinical template.
    */
-  async update(
-    id: number,
-    data: Partial<ClinicalTemplateCreateData>
-  ): Promise<ClinicalTemplate> {
+  async update(id: number, data: Partial<ClinicalTemplateCreateData>): Promise<ClinicalTemplate> {
     const response = await apiClient.patch<ClinicalTemplate>(
       `/api/clinical-templates/${id}/`,
       data

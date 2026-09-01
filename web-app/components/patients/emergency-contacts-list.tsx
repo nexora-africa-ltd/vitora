@@ -26,12 +26,12 @@ export function EmergencyContactsList({ contacts }: EmergencyContactsListProps) 
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                   <User className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
                   <p className="font-medium">{contact.full_name}</p>
-                  <p className="text-sm text-muted-foreground capitalize">{contact.relationship}</p>
+                  <p className="text-sm capitalize text-muted-foreground">{contact.relationship}</p>
                 </div>
               </div>
             </div>
@@ -45,7 +45,10 @@ export function EmergencyContactsList({ contacts }: EmergencyContactsListProps) 
               {contact.alternative_phone && (
                 <div className="flex items-center gap-2 text-sm">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <a href={`tel:${contact.alternative_phone}`} className="text-muted-foreground hover:underline">
+                  <a
+                    href={`tel:${contact.alternative_phone}`}
+                    className="text-muted-foreground hover:underline"
+                  >
                     {formatPhoneNumber(contact.alternative_phone)} (alt)
                   </a>
                 </div>

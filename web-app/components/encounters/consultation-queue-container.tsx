@@ -110,7 +110,8 @@ export function ConsultationQueueContainer({
         if (axios.isAxiosError(err) && err.response?.status === 409) {
           toast({
             title: 'Patient Unavailable',
-            description: err.response.data?.detail || 'This patient is already with another clinician.',
+            description:
+              err.response.data?.detail || 'This patient is already with another clinician.',
             variant: 'destructive',
           });
         } else {
@@ -130,13 +131,16 @@ export function ConsultationQueueContainer({
   /**
    * Handle opening start consultation dialog
    */
-  const handleStartConsultationClick = useCallback((encounterId: number) => {
-    const item = queueData?.results.find((q) => q.id === encounterId);
-    if (item) {
-      setSelectedQueueItem(item);
-      setStartConsultationDialogOpen(true);
-    }
-  }, [queueData]);
+  const handleStartConsultationClick = useCallback(
+    (encounterId: number) => {
+      const item = queueData?.results.find((q) => q.id === encounterId);
+      if (item) {
+        setSelectedQueueItem(item);
+        setStartConsultationDialogOpen(true);
+      }
+    },
+    [queueData]
+  );
 
   /**
    * Handle starting consultation (from dialog)
@@ -166,11 +170,14 @@ export function ConsultationQueueContainer({
   /**
    * Handle opening bypass triage dialog
    */
-  const handleBypassTriageClick = useCallback((encounter: BypassTriageEncounter) => {
-    // This would be called from a bypass button if needed
-    setSelectedQueueItem(queueData?.results.find((q) => q.id === encounter.id) || null);
-    setBypassTriageDialogOpen(true);
-  }, [queueData]);
+  const handleBypassTriageClick = useCallback(
+    (encounter: BypassTriageEncounter) => {
+      // This would be called from a bypass button if needed
+      setSelectedQueueItem(queueData?.results.find((q) => q.id === encounter.id) || null);
+      setBypassTriageDialogOpen(true);
+    },
+    [queueData]
+  );
 
   /**
    * Handle bypassing triage (from dialog)
@@ -217,7 +224,8 @@ export function ConsultationQueueContainer({
         if (axios.isAxiosError(err) && err.response?.status === 409) {
           toast({
             title: 'Already Claimed',
-            description: err.response.data?.error || 'This encounter is already claimed by another clinician.',
+            description:
+              err.response.data?.error || 'This encounter is already claimed by another clinician.',
             variant: 'destructive',
           });
         } else {
@@ -265,7 +273,7 @@ export function ConsultationQueueContainer({
     return (
       <div role="status" aria-label="Loading consultation queue">
         <Card>
-          <CardHeader className="pb-3 sm:pb-6 px-3 sm:px-6">
+          <CardHeader className="px-3 pb-3 sm:px-6 sm:pb-6">
             {/* Header row */}
             <div className="flex items-center gap-2">
               <Skeleton className="h-5 w-5 rounded" />
@@ -273,13 +281,13 @@ export function ConsultationQueueContainer({
               <Skeleton className="h-5 w-8 rounded-full" />
             </div>
             {/* Stats row */}
-            <div className="flex gap-2 mt-3">
+            <div className="mt-3 flex gap-2">
               <Skeleton className="h-5 w-12 rounded-full" />
               <Skeleton className="h-5 w-12 rounded-full" />
               <Skeleton className="h-5 w-12 rounded-full" />
             </div>
             {/* Filters row */}
-            <div className="flex gap-2 mt-3">
+            <div className="mt-3 flex gap-2">
               <Skeleton className="h-9 flex-1" />
               <Skeleton className="h-9 w-32" />
               <Skeleton className="h-9 w-32" />
@@ -288,7 +296,7 @@ export function ConsultationQueueContainer({
           <CardContent className="px-3 sm:px-6">
             <div className="space-y-2 sm:space-y-3">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-24 sm:h-28 w-full rounded-lg" />
+                <Skeleton key={i} className="h-24 w-full rounded-lg sm:h-28" />
               ))}
             </div>
           </CardContent>
@@ -301,21 +309,17 @@ export function ConsultationQueueContainer({
   if (isError) {
     return (
       <Card className="border-destructive/50">
-        <CardContent className="p-4 sm:p-6 text-center">
-          <div className="rounded-full bg-destructive/10 p-4 mb-4 w-fit mx-auto">
+        <CardContent className="p-4 text-center sm:p-6">
+          <div className="mx-auto mb-4 w-fit rounded-full bg-destructive/10 p-4">
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <h3 className="text-base sm:text-lg font-semibold text-destructive mb-2">
+          <h3 className="mb-2 text-base font-semibold text-destructive sm:text-lg">
             Failed to load consultation queue
           </h3>
-          <p className="text-xs sm:text-sm text-muted-foreground mb-4 px-2">
+          <p className="mb-4 px-2 text-xs text-muted-foreground sm:text-sm">
             {error instanceof Error ? error.message : 'An error occurred'}
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-          >
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
             Try again
           </Button>
         </CardContent>
@@ -334,7 +338,7 @@ export function ConsultationQueueContainer({
             description="Patients will appear here once they complete triage or are registered for encounters."
             action={{
               label: 'Select from Patient List',
-              onClick: () => window.location.href = '/patients',
+              onClick: () => (window.location.href = '/patients'),
             }}
           />
         </CardContent>
@@ -407,9 +411,7 @@ export function ConsultationQueueContainer({
           onBypass={handleBypassTriage}
           isLoading={bypassTriageMutation.isPending}
           error={
-            bypassTriageMutation.error instanceof Error
-              ? bypassTriageMutation.error.message
-              : null
+            bypassTriageMutation.error instanceof Error ? bypassTriageMutation.error.message : null
           }
         />
       )}

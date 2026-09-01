@@ -48,7 +48,10 @@ export default function ImagingOrdersPage() {
           helpContent="View and manage all imaging orders. Search by patient name, MRN, order number, or clinical indication. Filter by status and priority."
           actions={
             canCreateImagingOrder ? (
-              <Button onClick={() => router.push('/imaging/orders/new')} className="gap-2 w-full sm:w-auto">
+              <Button
+                onClick={() => router.push('/imaging/orders/new')}
+                className="w-full gap-2 sm:w-auto"
+              >
                 <Plus className="h-4 w-4" />
                 New Order
               </Button>
@@ -65,9 +68,18 @@ export default function ImagingOrdersPage() {
           pageSize={pageSize}
           totalPages={totalPages}
           onPageChange={setPage}
-          onStatusFilter={(s) => { setStatusFilter(s); setPage(1); }}
-          onPriorityFilter={(p) => { setPriorityFilter(p); setPage(1); }}
-          onSearch={(q) => { setSearchQuery(q); setPage(1); }}
+          onStatusFilter={(s) => {
+            setStatusFilter(s);
+            setPage(1);
+          }}
+          onPriorityFilter={(p) => {
+            setPriorityFilter(p);
+            setPage(1);
+          }}
+          onSearch={(q) => {
+            setSearchQuery(q);
+            setPage(1);
+          }}
         />
       </div>
     </PullToRefresh>

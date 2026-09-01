@@ -90,8 +90,8 @@ export function StockMovementReport() {
   });
 
   // Sort by date descending (most recent first)
-  const sortedMovements = [...filteredMovements].sort((a: StockMovement, b: StockMovement) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime()
+  const sortedMovements = [...filteredMovements].sort(
+    (a: StockMovement, b: StockMovement) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
   // Calculate totals
@@ -129,11 +129,17 @@ export function StockMovementReport() {
   const getMovementBadge = (type: StockMovement['movement_type']) => {
     switch (type) {
       case 'RECEIVED':
-        return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">Received</Badge>;
+        return (
+          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
+            Received
+          </Badge>
+        );
       case 'DISPENSED':
         return <Badge className="bg-primary/15 text-primary">Dispensed</Badge>;
       case 'ADJUSTED':
-        return <Badge className="bg-orange-500/15 text-orange-700 dark:text-orange-400">Adjusted</Badge>;
+        return (
+          <Badge className="bg-orange-500/15 text-orange-700 dark:text-orange-400">Adjusted</Badge>
+        );
     }
   };
 
@@ -141,14 +147,16 @@ export function StockMovementReport() {
     try {
       const csvContent = [
         ['Date', 'Drug Name', 'Movement Type', 'Quantity', 'Reference', 'User'].join(','),
-        ...sortedMovements.map((m: StockMovement) => [
-          m.date,
-          `"${m.drug_name}"`,
-          m.movement_type,
-          m.quantity,
-          `"${m.reference}"`,
-          `"${m.user}"`,
-        ].join(',')),
+        ...sortedMovements.map((m: StockMovement) =>
+          [
+            m.date,
+            `"${m.drug_name}"`,
+            m.movement_type,
+            m.quantity,
+            `"${m.reference}"`,
+            `"${m.user}"`,
+          ].join(',')
+        ),
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -187,7 +195,7 @@ export function StockMovementReport() {
       <Card>
         <CardContent className="py-12">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
           </div>
         </CardContent>
       </Card>
@@ -199,7 +207,7 @@ export function StockMovementReport() {
       <Card>
         <CardContent className="py-12">
           <div className="text-center text-destructive">
-            <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+            <AlertTriangle className="mx-auto mb-2 h-8 w-8" />
             <p>Failed to load stock movement report</p>
           </div>
         </CardContent>
@@ -218,11 +226,11 @@ export function StockMovementReport() {
           </CardTitle>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-1" />
+              <Download className="mr-1 h-4 w-4" />
               Export CSV
             </Button>
             <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-1" />
+              <Printer className="mr-1 h-4 w-4" />
               Print
             </Button>
           </div>
@@ -230,7 +238,7 @@ export function StockMovementReport() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Date Range */}
-        <div className="flex flex-wrap gap-4 items-end">
+        <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-2">
             <Label htmlFor="start-date">From</Label>
             <DatePicker
@@ -263,11 +271,15 @@ export function StockMovementReport() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-4 items-center">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="space-y-2">
             <Label htmlFor="type-filter">Type</Label>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger id="type-filter" data-testid="movement-type-filter" className="w-[150px]">
+              <SelectTrigger
+                id="type-filter"
+                data-testid="movement-type-filter"
+                className="w-[150px]"
+              >
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -293,27 +305,42 @@ export function StockMovementReport() {
 
         {/* Summary */}
         <div className="grid grid-cols-4 gap-4">
-          <div className="p-4 rounded-lg bg-muted/50">
+          <div className="rounded-lg bg-muted/50 p-4">
             <p className="text-sm text-muted-foreground">Total Movements</p>
             <p className="text-2xl font-bold">{sortedMovements.length}</p>
           </div>
-          <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
             <p className="text-sm text-emerald-700 dark:text-emerald-400">Total In (Received)</p>
             <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">+{totalIn}</p>
           </div>
-          <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+          <div className="rounded-lg border border-primary/20 bg-primary/10 p-4">
             <p className="text-sm text-primary">Total Out (Dispensed)</p>
             <p className="text-2xl font-bold text-primary">-{totalOut}</p>
           </div>
-          <div className={cn(
-            'p-4 rounded-lg border',
-            netMovement >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-destructive/10 border-destructive/20'
-          )}>
-            <p className={cn('text-sm', netMovement >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-destructive')}>
+          <div
+            className={cn(
+              'rounded-lg border p-4',
+              netMovement >= 0
+                ? 'border-emerald-500/20 bg-emerald-500/10'
+                : 'border-destructive/20 bg-destructive/10'
+            )}
+          >
+            <p
+              className={cn(
+                'text-sm',
+                netMovement >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-destructive'
+              )}
+            >
               Net Movement
             </p>
-            <p className={cn('text-2xl font-bold', netMovement >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-destructive')}>
-              {netMovement >= 0 ? '+' : ''}{netMovement}
+            <p
+              className={cn(
+                'text-2xl font-bold',
+                netMovement >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-destructive'
+              )}
+            >
+              {netMovement >= 0 ? '+' : ''}
+              {netMovement}
             </p>
           </div>
         </div>
@@ -321,7 +348,9 @@ export function StockMovementReport() {
         {/* Data Table */}
         <ResponsiveTable
           data={paginatedMovements}
-          keyExtractor={(movement) => `${movement.date}-${movement.drug_name}-${movement.reference}-${movement.quantity}`}
+          keyExtractor={(movement) =>
+            `${movement.date}-${movement.drug_name}-${movement.reference}-${movement.quantity}`
+          }
           emptyMessage="No stock movements found"
           columns={[
             {
@@ -349,8 +378,14 @@ export function StockMovementReport() {
               header: 'Quantity',
               className: 'text-right',
               cell: (movement) => (
-                <span className={cn('font-medium', movement.quantity > 0 ? 'text-green-600' : 'text-red-600')}>
-                  {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                <span
+                  className={cn(
+                    'font-medium',
+                    movement.quantity > 0 ? 'text-green-600' : 'text-red-600'
+                  )}
+                >
+                  {movement.quantity > 0 ? '+' : ''}
+                  {movement.quantity}
                 </span>
               ),
             },
@@ -358,7 +393,7 @@ export function StockMovementReport() {
               key: 'reference',
               header: 'Reference',
               cell: (movement) => (
-                <span className="text-sm text-muted-foreground max-w-[200px] truncate block">
+                <span className="block max-w-[200px] truncate text-sm text-muted-foreground">
                   {movement.reference}
                 </span>
               ),
@@ -371,8 +406,8 @@ export function StockMovementReport() {
             },
           ]}
           mobileCard={(movement) => (
-            <div className="rounded-lg border p-4 space-y-2">
-              <div className="flex justify-between items-start">
+            <div className="space-y-2 rounded-lg border p-4">
+              <div className="flex items-start justify-between">
                 <div>
                   <p className="font-medium">{movement.drug_name}</p>
                   <p className="text-xs text-muted-foreground">{movement.date}</p>
@@ -382,12 +417,18 @@ export function StockMovementReport() {
                   {getMovementBadge(movement.movement_type)}
                 </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground truncate max-w-[60%]">
+              <div className="flex items-center justify-between">
+                <span className="max-w-[60%] truncate text-sm text-muted-foreground">
                   {movement.reference}
                 </span>
-                <span className={cn('font-medium', movement.quantity > 0 ? 'text-green-600' : 'text-red-600')}>
-                  {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                <span
+                  className={cn(
+                    'font-medium',
+                    movement.quantity > 0 ? 'text-green-600' : 'text-red-600'
+                  )}
+                >
+                  {movement.quantity > 0 ? '+' : ''}
+                  {movement.quantity}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">By: {movement.user}</p>
@@ -397,9 +438,10 @@ export function StockMovementReport() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
-            <p className="text-sm text-muted-foreground text-center sm:text-left">
-              Showing {paginatedMovements.length} of {sortedMovements.length} movements (page {currentPage} of {totalPages})
+          <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-center text-sm text-muted-foreground sm:text-left">
+              Showing {paginatedMovements.length} of {sortedMovements.length} movements (page{' '}
+              {currentPage} of {totalPages})
             </p>
             <div className="flex items-center justify-center gap-2">
               <Button

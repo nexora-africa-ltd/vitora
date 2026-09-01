@@ -1,5 +1,5 @@
-import { AnimatedThemeToggle } from "@/components/ui/animated-theme-toggle"
+import { AnimatedThemeToggle } from '@/components/ui/animated-theme-toggle';
 
 export default function AnimatedThemeToggleWrapper() {
-  return <AnimatedThemeToggle />
+  return <AnimatedThemeToggle />;
 }

@@ -15,11 +15,12 @@ export function useToastNotification() {
     },
 
     error: (error: ApiError | Error | string, title = 'Error') => {
-      const message = typeof error === 'string'
-        ? error
-        : 'message' in error
-          ? error.message
-          : 'An error occurred';
+      const message =
+        typeof error === 'string'
+          ? error
+          : 'message' in error
+            ? error.message
+            : 'An error occurred';
 
       toast({
         title,

@@ -53,12 +53,7 @@ export interface QRContent {
 /**
  * Document types for QR generation
  */
-export type QRDocumentType =
-  | 'prescription'
-  | 'receipt'
-  | 'invoice'
-  | 'dispensing'
-  | 'lab_result';
+export type QRDocumentType = 'prescription' | 'receipt' | 'invoice' | 'dispensing' | 'lab_result';
 
 // =============================================================================
 // QR CODE GENERATION
@@ -117,10 +112,7 @@ export async function generateQRDataUri(
  * @param options - QR code options
  * @returns Promise resolving to SVG string
  */
-export async function generateQRSvg(
-  data: string,
-  options: QRCodeOptions = {}
-): Promise<string> {
+export async function generateQRSvg(data: string, options: QRCodeOptions = {}): Promise<string> {
   const {
     size = 150,
     margin = 2,
@@ -154,10 +146,7 @@ export async function generateQRSvg(
  *
  * Note: This is slower than async version, use only when needed.
  */
-export function generateQRDataUriSync(
-  data: string,
-  options: QRCodeOptions = {}
-): string {
+export function generateQRDataUriSync(data: string, options: QRCodeOptions = {}): string {
   const {
     size = 150,
     margin = 2,
@@ -541,7 +530,8 @@ export async function generateQRBlockHtml(
   const dataUri = await generateQRDataUri(qrContent.data, { ...options, size });
 
   const labelClass = qrContent.isVerifiable ? 'qr-label-verified' : 'qr-label-draft';
-  const labelText = qrContent.label || (qrContent.isVerifiable ? 'Scan to verify' : 'Reference only');
+  const labelText =
+    qrContent.label || (qrContent.isVerifiable ? 'Scan to verify' : 'Reference only');
 
   return `
     <div class="qr-block" style="text-align: center;">
@@ -556,15 +546,13 @@ export async function generateQRBlockHtml(
 /**
  * Generate QR block HTML synchronously (for render functions)
  */
-export function generateQRBlockHtmlSync(
-  qrContent: QRContent,
-  options: QRCodeOptions = {}
-): string {
+export function generateQRBlockHtmlSync(qrContent: QRContent, options: QRCodeOptions = {}): string {
   const { size = 90 } = options;
   const dataUri = generateQRDataUriSync(qrContent.data, { ...options, size });
 
   const labelClass = qrContent.isVerifiable ? 'qr-label-verified' : 'qr-label-draft';
-  const labelText = qrContent.label || (qrContent.isVerifiable ? 'Scan to verify' : 'Reference only');
+  const labelText =
+    qrContent.label || (qrContent.isVerifiable ? 'Scan to verify' : 'Reference only');
 
   return `
     <div class="qr-block" style="text-align: center;">

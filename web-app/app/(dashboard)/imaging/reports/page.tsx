@@ -12,14 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  FileText,
-  Clock,
-  CheckCircle2,
-  PenLine,
-  AlertTriangle,
-  Search,
-} from 'lucide-react';
+import { FileText, Clock, CheckCircle2, PenLine, AlertTriangle, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
@@ -79,11 +72,7 @@ export default function ImagingReportsPage() {
   }, [reports]);
 
   return (
-    <PullToRefresh
-      onRefresh={refresh}
-      isRefreshing={isRefreshing}
-      className="min-h-full"
-    >
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <div className="space-y-6">
         <PageHeader
           title="Imaging Reports"
@@ -91,9 +80,9 @@ export default function ImagingReportsPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Card>
-            <CardContent className="pt-4 pb-4">
+            <CardContent className="pb-4 pt-4">
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-muted-foreground" />
                 <div>
@@ -104,7 +93,7 @@ export default function ImagingReportsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4 pb-4">
+            <CardContent className="pb-4 pt-4">
               <div className="flex items-center gap-3">
                 <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                 <div>
@@ -115,7 +104,7 @@ export default function ImagingReportsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4 pb-4">
+            <CardContent className="pb-4 pt-4">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <div>
@@ -126,7 +115,7 @@ export default function ImagingReportsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4 pb-4">
+            <CardContent className="pb-4 pt-4">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
                 <div>
@@ -140,10 +129,10 @@ export default function ImagingReportsPage() {
 
         {/* Filters */}
         <Card>
-          <CardContent className="pt-4 pb-4">
+          <CardContent className="pb-4 pt-4">
             <div className="flex flex-col gap-3 sm:flex-row">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by report #, patient, order, or modality..."
                   value={searchQuery}
@@ -186,9 +175,7 @@ export default function ImagingReportsPage() {
               key: 'report_number',
               header: 'Report #',
               sortable: true,
-              cell: (r) => (
-                <span className="font-medium text-primary">{r.report_number}</span>
-              ),
+              cell: (r) => <span className="font-medium text-primary">{r.report_number}</span>,
             },
             {
               key: 'order_number',
@@ -255,8 +242,8 @@ export default function ImagingReportsPage() {
             },
           ]}
           mobileCard={(r) => (
-            <div className="p-3 space-y-2">
-              <div className="flex justify-between items-start">
+            <div className="space-y-2 p-3">
+              <div className="flex items-start justify-between">
                 <div>
                   <p className="font-medium text-primary">{r.report_number}</p>
                   <p className="text-sm text-muted-foreground">{r.patient_name}</p>
@@ -273,7 +260,9 @@ export default function ImagingReportsPage() {
                 </div>
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{r.modality} • {r.order_number}</span>
+                <span>
+                  {r.modality} • {r.order_number}
+                </span>
                 <span>{formatDateTime(r.created_at)}</span>
               </div>
             </div>

@@ -109,7 +109,7 @@ export default function ExternalProcedureRequestsPage() {
               }}
               disabled={acceptMutation.isPending}
             >
-              <Check className="h-3 w-3 mr-1" /> Accept
+              <Check className="mr-1 h-3 w-3" /> Accept
             </Button>
             <Button
               size="sm"
@@ -120,7 +120,7 @@ export default function ExternalProcedureRequestsPage() {
                 setRejectDialog(item);
               }}
             >
-              <X className="h-3 w-3 mr-1" /> Reject
+              <X className="mr-1 h-3 w-3" /> Reject
             </Button>
           </div>
         ) : null,

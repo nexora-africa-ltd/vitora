@@ -3,13 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  AlertTriangle,
-  ShoppingCart,
-  Loader2,
-  XCircle,
-  Package,
-} from 'lucide-react';
+import { AlertTriangle, ShoppingCart, Loader2, XCircle, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,11 +33,7 @@ import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useToast } from '@/lib/hooks/use-toast';
-import type {
-  ReorderSuggestion,
-  ReorderUrgency,
-  ReorderStatus,
-} from '@/lib/types/inventory';
+import type { ReorderSuggestion, ReorderUrgency, ReorderStatus } from '@/lib/types/inventory';
 
 const URGENCY_CONFIG: Record<ReorderUrgency, { label: string; color: string }> = {
   CRITICAL: {
@@ -81,12 +71,12 @@ const STATUS_CONFIG: Record<ReorderStatus, { label: string; color: string }> = {
 
 function UrgencyBadge({ urgency }: { urgency: ReorderUrgency }) {
   const cfg = URGENCY_CONFIG[urgency] ?? URGENCY_CONFIG.MEDIUM;
-  return <Badge className={`${cfg.color} shrink-0 w-fit`}>{cfg.label}</Badge>;
+  return <Badge className={`${cfg.color} w-fit shrink-0`}>{cfg.label}</Badge>;
 }
 
 function StatusBadge({ status }: { status: ReorderStatus }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
-  return <Badge className={`${cfg.color} shrink-0 w-fit`}>{cfg.label}</Badge>;
+  return <Badge className={`${cfg.color} w-fit shrink-0`}>{cfg.label}</Badge>;
 }
 
 export default function ReorderSuggestionsPage() {
@@ -171,50 +161,74 @@ export default function ReorderSuggestionsPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <Package className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Total</p>
               </div>
-              <p className="text-xl font-bold mt-1">{isLoading ? '...' : totalCount}</p>
+              <p className="mt-1 text-xl font-bold">{isLoading ? '...' : totalCount}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-red-500" />
                 <p className="text-xs text-muted-foreground">Critical</p>
               </div>
-              <p className="text-xl font-bold mt-1 text-red-600">{isLoading ? '...' : criticalCount}</p>
+              <p className="mt-1 text-xl font-bold text-red-600">
+                {isLoading ? '...' : criticalCount}
+              </p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-orange-500" />
                 <p className="text-xs text-muted-foreground">High</p>
               </div>
-              <p className="text-xl font-bold mt-1 text-orange-600">{isLoading ? '...' : highCount}</p>
+              <p className="mt-1 text-xl font-bold text-orange-600">
+                {isLoading ? '...' : highCount}
+              </p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-amber-500" />
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
-              <p className="text-xl font-bold mt-1 text-amber-600">{isLoading ? '...' : pendingCount}</p>
+              <p className="mt-1 text-xl font-bold text-amber-600">
+                {isLoading ? '...' : pendingCount}
+              </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Select value={urgencyFilter} onValueChange={(v) => { setUrgencyFilter(v); setPage(1); }}>
+          <Select
+            value={urgencyFilter}
+            onValueChange={(v) => {
+              setUrgencyFilter(v);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-36">
               <SelectValue placeholder="Urgency" />
             </SelectTrigger>
@@ -226,7 +240,13 @@ export default function ReorderSuggestionsPage() {
               <SelectItem value="LOW">Low</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setStatusFilter(v);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -275,14 +295,18 @@ export default function ReorderSuggestionsPage() {
                   header: 'Current',
                   sortable: true,
                   sortType: 'number' as const,
-                  cell: (s) => <span className="font-mono">{Number(s.current_stock).toLocaleString()}</span>,
+                  cell: (s) => (
+                    <span className="font-mono">{Number(s.current_stock).toLocaleString()}</span>
+                  ),
                 },
                 {
                   key: 'reorder_point',
                   header: 'Reorder Pt',
                   sortable: true,
                   sortType: 'number' as const,
-                  cell: (s) => <span className="font-mono">{Number(s.reorder_point).toLocaleString()}</span>,
+                  cell: (s) => (
+                    <span className="font-mono">{Number(s.reorder_point).toLocaleString()}</span>
+                  ),
                   hideOnMobile: true,
                 },
                 {
@@ -291,7 +315,9 @@ export default function ReorderSuggestionsPage() {
                   sortable: true,
                   sortType: 'number' as const,
                   cell: (s) => (
-                    <span className="font-mono font-medium">{Number(s.suggested_quantity).toLocaleString()}</span>
+                    <span className="font-mono font-medium">
+                      {Number(s.suggested_quantity).toLocaleString()}
+                    </span>
                   ),
                 },
                 {
@@ -317,7 +343,10 @@ export default function ReorderSuggestionsPage() {
                           variant="outline"
                           className="h-7 text-xs"
                           disabled={!s.supplier}
-                          onClick={(e) => { e.stopPropagation(); setConvertTarget(s); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConvertTarget(s);
+                          }}
                         >
                           <ShoppingCart className="mr-1 h-3 w-3" />
                           To PO
@@ -326,7 +355,10 @@ export default function ReorderSuggestionsPage() {
                           size="sm"
                           variant="ghost"
                           className="h-7 text-xs text-muted-foreground"
-                          onClick={(e) => { e.stopPropagation(); setDismissTarget(s); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDismissTarget(s);
+                          }}
                         >
                           <XCircle className="mr-1 h-3 w-3" />
                           Dismiss
@@ -336,8 +368,11 @@ export default function ReorderSuggestionsPage() {
                       <Button
                         size="sm"
                         variant="link"
-                        className="h-7 text-xs p-0"
-                        onClick={(e) => { e.stopPropagation(); router.push(`/inventory/purchase-orders/${s.purchase_order}`); }}
+                        className="h-7 p-0 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/inventory/purchase-orders/${s.purchase_order}`);
+                        }}
                       >
                         View PO
                       </Button>
@@ -348,20 +383,22 @@ export default function ReorderSuggestionsPage() {
                 <Card className="p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{s.drug_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="truncate font-medium">{s.drug_name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
                         {s.supplier_name || 'No supplier'}
                       </p>
                     </div>
-                    <div className="flex flex-col gap-1 items-end shrink-0">
+                    <div className="flex shrink-0 flex-col items-end gap-1">
                       <UrgencyBadge urgency={s.urgency} />
                       <StatusBadge status={s.status} />
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                     <div>
                       <span className="text-muted-foreground">Current</span>
-                      <p className="font-mono font-medium">{Number(s.current_stock).toLocaleString()}</p>
+                      <p className="font-mono font-medium">
+                        {Number(s.current_stock).toLocaleString()}
+                      </p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Reorder</span>
@@ -369,17 +406,22 @@ export default function ReorderSuggestionsPage() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Suggested</span>
-                      <p className="font-mono font-medium">{Number(s.suggested_quantity).toLocaleString()}</p>
+                      <p className="font-mono font-medium">
+                        {Number(s.suggested_quantity).toLocaleString()}
+                      </p>
                     </div>
                   </div>
                   {s.status === 'PENDING' && (
-                    <div className="flex gap-2 mt-2">
+                    <div className="mt-2 flex gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-7 text-xs flex-1"
+                        className="h-7 flex-1 text-xs"
                         disabled={!s.supplier}
-                        onClick={(e) => { e.stopPropagation(); setConvertTarget(s); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConvertTarget(s);
+                        }}
                       >
                         Convert to PO
                       </Button>
@@ -387,7 +429,10 @@ export default function ReorderSuggestionsPage() {
                         size="sm"
                         variant="ghost"
                         className="h-7 text-xs"
-                        onClick={(e) => { e.stopPropagation(); setDismissTarget(s); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDismissTarget(s);
+                        }}
                       >
                         Dismiss
                       </Button>
@@ -404,14 +449,14 @@ export default function ReorderSuggestionsPage() {
                 </p>
                 <div className="flex gap-2">
                   <button
-                    className="px-3 py-1 rounded border disabled:opacity-50"
+                    className="rounded border px-3 py-1 disabled:opacity-50"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
                     Previous
                   </button>
                   <button
-                    className="px-3 py-1 rounded border disabled:opacity-50"
+                    className="rounded border px-3 py-1 disabled:opacity-50"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >
@@ -430,9 +475,11 @@ export default function ReorderSuggestionsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Convert to Purchase Order?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will create a new purchase order for{' '}
-              <strong>{convertTarget?.drug_name}</strong> with suggested quantity of{' '}
-              <strong>{convertTarget ? Number(convertTarget.suggested_quantity).toLocaleString() : ''}</strong>{' '}
+              This will create a new purchase order for <strong>{convertTarget?.drug_name}</strong>{' '}
+              with suggested quantity of{' '}
+              <strong>
+                {convertTarget ? Number(convertTarget.suggested_quantity).toLocaleString() : ''}
+              </strong>{' '}
               from <strong>{convertTarget?.supplier_name}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -455,8 +502,8 @@ export default function ReorderSuggestionsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Dismiss suggestion?</AlertDialogTitle>
             <AlertDialogDescription>
-              Dismiss the reorder suggestion for <strong>{dismissTarget?.drug_name}</strong>?
-              This can&apos;t be undone.
+              Dismiss the reorder suggestion for <strong>{dismissTarget?.drug_name}</strong>? This
+              can&apos;t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

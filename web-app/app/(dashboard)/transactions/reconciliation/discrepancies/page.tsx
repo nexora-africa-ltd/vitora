@@ -27,7 +27,7 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-4">
       <Skeleton className="h-8 w-48" />
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Skeleton className="h-24" />
         <Skeleton className="h-24" />
         <Skeleton className="h-24" />
@@ -48,18 +48,13 @@ export default function DiscrepanciesPage() {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load discrepancies. Please try again.
-        </AlertDescription>
+        <AlertDescription>Failed to load discrepancies. Please try again.</AlertDescription>
       </Alert>
     );
   }
 
   const items = discrepancies || [];
-  const totalDiscrepancy = items.reduce(
-    (sum, d) => sum + parseFloat(d.discrepancy),
-    0
-  );
+  const totalDiscrepancy = items.reduce((sum, d) => sum + parseFloat(d.discrepancy), 0);
   const pendingCount = items.filter((d) => d.status === 'PENDING').length;
 
   return (
@@ -73,22 +68,20 @@ export default function DiscrepanciesPage() {
         </Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Discrepancy Report</h1>
-          <p className="text-muted-foreground">
-            Review and resolve billing discrepancies
-          </p>
+          <p className="text-muted-foreground">Review and resolve billing discrepancies</p>
         </div>
         <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="mr-2 h-4 w-4" />
           Export
         </Button>
         <Button variant="outline" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
       </div>
 
       {/* Summary */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -132,9 +125,7 @@ export default function DiscrepanciesPage() {
         </CardHeader>
         <CardContent>
           {items.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No discrepancies found
-            </div>
+            <div className="py-8 text-center text-muted-foreground">No discrepancies found</div>
           ) : (
             <Table>
               <TableHeader>
@@ -155,9 +146,7 @@ export default function DiscrepanciesPage() {
                     <TableCell>{item.date}</TableCell>
                     <TableCell>
                       <div className="font-medium">{item.patient_name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {item.patient_mrn}
-                      </div>
+                      <div className="text-xs text-muted-foreground">{item.patient_mrn}</div>
                     </TableCell>
                     <TableCell>{item.service_name}</TableCell>
                     <TableCell className="text-right">
@@ -166,13 +155,11 @@ export default function DiscrepanciesPage() {
                     <TableCell className="text-right">
                       KES {parseFloat(item.billed_amount).toFixed(2)}
                     </TableCell>
-                    <TableCell className="text-right text-destructive font-medium">
+                    <TableCell className="text-right font-medium text-destructive">
                       KES {parseFloat(item.discrepancy).toFixed(2)}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={item.status === 'RESOLVED' ? 'default' : 'secondary'}
-                      >
+                      <Badge variant={item.status === 'RESOLVED' ? 'default' : 'secondary'}>
                         {item.status}
                       </Badge>
                     </TableCell>

@@ -35,7 +35,7 @@ function PatientLayoutError({ message }: { message: string }) {
       <div className="mt-4">
         <Button variant="outline" asChild>
           <Link href="/patients">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Patients
           </Link>
         </Button>
@@ -56,11 +56,9 @@ function PatientLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col min-h-full -m-4 md:-m-6 lg:-m-8">
+    <div className="-m-4 flex min-h-full flex-col md:-m-6 lg:-m-8">
       <PatientShellHeader />
-      <main className="flex-1 p-4 md:p-6 lg:p-8">
-        {children}
-      </main>
+      <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
     </div>
   );
 }
@@ -69,11 +67,7 @@ function PatientLayoutContent({ children }: { children: React.ReactNode }) {
 // Main Layout
 // =============================================================================
 
-export default function PatientLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function PatientLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const patientId = typeof params.id === 'string' ? params.id : null;
 
@@ -83,9 +77,7 @@ export default function PatientLayout({
 
   return (
     <PatientProvider patientId={patientId}>
-      <PatientLayoutContent>
-        {children}
-      </PatientLayoutContent>
+      <PatientLayoutContent>{children}</PatientLayoutContent>
     </PatientProvider>
   );
 }

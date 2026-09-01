@@ -19,13 +19,15 @@ import type {
 export const bloodBankKeys = {
   all: ['blood-bank'] as const,
   donors: () => [...bloodBankKeys.all, 'donors'] as const,
-  donorList: (params?: BloodDonorListParams) => [...bloodBankKeys.donors(), 'list', params] as const,
+  donorList: (params?: BloodDonorListParams) =>
+    [...bloodBankKeys.donors(), 'list', params] as const,
   donorDetail: (id: number) => [...bloodBankKeys.donors(), 'detail', id] as const,
   units: () => [...bloodBankKeys.all, 'units'] as const,
   unitList: (params?: BloodUnitListParams) => [...bloodBankKeys.units(), 'list', params] as const,
   unitDetail: (id: number) => [...bloodBankKeys.units(), 'detail', id] as const,
   requests: () => [...bloodBankKeys.all, 'requests'] as const,
-  requestList: (params?: BloodRequestListParams) => [...bloodBankKeys.requests(), 'list', params] as const,
+  requestList: (params?: BloodRequestListParams) =>
+    [...bloodBankKeys.requests(), 'list', params] as const,
   requestDetail: (id: number) => [...bloodBankKeys.requests(), 'detail', id] as const,
   crossmatches: () => [...bloodBankKeys.all, 'crossmatches'] as const,
   crossmatchDetail: (id: number) => [...bloodBankKeys.crossmatches(), 'detail', id] as const,
@@ -100,8 +102,13 @@ export function useCreateBloodUnit() {
 export function useUpdateBloodUnit() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<BloodUnitCreateData & { status: string }> }) =>
-      bloodBankApi.updateUnit(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<BloodUnitCreateData & { status: string }>;
+    }) => bloodBankApi.updateUnit(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: bloodBankKeys.units() });
       queryClient.invalidateQueries({ queryKey: bloodBankKeys.unitDetail(variables.id) });
@@ -122,7 +129,8 @@ export function useMarkUnitAvailable() {
 export function useQuarantineUnit() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) => bloodBankApi.quarantine(id, reason),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      bloodBankApi.quarantine(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bloodBankKeys.units() });
     },
@@ -171,7 +179,8 @@ export function useCreateBloodRequest() {
 export function useCancelBloodRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) => bloodBankApi.cancelRequest(id, reason),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      bloodBankApi.cancelRequest(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bloodBankKeys.requests() });
     },
@@ -188,7 +197,10 @@ export function useCrossMatches(requestId?: number) {
 
 export function useCrossMatch(id: number | undefined) {
   return useQuery({
-    queryKey: typeof id === 'number' ? bloodBankKeys.crossmatchDetail(id) : [...bloodBankKeys.crossmatches(), 'detail', 'unknown'] as const,
+    queryKey:
+      typeof id === 'number'
+        ? bloodBankKeys.crossmatchDetail(id)
+        : ([...bloodBankKeys.crossmatches(), 'detail', 'unknown'] as const),
     enabled: typeof id === 'number',
     queryFn: () => bloodBankApi.getCrossMatch(id!),
   });

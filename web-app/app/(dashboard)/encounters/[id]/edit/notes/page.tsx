@@ -37,7 +37,6 @@ import { AlertTriangle, ClipboardList, LayoutTemplate, FileText } from 'lucide-r
 
 type NotesMode = 'freetext' | 'template';
 
-
 export default function EncounterEditNotesPage() {
   const params = useParams();
   const router = useRouter();
@@ -57,7 +56,7 @@ export default function EncounterEditNotesPage() {
 
   // Mode toggle: freetext or template.
   // Default to template mode if the encounter already has a template applied.
-  const hasExistingTemplate = !!(notes?.clinical_template);
+  const hasExistingTemplate = !!notes?.clinical_template;
   const [mode, setMode] = useState<NotesMode>(hasExistingTemplate ? 'template' : 'freetext');
 
   // Fetch template if encounter has one
@@ -77,90 +76,106 @@ export default function EncounterEditNotesPage() {
   }, [existingTemplateId]);
 
   // Build form data from store
-  const formData = useMemo((): EncounterFormData => ({
-    patient: session?.patientId || null,
-    encounter_type: session?.encounter_type || 'OPD',
-    encounter_date: session?.encounter_date || '',
-    chief_complaint: session?.chief_complaint || '',
-    status: session?.status || 'CREATED',
-    // Empty vitals
-    temperature: null,
-    pulse: null,
-    blood_pressure_systolic: null,
-    blood_pressure_diastolic: null,
-    respiratory_rate: null,
-    spo2: null,
-    weight: null,
-    height: null,
-    // Empty history
-    allergies: '',
-    chronic_conditions: '',
-    current_medications: '',
-    past_surgeries: '',
-    family_history: '',
-    social_history: '',
-    // Notes from store
-    notes: notes?.notes || '',
-    history_of_present_illness: notes?.history_of_present_illness || '',
-    physical_examination: notes?.physical_examination || '',
-    assessment: notes?.assessment || '',
-    clinical_template: notes?.clinical_template || null,
-    clinical_template_data: notes?.clinical_template_data || null,
-  }), [session, notes]);
+  const formData = useMemo(
+    (): EncounterFormData => ({
+      patient: session?.patientId || null,
+      encounter_type: session?.encounter_type || 'OPD',
+      encounter_date: session?.encounter_date || '',
+      chief_complaint: session?.chief_complaint || '',
+      status: session?.status || 'CREATED',
+      // Empty vitals
+      temperature: null,
+      pulse: null,
+      blood_pressure_systolic: null,
+      blood_pressure_diastolic: null,
+      respiratory_rate: null,
+      spo2: null,
+      weight: null,
+      height: null,
+      // Empty history
+      allergies: '',
+      chronic_conditions: '',
+      current_medications: '',
+      past_surgeries: '',
+      family_history: '',
+      social_history: '',
+      // Notes from store
+      notes: notes?.notes || '',
+      history_of_present_illness: notes?.history_of_present_illness || '',
+      physical_examination: notes?.physical_examination || '',
+      assessment: notes?.assessment || '',
+      clinical_template: notes?.clinical_template || null,
+      clinical_template_data: notes?.clinical_template_data || null,
+    }),
+    [session, notes]
+  );
 
   // Handle field changes
-  const handleFieldChange = useCallback((field: keyof EncounterFormData, value: unknown) => {
-    const notesFields = [
-      'history_of_present_illness', 'physical_examination', 'assessment', 'notes',
-      'clinical_template', 'clinical_template_data'
-    ];
+  const handleFieldChange = useCallback(
+    (field: keyof EncounterFormData, value: unknown) => {
+      const notesFields = [
+        'history_of_present_illness',
+        'physical_examination',
+        'assessment',
+        'notes',
+        'clinical_template',
+        'clinical_template_data',
+      ];
 
-    if (notesFields.includes(field)) {
-      setNotes(encounterStoreId, { [field]: value });
-    }
-  }, [encounterStoreId, setNotes]);
+      if (notesFields.includes(field)) {
+        setNotes(encounterStoreId, { [field]: value });
+      }
+    },
+    [encounterStoreId, setNotes]
+  );
 
   // Handle template selection
-  const handleTemplateSelect = useCallback(async (template: ClinicalTemplate) => {
-    setSelectedTemplate(template);
+  const handleTemplateSelect = useCallback(
+    async (template: ClinicalTemplate) => {
+      setSelectedTemplate(template);
 
-    try {
-      const { encountersApi } = await import('@/lib/api/encounters');
-      const { populated_data } = await encountersApi.populateTemplate(
-        encounterRouteId,
-        template.id,
-        true
-      );
+      try {
+        const { encountersApi } = await import('@/lib/api/encounters');
+        const { populated_data } = await encountersApi.populateTemplate(
+          encounterRouteId,
+          template.id,
+          true
+        );
 
-      const typedData = (populated_data || {}) as Record<string, Record<string, unknown>>;
+        const typedData = (populated_data || {}) as Record<string, Record<string, unknown>>;
 
-      setNotes(encounterStoreId, {
-        clinical_template: template.id,
-        clinical_template_data: typedData,
-      });
+        setNotes(encounterStoreId, {
+          clinical_template: template.id,
+          clinical_template_data: typedData,
+        });
 
-      toast({
-        title: 'Template Applied',
-        description: `${template.name} has been applied with existing data auto-populated.`,
-      });
-    } catch (error) {
-      console.error('Failed to auto-populate template:', error);
-      setNotes(encounterStoreId, {
-        clinical_template: template.id,
-        clinical_template_data: notes?.clinical_template_data || {},
-      });
+        toast({
+          title: 'Template Applied',
+          description: `${template.name} has been applied with existing data auto-populated.`,
+        });
+      } catch (error) {
+        console.error('Failed to auto-populate template:', error);
+        setNotes(encounterStoreId, {
+          clinical_template: template.id,
+          clinical_template_data: notes?.clinical_template_data || {},
+        });
 
-      toast({
-        title: 'Template Selected',
-        description: `${template.name} has been applied to this encounter.`,
-      });
-    }
-  }, [encounterRouteId, encounterStoreId, setNotes, notes, toast]);
+        toast({
+          title: 'Template Selected',
+          description: `${template.name} has been applied to this encounter.`,
+        });
+      }
+    },
+    [encounterRouteId, encounterStoreId, setNotes, notes, toast]
+  );
 
   // Handle template data changes
-  const handleTemplateDataChange = useCallback((data: Record<string, Record<string, unknown>>) => {
-    setNotes(encounterStoreId, { clinical_template_data: data });
-  }, [encounterStoreId, setNotes]);
+  const handleTemplateDataChange = useCallback(
+    (data: Record<string, Record<string, unknown>>) => {
+      setNotes(encounterStoreId, { clinical_template_data: data });
+    },
+    [encounterStoreId, setNotes]
+  );
 
   // Build auto-save data
   const autoSaveData = useMemo(() => {
@@ -265,7 +280,7 @@ export default function EncounterEditNotesPage() {
       {/* Clinical Notes — single card with mode toggle */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2">
               {mode === 'template' ? (
                 <LayoutTemplate className="h-5 w-5" />
@@ -278,15 +293,23 @@ export default function EncounterEditNotesPage() {
               {/* AI Structure button (free-text mode only) */}
               {mode === 'freetext' && isEditable && (
                 <StructureNoteButton
-                  freeText={
-                    [notes?.history_of_present_illness, notes?.physical_examination, notes?.assessment, notes?.notes]
-                      .filter(Boolean)
-                      .join('\n\n')
-                  }
+                  freeText={[
+                    notes?.history_of_present_illness,
+                    notes?.physical_examination,
+                    notes?.assessment,
+                    notes?.notes,
+                  ]
+                    .filter(Boolean)
+                    .join('\n\n')}
                   onAccept={(sections) => {
-                    if (sections.subjective) setNotes(encounterStoreId, { history_of_present_illness: sections.subjective });
-                    if (sections.objective) setNotes(encounterStoreId, { physical_examination: sections.objective });
-                    if (sections.assessment) setNotes(encounterStoreId, { assessment: sections.assessment });
+                    if (sections.subjective)
+                      setNotes(encounterStoreId, {
+                        history_of_present_illness: sections.subjective,
+                      });
+                    if (sections.objective)
+                      setNotes(encounterStoreId, { physical_examination: sections.objective });
+                    if (sections.assessment)
+                      setNotes(encounterStoreId, { assessment: sections.assessment });
                     if (sections.plan) setNotes(encounterStoreId, { notes: sections.plan });
                   }}
                 />
@@ -342,13 +365,11 @@ export default function EncounterEditNotesPage() {
       {/* Navigation */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-            <p className="text-sm text-muted-foreground">
-              Step 3 of 7 — Clinical notes documented
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">Step 3 of 7 — Clinical notes documented</p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handlePrev}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
               <Button
@@ -357,15 +378,15 @@ export default function EncounterEditNotesPage() {
                 disabled={updateEncounter.isPending || !isEditable}
               >
                 {updateEncounter.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="mr-2 h-4 w-4" />
                 )}
                 Save
               </Button>
               <Button onClick={handleNext}>
                 Next: Diagnosis
-                <ArrowRight className="h-4 w-4 ml-2" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>

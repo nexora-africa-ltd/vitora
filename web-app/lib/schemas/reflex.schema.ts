@@ -15,16 +15,28 @@ const coerceDecimal = z.preprocess(
 // =============================================================================
 
 export const ReflexOperatorSchema = z.enum([
-  'GT', 'LT', 'GTE', 'LTE', 'EQ', 'NEQ',
-  'IN_RANGE', 'OUT_OF_RANGE', 'CONTAINS',
-  'CRITICAL', 'ABNORMAL',
+  'GT',
+  'LT',
+  'GTE',
+  'LTE',
+  'EQ',
+  'NEQ',
+  'IN_RANGE',
+  'OUT_OF_RANGE',
+  'CONTAINS',
+  'CRITICAL',
+  'ABNORMAL',
 ]);
 
 export const ReflexActionSchema = z.enum(['AUTO_ORDER', 'SUGGEST']);
 
 export const ReflexExecutionStatusSchema = z.enum([
-  'TRIGGERED', 'ORDERED', 'SUGGESTED',
-  'APPROVED', 'REJECTED', 'CANCELLED',
+  'TRIGGERED',
+  'ORDERED',
+  'SUGGESTED',
+  'APPROVED',
+  'REJECTED',
+  'CANCELLED',
 ]);
 
 // =============================================================================

@@ -21,7 +21,11 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
 import { growthMeasurementsApi } from '@/lib/api/mch';
-import type { GrowthMeasurementCreateData, MUACClassification, NutritionalStatus } from '@/lib/types/mch';
+import type {
+  GrowthMeasurementCreateData,
+  MUACClassification,
+  NutritionalStatus,
+} from '@/lib/types/mch';
 
 interface GrowthTabProps {
   patientId: number;
@@ -49,7 +53,8 @@ export function GrowthTab({ patientId }: GrowthTabProps) {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['growth-measurements', patientId],
-    queryFn: () => growthMeasurementsApi.list({ patient: patientId, ordering: '-measurement_date' }),
+    queryFn: () =>
+      growthMeasurementsApi.list({ patient: patientId, ordering: '-measurement_date' }),
   });
 
   const measurements = data?.results || [];
@@ -111,7 +116,7 @@ export function GrowthTab({ patientId }: GrowthTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Growth Monitoring</h3>
           <HelpPopover content="Track child growth using WHO standards. Measurements are compared against reference data to calculate Z-scores and identify malnutrition." />
@@ -122,7 +127,7 @@ export function GrowthTab({ patientId }: GrowthTabProps) {
             size="sm"
             onClick={() => window.open(`/mch/growth?patient=${patientId}`, '_blank')}
           >
-            <TrendingUp className="h-4 w-4 mr-1" />
+            <TrendingUp className="mr-1 h-4 w-4" />
             <span className="hidden sm:inline">Growth Chart</span>
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -193,11 +198,7 @@ export function GrowthTab({ patientId }: GrowthTabProps) {
                 </div>
                 <div className="space-y-2">
                   <Label>Notes</Label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={2}
-                  />
+                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -220,7 +221,9 @@ export function GrowthTab({ patientId }: GrowthTabProps) {
           <CardContent className="py-3">
             <div className="flex items-center gap-2 text-red-700">
               <AlertTriangle className="h-5 w-5" />
-              <span className="font-medium">Critical: Malnutrition alert detected. Refer for nutritional intervention.</span>
+              <span className="font-medium">
+                Critical: Malnutrition alert detected. Refer for nutritional intervention.
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -238,7 +241,7 @@ export function GrowthTab({ patientId }: GrowthTabProps) {
             <Card key={m.id} className={m.has_critical_flag ? 'border-red-200' : ''}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-sm">
                     <Ruler className="h-4 w-4" />
                     {formatDate(m.measurement_date)}
                   </CardTitle>

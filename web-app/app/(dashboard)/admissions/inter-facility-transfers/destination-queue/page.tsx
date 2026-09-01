@@ -67,7 +67,7 @@ function DestinationQueueCard({
   const selectedWardId = destinationWard ? Number(destinationWard) : undefined;
   const { data: bedsData } = useWardBeds(selectedWardId, { status: 'AVAILABLE' });
   const wards = wardsData?.results ?? [];
-  const beds = Array.isArray(bedsData) ? bedsData : bedsData?.results ?? [];
+  const beds = Array.isArray(bedsData) ? bedsData : (bedsData?.results ?? []);
 
   const busy =
     acceptTransfer.isPending ||
@@ -75,7 +75,10 @@ function DestinationQueueCard({
     arriveAndAdmit.isPending ||
     requestDischargeSummary.isPending;
 
-  const dischargeSnapshot = transfer.discharge_summary_snapshot as Record<string, unknown> | null | undefined;
+  const dischargeSnapshot = transfer.discharge_summary_snapshot as
+    | Record<string, unknown>
+    | null
+    | undefined;
 
   const onAccept = async () => {
     if (!destinationWard) return;
@@ -114,7 +117,6 @@ function DestinationQueueCard({
     }
   };
 
-
   const onArriveAndAdmit = async () => {
     if (!destinationWard) return;
     try {
@@ -130,7 +132,10 @@ function DestinationQueueCard({
       setDestinationWard('');
       setDestinationBed('');
       setAdmittingDiagnosisText('');
-      toast({ title: 'Arrived and admitted', description: `${transfer.transfer_number} completed.` });
+      toast({
+        title: 'Arrived and admitted',
+        description: `${transfer.transfer_number} completed.`,
+      });
     } catch (error) {
       toast({
         title: 'Failed to arrive and admit',
@@ -177,7 +182,8 @@ function DestinationQueueCard({
     typeof dischargeSnapshot?.patient_instructions === 'string'
       ? dischargeSnapshot.patient_instructions
       : '';
-  const isSourceContext = typeof currentFacilityId === 'number' && transfer.source_facility === currentFacilityId;
+  const isSourceContext =
+    typeof currentFacilityId === 'number' && transfer.source_facility === currentFacilityId;
 
   return (
     <Card>
@@ -191,11 +197,22 @@ function DestinationQueueCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-2 md:grid-cols-2 text-sm">
-          <p><span className="text-muted-foreground">Patient:</span> {transfer.patient_name}</p>
-          <p><span className="text-muted-foreground">Admission:</span> {transfer.source_admission_number}</p>
-          <p><span className="text-muted-foreground">Priority:</span> {transfer.priority_display ?? transfer.priority}</p>
-          <p><span className="text-muted-foreground">Reason:</span> {transfer.reason_code_display ?? transfer.reason_code}</p>
+        <div className="grid gap-2 text-sm md:grid-cols-2">
+          <p>
+            <span className="text-muted-foreground">Patient:</span> {transfer.patient_name}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Admission:</span>{' '}
+            {transfer.source_admission_number}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Priority:</span>{' '}
+            {transfer.priority_display ?? transfer.priority}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Reason:</span>{' '}
+            {transfer.reason_code_display ?? transfer.reason_code}
+          </p>
         </div>
         {isSourceContext ? (
           <div className="flex">
@@ -207,14 +224,16 @@ function DestinationQueueCard({
           </div>
         ) : null}
         <div className="rounded-md border p-3 text-sm">
-          <p className="text-muted-foreground mb-2">Clinical summary</p>
-          <div className="prose prose-sm max-w-none break-words overflow-hidden dark:prose-invert">
-            <Markdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(transfer.clinical_summary || '')}</Markdown>
+          <p className="mb-2 text-muted-foreground">Clinical summary</p>
+          <div className="prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words">
+            <Markdown remarkPlugins={[remarkGfm]}>
+              {normalizeMarkdown(transfer.clinical_summary || '')}
+            </Markdown>
           </div>
         </div>
 
         {dischargeSnapshot ? (
-          <div className="rounded-md border p-3 space-y-2 text-sm">
+          <div className="space-y-2 rounded-md border p-3 text-sm">
             <p className="font-medium">Shared Discharge Summary</p>
             {finalDiagnosisText ? (
               <p>
@@ -224,24 +243,30 @@ function DestinationQueueCard({
             {treatmentSummary ? (
               <div>
                 <p className="text-muted-foreground">Treatment summary:</p>
-                <div className="prose prose-sm max-w-none break-words overflow-hidden dark:prose-invert">
-                  <Markdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(treatmentSummary)}</Markdown>
+                <div className="prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words">
+                  <Markdown remarkPlugins={[remarkGfm]}>
+                    {normalizeMarkdown(treatmentSummary)}
+                  </Markdown>
                 </div>
               </div>
             ) : null}
             {followUpInstructions ? (
               <div>
                 <p className="text-muted-foreground">Follow-up:</p>
-                <div className="prose prose-sm max-w-none break-words overflow-hidden dark:prose-invert">
-                  <Markdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(followUpInstructions)}</Markdown>
+                <div className="prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words">
+                  <Markdown remarkPlugins={[remarkGfm]}>
+                    {normalizeMarkdown(followUpInstructions)}
+                  </Markdown>
                 </div>
               </div>
             ) : null}
             {patientInstructions ? (
               <div>
                 <p className="text-muted-foreground">Patient instructions:</p>
-                <div className="prose prose-sm max-w-none break-words overflow-hidden dark:prose-invert">
-                  <Markdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(patientInstructions)}</Markdown>
+                <div className="prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words">
+                  <Markdown remarkPlugins={[remarkGfm]}>
+                    {normalizeMarkdown(patientInstructions)}
+                  </Markdown>
                 </div>
               </div>
             ) : null}
@@ -274,7 +299,9 @@ function DestinationQueueCard({
               onClick={onRequestDischargeSummary}
               disabled={busy || transfer.discharge_summary_requested}
             >
-              {transfer.discharge_summary_requested ? 'Summary requested' : 'Request discharge summary'}
+              {transfer.discharge_summary_requested
+                ? 'Summary requested'
+                : 'Request discharge summary'}
             </Button>
           </div>
         )}
@@ -290,7 +317,9 @@ function DestinationQueueCard({
                   </SelectTrigger>
                   <SelectContent>
                     {wards.map((ward) => (
-                      <SelectItem key={ward.id} value={String(ward.id)}>{ward.name}</SelectItem>
+                      <SelectItem key={ward.id} value={String(ward.id)}>
+                        {ward.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -303,7 +332,9 @@ function DestinationQueueCard({
                   </SelectTrigger>
                   <SelectContent>
                     {beds.map((bed) => (
-                      <SelectItem key={bed.id} value={String(bed.id)}>{bed.bed_number}</SelectItem>
+                      <SelectItem key={bed.id} value={String(bed.id)}>
+                        {bed.bed_number}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -315,7 +346,9 @@ function DestinationQueueCard({
               onChange={(e) => setAdmittingDiagnosisText(e.target.value)}
             />
             <div className="flex">
-              <Button onClick={onAccept} disabled={busy || !destinationWard}>Accept & Create Admission</Button>
+              <Button onClick={onAccept} disabled={busy || !destinationWard}>
+                Accept & Create Admission
+              </Button>
             </div>
             <div className="space-y-2 rounded-md border border-destructive/25 bg-destructive/5 p-3">
               <Input
@@ -324,7 +357,11 @@ function DestinationQueueCard({
                 onChange={(e) => setRejectReason(e.target.value)}
               />
               <div className="flex justify-end">
-                <Button variant="destructive" onClick={onReject} disabled={busy || !rejectReason.trim()}>
+                <Button
+                  variant="destructive"
+                  onClick={onReject}
+                  disabled={busy || !rejectReason.trim()}
+                >
                   Reject
                 </Button>
               </div>
@@ -347,7 +384,9 @@ function DestinationQueueCard({
                   </SelectTrigger>
                   <SelectContent>
                     {wards.map((ward) => (
-                      <SelectItem key={ward.id} value={String(ward.id)}>{ward.name}</SelectItem>
+                      <SelectItem key={ward.id} value={String(ward.id)}>
+                        {ward.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -360,7 +399,9 @@ function DestinationQueueCard({
                   </SelectTrigger>
                   <SelectContent>
                     {beds.map((bed) => (
-                      <SelectItem key={bed.id} value={String(bed.id)}>{bed.bed_number}</SelectItem>
+                      <SelectItem key={bed.id} value={String(bed.id)}>
+                        {bed.bed_number}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -390,7 +431,8 @@ function TransferHistoryCard({
   direction: 'INBOUND' | 'OUTBOUND';
   currentFacilityId?: number;
 }) {
-  const isSourceContext = typeof currentFacilityId === 'number' && transfer.source_facility === currentFacilityId;
+  const isSourceContext =
+    typeof currentFacilityId === 'number' && transfer.source_facility === currentFacilityId;
   return (
     <Card>
       <CardHeader>
@@ -406,10 +448,21 @@ function TransferHistoryCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
-        <p><span className="text-muted-foreground">Patient:</span> {transfer.patient_name}</p>
-        <p><span className="text-muted-foreground">Admission:</span> {transfer.source_admission_number}</p>
-        <p><span className="text-muted-foreground">Destination:</span> {transfer.destination_facility_label ?? transfer.destination_facility_name}</p>
-        <p><span className="text-muted-foreground">Reason:</span> {transfer.reason_code_display ?? transfer.reason_code}</p>
+        <p>
+          <span className="text-muted-foreground">Patient:</span> {transfer.patient_name}
+        </p>
+        <p>
+          <span className="text-muted-foreground">Admission:</span>{' '}
+          {transfer.source_admission_number}
+        </p>
+        <p>
+          <span className="text-muted-foreground">Destination:</span>{' '}
+          {transfer.destination_facility_label ?? transfer.destination_facility_name}
+        </p>
+        <p>
+          <span className="text-muted-foreground">Reason:</span>{' '}
+          {transfer.reason_code_display ?? transfer.reason_code}
+        </p>
         {isSourceContext ? (
           <div className="pt-1">
             <Button variant="outline" asChild>
@@ -450,7 +503,8 @@ export default function InterFacilityDestinationQueuePage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Destination queue is hidden because the inter-facility transfers feature toggle is off.
+              Destination queue is hidden because the inter-facility transfers feature toggle is
+              off.
             </p>
           </CardContent>
         </Card>
@@ -459,7 +513,7 @@ export default function InterFacilityDestinationQueuePage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title="Destination Transfer Queue"
         helpContent="Accept, reject, and complete inter-facility transfers arriving to your facility."
@@ -468,16 +522,24 @@ export default function InterFacilityDestinationQueuePage() {
       <PermissionGate action="inpatient.accept_interfacility_transfer">
         {isLoading ? (
           <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">Loading queue...</CardContent>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              Loading queue...
+            </CardContent>
           </Card>
         ) : queue.length === 0 ? (
           <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">No incoming transfers in queue.</CardContent>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              No incoming transfers in queue.
+            </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
             {queue.map((transfer) => (
-              <DestinationQueueCard key={transfer.id} transfer={transfer} currentFacilityId={facility?.id} />
+              <DestinationQueueCard
+                key={transfer.id}
+                transfer={transfer}
+                currentFacilityId={facility?.id}
+              />
             ))}
           </div>
         )}
@@ -494,7 +556,9 @@ export default function InterFacilityDestinationQueuePage() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-medium text-muted-foreground">Inbound (Past)</h3>
                   {inboundHistory.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No inbound transfer history yet.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No inbound transfer history yet.
+                    </p>
                   ) : (
                     <div className="space-y-3">
                       {inboundHistory.map((transfer) => {
@@ -523,7 +587,9 @@ export default function InterFacilityDestinationQueuePage() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-medium text-muted-foreground">Outbound (Past)</h3>
                   {outboundHistory.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No outbound transfer history yet.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No outbound transfer history yet.
+                    </p>
                   ) : (
                     <div className="space-y-3">
                       {outboundHistory.map((transfer) => (

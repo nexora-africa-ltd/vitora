@@ -5,24 +5,10 @@
 'use client';
 
 import * as React from 'react';
-import {
-  Thermometer,
-  Heart,
-  Wind,
-  Droplets,
-  Scale,
-  Ruler,
-  Activity,
-  Info,
-} from 'lucide-react';
+import { Thermometer, Heart, Wind, Droplets, Scale, Ruler, Activity, Info } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Badge } from '@/components/ui/badge';
-import {
-  Item,
-  ItemMedia,
-  ItemContent,
-  ItemDescription,
-} from '@/components/ui/item';
+import { Item, ItemMedia, ItemContent, ItemDescription } from '@/components/ui/item';
 import type { VitalsFormValues } from './vitals-schema';
 import { getFieldStatus, type VitalAlert } from '@/lib/hooks/use-vital-thresholds';
 import { getVitalRangeHint, type AgeGroup } from '@/lib/vitals';
@@ -57,7 +43,7 @@ function VitalItem({
   value,
   unit,
   normalRange,
-  status = 'normal'
+  status = 'normal',
 }: VitalItemProps) {
   return (
     <Item
@@ -69,34 +55,38 @@ function VitalItem({
         status === 'warning' && 'border-amber-500 bg-amber-50 dark:bg-amber-950/20'
       )}
     >
-      <div className="flex items-center gap-2 w-full">
+      <div className="flex w-full items-center gap-2">
         <ItemMedia variant="default" className="text-muted-foreground">
           <Icon className="h-4 w-4" />
         </ItemMedia>
         <ItemContent className="gap-0">
-          <ItemDescription className="text-xs line-clamp-1">
-            {label}
-          </ItemDescription>
+          <ItemDescription className="line-clamp-1 text-xs">{label}</ItemDescription>
         </ItemContent>
       </div>
       <div className="flex items-baseline gap-1 pl-6">
-        <span className={cn(
-          'text-xl font-semibold tabular-nums',
-          status === 'critical' && 'text-destructive',
-          status === 'warning' && 'text-amber-600 dark:text-amber-500'
-        )}>
+        <span
+          className={cn(
+            'text-xl font-semibold tabular-nums',
+            status === 'critical' && 'text-destructive',
+            status === 'warning' && 'text-amber-600 dark:text-amber-500'
+          )}
+        >
           {value ?? '—'}
         </span>
         <span className="text-sm text-muted-foreground">{unit}</span>
       </div>
-      {normalRange && (
-        <p className="text-xs text-muted-foreground pl-6">{normalRange}</p>
-      )}
+      {normalRange && <p className="pl-6 text-xs text-muted-foreground">{normalRange}</p>}
     </Item>
   );
 }
 
-export function VitalsDisplay({ values, alerts, patient, ageGroup, className }: VitalsDisplayProps) {
+export function VitalsDisplay({
+  values,
+  alerts,
+  patient,
+  ageGroup,
+  className,
+}: VitalsDisplayProps) {
   // Calculate BMI
   const bmiResult = calculateBMI(
     values.weight ?? null,
@@ -112,7 +102,7 @@ export function VitalsDisplay({ values, alerts, patient, ageGroup, className }: 
       : null;
 
   return (
-    <div className={cn('grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4', className)}>
+    <div className={cn('grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4', className)}>
       <VitalItem
         icon={Thermometer}
         label="Temperature"
@@ -158,37 +148,21 @@ export function VitalsDisplay({ values, alerts, patient, ageGroup, className }: 
         status={getFieldStatus('spo2', alerts)}
       />
 
-      <VitalItem
-        icon={Scale}
-        label="Weight"
-        value={values.weight}
-        unit="kg"
-      />
+      <VitalItem icon={Scale} label="Weight" value={values.weight} unit="kg" />
 
-      <VitalItem
-        icon={Ruler}
-        label="Height"
-        value={values.height}
-        unit="cm"
-      />
+      <VitalItem icon={Ruler} label="Height" value={values.height} unit="cm" />
 
       {/* BMI Display */}
-      <Item
-        variant="outline"
-        size="sm"
-        className="flex-col items-start gap-1 p-3"
-      >
-        <div className="flex items-center gap-2 w-full">
+      <Item variant="outline" size="sm" className="flex-col items-start gap-1 p-3">
+        <div className="flex w-full items-center gap-2">
           <ItemMedia variant="default" className="text-muted-foreground">
             <Info className="h-4 w-4" />
           </ItemMedia>
           <ItemContent className="gap-0">
-            <ItemDescription className="text-xs line-clamp-1">
-              BMI
-            </ItemDescription>
+            <ItemDescription className="line-clamp-1 text-xs">BMI</ItemDescription>
           </ItemContent>
         </div>
-        <div className="flex items-baseline gap-2 pl-6 w-full">
+        <div className="flex w-full items-baseline gap-2 pl-6">
           {!bmiResult.isAgeAppropriate ? (
             <span className="text-sm text-muted-foreground">N/A (under 2 yrs)</span>
           ) : bmiResult.bmi !== null ? (

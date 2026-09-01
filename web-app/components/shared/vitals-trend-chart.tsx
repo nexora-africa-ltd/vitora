@@ -53,12 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { cn } from '@/lib/utils/cn';
 
@@ -92,16 +87,7 @@ export interface VitalsDataPoint {
   bmi?: number | null;
 }
 
-export type TimeRange =
-  | '1h'
-  | '6h'
-  | '12h'
-  | '24h'
-  | '72h'
-  | '7d'
-  | '1mo'
-  | '1y'
-  | 'all';
+export type TimeRange = '1h' | '6h' | '12h' | '24h' | '72h' | '7d' | '1mo' | '1y' | 'all';
 
 export type VitalKey =
   | 'temperature'
@@ -268,7 +254,12 @@ function formatTimestamp(timestamp: string, range: TimeRange): string {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
   if (range === '24h' || range === '72h') {
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
@@ -302,7 +293,7 @@ function SingleVitalChart({
           source: d.source,
         }))
         .filter((d) => d.value !== undefined && d.value !== null),
-    [data, config.key, range],
+    [data, config.key, range]
   );
 
   if (chartData.length === 0) {
@@ -314,14 +305,14 @@ function SingleVitalChart({
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="pb-2 pt-3 px-4">
+      <CardHeader className="px-4 pb-2 pt-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon className="h-4 w-4" style={{ color: config.color }} />
             <CardTitle className="text-sm font-medium">{config.label}</CardTitle>
           </div>
           {chartData.length > 0 && chartData[chartData.length - 1] && (
-            <Badge variant="outline" className="text-xs font-mono">
+            <Badge variant="outline" className="font-mono text-xs">
               {chartData[chartData.length - 1]!.value} {config.unit}
             </Badge>
           )}
@@ -354,8 +345,18 @@ function SingleVitalChart({
               fillOpacity={0.06}
               strokeOpacity={0}
             />
-            <ReferenceLine y={normalLow} stroke={config.color} strokeDasharray="3 3" opacity={0.3} />
-            <ReferenceLine y={normalHigh} stroke={config.color} strokeDasharray="3 3" opacity={0.3} />
+            <ReferenceLine
+              y={normalLow}
+              stroke={config.color}
+              strokeDasharray="3 3"
+              opacity={0.3}
+            />
+            <ReferenceLine
+              y={normalHigh}
+              stroke={config.color}
+              strokeDasharray="3 3"
+              opacity={0.3}
+            />
             <RechartsTooltip
               cursor={false}
               content={({ active, payload }) => {
@@ -374,9 +375,7 @@ function SingleVitalChart({
                       </p>
                     )}
                     {p?.source && (
-                      <p className="text-xs text-muted-foreground">
-                        Source: {p.source}
-                      </p>
+                      <p className="text-xs text-muted-foreground">Source: {p.source}</p>
                     )}
                   </div>
                 );
@@ -418,14 +417,14 @@ function CombinedVitalChart({
         timestamp: d.timestamp,
         ...Object.fromEntries(vitals.map((k) => [k, d[k] ?? undefined])),
       })),
-    [data, vitals, range],
+    [data, vitals, range]
   );
 
   const activeConfigs = VITAL_CONFIGS.filter((c) => vitals.includes(c.key));
 
   if (chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
+      <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
         No vitals data in this time range
       </div>
     );
@@ -456,7 +455,7 @@ function CombinedVitalChart({
             const firstPayload = payload[0];
             const p = firstPayload?.payload as { timestamp?: string } | undefined;
             return (
-              <div className="rounded-lg border bg-popover px-3 py-2 text-sm shadow-md space-y-1">
+              <div className="space-y-1 rounded-lg border bg-popover px-3 py-2 text-sm shadow-md">
                 {p?.timestamp && (
                   <p className="text-xs text-muted-foreground">
                     {new Date(p.timestamp).toLocaleString()}
@@ -466,7 +465,10 @@ function CombinedVitalChart({
                   const config = activeConfigs.find((c) => c.key === entry.dataKey);
                   if (!config || entry.value == null) return null;
                   return (
-                    <p key={entry.dataKey} className={cn('text-xs font-medium', VITAL_COLOR_CLASSES[config.key])}>
+                    <p
+                      key={entry.dataKey}
+                      className={cn('text-xs font-medium', VITAL_COLOR_CLASSES[config.key])}
+                    >
                       {config.shortLabel}: {entry.value} {config.unit}
                     </p>
                   );
@@ -566,7 +568,7 @@ export function VitalsTrendChart({
       }
     }
     return VITAL_CONFIGS.filter(
-      (c) => vitalsWithData.has(c.key) && (!visibleVitals || visibleVitals.includes(c.key)),
+      (c) => vitalsWithData.has(c.key) && (!visibleVitals || visibleVitals.includes(c.key))
     );
   }, [filteredData, visibleVitals]);
 
@@ -584,9 +586,9 @@ export function VitalsTrendChart({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-[180px] rounded-lg bg-muted animate-pulse" />
+              <div key={i} className="h-[180px] animate-pulse rounded-lg bg-muted" />
             ))}
           </div>
         </CardContent>
@@ -604,7 +606,7 @@ export function VitalsTrendChart({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+          <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
             No vitals data available
           </div>
         </CardContent>
@@ -629,10 +631,12 @@ export function VitalsTrendChart({
                   <button
                     type="button"
                     onClick={toggleViewMode}
-                    aria-label={viewMode === 'grid' ? 'Switch to combined view' : 'Switch to grid view'}
+                    aria-label={
+                      viewMode === 'grid' ? 'Switch to combined view' : 'Switch to grid view'
+                    }
                     className={cn(
-                      'inline-flex items-center justify-center rounded-md h-8 w-8 border text-sm transition-colors',
-                      'hover:bg-accent hover:text-accent-foreground',
+                      'inline-flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors',
+                      'hover:bg-accent hover:text-accent-foreground'
                     )}
                   >
                     <BarChart3 className="h-4 w-4" />
@@ -647,7 +651,7 @@ export function VitalsTrendChart({
             {/* Time range selector */}
             {!hideRangeSelector && (
               <Select value={range} onValueChange={(v) => setRange(v as TimeRange)}>
-                <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectTrigger className="h-8 w-[130px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -663,7 +667,7 @@ export function VitalsTrendChart({
         </div>
 
         {/* Data point count */}
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="mt-1 text-xs text-muted-foreground">
           {filteredData.length} reading{filteredData.length !== 1 ? 's' : ''} in range
         </p>
       </CardHeader>
@@ -676,10 +680,12 @@ export function VitalsTrendChart({
             range={range}
           />
         ) : (
-          <div className={cn(
-            'grid gap-4',
-            compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3',
-          )}>
+          <div
+            className={cn(
+              'grid gap-4',
+              compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+            )}
+          >
             {availableVitals.map((config) => (
               <SingleVitalChart
                 key={config.key}

@@ -42,12 +42,7 @@ export function DhaLogo({ size = 'md', className, muted = false }: DhaLogoProps)
       alt="DHA"
       width={sizeConfig.width}
       height={sizeConfig.height}
-      className={cn(
-        sizeConfig.class,
-        'object-contain',
-        muted && 'opacity-60 grayscale',
-        className
-      )}
+      className={cn(sizeConfig.class, 'object-contain', muted && 'opacity-60 grayscale', className)}
       priority={size === 'lg' || size === 'xl'}
     />
   );

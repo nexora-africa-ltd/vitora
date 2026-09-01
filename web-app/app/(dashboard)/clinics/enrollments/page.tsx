@@ -103,14 +103,14 @@ export default function EnrollmentsPage() {
         title="Clinic Enrollments"
         description="Manage chronic care program enrollments"
         actions={
-          <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
             <Button variant="outline" asChild>
               <Link href="/clinics/enrollments/overdue">
-                <AlertTriangle className="h-4 w-4 mr-2" />
+                <AlertTriangle className="mr-2 h-4 w-4" />
                 Overdue
               </Link>
             </Button>
@@ -217,9 +217,9 @@ export default function EnrollmentsPage() {
             </div>
           ) : enrollments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <Users className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No enrollments found</h3>
-              <p className="text-muted-foreground text-center">
+              <Users className="mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="mb-2 text-lg font-semibold">No enrollments found</h3>
+              <p className="text-center text-muted-foreground">
                 {search || status !== 'ALL' || selectedClinic !== 'ALL'
                   ? 'Try adjusting your filters'
                   : 'No chronic care enrollments yet'}
@@ -257,9 +257,7 @@ export default function EnrollmentsPage() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{enrollment.patient_name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {enrollment.patient_mrn}
-                          </p>
+                          <p className="text-sm text-muted-foreground">{enrollment.patient_mrn}</p>
                         </div>
                       </TableCell>
                       <TableCell>{enrollment.clinic_name}</TableCell>
@@ -270,15 +268,14 @@ export default function EnrollmentsPage() {
                         {enrollment.next_appointment_date ? (
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3 w-3 text-muted-foreground" />
-                            <span
-                              className={cn(
-                                isOverdue && 'text-orange-600 font-medium'
-                              )}
-                            >
+                            <span className={cn(isOverdue && 'font-medium text-orange-600')}>
                               {new Date(enrollment.next_appointment_date).toLocaleDateString()}
                             </span>
                             {isOverdue && (
-                              <Badge variant="outline" className="border-orange-500 text-orange-600">
+                              <Badge
+                                variant="outline"
+                                className="border-orange-500 text-orange-600"
+                              >
                                 Overdue
                               </Badge>
                             )}
@@ -297,12 +294,10 @@ export default function EnrollmentsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            router.push(`/patients/${enrollment.patient}`)
-                          }
+                          onClick={() => router.push(`/patients/${enrollment.patient}`)}
                         >
                           View
-                          <ChevronRight className="h-4 w-4 ml-1" />
+                          <ChevronRight className="ml-1 h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>

@@ -39,13 +39,7 @@ export const ClinicalSnapshotSchema = z.object({
 /**
  * Visit type enum schema
  */
-export const VisitTypeSchema = z.enum([
-  'NEW',
-  'RETURN',
-  'FOLLOW_UP',
-  'EMERGENCY',
-  'SCHEDULED',
-]);
+export const VisitTypeSchema = z.enum(['NEW', 'RETURN', 'FOLLOW_UP', 'EMERGENCY', 'SCHEDULED']);
 
 /**
  * Visit reason enum schema

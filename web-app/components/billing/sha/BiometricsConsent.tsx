@@ -12,14 +12,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Fingerprint,
-  Loader2,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Monitor,
-} from 'lucide-react';
+import { Fingerprint, Loader2, AlertTriangle, CheckCircle2, XCircle, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -43,7 +36,14 @@ interface BiometricsConsentProps {
   className?: string;
 }
 
-type BiometricStep = 'detecting' | 'ready' | 'authorizing' | 'polling' | 'authorized' | 'failed' | 'sandbox';
+type BiometricStep =
+  | 'detecting'
+  | 'ready'
+  | 'authorizing'
+  | 'polling'
+  | 'authorized'
+  | 'failed'
+  | 'sandbox';
 
 const HARDWARE_SERVER_URL = 'http://localhost:18065/status';
 const POLL_INTERVAL_MS = 2000;
@@ -104,7 +104,9 @@ export function BiometricsConsent({
       }
     } catch {
       setStep('failed');
-      setError('Biometric hardware not detected. Please ensure the fingerprint device is connected and the Hardware Server is running.');
+      setError(
+        'Biometric hardware not detected. Please ensure the fingerprint device is connected and the Hardware Server is running.'
+      );
       onHardwareNotDetected?.();
     }
   };
@@ -133,7 +135,8 @@ export function BiometricsConsent({
         pollTimerRef.current = setInterval(() => pollStatus(result.auth_guid), POLL_INTERVAL_MS);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to initiate biometric authorization';
+      const message =
+        err instanceof Error ? err.message : 'Failed to initiate biometric authorization';
       setError(message);
       setStep('ready');
     } finally {
@@ -141,34 +144,37 @@ export function BiometricsConsent({
     }
   };
 
-  const pollStatus = useCallback(async (guid: string) => {
-    // Check timeout
-    if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-      setStep('failed');
-      setError('Biometric verification timed out. Please try again.');
-      return;
-    }
-
-    try {
-      const result = await shaApi.getBiometricAuthStatus(guid);
-
-      if (result.status === 'AUTHORIZED') {
-        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-        setStep('authorized');
-        if (consentId) {
-          onAuthorized?.(consentId, guid);
-        }
-      } else if (result.status === 'FAILED' || result.status === 'EXPIRED') {
+  const pollStatus = useCallback(
+    async (guid: string) => {
+      // Check timeout
+      if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
         if (pollTimerRef.current) clearInterval(pollTimerRef.current);
         setStep('failed');
-        setError(`Biometric verification ${result.status.toLowerCase()}. Please try again.`);
+        setError('Biometric verification timed out. Please try again.');
+        return;
       }
-      // PENDING: continue polling
-    } catch {
-      // Network error during polling — don't stop, retry on next interval
-    }
-  }, [consentId, onAuthorized]);
+
+      try {
+        const result = await shaApi.getBiometricAuthStatus(guid);
+
+        if (result.status === 'AUTHORIZED') {
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          setStep('authorized');
+          if (consentId) {
+            onAuthorized?.(consentId, guid);
+          }
+        } else if (result.status === 'FAILED' || result.status === 'EXPIRED') {
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          setStep('failed');
+          setError(`Biometric verification ${result.status.toLowerCase()}. Please try again.`);
+        }
+        // PENDING: continue polling
+      } catch {
+        // Network error during polling — don't stop, retry on next interval
+      }
+    },
+    [consentId, onAuthorized]
+  );
 
   // In sandbox mode, simulate biometric approval after a brief delay
   useEffect(() => {
@@ -180,7 +186,7 @@ export function BiometricsConsent({
       }
     }, 2000);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sandboxMode, authGuid, consentId]);
 
   // Update pollStatus ref when consentId changes
@@ -214,13 +220,10 @@ export function BiometricsConsent({
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Click below to start fingerprint verification. The patient will need to place their finger on the biometric device.
+            Click below to start fingerprint verification. The patient will need to place their
+            finger on the biometric device.
           </p>
-          <Button
-            onClick={startAuthorization}
-            disabled={isLoading}
-            size="sm"
-          >
+          <Button onClick={startAuthorization} disabled={isLoading} size="sm">
             {isLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -241,7 +244,8 @@ export function BiometricsConsent({
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            In development mode, biometric verification is auto-approved. No fingerprint scan required.
+            In development mode, biometric verification is auto-approved. No fingerprint scan
+            required.
           </p>
         </div>
       )}
@@ -258,11 +262,11 @@ export function BiometricsConsent({
             Please ask the patient to place their finger on the biometric device.
           </p>
           {iframeUrl && (
-            <div className="rounded-lg border overflow-hidden bg-white">
+            <div className="overflow-hidden rounded-lg border bg-white">
               <iframe
                 src={iframeUrl}
                 title="Biometric Fingerprint Capture"
-                className="w-full h-48 border-0"
+                className="h-48 w-full border-0"
                 sandbox="allow-scripts allow-same-origin"
               />
             </div>
@@ -277,7 +281,10 @@ export function BiometricsConsent({
           <span className="text-sm font-medium text-green-700 dark:text-green-400">
             Fingerprint verified successfully
           </span>
-          <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+          <Badge
+            variant="default"
+            className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+          >
             AUTHORIZED
           </Badge>
         </div>

@@ -22,8 +22,7 @@ import { isDesktop } from '@/lib/desktop';
 
 // Only load devtools in development - use dynamic import to avoid build errors
 const ReactQueryDevtools = dynamic(
-  () =>
-    import('@tanstack/react-query-devtools').then((mod) => mod.ReactQueryDevtools),
+  () => import('@tanstack/react-query-devtools').then((mod) => mod.ReactQueryDevtools),
   { ssr: false }
 );
 

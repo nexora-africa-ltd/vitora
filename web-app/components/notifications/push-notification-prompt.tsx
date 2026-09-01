@@ -20,8 +20,15 @@ const DISMISSED_KEY = 'vitora_push_prompt_dismissed';
  * Place this in the authenticated layout (e.g. dashboard layout).
  */
 export function PushNotificationPrompt() {
-  const { isSupported, isVapidReady, permission, isSubscribed, isLoading, subscribe, isSubscribing } =
-    usePushSubscription();
+  const {
+    isSupported,
+    isVapidReady,
+    permission,
+    isSubscribed,
+    isLoading,
+    subscribe,
+    isSubscribing,
+  } = usePushSubscription();
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const autoSubscribeAttempted = useRef(false);
@@ -90,20 +97,20 @@ export function PushNotificationPrompt() {
     <div
       className={cn(
         'fixed bottom-4 right-4 z-50 max-w-sm',
-        'animate-in slide-in-from-bottom-4 fade-in duration-300',
+        'duration-300 animate-in fade-in slide-in-from-bottom-4'
       )}
     >
-      <div className="rounded-xl border bg-card shadow-lg p-4">
+      <div className="rounded-xl border bg-card p-4 shadow-lg">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shrink-0">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600">
             <Bell className="h-5 w-5 text-white" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm">Enable Notifications</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">Enable Notifications</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Get instant alerts for lab results, shift reminders, and critical updates.
             </p>
-            <div className="flex items-center gap-2 mt-3">
+            <div className="mt-3 flex items-center gap-2">
               <Button
                 size="sm"
                 onClick={handleEnable}

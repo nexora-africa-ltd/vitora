@@ -104,18 +104,30 @@ export default function EditOrganizationPage() {
         }
         if (Object.keys(mapped).length > 0) {
           setFormErrors((prev) => ({ ...prev, ...mapped }));
-          toast({ variant: 'destructive', title: 'Validation error', description: 'Please fix the highlighted fields.' });
+          toast({
+            variant: 'destructive',
+            title: 'Validation error',
+            description: 'Please fix the highlighted fields.',
+          });
           return;
         }
       }
-      toast({ variant: 'destructive', title: 'Error', description: err instanceof Error ? err.message : 'Failed to update organization' });
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to update organization',
+      });
     },
   });
 
   const handleChange = (field: string, value: string | boolean | number | undefined) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (formErrors[field]) {
-      setFormErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+      setFormErrors((prev) => {
+        const n = { ...prev };
+        delete n[field];
+        return n;
+      });
     }
   };
 
@@ -132,7 +144,11 @@ export default function EditOrganizationPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: 'File too large', description: 'Logo must be under 2 MB.' });
+      toast({
+        variant: 'destructive',
+        title: 'File too large',
+        description: 'Logo must be under 2 MB.',
+      });
       return;
     }
     setIsUploadingLogo(true);
@@ -142,7 +158,11 @@ export default function EditOrganizationPage() {
       queryClient.invalidateQueries({ queryKey: ['organization', orgId] });
       toast({ title: 'Logo updated' });
     } catch {
-      toast({ variant: 'destructive', title: 'Upload failed', description: 'Could not upload logo.' });
+      toast({
+        variant: 'destructive',
+        title: 'Upload failed',
+        description: 'Could not upload logo.',
+      });
     } finally {
       setIsUploadingLogo(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -185,7 +205,9 @@ export default function EditOrganizationPage() {
       county: countyId ?? null,
       sub_county: subCountyId ?? null,
       subscription_plan: formData.subscription_plan,
-      data_retention_years: formData.data_retention_years ? parseInt(formData.data_retention_years) : undefined,
+      data_retention_years: formData.data_retention_years
+        ? parseInt(formData.data_retention_years)
+        : undefined,
       is_active: formData.is_active,
     };
     updateOrg.mutate(payload);
@@ -195,7 +217,11 @@ export default function EditOrganizationPage() {
     return (
       <div className="space-y-4">
         <PageHeader title="Access Denied" />
-        <Card><CardContent className="py-8 text-center text-muted-foreground">You do not have permission to edit organizations.</CardContent></Card>
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            You do not have permission to edit organizations.
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -220,7 +246,7 @@ export default function EditOrganizationPage() {
         {/* Logo */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Upload className="h-4 w-4 text-muted-foreground" />
               Logo
             </CardTitle>
@@ -228,9 +254,11 @@ export default function EditOrganizationPage() {
           <CardContent>
             <div className="flex items-center gap-4">
               {logoPreview ? (
-                <div className="relative h-16 w-16 shrink-0 rounded-lg border overflow-hidden bg-muted">
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-muted">
                   <Image
-                    src={logoPreview.startsWith('http') ? logoPreview : `${API_BASE_URL}${logoPreview}`}
+                    src={
+                      logoPreview.startsWith('http') ? logoPreview : `${API_BASE_URL}${logoPreview}`
+                    }
                     alt="Organization logo"
                     width={64}
                     height={64}
@@ -279,14 +307,14 @@ export default function EditOrganizationPage() {
                 )}
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">PNG, JPG, or WebP. Max 2 MB.</p>
+            <p className="mt-2 text-xs text-muted-foreground">PNG, JPG, or WebP. Max 2 MB.</p>
           </CardContent>
         </Card>
 
         {/* Identity */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Building2 className="h-4 w-4 text-muted-foreground" />
               Organization Details
             </CardTitle>
@@ -294,26 +322,47 @@ export default function EditOrganizationPage() {
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Organization Name *</Label>
-              <Input id="name" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} />
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+              />
               {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="slug">Slug</Label>
               <Input id="slug" value={formData.slug} disabled className="opacity-60" />
-              <p className="text-xs text-muted-foreground">Slug cannot be changed after creation.</p>
+              <p className="text-xs text-muted-foreground">
+                Slug cannot be changed after creation.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="contact_email">Email</Label>
-              <Input id="contact_email" type="email" value={formData.contact_email} onChange={(e) => handleChange('contact_email', e.target.value)} />
-              {formErrors.contact_email && <p className="text-xs text-destructive">{formErrors.contact_email}</p>}
+              <Input
+                id="contact_email"
+                type="email"
+                value={formData.contact_email}
+                onChange={(e) => handleChange('contact_email', e.target.value)}
+              />
+              {formErrors.contact_email && (
+                <p className="text-xs text-destructive">{formErrors.contact_email}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="contact_phone">Phone</Label>
-              <Input id="contact_phone" value={formData.contact_phone} onChange={(e) => handleChange('contact_phone', e.target.value)} />
+              <Input
+                id="contact_phone"
+                value={formData.contact_phone}
+                onChange={(e) => handleChange('contact_phone', e.target.value)}
+              />
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="address">Address</Label>
-              <Input id="address" value={formData.address} onChange={(e) => handleChange('address', e.target.value)} />
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) => handleChange('address', e.target.value)}
+              />
             </div>
           </CardContent>
         </Card>
@@ -321,7 +370,7 @@ export default function EditOrganizationPage() {
         {/* Location */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               HQ Location
             </CardTitle>
@@ -331,11 +380,20 @@ export default function EditOrganizationPage() {
               <Label>County</Label>
               <Select
                 value={countyId?.toString() ?? ''}
-                onValueChange={(v) => { setCountyId(parseInt(v)); setSubCountyId(undefined); }}
+                onValueChange={(v) => {
+                  setCountyId(parseInt(v));
+                  setSubCountyId(undefined);
+                }}
               >
-                <SelectTrigger><SelectValue placeholder="Select county" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select county" />
+                </SelectTrigger>
                 <SelectContent>
-                  {(counties ?? []).map((c) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                  {(counties ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id.toString()}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -346,9 +404,17 @@ export default function EditOrganizationPage() {
                 onValueChange={(v) => setSubCountyId(parseInt(v))}
                 disabled={!countyId}
               >
-                <SelectTrigger><SelectValue placeholder={countyId ? 'Select sub-county' : 'Select county first'} /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={countyId ? 'Select sub-county' : 'Select county first'}
+                  />
+                </SelectTrigger>
                 <SelectContent>
-                  {(subCounties ?? []).map((sc) => <SelectItem key={sc.id} value={sc.id.toString()}>{sc.name}</SelectItem>)}
+                  {(subCounties ?? []).map((sc) => (
+                    <SelectItem key={sc.id} value={sc.id.toString()}>
+                      {sc.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -358,7 +424,7 @@ export default function EditOrganizationPage() {
         {/* Subscription */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Shield className="h-4 w-4 text-muted-foreground" />
               Subscription & Limits
             </CardTitle>
@@ -367,7 +433,9 @@ export default function EditOrganizationPage() {
             <div className="space-y-2">
               <Label>Plan</Label>
               <Select
-                value={formData.subscription_plan != null ? String(formData.subscription_plan) : 'none'}
+                value={
+                  formData.subscription_plan != null ? String(formData.subscription_plan) : 'none'
+                }
                 onValueChange={(v) => {
                   const planId = v === 'none' ? null : parseInt(v);
                   setFormData((prev) => ({
@@ -376,11 +444,15 @@ export default function EditOrganizationPage() {
                   }));
                 }}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No plan</SelectItem>
                   {plans.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.code})</SelectItem>
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name} ({p.code})
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -390,7 +462,13 @@ export default function EditOrganizationPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="data_retention_years">Data Retention (years)</Label>
-              <Input id="data_retention_years" type="number" min={1} value={formData.data_retention_years} onChange={(e) => handleChange('data_retention_years', e.target.value)} />
+              <Input
+                id="data_retention_years"
+                type="number"
+                min={1}
+                value={formData.data_retention_years}
+                onChange={(e) => handleChange('data_retention_years', e.target.value)}
+              />
             </div>
           </CardContent>
         </Card>
@@ -399,7 +477,10 @@ export default function EditOrganizationPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Switch checked={formData.is_active} onCheckedChange={(v) => handleChange('is_active', v)} />
+              <Switch
+                checked={formData.is_active}
+                onCheckedChange={(v) => handleChange('is_active', v)}
+              />
               <Label>Organization is Active</Label>
             </div>
           </CardContent>
@@ -407,11 +488,20 @@ export default function EditOrganizationPage() {
 
         {/* Actions */}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" onClick={() => router.push(`/admin/organizations/${orgId}`)} className="w-full sm:w-auto">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push(`/admin/organizations/${orgId}`)}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={updateOrg.isPending} className="w-full sm:w-auto">
-            {updateOrg.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {updateOrg.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
             Save Changes
           </Button>
         </div>

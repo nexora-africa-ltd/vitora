@@ -30,12 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   useAcceptVitalFlagSuggestion,
   useAcknowledgeVitalFlagSuggestion,
@@ -96,7 +91,9 @@ export function PatientVitalFlagSuggestionsTab({ patientId }: { patientId: numbe
   const rejectMutation = useRejectVitalFlagSuggestion(patientId);
 
   const [reviewing, setReviewing] = useState<VitalFlagSuggestion | null>(null);
-  const [resolutionAction, setResolutionAction] = useState<VitalFlagResolutionAction>('CREATE_DIAGNOSIS_PROVISIONAL');
+  const [resolutionAction, setResolutionAction] = useState<VitalFlagResolutionAction>(
+    'CREATE_DIAGNOSIS_PROVISIONAL'
+  );
   const [reviewNote, setReviewNote] = useState('');
   const [conditionName, setConditionName] = useState('');
 
@@ -105,7 +102,11 @@ export function PatientVitalFlagSuggestionsTab({ patientId }: { patientId: numbe
 
   const items = useMemo(() => data ?? [], [data]);
   const openItems = useMemo(
-    () => items.filter((item) => item.status === 'NEW' || item.status === 'ACKNOWLEDGED' || item.status === 'MAPPED'),
+    () =>
+      items.filter(
+        (item) =>
+          item.status === 'NEW' || item.status === 'ACKNOWLEDGED' || item.status === 'MAPPED'
+      ),
     [items]
   );
 
@@ -135,7 +136,8 @@ export function PatientVitalFlagSuggestionsTab({ patientId }: { patientId: numbe
         <div className="space-y-2">
           {items.map((item) => {
             const hasSuggestedMapping = !!(item.suggested_icd10 || item.suggested_icd11_code);
-            const isOpen = item.status === 'NEW' || item.status === 'ACKNOWLEDGED' || item.status === 'MAPPED';
+            const isOpen =
+              item.status === 'NEW' || item.status === 'ACKNOWLEDGED' || item.status === 'MAPPED';
             const evidence = Object.entries(item.evidence_json || {}).slice(0, 3);
 
             return (
@@ -145,12 +147,17 @@ export function PatientVitalFlagSuggestionsTab({ patientId }: { patientId: numbe
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{prettyFlagKey(item.flag_key)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {item.clinical_domain || 'Clinical'} • Detected {new Date(item.detected_at).toLocaleString()}
+                        {item.clinical_domain || 'Clinical'} • Detected{' '}
+                        {new Date(item.detected_at).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className={severityClasses[item.severity] || 'bg-muted'}>{item.severity_display}</Badge>
-                      <Badge className={statusClasses[item.status] || 'bg-muted'}>{item.status_display}</Badge>
+                      <Badge className={severityClasses[item.severity] || 'bg-muted'}>
+                        {item.severity_display}
+                      </Badge>
+                      <Badge className={statusClasses[item.status] || 'bg-muted'}>
+                        {item.status_display}
+                      </Badge>
                     </div>
                   </div>
 
@@ -176,96 +183,99 @@ export function PatientVitalFlagSuggestionsTab({ patientId }: { patientId: numbe
                   {isOpen && (
                     <TooltipProvider delayDuration={250}>
                       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                      {item.status === 'NEW' && (
+                        {item.status === 'NEW' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isBusy}
+                                onClick={() =>
+                                  acknowledgeMutation.mutate({
+                                    suggestionId: item.id,
+                                    data: { note: 'Reviewed in panel' },
+                                  })
+                                }
+                              >
+                                <AlertTriangle className="mr-2 h-4 w-4" />
+                                Acknowledge
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Mark this flag as reviewed and keep it open for next action.
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+
+                        {item.mapping_status !== 'CONFIRMED' && hasSuggestedMapping && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isBusy}
+                                onClick={() =>
+                                  mapCodesMutation.mutate({
+                                    suggestionId: item.id,
+                                    data: {
+                                      selected_icd10: item.suggested_icd10,
+                                      selected_icd11_code: item.suggested_icd11_code,
+                                      selected_icd11_title: item.suggested_icd11_title,
+                                    },
+                                  })
+                                }
+                              >
+                                <Link2 className="mr-2 h-4 w-4" />
+                                Confirm Mapping
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Apply the suggested ICD-10/ICD-11 mapping for this flag.
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              disabled={isBusy}
+                              onClick={() => {
+                                setReviewing(item);
+                                setResolutionAction(defaultResolutionAction(item));
+                                setConditionName(defaultConditionName(item));
+                                setReviewNote('');
+                              }}
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Accept
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Accept this suggestion and choose the clinical action to apply.
+                          </TooltipContent>
+                        </Tooltip>
+
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               size="sm"
                               variant="outline"
+                              className="text-destructive"
                               disabled={isBusy}
-                              onClick={() =>
-                                acknowledgeMutation.mutate({ suggestionId: item.id, data: { note: 'Reviewed in panel' } })
-                              }
+                              onClick={() => {
+                                setRejecting(item);
+                                setRejectReason('');
+                              }}
                             >
-                              <AlertTriangle className="mr-2 h-4 w-4" />
-                              Acknowledge
+                              <ThumbsDown className="mr-2 h-4 w-4" />
+                              Reject
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            Mark this flag as reviewed and keep it open for next action.
+                            Reject this suggestion and record a clinical reason.
                           </TooltipContent>
                         </Tooltip>
-                      )}
-
-                      {item.mapping_status !== 'CONFIRMED' && hasSuggestedMapping && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={isBusy}
-                              onClick={() =>
-                                mapCodesMutation.mutate({
-                                  suggestionId: item.id,
-                                  data: {
-                                    selected_icd10: item.suggested_icd10,
-                                    selected_icd11_code: item.suggested_icd11_code,
-                                    selected_icd11_title: item.suggested_icd11_title,
-                                  },
-                                })
-                              }
-                            >
-                              <Link2 className="mr-2 h-4 w-4" />
-                              Confirm Mapping
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Apply the suggested ICD-10/ICD-11 mapping for this flag.
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="sm"
-                            disabled={isBusy}
-                            onClick={() => {
-                              setReviewing(item);
-                              setResolutionAction(defaultResolutionAction(item));
-                              setConditionName(defaultConditionName(item));
-                              setReviewNote('');
-                            }}
-                          >
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Accept
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Accept this suggestion and choose the clinical action to apply.
-                        </TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-destructive"
-                            disabled={isBusy}
-                            onClick={() => {
-                              setRejecting(item);
-                              setRejectReason('');
-                            }}
-                          >
-                            <ThumbsDown className="mr-2 h-4 w-4" />
-                            Reject
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Reject this suggestion and record a clinical reason.
-                        </TooltipContent>
-                      </Tooltip>
                       </div>
                     </TooltipProvider>
                   )}
@@ -293,8 +303,12 @@ export function PatientVitalFlagSuggestionsTab({ patientId }: { patientId: numbe
                   <SelectValue placeholder="Select action" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CREATE_DIAGNOSIS_PROVISIONAL">Create provisional diagnosis</SelectItem>
-                  <SelectItem value="CREATE_DIAGNOSIS_CONFIRMED">Create confirmed diagnosis</SelectItem>
+                  <SelectItem value="CREATE_DIAGNOSIS_PROVISIONAL">
+                    Create provisional diagnosis
+                  </SelectItem>
+                  <SelectItem value="CREATE_DIAGNOSIS_CONFIRMED">
+                    Create confirmed diagnosis
+                  </SelectItem>
                   <SelectItem value="ADD_CHRONIC_CONDITION">Add chronic condition</SelectItem>
                   <SelectItem value="NOTE_ONLY">Note only</SelectItem>
                   <SelectItem value="NO_ACTION">No action</SelectItem>
@@ -352,8 +366,11 @@ export function PatientVitalFlagSuggestionsTab({ patientId }: { patientId: numbe
                             ? 'confirmed'
                             : 'provisional',
                         condition_name:
-                          resolutionAction === 'ADD_CHRONIC_CONDITION' ? conditionName.trim() : undefined,
-                        chronic_status: resolutionAction === 'ADD_CHRONIC_CONDITION' ? 'ACTIVE' : undefined,
+                          resolutionAction === 'ADD_CHRONIC_CONDITION'
+                            ? conditionName.trim()
+                            : undefined,
+                        chronic_status:
+                          resolutionAction === 'ADD_CHRONIC_CONDITION' ? 'ACTIVE' : undefined,
                       },
                     },
                     {

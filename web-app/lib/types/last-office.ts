@@ -31,11 +31,7 @@ export type NotificationSource =
   | 'MANUAL_ENTRY'
   | 'CLIENT_REGISTRY';
 
-export type BodyStatus =
-  | 'IN_MORGUE'
-  | 'RELEASED'
-  | 'TRANSFERRED'
-  | 'PENDING_COLLECTION';
+export type BodyStatus = 'IN_MORGUE' | 'RELEASED' | 'TRANSFERRED' | 'PENDING_COLLECTION';
 
 export interface DeathRecordListItem {
   id: number;
@@ -179,7 +175,8 @@ export interface VoidData {
 export const DEATH_RECORD_STATUS_COLORS: Record<DeathRecordStatus, string> = {
   PENDING_CERTIFICATION: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   CERTIFIED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  REPORTED_TO_CIVIL_REGISTRY: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+  REPORTED_TO_CIVIL_REGISTRY:
+    'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
   RELEASED_TO_FAMILY: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
   VOIDED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };

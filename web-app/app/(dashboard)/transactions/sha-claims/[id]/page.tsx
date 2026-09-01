@@ -73,29 +73,27 @@ function toInterventionStatus(value: unknown): 'active' | 'retired' {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const row = value as Record<string, unknown>;
     normalized = String(
-      row.workflow_state
-      || row.workflowState
-      || row.status
-      || row.intervention_status
-      || '',
+      row.workflow_state || row.workflowState || row.status || row.intervention_status || ''
     )
       .trim()
       .toLowerCase();
   } else {
-    normalized = String(value || '').trim().toLowerCase();
+    normalized = String(value || '')
+      .trim()
+      .toLowerCase();
   }
   if (!normalized) return 'active';
   if (normalized === 'active') return 'active';
   if (
-    normalized.includes('retir')
-    || normalized.includes('inactiv')
-    || normalized.includes('cancel')
-    || normalized.includes('delet')
-    || normalized.includes('void')
-    || normalized.includes('remov')
-    || normalized.includes('close')
-    || normalized.includes('suspend')
-    || normalized.includes('terminate')
+    normalized.includes('retir') ||
+    normalized.includes('inactiv') ||
+    normalized.includes('cancel') ||
+    normalized.includes('delet') ||
+    normalized.includes('void') ||
+    normalized.includes('remov') ||
+    normalized.includes('close') ||
+    normalized.includes('suspend') ||
+    normalized.includes('terminate')
   ) {
     return 'retired';
   }
@@ -104,14 +102,19 @@ function toInterventionStatus(value: unknown): 'active' | 'retired' {
 
 function mapPreviewInterventions(
   payload: unknown,
-  fallbackRows: ClaimInterventionRow[],
+  fallbackRows: ClaimInterventionRow[]
 ): ClaimInterventionRow[] | null {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
   const interventions = (payload as { interventions?: unknown }).interventions;
   if (!Array.isArray(interventions)) return null;
 
   const byCode = new Map(
-    fallbackRows.map((row) => [String(row.intervention_code || '').trim().toUpperCase(), row]),
+    fallbackRows.map((row) => [
+      String(row.intervention_code || '')
+        .trim()
+        .toUpperCase(),
+      row,
+    ])
   );
 
   const mapped: ClaimInterventionRow[] = interventions
@@ -141,26 +144,44 @@ function mapPreviewInterventions(
         }),
         intervention_code: interventionCode,
         intervention_name: String(
-          row.intervention_name || row.name || row.intervention_description || existing?.intervention_name || interventionCode,
+          row.intervention_name ||
+            row.name ||
+            row.intervention_description ||
+            existing?.intervention_name ||
+            interventionCode
         ).trim(),
         status,
-        dha_intervention_id: String(row.intervention_id || row.dha_intervention_id || existing?.dha_intervention_id || '').trim() || undefined,
-        payment_mechanism: String(
-          row.intervention_payment_mechanism || row.payment_mechanism || existing?.payment_mechanism || '',
-        ).trim() || undefined,
+        dha_intervention_id:
+          String(
+            row.intervention_id || row.dha_intervention_id || existing?.dha_intervention_id || ''
+          ).trim() || undefined,
+        payment_mechanism:
+          String(
+            row.intervention_payment_mechanism ||
+              row.payment_mechanism ||
+              existing?.payment_mechanism ||
+              ''
+          ).trim() || undefined,
         access_point: accessPoint,
         is_per_diem:
-          row.is_per_diem === true
-          || row.is_per_diem === 'true'
-          || String(row.intervention_payment_mechanism || row.payment_mechanism || '').toUpperCase().includes('PER DIEM')
-          || existing?.is_per_diem,
+          row.is_per_diem === true ||
+          row.is_per_diem === 'true' ||
+          String(row.intervention_payment_mechanism || row.payment_mechanism || '')
+            .toUpperCase()
+            .includes('PER DIEM') ||
+          existing?.is_per_diem,
       };
     })
     .filter((row): row is ClaimInterventionRow => row !== null);
 
   const mappedCodes = new Set(mapped.map((row) => row.intervention_code.toUpperCase()));
   const omittedLocalRows = fallbackRows.filter(
-    (row) => !mappedCodes.has(String(row.intervention_code || '').trim().toUpperCase()),
+    (row) =>
+      !mappedCodes.has(
+        String(row.intervention_code || '')
+          .trim()
+          .toUpperCase()
+      )
   );
 
   return [...mapped, ...omittedLocalRows];
@@ -190,7 +211,7 @@ function ClaimDetailSkeleton() {
       <Skeleton className="h-8 w-56" />
       <Skeleton className="h-16 w-full" />
       <Skeleton className="h-14 w-full" />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Skeleton key={i} className="h-20" />
         ))}
@@ -218,13 +239,16 @@ export default function ClaimDetailPage() {
   const [payerNeedsAttention, setPayerNeedsAttention] = React.useState(false);
   const [syncingFromDha, setSyncingFromDha] = React.useState(false);
   const [interventionSyncSummary, setInterventionSyncSummary] = React.useState<string>('');
-  const [previewInterventions, setPreviewInterventions] = React.useState<ClaimInterventionRow[] | null>(null);
-  const [previewInterventionsSyncedAt, setPreviewInterventionsSyncedAt] = React.useState<Date | null>(null);
+  const [previewInterventions, setPreviewInterventions] = React.useState<
+    ClaimInterventionRow[] | null
+  >(null);
+  const [previewInterventionsSyncedAt, setPreviewInterventionsSyncedAt] =
+    React.useState<Date | null>(null);
 
   const effectiveStatus = claim ? getEffectiveClaimStatus(claim) : null;
   const adjudicationNeedsAttention =
-    (effectiveStatus ? claimStatusNeedsAdjudicationAttention(effectiveStatus) : false)
-    || payerNeedsAttention;
+    (effectiveStatus ? claimStatusNeedsAdjudicationAttention(effectiveStatus) : false) ||
+    payerNeedsAttention;
 
   useEffect(() => {
     setPayerNeedsAttention(false);
@@ -306,7 +330,10 @@ export default function ClaimDetailPage() {
     setSyncingFromDha(true);
     try {
       const result = await shaApi.ilmPreview(claimId);
-      const mapped = mapPreviewInterventions(result.payload, (claim?.claim_interventions ?? []) as ClaimInterventionRow[]);
+      const mapped = mapPreviewInterventions(
+        result.payload,
+        (claim?.claim_interventions ?? []) as ClaimInterventionRow[]
+      );
       if (mapped) {
         setPreviewInterventions(mapped);
         setPreviewInterventionsSyncedAt(new Date());
@@ -318,10 +345,12 @@ export default function ClaimDetailPage() {
         const restored = summary.restored ?? 0;
         const retired = summary.retired ?? 0;
         setInterventionSyncSummary(
-          `DHA sync complete: +${created} created, ${updated} updated, ${restored} restored, ${retired} retired.`,
+          `DHA sync complete: +${created} created, ${updated} updated, ${restored} restored, ${retired} retired.`
         );
       } else {
-        setInterventionSyncSummary('DHA preview succeeded, but intervention reconciliation was skipped.');
+        setInterventionSyncSummary(
+          'DHA preview succeeded, but intervention reconciliation was skipped.'
+        );
       }
       await refetch();
       toast({
@@ -375,37 +404,34 @@ export default function ClaimDetailPage() {
   }
 
   const canResubmit = claim.status === 'rejected' || claim.status === 'pending_submission';
-  const interventionsForTab = (previewInterventions ?? claim.claim_interventions ?? []) as ClaimInterventionRow[];
+  const interventionsForTab = (previewInterventions ??
+    claim.claim_interventions ??
+    []) as ClaimInterventionRow[];
   const activeInterventionCount = interventionsForTab.filter((i) => i.status === 'active').length;
 
   // ---- Render ----
   return (
     <PullToRefresh onRefresh={pageRefresh} isRefreshing={isRefreshing || isRefetching}>
-      <div className="space-y-4 sm:space-y-6 pb-20 lg:pb-0">
+      <div className="space-y-4 pb-20 sm:space-y-6 lg:pb-0">
         <PageHeader
           title={`Claim ${claim.claim_number || `#${claim.id}`}`}
           helpContent="Review and manage this SHA claim. Use the tabs to switch between overview, DHA workflow steps, interventions, and adjudication."
           actions={
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isRefetching}
-              >
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
                 {isRefetching ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className="mr-2 h-4 w-4" />
                 )}
                 Refresh
               </Button>
               {canResubmit && (
                 <Button size="sm" onClick={handleResubmit} disabled={isMutating}>
                   {isMutating ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <RotateCcw className="h-4 w-4 mr-2" />
+                    <RotateCcw className="mr-2 h-4 w-4" />
                   )}
                   {claim.status === 'pending_submission' ? 'Retry now' : 'Resubmit'}
                 </Button>
@@ -418,11 +444,7 @@ export default function ClaimDetailPage() {
         <ClaimSummaryBar claim={claim} />
 
         {/* Single next-step banner replaces the rejection / missing-docs / consent alerts */}
-        <ClaimNextStepBanner
-          step={nextStep}
-          showCta={false}
-          isBusy={isMutating}
-        />
+        <ClaimNextStepBanner step={nextStep} showCta={false} isBusy={isMutating} />
 
         {actionError && (
           <Alert variant="destructive">
@@ -436,7 +458,7 @@ export default function ClaimDetailPage() {
                 onClick={handleCopyActionError}
                 className="h-6 px-2 text-[11px]"
               >
-                <Copy className="h-3 w-3 mr-1" />
+                <Copy className="mr-1 h-3 w-3" />
                 Copy
               </Button>
             </AlertDescription>
@@ -446,8 +468,12 @@ export default function ClaimDetailPage() {
         {/* Tabbed workspace */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid h-auto w-full grid-cols-4">
-            <TabsTrigger value="overview" className="w-full">Overview</TabsTrigger>
-            <TabsTrigger value="workflow" className="w-full">Workflow</TabsTrigger>
+            <TabsTrigger value="overview" className="w-full">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="workflow" className="w-full">
+              Workflow
+            </TabsTrigger>
             <TabsTrigger value="interventions" className="w-full">
               Interventions
               {interventionsForTab.length ? (
@@ -459,7 +485,10 @@ export default function ClaimDetailPage() {
             <TabsTrigger value="adjudication" className="w-full">
               Adjudication
               {adjudicationNeedsAttention ? (
-                <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-amber-500" aria-label="Adjudication needs attention" />
+                <span
+                  className="ml-2 inline-flex h-2 w-2 rounded-full bg-amber-500"
+                  aria-label="Adjudication needs attention"
+                />
               ) : null}
             </TabsTrigger>
           </TabsList>
@@ -481,7 +510,8 @@ export default function ClaimDetailPage() {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
                 <p className="text-xs text-muted-foreground">
-                  Refresh this tab from DHA preview to reconcile local intervention rows with ILM source-of-truth.
+                  Refresh this tab from DHA preview to reconcile local intervention rows with ILM
+                  source-of-truth.
                 </p>
                 <Button
                   size="sm"
@@ -490,16 +520,19 @@ export default function ClaimDetailPage() {
                   disabled={syncingFromDha || isRefetching}
                 >
                   {syncingFromDha ? (
-                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                   )}
                   Fetch from DHA
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Source: {previewInterventions ? 'DHA preview' : 'local fallback'} • Last synced from DHA:{' '}
-                {previewInterventionsSyncedAt ? previewInterventionsSyncedAt.toLocaleTimeString() : 'Not yet synced'}
+                Source: {previewInterventions ? 'DHA preview' : 'local fallback'} • Last synced from
+                DHA:{' '}
+                {previewInterventionsSyncedAt
+                  ? previewInterventionsSyncedAt.toLocaleTimeString()
+                  : 'Not yet synced'}
               </p>
               {interventionSyncSummary ? (
                 <Alert>
@@ -527,7 +560,7 @@ export default function ClaimDetailPage() {
                     Add the first intervention from the{' '}
                     <button
                       type="button"
-                      className="underline font-medium"
+                      className="font-medium underline"
                       onClick={() => handleTabChange('workflow')}
                     >
                       Workflow tab

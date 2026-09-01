@@ -8,12 +8,19 @@ import {
 import { z } from 'zod';
 import type { UserFacility } from '@/lib/auth/context';
 import type { PaginatedResponse } from '@/lib/types';
-import type { FacilityCreateData, FacilityDetail, FacilityListItem, FacilityUpdateData } from '@/lib/types/facility';
+import type {
+  FacilityCreateData,
+  FacilityDetail,
+  FacilityListItem,
+  FacilityUpdateData,
+} from '@/lib/types/facility';
 
 const MyFacilitiesSchema = z.array(FacilityListItemSchema);
 
 export const facilitiesApi = {
-  async list(params?: Record<string, string | number | boolean | undefined>): Promise<PaginatedResponse<FacilityListItem>> {
+  async list(
+    params?: Record<string, string | number | boolean | undefined>
+  ): Promise<PaginatedResponse<FacilityListItem>> {
     const response = await apiClient.get<PaginatedResponse<FacilityListItem>>('/api/facilities/', {
       params,
     });
@@ -63,7 +70,9 @@ export const facilitiesApi = {
   },
 
   async removeLogo(id: number): Promise<FacilityDetail> {
-    const response = await apiClient.patch<FacilityDetail>(`/api/facilities/${id}/`, { logo: null });
+    const response = await apiClient.patch<FacilityDetail>(`/api/facilities/${id}/`, {
+      logo: null,
+    });
     return parseResponse(FacilityDetailSchema, response.data, {
       context: 'facilitiesApi.removeLogo',
     });
@@ -71,7 +80,9 @@ export const facilitiesApi = {
 
   /** Fetch and cache DHA registry data for this facility. */
   async syncDhaRegistry(id: number): Promise<FacilityDetail> {
-    const response = await apiClient.post<FacilityDetail>(`/api/facilities/${id}/sync-dha-registry/`);
+    const response = await apiClient.post<FacilityDetail>(
+      `/api/facilities/${id}/sync-dha-registry/`
+    );
     return parseResponse(FacilityDetailSchema, response.data, {
       context: 'facilitiesApi.syncDhaRegistry',
     });

@@ -185,8 +185,29 @@ export const SlotCheckResultSchema = z.object({
 // Shifts / Duty Roster
 // =============================================================================
 
-export const ShiftTypeSchema = z.enum(['DAY', 'NIGHT', 'MORNING', 'AFTERNOON', 'ON_CALL', 'OVERTIME', 'DAY_OFF', 'NIGHT_OFF', 'OFF', 'AFTERNOON_OFF', 'LEAVE', 'SICK_LEAVE', 'REST']);
-export const ShiftStatusSchema = z.enum(['SCHEDULED', 'ACTIVE', 'ON_BREAK', 'COMPLETED', 'CANCELLED', 'ABSENT']);
+export const ShiftTypeSchema = z.enum([
+  'DAY',
+  'NIGHT',
+  'MORNING',
+  'AFTERNOON',
+  'ON_CALL',
+  'OVERTIME',
+  'DAY_OFF',
+  'NIGHT_OFF',
+  'OFF',
+  'AFTERNOON_OFF',
+  'LEAVE',
+  'SICK_LEAVE',
+  'REST',
+]);
+export const ShiftStatusSchema = z.enum([
+  'SCHEDULED',
+  'ACTIVE',
+  'ON_BREAK',
+  'COMPLETED',
+  'CANCELLED',
+  'ABSENT',
+]);
 
 export const ShiftListItemSchema = z.object({
   id: z.number(),
@@ -267,34 +288,52 @@ export const SchedulingSettingsSchema = z.object({
   autofill_mode: z.enum(['MIN_COVERAGE', 'BALANCED_UTILIZATION']).optional(),
   autofill_target_days_per_staff: z.number().optional(),
   autofill_min_staff_per_shift: z.record(z.number()).optional(),
-  autofill_group_minimums: z.array(z.object({
-    scope: z.enum(['DEPARTMENT', 'ROLE']),
-    value: z.string(),
-    min_staff: z.number(),
-    shift_types: z.array(z.string()),
-  })).optional(),
-  autofill_group_maximums: z.array(z.object({
-    scope: z.enum(['DEPARTMENT', 'ROLE']),
-    value: z.string(),
-    max_staff: z.number(),
-    shift_types: z.array(z.string()),
-  })).optional(),
+  autofill_group_minimums: z
+    .array(
+      z.object({
+        scope: z.enum(['DEPARTMENT', 'ROLE']),
+        value: z.string(),
+        min_staff: z.number(),
+        shift_types: z.array(z.string()),
+      })
+    )
+    .optional(),
+  autofill_group_maximums: z
+    .array(
+      z.object({
+        scope: z.enum(['DEPARTMENT', 'ROLE']),
+        value: z.string(),
+        max_staff: z.number(),
+        shift_types: z.array(z.string()),
+      })
+    )
+    .optional(),
   autofill_weights: z.record(z.number()).optional(),
-  autofill_run_history: z.array(z.object({
-    id: z.string(),
-    created_at: z.string(),
-    week_start: z.string().optional(),
-    week_end: z.string().optional(),
-    strategy: z.string().optional(),
-    report: z.record(z.unknown()),
-  })).optional(),
+  autofill_run_history: z
+    .array(
+      z.object({
+        id: z.string(),
+        created_at: z.string(),
+        week_start: z.string().optional(),
+        week_end: z.string().optional(),
+        strategy: z.string().optional(),
+        report: z.record(z.unknown()),
+      })
+    )
+    .optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
 
 export const ConstraintTypeSchema = z.enum([
-  'NO_NIGHTS', 'NO_WEEKENDS', 'MAX_HOURS', 'MAX_CONSECUTIVE',
-  'PREFERRED_SHIFTS', 'NO_OVERTIME', 'LIGHT_DUTY', 'NO_SHARED_SHIFT_WITH',
+  'NO_NIGHTS',
+  'NO_WEEKENDS',
+  'MAX_HOURS',
+  'MAX_CONSECUTIVE',
+  'PREFERRED_SHIFTS',
+  'NO_OVERTIME',
+  'LIGHT_DUTY',
+  'NO_SHARED_SHIFT_WITH',
 ]);
 
 export const StaffConstraintSchema = z.object({
@@ -358,7 +397,14 @@ export const OnDutyResponseSchema = z.object({
 // Attendance / Clock-In
 // =============================================================================
 
-export const AttendanceStatusSchema = z.enum(['NO_SHIFT', 'UPCOMING', 'SHOULD_CLOCK_IN', 'CLOCKED_IN', 'ON_BREAK', 'COMPLETED']);
+export const AttendanceStatusSchema = z.enum([
+  'NO_SHIFT',
+  'UPCOMING',
+  'SHOULD_CLOCK_IN',
+  'CLOCKED_IN',
+  'ON_BREAK',
+  'COMPLETED',
+]);
 
 export const MyTodayResponseSchema = z.object({
   shifts: z.array(ShiftSchema),
@@ -420,7 +466,13 @@ export const QRTokenResponseSchema = z.object({
 // =============================================================================
 
 export const ShiftSwapStatusSchema = z.enum([
-  'PENDING', 'ACCEPTED', 'APPROVED', 'COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED',
+  'PENDING',
+  'ACCEPTED',
+  'APPROVED',
+  'COMPLETED',
+  'REJECTED',
+  'CANCELLED',
+  'EXPIRED',
 ]);
 
 export const ShiftSummarySchema = z.object({
@@ -507,10 +559,14 @@ export const PaginatedShiftTypeConfigSchema = createPaginatedSchema(ShiftTypeCon
 export const ShiftTypeConfigBulkUpsertResultSchema = z.object({
   created_or_updated: z.number(),
   results: z.array(ShiftTypeConfigSchema),
-  errors: z.array(z.object({
-    index: z.number(),
-    shift_type: z.string().optional(),
-    error: z.string().optional(),
-    errors: z.record(z.array(z.string())).optional(),
-  })).optional(),
+  errors: z
+    .array(
+      z.object({
+        index: z.number(),
+        shift_type: z.string().optional(),
+        error: z.string().optional(),
+        errors: z.record(z.array(z.string())).optional(),
+      })
+    )
+    .optional(),
 });

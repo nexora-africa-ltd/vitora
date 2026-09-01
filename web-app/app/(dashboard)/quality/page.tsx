@@ -61,10 +61,8 @@ function StatCard({
             <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs sm:text-sm text-muted-foreground truncate">
-              {title}
-            </p>
-            <p className="text-lg sm:text-2xl font-bold">{value}</p>
+            <p className="truncate text-xs text-muted-foreground sm:text-sm">{title}</p>
+            <p className="text-lg font-bold sm:text-2xl">{value}</p>
           </div>
         </div>
       </CardContent>
@@ -81,22 +79,14 @@ function DomainCard({ domain, onClick }: { domain: QualityDomainSummary; onClick
         : 'text-destructive';
 
   return (
-    <Card
-      className="cursor-pointer transition-colors hover:bg-muted/50"
-      onClick={onClick}
-    >
+    <Card className="cursor-pointer transition-colors hover:bg-muted/50" onClick={onClick}>
       <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h3
-            className="text-sm font-medium truncate text-primary hover:underline"
-            role="link"
-          >
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="truncate text-sm font-medium text-primary hover:underline" role="link">
             {domain.domain_display}
           </h3>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Badge
-              variant={domain.compliance_rate >= 80 ? 'default' : 'secondary'}
-            >
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Badge variant={domain.compliance_rate >= 80 ? 'default' : 'secondary'}>
               {domain.total_measures} measures
             </Badge>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -107,20 +97,20 @@ function DomainCard({ domain, onClick }: { domain: QualityDomainSummary; onClick
             <span className={`text-2xl font-bold ${complianceColor}`}>
               {domain.compliance_rate.toFixed(1)}%
             </span>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="mt-1 text-xs text-muted-foreground">
               {domain.meeting_target} / {domain.total_results} meeting target
             </p>
           </div>
-          <div className="h-10 w-16 flex items-end gap-0.5">
+          <div className="flex h-10 w-16 items-end gap-0.5">
             {/* Mini bar visual */}
             <div
-              className="bg-emerald-500/80 rounded-t w-full"
+              className="w-full rounded-t bg-emerald-500/80"
               style={{
                 height: `${Math.max(4, (domain.meeting_target / Math.max(domain.total_results, 1)) * 40)}px`,
               }}
             />
             <div
-              className="bg-muted rounded-t w-full"
+              className="w-full rounded-t bg-muted"
               style={{
                 height: `${Math.max(4, ((domain.total_results - domain.meeting_target) / Math.max(domain.total_results, 1)) * 40)}px`,
               }}
@@ -144,7 +134,7 @@ function TrendRow({
   complianceRate: number;
 }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b last:border-0">
+    <div className="flex items-center justify-between border-b py-2 last:border-0">
       <span className="text-sm font-medium">{period}</span>
       <div className="flex items-center gap-4">
         <span className="text-xs text-muted-foreground">
@@ -207,9 +197,7 @@ export default function QualityDashboardPage() {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader title="Quality Measures" />
         <Card className="p-6">
-          <p className="text-destructive">
-            Failed to load quality dashboard. Please try again.
-          </p>
+          <p className="text-destructive">Failed to load quality dashboard. Please try again.</p>
         </Card>
       </div>
     );
@@ -233,15 +221,15 @@ export default function QualityDashboardPage() {
           title="Quality Measures"
           helpContent="Monitor clinical quality measures (CQM) compliance across domains. Track trends, identify underperforming areas, and generate reports."
         />
-        <Card className="py-12 px-6">
-          <div className="flex flex-col items-center text-center max-w-md mx-auto space-y-4">
+        <Card className="px-6 py-12">
+          <div className="mx-auto flex max-w-md flex-col items-center space-y-4 text-center">
             <div className="rounded-full bg-primary/10 p-4">
               <ClipboardList className="h-8 w-8 text-primary" />
             </div>
             <h2 className="text-lg font-semibold">No Quality Measures Configured</h2>
             <p className="text-sm text-muted-foreground">
-              Get started by loading Kenya&apos;s standard Clinical Quality Measures (CQM)
-              including ANC, HIV viral load, blood pressure control, and more.
+              Get started by loading Kenya&apos;s standard Clinical Quality Measures (CQM) including
+              ANC, HIV viral load, blood pressure control, and more.
             </p>
             <Button
               onClick={() => seedMutation.mutate()}
@@ -249,9 +237,9 @@ export default function QualityDashboardPage() {
               className="mt-2"
             >
               {seedMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <ClipboardList className="h-4 w-4 mr-2" />
+                <ClipboardList className="mr-2 h-4 w-4" />
               )}
               Load Kenya CQM Defaults
             </Button>
@@ -261,9 +249,7 @@ export default function QualityDashboardPage() {
               </p>
             )}
             {seedMutation.isError && (
-              <p className="text-sm text-destructive">
-                Failed to load defaults. Please try again.
-              </p>
+              <p className="text-sm text-destructive">Failed to load defaults. Please try again.</p>
             )}
           </div>
         </Card>
@@ -278,10 +264,7 @@ export default function QualityDashboardPage() {
           title="Quality Measures"
           helpContent="Monitor clinical quality measures (CQM) compliance across domains. Track trends, identify underperforming areas, and generate reports."
           actions={
-            <Select
-              value={String(year)}
-              onValueChange={(v) => setYear(Number(v))}
-            >
+            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
               <SelectTrigger className="w-28">
                 <SelectValue />
               </SelectTrigger>
@@ -297,12 +280,8 @@ export default function QualityDashboardPage() {
         />
 
         {/* KPI Cards */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total Measures"
-            value={dashboard.total_measures}
-            icon={Activity}
-          />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <StatCard title="Total Measures" value={dashboard.total_measures} icon={Activity} />
           <StatCard
             title="Active"
             value={dashboard.active_measures}
@@ -346,29 +325,30 @@ export default function QualityDashboardPage() {
                   <span className="text-2xl font-bold leading-none">
                     {dashboard.overall_compliance_rate.toFixed(0)}%
                   </span>
-                  <span className="text-[10px] text-muted-foreground mt-0.5">compliance</span>
+                  <span className="mt-0.5 text-[10px] text-muted-foreground">compliance</span>
                 </div>
               </CircularProgress>
               {/* Legend */}
               <div className="text-center">
-                <div className="flex items-center gap-2 justify-center">
+                <div className="flex items-center justify-center gap-2">
                   <TrendingUp className="h-5 w-5 text-primary" />
                   <h3 className="font-semibold">Overall Compliance Rate</h3>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {dashboard.measures_meeting_target} of {dashboard.active_measures} active measures meeting target
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {dashboard.measures_meeting_target} of {dashboard.active_measures} active measures
+                  meeting target
                 </p>
-                <div className="flex gap-4 mt-3 justify-center">
+                <div className="mt-3 flex justify-center gap-4">
                   <div className="flex items-center gap-1.5 text-xs">
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
                     <span className="text-muted-foreground">&ge;80% Good</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs">
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    <div className="h-2.5 w-2.5 rounded-full bg-amber-500" />
                     <span className="text-muted-foreground">50-79% Fair</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs">
-                    <div className="w-2.5 h-2.5 rounded-full bg-destructive" />
+                    <div className="h-2.5 w-2.5 rounded-full bg-destructive" />
                     <span className="text-muted-foreground">&lt;50% Poor</span>
                   </div>
                 </div>
@@ -379,19 +359,19 @@ export default function QualityDashboardPage() {
 
         {/* Domain Breakdown */}
         <div>
-          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
             <BarChart3 className="h-5 w-5 text-muted-foreground" />
             Performance by Domain
           </h2>
           {dashboard.domain_summary.length === 0 ? (
             <Card className="p-6">
-              <p className="text-sm text-muted-foreground text-center">
-                No quality measure results recorded yet. Create measures and
-                record results to see domain performance.
+              <p className="text-center text-sm text-muted-foreground">
+                No quality measure results recorded yet. Create measures and record results to see
+                domain performance.
               </p>
             </Card>
           ) : (
-            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               {dashboard.domain_summary.map((d) => (
                 <DomainCard
                   key={d.domain}
@@ -407,9 +387,7 @@ export default function QualityDashboardPage() {
         {dashboard.trend_data.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg">
-                Quarterly Trends — {year}
-              </CardTitle>
+              <CardTitle className="text-base sm:text-lg">Quarterly Trends — {year}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-0">
               {dashboard.trend_data.map((point) => (

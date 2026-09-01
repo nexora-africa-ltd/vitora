@@ -12,12 +12,7 @@ import type {
   ExpiryReportItem,
 } from '@/lib/types/pharmacy';
 import type { FacilityInfo, LayoutType } from './types';
-import {
-  buildPrintDocument,
-  escapeHtml,
-  formatDate,
-  openPrintWindow,
-} from './renderer';
+import { buildPrintDocument, escapeHtml, formatDate, openPrintWindow } from './renderer';
 import {
   generateQRDataUri,
   getDispensingReportQRContent,
@@ -327,7 +322,10 @@ function buildDispensingTemplateData(data: PrintDispensingReportData): Record<st
     summary: {
       record_count: data.records.length,
       total_dispensed: totalDispensed.toLocaleString(),
-      total_value: totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      total_value: totalValue.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
     },
     records: {
       rows: buildDispensingRows(data.records),

@@ -32,17 +32,13 @@ export const imagingKeys = {
   procedures: () => [...imagingKeys.all, 'procedures'] as const,
   proceduresList: (params?: ImagingProcedureListParams) =>
     [...imagingKeys.procedures(), 'list', params] as const,
-  procedureDetail: (code: string) =>
-    [...imagingKeys.procedures(), 'detail', code] as const,
-  proceduresSearch: (query: string) =>
-    [...imagingKeys.procedures(), 'search', query] as const,
+  procedureDetail: (code: string) => [...imagingKeys.procedures(), 'detail', code] as const,
+  proceduresSearch: (query: string) => [...imagingKeys.procedures(), 'search', query] as const,
   orders: () => [...imagingKeys.all, 'orders'] as const,
   ordersList: (params?: ImagingOrderListParams) =>
     [...imagingKeys.orders(), 'list', params] as const,
-  orderDetail: (orderNumber: string) =>
-    [...imagingKeys.orders(), 'detail', orderNumber] as const,
-  patientOrders: (patientId: number) =>
-    [...imagingKeys.orders(), 'patient', patientId] as const,
+  orderDetail: (orderNumber: string) => [...imagingKeys.orders(), 'detail', orderNumber] as const,
+  patientOrders: (patientId: number) => [...imagingKeys.orders(), 'patient', patientId] as const,
   encounterOrders: (encounterId: number) =>
     [...imagingKeys.orders(), 'encounter', encounterId] as const,
   externalRequests: () => [...imagingKeys.all, 'external-requests'] as const,
@@ -63,15 +59,11 @@ export const imagingKeys = {
     [...imagingKeys.resources(), 'availability', resourceId, params] as const,
   resourceWeeklyAvailability: (resourceId: number, params?: WeeklyAvailabilityParams) =>
     [...imagingKeys.resources(), 'weekly', resourceId, params] as const,
-  calendar: (params?: ImagingCalendarParams) =>
-    [...imagingKeys.all, 'calendar', params] as const,
+  calendar: (params?: ImagingCalendarParams) => [...imagingKeys.all, 'calendar', params] as const,
   // Radiology reports
   reports: () => [...imagingKeys.all, 'reports'] as const,
-  reportsList: (params?: {
-    status?: string;
-    is_critical?: boolean;
-    order?: string;
-  }) => [...imagingKeys.reports(), 'list', params] as const,
+  reportsList: (params?: { status?: string; is_critical?: boolean; order?: string }) =>
+    [...imagingKeys.reports(), 'list', params] as const,
   reportDetail: (reportNumber: string) =>
     [...imagingKeys.reports(), 'detail', reportNumber] as const,
   reportByOrder: (orderNumber: string) =>
@@ -235,9 +227,7 @@ export function useEncounterExternalImagingRequests(encounterId: number) {
  * Hook for fetching worklist orders.
  * Returns orders that need action (ORDERED, SCHEDULED, IN_PROGRESS).
  */
-export function useImagingWorklist(
-  params?: Omit<ImagingOrderListParams, 'status'>
-) {
+export function useImagingWorklist(params?: Omit<ImagingOrderListParams, 'status'>) {
   return useQuery({
     queryKey: imagingKeys.worklist(params),
     queryFn: () => imagingApi.getWorklist(params),
@@ -304,13 +294,8 @@ export function useUpdateImagingOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      orderNumber,
-      data,
-    }: {
-      orderNumber: string;
-      data: Partial<ImagingOrder>;
-    }) => imagingApi.updateOrder(orderNumber, data),
+    mutationFn: ({ orderNumber, data }: { orderNumber: string; data: Partial<ImagingOrder> }) =>
+      imagingApi.updateOrder(orderNumber, data),
     onSuccess: (updatedOrder) => {
       queryClient.invalidateQueries({ queryKey: imagingKeys.orders() });
       queryClient.invalidateQueries({
@@ -358,13 +343,8 @@ export function useScheduleImagingOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      orderNumber,
-      data,
-    }: {
-      orderNumber: string;
-      data: ScheduleOrderData;
-    }) => imagingApi.scheduleOrder(orderNumber, data),
+    mutationFn: ({ orderNumber, data }: { orderNumber: string; data: ScheduleOrderData }) =>
+      imagingApi.scheduleOrder(orderNumber, data),
     onSuccess: (updatedOrder) => {
       queryClient.invalidateQueries({ queryKey: imagingKeys.orders() });
       queryClient.invalidateQueries({
@@ -415,13 +395,8 @@ export function useCancelImagingOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      orderNumber,
-      data,
-    }: {
-      orderNumber: string;
-      data?: CancelOrderData;
-    }) => imagingApi.cancelOrder(orderNumber, data),
+    mutationFn: ({ orderNumber, data }: { orderNumber: string; data?: CancelOrderData }) =>
+      imagingApi.cancelOrder(orderNumber, data),
     onSuccess: (updatedOrder) => {
       queryClient.invalidateQueries({ queryKey: imagingKeys.orders() });
       queryClient.invalidateQueries({
@@ -458,10 +433,7 @@ export function useImagingResource(resourceId: number) {
 /**
  * Hook for fetching resource availability for a date.
  */
-export function useResourceAvailability(
-  resourceId: number,
-  params?: ResourceAvailabilityParams
-) {
+export function useResourceAvailability(resourceId: number, params?: ResourceAvailabilityParams) {
   return useQuery({
     queryKey: imagingKeys.resourceAvailability(resourceId, params),
     queryFn: () => imagingApi.getResourceAvailability(resourceId, params),
@@ -684,13 +656,8 @@ export function useCommunicateCritical() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      reportNumber,
-      data,
-    }: {
-      reportNumber: string;
-      data: CommunicateCriticalData;
-    }) => imagingApi.communicateCritical(reportNumber, data),
+    mutationFn: ({ reportNumber, data }: { reportNumber: string; data: CommunicateCriticalData }) =>
+      imagingApi.communicateCritical(reportNumber, data),
     onSuccess: (report) => {
       queryClient.invalidateQueries({ queryKey: imagingKeys.reports() });
       queryClient.invalidateQueries({

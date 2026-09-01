@@ -22,18 +22,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
-import type {
-  FacilityInfo,
-  FacilityValidationStatus,
-  PractitionerInfo,
-} from '@/lib/types/sha';
+import type { FacilityInfo, FacilityValidationStatus, PractitionerInfo } from '@/lib/types/sha';
 import { format, parseISO, isPast } from 'date-fns';
 
 // ============================================================================
@@ -85,14 +77,14 @@ function FacilityDetails({ facility, warnings }: FacilityDetailsProps) {
     : false;
 
   return (
-    <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
+    <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-green-600" />
           <CardTitle className="text-lg text-green-700 dark:text-green-300">
             Facility Validated
           </CardTitle>
-          <Badge variant="outline" className="ml-auto text-green-600 border-green-600">
+          <Badge variant="outline" className="ml-auto border-green-600 text-green-600">
             MFL: {facility.facility_code}
           </Badge>
         </div>
@@ -100,14 +92,14 @@ function FacilityDetails({ facility, warnings }: FacilityDetailsProps) {
       <CardContent className="space-y-4">
         {/* Facility Name */}
         <div>
-          <h3 className="font-semibold text-lg">{facility.name}</h3>
+          <h3 className="text-lg font-semibold">{facility.name}</h3>
           <p className="text-sm text-muted-foreground">{facility.facility_type}</p>
         </div>
 
         {/* Key Info Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
           <div>
-            <Label className="text-muted-foreground text-xs">Level</Label>
+            <Label className="text-xs text-muted-foreground">Level</Label>
             <p className="font-medium">Level {facility.level}</p>
             {facility.keph_level && (
               <p className="text-xs text-muted-foreground">{facility.keph_level}</p>
@@ -115,7 +107,7 @@ function FacilityDetails({ facility, warnings }: FacilityDetailsProps) {
           </div>
 
           <div>
-            <Label className="text-muted-foreground text-xs">Location</Label>
+            <Label className="text-xs text-muted-foreground">Location</Label>
             <div className="flex items-center gap-1">
               <MapPin className="h-3 w-3 text-muted-foreground" />
               <p className="font-medium">{facility.county}</p>
@@ -126,7 +118,7 @@ function FacilityDetails({ facility, warnings }: FacilityDetailsProps) {
           </div>
 
           <div>
-            <Label className="text-muted-foreground text-xs">Status</Label>
+            <Label className="text-xs text-muted-foreground">Status</Label>
             <Badge
               variant={facility.operational_status === 'Operational' ? 'default' : 'secondary'}
               className="mt-1"
@@ -136,17 +128,17 @@ function FacilityDetails({ facility, warnings }: FacilityDetailsProps) {
           </div>
 
           <div>
-            <Label className="text-muted-foreground text-xs">SHA Approved</Label>
-            <div className="flex items-center gap-1 mt-1">
+            <Label className="text-xs text-muted-foreground">SHA Approved</Label>
+            <div className="mt-1 flex items-center gap-1">
               {facility.sha_approved ? (
                 <>
                   <SHALogo size="sm" />
-                  <span className="text-green-600 font-medium">Yes</span>
+                  <span className="font-medium text-green-600">Yes</span>
                 </>
               ) : (
                 <>
                   <SHALogo size="sm" muted />
-                  <span className="text-red-600 font-medium">No</span>
+                  <span className="font-medium text-red-600">No</span>
                 </>
               )}
             </div>
@@ -154,32 +146,27 @@ function FacilityDetails({ facility, warnings }: FacilityDetailsProps) {
 
           {facility.license_expiry && (
             <div>
-              <Label className="text-muted-foreground text-xs">License Expiry</Label>
-              <div className="flex items-center gap-1 mt-1">
+              <Label className="text-xs text-muted-foreground">License Expiry</Label>
+              <div className="mt-1 flex items-center gap-1">
                 <Calendar className="h-3 w-3 text-muted-foreground" />
-                <span className={cn(
-                  'font-medium',
-                  isLicenseExpired && 'text-red-600'
-                )}>
+                <span className={cn('font-medium', isLicenseExpired && 'text-red-600')}>
                   {format(parseISO(facility.license_expiry), 'MMM d, yyyy')}
                 </span>
               </div>
-              {isLicenseExpired && (
-                <p className="text-xs text-red-600">Expired</p>
-              )}
+              {isLicenseExpired && <p className="text-xs text-red-600">Expired</p>}
             </div>
           )}
 
           {facility.beds && (
             <div>
-              <Label className="text-muted-foreground text-xs">Beds</Label>
+              <Label className="text-xs text-muted-foreground">Beds</Label>
               <p className="font-medium">{facility.beds}</p>
             </div>
           )}
 
           {facility.owner && (
             <div>
-              <Label className="text-muted-foreground text-xs">Owner</Label>
+              <Label className="text-xs text-muted-foreground">Owner</Label>
               <p className="font-medium">{facility.owner}</p>
             </div>
           )}
@@ -191,7 +178,7 @@ function FacilityDetails({ facility, warnings }: FacilityDetailsProps) {
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <AlertTitle className="text-yellow-600">Warnings</AlertTitle>
             <AlertDescription>
-              <ul className="list-disc list-inside text-sm text-yellow-600">
+              <ul className="list-inside list-disc text-sm text-yellow-600">
                 {warnings.map((warning, index) => (
                   <li key={index}>{warning}</li>
                 ))}
@@ -289,15 +276,10 @@ export function FacilityValidation({
             type="button"
             onClick={handleValidate}
             disabled={
-              readOnly ||
-              status === 'validating' ||
-              !facilityCode ||
-              facilityCode.trim().length < 3
+              readOnly || status === 'validating' || !facilityCode || facilityCode.trim().length < 3
             }
             variant={status === 'valid' ? 'outline' : 'secondary'}
-            className={cn(
-              status === 'valid' && 'border-green-500 text-green-600'
-            )}
+            className={cn(status === 'valid' && 'border-green-500 text-green-600')}
           >
             {status === 'validating' ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -306,9 +288,7 @@ export function FacilityValidation({
             ) : (
               <Building2 className="h-4 w-4" />
             )}
-            <span className="ml-2">
-              {status === 'valid' ? 'Validated' : 'Validate'}
-            </span>
+            <span className="ml-2">{status === 'valid' ? 'Validated' : 'Validate'}</span>
           </Button>
         </div>
       </div>
@@ -327,7 +307,7 @@ export function FacilityValidation({
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Validation Failed</AlertTitle>
           <AlertDescription>
-            <ul className="list-disc list-inside">
+            <ul className="list-inside list-disc">
               {errors.map((error, index) => (
                 <li key={index}>{error}</li>
               ))}
@@ -358,45 +338,42 @@ function PractitionerDetails({ practitioner }: PractitionerDetailsProps) {
     : false;
 
   return (
-    <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
+    <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-5 w-5 text-green-600" />
           <CardTitle className="text-lg text-green-700 dark:text-green-300">
             Practitioner Validated
           </CardTitle>
-          <Badge variant="outline" className="ml-auto text-green-600 border-green-600">
+          <Badge variant="outline" className="ml-auto border-green-600 text-green-600">
             HWR: {practitioner.hwr_number}
           </Badge>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
           <div>
-            <Label className="text-muted-foreground text-xs">Name</Label>
+            <Label className="text-xs text-muted-foreground">Name</Label>
             <p className="font-medium">{practitioner.name}</p>
           </div>
 
           <div>
-            <Label className="text-muted-foreground text-xs">Cadre</Label>
+            <Label className="text-xs text-muted-foreground">Cadre</Label>
             <p className="font-medium">{practitioner.cadre}</p>
           </div>
 
           {practitioner.specialization && (
             <div>
-              <Label className="text-muted-foreground text-xs">Specialization</Label>
+              <Label className="text-xs text-muted-foreground">Specialization</Label>
               <p className="font-medium">{practitioner.specialization}</p>
             </div>
           )}
 
           <div>
-            <Label className="text-muted-foreground text-xs">License Status</Label>
+            <Label className="text-xs text-muted-foreground">License Status</Label>
             <Badge
               variant={practitioner.license_status === 'Active' ? 'default' : 'secondary'}
-              className={cn(
-                'mt-1',
-                practitioner.license_status === 'Active' && 'bg-green-600'
-              )}
+              className={cn('mt-1', practitioner.license_status === 'Active' && 'bg-green-600')}
             >
               {practitioner.license_status}
             </Badge>
@@ -404,13 +381,10 @@ function PractitionerDetails({ practitioner }: PractitionerDetailsProps) {
 
           {practitioner.license_expiry && (
             <div>
-              <Label className="text-muted-foreground text-xs">License Expiry</Label>
-              <div className="flex items-center gap-1 mt-1">
+              <Label className="text-xs text-muted-foreground">License Expiry</Label>
+              <div className="mt-1 flex items-center gap-1">
                 <Calendar className="h-3 w-3 text-muted-foreground" />
-                <span className={cn(
-                  'font-medium',
-                  isLicenseExpired && 'text-red-600'
-                )}>
+                <span className={cn('font-medium', isLicenseExpired && 'text-red-600')}>
                   {format(parseISO(practitioner.license_expiry), 'MMM d, yyyy')}
                 </span>
               </div>
@@ -419,7 +393,7 @@ function PractitionerDetails({ practitioner }: PractitionerDetailsProps) {
 
           {practitioner.registration_board && (
             <div>
-              <Label className="text-muted-foreground text-xs">Registration Board</Label>
+              <Label className="text-xs text-muted-foreground">Registration Board</Label>
               <p className="font-medium">{practitioner.registration_board}</p>
             </div>
           )}
@@ -442,7 +416,9 @@ export function PractitionerValidation({
   readOnly = false,
 }: PractitionerValidationProps) {
   const [hwrNumber, setHwrNumber] = useState(initialHwrNumber);
-  const [status, setStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'error'>(
+    'idle'
+  );
   const [practitioner, setPractitioner] = useState<PractitionerInfo | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -511,15 +487,10 @@ export function PractitionerValidation({
             type="button"
             onClick={handleValidate}
             disabled={
-              readOnly ||
-              status === 'validating' ||
-              !hwrNumber ||
-              hwrNumber.trim().length < 3
+              readOnly || status === 'validating' || !hwrNumber || hwrNumber.trim().length < 3
             }
             variant={status === 'valid' ? 'outline' : 'secondary'}
-            className={cn(
-              status === 'valid' && 'border-green-500 text-green-600'
-            )}
+            className={cn(status === 'valid' && 'border-green-500 text-green-600')}
           >
             {status === 'validating' ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -528,9 +499,7 @@ export function PractitionerValidation({
             ) : (
               <SHALogo size="sm" />
             )}
-            <span className="ml-2">
-              {status === 'valid' ? 'Validated' : 'Validate'}
-            </span>
+            <span className="ml-2">{status === 'valid' ? 'Validated' : 'Validate'}</span>
           </Button>
         </div>
       </div>
@@ -549,7 +518,7 @@ export function PractitionerValidation({
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Validation Failed</AlertTitle>
           <AlertDescription>
-            <ul className="list-disc list-inside">
+            <ul className="list-inside list-disc">
               {errors.map((error, index) => (
                 <li key={index}>{error}</li>
               ))}
@@ -559,9 +528,7 @@ export function PractitionerValidation({
       )}
 
       {/* Practitioner Details */}
-      {status === 'valid' && practitioner && (
-        <PractitionerDetails practitioner={practitioner} />
-      )}
+      {status === 'valid' && practitioner && <PractitionerDetails practitioner={practitioner} />}
     </div>
   );
 }

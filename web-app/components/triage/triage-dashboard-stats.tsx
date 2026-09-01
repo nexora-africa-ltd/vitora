@@ -9,12 +9,7 @@
  */
 'use client';
 
-import {
-  Activity,
-  AlertTriangle,
-  Stethoscope,
-  Timer,
-} from 'lucide-react';
+import { Activity, AlertTriangle, Stethoscope, Timer } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -96,9 +91,20 @@ function CategoryPills({ categories }: { categories: CategoryVolume[] }) {
 
 function BreachBadges({ summary }: { summary: BreachSummaryData }) {
   const severityConfig: Record<string, { label: string; className: string }> = {
-    CRITICAL: { label: 'Crit', className: 'bg-destructive/15 text-destructive border-destructive/30' },
-    URGENT: { label: 'Urg', className: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-700' },
-    WARNING: { label: 'Warn', className: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-950/50 dark:text-yellow-300 dark:border-yellow-700' },
+    CRITICAL: {
+      label: 'Crit',
+      className: 'bg-destructive/15 text-destructive border-destructive/30',
+    },
+    URGENT: {
+      label: 'Urg',
+      className:
+        'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-700',
+    },
+    WARNING: {
+      label: 'Warn',
+      className:
+        'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-950/50 dark:text-yellow-300 dark:border-yellow-700',
+    },
     INFO: { label: 'Info', className: 'bg-muted text-muted-foreground' },
   };
 
@@ -117,7 +123,7 @@ function BreachBadges({ summary }: { summary: BreachSummaryData }) {
           <Badge
             key={severity}
             variant="outline"
-            className={cn('text-[10px] px-1.5 py-0 h-4', config.className)}
+            className={cn('h-4 px-1.5 py-0 text-[10px]', config.className)}
           >
             {config.label} {count}
           </Badge>
@@ -154,16 +160,16 @@ function MiniStat({ icon, title, value, unit, footer, variant = 'default' }: Min
 
   return (
     <Card className={cn('overflow-hidden', borderVariant[variant])}>
-      <CardContent className="p-3 sm:p-4 space-y-1.5">
+      <CardContent className="space-y-1.5 p-3 sm:p-4">
         <div className="flex items-center gap-2 text-muted-foreground">
           {icon}
-          <span className="text-xs sm:text-sm font-medium truncate">{title}</span>
+          <span className="truncate text-xs font-medium sm:text-sm">{title}</span>
         </div>
         <div className="flex items-baseline gap-1">
-          <span className={cn('text-xl sm:text-2xl font-bold tabular-nums', valueVariant[variant])}>
+          <span className={cn('text-xl font-bold tabular-nums sm:text-2xl', valueVariant[variant])}>
             {value}
           </span>
-          {unit && <span className="text-xs sm:text-sm text-muted-foreground">{unit}</span>}
+          {unit && <span className="text-xs text-muted-foreground sm:text-sm">{unit}</span>}
         </div>
         {footer && <div className="pt-0.5">{footer}</div>}
       </CardContent>
@@ -183,10 +189,10 @@ export function TriageDashboardStats({
 }: TriageDashboardStatsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
-            <CardContent className="p-3 sm:p-4 space-y-2">
+            <CardContent className="space-y-2 p-3 sm:p-4">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-7 w-16" />
               <Skeleton className="h-4 w-32" />
@@ -206,7 +212,7 @@ export function TriageDashboardStats({
   const totalBreaches = breachSummary?.total_active ?? 0;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       {/* Today's Volume */}
       <MiniStat
         icon={<Activity className="h-4 w-4 shrink-0" />}
@@ -224,9 +230,7 @@ export function TriageDashboardStats({
         unit={hasDurationData ? 'min' : ''}
         footer={
           hasDurationData ? (
-            <span className="text-xs text-muted-foreground">
-              From {durationCount} completed
-            </span>
+            <span className="text-xs text-muted-foreground">From {durationCount} completed</span>
           ) : (
             <span className="text-xs text-muted-foreground">No completed today</span>
           )
@@ -242,9 +246,7 @@ export function TriageDashboardStats({
         variant={longestWait > 60 ? 'destructive' : longestWait > 30 ? 'warning' : 'default'}
         footer={
           queueCount > 0 ? (
-            <span className="text-xs text-muted-foreground">
-              {queueCount} in queue now
-            </span>
+            <span className="text-xs text-muted-foreground">{queueCount} in queue now</span>
           ) : (
             <span className="text-xs text-muted-foreground">Queue empty</span>
           )

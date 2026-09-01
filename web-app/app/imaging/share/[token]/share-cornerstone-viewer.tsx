@@ -35,7 +35,7 @@ export function ShareCornerstoneViewer({
       setActiveTool(tool);
       cornerstone.setActiveTool(tool);
     },
-    [cornerstone],
+    [cornerstone]
   );
 
   const toggleFullscreen = useCallback(() => {
@@ -44,17 +44,13 @@ export function ShareCornerstoneViewer({
 
   return (
     <div
-      className={
-        isFullscreen
-          ? 'fixed inset-0 z-50 bg-black'
-          : 'absolute inset-0 bg-black'
-      }
+      className={isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'absolute inset-0 bg-black'}
       role="region"
       aria-label={studyDescription || 'DICOM Viewer'}
     >
       {/* Toolbar */}
       <div
-        className="absolute top-2 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-6rem)] sm:max-w-none overflow-x-auto"
+        className="absolute left-1/2 top-2 z-30 max-w-[calc(100%-6rem)] -translate-x-1/2 overflow-x-auto sm:max-w-none"
         onPointerDown={(e) => e.stopPropagation()}
         onPointerUp={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
@@ -80,15 +76,11 @@ export function ShareCornerstoneViewer({
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-2 right-2 z-30 bg-black/60 hover:bg-black/80 text-white"
+        className="absolute right-2 top-2 z-30 bg-black/60 text-white hover:bg-black/80"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={toggleFullscreen}
       >
-        {isFullscreen ? (
-          <Minimize2 className="h-4 w-4" />
-        ) : (
-          <Maximize2 className="h-4 w-4" />
-        )}
+        {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
       </Button>
 
       {/* Cornerstone viewport */}
@@ -100,16 +92,16 @@ export function ShareCornerstoneViewer({
 
       {/* Loading overlay */}
       {!cornerstone.isReady && imageUrls.length > 0 && (
-        <div className="absolute inset-0 z-20 bg-black/80 flex flex-col items-center justify-center gap-4">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/80">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <div className="text-white text-sm">Loading DICOM images...</div>
-          <div className="w-48 h-2 bg-muted rounded-full overflow-hidden">
+          <div className="text-sm text-white">Loading DICOM images...</div>
+          <div className="h-2 w-48 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full bg-primary transition-all duration-300"
               style={{ width: `${cornerstone.loadingProgress}%` }}
             />
           </div>
-          <div className="text-muted-foreground text-xs">
+          <div className="text-xs text-muted-foreground">
             {Math.round(cornerstone.loadingProgress)}%
           </div>
         </div>
@@ -117,18 +109,16 @@ export function ShareCornerstoneViewer({
 
       {/* Error state */}
       {cornerstone.error && (
-        <div className="absolute inset-0 z-20 bg-black/90 flex flex-col items-center justify-center gap-4 p-8">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/90 p-8">
           <AlertCircle className="h-12 w-12 text-destructive" />
-          <h4 className="text-white font-medium">Failed to load viewer</h4>
-          <p className="text-muted-foreground text-sm text-center max-w-md">
-            {cornerstone.error}
-          </p>
+          <h4 className="font-medium text-white">Failed to load viewer</h4>
+          <p className="max-w-md text-center text-sm text-muted-foreground">{cornerstone.error}</p>
         </div>
       )}
 
       {/* Image info overlay */}
       {cornerstone.isReady && (
-        <div className="absolute bottom-2 left-2 z-10 bg-black/60 text-white text-xs px-2 py-1 rounded">
+        <div className="absolute bottom-2 left-2 z-10 rounded bg-black/60 px-2 py-1 text-xs text-white">
           Image: {cornerstone.currentIndex + 1} / {cornerstone.totalImages}
         </div>
       )}

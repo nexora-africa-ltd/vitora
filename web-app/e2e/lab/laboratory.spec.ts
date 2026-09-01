@@ -132,11 +132,46 @@ const mockLabResult = (overrides: Record<string, unknown> = {}) => ({
   verified_by_name: null,
   verified_at: null,
   components: [
-    { name: 'WBC', value: '12.5', unit: '10^9/L', reference_range: '4.0-11.0', is_abnormal: true, flag: 'H' },
-    { name: 'RBC', value: '4.8', unit: '10^12/L', reference_range: '4.5-5.5', is_abnormal: false, flag: null },
-    { name: 'Hemoglobin', value: '14.2', unit: 'g/dL', reference_range: '12.0-16.0', is_abnormal: false, flag: null },
-    { name: 'Hematocrit', value: '42.5', unit: '%', reference_range: '37-47', is_abnormal: false, flag: null },
-    { name: 'Platelets', value: '245', unit: '10^9/L', reference_range: '150-400', is_abnormal: false, flag: null },
+    {
+      name: 'WBC',
+      value: '12.5',
+      unit: '10^9/L',
+      reference_range: '4.0-11.0',
+      is_abnormal: true,
+      flag: 'H',
+    },
+    {
+      name: 'RBC',
+      value: '4.8',
+      unit: '10^12/L',
+      reference_range: '4.5-5.5',
+      is_abnormal: false,
+      flag: null,
+    },
+    {
+      name: 'Hemoglobin',
+      value: '14.2',
+      unit: 'g/dL',
+      reference_range: '12.0-16.0',
+      is_abnormal: false,
+      flag: null,
+    },
+    {
+      name: 'Hematocrit',
+      value: '42.5',
+      unit: '%',
+      reference_range: '37-47',
+      is_abnormal: false,
+      flag: null,
+    },
+    {
+      name: 'Platelets',
+      value: '245',
+      unit: '10^9/L',
+      reference_range: '150-400',
+      is_abnormal: false,
+      flag: null,
+    },
   ],
   attachments: [],
   comments: '',
@@ -189,24 +224,24 @@ async function setupLabMocks(page: Page) {
         count: 3,
         results: [
           mockLabTest(),
-            mockLabTest({
-              id: 2,
-              code: 'URINALYSIS',
-              name: 'Urinalysis',
-              category: 'CHEMISTRY',
-              category_display: 'Chemistry',
-              loinc_code: '24357-6',
-              sample_type: 'Urine',
-            }),
-            mockLabTest({
-              id: 3,
-              code: 'LFT',
-              name: 'Liver Function Tests',
-              category: 'CHEMISTRY',
-              category_display: 'Chemistry',
-              loinc_code: '24323-8',
-              sample_type: 'Blood',
-            }),
+          mockLabTest({
+            id: 2,
+            code: 'URINALYSIS',
+            name: 'Urinalysis',
+            category: 'CHEMISTRY',
+            category_display: 'Chemistry',
+            loinc_code: '24357-6',
+            sample_type: 'Urine',
+          }),
+          mockLabTest({
+            id: 3,
+            code: 'LFT',
+            name: 'Liver Function Tests',
+            category: 'CHEMISTRY',
+            category_display: 'Chemistry',
+            loinc_code: '24323-8',
+            sample_type: 'Blood',
+          }),
         ],
       }),
     });
@@ -461,12 +496,14 @@ async function setupLabMocks(page: Page) {
       contentType: 'application/json',
       body: JSON.stringify({
         count: 1,
-        results: [{
-          id: 1,
-          mrn: 'MRN-20260101-0001',
-          first_name: 'Jane',
-          last_name: 'Doe',
-        }],
+        results: [
+          {
+            id: 1,
+            mrn: 'MRN-20260101-0001',
+            first_name: 'Jane',
+            last_name: 'Doe',
+          },
+        ],
       }),
     });
   });
@@ -578,7 +615,9 @@ test.describe('Lab Queue Management', () => {
     const queueTab = page.getByRole('tab', { name: /lab queue/i });
     await queueTab.click({ force: true });
     // Wait for queue-specific content to appear (the "Queue #" column header is unique to queue view)
-    await expect(page.getByRole('columnheader', { name: /queue/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('columnheader', { name: /queue/i })).toBeVisible({
+      timeout: 10000,
+    });
   }
 
   test('should display lab queue sorted by priority', async ({ page }) => {
@@ -645,7 +684,11 @@ test.describe('Lab Queue Management', () => {
 
     // Filter by pending - the Select uses combobox role
     // First find the status filter dropdown (it shows "Filter status" or current selection)
-    const statusFilter = page.locator('button:has-text("Filter status"), button:has-text("All Status"), button:has-text("Collected")').first();
+    const statusFilter = page
+      .locator(
+        'button:has-text("Filter status"), button:has-text("All Status"), button:has-text("Collected")'
+      )
+      .first();
     await statusFilter.click();
 
     // Wait for dropdown to appear and click Pending option
@@ -805,11 +848,13 @@ test.describe('External Lab & Requisitions', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           ...mockLabResult(),
-          attachments: [{
-            id: 1,
-            file: '/media/lab-attachments/result.pdf',
-            file_name: 'external-result.pdf',
-          }],
+          attachments: [
+            {
+              id: 1,
+              file: '/media/lab-attachments/result.pdf',
+              file_name: 'external-result.pdf',
+            },
+          ],
         }),
       });
     });

@@ -33,11 +33,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -166,7 +162,7 @@ function NotificationItem({ notification, onMarkRead, onClick }: NotificationIte
       data-testid="notification-item"
       data-priority={notification.priority}
       className={cn(
-        'flex items-start gap-3 p-3 cursor-pointer transition-colors',
+        'flex cursor-pointer items-start gap-3 p-3 transition-colors',
         'hover:bg-muted/50',
         priorityStyles,
         notification.is_read && 'opacity-60'
@@ -179,17 +175,17 @@ function NotificationItem({ notification, onMarkRead, onClick }: NotificationIte
       <div className={cn('mt-0.5', iconColor)}>
         <Bell className="h-4 w-4" />
       </div>
-      <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-medium truncate', !notification.is_read && 'font-semibold')}>
+      <div className="min-w-0 flex-1">
+        <p className={cn('truncate text-sm font-medium', !notification.is_read && 'font-semibold')}>
           {notification.title}
         </p>
-        <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="line-clamp-2 text-xs text-muted-foreground">{notification.message}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
         </p>
       </div>
       {!notification.is_read && (
-        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse transition scale-110 mt-2" />
+        <div className="mt-2 h-2 w-2 scale-110 animate-pulse rounded-full bg-cyan-500 transition" />
       )}
     </div>
   );
@@ -210,8 +206,8 @@ function ExpandedNotificationItem({
   return (
     <div
       className={cn(
-        'group flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200',
-        'hover:bg-white/10 border border-white/10',
+        'group flex cursor-pointer items-start gap-4 rounded-xl p-4 transition-all duration-200',
+        'border border-white/10 hover:bg-white/10',
         notification.is_read && 'opacity-60'
       )}
       onClick={() => {
@@ -223,31 +219,43 @@ function ExpandedNotificationItem({
     >
       <div
         className={cn(
-          'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
           notification.is_read ? 'bg-background/10' : getPriorityColor(notification.priority)
         )}
       >
-        <Icon className={cn('h-5 w-5', notification.is_read ? 'text-muted-foreground/70' : 'text-muted-foreground')} />
+        <Icon
+          className={cn(
+            'h-5 w-5',
+            notification.is_read ? 'text-muted-foreground/70' : 'text-muted-foreground'
+          )}
+        />
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className={cn('font-medium text-muted-foreground truncate', !notification.is_read && 'font-semibold')}>
+            <p
+              className={cn(
+                'truncate font-medium text-muted-foreground',
+                !notification.is_read && 'font-semibold'
+              )}
+            >
               {notification.title}
             </p>
-            <p className="text-sm text-muted-foreground/70 line-clamp-2">{notification.message}</p>
+            <p className="line-clamp-2 text-sm text-muted-foreground/70">{notification.message}</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {!notification.is_read && <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />}
+          <div className="flex shrink-0 items-center gap-2">
+            {!notification.is_read && (
+              <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" />
+            )}
             <Badge
               variant="outline"
-              className="bg-background/10 border-background/20 text-muted-foreground/80 text-[10px]"
+              className="border-background/20 bg-background/10 text-[10px] text-muted-foreground/80"
             >
               {notification.priority}
             </Badge>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground/50 mt-2">
+        <p className="mt-2 text-xs text-muted-foreground/50">
           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
         </p>
       </div>
@@ -307,14 +315,14 @@ export function NotificationPanel() {
     return (
       <div className="h-full w-full overflow-hidden rounded-3xl bg-background shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-cyan-300">
+        <div className="flex items-center justify-between border-b border-cyan-300 p-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10">
               <Bell className="h-6 w-6 text-accent" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-accent">Notifications</h2>
-              <p className="text-accent/70 text-sm">
+              <p className="text-sm text-accent/70">
                 {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up!"}
               </p>
             </div>
@@ -324,14 +332,14 @@ export function NotificationPanel() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-foreground hover:text-accent hover:bg-secondary/10"
+                className="text-foreground hover:bg-secondary/10 hover:text-accent"
                 onClick={handleMarkAllRead}
                 disabled={markAllReadMutation.isPending}
               >
                 {markAllReadMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <CheckCheck className="h-4 w-4 mr-2" />
+                  <CheckCheck className="mr-2 h-4 w-4" />
                 )}
                 Mark all
               </Button>
@@ -339,7 +347,7 @@ export function NotificationPanel() {
             <Button
               variant="ghost"
               size="icon"
-              className="text-foreground hover:text-primary hover:bg-white/10 rounded-full"
+              className="rounded-full text-foreground hover:bg-white/10 hover:text-primary"
               onClick={() => {
                 collapse();
                 setIsExpanded(false);
@@ -351,27 +359,27 @@ export function NotificationPanel() {
           </div>
         </div>
 
-        <div className="px-6 py-3 border-b border-cyan-300/60 bg-muted/30">
+        <div className="border-b border-cyan-300/60 bg-muted/30 px-6 py-3">
           <PushNotificationToggle />
         </div>
 
         {/* Scrollable Content */}
         <ScrollArea className="h-[calc(100%-148px)]">
-          <div className="p-4 space-y-6">
+          <div className="space-y-6 p-4">
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center mb-4">
+                <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-white/10">
                   <Bell className="h-12 w-12 text-muted-foreground/50" />
                 </div>
                 <p className="text-xl font-medium text-muted-foreground">No notifications</p>
-                <p className="text-muted-foreground/60 mt-1">Check back later for updates</p>
+                <p className="mt-1 text-muted-foreground/60">Check back later for updates</p>
               </div>
             ) : (
               <>
                 {unreadNotifications.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                      <span className="h-2 w-2 rounded-full bg-cyan-400" />
                       Unread ({unreadNotifications.length})
                     </h3>
                     <div className="space-y-2">
@@ -393,7 +401,7 @@ export function NotificationPanel() {
 
                 {readNotifications.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                       Earlier
                     </h3>
                     <div className="space-y-2">
@@ -433,21 +441,16 @@ export function NotificationPanel() {
       {/* Bell Icon with Popover */}
       <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative"
-            aria-label="Notifications"
-          >
+          <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
               <span
                 data-testid="unread-badge"
                 className={cn(
-                  'absolute -top-1 -right-1 flex items-center justify-center',
-                  'min-w-4 h-4 px-1 rounded-full',
+                  'absolute -right-1 -top-1 flex items-center justify-center',
+                  'h-4 min-w-4 rounded-full px-1',
                   'bg-cyan-500 text-white',
-                  'text-[10px] font-medium leading-none animate-pulse'
+                  'animate-pulse text-[10px] font-medium leading-none'
                 )}
               >
                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -457,9 +460,9 @@ export function NotificationPanel() {
         </PopoverTrigger>
         <PopoverContent align="end" className="w-96 p-0" sideOffset={8}>
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b bg-muted/30">
+          <div className="flex items-center justify-between border-b bg-muted/30 p-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600">
                 <Bell className="h-4 w-4 text-white" />
               </div>
               <div>
@@ -473,15 +476,15 @@ export function NotificationPanel() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-auto py-1 px-2 text-xs"
+                className="h-auto px-2 py-1 text-xs"
                 onClick={handleMarkAllRead}
                 disabled={markAllReadMutation.isPending}
                 aria-label="Mark all as read"
               >
                 {markAllReadMutation.isPending ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                 ) : (
-                  <CheckCheck className="h-3 w-3 mr-1" />
+                  <CheckCheck className="mr-1 h-3 w-3" />
                 )}
                 Mark all read
               </Button>
@@ -489,7 +492,7 @@ export function NotificationPanel() {
           </div>
 
           {/* Push Toggle */}
-          <div className="px-4 py-2 border-b">
+          <div className="border-b px-4 py-2">
             <PushNotificationToggle />
           </div>
 
@@ -504,8 +507,8 @@ export function NotificationPanel() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+              <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+                <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-muted/50">
                   <Bell className="h-8 w-8 text-muted-foreground/50" />
                 </div>
                 <p className="text-sm font-medium">All caught up!</p>
@@ -527,17 +530,17 @@ export function NotificationPanel() {
 
           {/* View All Button */}
           {notifications.length > 0 && (
-            <div className="p-3 border-t bg-muted/30">
+            <div className="border-t bg-muted/30 p-3">
               <ExpandableScreenTrigger
                 className="w-full"
                 backgroundClassName="rounded-md bg-gradient-to-r from-cyan-500/10 to-cyan-400/10 border border-cyan-500/20"
               >
                 <Button
                   variant="outline"
-                  className="w-full justify-center text-sm bg-transparent border-transparent hover:bg-cyan-500/20 hover:border-cyan-500/30"
+                  className="w-full justify-center border-transparent bg-transparent text-sm hover:border-cyan-500/30 hover:bg-cyan-500/20"
                   onClick={() => setIsPopoverOpen(false)}
                 >
-                  <Bell className="h-4 w-4 mr-2" />
+                  <Bell className="mr-2 h-4 w-4" />
                   View all notifications
                 </Button>
               </ExpandableScreenTrigger>

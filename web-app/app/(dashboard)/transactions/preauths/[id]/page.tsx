@@ -51,7 +51,11 @@ export default function PreauthDetailPage() {
   const preauthId = Number(params.id);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const { data: preauth, isLoading, error } = useQuery({
+  const {
+    data: preauth,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['preauth-detail', preauthId],
     queryFn: () => shaApi.getPreauthDetail(preauthId),
     enabled: !isNaN(preauthId) && preauthId > 0,
@@ -89,7 +93,7 @@ export default function PreauthDetailPage() {
       <div className="space-y-4">
         <PageHeader title="Pre-authorization" />
         <Card>
-          <CardContent className="py-8 flex items-center justify-center gap-2 text-muted-foreground">
+          <CardContent className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading pre-authorization details...
           </CardContent>
@@ -103,7 +107,7 @@ export default function PreauthDetailPage() {
       <div className="space-y-4">
         <PageHeader title="Pre-authorization" />
         <Card>
-          <CardContent className="py-8 flex items-center justify-center gap-2 text-destructive">
+          <CardContent className="flex items-center justify-center gap-2 py-8 text-destructive">
             <AlertTriangle className="h-4 w-4" />
             {error instanceof Error ? error.message : 'Pre-authorization not found.'}
           </CardContent>
@@ -135,13 +139,16 @@ export default function PreauthDetailPage() {
                   <AlertDialogTitle>Cancel Pre-authorization?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This will cancel the pre-authorization request for intervention{' '}
-                    <span className="font-mono font-medium">{preauth.intervention_code}</span>.
-                    This action cannot be undone.
+                    <span className="font-mono font-medium">{preauth.intervention_code}</span>. This
+                    action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Keep Active</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleCancel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  <AlertDialogAction
+                    onClick={handleCancel}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
                     Yes, Cancel
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -152,16 +159,17 @@ export default function PreauthDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             Intervention: {preauth.intervention_code}
             {preauth.dha_external_id && (
               <span className="text-muted-foreground"> • DHA ID: {preauth.dha_external_id}</span>
             )}
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Created {preauth.created_at ? format(parseISO(preauth.created_at), 'dd MMM yyyy, HH:mm') : '—'}
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Created{' '}
+            {preauth.created_at ? format(parseISO(preauth.created_at), 'dd MMM yyyy, HH:mm') : '—'}
           </p>
         </div>
         {getStatusBadge(preauth.status)}
@@ -195,47 +203,53 @@ export default function PreauthDetailPage() {
           <CardTitle className="text-base">Request Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
             <div>
               <span className="text-muted-foreground">Status</span>
               <div className="mt-0.5">{getStatusBadge(preauth.status)}</div>
             </div>
             <div>
               <span className="text-muted-foreground">Intervention Code</span>
-              <p className="font-mono mt-0.5">{preauth.intervention_code}</p>
+              <p className="mt-0.5 font-mono">{preauth.intervention_code}</p>
             </div>
             <div>
               <span className="text-muted-foreground">Consent Token</span>
-              <p className="font-mono text-xs mt-0.5 break-all">{preauth.consent_token}</p>
+              <p className="mt-0.5 break-all font-mono text-xs">{preauth.consent_token}</p>
             </div>
             {preauth.dha_external_id && (
               <div>
                 <span className="text-muted-foreground">DHA External ID</span>
-                <p className="font-mono text-xs mt-0.5">{preauth.dha_external_id}</p>
+                <p className="mt-0.5 font-mono text-xs">{preauth.dha_external_id}</p>
               </div>
             )}
             {preauth.correlation_id && (
               <div>
                 <span className="text-muted-foreground">Correlation ID</span>
-                <p className="font-mono text-xs mt-0.5">{preauth.correlation_id}</p>
+                <p className="mt-0.5 font-mono text-xs">{preauth.correlation_id}</p>
               </div>
             )}
             {preauth.submitted_at && (
               <div>
                 <span className="text-muted-foreground">Submitted At</span>
-                <p className="mt-0.5">{format(parseISO(preauth.submitted_at), 'dd MMM yyyy, HH:mm')}</p>
+                <p className="mt-0.5">
+                  {format(parseISO(preauth.submitted_at), 'dd MMM yyyy, HH:mm')}
+                </p>
               </div>
             )}
             {preauth.decided_at && (
               <div>
                 <span className="text-muted-foreground">Decision At</span>
-                <p className="mt-0.5">{format(parseISO(preauth.decided_at), 'dd MMM yyyy, HH:mm')}</p>
+                <p className="mt-0.5">
+                  {format(parseISO(preauth.decided_at), 'dd MMM yyyy, HH:mm')}
+                </p>
               </div>
             )}
             {preauth.cancelled_at && (
               <div>
                 <span className="text-muted-foreground">Cancelled At</span>
-                <p className="mt-0.5">{format(parseISO(preauth.cancelled_at), 'dd MMM yyyy, HH:mm')}</p>
+                <p className="mt-0.5">
+                  {format(parseISO(preauth.cancelled_at), 'dd MMM yyyy, HH:mm')}
+                </p>
               </div>
             )}
           </div>
@@ -243,9 +257,7 @@ export default function PreauthDetailPage() {
       </Card>
 
       {/* Doctor Consent Card — shown when state is REQUESTED or has been resolved */}
-      {preauth.doctor_consent_state && (
-        <DoctorConsentCard preauth={preauth} />
-      )}
+      {preauth.doctor_consent_state && <DoctorConsentCard preauth={preauth} />}
 
       {/* Diagnoses */}
       {Array.isArray(preauth.diagnoses) && preauth.diagnoses.length > 0 ? (
@@ -276,7 +288,7 @@ function getStatusBadge(status: string) {
   switch (status.toLowerCase()) {
     case 'approved':
       return (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 w-fit">
+        <Badge className="w-fit bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
           <CheckCircle2 className="mr-1 h-3 w-3" />
           Approved
         </Badge>
@@ -297,7 +309,7 @@ function getStatusBadge(status: string) {
       );
     case 'cancelled':
       return (
-        <Badge variant="outline" className="text-muted-foreground w-fit">
+        <Badge variant="outline" className="w-fit text-muted-foreground">
           <Ban className="mr-1 h-3 w-3" />
           Cancelled
         </Badge>

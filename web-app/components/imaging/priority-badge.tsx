@@ -18,12 +18,7 @@ interface PriorityBadgeProps {
 const PRIORITY_CONFIG: Record<
   ImagingPriority,
   {
-    variant:
-      | 'default'
-      | 'secondary'
-      | 'destructive'
-      | 'outline'
-      | 'warning';
+    variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'warning';
     className: string;
     icon: React.ElementType;
   }
@@ -45,19 +40,12 @@ const PRIORITY_CONFIG: Record<
   },
 };
 
-export function PriorityBadge({
-  priority,
-  className,
-  showIcon = true,
-}: PriorityBadgeProps) {
+export function PriorityBadge({ priority, className, showIcon = true }: PriorityBadgeProps) {
   const config = PRIORITY_CONFIG[priority];
   const Icon = config.icon;
 
   return (
-    <Badge
-      variant={config.variant}
-      className={cn('gap-1', config.className, className)}
-    >
+    <Badge variant={config.variant} className={cn('gap-1', config.className, className)}>
       {showIcon && <Icon className="h-3 w-3" />}
       {PRIORITY_LABELS[priority]}
     </Badge>

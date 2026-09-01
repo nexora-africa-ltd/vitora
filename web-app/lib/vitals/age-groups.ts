@@ -12,12 +12,12 @@
  * Mirrors the AgeGroup type in lib/types/triage.ts.
  */
 export type AgeGroup =
-  | 'neonate'     // 0-28 days
-  | 'infant'      // 1-12 months
+  | 'neonate' // 0-28 days
+  | 'infant' // 1-12 months
   | 'young_child' // 1-5 years
-  | 'school_age'  // 6-12 years
-  | 'adolescent'  // 13-17 years
-  | 'adult';      // 18+ years
+  | 'school_age' // 6-12 years
+  | 'adolescent' // 13-17 years
+  | 'adult'; // 18+ years
 
 /**
  * Determine age group from date of birth.

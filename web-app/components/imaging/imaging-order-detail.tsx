@@ -7,13 +7,7 @@
 import { useState, useCallback, useDeferredValue } from 'react';
 import { useRouter } from 'next/navigation';
 import { AxiosError } from 'axios';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -119,11 +113,15 @@ function getModalityLabel(modalityCode: string): string {
 }
 
 function parseSchedulingError(error: unknown): { title: string; description: string } {
-  if (error instanceof AxiosError && error.response?.data && typeof error.response.data === 'object') {
+  if (
+    error instanceof AxiosError &&
+    error.response?.data &&
+    typeof error.response.data === 'object'
+  ) {
     const data = error.response.data as { error?: unknown };
     if (typeof data.error === 'string') {
       const modalityMismatch = data.error.match(
-        /Resource\s+(.+?)\s+does not support modality\s+([A-Z]+)\.\s*Supported:\s*\[(.*?)\]/i,
+        /Resource\s+(.+?)\s+does not support modality\s+([A-Z]+)\.\s*Supported:\s*\[(.*?)\]/i
       );
 
       if (modalityMismatch) {
@@ -325,14 +323,12 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
 
   if (error || !order) {
     return (
-      <div className="text-center py-12">
-        <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
+      <div className="py-12 text-center">
+        <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive" />
         <h2 className="text-lg font-semibold">Order Not Found</h2>
-        <p className="text-muted-foreground mb-4">
-          The imaging order could not be loaded.
-        </p>
+        <p className="mb-4 text-muted-foreground">The imaging order could not be loaded.</p>
         <Button onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Go Back
         </Button>
       </div>
@@ -348,17 +344,24 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
       {/* Header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-start gap-3">
-          <Button variant="ghost" size="icon" className="shrink-0 mt-0.5" onClick={() => router.back()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mt-0.5 shrink-0"
+            onClick={() => router.back()}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold break-all">{order.order_number}</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <h1 className="break-all text-lg font-bold sm:text-xl md:text-2xl">
+              {order.order_number}
+            </h1>
+            <p className="text-xs text-muted-foreground sm:text-sm">
               Ordered on {formatDateTime(order.ordered_at)}
             </p>
           </div>
         </div>
-        <div className="flex items-center flex-wrap gap-2 pl-10 sm:pl-0">
+        <div className="flex flex-wrap items-center gap-2 pl-10 sm:pl-0">
           <PriorityBadge priority={order.priority} />
           <OrderStatusBadge status={order.status} />
         </div>
@@ -371,7 +374,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
             <CardTitle className="text-base sm:text-lg">Order Progress</CardTitle>
           </CardHeader>
           <CardContent className="px-3 sm:px-6">
-            <div className="flex items-center justify-between gap-0.5 sm:gap-1 overflow-x-auto pb-2 -mx-1 px-1">
+            <div className="-mx-1 flex items-center justify-between gap-0.5 overflow-x-auto px-1 pb-2 sm:gap-1">
               {STATUS_STEPS.map((step, index) => {
                 const isCompleted = index <= statusIndex;
                 const isCurrent = index === statusIndex;
@@ -379,18 +382,18 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                 return (
                   <div
                     key={step.status}
-                    className="flex flex-col items-center flex-1 min-w-[48px] sm:min-w-[60px]"
+                    className="flex min-w-[48px] flex-1 flex-col items-center sm:min-w-[60px]"
                   >
-                    <div className="flex items-center w-full">
+                    <div className="flex w-full items-center">
                       {index > 0 && (
                         <div
-                          className={`flex-1 h-0.5 sm:h-1 ${
+                          className={`h-0.5 flex-1 sm:h-1 ${
                             index <= statusIndex ? 'bg-primary' : 'bg-muted'
                           }`}
                         />
                       )}
                       <div
-                        className={`w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] sm:text-xs ${
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] sm:h-7 sm:w-7 sm:text-xs md:h-8 md:w-8 ${
                           isCompleted
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted text-muted-foreground'
@@ -404,14 +407,14 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                       </div>
                       {index < STATUS_STEPS.length - 1 && (
                         <div
-                          className={`flex-1 h-0.5 sm:h-1 ${
+                          className={`h-0.5 flex-1 sm:h-1 ${
                             index < statusIndex ? 'bg-primary' : 'bg-muted'
                           }`}
                         />
                       )}
                     </div>
                     <span
-                      className={`text-[9px] sm:text-[10px] md:text-xs mt-1.5 sm:mt-2 text-center leading-tight ${
+                      className={`mt-1.5 text-center text-[9px] leading-tight sm:mt-2 sm:text-[10px] md:text-xs ${
                         isCurrent ? 'font-medium text-primary' : 'text-muted-foreground'
                       }`}
                     >
@@ -431,50 +434,52 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
           <CardHeader className="pb-2 sm:pb-3">
             <CardTitle className="text-base sm:text-lg">Order Information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+          <CardContent className="space-y-3 px-4 sm:space-y-4 sm:px-6">
             <div className="flex items-start gap-2.5 sm:gap-3">
-              <User className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+              <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground">Patient</p>
-                <p className="font-medium text-sm sm:text-base truncate">
+                <p className="text-xs text-muted-foreground sm:text-sm">Patient</p>
+                <p className="truncate text-sm font-medium sm:text-base">
                   {order.patient_name || `Patient #${order.patient}`}
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-2.5 sm:gap-3">
-              <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+              <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground">Ordered By</p>
-                <p className="font-medium text-sm sm:text-base truncate">
+                <p className="text-xs text-muted-foreground sm:text-sm">Ordered By</p>
+                <p className="truncate text-sm font-medium sm:text-base">
                   {order.ordered_by_name || `User #${order.ordered_by}`}
                 </p>
               </div>
             </div>
             {order.scheduled_datetime && (
               <div className="flex items-start gap-2.5 sm:gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Scheduled</p>
-                  <p className="font-medium text-sm sm:text-base">
+                  <p className="text-xs text-muted-foreground sm:text-sm">Scheduled</p>
+                  <p className="text-sm font-medium sm:text-base">
                     {formatDateTime(order.scheduled_datetime)}
-                    {order.scheduled_room && <span className="block sm:inline"> • {order.scheduled_room}</span>}
+                    {order.scheduled_room && (
+                      <span className="block sm:inline"> • {order.scheduled_room}</span>
+                    )}
                   </p>
                 </div>
               </div>
             )}
             <Separator />
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Clinical Indication
-              </p>
-              <p className="text-xs sm:text-sm leading-relaxed">{order.clinical_indication}</p>
+              <p className="mb-1 text-xs text-muted-foreground sm:text-sm">Clinical Indication</p>
+              <p className="text-xs leading-relaxed sm:text-sm">{order.clinical_indication}</p>
             </div>
             {order.relevant_clinical_history && (
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                <p className="mb-1 text-xs text-muted-foreground sm:text-sm">
                   Relevant Clinical History
                 </p>
-                <p className="text-xs sm:text-sm leading-relaxed">{order.relevant_clinical_history}</p>
+                <p className="text-xs leading-relaxed sm:text-sm">
+                  {order.relevant_clinical_history}
+                </p>
               </div>
             )}
           </CardContent>
@@ -485,22 +490,25 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
           <CardHeader className="pb-2 sm:pb-3">
             <CardTitle className="text-base sm:text-lg">Billing</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+          <CardContent className="space-y-3 px-4 sm:space-y-4 sm:px-6">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm text-muted-foreground">Total Cost</span>
-              <span className="text-xl sm:text-2xl font-bold">
+              <span className="text-xl font-bold sm:text-2xl">
                 KES {order.total_cost.toLocaleString()}
               </span>
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm text-muted-foreground">Payment Status</span>
-              <Badge variant={order.is_paid ? 'default' : 'secondary'} className="text-xs sm:text-sm">
+              <Badge
+                variant={order.is_paid ? 'default' : 'secondary'}
+                className="text-xs sm:text-sm"
+              >
                 {order.is_paid ? 'Paid' : 'Unpaid'}
               </Badge>
             </div>
             {(order.items ?? []).some((item) => item.procedure_code) && (
               <div className="pt-2">
-                <p className="text-xs sm:text-sm text-muted-foreground mb-2">SHA Coverage</p>
+                <p className="mb-2 text-xs text-muted-foreground sm:text-sm">SHA Coverage</p>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -531,7 +539,9 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                     </span>
                   )}
                   {eligibilityStatus !== null && (
-                    <span className={`text-xs font-medium ${eligibilityStatus ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <span
+                      className={`text-xs font-medium ${eligibilityStatus ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                    >
                       {eligibilityStatus ? 'Eligible' : 'Not Eligible'}
                     </span>
                   )}
@@ -554,13 +564,15 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
             {(order.items ?? []).map((item) => (
               <div
                 key={item.id}
-                className="flex flex-col gap-2 sm:gap-3 p-2.5 sm:p-3 border rounded-lg"
+                className="flex flex-col gap-2 rounded-lg border p-2.5 sm:gap-3 sm:p-3"
               >
                 <div className="flex items-start gap-2 sm:gap-3">
                   <ModalityBadge modality={item.modality} />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm sm:text-base truncate">{item.procedure_name}</p>
-                    <div className="flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground">
+                    <p className="truncate text-sm font-medium sm:text-base">
+                      {item.procedure_name}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground sm:gap-x-2 sm:text-sm">
                       <span>{item.procedure_code}</span>
                       {item.laterality !== 'NA' && (
                         <>
@@ -570,17 +582,17 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                       )}
                     </div>
                     {item.specific_instructions && (
-                      <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground sm:text-sm">
                         {item.specific_instructions}
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-2 pt-1 border-t sm:border-t-0 sm:pt-0">
+                <div className="flex items-center justify-between gap-2 border-t pt-1 sm:border-t-0 sm:pt-0">
                   <Badge variant={item.is_completed ? 'default' : 'outline'} className="text-xs">
                     {item.is_completed ? 'Completed' : 'Pending'}
                   </Badge>
-                  <span className="font-medium text-sm sm:text-base whitespace-nowrap">
+                  <span className="whitespace-nowrap text-sm font-medium sm:text-base">
                     KES {item.unit_cost.toLocaleString()}
                   </span>
                 </div>
@@ -601,10 +613,8 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
               {/* Submit (DRAFT -> ORDERED) */}
               {isDraft && (
                 <Button onClick={handleSubmit} disabled={isActionLoading}>
-                  {submitOrder.isPending && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
-                  <Send className="h-4 w-4 mr-2" />
+                  {submitOrder.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Send className="mr-2 h-4 w-4" />
                   Submit Order
                 </Button>
               )}
@@ -614,7 +624,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                 <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" disabled={isActionLoading}>
-                      <Calendar className="h-4 w-4 mr-2" />
+                      <Calendar className="mr-2 h-4 w-4" />
                       Schedule
                     </Button>
                   </DialogTrigger>
@@ -656,7 +666,10 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <PopoverContent
+                            className="w-[--radix-popover-trigger-width] p-0"
+                            align="start"
+                          >
                             <Command shouldFilter={false}>
                               <CommandInput
                                 placeholder="Search radiology rooms..."
@@ -683,7 +696,9 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                                     >
                                       <Check
                                         className={`mr-2 h-4 w-4 ${
-                                          selectedResourceId === resource.id ? 'opacity-100' : 'opacity-0'
+                                          selectedResourceId === resource.id
+                                            ? 'opacity-100'
+                                            : 'opacity-0'
                                         }`}
                                       />
                                       <span className="truncate">{resource.name}</span>
@@ -712,15 +727,12 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setScheduleDialogOpen(false)}
-                      >
+                      <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>
                         Cancel
                       </Button>
                       <Button onClick={handleSchedule} disabled={isActionLoading}>
                         {scheduleOrder.isPending && (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         )}
                         Schedule
                       </Button>
@@ -732,10 +744,8 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
               {/* Start (ORDERED/SCHEDULED -> IN_PROGRESS) */}
               {(order.status === 'ORDERED' || order.status === 'SCHEDULED') && (
                 <Button onClick={handleStart} disabled={isActionLoading}>
-                  {startOrder.isPending && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
-                  <Play className="h-4 w-4 mr-2" />
+                  {startOrder.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Play className="mr-2 h-4 w-4" />
                   Start Imaging
                 </Button>
               )}
@@ -743,10 +753,8 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
               {/* Complete (IN_PROGRESS -> COMPLETED) */}
               {order.status === 'IN_PROGRESS' && (
                 <Button onClick={handleComplete} disabled={isActionLoading}>
-                  {completeOrder.isPending && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  {completeOrder.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
                   Complete Imaging
                 </Button>
               )}
@@ -756,7 +764,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" disabled={isActionLoading}>
-                      <XCircle className="h-4 w-4 mr-2" />
+                      <XCircle className="mr-2 h-4 w-4" />
                       Cancel Order
                     </Button>
                   </AlertDialogTrigger>
@@ -764,8 +772,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Cancel Imaging Order?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. The order will be marked as
-                        cancelled.
+                        This action cannot be undone. The order will be marked as cancelled.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="py-4">
@@ -784,9 +791,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                         onClick={handleCancel}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
-                        {cancelOrder.isPending && (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        )}
+                        {cancelOrder.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Cancel Order
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -802,7 +807,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
       {(order.status === 'COMPLETED' || order.status === 'REPORTED') && (
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="pb-2 sm:pb-3">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <ImageIcon className="h-5 w-5" />
               Images Available
             </CardTitle>
@@ -816,7 +821,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
             {order.study_instance_uid ? (
               <Link href={`/imaging/studies/${order.study_instance_uid}`}>
                 <Button className="w-full sm:w-auto">
-                  <Eye className="h-4 w-4 mr-2" />
+                  <Eye className="mr-2 h-4 w-4" />
                   View Images
                 </Button>
               </Link>
@@ -831,9 +836,15 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
 
       {/* Radiology Report - shown for COMPLETED or REPORTED orders */}
       {(order.status === 'COMPLETED' || order.status === 'REPORTED') && (
-        <Card className={order.status === 'REPORTED' ? 'border-green-500/20 bg-green-50/50 dark:bg-green-950/20' : ''}>
+        <Card
+          className={
+            order.status === 'REPORTED'
+              ? 'border-green-500/20 bg-green-50/50 dark:bg-green-950/20'
+              : ''
+          }
+        >
           <CardHeader className="pb-2 sm:pb-3">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <FileText className="h-5 w-5" />
               Radiology Report
             </CardTitle>
@@ -849,7 +860,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                 variant={order.status === 'REPORTED' ? 'default' : 'outline'}
                 className="w-full sm:w-auto"
               >
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="mr-2 h-4 w-4" />
                 {order.status === 'REPORTED' ? 'View Report' : 'Create Report'}
               </Button>
             </Link>

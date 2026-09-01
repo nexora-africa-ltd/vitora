@@ -44,7 +44,12 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { theatreApi } from '@/lib/api/theatre';
 import { formatDate } from '@/lib/utils/format';
-import type { CaseSchedulingContext, CaseEquipmentRequirement, SurgeryCaseDetail, SurgicalTeamMember } from '@/lib/types/theatre';
+import type {
+  CaseSchedulingContext,
+  CaseEquipmentRequirement,
+  SurgeryCaseDetail,
+  SurgicalTeamMember,
+} from '@/lib/types/theatre';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
@@ -83,7 +88,7 @@ const THEATRE_QUICK_ACTIONS: AIQuickAction[] = [
     id: 'theatre-anaesthesia-plan',
     label: 'Anaesthesia considerations',
     query:
-      'Based on this patient\'s profile, procedure type, and risk factors, what anaesthesia approach do you recommend? Note any airway concerns, fasting status, and special precautions.',
+      "Based on this patient's profile, procedure type, and risk factors, what anaesthesia approach do you recommend? Note any airway concerns, fasting status, and special precautions.",
     userMessage: '💉 Reviewing anaesthesia considerations...',
   },
   {
@@ -121,46 +126,55 @@ export default function CaseDetailPage() {
   const [equipmentMutationLoading, setEquipmentMutationLoading] = useState(false);
 
   const requestedTab = searchParams.get('tab');
-  const derivedDefaultTab = requestedTab && ['overview', 'pre-op', 'intra-op', 'post-op'].includes(requestedTab)
-    ? requestedTab
-    : ['SCHEDULED', 'PRE_OP'].includes(surgeryCase?.status || '')
-      ? 'pre-op'
-      : ['IN_THEATRE', 'IN_SURGERY'].includes(surgeryCase?.status || '')
-        ? 'intra-op'
-        : surgeryCase?.status === 'IN_PACU'
-          ? 'post-op'
-          : 'overview';
+  const derivedDefaultTab =
+    requestedTab && ['overview', 'pre-op', 'intra-op', 'post-op'].includes(requestedTab)
+      ? requestedTab
+      : ['SCHEDULED', 'PRE_OP'].includes(surgeryCase?.status || '')
+        ? 'pre-op'
+        : ['IN_THEATRE', 'IN_SURGERY'].includes(surgeryCase?.status || '')
+          ? 'intra-op'
+          : surgeryCase?.status === 'IN_PACU'
+            ? 'post-op'
+            : 'overview';
   const [activeTab, setActiveTab] = useState(derivedDefaultTab);
 
   useEffect(() => {
     setActiveTab(derivedDefaultTab);
   }, [derivedDefaultTab]);
 
-  const fetchCase = useCallback(async (showLoading = false) => {
-    if (!caseNumber) return;
-    try {
-      if (showLoading) setLoading(true);
-      const [detail, context] = await Promise.all([
-        theatreApi.getCase(caseNumber),
-        theatreApi.getCaseSchedulingContext(caseNumber).catch(() => null),
-      ]);
-      setSurgeryCase(detail);
-      setSchedulingContext(context);
-      // Fetch equipment list after we have the case ID
-      if (detail?.id) {
-        theatreApi.listCaseEquipment(detail.id).then(setEquipmentList).catch(() => setEquipmentList([]));
+  const fetchCase = useCallback(
+    async (showLoading = false) => {
+      if (!caseNumber) return;
+      try {
+        if (showLoading) setLoading(true);
+        const [detail, context] = await Promise.all([
+          theatreApi.getCase(caseNumber),
+          theatreApi.getCaseSchedulingContext(caseNumber).catch(() => null),
+        ]);
+        setSurgeryCase(detail);
+        setSchedulingContext(context);
+        // Fetch equipment list after we have the case ID
+        if (detail?.id) {
+          theatreApi
+            .listCaseEquipment(detail.id)
+            .then(setEquipmentList)
+            .catch(() => setEquipmentList([]));
+        }
+      } catch {
+        // not found
+        setSurgeryCase(null);
+        setSchedulingContext(null);
+        setEquipmentList([]);
+      } finally {
+        if (showLoading) setLoading(false);
       }
-    } catch {
-      // not found
-      setSurgeryCase(null);
-      setSchedulingContext(null);
-      setEquipmentList([]);
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }, [caseNumber]);
+    },
+    [caseNumber]
+  );
 
-  useEffect(() => { fetchCase(true); }, [fetchCase]);
+  useEffect(() => {
+    fetchCase(true);
+  }, [fetchCase]);
 
   // =========================================================================
   // AI Chat Widget — theatre-aware context wiring
@@ -198,17 +212,23 @@ export default function CaseDetailPage() {
           `Anesthesia: ${surgeryCase.anesthesia_type}`,
           surgeryCase.laterality !== 'NA' ? `Laterality: ${surgeryCase.laterality}` : '',
           surgeryCase.procedure_notes ? `Notes: ${surgeryCase.procedure_notes}` : '',
-        ].filter(Boolean).join('. '),
-      },
+        ]
+          .filter(Boolean)
+          .join('. '),
+      }
     );
 
-    return () => { setEncounterAwareContext(null, null); };
+    return () => {
+      setEncounterAwareContext(null, null);
+    };
   }, [surgeryCase, setEncounterAwareContext]);
 
   useEffect(() => {
     if (!setQuickActions) return;
     setQuickActions(THEATRE_QUICK_ACTIONS);
-    return () => { setQuickActions([]); };
+    return () => {
+      setQuickActions([]);
+    };
   }, [setQuickActions]);
 
   const runAction = async (action: string) => {
@@ -262,7 +282,11 @@ export default function CaseDetailPage() {
     }
   };
 
-  const handleAssignTeamMember = async (data: { staffUserId: number; role: string; notes: string }) => {
+  const handleAssignTeamMember = async (data: {
+    staffUserId: number;
+    role: string;
+    notes: string;
+  }) => {
     if (!surgeryCase) return;
     try {
       setTeamMutationLoading(true);
@@ -278,7 +302,10 @@ export default function CaseDetailPage() {
       setAssignmentDialog(false);
       await fetchCase();
     } catch (error) {
-      const message = getTeamAssignmentErrorMessage(error, 'The team member could not be assigned.');
+      const message = getTeamAssignmentErrorMessage(
+        error,
+        'The team member could not be assigned.'
+      );
       toast({
         title: 'Assignment failed',
         description: message,
@@ -310,13 +337,18 @@ export default function CaseDetailPage() {
     }
   };
 
-  const handleAddEquipment = async (data: import('@/lib/types/theatre').CaseEquipmentCreateData) => {
+  const handleAddEquipment = async (
+    data: import('@/lib/types/theatre').CaseEquipmentCreateData
+  ) => {
     if (!surgeryCase) return;
     try {
       setEquipmentMutationLoading(true);
       await theatreApi.addCaseEquipment(surgeryCase.id, data);
       setEquipmentDialog(false);
-      toast({ title: 'Equipment added', description: 'Equipment requirement has been added to the case.' });
+      toast({
+        title: 'Equipment added',
+        description: 'Equipment requirement has been added to the case.',
+      });
       await fetchCase();
     } catch (error) {
       toast({
@@ -364,10 +396,12 @@ export default function CaseDetailPage() {
 
   if (!surgeryCase) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 sm:py-24 gap-4">
+      <div className="flex flex-col items-center justify-center gap-4 py-16 sm:py-24">
         <AlertTriangle className="h-10 w-10 text-muted-foreground/50" />
-        <p className="text-muted-foreground text-sm">Case not found.</p>
-        <Button variant="outline" size="sm" onClick={() => router.push('/theatre/cases')}>View All Cases</Button>
+        <p className="text-sm text-muted-foreground">Case not found.</p>
+        <Button variant="outline" size="sm" onClick={() => router.push('/theatre/cases')}>
+          View All Cases
+        </Button>
       </div>
     );
   }
@@ -391,19 +425,25 @@ export default function CaseDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {surgeryCase.patient_name}
             <span className="text-muted-foreground"> &middot; {surgeryCase.patient_mrn}</span>
           </p>
-          <p className="text-sm truncate">{surgeryCase.primary_procedure_name}</p>
+          <p className="truncate text-sm">{surgeryCase.primary_procedure_name}</p>
           <p className="text-xs text-muted-foreground">
-            {surgeryCase.theatre_name} &middot; {formatDate(surgeryCase.scheduled_date)} {surgeryCase.scheduled_start_time?.slice(0, 5)}
-            {surgeryCase.estimated_duration_minutes ? <> &middot; {surgeryCase.estimated_duration_minutes}min est.</> : ''}
+            {surgeryCase.theatre_name} &middot; {formatDate(surgeryCase.scheduled_date)}{' '}
+            {surgeryCase.scheduled_start_time?.slice(0, 5)}
+            {surgeryCase.estimated_duration_minutes ? (
+              <> &middot; {surgeryCase.estimated_duration_minutes}min est.</>
+            ) : (
+              ''
+            )}
             {surgeryCase.encounter != null ? (
               <>
-                {' '}&middot;{' '}
+                {' '}
+                &middot;{' '}
                 <Link
                   href={`/encounters/${surgeryCase.encounter}`}
                   className="inline-flex items-center gap-1 text-blue-700 underline decoration-blue-700/40 hover:decoration-blue-700 dark:text-blue-400 dark:decoration-blue-400/40 dark:hover:decoration-blue-400"
@@ -414,7 +454,8 @@ export default function CaseDetailPage() {
               </>
             ) : (
               <>
-                {' '}&middot;{' '}
+                {' '}
+                &middot;{' '}
                 <button
                   type="button"
                   className="text-primary hover:underline"
@@ -423,7 +464,11 @@ export default function CaseDetailPage() {
                     try {
                       setActionLoading(true);
                       await theatreApi.linkEncounter(surgeryCase.case_number);
-                      toast({ title: 'Encounter linked', description: 'A procedure encounter has been created and linked to this case.' });
+                      toast({
+                        title: 'Encounter linked',
+                        description:
+                          'A procedure encounter has been created and linked to this case.',
+                      });
                       await fetchCase();
                     } catch {
                       toast({ title: 'Failed to link encounter', variant: 'destructive' });
@@ -438,7 +483,7 @@ export default function CaseDetailPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+        <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
           <TheatreCasePriorityBadge priority={surgeryCase.priority} hideElective />
           <TheatreCaseStatusBadge status={surgeryCase.status} />
         </div>
@@ -448,14 +493,22 @@ export default function CaseDetailPage() {
       {!isTerminal && (
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           {canCancel && (
-            <Button variant="destructive" onClick={() => setCancelDialog(true)} disabled={actionLoading}>
-              <Ban className="h-4 w-4 mr-2" />
+            <Button
+              variant="destructive"
+              onClick={() => setCancelDialog(true)}
+              disabled={actionLoading}
+            >
+              <Ban className="mr-2 h-4 w-4" />
               Cancel Case
             </Button>
           )}
           {nextStep && (
             <Button onClick={() => runAction(nextStep.action)} disabled={actionLoading}>
-              {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <nextStep.icon className="h-4 w-4 mr-2" />}
+              {actionLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <nextStep.icon className="mr-2 h-4 w-4" />
+              )}
               {nextStep.label}
             </Button>
           )}
@@ -473,7 +526,11 @@ export default function CaseDetailPage() {
             params.set('tab', value);
           }
           const query = params.toString();
-          router.replace(query ? `/theatre/cases/${surgeryCase.case_number}?${query}` : `/theatre/cases/${surgeryCase.case_number}`);
+          router.replace(
+            query
+              ? `/theatre/cases/${surgeryCase.case_number}?${query}`
+              : `/theatre/cases/${surgeryCase.case_number}`
+          );
         }}
       >
         <TabsList className="grid w-full grid-cols-4 rounded-lg border bg-muted/30 p-1">
@@ -503,7 +560,7 @@ export default function CaseDetailPage() {
                 aria-hidden="true"
               />
               <CardHeader className="relative pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <Clock className="h-4 w-4" /> Scheduling
                   <HelpPopover content="Shows how this case maps to the scheduling system: theatre resource, slot availability, and team shift coverage status." />
                 </CardTitle>
@@ -511,7 +568,11 @@ export default function CaseDetailPage() {
               <CardContent className="relative space-y-2 text-sm">
                 <DetailRow
                   label="Slot Source"
-                  value={schedulingContext?.slot_validation.source === 'scheduling_resource' ? 'Scheduling resource' : 'Theatre hours'}
+                  value={
+                    schedulingContext?.slot_validation.source === 'scheduling_resource'
+                      ? 'Scheduling resource'
+                      : 'Theatre hours'
+                  }
                 />
                 <DetailRow
                   label="Resource"
@@ -519,7 +580,11 @@ export default function CaseDetailPage() {
                 />
                 <DetailRow
                   label="Schedule"
-                  value={schedulingContext?.theatre.has_resource_schedule ? 'Configured' : 'Not configured'}
+                  value={
+                    schedulingContext?.theatre.has_resource_schedule
+                      ? 'Configured'
+                      : 'Not configured'
+                  }
                 />
                 <DetailRow
                   label="Coverage"
@@ -530,7 +595,7 @@ export default function CaseDetailPage() {
                   }
                 />
                 {schedulingContext && !schedulingContext.slot_validation.available && (
-                  <div className="rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100 text-xs sm:text-sm">
+                  <div className="rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-100 sm:text-sm">
                     <p className="font-medium">Scheduling issue</p>
                     <p className="mt-1">{schedulingContext.slot_validation.reason}</p>
                   </div>
@@ -544,7 +609,7 @@ export default function CaseDetailPage() {
                 aria-hidden="true"
               />
               <CardHeader className="relative pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <Activity className="h-4 w-4" /> Clinical Details
                   <HelpPopover content="Diagnosis, ASA classification, anesthesia type, laterality, and procedure notes from the requesting surgeon." />
                 </CardTitle>
@@ -570,7 +635,7 @@ export default function CaseDetailPage() {
                 aria-hidden="true"
               />
               <CardHeader className="relative pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <FileText className="h-4 w-4" /> Billing
                   <HelpPopover content="Total theatre charges and billable status for this surgery case." />
                 </CardTitle>
@@ -587,21 +652,30 @@ export default function CaseDetailPage() {
                 aria-hidden="true"
               />
               <CardHeader className="relative pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <Users className="h-4 w-4" /> Surgical Team
                   <HelpPopover content="Assigned team members with roles and shift coverage status. Add or remove members when you have theatre management permissions." />
-                  <Badge variant="secondary" className="text-xs ml-auto shrink-0">{surgeryCase.team_members.length}</Badge>
+                  <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
+                    {surgeryCase.team_members.length}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="relative space-y-3">
                 {canManageTeam && (
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-dashed p-3">
+                  <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">Assign team members</p>
-                      <p className="text-xs text-muted-foreground">Add surgeons, anesthesia staff, and theatre nurses.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Add surgeons, anesthesia staff, and theatre nurses.
+                      </p>
                     </div>
-                    <Button type="button" size="sm" onClick={() => setAssignmentDialog(true)} className="w-full sm:w-auto">
-                      <Plus className="h-4 w-4 mr-2" />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setAssignmentDialog(true)}
+                      className="w-full sm:w-auto"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
                       Assign
                     </Button>
                   </div>
@@ -610,7 +684,7 @@ export default function CaseDetailPage() {
                   <p className="text-sm text-muted-foreground">No team members assigned yet.</p>
                 ) : (
                   <div className="space-y-2">
-                    {surgeryCase.team_members.map(m => (
+                    {surgeryCase.team_members.map((m) => (
                       <TeamMemberRow
                         key={m.id}
                         member={m}
@@ -632,29 +706,40 @@ export default function CaseDetailPage() {
                 aria-hidden="true"
               />
               <CardHeader className="relative pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <Wrench className="h-4 w-4" /> Equipment
                   <HelpPopover content="Surgical equipment assigned to this case. Shows confirmation status and scheduling conflicts." />
-                  <Badge variant="secondary" className="text-xs ml-auto shrink-0">{equipmentList.length}</Badge>
+                  <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
+                    {equipmentList.length}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="relative space-y-3">
                 {canManageTeam && (
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-dashed p-3">
+                  <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">Assign equipment</p>
-                      <p className="text-xs text-muted-foreground">Add required surgical equipment for this case.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Add required surgical equipment for this case.
+                      </p>
                     </div>
-                    <Button type="button" size="sm" onClick={() => setEquipmentDialog(true)} className="w-full sm:w-auto">
-                      <Plus className="h-4 w-4 mr-2" />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setEquipmentDialog(true)}
+                      className="w-full sm:w-auto"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
                       Add
                     </Button>
                   </div>
                 )}
                 {schedulingContext?.equipment?.has_conflicts && (
-                  <div className="rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100 text-xs sm:text-sm">
+                  <div className="rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-100 sm:text-sm">
                     <p className="font-medium">Equipment conflicts detected</p>
-                    <p className="mt-0.5">Some equipment is double-booked during this case&apos;s time window.</p>
+                    <p className="mt-0.5">
+                      Some equipment is double-booked during this case&apos;s time window.
+                    </p>
                   </div>
                 )}
                 {equipmentList.length === 0 ? (
@@ -665,7 +750,11 @@ export default function CaseDetailPage() {
                       <EquipmentRow
                         key={eq.id}
                         equipment={eq}
-                        hasConflict={schedulingContext?.equipment?.items?.find(i => i.requirement_id === eq.id)?.has_conflict ?? false}
+                        hasConflict={
+                          schedulingContext?.equipment?.items?.find(
+                            (i) => i.requirement_id === eq.id
+                          )?.has_conflict ?? false
+                        }
                         canManage={canManageTeam}
                         onRemove={() => handleRemoveEquipment(eq.id)}
                         removing={equipmentMutationLoading}
@@ -682,7 +771,7 @@ export default function CaseDetailPage() {
                 aria-hidden="true"
               />
               <CardHeader className="relative pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <ClipboardCheck className="h-4 w-4" /> Documentation
                   <HelpPopover content="Tracks completion of WHO checklist, anesthesia record, operative note, and PACU record across the surgical workflow." />
                 </CardTitle>
@@ -715,16 +804,18 @@ export default function CaseDetailPage() {
         <Card className="border-destructive/50">
           <CardContent className="p-3 sm:p-4">
             <p className="text-sm font-medium text-destructive">Cancellation Reason</p>
-            <p className="text-sm mt-1">{surgeryCase.cancellation_reason}</p>
+            <p className="mt-1 text-sm">{surgeryCase.cancellation_reason}</p>
           </CardContent>
         </Card>
       )}
 
       {surgeryCase.status === 'POSTPONED' && surgeryCase.postponed_to_date && (
         <Card className="border-amber-500/50">
-          <CardContent className="p-3 sm:p-4 flex items-center gap-2">
-            <CalendarX2 className="h-4 w-4 text-amber-600 shrink-0" />
-            <p className="text-sm">Postponed to <strong>{surgeryCase.postponed_to_date}</strong></p>
+          <CardContent className="flex items-center gap-2 p-3 sm:p-4">
+            <CalendarX2 className="h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-sm">
+              Postponed to <strong>{surgeryCase.postponed_to_date}</strong>
+            </p>
           </CardContent>
         </Card>
       )}
@@ -741,13 +832,24 @@ export default function CaseDetailPage() {
           <Textarea
             placeholder="Reason for cancellation..."
             value={cancelReason}
-            onChange={e => setCancelReason(e.target.value)}
+            onChange={(e) => setCancelReason(e.target.value)}
             rows={3}
           />
           <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button variant="outline" onClick={() => setCancelDialog(false)} className="w-full sm:w-auto">Keep Case</Button>
-            <Button variant="destructive" onClick={handleCancel} disabled={!cancelReason.trim() || actionLoading} className="w-full sm:w-auto">
-              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button
+              variant="outline"
+              onClick={() => setCancelDialog(false)}
+              className="w-full sm:w-auto"
+            >
+              Keep Case
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={!cancelReason.trim() || actionLoading}
+              className="w-full sm:w-auto"
+            >
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirm Cancel
             </Button>
           </DialogFooter>
@@ -768,7 +870,8 @@ export default function CaseDetailPage() {
         defaultStartTime={surgeryCase.scheduled_start_time?.slice(0, 5) || '08:00'}
         defaultEndTime={(() => {
           const parts = (surgeryCase.scheduled_start_time || '08:00').split(':').map(Number);
-          const totalMin = (parts[0] ?? 8) * 60 + (parts[1] ?? 0) + (surgeryCase.estimated_duration_minutes || 60);
+          const totalMin =
+            (parts[0] ?? 8) * 60 + (parts[1] ?? 0) + (surgeryCase.estimated_duration_minutes || 60);
           return `${String(Math.floor(totalMin / 60) % 24).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`;
         })()}
         onSubmit={handleAddEquipment}
@@ -781,8 +884,8 @@ export default function CaseDetailPage() {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-2 sm:gap-4">
-      <span className="text-muted-foreground shrink-0 text-xs sm:text-sm">{label}</span>
-      <span className="text-right truncate text-xs sm:text-sm">{value}</span>
+      <span className="shrink-0 text-xs text-muted-foreground sm:text-sm">{label}</span>
+      <span className="truncate text-right text-xs sm:text-sm">{value}</span>
     </div>
   );
 }
@@ -801,21 +904,23 @@ function TeamMemberRow({
   removing: boolean;
 }) {
   return (
-    <div className="flex items-start sm:items-center justify-between gap-2 text-sm">
+    <div className="flex items-start justify-between gap-2 text-sm sm:items-center">
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{member.staff_name}</p>
-        <div className="flex flex-wrap items-center gap-1.5 mt-1">
-          <Badge variant="outline" className="text-xs shrink-0 w-fit">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <Badge variant="outline" className="w-fit shrink-0 text-xs">
             {member.role.replace(/_/g, ' ')}
           </Badge>
           {coverage && (
-            <Badge className={`text-xs shrink-0 w-fit ${coverage.has_shift_coverage ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'}`}>
+            <Badge
+              className={`w-fit shrink-0 text-xs ${coverage.has_shift_coverage ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'}`}
+            >
               {coverage.has_shift_coverage ? 'Covered' : 'Uncovered'}
             </Badge>
           )}
         </div>
         {coverage && !coverage.has_shift_coverage && (
-          <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">{coverage.message}</p>
+          <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">{coverage.message}</p>
         )}
       </div>
       {canManageTeam && (
@@ -823,7 +928,7 @@ function TeamMemberRow({
           type="button"
           size="icon"
           variant="ghost"
-          className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
           onClick={onRemove}
           disabled={removing}
           aria-label={`Remove ${member.staff_name} from team`}
@@ -837,12 +942,16 @@ function TeamMemberRow({
 
 function DocStatus({ label, done }: { label: string; done: boolean }) {
   return (
-    <div className="flex items-center justify-between text-sm gap-2">
+    <div className="flex items-center justify-between gap-2 text-sm">
       <span className="truncate">{label}</span>
       {done ? (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs shrink-0 w-fit">Complete</Badge>
+        <Badge className="w-fit shrink-0 bg-green-100 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
+          Complete
+        </Badge>
       ) : (
-        <Badge variant="outline" className="text-xs text-muted-foreground shrink-0 w-fit">Pending</Badge>
+        <Badge variant="outline" className="w-fit shrink-0 text-xs text-muted-foreground">
+          Pending
+        </Badge>
       )}
     </div>
   );
@@ -865,30 +974,40 @@ function EquipmentRow({
   const qty = equipment.quantity_required ?? 1;
   const timeRange = `${equipment.reserved_from?.slice(0, 5)} – ${equipment.reserved_until?.slice(0, 5)}`;
   return (
-    <div className="flex items-start sm:items-center justify-between gap-2 text-sm">
+    <div className="flex items-start justify-between gap-2 text-sm sm:items-center">
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">
           {name}
-          {qty > 1 && <span className="text-muted-foreground ml-1">×{qty}</span>}
+          {qty > 1 && <span className="ml-1 text-muted-foreground">×{qty}</span>}
         </p>
-        <div className="flex flex-wrap items-center gap-1.5 mt-1">
-          <Badge variant="outline" className="text-xs shrink-0 w-fit">{timeRange}</Badge>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <Badge variant="outline" className="w-fit shrink-0 text-xs">
+            {timeRange}
+          </Badge>
           {equipment.equipment_type_category && (
-            <Badge variant="secondary" className="text-xs shrink-0 w-fit">
+            <Badge variant="secondary" className="w-fit shrink-0 text-xs">
               {equipment.equipment_type_category.replace(/_/g, ' ')}
             </Badge>
           )}
           {equipment.is_confirmed ? (
-            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs shrink-0 w-fit">Confirmed</Badge>
+            <Badge className="w-fit shrink-0 bg-green-100 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
+              Confirmed
+            </Badge>
           ) : (
-            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 text-xs shrink-0 w-fit">Pending</Badge>
+            <Badge className="w-fit shrink-0 bg-amber-100 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-300">
+              Pending
+            </Badge>
           )}
           {hasConflict && (
-            <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 text-xs shrink-0 w-fit">Conflict</Badge>
+            <Badge className="w-fit shrink-0 bg-red-100 text-xs text-red-800 dark:bg-red-900 dark:text-red-300">
+              Conflict
+            </Badge>
           )}
         </div>
         {equipment.resource_code && (
-          <p className="text-xs text-muted-foreground mt-0.5 font-mono">{equipment.resource_code}</p>
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+            {equipment.resource_code}
+          </p>
         )}
       </div>
       {canManage && (
@@ -896,7 +1015,7 @@ function EquipmentRow({
           type="button"
           size="icon"
           variant="ghost"
-          className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
           onClick={onRemove}
           disabled={removing}
           aria-label={`Remove ${name}`}

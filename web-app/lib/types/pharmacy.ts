@@ -76,12 +76,7 @@ export type AlertType =
 export type AlertSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 // Prescription status
-export type PrescriptionStatus =
-  | 'PENDING'
-  | 'PARTIAL'
-  | 'DISPENSED'
-  | 'CANCELLED'
-  | 'EXPIRED';
+export type PrescriptionStatus = 'PENDING' | 'PARTIAL' | 'DISPENSED' | 'CANCELLED' | 'EXPIRED';
 
 // Dispensing type: where the prescription is filled
 export type DispensingType = 'INTERNAL' | 'EXTERNAL';
@@ -599,7 +594,7 @@ export interface PrescriptionCreateData {
   patient: number;
   encounter?: number;
   admission?: number;
-  valid_until?: string;  // ISO date string, defaults to 30 days from now
+  valid_until?: string; // ISO date string, defaults to 30 days from now
   dispensing_type?: DispensingType;
   is_discharge_medication?: boolean;
   clinical_notes?: string;

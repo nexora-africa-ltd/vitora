@@ -196,13 +196,7 @@ export function useSurveillanceWebSocket(
   );
 
   // WebSocket connection
-  const {
-    isConnected,
-    connectionState,
-    reconnectAttempts,
-    reconnect,
-    send,
-  } = useWebSocket(wsUrl, {
+  const { isConnected, connectionState, reconnectAttempts, reconnect, send } = useWebSocket(wsUrl, {
     onMessage: handleMessage,
     onConnect: () => {
       onConnectionChangeRef.current?.('connected');

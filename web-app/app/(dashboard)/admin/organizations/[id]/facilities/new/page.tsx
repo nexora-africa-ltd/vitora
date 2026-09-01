@@ -169,7 +169,7 @@ export default function NewFacilityPage() {
         {/* Identity */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Building2 className="h-4 w-4 text-muted-foreground" />
               Facility Details
             </CardTitle>
@@ -193,7 +193,9 @@ export default function NewFacilityPage() {
                 onChange={(e) => handleChange('mfl_code', e.target.value)}
                 placeholder="e.g. 12345"
               />
-              {formErrors.mfl_code && <p className="text-xs text-destructive">{formErrors.mfl_code}</p>}
+              {formErrors.mfl_code && (
+                <p className="text-xs text-destructive">{formErrors.mfl_code}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>KEPH Level *</Label>
@@ -211,7 +213,9 @@ export default function NewFacilityPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {FACILITY_LEVEL_OPTIONS.map((l) => (
-                    <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                    <SelectItem key={l.value} value={l.value}>
+                      {l.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -232,24 +236,33 @@ export default function NewFacilityPage() {
                 <SelectContent>
                   <SelectItem value="__NONE__">None</SelectItem>
                   {FACILITY_LEVEL_SUBTYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Ownership *</Label>
-              <Select value={formData.ownership} onValueChange={(v) => handleChange('ownership', v)}>
+              <Select
+                value={formData.ownership}
+                onValueChange={(v) => handleChange('ownership', v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select ownership" />
                 </SelectTrigger>
                 <SelectContent>
                   {OWNERSHIPS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {formErrors.ownership && <p className="text-xs text-destructive">{formErrors.ownership}</p>}
+              {formErrors.ownership && (
+                <p className="text-xs text-destructive">{formErrors.ownership}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="branch_code">Branch Code</Label>
@@ -273,7 +286,7 @@ export default function NewFacilityPage() {
         {/* Location */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               Location
             </CardTitle>
@@ -295,7 +308,9 @@ export default function NewFacilityPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {(counties ?? []).map((c) => (
-                    <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id.toString()}>
+                      {c.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -312,15 +327,21 @@ export default function NewFacilityPage() {
                 disabled={!countyId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={countyId ? 'Select sub-county' : 'Select county first'} />
+                  <SelectValue
+                    placeholder={countyId ? 'Select sub-county' : 'Select county first'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {(subCounties ?? []).map((sc) => (
-                    <SelectItem key={sc.id} value={sc.id.toString()}>{sc.name}</SelectItem>
+                    <SelectItem key={sc.id} value={sc.id.toString()}>
+                      {sc.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {formErrors.sub_county && <p className="text-xs text-destructive">{formErrors.sub_county}</p>}
+              {formErrors.sub_county && (
+                <p className="text-xs text-destructive">{formErrors.sub_county}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Ward</Label>
@@ -330,11 +351,15 @@ export default function NewFacilityPage() {
                 disabled={!subCountyId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={subCountyId ? 'Select ward' : 'Select sub-county first'} />
+                  <SelectValue
+                    placeholder={subCountyId ? 'Select ward' : 'Select sub-county first'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {(wards ?? []).map((w) => (
-                    <SelectItem key={w.id} value={w.id.toString()}>{w.name}</SelectItem>
+                    <SelectItem key={w.id} value={w.id.toString()}>
+                      {w.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -345,7 +370,7 @@ export default function NewFacilityPage() {
         {/* SHA */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Shield className="h-4 w-4 text-muted-foreground" />
               SHA Integration
             </CardTitle>

@@ -25,11 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import type { CapitationValidationResult } from '@/lib/api/sha';
-import type {
-  EligibilityState,
-  EligibilityStatus,
-  SchemeCategory,
-} from '@/lib/types/sha';
+import type { EligibilityState, EligibilityStatus, SchemeCategory } from '@/lib/types/sha';
 import { format, parseISO, isPast } from 'date-fns';
 import { extractSHAErrorInfo } from '@/lib/sha/error-utils';
 
@@ -85,7 +81,10 @@ function hasEligibilityServiceError(payload: {
   upstream_status?: number | null;
 }): boolean {
   return !!(
-    payload.error_code || payload.error_title || payload.error_detail || payload.upstream_status != null
+    payload.error_code ||
+    payload.error_title ||
+    payload.error_detail ||
+    payload.upstream_status != null
   );
 }
 
@@ -107,7 +106,7 @@ function EligibilityBannerSkeleton({ compact }: { compact?: boolean }) {
     <Card className="p-4">
       <div className="flex items-center gap-3">
         <Skeleton className="h-10 w-10 rounded-full" />
-        <div className="space-y-2 flex-1">
+        <div className="flex-1 space-y-2">
           <Skeleton className="h-4 w-48" />
           <Skeleton className="h-3 w-32" />
         </div>
@@ -121,13 +120,7 @@ function EligibilityBannerSkeleton({ compact }: { compact?: boolean }) {
 // Status Icon Component
 // ============================================================================
 
-function StatusIcon({
-  status,
-  className
-}: {
-  status: EligibilityStatus;
-  className?: string;
-}) {
+function StatusIcon({ status, className }: { status: EligibilityStatus; className?: string }) {
   const iconClass = cn('h-5 w-5', className);
 
   switch (status) {
@@ -142,7 +135,7 @@ function StatusIcon({
     case 'pending':
       return <Clock className={cn(iconClass, 'text-warning-foreground')} />;
     case 'checking':
-      return <Loader2 className={cn(iconClass, 'text-muted-foreground animate-spin')} />;
+      return <Loader2 className={cn(iconClass, 'animate-spin text-muted-foreground')} />;
     case 'error':
       return <AlertCircle className={cn(iconClass, 'text-destructive')} />;
     default:
@@ -169,16 +162,18 @@ function CompactEligibilityBanner({
     <div className="flex items-center gap-2">
       <StatusIcon status={status} />
 
-      <span className={cn(
-        'text-sm font-medium',
-        status === 'eligible' && 'text-success',
-        status === 'eligible_with_caveats' && 'text-warning-foreground',
-        status === 'ineligible' && 'text-destructive',
-        status === 'expired' && 'text-warning-foreground',
-        status === 'pending' && 'text-warning-foreground',
-        status === 'error' && 'text-destructive',
-        status === 'checking' && 'text-muted-foreground',
-      )}>
+      <span
+        className={cn(
+          'text-sm font-medium',
+          status === 'eligible' && 'text-success',
+          status === 'eligible_with_caveats' && 'text-warning-foreground',
+          status === 'ineligible' && 'text-destructive',
+          status === 'expired' && 'text-warning-foreground',
+          status === 'pending' && 'text-warning-foreground',
+          status === 'error' && 'text-destructive',
+          status === 'checking' && 'text-muted-foreground'
+        )}
+      >
         {status === 'eligible' && 'SHA Eligible'}
         {status === 'eligible_with_caveats' && 'Coverage Mismatch'}
         {status === 'ineligible' && 'Not Eligible'}
@@ -195,14 +190,17 @@ function CompactEligibilityBanner({
       )}
 
       {status === 'eligible' && copayPercentage === 0 && (
-        <Badge variant="secondary" className="text-xs bg-success/10 text-success">
+        <Badge variant="secondary" className="bg-success/10 text-xs text-success">
           Full Coverage
         </Badge>
       )}
 
       {/* PFMS/Vulnerable badge in compact view */}
       {member?.is_pfms_eligible && (
-        <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">
+        <Badge
+          variant="secondary"
+          className="bg-violet-100 text-xs text-violet-800 dark:bg-violet-900/30 dark:text-violet-300"
+        >
           {member.pfms_category_display || member.pfms_category || 'PFMS'}
         </Badge>
       )}
@@ -213,7 +211,7 @@ function CompactEligibilityBanner({
         size="sm"
         onClick={onRefresh}
         disabled={isRefreshing}
-        className="h-6 w-6 p-0 ml-1"
+        className="ml-1 h-6 w-6 p-0"
       >
         <RefreshCw className={cn('h-3 w-3', isRefreshing && 'animate-spin')} />
       </Button>
@@ -236,7 +234,19 @@ function FullEligibilityBanner({
   isRefreshing: boolean;
   capitationWarning?: CapitationValidationResult | null;
 }) {
-  const { status, copayPercentage, coverageEndDate, schemeCategory, memberName, checkedAt, errorMessage, member, coverageCaveat, eligibleSchemes, billableSchemes } = eligibility;
+  const {
+    status,
+    copayPercentage,
+    coverageEndDate,
+    schemeCategory,
+    memberName,
+    checkedAt,
+    errorMessage,
+    member,
+    coverageCaveat,
+    eligibleSchemes,
+    billableSchemes,
+  } = eligibility;
   const copay = typeof copayPercentage === 'number' ? copayPercentage : 0;
 
   const getBannerStyles = () => {
@@ -259,36 +269,40 @@ function FullEligibilityBanner({
   };
 
   return (
-    <Card className={cn('p-4 border-2', getBannerStyles())}>
+    <Card className={cn('border-2 p-4', getBannerStyles())}>
       <div className="flex items-start gap-4">
         {/* Status Icon */}
-        <div className={cn(
-          'flex items-center justify-center w-12 h-12 rounded-full',
-          status === 'eligible' && 'bg-success/20',
-          status === 'eligible_with_caveats' && 'bg-warning/20',
-          status === 'ineligible' && 'bg-destructive/20',
-          status === 'expired' && 'bg-warning/20',
-          status === 'pending' && 'bg-warning/20',
-          status === 'error' && 'bg-destructive/20',
-          status === 'checking' && 'bg-muted',
-        )}>
+        <div
+          className={cn(
+            'flex h-12 w-12 items-center justify-center rounded-full',
+            status === 'eligible' && 'bg-success/20',
+            status === 'eligible_with_caveats' && 'bg-warning/20',
+            status === 'ineligible' && 'bg-destructive/20',
+            status === 'expired' && 'bg-warning/20',
+            status === 'pending' && 'bg-warning/20',
+            status === 'error' && 'bg-destructive/20',
+            status === 'checking' && 'bg-muted'
+          )}
+        >
           <StatusIcon status={status} className="h-6 w-6" />
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {/* Status Title */}
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className={cn(
-              'font-semibold text-lg',
-              status === 'eligible' && 'text-success',
-              status === 'eligible_with_caveats' && 'text-warning-foreground',
-              status === 'ineligible' && 'text-destructive',
-              status === 'expired' && 'text-warning-foreground',
-              status === 'pending' && 'text-warning-foreground',
-              status === 'error' && 'text-destructive',
-              status === 'checking' && 'text-muted-foreground',
-            )}>
+          <div className="mb-1 flex items-center gap-2">
+            <h4
+              className={cn(
+                'text-lg font-semibold',
+                status === 'eligible' && 'text-success',
+                status === 'eligible_with_caveats' && 'text-warning-foreground',
+                status === 'ineligible' && 'text-destructive',
+                status === 'expired' && 'text-warning-foreground',
+                status === 'pending' && 'text-warning-foreground',
+                status === 'error' && 'text-destructive',
+                status === 'checking' && 'text-muted-foreground'
+              )}
+            >
               {status === 'eligible' && 'SHA ELIGIBLE'}
               {status === 'eligible_with_caveats' && 'COVERAGE MISMATCH AT THIS FACILITY'}
               {status === 'ineligible' && 'NOT SHA ELIGIBLE'}
@@ -305,16 +319,23 @@ function FullEligibilityBanner({
           {status === 'eligible_with_caveats' && (
             <div className="space-y-1 text-sm text-warning-foreground">
               <p>
-                {coverageCaveat || 'Member coverage does not match this facility’s billable schemes.'}
+                {coverageCaveat ||
+                  'Member coverage does not match this facility’s billable schemes.'}
               </p>
-              {(eligibleSchemes?.length || billableSchemes?.length) ? (
+              {eligibleSchemes?.length || billableSchemes?.length ? (
                 <p className="text-xs">
                   {eligibleSchemes?.length ? (
-                    <><span className="font-medium">Member cover:</span> {eligibleSchemes.join(', ')}</>
+                    <>
+                      <span className="font-medium">Member cover:</span>{' '}
+                      {eligibleSchemes.join(', ')}
+                    </>
                   ) : null}
                   {eligibleSchemes?.length && billableSchemes?.length ? ' · ' : ''}
                   {billableSchemes?.length ? (
-                    <><span className="font-medium">Facility bills:</span> {billableSchemes.join(', ')}</>
+                    <>
+                      <span className="font-medium">Facility bills:</span>{' '}
+                      {billableSchemes.join(', ')}
+                    </>
                   ) : null}
                 </p>
               ) : null}
@@ -326,10 +347,13 @@ function FullEligibilityBanner({
               {/* PFMS Eligibility — show even when scheme mismatch */}
               {member?.is_pfms_eligible && (
                 <div className="mt-1.5">
-                  <Badge variant="secondary" className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">
+                  <Badge
+                    variant="secondary"
+                    className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300"
+                  >
                     🏛️ PFMS: {member.pfms_category_display || member.pfms_category}
                   </Badge>
-                  <span className="text-xs text-muted-foreground ml-2">
+                  <span className="ml-2 text-xs text-muted-foreground">
                     Government subsidy may apply — use PFMS tariffs
                   </span>
                 </div>
@@ -342,7 +366,8 @@ function FullEligibilityBanner({
             <div className="space-y-1 text-sm text-success">
               {coverageEndDate && (
                 <p>
-                  <span className="font-medium">Coverage:</span> Active until {formatCoverageDate(coverageEndDate)}
+                  <span className="font-medium">Coverage:</span> Active until{' '}
+                  {formatCoverageDate(coverageEndDate)}
                 </p>
               )}
               <p>
@@ -358,10 +383,13 @@ function FullEligibilityBanner({
               {/* PFMS Eligibility Badge (SHA Integration Checklist #13) */}
               {member?.is_pfms_eligible && (
                 <div className="mt-1.5">
-                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                  <Badge
+                    variant="secondary"
+                    className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                  >
                     🏛️ PFMS Eligible: {member.pfms_category_display || member.pfms_category}
                   </Badge>
-                  <span className="text-xs text-muted-foreground ml-2">
+                  <span className="ml-2 text-xs text-muted-foreground">
                     (Government Subsidy Coverage)
                   </span>
                 </div>
@@ -377,8 +405,8 @@ function FullEligibilityBanner({
 
           {status === 'expired' && coverageEndDate && (
             <p className="text-sm text-warning-foreground">
-              Coverage expired on {formatCoverageDate(coverageEndDate)}.
-              Cash payment required or coverage renewal needed.
+              Coverage expired on {formatCoverageDate(coverageEndDate)}. Cash payment required or
+              coverage renewal needed.
             </p>
           )}
 
@@ -389,16 +417,23 @@ function FullEligibilityBanner({
           )}
 
           {status === 'error' && (
-            <div className="text-sm text-destructive space-y-1">
-              <p className="font-medium">{eligibility.errorTitle || 'Unable to verify SHA coverage'}</p>
-              <p>{errorMessage || 'Unable to verify SHA coverage. You can proceed with manual billing.'}</p>
+            <div className="space-y-1 text-sm text-destructive">
+              <p className="font-medium">
+                {eligibility.errorTitle || 'Unable to verify SHA coverage'}
+              </p>
+              <p>
+                {errorMessage ||
+                  'Unable to verify SHA coverage. You can proceed with manual billing.'}
+              </p>
               {eligibility.errorDetail && eligibility.errorDetail !== errorMessage && (
-                <p className="text-xs break-words">{eligibility.errorDetail}</p>
+                <p className="break-words text-xs">{eligibility.errorDetail}</p>
               )}
               {(eligibility.errorCode || typeof eligibility.upstreamStatus === 'number') && (
-                <p className="text-xs font-mono">
+                <p className="font-mono text-xs">
                   {eligibility.errorCode || 'SHA_ERROR'}
-                  {typeof eligibility.upstreamStatus === 'number' ? ` (upstream ${eligibility.upstreamStatus})` : ''}
+                  {typeof eligibility.upstreamStatus === 'number'
+                    ? ` (upstream ${eligibility.upstreamStatus})`
+                    : ''}
                 </p>
               )}
             </div>
@@ -415,18 +450,17 @@ function FullEligibilityBanner({
 
           {/* Capitation Provider Warning */}
           {capitationWarning && !capitationWarning.is_valid && (
-            <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-2">
-              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+            <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 dark:border-amber-800 dark:bg-amber-900/20">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <div className="text-xs text-amber-700 dark:text-amber-300">
-                <span className="font-medium">Provider Mismatch:</span>{' '}
-                {capitationWarning.warning}
+                <span className="font-medium">Provider Mismatch:</span> {capitationWarning.warning}
               </div>
             </div>
           )}
 
           {/* Last Checked */}
           {checkedAt && (
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="mt-2 text-xs text-muted-foreground">
               Last verified: {format(parseISO(checkedAt), 'MMM d, yyyy h:mm a')}
             </p>
           )}
@@ -438,7 +472,7 @@ function FullEligibilityBanner({
             <Badge
               variant={copay === 0 ? 'default' : 'secondary'}
               className={cn(
-                'text-sm px-3 py-1',
+                'px-3 py-1 text-sm',
                 copay === 0 && 'bg-success text-success-foreground'
               )}
             >
@@ -454,7 +488,7 @@ function FullEligibilityBanner({
             disabled={isRefreshing}
             className="text-muted-foreground hover:text-foreground"
           >
-            <RefreshCw className={cn('h-4 w-4 mr-1', isRefreshing && 'animate-spin')} />
+            <RefreshCw className={cn('mr-1 h-4 w-4', isRefreshing && 'animate-spin')} />
             Refresh
           </Button>
         </div>
@@ -478,17 +512,26 @@ export function EligibilityBanner({
     status: 'checking',
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(null);
+  const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(
+    null
+  );
 
   // Run capitation provider validation once we have a member ID
   useEffect(() => {
     const memberId = eligibility.member?.id;
     if (!memberId) return;
     let cancelled = false;
-    shaApi.validateCapitationProvider(memberId).then((res) => {
-      if (!cancelled) setCapitationWarning(res);
-    }).catch(() => { /* non-blocking */ });
-    return () => { cancelled = true; };
+    shaApi
+      .validateCapitationProvider(memberId)
+      .then((res) => {
+        if (!cancelled) setCapitationWarning(res);
+      })
+      .catch(() => {
+        /* non-blocking */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [eligibility.member?.id]);
 
   const checkEligibility = useCallback(async () => {
@@ -520,7 +563,10 @@ export function EligibilityBanner({
         // Check if coverage is expired
         if (response.coverage_end_date && isPast(parseISO(response.coverage_end_date))) {
           newState.status = 'expired';
-        } else if (response.coverage_blocked || (response.coverage_caveat && response.coverage_caveat.length > 0)) {
+        } else if (
+          response.coverage_blocked ||
+          (response.coverage_caveat && response.coverage_caveat.length > 0)
+        ) {
           // SHA says eligible, but member's covered schemes don't match what
           // this facility's KEPH level can bill against (e.g. UHC at Level 4).
           newState.status = 'eligible_with_caveats';
@@ -532,7 +578,8 @@ export function EligibilityBanner({
       }
 
       newState.member = response.member;
-      newState.coverageEndDate = response.coverage_end_date || response.member?.coverage_end_date || undefined;
+      newState.coverageEndDate =
+        response.coverage_end_date || response.member?.coverage_end_date || undefined;
       newState.copayPercentage = response.copay_percentage;
       newState.schemeCategory = response.scheme_category || response.member?.scheme_category;
       newState.memberName = response.verified_name || response.member?.patient_name;
@@ -549,7 +596,9 @@ export function EligibilityBanner({
       const info = extractSHAErrorInfo(error);
       const errorState: EligibilityState = {
         status: 'error',
-        errorMessage: info?.message || (error instanceof Error ? error.message : 'An unexpected error occurred'),
+        errorMessage:
+          info?.message ||
+          (error instanceof Error ? error.message : 'An unexpected error occurred'),
         errorTitle: info?.title,
         errorDetail: info?.detail,
         errorCode: info?.code,
@@ -602,74 +651,83 @@ export function useEligibilityCheck(patientId?: number) {
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const checkEligibility = useCallback(async (pid?: number) => {
-    const id = pid ?? patientId;
-    if (!id) return null;
+  const checkEligibility = useCallback(
+    async (pid?: number) => {
+      const id = pid ?? patientId;
+      if (!id) return null;
 
-    setIsLoading(true);
-    setEligibility({ status: 'checking' });
+      setIsLoading(true);
+      setEligibility({ status: 'checking' });
 
-    try {
-      const response = await shaApi.checkPatientEligibility(id);
+      try {
+        const response = await shaApi.checkPatientEligibility(id);
 
-      if (hasEligibilityServiceError(response)) {
-        const info = extractSHAErrorInfo(response);
+        if (hasEligibilityServiceError(response)) {
+          const info = extractSHAErrorInfo(response);
+          const errorState: EligibilityState = {
+            status: 'error',
+            errorMessage: info?.message || response.message || 'Unable to verify SHA coverage.',
+            errorTitle: info?.title,
+            errorDetail: info?.detail,
+            errorCode: info?.code,
+            upstreamStatus: info?.upstreamStatus,
+            checkedAt: response.checked_at,
+          };
+          setEligibility(errorState);
+          return errorState;
+        }
+
+        let status: EligibilityStatus = 'ineligible';
+        if (response.is_eligible) {
+          if (response.coverage_end_date && isPast(parseISO(response.coverage_end_date))) {
+            status = 'expired';
+          } else if (
+            response.coverage_blocked ||
+            (response.coverage_caveat && response.coverage_caveat.length > 0)
+          ) {
+            status = 'eligible_with_caveats';
+          } else {
+            status = 'eligible';
+          }
+        }
+
+        const newState: EligibilityState = {
+          status,
+          member: response.member,
+          coverageEndDate:
+            response.coverage_end_date || response.member?.coverage_end_date || undefined,
+          copayPercentage: response.copay_percentage,
+          schemeCategory: response.scheme_category || response.member?.scheme_category,
+          memberName: response.verified_name || response.member?.patient_name,
+          checkedAt: response.checked_at,
+          coverageCaveat: response.coverage_caveat,
+          eligibleSchemes: response.eligible_schemes,
+          billableSchemes: response.billable_schemes,
+          coverageBlocked: response.coverage_blocked,
+        };
+
+        setEligibility(newState);
+        return newState;
+      } catch (error) {
+        const info = extractSHAErrorInfo(error);
         const errorState: EligibilityState = {
           status: 'error',
-          errorMessage: info?.message || response.message || 'Unable to verify SHA coverage.',
+          errorMessage:
+            info?.message ||
+            (error instanceof Error ? error.message : 'An unexpected error occurred'),
           errorTitle: info?.title,
           errorDetail: info?.detail,
           errorCode: info?.code,
           upstreamStatus: info?.upstreamStatus,
-          checkedAt: response.checked_at,
         };
         setEligibility(errorState);
         return errorState;
+      } finally {
+        setIsLoading(false);
       }
-
-      let status: EligibilityStatus = 'ineligible';
-      if (response.is_eligible) {
-        if (response.coverage_end_date && isPast(parseISO(response.coverage_end_date))) {
-          status = 'expired';
-        } else if (response.coverage_blocked || (response.coverage_caveat && response.coverage_caveat.length > 0)) {
-          status = 'eligible_with_caveats';
-        } else {
-          status = 'eligible';
-        }
-      }
-
-      const newState: EligibilityState = {
-        status,
-        member: response.member,
-        coverageEndDate: response.coverage_end_date || response.member?.coverage_end_date || undefined,
-        copayPercentage: response.copay_percentage,
-        schemeCategory: response.scheme_category || response.member?.scheme_category,
-        memberName: response.verified_name || response.member?.patient_name,
-        checkedAt: response.checked_at,
-        coverageCaveat: response.coverage_caveat,
-        eligibleSchemes: response.eligible_schemes,
-        billableSchemes: response.billable_schemes,
-        coverageBlocked: response.coverage_blocked,
-      };
-
-      setEligibility(newState);
-      return newState;
-    } catch (error) {
-      const info = extractSHAErrorInfo(error);
-      const errorState: EligibilityState = {
-        status: 'error',
-        errorMessage: info?.message || (error instanceof Error ? error.message : 'An unexpected error occurred'),
-        errorTitle: info?.title,
-        errorDetail: info?.detail,
-        errorCode: info?.code,
-        upstreamStatus: info?.upstreamStatus,
-      };
-      setEligibility(errorState);
-      return errorState;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [patientId]);
+    },
+    [patientId]
+  );
 
   return {
     eligibility,

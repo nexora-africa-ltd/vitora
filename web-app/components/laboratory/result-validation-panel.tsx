@@ -1,12 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,17 +34,10 @@ import {
 } from 'lucide-react';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { ValidationStatusBadge, ValidationSummary } from './validation-status-badge';
-import {
-  useResultValidations,
-  useCreateResultValidation,
-} from '@/lib/hooks/use-laboratory';
+import { useResultValidations, useCreateResultValidation } from '@/lib/hooks/use-laboratory';
 import { useToast } from '@/lib/hooks';
 import { cn } from '@/lib/utils/cn';
-import {
-  ResultValidation,
-  ValidationType,
-  ValidationStatus,
-} from '@/lib/types/laboratory';
+import { ResultValidation, ValidationType, ValidationStatus } from '@/lib/types/laboratory';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ResultValidationPanelProps {
@@ -85,33 +73,23 @@ export function ResultValidationPanel({
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedType, setSelectedType] = useState<ValidationType | null>(null);
 
-  const {
-    data: validations,
-    isLoading,
-    error,
-  } = useResultValidations(resultId);
+  const { data: validations, isLoading, error } = useResultValidations(resultId);
 
   const createValidation = useCreateResultValidation();
 
   // Determine validation states
-  const technicalValidation = validations?.find(
-    (v) => v.validation_type === 'TECHNICAL'
-  );
-  const clinicalValidation = validations?.find(
-    (v) => v.validation_type === 'CLINICAL'
-  );
+  const technicalValidation = validations?.find((v) => v.validation_type === 'TECHNICAL');
+  const clinicalValidation = validations?.find((v) => v.validation_type === 'CLINICAL');
 
   const technicalStatus = technicalValidation?.status;
   const clinicalStatus = clinicalValidation?.status;
 
   const isFullyValidated =
-    technicalStatus === 'APPROVED' &&
-    (!requiresClinicalSignoff || clinicalStatus === 'APPROVED');
+    technicalStatus === 'APPROVED' && (!requiresClinicalSignoff || clinicalStatus === 'APPROVED');
 
   // Determine what actions are available
   const canSubmitTechnical =
-    canAddTechnical &&
-    (!technicalValidation || technicalValidation.status === 'REJECTED');
+    canAddTechnical && (!technicalValidation || technicalValidation.status === 'REJECTED');
   const canSubmitClinical =
     requiresClinicalSignoff &&
     canAddClinical &&
@@ -131,10 +109,7 @@ export function ResultValidationPanel({
   if (compact) {
     return (
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <ValidationSummary
-          technicalStatus={technicalStatus}
-          clinicalStatus={clinicalStatus}
-        />
+        <ValidationSummary technicalStatus={technicalStatus} clinicalStatus={clinicalStatus} />
         <div className="flex gap-2">
           {canSubmitTechnical && (
             <Button
@@ -186,25 +161,25 @@ export function ResultValidationPanel({
       <CardContent className="space-y-4">
         {/* Summary Status */}
         {isFullyValidated ? (
-          <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/30">
             <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
             <span className="text-sm font-medium text-green-700 dark:text-green-300">
               Fully Validated - Ready for Release
             </span>
           </div>
         ) : (
-          <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800">
+          <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950/30">
             <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-              <span className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
+            <span className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
               {!technicalStatus
                 ? 'Awaiting Technical Review'
                 : technicalStatus === 'REJECTED'
                   ? 'Technical Review Rejected'
                   : !requiresClinicalSignoff
                     ? 'Technical Review Complete - No Clinical Sign-off Required'
-                  : !clinicalStatus
-                    ? 'Awaiting Clinical (Pathologist) Review'
-                    : 'Clinical (Pathologist) Review Rejected'}
+                    : !clinicalStatus
+                      ? 'Awaiting Clinical (Pathologist) Review'
+                      : 'Clinical (Pathologist) Review Rejected'}
             </span>
           </div>
         )}
@@ -265,13 +240,7 @@ interface ValidationCardProps {
   disabled?: boolean;
 }
 
-function ValidationCard({
-  type,
-  validation,
-  canSubmit,
-  onSubmit,
-  disabled,
-}: ValidationCardProps) {
+function ValidationCard({ type, validation, canSubmit, onSubmit, disabled }: ValidationCardProps) {
   const Icon = type === 'TECHNICAL' ? Shield : Stethoscope;
   const label = type === 'TECHNICAL' ? 'Technical Review' : 'Clinical (Pathologist) Review';
 
@@ -279,7 +248,7 @@ function ValidationCard({
     return (
       <div
         className={cn(
-          'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border border-dashed',
+          'flex flex-col gap-2 rounded-lg border border-dashed p-3 sm:flex-row sm:items-center sm:justify-between',
           disabled && 'opacity-50'
         )}
       >
@@ -305,9 +274,9 @@ function ValidationCard({
   return (
     <div
       className={cn(
-        'p-3 rounded-lg border',
-        isApproved && 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800',
-        isRejected && 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+        'rounded-lg border p-3',
+        isApproved && 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20',
+        isRejected && 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20'
       )}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -343,8 +312,8 @@ function ValidationCard({
 
           {/* Comment */}
           {validation.comment && (
-            <div className="flex items-start gap-1.5 text-xs text-muted-foreground mt-1">
-              <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
+            <div className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+              <MessageSquare className="mt-0.5 h-3 w-3 shrink-0" />
               <span className="line-clamp-2">{validation.comment}</span>
             </div>
           )}
@@ -352,7 +321,12 @@ function ValidationCard({
 
         {/* Re-submit button if rejected */}
         {isRejected && canSubmit && (
-          <Button size="sm" variant="outline" onClick={onSubmit} className="shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onSubmit}
+            className="mt-2 w-full shrink-0 sm:mt-0 sm:w-auto"
+          >
             Re-submit
           </Button>
         )}
@@ -409,8 +383,7 @@ function AddValidationDialog({
     } catch (error) {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to submit validation',
+        description: error instanceof Error ? error.message : 'Failed to submit validation',
         variant: 'destructive',
       });
     }
@@ -443,10 +416,7 @@ function AddValidationDialog({
           {/* Decision */}
           <div className="space-y-2">
             <Label>Decision</Label>
-            <Select
-              value={status}
-              onValueChange={(v) => setStatus(v as 'APPROVED' | 'REJECTED')}
-            >
+            <Select value={status} onValueChange={(v) => setStatus(v as 'APPROVED' | 'REJECTED')}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -471,7 +441,7 @@ function AddValidationDialog({
           <div className="space-y-2">
             <Label>
               Comment{' '}
-              <span className="text-muted-foreground font-normal">
+              <span className="font-normal text-muted-foreground">
                 {status === 'REJECTED' ? '(required)' : '(optional)'}
               </span>
             </Label>
@@ -489,8 +459,8 @@ function AddValidationDialog({
 
           {/* Rejection Warning */}
           {status === 'REJECTED' && (
-            <div className="flex items-start gap-2 p-3 bg-destructive/10 rounded-lg text-sm">
-              <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm">
+              <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
               <p className="text-destructive">
                 Rejecting this result will require correction and re-submission.
               </p>
@@ -508,24 +478,21 @@ function AddValidationDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={
-              createValidation.isPending ||
-              (status === 'REJECTED' && !comment.trim())
-            }
+            disabled={createValidation.isPending || (status === 'REJECTED' && !comment.trim())}
             variant={status === 'REJECTED' ? 'destructive' : 'default'}
             className="w-full sm:w-auto"
           >
             {createValidation.isPending ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Submitting...
               </>
             ) : (
               <>
                 {status === 'APPROVED' ? (
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
                 ) : (
-                  <XCircle className="h-4 w-4 mr-2" />
+                  <XCircle className="mr-2 h-4 w-4" />
                 )}
                 {status === 'APPROVED' ? 'Approve' : 'Reject'}
               </>

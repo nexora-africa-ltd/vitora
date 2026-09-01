@@ -13,7 +13,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useCreateVascularAccess } from '@/lib/hooks/use-dialysis';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -69,7 +73,7 @@ export default function NewVascularAccessPage() {
   }, [patientId, accessType, site, placedDate, notes, createMutation, router]);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title="New Vascular Access"
         helpContent="Record a new vascular access for dialysis. Track the type, site, and placement date for ongoing monitoring."
@@ -147,13 +151,13 @@ export default function NewVascularAccessPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end max-w-2xl">
+      <div className="flex max-w-2xl flex-col gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => router.back()}>
-          <X className="h-4 w-4 mr-2" />
+          <X className="mr-2 h-4 w-4" />
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={createMutation.isPending}>
-          <Save className="h-4 w-4 mr-2" />
+          <Save className="mr-2 h-4 w-4" />
           {createMutation.isPending ? 'Saving...' : 'Record Access'}
         </Button>
       </div>

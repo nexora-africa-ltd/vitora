@@ -23,8 +23,10 @@ import type { AIPatientContext, AIClerkingAutocompleteSuggestion } from '@/lib/t
 // TYPES
 // =============================================================================
 
-export interface ClerkingAssistTextareaProps
-  extends Omit<React.ComponentProps<typeof Textarea>, 'onChange'> {
+export interface ClerkingAssistTextareaProps extends Omit<
+  React.ComponentProps<typeof Textarea>,
+  'onChange'
+> {
   /** Form field name (e.g., 'chief_complaint', 'assessment') */
   fieldName: string;
   /** Current value */
@@ -122,7 +124,7 @@ export function ClerkingAssistTextarea({
         setSelectedIndex(0);
       }, debounceMs);
     },
-    [isAIEnabled, disabled, minLength, debounceMs, mutate],
+    [isAIEnabled, disabled, minLength, debounceMs, mutate]
   );
 
   const handleChange = React.useCallback(
@@ -131,16 +133,15 @@ export function ClerkingAssistTextarea({
       onChange(newValue);
       scheduleAutocomplete(newValue);
     },
-    [onChange, scheduleAutocomplete],
+    [onChange, scheduleAutocomplete]
   );
 
   const acceptSuggestion = React.useCallback(
     (suggestion: AIClerkingAutocompleteSuggestion) => {
       // Replace only the trailing fragment with the accepted suggestion
       const fragment = extractTrailingFragment(value);
-      const prefix = fragment.length < value.length
-        ? value.slice(0, value.length - fragment.length)
-        : '';
+      const prefix =
+        fragment.length < value.length ? value.slice(0, value.length - fragment.length) : '';
       const newValue = prefix + suggestion.text;
       onChange(newValue);
       auditSuggestionAction({
@@ -203,7 +204,7 @@ export function ClerkingAssistTextarea({
 
       {/* AI indicator */}
       {isAIEnabled && (
-        <div className="absolute top-2 right-2">
+        <div className="absolute right-2 top-2">
           {isPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
           ) : (
@@ -214,14 +215,14 @@ export function ClerkingAssistTextarea({
 
       {/* Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
           {suggestions.map((suggestion, i) => (
             <button
               key={i}
               type="button"
               className={cn(
-                'w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors',
-                i === selectedIndex && 'bg-accent',
+                'w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
+                i === selectedIndex && 'bg-accent'
               )}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -230,7 +231,7 @@ export function ClerkingAssistTextarea({
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate">{suggestion.text}</span>
-                <span className="text-xs text-muted-foreground shrink-0">
+                <span className="shrink-0 text-xs text-muted-foreground">
                   {Math.round(suggestion.confidence * 100)}%
                 </span>
               </div>

@@ -77,9 +77,17 @@ export function ExpiryReport() {
       return <Badge variant="destructive">Critical ({daysToExpiry} days)</Badge>;
     }
     if (daysToExpiry <= 60) {
-      return <Badge className="bg-orange-500/15 text-orange-700 dark:text-orange-400">Warning ({daysToExpiry} days)</Badge>;
+      return (
+        <Badge className="bg-orange-500/15 text-orange-700 dark:text-orange-400">
+          Warning ({daysToExpiry} days)
+        </Badge>
+      );
     }
-    return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">{daysToExpiry} days</Badge>;
+    return (
+      <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">
+        {daysToExpiry} days
+      </Badge>
+    );
   };
 
   const handleDispose = (batch: ExpiringBatch) => {
@@ -117,13 +125,15 @@ export function ExpiryReport() {
       const data = reportData || [];
       const csvContent = [
         ['Drug Name', 'Batch Number', 'Expiry Date', 'Days to Expiry', 'Quantity'].join(','),
-        ...data.map((item) => [
-          `"${item.drug_name}"`,
-          item.batch_number,
-          item.expiry_date,
-          item.days_to_expiry,
-          item.quantity_available,
-        ].join(',')),
+        ...data.map((item) =>
+          [
+            `"${item.drug_name}"`,
+            item.batch_number,
+            item.expiry_date,
+            item.days_to_expiry,
+            item.quantity_available,
+          ].join(',')
+        ),
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -176,7 +186,7 @@ export function ExpiryReport() {
       <Card>
         <CardContent className="py-12">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
           </div>
         </CardContent>
       </Card>
@@ -188,7 +198,7 @@ export function ExpiryReport() {
       <Card>
         <CardContent className="py-12">
           <div className="text-center text-destructive">
-            <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+            <AlertTriangle className="mx-auto mb-2 h-8 w-8" />
             <p>Failed to load expiry report</p>
           </div>
         </CardContent>
@@ -217,11 +227,11 @@ export function ExpiryReport() {
             </CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="h-4 w-4 mr-1" />
+                <Download className="mr-1 h-4 w-4" />
                 Export CSV
               </Button>
               <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-1" />
+                <Printer className="mr-1 h-4 w-4" />
                 Print
               </Button>
             </div>
@@ -252,19 +262,22 @@ export function ExpiryReport() {
 
           {/* Summary Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4">
               <p className="text-sm text-destructive">Critical (&lt;30 days)</p>
               <p className="text-2xl font-bold text-destructive">
                 {expiringBatches.filter((b) => b.days_to_expiry <= 30).length}
               </p>
             </div>
-            <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+            <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-4">
               <p className="text-sm text-orange-700 dark:text-orange-400">Warning (30-60 days)</p>
               <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">
-                {expiringBatches.filter((b) => b.days_to_expiry > 30 && b.days_to_expiry <= 60).length}
+                {
+                  expiringBatches.filter((b) => b.days_to_expiry > 30 && b.days_to_expiry <= 60)
+                    .length
+                }
               </p>
             </div>
-            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
               <p className="text-sm text-amber-700 dark:text-amber-400">Approaching (60-90 days)</p>
               <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
                 {expiringBatches.filter((b) => b.days_to_expiry > 60).length}
@@ -326,7 +339,7 @@ export function ExpiryReport() {
                         handleDispose(batch);
                       }}
                     >
-                      <Trash2 className="h-3 w-3 mr-1" />
+                      <Trash2 className="mr-1 h-3 w-3" />
                       Dispose
                     </Button>
                     <Button
@@ -337,7 +350,7 @@ export function ExpiryReport() {
                         handleReturn(batch);
                       }}
                     >
-                      <RotateCcw className="h-3 w-3 mr-1" />
+                      <RotateCcw className="mr-1 h-3 w-3" />
                       Return
                     </Button>
                   </div>
@@ -348,16 +361,18 @@ export function ExpiryReport() {
             mobileCard={(batch) => (
               <div
                 className={cn(
-                  'rounded-lg border p-4 space-y-3',
+                  'space-y-3 rounded-lg border p-4',
                   batch.days_to_expiry <= 30 && 'border-destructive/50 bg-destructive/5',
-                  batch.days_to_expiry > 30 && batch.days_to_expiry <= 60 && 'border-orange-500/50 bg-orange-500/5',
+                  batch.days_to_expiry > 30 &&
+                    batch.days_to_expiry <= 60 &&
+                    'border-orange-500/50 bg-orange-500/5',
                   batch.days_to_expiry > 60 && 'border-amber-500/50 bg-amber-500/5'
                 )}
               >
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium">{batch.drug_name}</p>
-                    <p className="text-sm text-muted-foreground font-mono">{batch.batch_number}</p>
+                    <p className="font-mono text-sm text-muted-foreground">{batch.batch_number}</p>
                   </div>
                   {getUrgencyBadge(batch.days_to_expiry)}
                 </div>
@@ -372,7 +387,7 @@ export function ExpiryReport() {
                     className="flex-1"
                     onClick={() => handleDispose(batch)}
                   >
-                    <Trash2 className="h-3 w-3 mr-1" />
+                    <Trash2 className="mr-1 h-3 w-3" />
                     Dispose
                   </Button>
                   <Button
@@ -381,7 +396,7 @@ export function ExpiryReport() {
                     className="flex-1"
                     onClick={() => handleReturn(batch)}
                   >
-                    <RotateCcw className="h-3 w-3 mr-1" />
+                    <RotateCcw className="mr-1 h-3 w-3" />
                     Return
                   </Button>
                 </div>
@@ -391,9 +406,10 @@ export function ExpiryReport() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
-              <p className="text-sm text-muted-foreground text-center sm:text-left">
-                Showing {paginatedBatches.length} of {expiringBatches.length} batches (page {currentPage} of {totalPages})
+            <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-center text-sm text-muted-foreground sm:text-left">
+                Showing {paginatedBatches.length} of {expiringBatches.length} batches (page{' '}
+                {currentPage} of {totalPages})
               </p>
               <div className="flex items-center justify-center gap-2">
                 <Button
@@ -478,7 +494,7 @@ export function ExpiryReport() {
               Cancel
             </Button>
             <Button onClick={confirmReturn}>
-              <RotateCcw className="h-4 w-4 mr-1" />
+              <RotateCcw className="mr-1 h-4 w-4" />
               Initiate Return
             </Button>
           </DialogFooter>

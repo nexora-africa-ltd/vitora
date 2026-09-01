@@ -29,7 +29,7 @@ export function AnalyticsPageContent() {
 
   return (
     <Tabs defaultValue="dashboard">
-      <div className="flex items-center justify-between gap-2 sm:gap-4 text-xs sm:text-sm">
+      <div className="flex items-center justify-between gap-2 text-xs sm:gap-4 sm:text-sm">
         <TabsList>
           <TabsTrigger value="dashboard" className="gap-1.5 text-xs sm:text-sm">
             <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -42,8 +42,8 @@ export function AnalyticsPageContent() {
         </TabsList>
 
         <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="w-[110px] sm:w-[140px] text-xs sm:text-sm h-8 sm:h-9">
-            <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+          <SelectTrigger className="h-8 w-[110px] text-xs sm:h-9 sm:w-[140px] sm:text-sm">
+            <CalendarDays className="mr-1.5 h-3.5 w-3.5 shrink-0 sm:mr-2 sm:h-4 sm:w-4" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -62,8 +62,8 @@ export function AnalyticsPageContent() {
         {!SUPERSET_DOMAIN && (
           <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
             <p>
-              Superset is not configured. Set <code>NEXT_PUBLIC_SUPERSET_URL</code> to
-              enable embedded dashboards.
+              Superset is not configured. Set <code>NEXT_PUBLIC_SUPERSET_URL</code> to enable
+              embedded dashboards.
             </p>
           </div>
         )}
@@ -71,9 +71,8 @@ export function AnalyticsPageContent() {
         {SUPERSET_DOMAIN && (
           <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
             <p>
-              The Explore tab connects to Apache Superset for ad-hoc analytics.
-              Dashboards must be created and published in Superset first.
-              {' '}
+              The Explore tab connects to Apache Superset for ad-hoc analytics. Dashboards must be
+              created and published in Superset first.{' '}
               <a
                 href={SUPERSET_DOMAIN}
                 target="_blank"
@@ -81,42 +80,44 @@ export function AnalyticsPageContent() {
                 className="underline hover:text-foreground"
               >
                 Open Superset
-              </a>
-              {' '}to manage them.
+              </a>{' '}
+              to manage them.
             </p>
           </div>
         )}
 
         {dashboardsLoading && (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Loading dashboards…
           </div>
         )}
 
         {!dashboardsLoading && (!dashboards || dashboards.length === 0) && SUPERSET_DOMAIN && (
           <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-sm text-muted-foreground">
-            No dashboards available for embedding yet. Open Superset to create and
-            publish dashboards.
+            No dashboards available for embedding yet. Open Superset to create and publish
+            dashboards.
           </div>
         )}
 
-        {dashboards?.filter((d) => d.embedded_id).map((dashboard) => (
-          <Card key={dashboard.id}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">{dashboard.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SupersetEmbed
-                dashboardId={dashboard.id}
-                embeddedId={dashboard.embedded_id}
-                supersetDomain={SUPERSET_DOMAIN}
-                title={dashboard.name}
-                minHeight="500px"
-              />
-            </CardContent>
-          </Card>
-        ))}
+        {dashboards
+          ?.filter((d) => d.embedded_id)
+          .map((dashboard) => (
+            <Card key={dashboard.id}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{dashboard.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SupersetEmbed
+                  dashboardId={dashboard.id}
+                  embeddedId={dashboard.embedded_id}
+                  supersetDomain={SUPERSET_DOMAIN}
+                  title={dashboard.name}
+                  minHeight="500px"
+                />
+              </CardContent>
+            </Card>
+          ))}
       </TabsContent>
     </Tabs>
   );

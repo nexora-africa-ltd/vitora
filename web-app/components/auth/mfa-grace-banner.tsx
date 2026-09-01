@@ -77,8 +77,13 @@ export function MFAGraceBanner() {
           Multi-factor authentication is required for your role. Please set it up within{' '}
           <strong>{timeLeft}</strong> to maintain access.
         </span>
-        <span className="flex items-center gap-2 shrink-0">
-          <Button asChild size="sm" variant="outline" className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:border-amber-400 dark:text-amber-300 dark:hover:bg-amber-900/30">
+        <span className="flex shrink-0 items-center gap-2">
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:border-amber-400 dark:text-amber-300 dark:hover:bg-amber-900/30"
+          >
             <Link href="/settings?tab=security">Set up MFA</Link>
           </Button>
           <Button

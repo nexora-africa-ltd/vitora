@@ -17,12 +17,7 @@ import { AddInvoiceItemDialog } from '@/components/billing/AddInvoiceItemDialog'
 import { ApplyDiscountDialog } from '@/components/billing/ApplyDiscountDialog';
 import { MpesaPaymentDialog } from '@/components/billing/MpesaPaymentDialog';
 import { ReceiptDialog, ReceiptData } from '@/components/billing/ReceiptDialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   useInvoice,
   useCreatePayment,
@@ -41,7 +36,12 @@ import { useClaim, useClaims } from '@/lib/hooks/use-sha';
 import { billingApi } from '@/lib/api/billing';
 import { inventoryApi } from '@/lib/api/inventory';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { Invoice, PaymentCreateData, InvoiceItemCreateData, ApplyDiscountData } from '@/lib/types/billing';
+import type {
+  Invoice,
+  PaymentCreateData,
+  InvoiceItemCreateData,
+  ApplyDiscountData,
+} from '@/lib/types/billing';
 import type { Claim } from '@/lib/types/sha';
 
 export default function InvoiceDetailPage() {
@@ -227,9 +227,17 @@ export default function InvoiceDetailPage() {
       });
       setMpesaCheckoutRequestId(res.checkout_request_id);
       setMpesaStatus('waiting');
-    } catch (e: any) {
+    } catch (e: unknown) {
       const message =
-        e?.response?.data?.error || e?.message || 'Failed to initiate M-Pesa payment';
+        typeof e === 'object' &&
+        e !== null &&
+        'response' in e &&
+        typeof (e as { response?: { data?: { error?: string } } }).response?.data?.error ===
+          'string'
+          ? (e as { response?: { data?: { error?: string } } }).response?.data?.error
+          : e instanceof Error
+            ? e.message
+            : 'Failed to initiate M-Pesa payment';
       setMpesaErrorMessage(String(message));
       setMpesaStatus('failed');
     }
@@ -360,14 +368,16 @@ export default function InvoiceDetailPage() {
       <PageHeader
         title={`Invoice ${invoice?.invoice_number || ''}`}
         helpContent="View and manage invoice details. Record payments, add or remove line items, apply discounts, and submit SHA claims from this page."
-        actions={linkedClaim ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/transactions/sha-claims/${linkedClaim.id}`}>
-              Attached Claim
-              <ExternalLink className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        ) : null}
+        actions={
+          linkedClaim ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/transactions/sha-claims/${linkedClaim.id}`}>
+                Attached Claim
+                <ExternalLink className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          ) : null
+        }
       />
 
       {!billingEnabled ? (
@@ -421,7 +431,9 @@ export default function InvoiceDetailPage() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{paymentTargetInvoice ? 'Collect Interim Copay' : 'Record Payment'}</DialogTitle>
+            <DialogTitle>
+              {paymentTargetInvoice ? 'Collect Interim Copay' : 'Record Payment'}
+            </DialogTitle>
           </DialogHeader>
           {(paymentTargetInvoice || invoice) && (
             <PaymentForm
@@ -488,12 +500,7 @@ export default function InvoiceDetailPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-green-600">
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

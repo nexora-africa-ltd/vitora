@@ -38,12 +38,7 @@ import { EmptyState } from '@/components/shared/empty-state';
 import { AdminStatCard } from '@/components/admin/admin-stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -56,9 +51,7 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { kenhddApi } from '@/lib/api/kenhdd';
 import { KENHDDRunDetailDialog } from '@/components/admin/kenhdd-run-detail-dialog';
 import { toast } from 'sonner';
-import type {
-  KENHDDResourceType,
-} from '@/lib/types/kenhdd';
+import type { KENHDDResourceType } from '@/lib/types/kenhdd';
 import type { z } from 'zod';
 import type {
   KENHDDComplianceScoreSchema,
@@ -72,10 +65,7 @@ type ComplianceScore = z.infer<typeof KENHDDComplianceScoreSchema>;
 type ValidationRun = z.infer<typeof KENHDDValidationRunSchema>;
 type DataElement = z.infer<typeof KENHDDDataElementSchema>;
 
-const RESOURCE_TYPE_CONFIG: Record<
-  KENHDDResourceType,
-  { label: string; icon: typeof Users }
-> = {
+const RESOURCE_TYPE_CONFIG: Record<KENHDDResourceType, { label: string; icon: typeof Users }> = {
   PATIENT: { label: 'Patient', icon: Users },
   ENCOUNTER: { label: 'Encounter', icon: Stethoscope },
   DIAGNOSIS: { label: 'Diagnosis', icon: FileText },
@@ -97,8 +87,7 @@ function getScoreColor(score: number | null): string {
 }
 
 function getScoreBadge(score: number | null) {
-  if (score === null)
-    return <Badge variant="secondary">Not Run</Badge>;
+  if (score === null) return <Badge variant="secondary">Not Run</Badge>;
   if (score >= 90)
     return (
       <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
@@ -162,7 +151,11 @@ function computeDeltas(
     if (latest && previous) {
       const curr = parseFloat(latest.compliance_score);
       const prev = parseFloat(previous.compliance_score);
-      deltas[rt] = { delta: Math.round(curr - prev), prev: Math.round(prev), curr: Math.round(curr) };
+      deltas[rt] = {
+        delta: Math.round(curr - prev),
+        prev: Math.round(prev),
+        curr: Math.round(curr),
+      };
     }
   }
   return deltas;
@@ -194,17 +187,12 @@ export default function KENHDDCompliancePage() {
     queryFn: kenhddApi.getSummary,
   });
 
-  const {
-    data: runs,
-    isLoading: runsLoading,
-  } = useQuery({
+  const { data: runs, isLoading: runsLoading } = useQuery({
     queryKey: ['kenhdd-runs'],
     queryFn: () => kenhddApi.listRuns(),
   });
 
-  const {
-    data: elementsResponse,
-  } = useQuery({
+  const { data: elementsResponse } = useQuery({
     queryKey: ['kenhdd-elements'],
     queryFn: () => kenhddApi.listElements(),
   });
@@ -227,8 +215,7 @@ export default function KENHDDCompliancePage() {
   });
 
   const resourceRerunMutation = useMutation({
-    mutationFn: (resourceType: KENHDDResourceType) =>
-      kenhddApi.generateReport(resourceType, 100),
+    mutationFn: (resourceType: KENHDDResourceType) => kenhddApi.generateReport(resourceType, 100),
     onSuccess: (_scores, resourceType) => {
       queryClient.invalidateQueries({ queryKey: ['kenhdd-summary'] });
       queryClient.invalidateQueries({ queryKey: ['kenhdd-runs'] });
@@ -256,8 +243,7 @@ export default function KENHDDCompliancePage() {
   const overallScore = useMemo(() => {
     if (checkedEntries.length === 0) return null;
     return Math.round(
-      checkedEntries.reduce((sum, s) => sum + (s.compliance_score ?? 0), 0) /
-        checkedEntries.length
+      checkedEntries.reduce((sum, s) => sum + (s.compliance_score ?? 0), 0) / checkedEntries.length
     );
   }, [checkedEntries]);
 
@@ -273,7 +259,8 @@ export default function KENHDDCompliancePage() {
     const violations = reportScores ?? checkedEntries;
     let count = 0;
     for (const entry of violations) {
-      const viols = 'violations_by_element' in entry ? entry.violations_by_element : entry.violations;
+      const viols =
+        'violations_by_element' in entry ? entry.violations_by_element : entry.violations;
       for (const [elId, c] of Object.entries(viols)) {
         const el = elementMap.get(elId);
         if (el?.requirement_level === 'MANDATORY') count += c;
@@ -328,13 +315,15 @@ export default function KENHDDCompliancePage() {
       count: number;
     }[] = [];
     for (const entry of source) {
-      const viols = 'violations_by_element' in entry ? entry.violations_by_element : entry.violations;
+      const viols =
+        'violations_by_element' in entry ? entry.violations_by_element : entry.violations;
       for (const [elId, count] of Object.entries(viols)) {
         const el = elementMap.get(elId);
         rows.push({
           resourceType: entry.resource_type,
           resourceLabel:
-            RESOURCE_TYPE_CONFIG[entry.resource_type as KENHDDResourceType]?.label ?? entry.resource_type,
+            RESOURCE_TYPE_CONFIG[entry.resource_type as KENHDDResourceType]?.label ??
+            entry.resource_type,
           elementId: elId,
           elementName: el?.name ?? elId,
           fieldName: el?.model_field ?? '—',
@@ -357,13 +346,16 @@ export default function KENHDDCompliancePage() {
   // Filtered + sorted run history
   const filteredRuns = useMemo(() => {
     if (!runs) return [];
-    let filtered = historyFilter === 'all' ? [...runs] : runs.filter((r) => r.resource_type === historyFilter);
+    let filtered =
+      historyFilter === 'all' ? [...runs] : runs.filter((r) => r.resource_type === historyFilter);
     const dir = sortDirection === 'asc' ? 1 : -1;
     filtered.sort((a, b) => {
       switch (sortColumn) {
         case 'resource': {
-          const aL = RESOURCE_TYPE_CONFIG[a.resource_type as KENHDDResourceType]?.label ?? a.resource_type;
-          const bL = RESOURCE_TYPE_CONFIG[b.resource_type as KENHDDResourceType]?.label ?? b.resource_type;
+          const aL =
+            RESOURCE_TYPE_CONFIG[a.resource_type as KENHDDResourceType]?.label ?? a.resource_type;
+          const bL =
+            RESOURCE_TYPE_CONFIG[b.resource_type as KENHDDResourceType]?.label ?? b.resource_type;
           return aL.localeCompare(bL) * dir;
         }
         case 'score':
@@ -397,9 +389,11 @@ export default function KENHDDCompliancePage() {
   const SortIcon = ({ column }: { column: string }) => {
     if (sortColumn !== column)
       return <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />;
-    return sortDirection === 'asc'
-      ? <ArrowUp className="h-3 w-3" />
-      : <ArrowDown className="h-3 w-3" />;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3" />
+    ) : (
+      <ArrowDown className="h-3 w-3" />
+    );
   };
 
   // Most recent run timestamp
@@ -417,7 +411,7 @@ export default function KENHDDCompliancePage() {
 
   const latestRunByResource = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const run of (runs ?? [])) {
+    for (const run of runs ?? []) {
       if (!map[run.resource_type]) {
         map[run.resource_type] = run.id;
       }
@@ -477,7 +471,7 @@ export default function KENHDDCompliancePage() {
                 disabled={reportMutation.isPending}
                 size="sm"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Run Compliance Check</span>
                 <span className="sm:hidden">Run Check</span>
               </Button>
@@ -510,9 +504,9 @@ export default function KENHDDCompliancePage() {
               size="sm"
             >
               {reportMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="mr-2 h-4 w-4" />
               )}
               <span className="hidden sm:inline">Run Compliance Check</span>
               <span className="sm:hidden">Run Check</span>
@@ -543,21 +537,26 @@ export default function KENHDDCompliancePage() {
               aria-hidden="true"
             />
             <div className="relative flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-              <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex min-w-0 flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <span className={`text-2xl sm:text-3xl font-bold ${getScoreColor(overallScore)}`}>
+                  <span className={`text-2xl font-bold sm:text-3xl ${getScoreColor(overallScore)}`}>
                     {overallScore !== null ? `${overallScore}%` : '—'}
                   </span>
                   {getScoreBadge(overallScore)}
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Overall compliance across {checkedEntries.length} resource type{checkedEntries.length !== 1 ? 's' : ''}
+                <p className="text-xs text-muted-foreground sm:text-sm">
+                  Overall compliance across {checkedEntries.length} resource type
+                  {checkedEntries.length !== 1 ? 's' : ''}
                   {overallMandatoryRate !== null && (
-                    <> · Mandatory pass rate: <span className="font-medium">{overallMandatoryRate}%</span></>
+                    <>
+                      {' '}
+                      · Mandatory pass rate:{' '}
+                      <span className="font-medium">{overallMandatoryRate}%</span>
+                    </>
                   )}
                 </p>
               </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
+              <div className="flex shrink-0 items-center gap-4 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />
                   {formatTimeAgo(latestRunAt)}
@@ -575,11 +574,11 @@ export default function KENHDDCompliancePage() {
 
         {/* Remediation KPI Cards */}
         {summaryLoading ? (
-          <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Card key={i} className="relative overflow-hidden">
                 <CardContent className="p-4">
-                  <Skeleton className="h-4 w-24 mb-2" />
+                  <Skeleton className="mb-2 h-4 w-24" />
                   <Skeleton className="h-8 w-16" />
                 </CardContent>
               </Card>
@@ -592,7 +591,7 @@ export default function KENHDDCompliancePage() {
             </CardContent>
           </Card>
         ) : checkedEntries.length > 0 ? (
-          <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <AdminStatCard
               title="Mandatory Blockers"
               value={totalMandatoryBlockers}
@@ -606,27 +605,29 @@ export default function KENHDDCompliancePage() {
               value={checkedEntries.filter((s) => (s.compliance_score ?? 0) < 90).length}
               description={`of ${checkedEntries.length} types below 90%`}
               icon={<Target className="h-4 w-4" />}
-              tone={checkedEntries.some((s) => (s.compliance_score ?? 0) < 70) ? 'warning' : 'default'}
+              tone={
+                checkedEntries.some((s) => (s.compliance_score ?? 0) < 70) ? 'warning' : 'default'
+              }
             />
             <AdminStatCard
               title="Best Resource"
-              value={bestResource
-                ? `${Math.round(bestResource.compliance_score ?? 0)}%`
-                : '—'}
-              description={bestResource
-                ? RESOURCE_TYPE_CONFIG[bestResource.resource_type as KENHDDResourceType]?.label
-                : undefined}
+              value={bestResource ? `${Math.round(bestResource.compliance_score ?? 0)}%` : '—'}
+              description={
+                bestResource
+                  ? RESOURCE_TYPE_CONFIG[bestResource.resource_type as KENHDDResourceType]?.label
+                  : undefined
+              }
               icon={<TrendingUp className="h-4 w-4" />}
               tone="success"
             />
             <AdminStatCard
               title="Needs Most Work"
-              value={worstResource
-                ? `${Math.round(worstResource.compliance_score ?? 0)}%`
-                : '—'}
-              description={worstResource
-                ? RESOURCE_TYPE_CONFIG[worstResource.resource_type as KENHDDResourceType]?.label
-                : undefined}
+              value={worstResource ? `${Math.round(worstResource.compliance_score ?? 0)}%` : '—'}
+              description={
+                worstResource
+                  ? RESOURCE_TYPE_CONFIG[worstResource.resource_type as KENHDDResourceType]?.label
+                  : undefined
+              }
               icon={<TrendingDown className="h-4 w-4" />}
               tone={getScoreTone(worstResource?.compliance_score ?? null)}
             />
@@ -637,14 +638,18 @@ export default function KENHDDCompliancePage() {
         {changes.length > 0 && (
           <Card>
             <CardHeader
-              className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+              className="cursor-pointer select-none transition-colors hover:bg-muted/50"
               onClick={() => setChangesSectionOpen((o) => !o)}
             >
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Activity className="h-4 w-4 text-muted-foreground" />
                 What Changed
-                <Badge variant="secondary" className="ml-1 text-xs">{changes.length}</Badge>
-                <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${changesSectionOpen ? '' : '-rotate-90'}`} />
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {changes.length}
+                </Badge>
+                <ChevronDown
+                  className={`ml-auto h-4 w-4 transition-transform ${changesSectionOpen ? '' : '-rotate-90'}`}
+                />
               </CardTitle>
             </CardHeader>
             {changesSectionOpen && (
@@ -653,22 +658,28 @@ export default function KENHDDCompliancePage() {
                   {changes.map((change) => (
                     <div
                       key={change.resource}
-                      className="flex items-center gap-3 text-sm p-2 rounded-md bg-muted/30 cursor-pointer hover:bg-muted/60 transition-colors"
+                      className="flex cursor-pointer items-center gap-3 rounded-md bg-muted/30 p-2 text-sm transition-colors hover:bg-muted/60"
                       onClick={() => openLatestRunForResource(change.resource)}
                       title={`View latest ${change.label} run details`}
                     >
                       {change.delta < 0 ? (
-                        <ArrowDownRight className="h-4 w-4 text-red-500 shrink-0" />
+                        <ArrowDownRight className="h-4 w-4 shrink-0 text-red-500" />
                       ) : (
-                        <ArrowUpRight className="h-4 w-4 text-green-500 shrink-0" />
+                        <ArrowUpRight className="h-4 w-4 shrink-0 text-green-500" />
                       )}
                       <span className="font-medium">{change.label}</span>
                       <span className="text-muted-foreground">
                         {change.delta < 0 ? 'dropped' : 'improved'}{' '}
-                        <span className={change.delta < 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
+                        <span
+                          className={
+                            change.delta < 0
+                              ? 'font-medium text-red-600'
+                              : 'font-medium text-green-600'
+                          }
+                        >
                           {Math.abs(change.delta)} point{Math.abs(change.delta) !== 1 ? 's' : ''}
-                        </span>
-                        {' '}to {change.curr}%
+                        </span>{' '}
+                        to {change.curr}%
                       </span>
                       {getScoreBadge(change.curr)}
                     </div>
@@ -682,125 +693,135 @@ export default function KENHDDCompliancePage() {
         {/* Compliance by Resource Type — Actionable Cards */}
         <Card>
           <CardHeader
-            className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+            className="cursor-pointer select-none transition-colors hover:bg-muted/50"
             onClick={() => setResourcesSectionOpen((o) => !o)}
           >
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               Compliance by Resource Type
-              <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${resourcesSectionOpen ? '' : '-rotate-90'}`} />
+              <ChevronDown
+                className={`ml-auto h-4 w-4 transition-transform ${resourcesSectionOpen ? '' : '-rotate-90'}`}
+              />
             </CardTitle>
           </CardHeader>
           {resourcesSectionOpen && (
-          <CardContent>
-            {summaryLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : summary ? (
-              <div className="space-y-2">
-                {summary.map((entry) => {
-                  const config = RESOURCE_TYPE_CONFIG[entry.resource_type as KENHDDResourceType];
-                  if (!config) return null;
-                  const Icon = config.icon;
-                  const score = entry.compliance_score;
-                  const mandRate = entry.mandatory_pass_rate;
-                  const violationCount = Object.values(entry.violations).reduce((a, b) => a + b, 0);
-                  const violationTypeCount = Object.keys(entry.violations).length;
-                  const delta = deltas[entry.resource_type];
+            <CardContent>
+              {summaryLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : summary ? (
+                <div className="space-y-2">
+                  {summary.map((entry) => {
+                    const config = RESOURCE_TYPE_CONFIG[entry.resource_type as KENHDDResourceType];
+                    if (!config) return null;
+                    const Icon = config.icon;
+                    const score = entry.compliance_score;
+                    const mandRate = entry.mandatory_pass_rate;
+                    const violationCount = Object.values(entry.violations).reduce(
+                      (a, b) => a + b,
+                      0
+                    );
+                    const violationTypeCount = Object.keys(entry.violations).length;
+                    const delta = deltas[entry.resource_type];
 
-                  return (
-                    <div
-                      key={entry.resource_type}
-                      className="flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer sm:flex-row sm:items-center sm:justify-between"
-                      onClick={() => openLatestRunForResource(entry.resource_type)}
-                      title={`View latest ${config.label} validation details`}
-                    >
-                      {/* Left: icon + label + meta */}
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
-                        <div className="min-w-0">
-                          <div className="font-medium text-sm flex items-center gap-2">
-                            {config.label}
-                            {delta && delta.delta !== 0 && (
-                              <span
-                                className={`inline-flex items-center gap-0.5 text-xs font-medium ${
-                                  delta.delta > 0 ? 'text-green-600' : 'text-red-600'
-                                }`}
+                    return (
+                      <div
+                        key={entry.resource_type}
+                        className="flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+                        onClick={() => openLatestRunForResource(entry.resource_type)}
+                        title={`View latest ${config.label} validation details`}
+                      >
+                        {/* Left: icon + label + meta */}
+                        <div className="flex min-w-0 items-center gap-3">
+                          <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              {config.label}
+                              {delta && delta.delta !== 0 && (
+                                <span
+                                  className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+                                    delta.delta > 0 ? 'text-green-600' : 'text-red-600'
+                                  }`}
+                                >
+                                  {delta.delta > 0 ? (
+                                    <ArrowUpRight className="h-3 w-3" />
+                                  ) : (
+                                    <ArrowDownRight className="h-3 w-3" />
+                                  )}
+                                  {Math.abs(delta.delta)}pt
+                                </span>
+                              )}
+                              {delta && delta.delta === 0 && (
+                                <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+                                  <Minus className="h-3 w-3" />
+                                  unchanged
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {entry.records_checked > 0
+                                ? `${entry.records_compliant}/${entry.records_checked} records · Mandatory: ${mandRate !== null ? `${Math.round(mandRate)}%` : '—'}`
+                                : 'No data yet'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: violations + score + badge + actions */}
+                        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
+                          {violationCount > 0 && score !== null && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                              {violationCount} violation{violationCount !== 1 ? 's' : ''} (
+                              {violationTypeCount} field{violationTypeCount !== 1 ? 's' : ''})
+                            </div>
+                          )}
+                          <div
+                            className={`w-12 text-right text-sm font-semibold ${getScoreColor(score)}`}
+                          >
+                            {score !== null ? `${Math.round(score)}%` : '—'}
+                          </div>
+                          {getScoreBadge(score)}
+                          {/* Per-resource actions */}
+                          {score !== null && (
+                            <div className="ml-1 flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                title={`Re-run ${config.label}`}
+                                disabled={resourceRerunMutation.isPending}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  resourceRerunMutation.mutate(
+                                    entry.resource_type as KENHDDResourceType
+                                  );
+                                }}
                               >
-                                {delta.delta > 0 ? (
-                                  <ArrowUpRight className="h-3 w-3" />
-                                ) : (
-                                  <ArrowDownRight className="h-3 w-3" />
-                                )}
-                                {Math.abs(delta.delta)}pt
-                              </span>
-                            )}
-                            {delta && delta.delta === 0 && (
-                              <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-                                <Minus className="h-3 w-3" />
-                                unchanged
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {entry.records_checked > 0
-                              ? `${entry.records_compliant}/${entry.records_checked} records · Mandatory: ${mandRate !== null ? `${Math.round(mandRate)}%` : '—'}`
-                              : 'No data yet'}
-                          </div>
+                                <RefreshCw className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                title={`Export ${config.label} report`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleExport(entry.resource_type as KENHDDResourceType, 'csv');
+                                }}
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      {/* Right: violations + score + badge + actions */}
-                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
-                        {violationCount > 0 && score !== null && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                            {violationCount} violation{violationCount !== 1 ? 's' : ''} ({violationTypeCount} field{violationTypeCount !== 1 ? 's' : ''})
-                          </div>
-                        )}
-                        <div className={`text-sm font-semibold w-12 text-right ${getScoreColor(score)}`}>
-                          {score !== null ? `${Math.round(score)}%` : '—'}
-                        </div>
-                        {getScoreBadge(score)}
-                        {/* Per-resource actions */}
-                        {score !== null && (
-                          <div className="flex items-center gap-1 ml-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title={`Re-run ${config.label}`}
-                              disabled={resourceRerunMutation.isPending}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                resourceRerunMutation.mutate(entry.resource_type as KENHDDResourceType);
-                              }}
-                            >
-                              <RefreshCw className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title={`Export ${config.label} report`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleExport(entry.resource_type as KENHDDResourceType, 'csv');
-                              }}
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
-          </CardContent>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </CardContent>
           )}
         </Card>
 
@@ -808,86 +829,105 @@ export default function KENHDDCompliancePage() {
         {enrichedViolations.length > 0 && (
           <Card>
             <CardHeader
-              className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+              className="cursor-pointer select-none transition-colors hover:bg-muted/50"
               onClick={() => setViolationsSectionOpen((o) => !o)}
             >
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <ShieldAlert className="h-4 w-4 text-destructive" />
                 {reportScores ? 'Violations from Latest Check' : 'Outstanding Violations'}
-                <Badge variant="secondary" className="ml-1 text-xs">{enrichedViolations.length}</Badge>
-                <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${violationsSectionOpen ? '' : '-rotate-90'}`} />
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {enrichedViolations.length}
+                </Badge>
+                <ChevronDown
+                  className={`ml-auto h-4 w-4 transition-transform ${violationsSectionOpen ? '' : '-rotate-90'}`}
+                />
               </CardTitle>
             </CardHeader>
             {violationsSectionOpen && (
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="min-w-[550px] w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">Resource</th>
-                      <th className="pb-2 font-medium">Element</th>
-                      <th className="pb-2 font-medium hidden sm:table-cell">Field</th>
-                      <th className="pb-2 font-medium">Level</th>
-                      <th className="pb-2 font-medium text-right">Count</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedViolations.map((v) => (
-                      <tr
-                        key={`${v.resourceType}-${v.elementId}`}
-                        className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => openLatestRunForResource(v.resourceType)}
-                        title={`View latest ${v.resourceLabel} run details`}
-                      >
-                        <td className="py-2">{v.resourceLabel}</td>
-                        <td className="py-2">
-                          <div className="font-medium text-xs">{v.elementName}</div>
-                          <div className="font-mono text-[10px] text-muted-foreground">{v.elementId}</div>
-                        </td>
-                        <td className="py-2 hidden sm:table-cell text-xs text-muted-foreground font-mono">
-                          {v.fieldName}
-                        </td>
-                        <td className="py-2">
-                          {v.requirementLevel === 'MANDATORY' ? (
-                            <Badge variant="destructive" className="text-xs">
-                              Mandatory
-                            </Badge>
-                          ) : v.requirementLevel === 'CONDITIONAL' ? (
-                            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs">
-                              Conditional
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">
-                              Optional
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="py-2 text-right">
-                          <Badge variant="destructive" className="text-xs">
-                            {v.count}
-                          </Badge>
-                        </td>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[550px] text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-muted-foreground">
+                        <th className="pb-2 font-medium">Resource</th>
+                        <th className="pb-2 font-medium">Element</th>
+                        <th className="hidden pb-2 font-medium sm:table-cell">Field</th>
+                        <th className="pb-2 font-medium">Level</th>
+                        <th className="pb-2 text-right font-medium">Count</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {totalViolationsPages > 1 && (
-                <div className="flex items-center justify-between pt-3 border-t mt-3">
-                  <span className="text-xs text-muted-foreground">
-                    Page {violationsPage} of {totalViolationsPages} ({enrichedViolations.length} violations)
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button variant="outline" size="sm" className="h-7 text-xs" disabled={violationsPage <= 1} onClick={() => setViolationsPage((p) => p - 1)}>
-                      Previous
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-7 text-xs" disabled={violationsPage >= totalViolationsPages} onClick={() => setViolationsPage((p) => p + 1)}>
-                      Next
-                    </Button>
-                  </div>
+                    </thead>
+                    <tbody>
+                      {paginatedViolations.map((v) => (
+                        <tr
+                          key={`${v.resourceType}-${v.elementId}`}
+                          className="cursor-pointer border-b transition-colors last:border-0 hover:bg-muted/50"
+                          onClick={() => openLatestRunForResource(v.resourceType)}
+                          title={`View latest ${v.resourceLabel} run details`}
+                        >
+                          <td className="py-2">{v.resourceLabel}</td>
+                          <td className="py-2">
+                            <div className="text-xs font-medium">{v.elementName}</div>
+                            <div className="font-mono text-[10px] text-muted-foreground">
+                              {v.elementId}
+                            </div>
+                          </td>
+                          <td className="hidden py-2 font-mono text-xs text-muted-foreground sm:table-cell">
+                            {v.fieldName}
+                          </td>
+                          <td className="py-2">
+                            {v.requirementLevel === 'MANDATORY' ? (
+                              <Badge variant="destructive" className="text-xs">
+                                Mandatory
+                              </Badge>
+                            ) : v.requirementLevel === 'CONDITIONAL' ? (
+                              <Badge className="bg-amber-100 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                                Conditional
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">
+                                Optional
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="py-2 text-right">
+                            <Badge variant="destructive" className="text-xs">
+                              {v.count}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </CardContent>
+                {totalViolationsPages > 1 && (
+                  <div className="mt-3 flex items-center justify-between border-t pt-3">
+                    <span className="text-xs text-muted-foreground">
+                      Page {violationsPage} of {totalViolationsPages} ({enrichedViolations.length}{' '}
+                      violations)
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={violationsPage <= 1}
+                        onClick={() => setViolationsPage((p) => p - 1)}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={violationsPage >= totalViolationsPages}
+                        onClick={() => setViolationsPage((p) => p + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
             )}
           </Card>
         )}
@@ -896,17 +936,27 @@ export default function KENHDDCompliancePage() {
         <Card>
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle
-              className="text-base sm:text-lg flex items-center gap-2 cursor-pointer select-none"
+              className="flex cursor-pointer select-none items-center gap-2 text-base sm:text-lg"
               onClick={() => setHistorySectionOpen((o) => !o)}
             >
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
               Run History
               {filteredRuns.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">{filteredRuns.length}</Badge>
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {filteredRuns.length}
+                </Badge>
               )}
-              <ChevronDown className={`h-4 w-4 transition-transform ${historySectionOpen ? '' : '-rotate-90'}`} />
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${historySectionOpen ? '' : '-rotate-90'}`}
+              />
             </CardTitle>
-            <Select value={historyFilter} onValueChange={(v) => { setHistoryFilter(v); setHistoryPage(1); }}>
+            <Select
+              value={historyFilter}
+              onValueChange={(v) => {
+                setHistoryFilter(v);
+                setHistoryPage(1);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
@@ -921,140 +971,177 @@ export default function KENHDDCompliancePage() {
             </Select>
           </CardHeader>
           {historySectionOpen && (
-          <CardContent>
-            {runsLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : paginatedRuns.length > 0 ? (
-              <>
-              <div className="overflow-x-auto">
-                <table className="min-w-[600px] w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">
-                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort('resource')}>
-                          Resource <SortIcon column="resource" />
-                        </button>
-                      </th>
-                      <th className="pb-2 font-medium text-right">
-                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto" onClick={() => toggleSort('score')}>
-                          Score <SortIcon column="score" />
-                        </button>
-                      </th>
-                      <th className="pb-2 font-medium text-right">
-                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto" onClick={() => toggleSort('mandatory')}>
-                          Mandatory <SortIcon column="mandatory" />
-                        </button>
-                      </th>
-                      <th className="pb-2 font-medium text-right">
-                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto" onClick={() => toggleSort('records')}>
-                          Records <SortIcon column="records" />
-                        </button>
-                      </th>
-                      <th className="pb-2 font-medium">
-                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort('run_by')}>
-                          Run By <SortIcon column="run_by" />
-                        </button>
-                      </th>
-                      <th className="pb-2 font-medium">
-                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort('date')}>
-                          Date <SortIcon column="date" />
-                        </button>
-                      </th>
-                      <th className="pb-2 font-medium text-right">Export</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedRuns.map((run) => {
-                      const score = parseFloat(run.compliance_score);
-                      return (
-                        <tr
-                          key={run.id}
-                          className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => {
-                            setSelectedRunId(run.id);
-                            setRunDetailOpen(true);
-                          }}
-                        >
-                          <td className="py-2">
-                            <div className="flex items-center gap-1.5">
-                              {score >= 90 ? (
-                                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                              ) : score >= 70 ? (
-                                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                              ) : (
-                                <ShieldAlert className="h-3.5 w-3.5 text-red-500" />
-                              )}
-                              {RESOURCE_TYPE_CONFIG[run.resource_type as KENHDDResourceType]?.label ??
-                                run.resource_type}
-                            </div>
-                          </td>
-                          <td className={`py-2 text-right font-semibold ${getScoreColor(score)}`}>
-                            {score.toFixed(0)}%
-                          </td>
-                          <td className="py-2 text-right">
-                            {parseFloat(run.mandatory_pass_rate).toFixed(0)}%
-                          </td>
-                          <td className="py-2 text-right">
-                            {run.records_compliant}/{run.records_checked}
-                          </td>
-                          <td className="py-2 text-muted-foreground">
-                            {run.run_by_name ?? '—'}
-                          </td>
-                          <td className="py-2 text-muted-foreground">
-                            {new Date(run.run_at).toLocaleDateString()}
-                          </td>
-                          <td className="py-2 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title="Export CSV"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleExport(run.resource_type as KENHDDResourceType, 'csv');
+            <CardContent>
+              {runsLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : paginatedRuns.length > 0 ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[600px] text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-muted-foreground">
+                          <th className="pb-2 font-medium">
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                              onClick={() => toggleSort('resource')}
+                            >
+                              Resource <SortIcon column="resource" />
+                            </button>
+                          </th>
+                          <th className="pb-2 text-right font-medium">
+                            <button
+                              type="button"
+                              className="ml-auto inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                              onClick={() => toggleSort('score')}
+                            >
+                              Score <SortIcon column="score" />
+                            </button>
+                          </th>
+                          <th className="pb-2 text-right font-medium">
+                            <button
+                              type="button"
+                              className="ml-auto inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                              onClick={() => toggleSort('mandatory')}
+                            >
+                              Mandatory <SortIcon column="mandatory" />
+                            </button>
+                          </th>
+                          <th className="pb-2 text-right font-medium">
+                            <button
+                              type="button"
+                              className="ml-auto inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                              onClick={() => toggleSort('records')}
+                            >
+                              Records <SortIcon column="records" />
+                            </button>
+                          </th>
+                          <th className="pb-2 font-medium">
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                              onClick={() => toggleSort('run_by')}
+                            >
+                              Run By <SortIcon column="run_by" />
+                            </button>
+                          </th>
+                          <th className="pb-2 font-medium">
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                              onClick={() => toggleSort('date')}
+                            >
+                              Date <SortIcon column="date" />
+                            </button>
+                          </th>
+                          <th className="pb-2 text-right font-medium">Export</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedRuns.map((run) => {
+                          const score = parseFloat(run.compliance_score);
+                          return (
+                            <tr
+                              key={run.id}
+                              className="cursor-pointer border-b transition-colors last:border-0 hover:bg-muted/50"
+                              onClick={() => {
+                                setSelectedRunId(run.id);
+                                setRunDetailOpen(true);
                               }}
                             >
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              {totalHistoryPages > 1 && (
-                <div className="flex items-center justify-between pt-3 border-t mt-3">
-                  <span className="text-xs text-muted-foreground">
-                    Page {historyPage} of {totalHistoryPages} ({filteredRuns.length} runs)
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button variant="outline" size="sm" className="h-7 text-xs" disabled={historyPage <= 1} onClick={() => setHistoryPage((p) => p - 1)}>
-                      Previous
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-7 text-xs" disabled={historyPage >= totalHistoryPages} onClick={() => setHistoryPage((p) => p + 1)}>
-                      Next
-                    </Button>
+                              <td className="py-2">
+                                <div className="flex items-center gap-1.5">
+                                  {score >= 90 ? (
+                                    <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                                  ) : score >= 70 ? (
+                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                  ) : (
+                                    <ShieldAlert className="h-3.5 w-3.5 text-red-500" />
+                                  )}
+                                  {RESOURCE_TYPE_CONFIG[run.resource_type as KENHDDResourceType]
+                                    ?.label ?? run.resource_type}
+                                </div>
+                              </td>
+                              <td
+                                className={`py-2 text-right font-semibold ${getScoreColor(score)}`}
+                              >
+                                {score.toFixed(0)}%
+                              </td>
+                              <td className="py-2 text-right">
+                                {parseFloat(run.mandatory_pass_rate).toFixed(0)}%
+                              </td>
+                              <td className="py-2 text-right">
+                                {run.records_compliant}/{run.records_checked}
+                              </td>
+                              <td className="py-2 text-muted-foreground">
+                                {run.run_by_name ?? '—'}
+                              </td>
+                              <td className="py-2 text-muted-foreground">
+                                {new Date(run.run_at).toLocaleDateString()}
+                              </td>
+                              <td className="py-2 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  title="Export CSV"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleExport(run.resource_type as KENHDDResourceType, 'csv');
+                                  }}
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
+                  {totalHistoryPages > 1 && (
+                    <div className="mt-3 flex items-center justify-between border-t pt-3">
+                      <span className="text-xs text-muted-foreground">
+                        Page {historyPage} of {totalHistoryPages} ({filteredRuns.length} runs)
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          disabled={historyPage <= 1}
+                          onClick={() => setHistoryPage((p) => p - 1)}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          disabled={historyPage >= totalHistoryPages}
+                          onClick={() => setHistoryPage((p) => p + 1)}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  <CheckCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
+                  <p>
+                    {historyFilter === 'all'
+                      ? 'No validation runs yet. Click "Run Compliance Check" to begin.'
+                      : `No runs for ${RESOURCE_TYPE_CONFIG[historyFilter as KENHDDResourceType]?.label ?? historyFilter}.`}
+                  </p>
                 </div>
               )}
-              </>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>
-                  {historyFilter === 'all'
-                    ? 'No validation runs yet. Click "Run Compliance Check" to begin.'
-                    : `No runs for ${RESOURCE_TYPE_CONFIG[historyFilter as KENHDDResourceType]?.label ?? historyFilter}.`
-                  }
-                </p>
-              </div>
-            )}
-          </CardContent>
+            </CardContent>
           )}
         </Card>
         {/* Run Detail Dialog */}

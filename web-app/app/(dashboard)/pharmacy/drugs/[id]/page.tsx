@@ -8,7 +8,22 @@
 import { use, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Edit, Package, Loader2, AlertTriangle, XCircle, Shield, Star, Search, Link2, ExternalLink, TrendingUp, Clock, DollarSign, Layers } from 'lucide-react';
+import {
+  Edit,
+  Package,
+  Loader2,
+  AlertTriangle,
+  XCircle,
+  Shield,
+  Star,
+  Search,
+  Link2,
+  ExternalLink,
+  TrendingUp,
+  Clock,
+  DollarSign,
+  Layers,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,18 +41,30 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
-import { DrugCategory, DrugForm, DrugSchedule, HptSearchResult, StockBatch, StockStatus } from '@/lib/types/pharmacy';
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import {
+  DrugCategory,
+  DrugForm,
+  DrugSchedule,
+  HptSearchResult,
+  StockBatch,
+  StockStatus,
+} from '@/lib/types/pharmacy';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+} from 'recharts';
 
 const CATEGORY_LABELS: Record<DrugCategory, string> = {
   ANALGESIC: 'Analgesic',
@@ -102,7 +129,11 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: drug, isLoading, error } = useQuery({
+  const {
+    data: drug,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['drug', drugId],
     queryFn: () => pharmacyApi.getDrug(drugId),
   });
@@ -115,15 +146,18 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
   // Compute stock statistics from batches (must be above early returns)
   const stockStats = useMemo(() => {
     const batchList = batches?.results ?? [];
-    const activeBatches = batchList.filter(b => b.status === 'AVAILABLE' || b.status === 'LOW');
+    const activeBatches = batchList.filter((b) => b.status === 'AVAILABLE' || b.status === 'LOW');
     const totalAvailable = batchList.reduce((sum, b) => sum + b.quantity_available, 0);
-    const avgPrice = activeBatches.length > 0
-      ? activeBatches.reduce((sum, b) => sum + Number(b.selling_price), 0) / activeBatches.length
-      : 0;
-    const nearestExpiry = activeBatches.length > 0
-      ? Math.min(...activeBatches.map(b => b.days_to_expiry))
-      : null;
-    const totalValue = batchList.reduce((sum, b) => sum + (b.quantity_available * Number(b.selling_price)), 0);
+    const avgPrice =
+      activeBatches.length > 0
+        ? activeBatches.reduce((sum, b) => sum + Number(b.selling_price), 0) / activeBatches.length
+        : 0;
+    const nearestExpiry =
+      activeBatches.length > 0 ? Math.min(...activeBatches.map((b) => b.days_to_expiry)) : null;
+    const totalValue = batchList.reduce(
+      (sum, b) => sum + b.quantity_available * Number(b.selling_price),
+      0
+    );
 
     // Status distribution for chart
     const statusCounts: Record<string, number> = {};
@@ -138,13 +172,22 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
     const expiryData = activeBatches
       .sort((a, b) => a.days_to_expiry - b.days_to_expiry)
       .slice(0, 8)
-      .map(b => ({
+      .map((b) => ({
         batch: b.batch_number.replace('BAT-', ''),
         days: b.days_to_expiry,
         qty: b.quantity_available,
       }));
 
-    return { activeBatches: activeBatches.length, totalAvailable, avgPrice, nearestExpiry, totalValue, statusChartData, expiryData, totalBatches: batchList.length };
+    return {
+      activeBatches: activeBatches.length,
+      totalAvailable,
+      avgPrice,
+      nearestExpiry,
+      totalValue,
+      statusChartData,
+      expiryData,
+      totalBatches: batchList.length,
+    };
   }, [batches]);
 
   const handleDelete = async () => {
@@ -154,19 +197,31 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
     try {
       await pharmacyApi.deleteDrug(drug.id);
       router.push('/pharmacy');
-    } catch (err: any) {
-      setDeleteError(
-        err.response?.data?.detail ||
-        err.message ||
-        'Failed to delete. This item may have existing stock.'
-      );
+    } catch (err: unknown) {
+      const detail =
+        typeof err === 'object' &&
+        err !== null &&
+        'response' in err &&
+        typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ===
+          'string'
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined;
+      const description =
+        detail ||
+        (err instanceof Error
+          ? err.message
+          : 'Failed to delete. This item may have existing stock.');
+      setDeleteError(description);
       setIsDeleting(false);
     }
   };
 
   const handleHptSearch = async (query: string) => {
     setHptQuery(query);
-    if (query.length < 2) { setHptResults([]); return; }
+    if (query.length < 2) {
+      setHptResults([]);
+      return;
+    }
     setHptSearching(true);
     try {
       const data = await pharmacyApi.hptSearch(query);
@@ -228,7 +283,12 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
   const isLowStock = drug.current_stock > 0 && drug.current_stock < drug.default_reorder_level;
   const isOutOfStock = drug.current_stock === 0;
   const isMedication = drug.item_type === 'MEDICATION' || !drug.item_type;
-  const typeLabel = drug.item_type === 'REAGENT' ? 'Reagent' : drug.item_type === 'CONSUMABLE' ? 'Consumable' : 'Drug';
+  const typeLabel =
+    drug.item_type === 'REAGENT'
+      ? 'Reagent'
+      : drug.item_type === 'CONSUMABLE'
+        ? 'Consumable'
+        : 'Drug';
 
   return (
     <div className="space-y-4 sm:space-y-6" data-testid="drug-detail">
@@ -238,26 +298,38 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
         helpContent={`View and manage this ${typeLabel.toLowerCase()} item. Edit details, check stock levels, and link to HPT registry.`}
         actions={
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="outline" size="sm" onClick={() => router.push(`/pharmacy/drugs/${drug.id}/edit`)}>
-              <Edit className="h-4 w-4 mr-1.5" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/pharmacy/drugs/${drug.id}/edit`)}
+            >
+              <Edit className="mr-1.5 h-4 w-4" />
               Edit
             </Button>
-            <Button variant="outline" size="sm" onClick={() => router.push('/pharmacy?tab=inventory')}>
-              <Package className="h-4 w-4 mr-1.5" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/pharmacy?tab=inventory')}
+            >
+              <Package className="mr-1.5 h-4 w-4" />
               Batches
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">Delete</Button>
+                <Button variant="destructive" size="sm">
+                  Delete
+                </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete {drug.generic_name}?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently remove this item from the catalog. This action cannot be undone.
+                    This will permanently remove this item from the catalog. This action cannot be
+                    undone.
                     {drug.current_stock > 0 && (
-                      <span className="block mt-2 text-destructive font-semibold">
-                        Warning: This item has {drug.current_stock} units in stock and cannot be deleted.
+                      <span className="mt-2 block font-semibold text-destructive">
+                        Warning: This item has {drug.current_stock} units in stock and cannot be
+                        deleted.
                       </span>
                     )}
                   </AlertDialogDescription>
@@ -285,32 +357,39 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {drug.code}
-            <span className="text-muted-foreground"> • {FORM_LABELS[drug.form]} • {drug.strength}</span>
+            <span className="text-muted-foreground">
+              {' '}
+              • {FORM_LABELS[drug.form]} • {drug.strength}
+            </span>
           </p>
           {drug.brand_names && drug.brand_names.length > 0 && (
-            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+            <p className="truncate text-xs text-muted-foreground sm:text-sm">
               Brands: {drug.brand_names.join(', ')}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           {drug.item_type && drug.item_type !== 'MEDICATION' && (
-            <Badge variant="outline" className="shrink-0 w-fit">
+            <Badge variant="outline" className="w-fit shrink-0">
               {typeLabel}
             </Badge>
           )}
-          <Badge className={`${SCHEDULE_COLORS[drug.schedule]} shrink-0 w-fit`}>
+          <Badge className={`${SCHEDULE_COLORS[drug.schedule]} w-fit shrink-0`}>
             {drug.schedule}
           </Badge>
           {isOutOfStock && (
-            <Badge variant="destructive" className="shrink-0 w-fit">Out of Stock</Badge>
+            <Badge variant="destructive" className="w-fit shrink-0">
+              Out of Stock
+            </Badge>
           )}
           {isLowStock && (
-            <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 shrink-0 w-fit">Low Stock</Badge>
+            <Badge className="w-fit shrink-0 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+              Low Stock
+            </Badge>
           )}
         </div>
       </div>
@@ -318,60 +397,88 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
       {/* Content Cards */}
       <div className="grid gap-4 sm:gap-6">
         {/* Stock Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <div className="mb-1 flex items-center gap-2 text-muted-foreground">
                 <Package className="h-4 w-4" />
                 <span className="text-xs font-medium">Total Stock</span>
               </div>
               <p className={`text-2xl font-bold ${isOutOfStock ? 'text-destructive' : ''}`}>
                 {stockStats.totalAvailable.toLocaleString()}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">{drug.unit}s across {stockStats.activeBatches} batches</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {drug.unit}s across {stockStats.activeBatches} batches
+              </p>
             </CardContent>
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <div className="mb-1 flex items-center gap-2 text-muted-foreground">
                 <DollarSign className="h-4 w-4" />
                 <span className="text-xs font-medium">Stock Value</span>
               </div>
               <p className="text-2xl font-bold">
-                KES {stockStats.totalValue >= 1000 ? `${(stockStats.totalValue / 1000).toFixed(1)}k` : stockStats.totalValue.toFixed(0)}
+                KES{' '}
+                {stockStats.totalValue >= 1000
+                  ? `${(stockStats.totalValue / 1000).toFixed(1)}k`
+                  : stockStats.totalValue.toFixed(0)}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Avg KES {stockStats.avgPrice.toFixed(0)}/unit</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Avg KES {stockStats.avgPrice.toFixed(0)}/unit
+              </p>
             </CardContent>
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <div className="mb-1 flex items-center gap-2 text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 <span className="text-xs font-medium">Nearest Expiry</span>
               </div>
-              <p className={`text-2xl font-bold ${stockStats.nearestExpiry !== null && stockStats.nearestExpiry < 90 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+              <p
+                className={`text-2xl font-bold ${stockStats.nearestExpiry !== null && stockStats.nearestExpiry < 90 ? 'text-amber-600 dark:text-amber-400' : ''}`}
+              >
                 {stockStats.nearestExpiry !== null ? `${stockStats.nearestExpiry}d` : '—'}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {stockStats.nearestExpiry !== null && stockStats.nearestExpiry < 30 ? 'Expiring soon!' : stockStats.nearestExpiry !== null && stockStats.nearestExpiry < 90 ? 'Within 3 months' : 'No urgent expiry'}
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {stockStats.nearestExpiry !== null && stockStats.nearestExpiry < 30
+                  ? 'Expiring soon!'
+                  : stockStats.nearestExpiry !== null && stockStats.nearestExpiry < 90
+                    ? 'Within 3 months'
+                    : 'No urgent expiry'}
               </p>
             </CardContent>
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <div className="mb-1 flex items-center gap-2 text-muted-foreground">
                 <Layers className="h-4 w-4" />
                 <span className="text-xs font-medium">Batches</span>
               </div>
               <p className="text-2xl font-bold">{stockStats.totalBatches}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{stockStats.activeBatches} active, {stockStats.totalBatches - stockStats.activeBatches} expired/other</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {stockStats.activeBatches} active,{' '}
+                {stockStats.totalBatches - stockStats.activeBatches} expired/other
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -388,9 +495,20 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
                 <CardContent>
                   <div className="h-48">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={stockStats.expiryData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                      <BarChart
+                        data={stockStats.expiryData}
+                        margin={{ top: 4, right: 8, bottom: 4, left: 0 }}
+                      >
                         <XAxis dataKey="batch" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} label={{ value: 'Days', angle: -90, position: 'insideLeft', style: { fontSize: 11 } }} />
+                        <YAxis
+                          tick={{ fontSize: 11 }}
+                          label={{
+                            value: 'Days',
+                            angle: -90,
+                            position: 'insideLeft',
+                            style: { fontSize: 11 },
+                          }}
+                        />
                         <RechartsTooltip
                           formatter={(value: number) => [`${value} days`, 'Days to Expiry']}
                           labelFormatter={(label) => `Batch ${label}`}
@@ -399,17 +517,32 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
                           {stockStats.expiryData.map((entry, index) => (
                             <Cell
                               key={`cell-${index}`}
-                              fill={entry.days < 30 ? 'hsl(0, 84%, 60%)' : entry.days < 90 ? 'hsl(38, 92%, 50%)' : 'hsl(142, 71%, 45%)'}
+                              fill={
+                                entry.days < 30
+                                  ? 'hsl(0, 84%, 60%)'
+                                  : entry.days < 90
+                                    ? 'hsl(38, 92%, 50%)'
+                                    : 'hsl(142, 71%, 45%)'
+                              }
                             />
                           ))}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-red-500" />{'<30d'}</span>
-                    <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-amber-500" />{'30-90d'}</span>
-                    <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-green-500" />{'>90d'}</span>
+                  <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="h-2.5 w-2.5 rounded-sm bg-red-500" />
+                      {'<30d'}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" />
+                      {'30-90d'}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2.5 w-2.5 rounded-sm bg-green-500" />
+                      {'>90d'}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -444,10 +577,17 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
                               QUARANTINE: 'hsl(25, 95%, 53%)',
                               RECALLED: 'hsl(271, 91%, 65%)',
                             };
-                            return <Cell key={`cell-${index}`} fill={colors[entry.status] || 'hsl(215, 20%, 65%)'} />;
+                            return (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={colors[entry.status] || 'hsl(215, 20%, 65%)'}
+                              />
+                            );
                           })}
                         </Pie>
-                        <RechartsTooltip formatter={(value: number) => [`${value} units`, 'Quantity']} />
+                        <RechartsTooltip
+                          formatter={(value: number) => [`${value} units`, 'Quantity']}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -463,7 +603,7 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
             <CardTitle className="text-base sm:text-lg">Item Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               <div>
                 <p className="text-xs text-muted-foreground">Code</p>
                 <p className="font-mono text-sm font-medium">{drug.code}</p>
@@ -486,13 +626,17 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
               </div>
               <div className="col-span-2 sm:col-span-1">
                 <p className="text-xs text-muted-foreground">Categories</p>
-                <div className="flex flex-wrap gap-1 mt-0.5">
+                <div className="mt-0.5 flex flex-wrap gap-1">
                   {drug.categories.length > 0 ? (
                     drug.categories.map((cat) => (
-                      <Badge key={cat} variant="secondary" className="text-xs">{CATEGORY_LABELS[cat]}</Badge>
+                      <Badge key={cat} variant="secondary" className="text-xs">
+                        {CATEGORY_LABELS[cat]}
+                      </Badge>
                     ))
                   ) : (
-                    <Badge variant="outline" className="text-xs">Uncategorized</Badge>
+                    <Badge variant="outline" className="text-xs">
+                      Uncategorized
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -500,22 +644,31 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
 
             {/* Flags */}
             {(drug.is_essential || drug.is_controlled || drug.is_narcotic) && (
-              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
+              <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
                 {drug.is_essential && (
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
-                    <Star className="h-3 w-3 mr-1" />
+                  <Badge
+                    variant="outline"
+                    className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                  >
+                    <Star className="mr-1 h-3 w-3" />
                     Essential (KEML)
                   </Badge>
                 )}
                 {drug.is_controlled && (
-                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
-                    <Shield className="h-3 w-3 mr-1" />
+                  <Badge
+                    variant="outline"
+                    className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
+                  >
+                    <Shield className="mr-1 h-3 w-3" />
                     Controlled
                   </Badge>
                 )}
                 {drug.is_narcotic && (
-                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
-                    <Shield className="h-3 w-3 mr-1" />
+                  <Badge
+                    variant="outline"
+                    className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
+                  >
+                    <Shield className="mr-1 h-3 w-3" />
                     Narcotic
                   </Badge>
                 )}
@@ -530,7 +683,7 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
             <CardTitle className="text-base sm:text-lg">Stock</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div>
                 <p className="text-xs text-muted-foreground">Current Stock</p>
                 <div className="flex items-center gap-1.5">
@@ -552,20 +705,25 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
               {drug.reference_price && (
                 <div>
                   <p className="text-xs text-muted-foreground">Ref. Price</p>
-                  <p className="text-sm font-semibold">KES {parseFloat(String(drug.reference_price)).toFixed(2)}</p>
+                  <p className="text-sm font-semibold">
+                    KES {parseFloat(String(drug.reference_price)).toFixed(2)}
+                  </p>
                 </div>
               )}
             </div>
 
             {/* Batch list */}
             {batches && batches.results.length > 0 && (
-              <div className="pt-3 border-t">
-                <p className="text-xs text-muted-foreground mb-2">Recent Batches</p>
+              <div className="border-t pt-3">
+                <p className="mb-2 text-xs text-muted-foreground">Recent Batches</p>
                 <div className="space-y-2">
                   {batches.results.slice(0, 5).map((batch) => (
-                    <div key={batch.id} className="flex justify-between items-center p-2 border rounded-md text-sm">
+                    <div
+                      key={batch.id}
+                      className="flex items-center justify-between rounded-md border p-2 text-sm"
+                    >
                       <div className="min-w-0">
-                        <p className="font-medium truncate">{batch.batch_number}</p>
+                        <p className="truncate font-medium">{batch.batch_number}</p>
                         <p className="text-xs text-muted-foreground">
                           Exp: {new Date(batch.expiry_date).toLocaleDateString()}
                           {batch.days_to_expiry < 90 && (
@@ -573,15 +731,22 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
                           )}
                         </p>
                       </div>
-                      <div className="text-right shrink-0 ml-2">
+                      <div className="ml-2 shrink-0 text-right">
                         <p className="font-semibold">{batch.quantity_available}</p>
-                        <Badge variant="outline" className="text-xs">{batch.status}</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {batch.status}
+                        </Badge>
                       </div>
                     </div>
                   ))}
                 </div>
                 {batches.results.length > 5 && (
-                  <Button variant="link" size="sm" onClick={() => router.push('/pharmacy?tab=inventory')} className="mt-2 px-0">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => router.push('/pharmacy?tab=inventory')}
+                    className="mt-2 px-0"
+                  >
                     View all {batches.results.length} batches
                   </Button>
                 )}
@@ -591,44 +756,48 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
         </Card>
 
         {/* Regulatory / Additional — only for medications */}
-        {isMedication && (drug.keml_code || drug.nhif_code || drug.shelf_life_months || drug.storage_requirements) && (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base sm:text-lg">Regulatory & Storage</CardTitle>
-                <HelpPopover content="KEML codes, SHA insurance codes, and storage requirements for compliance tracking." />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {drug.keml_code && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">KEML Code</p>
-                    <p className="text-sm font-medium">{drug.keml_code}</p>
-                  </div>
-                )}
-                {drug.nhif_code && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">SHA Code</p>
-                    <p className="text-sm font-medium">{drug.nhif_code}</p>
-                  </div>
-                )}
-                {drug.shelf_life_months && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Shelf Life</p>
-                    <p className="text-sm">{drug.shelf_life_months} months</p>
-                  </div>
-                )}
-              </div>
-              {drug.storage_requirements && (
-                <div className="mt-4 pt-3 border-t">
-                  <p className="text-xs text-muted-foreground mb-1">Storage</p>
-                  <p className="text-sm">{drug.storage_requirements}</p>
+        {isMedication &&
+          (drug.keml_code ||
+            drug.nhif_code ||
+            drug.shelf_life_months ||
+            drug.storage_requirements) && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Regulatory & Storage</CardTitle>
+                  <HelpPopover content="KEML codes, SHA insurance codes, and storage requirements for compliance tracking." />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  {drug.keml_code && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">KEML Code</p>
+                      <p className="text-sm font-medium">{drug.keml_code}</p>
+                    </div>
+                  )}
+                  {drug.nhif_code && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">SHA Code</p>
+                      <p className="text-sm font-medium">{drug.nhif_code}</p>
+                    </div>
+                  )}
+                  {drug.shelf_life_months && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Shelf Life</p>
+                      <p className="text-sm">{drug.shelf_life_months} months</p>
+                    </div>
+                  )}
+                </div>
+                {drug.storage_requirements && (
+                  <div className="mt-4 border-t pt-3">
+                    <p className="mb-1 text-xs text-muted-foreground">Storage</p>
+                    <p className="text-sm">{drug.storage_requirements}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
         {/* HPT Registry */}
         {isMedication && (
@@ -642,7 +811,7 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
             <CardContent>
               {drug.hpt_code ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                     <div>
                       <p className="text-xs text-muted-foreground">KNHTS Code</p>
                       <p className="font-mono text-sm font-medium">{drug.hpt_code}</p>
@@ -660,22 +829,24 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
                     {drug.hpt_last_synced && (
                       <div>
                         <p className="text-xs text-muted-foreground">Last Synced</p>
-                        <p className="text-sm">{new Date(drug.hpt_last_synced).toLocaleDateString()}</p>
+                        <p className="text-sm">
+                          {new Date(drug.hpt_last_synced).toLocaleDateString()}
+                        </p>
                       </div>
                     )}
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setHptDialogOpen(true)}>
-                    <Link2 className="h-4 w-4 mr-1.5" />
+                    <Link2 className="mr-1.5 h-4 w-4" />
                     Re-link
                   </Button>
                 </div>
               ) : (
-                <div className="text-center py-4">
-                  <p className="text-sm text-muted-foreground mb-3">
+                <div className="py-4 text-center">
+                  <p className="mb-3 text-sm text-muted-foreground">
                     Not linked to DHA HPT Registry.
                   </p>
                   <Button variant="outline" size="sm" onClick={() => setHptDialogOpen(true)}>
-                    <Link2 className="h-4 w-4 mr-1.5" />
+                    <Link2 className="mr-1.5 h-4 w-4" />
                     Link to HPT
                   </Button>
                 </div>
@@ -687,7 +858,7 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* HPT Search Dialog */}
       <Dialog open={hptDialogOpen} onOpenChange={setHptDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-auto">
+        <DialogContent className="max-h-[80vh] max-w-lg overflow-auto">
           <DialogHeader>
             <DialogTitle>Link to HPT Registry</DialogTitle>
           </DialogHeader>
@@ -708,19 +879,21 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             )}
             {hptResults.length > 0 && (
-              <div className="space-y-2 max-h-60 overflow-auto">
+              <div className="max-h-60 space-y-2 overflow-auto">
                 {hptResults.map((result) => (
                   <button
                     key={result.product_id}
-                    className="w-full text-left p-3 rounded-md border hover:bg-accent transition-colors"
+                    className="w-full rounded-md border p-3 text-left transition-colors hover:bg-accent"
                     disabled={hptMapping}
                     onClick={() => handleHptMap(result)}
                   >
-                    <p className="font-medium text-sm">{result.generic_display_name}</p>
+                    <p className="text-sm font-medium">{result.generic_display_name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {result.form_description} • {result.route_description} • {result.strength_amount}{result.strength_unit}
+                      {result.form_description} • {result.route_description} •{' '}
+                      {result.strength_amount}
+                      {result.strength_unit}
                     </p>
-                    <p className="text-xs font-mono text-muted-foreground mt-1">
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">
                       KNHTS: {result.knhts_concept_id}
                       {result.ppb_registration_code && ` • PPB: ${result.ppb_registration_code}`}
                     </p>
@@ -729,7 +902,7 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             )}
             {!hptSearching && hptQuery.length >= 2 && hptResults.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="py-4 text-center text-sm text-muted-foreground">
                 No HPT products found for &quot;{hptQuery}&quot;
               </p>
             )}

@@ -44,21 +44,44 @@ const statusColors: Record<ShiftSwapStatus, string> = {
   EXPIRED: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
 };
 
-function ShiftCard({ title, summary, icon }: { title: string; summary: ShiftSummary; icon: React.ReactNode }) {
+function ShiftCard({
+  title,
+  summary,
+  icon,
+}: {
+  title: string;
+  summary: ShiftSummary;
+  icon: React.ReactNode;
+}) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
           {icon}
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1 text-sm">
-        <div><span className="text-muted-foreground">Staff:</span> {summary.staff_name || '—'}</div>
-        <div><span className="text-muted-foreground">Date:</span> {format(parseISO(summary.shift_date), 'MMM d, yyyy')}</div>
-        <div><span className="text-muted-foreground">Time:</span> {summary.start_time} – {summary.end_time}</div>
-        <div><span className="text-muted-foreground">Type:</span> <Badge variant="outline" className="text-xs">{summary.shift_type}</Badge></div>
-        <div><span className="text-muted-foreground">Status:</span> {summary.status}</div>
+        <div>
+          <span className="text-muted-foreground">Staff:</span> {summary.staff_name || '—'}
+        </div>
+        <div>
+          <span className="text-muted-foreground">Date:</span>{' '}
+          {format(parseISO(summary.shift_date), 'MMM d, yyyy')}
+        </div>
+        <div>
+          <span className="text-muted-foreground">Time:</span> {summary.start_time} –{' '}
+          {summary.end_time}
+        </div>
+        <div>
+          <span className="text-muted-foreground">Type:</span>{' '}
+          <Badge variant="outline" className="text-xs">
+            {summary.shift_type}
+          </Badge>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Status:</span> {summary.status}
+        </div>
       </CardContent>
     </Card>
   );
@@ -78,7 +101,11 @@ export default function ShiftSwapDetailPage() {
 
   const canManageSchedules = hasPermission('scheduling.manage_schedules');
 
-  const { data: swap, isLoading, error } = useQuery({
+  const {
+    data: swap,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['shift-swaps', id],
     queryFn: () => shiftSwapsApi.get(id),
     enabled: !!id,
@@ -92,25 +119,39 @@ export default function ShiftSwapDetailPage() {
 
   const acceptMutation = useMutation({
     mutationFn: () => shiftSwapsApi.accept(id),
-    onSuccess: () => { toast.success('Swap accepted'); invalidateAll(); },
+    onSuccess: () => {
+      toast.success('Swap accepted');
+      invalidateAll();
+    },
     onError: () => toast.error('Failed to accept'),
   });
 
   const rejectMutation = useMutation({
     mutationFn: (reason: string) => shiftSwapsApi.reject(id, { reason }),
-    onSuccess: () => { toast.success('Swap rejected'); setRejectDialogOpen(false); invalidateAll(); },
+    onSuccess: () => {
+      toast.success('Swap rejected');
+      setRejectDialogOpen(false);
+      invalidateAll();
+    },
     onError: () => toast.error('Failed to reject'),
   });
 
   const approveMutation = useMutation({
     mutationFn: (notes: string) => shiftSwapsApi.approve(id, { notes }),
-    onSuccess: () => { toast.success('Swap approved'); setApproveDialogOpen(false); invalidateAll(); },
+    onSuccess: () => {
+      toast.success('Swap approved');
+      setApproveDialogOpen(false);
+      invalidateAll();
+    },
     onError: () => toast.error('Failed to approve'),
   });
 
   const cancelMutation = useMutation({
     mutationFn: () => shiftSwapsApi.cancel(id),
-    onSuccess: () => { toast.success('Swap cancelled'); invalidateAll(); },
+    onSuccess: () => {
+      toast.success('Swap cancelled');
+      invalidateAll();
+    },
     onError: () => toast.error('Failed to cancel'),
   });
 
@@ -125,7 +166,7 @@ export default function ShiftSwapDetailPage() {
 
   if (error || !swap) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
+      <div className="flex flex-col items-center justify-center gap-4 py-12">
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <p className="text-lg font-medium">Swap request not found</p>
         <Button variant="outline" onClick={() => router.push('/scheduling/shift-swaps')}>
@@ -145,23 +186,23 @@ export default function ShiftSwapDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {swap.requester_name}
             {swap.target_staff_name && (
               <span className="text-muted-foreground"> → {swap.target_staff_name}</span>
             )}
-            {!swap.target_staff_name && (
-              <span className="text-muted-foreground"> (open swap)</span>
-            )}
+            {!swap.target_staff_name && <span className="text-muted-foreground"> (open swap)</span>}
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Created {format(parseISO(swap.created_at), 'MMM d, yyyy HH:mm')}
             {swap.is_partial && ' • Partial swap'}
           </p>
         </div>
-        <Badge className={`${statusColors[swap.status]} gap-1 shrink-0 w-fit self-start sm:self-auto`}>
+        <Badge
+          className={`${statusColors[swap.status]} w-fit shrink-0 gap-1 self-start sm:self-auto`}
+        >
           {swap.status_display}
         </Badge>
       </div>
@@ -171,11 +212,15 @@ export default function ShiftSwapDetailPage() {
         <Card className="border-yellow-300 dark:border-yellow-800">
           <CardContent className="p-3 sm:p-4">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600 dark:text-yellow-400" />
               <div>
-                <p className="font-medium text-yellow-800 dark:text-yellow-300">Constraint Warnings</p>
+                <p className="font-medium text-yellow-800 dark:text-yellow-300">
+                  Constraint Warnings
+                </p>
                 <ul className="mt-1 space-y-1 text-sm text-yellow-700 dark:text-yellow-400">
-                  {swap.constraint_warnings.map((w, i) => <li key={i}>• {w}</li>)}
+                  {swap.constraint_warnings.map((w, i) => (
+                    <li key={i}>• {w}</li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -184,7 +229,7 @@ export default function ShiftSwapDetailPage() {
       )}
 
       {/* Shift Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <ShiftCard
           title="Requesting Shift"
           summary={swap.requesting_shift_summary}
@@ -203,7 +248,7 @@ export default function ShiftSwapDetailPage() {
             icon={<ArrowLeftRight className="h-4 w-4 text-muted-foreground" />}
           />
         ) : (
-          <Card className="flex items-center justify-center border-dashed min-h-[180px]">
+          <Card className="flex min-h-[180px] items-center justify-center border-dashed">
             <p className="text-sm text-muted-foreground">Open swap — no specific target</p>
           </Card>
         )}
@@ -213,14 +258,18 @@ export default function ShiftSwapDetailPage() {
       {swap.is_partial && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
               <Timer className="h-4 w-4 text-purple-500" />
               Partial Swap Details
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm space-y-1">
-            <p><span className="text-muted-foreground">Start:</span> {swap.partial_start_time || '—'}</p>
-            <p><span className="text-muted-foreground">End:</span> {swap.partial_end_time || '—'}</p>
+          <CardContent className="space-y-1 text-sm">
+            <p>
+              <span className="text-muted-foreground">Start:</span> {swap.partial_start_time || '—'}
+            </p>
+            <p>
+              <span className="text-muted-foreground">End:</span> {swap.partial_end_time || '—'}
+            </p>
           </CardContent>
         </Card>
       )}
@@ -230,25 +279,36 @@ export default function ShiftSwapDetailPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Details</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm space-y-2">
+        <CardContent className="space-y-2 text-sm">
           {swap.reason && (
-            <p><span className="text-muted-foreground">Reason:</span> {swap.reason}</p>
+            <p>
+              <span className="text-muted-foreground">Reason:</span> {swap.reason}
+            </p>
           )}
           {swap.rejection_reason && (
-            <p><span className="text-muted-foreground">Rejection reason:</span> {swap.rejection_reason}</p>
+            <p>
+              <span className="text-muted-foreground">Rejection reason:</span>{' '}
+              {swap.rejection_reason}
+            </p>
           )}
           <p>
             <span className="text-muted-foreground">Expires:</span>{' '}
-            <span className={expired ? 'text-destructive font-medium' : ''}>
+            <span className={expired ? 'font-medium text-destructive' : ''}>
               {format(parseISO(swap.expires_at), 'MMM d, yyyy HH:mm')}
               {expired && ' (expired)'}
             </span>
           </p>
           {swap.accepted_by_name && (
-            <p><span className="text-muted-foreground">Accepted by:</span> {swap.accepted_by_name} — {swap.accepted_at ? format(parseISO(swap.accepted_at), 'MMM d, yyyy HH:mm') : ''}</p>
+            <p>
+              <span className="text-muted-foreground">Accepted by:</span> {swap.accepted_by_name} —{' '}
+              {swap.accepted_at ? format(parseISO(swap.accepted_at), 'MMM d, yyyy HH:mm') : ''}
+            </p>
           )}
           {swap.reviewed_by_name && (
-            <p><span className="text-muted-foreground">Reviewed by:</span> {swap.reviewed_by_name} — {swap.reviewed_at ? format(parseISO(swap.reviewed_at), 'MMM d, yyyy HH:mm') : ''}</p>
+            <p>
+              <span className="text-muted-foreground">Reviewed by:</span> {swap.reviewed_by_name} —{' '}
+              {swap.reviewed_at ? format(parseISO(swap.reviewed_at), 'MMM d, yyyy HH:mm') : ''}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -262,7 +322,7 @@ export default function ShiftSwapDetailPage() {
               onClick={() => cancelMutation.mutate()}
               disabled={cancelMutation.isPending}
             >
-              <XCircle className="h-4 w-4 mr-2" />
+              <XCircle className="mr-2 h-4 w-4" />
               Cancel Request
             </Button>
             <Button
@@ -270,25 +330,19 @@ export default function ShiftSwapDetailPage() {
               onClick={() => acceptMutation.mutate()}
               disabled={acceptMutation.isPending}
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle className="mr-2 h-4 w-4" />
               Accept
             </Button>
           </>
         )}
         {swap.status === 'ACCEPTED' && canManageSchedules && (
           <>
-            <Button
-              variant="outline"
-              onClick={() => setRejectDialogOpen(true)}
-            >
-              <XCircle className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={() => setRejectDialogOpen(true)}>
+              <XCircle className="mr-2 h-4 w-4" />
               Reject
             </Button>
-            <Button
-              variant="default"
-              onClick={() => setApproveDialogOpen(true)}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
+            <Button variant="default" onClick={() => setApproveDialogOpen(true)}>
+              <CheckCircle className="mr-2 h-4 w-4" />
               Approve
             </Button>
           </>
@@ -312,7 +366,9 @@ export default function ShiftSwapDetailPage() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+              Cancel
+            </Button>
             <Button
               variant="destructive"
               onClick={() => rejectMutation.mutate(rejectReason)}
@@ -341,7 +397,9 @@ export default function ShiftSwapDetailPage() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setApproveDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setApproveDialogOpen(false)}>
+              Cancel
+            </Button>
             <Button
               onClick={() => approveMutation.mutate(approveNotes)}
               disabled={approveMutation.isPending}

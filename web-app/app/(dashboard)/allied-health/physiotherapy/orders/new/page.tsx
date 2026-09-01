@@ -26,10 +26,7 @@ export default function NewPhysiotherapyOrderPage() {
         helpContent="Create a physiotherapy referral order for a patient. Select treatment type, specify clinical indication, and set session goals."
       />
 
-      <PhysioOrderForm
-        patientId={patientId}
-        encounterId={encounterId}
-      />
+      <PhysioOrderForm patientId={patientId} encounterId={encounterId} />
     </div>
   );
 }

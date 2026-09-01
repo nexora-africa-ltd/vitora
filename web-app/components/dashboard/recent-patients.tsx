@@ -6,7 +6,11 @@ import { formatRelativeTime } from '@/lib/utils/format';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { usePatients } from '@/lib/hooks/use-patients';
-import { DashboardEmptyState, DashboardFooterLink, DashboardListSkeleton } from './widget-primitives';
+import {
+  DashboardEmptyState,
+  DashboardFooterLink,
+  DashboardListSkeleton,
+} from './widget-primitives';
 
 const RECENT_PATIENTS_LIMIT = 8;
 
@@ -62,9 +66,7 @@ export function RecentPatients() {
         ))}
       </ul>
 
-      {hasMorePatients && (
-        <DashboardFooterLink href="/patients" label="View All Patients" />
-      )}
+      {hasMorePatients && <DashboardFooterLink href="/patients" label="View All Patients" />}
     </div>
   );
 }

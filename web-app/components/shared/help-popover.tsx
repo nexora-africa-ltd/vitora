@@ -1,9 +1,5 @@
 import { HelpCircle } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface HelpPopoverProps {
   /** Help content to display */
@@ -24,10 +20,10 @@ export function HelpPopover({ content, size = 'sm' }: HelpPopoverProps) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-full p-1 hover:bg-muted transition-colors"
+          className="inline-flex items-center justify-center rounded-full p-1 transition-colors hover:bg-muted"
           aria-label="Help"
         >
-          <HelpCircle className={`${iconSize} text-muted-foreground cursor-help`} />
+          <HelpCircle className={`${iconSize} cursor-help text-muted-foreground`} />
         </button>
       </PopoverTrigger>
       <PopoverContent side="bottom" align="start" className="max-w-xs p-3">

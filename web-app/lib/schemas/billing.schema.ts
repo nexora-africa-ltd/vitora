@@ -11,10 +11,38 @@ import { z } from 'zod';
 // Used to define both Zod schemas and TypeScript types consistently
 // =============================================================================
 
-export const INVOICE_STATUSES = ['PROFORMA', 'DRAFT', 'PENDING', 'PARTIAL', 'PAID', 'CANCELLED', 'OVERDUE', 'WRITTEN_OFF'] as const;
-export const PAYMENT_METHODS = ['CASH', 'MPESA', 'CARD', 'INSURANCE', 'BANK_TRANSFER', 'CORPORATE', 'CHEQUE'] as const;
+export const INVOICE_STATUSES = [
+  'PROFORMA',
+  'DRAFT',
+  'PENDING',
+  'PARTIAL',
+  'PAID',
+  'CANCELLED',
+  'OVERDUE',
+  'WRITTEN_OFF',
+] as const;
+export const PAYMENT_METHODS = [
+  'CASH',
+  'MPESA',
+  'CARD',
+  'INSURANCE',
+  'BANK_TRANSFER',
+  'CORPORATE',
+  'CHEQUE',
+] as const;
 export const PAYMENT_STATUSES = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED', 'REVERSED'] as const;
-export const CREDIT_NOTE_REASONS = ['OVERCHARGE', 'SERVICE_NOT_RENDERED', 'DUPLICATE_BILLING', 'DUPLICATE', 'DUPLICATE_CHARGE', 'PRICING_ERROR', 'OTHER', 'INSURANCE', 'INSURANCE_ADJUSTMENT', 'GOODWILL'] as const;
+export const CREDIT_NOTE_REASONS = [
+  'OVERCHARGE',
+  'SERVICE_NOT_RENDERED',
+  'DUPLICATE_BILLING',
+  'DUPLICATE',
+  'DUPLICATE_CHARGE',
+  'PRICING_ERROR',
+  'OTHER',
+  'INSURANCE',
+  'INSURANCE_ADJUSTMENT',
+  'GOODWILL',
+] as const;
 export const CREDIT_NOTE_STATUSES = ['DRAFT', 'APPROVED', 'REJECTED', 'REFUNDED'] as const;
 export const DISCOUNT_TYPES = ['PERCENTAGE', 'FIXED'] as const;
 
@@ -31,7 +59,8 @@ export const DISCOUNT_TYPES = ['PERCENTAGE', 'FIXED'] as const;
  */
 function caseInsensitiveEnum<const T extends readonly [string, ...string[]]>(values: T) {
   // Use transform + pipe pattern. Output type is inferred from z.enum(values)
-  return z.string()
+  return z
+    .string()
     .transform((v) => v.toUpperCase())
     .pipe(z.enum(values));
 }
@@ -421,7 +450,10 @@ export const CreditNoteSchema = z.object({
 
   refunded_at: z.string().optional().nullable(),
   refund_reference: z.string().optional().nullable(),
-  refund_method: z.union([PaymentMethodSchema, z.literal('')]).optional().nullable(),
+  refund_method: z
+    .union([PaymentMethodSchema, z.literal('')])
+    .optional()
+    .nullable(),
   updated_at: z.string().optional().nullable(),
 });
 
@@ -463,15 +495,21 @@ export const PaymentMethodBreakdownSchema = z.object({
 
 export const DailyCollectionReportSchema = z.object({
   date: z.string(),
-  total_collections: z.union([z.number(), z.string()]).transform(v => typeof v === 'string' ? parseFloat(v) : v),
+  total_collections: z
+    .union([z.number(), z.string()])
+    .transform((v) => (typeof v === 'string' ? parseFloat(v) : v)),
   invoice_count: z.number(),
   by_payment_method: z.record(z.union([z.number(), z.string()])),
-  top_services: z.array(z.object({
-    service__name: z.string().nullable(),
-    total_revenue: z.union([z.number(), z.string()]),
-    count: z.number(),
-  })),
-  outstanding_balance: z.union([z.number(), z.string()]).transform(v => typeof v === 'string' ? parseFloat(v) : v),
+  top_services: z.array(
+    z.object({
+      service__name: z.string().nullable(),
+      total_revenue: z.union([z.number(), z.string()]),
+      count: z.number(),
+    })
+  ),
+  outstanding_balance: z
+    .union([z.number(), z.string()])
+    .transform((v) => (typeof v === 'string' ? parseFloat(v) : v)),
 });
 
 export const RevenueSummarySchema = z.object({
@@ -480,15 +518,19 @@ export const RevenueSummarySchema = z.object({
     end: z.string(),
   }),
   total_revenue: z.number(),
-  by_category: z.record(z.object({
-    revenue: z.number(),
-    count: z.number(),
-  })),
+  by_category: z.record(
+    z.object({
+      revenue: z.number(),
+      count: z.number(),
+    })
+  ),
   by_payment_method: z.record(z.number()),
-  previous_period: z.object({
-    revenue: z.number(),
-    change_percent: z.number(),
-  }).optional(),
+  previous_period: z
+    .object({
+      revenue: z.number(),
+      change_percent: z.number(),
+    })
+    .optional(),
 });
 
 export const OutstandingBalanceSchema = z.object({
@@ -521,11 +563,13 @@ export const PaymentMethodAnalysisSchema = z.object({
     end: z.string(),
   }),
   // Backend returns by_method as object keyed by method name
-  by_method: z.record(z.object({
-    total: z.number(),
-    count: z.number(),
-    average: z.number(),
-  })),
+  by_method: z.record(
+    z.object({
+      total: z.number(),
+      count: z.number(),
+      average: z.number(),
+    })
+  ),
   average_transaction: z.number(),
   mpesa_metrics: z.object({
     total_transactions: z.number(),
@@ -540,11 +584,13 @@ export const DailyClosureReportSchema = z.object({
   total_invoiced: z.string(),
   total_collected: z.string(),
   outstanding: z.string(),
-  by_department: z.array(z.object({
-    department: z.string(),
-    invoiced: z.string(),
-    collected: z.string(),
-  })),
+  by_department: z.array(
+    z.object({
+      department: z.string(),
+      invoiced: z.string(),
+      collected: z.string(),
+    })
+  ),
   by_payment_method: z.record(z.string()),
   transaction_count: z.number(),
 });
@@ -640,7 +686,13 @@ export const PaginatedReceiptSchema = z.object({
 // FACILITY BILLING CONFIG SCHEMA
 // =============================================================================
 
-export const SHA_ACCREDITATION_STATUSES = ['ACCREDITED', 'PENDING', 'EXPIRED', 'REVOKED', 'NOT_APPLIED'] as const;
+export const SHA_ACCREDITATION_STATUSES = [
+  'ACCREDITED',
+  'PENDING',
+  'EXPIRED',
+  'REVOKED',
+  'NOT_APPLIED',
+] as const;
 export const SHA_SERVICE_LEVELS = ['BASIC', 'STANDARD', 'COMPREHENSIVE', 'SPECIALIST'] as const;
 
 export const SHAAccreditationStatusSchema = z.enum(SHA_ACCREDITATION_STATUSES);
@@ -729,7 +781,7 @@ export const AdmissionServiceGuardSchema = z.object({
       code: z.string(),
       name: z.string(),
       category_code: z.string().optional().default(''),
-    }),
+    })
   ),
   missing_codes: z.array(z.string()),
   status: z.enum(['ok', 'warning', 'not_applicable']),
@@ -835,7 +887,14 @@ export type PaginatedFacilityBillingConfigs = z.infer<typeof PaginatedFacilityBi
 // SUPPLIER BILL (ACCOUNTS PAYABLE) SCHEMAS
 // =============================================================================
 
-export const SUPPLIER_BILL_STATUSES = ['DRAFT', 'RECEIVED', 'APPROVED', 'PARTIAL', 'PAID', 'CANCELLED'] as const;
+export const SUPPLIER_BILL_STATUSES = [
+  'DRAFT',
+  'RECEIVED',
+  'APPROVED',
+  'PARTIAL',
+  'PAID',
+  'CANCELLED',
+] as const;
 export const SUPPLIER_BILL_PAYMENT_METHODS = ['CASH', 'MPESA', 'BANK_TRANSFER', 'CHEQUE'] as const;
 export const SUPPLIER_BILL_MATCH_STATUSES = ['MATCHED', 'VARIANCE', 'UNMATCHED'] as const;
 

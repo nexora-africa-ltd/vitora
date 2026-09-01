@@ -27,7 +27,7 @@ function CopyButton({ text }: { text: string }) {
     <Button
       variant="ghost"
       size="sm"
-      className="h-6 px-2 -my-1"
+      className="-my-1 h-6 px-2"
       onClick={() => {
         navigator.clipboard.writeText(text);
         setCopied(true);
@@ -44,11 +44,11 @@ export function ClaimSummaryBar({ claim }: ClaimSummaryBarProps) {
   const effectiveStatus = getEffectiveClaimStatus(claim);
 
   return (
-    <div className="sticky top-0 z-20 -mx-3 sm:-mx-6 px-3 sm:px-6 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <div className="sticky top-0 z-20 -mx-3 border-b bg-background/95 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         {/* Identity */}
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {claim.patient_id || claim.patient ? (
               <Link
                 href={`/patients/${claim.patient_id ?? claim.patient}`}
@@ -60,9 +60,7 @@ export function ClaimSummaryBar({ claim }: ClaimSummaryBarProps) {
               claim.patient_name || 'Unknown patient'
             )}
             {claim.patient_mrn && (
-              <span className="text-muted-foreground font-mono ml-1">
-                • {claim.patient_mrn}
-              </span>
+              <span className="ml-1 font-mono text-muted-foreground">• {claim.patient_mrn}</span>
             )}
           </p>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -98,12 +96,15 @@ export function ClaimSummaryBar({ claim }: ClaimSummaryBarProps) {
         </div>
 
         {/* Badges */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {claim.claim_flow && <ClaimFlowBadge claim={claim} className="text-xs" />}
           <ClaimStatusBadge status={effectiveStatus} />
           <TimeBarBadge claim={claim} compact />
           {claim.is_emergency_claim && (
-            <Badge variant="outline" className="border-red-400 text-red-700 dark:text-red-300 text-xs">
+            <Badge
+              variant="outline"
+              className="border-red-400 text-xs text-red-700 dark:text-red-300"
+            >
               Emergency
             </Badge>
           )}

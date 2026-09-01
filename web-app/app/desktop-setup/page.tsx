@@ -88,9 +88,7 @@ export default function DesktopSetupPage() {
       }
     } catch (e) {
       setError(
-        e instanceof Error
-          ? `Cannot connect: ${e.message}`
-          : 'Cannot connect to the server'
+        e instanceof Error ? `Cannot connect: ${e.message}` : 'Cannot connect to the server'
       );
     } finally {
       setTesting(false);
@@ -186,22 +184,18 @@ export default function DesktopSetupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-slate-900 p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Logo */}
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white">Vitora HMIS</h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Desktop Application Setup
-          </p>
+          <p className="mt-2 text-sm text-slate-400">Desktop Application Setup</p>
         </div>
 
         {/* Config card */}
-        <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 space-y-4">
+        <div className="space-y-4 rounded-lg border border-slate-700 bg-slate-800 p-6">
           <div>
-            <h2 className="text-lg font-semibold text-white">
-              Deployment Mode
-            </h2>
+            <h2 className="text-lg font-semibold text-white">Deployment Mode</h2>
             <p className="mt-1 text-sm text-slate-400">
               Choose how this device connects to the Vitora system.
             </p>
@@ -211,7 +205,7 @@ export default function DesktopSetupPage() {
             {DEPLOYMENT_MODES.map((option) => (
               <label
                 key={option.value}
-                className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors ${
+                className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
                   mode === option.value
                     ? 'border-cyan-500 bg-cyan-950/30'
                     : 'border-slate-600 hover:border-slate-500'
@@ -246,7 +240,7 @@ export default function DesktopSetupPage() {
                 />
                 <div>
                   <span className="text-sm font-medium text-white">{option.label}</span>
-                  <p className="text-xs text-slate-400 mt-0.5">{option.description}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">{option.description}</p>
                 </div>
               </label>
             ))}
@@ -254,11 +248,9 @@ export default function DesktopSetupPage() {
         </div>
 
         {/* Server URL card */}
-        <div className="rounded-lg border border-slate-700 bg-slate-800 p-6 space-y-4">
+        <div className="space-y-4 rounded-lg border border-slate-700 bg-slate-800 p-6">
           <div>
-            <h2 className="text-lg font-semibold text-white">
-              Server Configuration
-            </h2>
+            <h2 className="text-lg font-semibold text-white">Server Configuration</h2>
             <p className="mt-1 text-sm text-slate-400">
               {mode === 'lan_client'
                 ? 'Enter the LAN IP address of your facility server.'
@@ -269,10 +261,7 @@ export default function DesktopSetupPage() {
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="api-url"
-              className="block text-sm font-medium text-slate-300"
-            >
+            <label htmlFor="api-url" className="block text-sm font-medium text-slate-300">
               API Server URL
             </label>
             <input
@@ -298,7 +287,7 @@ export default function DesktopSetupPage() {
             <button
               onClick={handleTest}
               disabled={testing || discovering || !url}
-              className="flex-1 rounded-md bg-slate-600 px-4 py-2 text-sm font-medium text-white hover:bg-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 rounded-md bg-slate-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {testing ? 'Testing...' : 'Test Connection'}
             </button>
@@ -306,7 +295,7 @@ export default function DesktopSetupPage() {
               <button
                 onClick={handleDiscover}
                 disabled={testing || discovering}
-                className="rounded-md bg-cyan-800 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="rounded-md bg-cyan-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {discovering ? 'Scanning...' : 'Scan Network'}
               </button>
@@ -315,7 +304,7 @@ export default function DesktopSetupPage() {
 
           {/* Hub info (when discovered) */}
           {hubInfo && (
-            <div className="rounded-md bg-cyan-900/30 border border-cyan-700 px-3 py-2 text-sm text-cyan-200 space-y-1">
+            <div className="space-y-1 rounded-md border border-cyan-700 bg-cyan-900/30 px-3 py-2 text-sm text-cyan-200">
               <p className="font-medium">Hub found!</p>
               <p className="text-xs text-cyan-300">
                 ID: {hubInfo.hubId} · Facility: {hubInfo.facilityId} · v{hubInfo.version}
@@ -325,12 +314,12 @@ export default function DesktopSetupPage() {
 
           {/* Status messages */}
           {error && (
-            <div className="rounded-md bg-red-900/50 border border-red-700 px-3 py-2 text-sm text-red-300">
+            <div className="rounded-md border border-red-700 bg-red-900/50 px-3 py-2 text-sm text-red-300">
               {error}
             </div>
           )}
           {success && (
-            <div className="rounded-md bg-green-900/50 border border-green-700 px-3 py-2 text-sm text-green-300">
+            <div className="rounded-md border border-green-700 bg-green-900/50 px-3 py-2 text-sm text-green-300">
               Connected successfully
             </div>
           )}
@@ -339,12 +328,12 @@ export default function DesktopSetupPage() {
           <button
             onClick={handleSave}
             disabled={!url.trim()}
-            className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save & Continue
           </button>
 
-          <p className="text-xs text-slate-500 text-center">
+          <p className="text-center text-xs text-slate-500">
             You can change this later in Settings → Server Configuration
           </p>
         </div>

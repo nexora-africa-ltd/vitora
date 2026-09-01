@@ -39,15 +39,14 @@ export function MalnutritionAlert({
     return null;
   }
 
-  const isSAM =
-    muacClassification === 'SAM' ||
-    nutritionalStatus === 'SEVERE_UNDERWEIGHT';
-  const isMAM =
-    muacClassification === 'MAM' ||
-    nutritionalStatus === 'MODERATE_UNDERWEIGHT';
+  const isSAM = muacClassification === 'SAM' || nutritionalStatus === 'SEVERE_UNDERWEIGHT';
+  const isMAM = muacClassification === 'MAM' || nutritionalStatus === 'MODERATE_UNDERWEIGHT';
 
   return (
-    <Alert variant="destructive" className={isSAM ? 'border-red-500 bg-red-50' : 'border-orange-500 bg-orange-50'}>
+    <Alert
+      variant="destructive"
+      className={isSAM ? 'border-red-500 bg-red-50' : 'border-orange-500 bg-orange-50'}
+    >
       <AlertTriangle className={`h-5 w-5 ${isSAM ? 'text-red-600' : 'text-orange-600'}`} />
       <AlertTitle className={`font-semibold ${isSAM ? 'text-red-800' : 'text-orange-800'}`}>
         {isSAM
@@ -57,23 +56,21 @@ export function MalnutritionAlert({
             : 'Nutritional Concern Detected'}
       </AlertTitle>
       <AlertDescription className={`space-y-2 ${isSAM ? 'text-red-700' : 'text-orange-700'}`}>
-        {patientName && (
-          <p className="font-medium">{patientName}</p>
-        )}
+        {patientName && <p className="font-medium">{patientName}</p>}
 
         {alerts.length > 0 && (
-          <ul className="list-disc list-inside text-sm space-y-1">
+          <ul className="list-inside list-disc space-y-1 text-sm">
             {alerts.map((alert, i) => (
               <li key={i}>{alert}</li>
             ))}
           </ul>
         )}
 
-        <div className="text-sm mt-2">
+        <div className="mt-2 text-sm">
           {isSAM ? (
             <div className="space-y-1">
               <p className="font-medium">Recommended Actions (IMAM Guidelines):</p>
-              <ul className="list-disc list-inside space-y-0.5">
+              <ul className="list-inside list-disc space-y-0.5">
                 <li>Refer immediately for inpatient therapeutic care</li>
                 <li>Check for medical complications (appetite test, bilateral pitting edema)</li>
                 <li>Initiate therapeutic feeding (F-75, F-100, or RUTF)</li>
@@ -83,7 +80,7 @@ export function MalnutritionAlert({
           ) : (
             <div className="space-y-1">
               <p className="font-medium">Recommended Actions:</p>
-              <ul className="list-disc list-inside space-y-0.5">
+              <ul className="list-inside list-disc space-y-0.5">
                 <li>Enroll in Supplementary Feeding Programme (SFP)</li>
                 <li>Provide nutrition counselling to caregiver</li>
                 <li>Schedule follow-up measurement in 2 weeks</li>

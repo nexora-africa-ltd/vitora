@@ -253,22 +253,18 @@ export interface ANCVisitCreateData {
  * Backend: Delivery.DELIVERY_TYPE_CHOICES
  */
 export type DeliveryType =
-  | 'SVD'              // Spontaneous Vaginal Delivery
+  | 'SVD' // Spontaneous Vaginal Delivery
   | 'ASSISTED_VAGINAL' // Assisted Vaginal Delivery
-  | 'ELECTIVE_CS'      // Elective Cesarean Section
-  | 'EMERGENCY_CS'     // Emergency Cesarean Section
-  | 'VACUUM'           // Vacuum Extraction
-  | 'FORCEPS';         // Forceps Delivery
+  | 'ELECTIVE_CS' // Elective Cesarean Section
+  | 'EMERGENCY_CS' // Emergency Cesarean Section
+  | 'VACUUM' // Vacuum Extraction
+  | 'FORCEPS'; // Forceps Delivery
 
 /**
  * Delivery outcome
  * Backend: Delivery.DELIVERY_OUTCOME_CHOICES
  */
-export type DeliveryOutcome =
-  | 'LIVE_BIRTH'
-  | 'STILLBIRTH'
-  | 'NEONATAL_DEATH'
-  | 'MATERNAL_DEATH';
+export type DeliveryOutcome = 'LIVE_BIRTH' | 'STILLBIRTH' | 'NEONATAL_DEATH' | 'MATERNAL_DEATH';
 
 /**
  * Delivery status
@@ -587,7 +583,13 @@ export type LochiaStatus = 'NORMAL' | 'HEAVY' | 'FOUL_SMELLING' | 'ABSENT' | '';
  * Breast condition
  * Backend: PNCVisit.BREAST_CONDITION_CHOICES
  */
-export type BreastCondition = 'NORMAL' | 'ENGORGED' | 'MASTITIS' | 'CRACKED_NIPPLES' | 'ABSCESS' | '';
+export type BreastCondition =
+  | 'NORMAL'
+  | 'ENGORGED'
+  | 'MASTITIS'
+  | 'CRACKED_NIPPLES'
+  | 'ABSCESS'
+  | '';
 
 /**
  * Mood assessment (postpartum depression screening)
@@ -846,18 +848,17 @@ export interface Vaccine {
  * Immunization status
  * Backend: ImmunizationRecord.STATUS_CHOICES
  */
-export type ImmunizationStatus = 'SCHEDULED' | 'ADMINISTERED' | 'MISSED' | 'CONTRAINDICATED' | 'DEFERRED';
+export type ImmunizationStatus =
+  | 'SCHEDULED'
+  | 'ADMINISTERED'
+  | 'MISSED'
+  | 'CONTRAINDICATED'
+  | 'DEFERRED';
 
 /**
  * Injection site
  */
-export type InjectionSite =
-  | 'LEFT_THIGH'
-  | 'RIGHT_THIGH'
-  | 'LEFT_ARM'
-  | 'RIGHT_ARM'
-  | 'ORAL'
-  | '';
+export type InjectionSite = 'LEFT_THIGH' | 'RIGHT_THIGH' | 'LEFT_ARM' | 'RIGHT_ARM' | 'ORAL' | '';
 
 /**
  * Immunization record detail
@@ -966,7 +967,13 @@ export type AEFISeverity = 'MILD' | 'MODERATE' | 'SEVERE';
  * AEFI outcome
  * Backend: AEFI.OUTCOME_CHOICES
  */
-export type AEFIOutcome = 'RECOVERED' | 'RECOVERING' | 'NOT_RECOVERED' | 'SEQUELAE' | 'DEATH' | 'UNKNOWN';
+export type AEFIOutcome =
+  | 'RECOVERED'
+  | 'RECOVERING'
+  | 'NOT_RECOVERED'
+  | 'SEQUELAE'
+  | 'DEATH'
+  | 'UNKNOWN';
 
 /**
  * AEFI report detail

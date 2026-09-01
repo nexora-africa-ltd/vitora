@@ -50,7 +50,13 @@ import {
 import { useSupervisorAlerts } from '@/lib/hooks';
 import { formatDateTime } from '@/lib/utils/format';
 import type { PaginatedResponse } from '@/lib/types';
-import type { Admission, Bed as InpatientBed, InpatientWard, NursingKardex, ShiftHandover } from '@/lib/types/inpatient';
+import type {
+  Admission,
+  Bed as InpatientBed,
+  InpatientWard,
+  NursingKardex,
+  ShiftHandover,
+} from '@/lib/types/inpatient';
 
 function getResults<T>(data: PaginatedResponse<T> | T[] | undefined): T[] {
   if (!data) {
@@ -107,14 +113,15 @@ export default function InpatientBedBoardPage() {
     page_size: 200,
   });
   const { data: kardexList, isLoading: kardexLoading } = useKardexList({ page_size: 200 });
-  const { data: cleaningBedsData, isLoading: cleaningBedsLoading } = useBeds({ status: 'CLEANING' });
-  const { data: shiftHandovers, isLoading: handoversLoading } = useShiftHandovers({ page_size: 100, ordering: '-shift_date' });
+  const { data: cleaningBedsData, isLoading: cleaningBedsLoading } = useBeds({
+    status: 'CLEANING',
+  });
+  const { data: shiftHandovers, isLoading: handoversLoading } = useShiftHandovers({
+    page_size: 100,
+    ordering: '-shift_date',
+  });
   const markBedAvailable = useMarkBedAvailable();
-  const {
-    alerts,
-    connectionState,
-    lastUpdated,
-  } = useSupervisorAlerts();
+  const { alerts, connectionState, lastUpdated } = useSupervisorAlerts();
   const { data: predictionDetail, isLoading: predictionDetailLoading } = usePredictedDischarges(
     selectedWardPredictionId ?? undefined,
     24
@@ -122,12 +129,20 @@ export default function InpatientBedBoardPage() {
 
   const wardsList = useMemo(() => getResults<InpatientWard>(wards), [wards]);
   const admissionsList = useMemo(() => getResults<Admission>(admissions), [admissions]);
-  const cleaningBeds = useMemo(() => getResults<InpatientBed>(cleaningBedsData), [cleaningBedsData]);
+  const cleaningBeds = useMemo(
+    () => getResults<InpatientBed>(cleaningBedsData),
+    [cleaningBedsData]
+  );
   const kardexEntries = useMemo(() => getResults<NursingKardex>(kardexList), [kardexList]);
-  const handoverEntries = useMemo(() => getResults<ShiftHandover>(shiftHandovers), [shiftHandovers]);
+  const handoverEntries = useMemo(
+    () => getResults<ShiftHandover>(shiftHandovers),
+    [shiftHandovers]
+  );
 
   const admissionsById = useMemo(() => {
-    return new Map<number, Admission>(admissionsList.map((admission: Admission) => [admission.id, admission]));
+    return new Map<number, Admission>(
+      admissionsList.map((admission: Admission) => [admission.id, admission])
+    );
   }, [admissionsList]);
 
   const wardPlanningByWardId = useMemo(() => {
@@ -183,26 +198,39 @@ export default function InpatientBedBoardPage() {
     }
 
     const query = searchQuery.toLowerCase();
-    return wardsList.filter((ward: InpatientWard) => (
-      ward.name.toLowerCase().includes(query)
-      || ward.code.toLowerCase().includes(query)
-      || (ward.ward_type_display || ward.ward_type || '').toLowerCase().includes(query)
-    ));
+    return wardsList.filter(
+      (ward: InpatientWard) =>
+        ward.name.toLowerCase().includes(query) ||
+        ward.code.toLowerCase().includes(query) ||
+        (ward.ward_type_display || ward.ward_type || '').toLowerCase().includes(query)
+    );
   }, [wardsList, searchQuery]);
 
   const activeAdmissions = admissions?.count ?? admissions?.results?.length ?? 0;
   const pendingAlerts = alerts.filter((alert) => !alert.is_acknowledged);
-  const totalBeds = wardsList.reduce((sum: number, ward: InpatientWard) => sum + (ward.total_beds || 0), 0);
-  const occupiedBeds = wardsList.reduce((sum: number, ward: InpatientWard) => sum + (ward.occupied_beds || 0), 0);
+  const totalBeds = wardsList.reduce(
+    (sum: number, ward: InpatientWard) => sum + (ward.total_beds || 0),
+    0
+  );
+  const occupiedBeds = wardsList.reduce(
+    (sum: number, ward: InpatientWard) => sum + (ward.occupied_beds || 0),
+    0
+  );
   const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
-  if (wardsLoading || admissionsLoading || kardexLoading || handoversLoading || cleaningBedsLoading) {
+  if (
+    wardsLoading ||
+    admissionsLoading ||
+    kardexLoading ||
+    handoversLoading ||
+    cleaningBedsLoading
+  ) {
     return <BedBoardSkeleton />;
   }
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8 space-y-4 sm:space-y-6">
+      <div className="container mx-auto space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
         <PageHeader
           title="Inpatient Bed Board"
           helpContent="Centralized operational view of ward capacity, predicted discharges, and supervisor escalation pressure. Use this board to direct bed placement and spot emerging bottlenecks."
@@ -225,34 +253,73 @@ export default function InpatientBedBoardPage() {
           />
           <div className="relative space-y-5">
             <div className="space-y-4">
-              <Badge variant="outline" className="w-fit border-primary/30 bg-background/80 px-3 py-1 text-xs uppercase tracking-[0.24em] text-muted-foreground">
+              <Badge
+                variant="outline"
+                className="w-fit border-primary/30 bg-background/80 px-3 py-1 text-xs uppercase tracking-[0.24em] text-muted-foreground"
+              >
                 Operational Command Surface
               </Badge>
               <div className="space-y-2">
                 <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                  Monitor availability, protect the emergency buffer, and keep discharge timing realistic.
+                  Monitor availability, protect the emergency buffer, and keep discharge timing
+                  realistic.
                 </h2>
                 <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-                  This board composes live ward analytics with supervisor exception signals so you can decide whether to place, hold, or escalate without jumping between multiple inpatient screens.
+                  This board composes live ward analytics with supervisor exception signals so you
+                  can decide whether to place, hold, or escalate without jumping between multiple
+                  inpatient screens.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <WebSocketStatus connectionState={connectionState} lastUpdate={lastUpdated} showLabel size="sm" />
+                <WebSocketStatus
+                  connectionState={connectionState}
+                  lastUpdate={lastUpdated}
+                  showLabel
+                  size="sm"
+                />
                 <div className="rounded-full border bg-background/80 px-3 py-1 text-xs text-muted-foreground">
-                  {pendingAlerts.length} pending supervisor alert{pendingAlerts.length === 1 ? '' : 's'}
+                  {pendingAlerts.length} pending supervisor alert
+                  {pendingAlerts.length === 1 ? '' : 's'}
                 </div>
                 <div className="rounded-full border bg-background/80 px-3 py-1 text-xs text-muted-foreground">
-                  {cleaningBeds.length} bed{cleaningBeds.length === 1 ? '' : 's'} awaiting housekeeping
+                  {cleaningBeds.length} bed{cleaningBeds.length === 1 ? '' : 's'} awaiting
+                  housekeeping
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-              <SummaryTile icon={Building2} title="Wards" value={wardsList.length} description="Active inpatient locations" />
-              <SummaryTile icon={BedDouble} title="Beds Occupied" value={`${occupiedBeds}/${totalBeds}`} description={`${occupancyRate}% hospital occupancy`} />
-              <SummaryTile icon={Users} title="Active Admissions" value={activeAdmissions} description="Current inpatient census" />
-              <SummaryTile icon={ClipboardList} title="Cleaning Queue" value={cleaningBeds.length} description="Beds awaiting turnover completion" />
-              <SummaryTile icon={AlertTriangle} title="Pending Alerts" value={pendingAlerts.length} description="Critical overrides awaiting review" variant={pendingAlerts.length > 0 ? 'warning' : 'default'} />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <SummaryTile
+                icon={Building2}
+                title="Wards"
+                value={wardsList.length}
+                description="Active inpatient locations"
+              />
+              <SummaryTile
+                icon={BedDouble}
+                title="Beds Occupied"
+                value={`${occupiedBeds}/${totalBeds}`}
+                description={`${occupancyRate}% hospital occupancy`}
+              />
+              <SummaryTile
+                icon={Users}
+                title="Active Admissions"
+                value={activeAdmissions}
+                description="Current inpatient census"
+              />
+              <SummaryTile
+                icon={ClipboardList}
+                title="Cleaning Queue"
+                value={cleaningBeds.length}
+                description="Beds awaiting turnover completion"
+              />
+              <SummaryTile
+                icon={AlertTriangle}
+                title="Pending Alerts"
+                value={pendingAlerts.length}
+                description="Critical overrides awaiting review"
+                variant={pendingAlerts.length > 0 ? 'warning' : 'default'}
+              />
             </div>
           </div>
         </section>
@@ -281,12 +348,15 @@ export default function InpatientBedBoardPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold">{alert.patient_name}</p>
-                        <p className="text-xs text-muted-foreground">{alert.ward_name} • Bed {alert.bed_number}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {alert.ward_name} • Bed {alert.bed_number}
+                        </p>
                       </div>
                       <Badge variant="destructive">{alert.critical_violations.length}</Badge>
                     </div>
-                    <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
-                      {alert.override_reason || 'Critical constraint override requires supervisor review.'}
+                    <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                      {alert.override_reason ||
+                        'Critical constraint override requires supervisor review.'}
                     </p>
                     <Button variant="link" className="mt-2 h-auto p-0" asChild>
                       <Link href="/inpatient/alerts">
@@ -347,7 +417,9 @@ export default function InpatientBedBoardPage() {
             <Card className="border-primary/10 shadow-sm">
               <CardHeader>
                 <CardTitle>Hospital occupancy</CardTitle>
-                <CardDescription>Track overall pressure before drilling into a specific ward.</CardDescription>
+                <CardDescription>
+                  Track overall pressure before drilling into a specific ward.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Progress value={occupancyRate} className="h-3" />
@@ -373,23 +445,28 @@ export default function InpatientBedBoardPage() {
                   </div>
                 ) : (
                   cleaningBeds.slice(0, 8).map((bed) => {
-                    const statusChangedAt = 'status_changed_at' in bed && typeof bed.status_changed_at === 'string'
-                      ? bed.status_changed_at
-                      : null;
+                    const statusChangedAt =
+                      'status_changed_at' in bed && typeof bed.status_changed_at === 'string'
+                        ? bed.status_changed_at
+                        : null;
                     const cleaningAge = getCleaningAgeBadgeMeta(statusChangedAt);
                     return (
                       <div key={bed.id} className="rounded-xl border bg-muted/20 p-4">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                           <div>
-                            <p className="text-sm font-semibold">{bed.ward_name} • {bed.bed_number}</p>
-                            <p className="text-xs text-muted-foreground">{bed.notes || 'Awaiting room turnover'}</p>
+                            <p className="text-sm font-semibold">
+                              {bed.ward_name} • {bed.bed_number}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {bed.notes || 'Awaiting room turnover'}
+                            </p>
                             <div className="mt-2">
-                              <Badge variant={cleaningAge.variant}>
-                                {cleaningAge.label}
-                              </Badge>
+                              <Badge variant={cleaningAge.variant}>{cleaningAge.label}</Badge>
                             </div>
                             {statusChangedAt && (
-                              <p className="mt-1 text-xs text-muted-foreground">Entered cleaning {formatDateTime(statusChangedAt)}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Entered cleaning {formatDateTime(statusChangedAt)}
+                              </p>
                             )}
                           </div>
                           <Button
@@ -413,12 +490,15 @@ export default function InpatientBedBoardPage() {
               <CardHeader>
                 <CardTitle>Supervisor handoff cue</CardTitle>
                 <CardDescription>
-                  Keep the alert workspace as the source of truth, but bring the same operational signals into the bed board for shift-level planning.
+                  Keep the alert workspace as the source of truth, but bring the same operational
+                  signals into the bed board for shift-level planning.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <p>
-                  Pending critical overrides usually mean the bed board needs intervention, not just acknowledgement. Review the related ward card first, then move to the full supervisor alerts screen to document the decision.
+                  Pending critical overrides usually mean the bed board needs intervention, not just
+                  acknowledgement. Review the related ward card first, then move to the full
+                  supervisor alerts screen to document the decision.
                 </p>
                 <Button variant="outline" asChild>
                   <Link href="/inpatient/alerts">Go to supervisor alerts</Link>
@@ -430,12 +510,16 @@ export default function InpatientBedBoardPage() {
           </TabsContent>
         </Tabs>
 
-        <Dialog open={selectedWardPredictionId !== null} onOpenChange={(open) => !open && setSelectedWardPredictionId(null)}>
+        <Dialog
+          open={selectedWardPredictionId !== null}
+          onOpenChange={(open) => !open && setSelectedWardPredictionId(null)}
+        >
           <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>Predicted discharge details</DialogTitle>
               <DialogDescription>
-                Drill into the next 24 hours of predicted bed releases for the selected ward, including whether each estimate is clinician-set or LOS-derived.
+                Drill into the next 24 hours of predicted bed releases for the selected ward,
+                including whether each estimate is clinician-set or LOS-derived.
               </DialogDescription>
             </DialogHeader>
 
@@ -456,21 +540,32 @@ export default function InpatientBedBoardPage() {
                       <div>
                         <p className="text-sm font-semibold">{prediction.patient_name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {prediction.ward_name} • Bed {prediction.bed_number} • Admission {prediction.admission_number}
+                          {prediction.ward_name} • Bed {prediction.bed_number} • Admission{' '}
+                          {prediction.admission_number}
                         </p>
                       </div>
                       <Badge variant="outline" className="w-fit shrink-0">
-                        {prediction.hours_until_available == null ? 'Timing unavailable' : `${Math.round(prediction.hours_until_available)}h`}
+                        {prediction.hours_until_available == null
+                          ? 'Timing unavailable'
+                          : `${Math.round(prediction.hours_until_available)}h`}
                       </Badge>
                     </div>
 
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
                       <div className="rounded-lg border bg-background/70 p-3">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Prediction source</p>
-                        <p className="mt-1 text-sm font-medium">{prediction.source === 'expected_discharge' ? 'Expected discharge date' : 'Average length of stay estimate'}</p>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Prediction source
+                        </p>
+                        <p className="mt-1 text-sm font-medium">
+                          {prediction.source === 'expected_discharge'
+                            ? 'Expected discharge date'
+                            : 'Average length of stay estimate'}
+                        </p>
                       </div>
                       <div className="rounded-lg border bg-background/70 p-3">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Expected or estimated time</p>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Expected or estimated time
+                        </p>
                         <p className="mt-1 text-sm font-medium">
                           {prediction.expected_discharge_date
                             ? formatDateTime(prediction.expected_discharge_date)
@@ -519,7 +614,11 @@ function SummaryTile({
         <Icon className="h-5 w-5" />
       </div>
       <p className="text-sm text-muted-foreground">{title}</p>
-      <p className={`mt-1 text-2xl font-semibold tracking-tight ${variant === 'warning' ? 'text-amber-600 dark:text-amber-400' : ''}`}>{value}</p>
+      <p
+        className={`mt-1 text-2xl font-semibold tracking-tight ${variant === 'warning' ? 'text-amber-600 dark:text-amber-400' : ''}`}
+      >
+        {value}
+      </p>
       <p className="mt-1 text-xs text-muted-foreground">{description}</p>
     </div>
   );
@@ -530,15 +629,19 @@ function getWardTheme(wardType: string, genderRestriction?: string | null) {
   if (genderRestriction === 'MALE_ONLY') {
     return {
       border: 'border-blue-300/40 dark:border-blue-500/30',
-      gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(37,99,235,0.07),transparent_50%)]',
-      badge: 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950/50 dark:text-blue-300',
+      gradient:
+        'bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(37,99,235,0.07),transparent_50%)]',
+      badge:
+        'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950/50 dark:text-blue-300',
     };
   }
   if (genderRestriction === 'FEMALE_ONLY' && wardType !== 'MATERNITY') {
     return {
       border: 'border-pink-300/40 dark:border-pink-500/30',
-      gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(236,72,153,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(219,39,119,0.07),transparent_50%)]',
-      badge: 'border-pink-300 bg-pink-50 text-pink-700 dark:border-pink-600 dark:bg-pink-950/50 dark:text-pink-300',
+      gradient:
+        'bg-[radial-gradient(circle_at_top_left,rgba(236,72,153,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(219,39,119,0.07),transparent_50%)]',
+      badge:
+        'border-pink-300 bg-pink-50 text-pink-700 dark:border-pink-600 dark:bg-pink-950/50 dark:text-pink-300',
     };
   }
 
@@ -546,38 +649,49 @@ function getWardTheme(wardType: string, genderRestriction?: string | null) {
     case 'PEDIATRIC':
       return {
         border: 'border-emerald-300/40 dark:border-emerald-500/30',
-        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.12),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.08),transparent_50%)]',
-        badge: 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300',
+        gradient:
+          'bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.12),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.08),transparent_50%)]',
+        badge:
+          'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300',
       };
     case 'MATERNITY':
       return {
         border: 'border-pink-300/40 dark:border-pink-500/30',
-        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.07),transparent_50%)]',
-        badge: 'border-pink-300 bg-pink-50 text-pink-700 dark:border-pink-600 dark:bg-pink-950/50 dark:text-pink-300',
+        gradient:
+          'bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.07),transparent_50%)]',
+        badge:
+          'border-pink-300 bg-pink-50 text-pink-700 dark:border-pink-600 dark:bg-pink-950/50 dark:text-pink-300',
       };
     case 'ICU':
       return {
         border: 'border-red-300/40 dark:border-red-500/30',
-        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(220,38,38,0.07),transparent_50%)]',
-        badge: 'border-red-300 bg-red-50 text-red-700 dark:border-red-600 dark:bg-red-950/50 dark:text-red-300',
+        gradient:
+          'bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(220,38,38,0.07),transparent_50%)]',
+        badge:
+          'border-red-300 bg-red-50 text-red-700 dark:border-red-600 dark:bg-red-950/50 dark:text-red-300',
       };
     case 'ISOLATION':
       return {
         border: 'border-amber-300/40 dark:border-amber-500/30',
-        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(217,119,6,0.07),transparent_50%)]',
-        badge: 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-600 dark:bg-amber-950/50 dark:text-amber-300',
+        gradient:
+          'bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(217,119,6,0.07),transparent_50%)]',
+        badge:
+          'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-600 dark:bg-amber-950/50 dark:text-amber-300',
       };
     case 'SURGICAL':
       return {
         border: 'border-violet-300/40 dark:border-violet-500/30',
-        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.08),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(109,40,217,0.06),transparent_50%)]',
-        badge: 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-300',
+        gradient:
+          'bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.08),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(109,40,217,0.06),transparent_50%)]',
+        badge:
+          'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-300',
       };
     case 'MEDICAL':
     default:
       return {
         border: 'border-primary/10',
-        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]',
+        gradient:
+          'bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]',
         badge: '',
       };
   }
@@ -598,11 +712,12 @@ function BedBoardWardCard({
     return <Skeleton className="h-72 w-full" />;
   }
 
-  const occupancyTone = utilization.occupancy_rate >= 90
-    ? 'text-destructive'
-    : utilization.occupancy_rate >= 75
-      ? 'text-amber-600 dark:text-amber-400'
-      : 'text-foreground';
+  const occupancyTone =
+    utilization.occupancy_rate >= 90
+      ? 'text-destructive'
+      : utilization.occupancy_rate >= 75
+        ? 'text-amber-600 dark:text-amber-400'
+        : 'text-foreground';
 
   // Color scheme based on ward type and gender restriction
   const wardTheme = getWardTheme(ward.ward_type, ward.gender_restriction);
@@ -617,13 +732,19 @@ function BedBoardWardCard({
         <div className="flex items-start justify-between gap-3">
           <div>
             <CardTitle className="text-lg">
-              <Link href={`/wards/${ward.id}`} className="hover:underline hover:text-primary transition-colors">
+              <Link
+                href={`/wards/${ward.id}`}
+                className="transition-colors hover:text-primary hover:underline"
+              >
                 {utilization.ward_name}
               </Link>
             </CardTitle>
             <CardDescription>{utilization.ward_code}</CardDescription>
           </div>
-          <Badge variant={ward.ward_type === 'ICU' ? 'destructive' : 'outline'} className={`shrink-0 ${wardTheme.badge}`}>
+          <Badge
+            variant={ward.ward_type === 'ICU' ? 'destructive' : 'outline'}
+            className={`shrink-0 ${wardTheme.badge}`}
+          >
             {ward.ward_type_display || ward.ward_type}
           </Badge>
         </div>
@@ -641,15 +762,39 @@ function BedBoardWardCard({
           <MetricPill icon={Bed} label="Available" value={utilization.available} />
           <MetricPill icon={ClipboardList} label="Cleaning" value={utilization.cleaning} />
           <MetricPill icon={Users} label="Occupied" value={utilization.occupied} />
-          <MetricPill icon={AlertTriangle} label="Emergency buffer" value={utilization.emergency_buffer_beds} />
-          <MetricPill icon={CalendarClock} label="Predicted 24h" value={utilization.predicted_discharges_next_24h} />
+          <MetricPill
+            icon={AlertTriangle}
+            label="Emergency buffer"
+            value={utilization.emergency_buffer_beds}
+          />
+          <MetricPill
+            icon={CalendarClock}
+            label="Predicted 24h"
+            value={utilization.predicted_discharges_next_24h}
+          />
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
-          <MetricPill icon={ShieldAlert} label="Isolation blockers" value={planningSnapshot?.isolationCount ?? 0} />
-          <MetricPill icon={AlertTriangle} label="High fall risk" value={planningSnapshot?.highFallRiskCount ?? 0} />
-          <MetricPill icon={ClipboardList} label="High pressure risk" value={planningSnapshot?.highPressureRiskCount ?? 0} />
-          <MetricPill icon={Clock3} label="Pending handovers" value={planningSnapshot?.pendingWardHandovers ?? 0} />
+          <MetricPill
+            icon={ShieldAlert}
+            label="Isolation blockers"
+            value={planningSnapshot?.isolationCount ?? 0}
+          />
+          <MetricPill
+            icon={AlertTriangle}
+            label="High fall risk"
+            value={planningSnapshot?.highFallRiskCount ?? 0}
+          />
+          <MetricPill
+            icon={ClipboardList}
+            label="High pressure risk"
+            value={planningSnapshot?.highPressureRiskCount ?? 0}
+          />
+          <MetricPill
+            icon={Clock3}
+            label="Pending handovers"
+            value={planningSnapshot?.pendingWardHandovers ?? 0}
+          />
         </div>
 
         <div className="rounded-xl border bg-muted/20 p-3 text-sm">
@@ -671,10 +816,22 @@ function BedBoardWardCard({
           <Button variant="outline" size="sm" className="w-full sm:flex-1" asChild>
             <Link href={`/wards/${ward.id}`}>Open ward board</Link>
           </Button>
-          <Button variant="outline" size="sm" className="w-full sm:flex-1" onClick={onOpenPredictions}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full sm:flex-1"
+            onClick={onOpenPredictions}
+          >
             View releases
           </Button>
-          <Button size="sm" className="w-full sm:flex-1" asChild disabled={utilization.effective_available <= 0 && utilization.predicted_discharges_next_24h <= 0}>
+          <Button
+            size="sm"
+            className="w-full sm:flex-1"
+            asChild
+            disabled={
+              utilization.effective_available <= 0 && utilization.predicted_discharges_next_24h <= 0
+            }
+          >
             <Link href={`/admissions/new?ward=${ward.id}`}>Place patient</Link>
           </Button>
         </div>
@@ -683,7 +840,8 @@ function BedBoardWardCard({
           <div className="rounded-xl border border-dashed bg-background/70 p-3 text-xs text-muted-foreground">
             <div className="flex items-start gap-2">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              {utilization.cleaning} bed{utilization.cleaning === 1 ? '' : 's'} currently sit in the housekeeping queue for this ward.
+              {utilization.cleaning} bed{utilization.cleaning === 1 ? '' : 's'} currently sit in the
+              housekeeping queue for this ward.
             </div>
           </div>
         )}
@@ -714,7 +872,7 @@ function MetricPill({
 
 function BedBoardSkeleton() {
   return (
-    <div className="container mx-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
       <Skeleton className="h-40 w-full" />
       <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
         <Skeleton className="h-[720px] w-full" />

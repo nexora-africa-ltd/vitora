@@ -89,42 +89,47 @@ export function useOfflineMutation<TInput, TResult = unknown>(
   });
 
   // --- Local write function ---
-  const localMutateAsync = useCallback(async (input: TInput): Promise<null> => {
-    if (!db) throw new Error('PowerSync database not available');
+  const localMutateAsync = useCallback(
+    async (input: TInput): Promise<null> => {
+      if (!db) throw new Error('PowerSync database not available');
 
-    try {
-      switch (operation) {
-        case 'create': {
-          if (!buildLocalData) throw new Error('buildLocalData is required for create operations');
-          const data = buildLocalData(input);
-          const { sql, params } = buildInsertQuery(table, data);
-          await db.execute(sql, params);
-          break;
+      try {
+        switch (operation) {
+          case 'create': {
+            if (!buildLocalData)
+              throw new Error('buildLocalData is required for create operations');
+            const data = buildLocalData(input);
+            const { sql, params } = buildInsertQuery(table, data);
+            await db.execute(sql, params);
+            break;
+          }
+          case 'update': {
+            if (!buildLocalData)
+              throw new Error('buildLocalData is required for update operations');
+            const id = getId(input);
+            const data = buildLocalData(input);
+            const { sql, params } = buildUpdateQuery(table, id, data);
+            await db.execute(sql, params);
+            break;
+          }
+          case 'delete': {
+            const id = getId(input);
+            const { sql, params } = buildDeleteQuery(table, id);
+            await db.execute(sql, params);
+            break;
+          }
         }
-        case 'update': {
-          if (!buildLocalData) throw new Error('buildLocalData is required for update operations');
-          const id = getId(input);
-          const data = buildLocalData(input);
-          const { sql, params } = buildUpdateQuery(table, id, data);
-          await db.execute(sql, params);
-          break;
-        }
-        case 'delete': {
-          const id = getId(input);
-          const { sql, params } = buildDeleteQuery(table, id);
-          await db.execute(sql, params);
-          break;
-        }
+
+        onSuccess?.(null, input);
+        return null;
+      } catch (e) {
+        const error = e instanceof Error ? e : new Error(String(e));
+        onError?.(error, input);
+        throw error;
       }
-
-      onSuccess?.(null, input);
-      return null;
-    } catch (e) {
-      const error = e instanceof Error ? e : new Error(String(e));
-      onError?.(error, input);
-      throw error;
-    }
-  }, [db, table, operation, buildLocalData, getId, onSuccess, onError]);
+    },
+    [db, table, operation, buildLocalData, getId, onSuccess, onError]
+  );
 
   // --- Return the active path ---
   if (useLocal) {

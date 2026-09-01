@@ -12,7 +12,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import type { AdmissionRecommendation, AdmissionRecommendationUrgency, InpatientWardType } from '@/lib/types/inpatient';
+import type {
+  AdmissionRecommendation,
+  AdmissionRecommendationUrgency,
+  InpatientWardType,
+} from '@/lib/types/inpatient';
 
 /**
  * Data for the admission success modal
@@ -118,13 +122,14 @@ export function AdmissionSuccessModal({
           </div>
           <DialogTitle className="text-center">Admission Recommended</DialogTitle>
           <DialogDescription className="text-center">
-            {admissionData.patientName} ({admissionData.patientMrn}) has been recommended for admission.
+            {admissionData.patientName} ({admissionData.patientMrn}) has been recommended for
+            admission.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Recommendation Info */}
-          <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
+          <div className="space-y-3 rounded-lg border bg-muted/50 p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Urgency</span>
               <Badge className={urgencyColors[admissionData.urgency]}>
@@ -136,15 +141,15 @@ export function AdmissionSuccessModal({
               <span className="text-sm text-muted-foreground">Preferred Ward</span>
               <div className="flex items-center gap-2">
                 <BedDouble className="h-4 w-4 text-primary" />
-                <span className="font-medium text-sm">
+                <span className="text-sm font-medium">
                   {wardTypeLabels[admissionData.preferredWardType]}
                 </span>
               </div>
             </div>
 
             <div className="flex items-start justify-between gap-2">
-              <span className="text-sm text-muted-foreground shrink-0">Diagnosis</span>
-              <span className="text-sm font-medium text-right">
+              <span className="shrink-0 text-sm text-muted-foreground">Diagnosis</span>
+              <span className="text-right text-sm font-medium">
                 {admissionData.provisionalDiagnosis}
               </span>
             </div>
@@ -160,7 +165,7 @@ export function AdmissionSuccessModal({
             )}
           </div>
 
-          <p className="text-sm text-muted-foreground text-center">
+          <p className="text-center text-sm text-muted-foreground">
             The admissions team will be notified to process this request.
           </p>
         </div>

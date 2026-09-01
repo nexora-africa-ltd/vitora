@@ -3,11 +3,7 @@
 import { useState } from 'react';
 import { Building2, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
   CommandEmpty,
@@ -43,7 +39,7 @@ export function OrgSwitcher() {
 
   const currentOrgId = organization?.id;
 
-  const handleSelect = (membership: typeof memberships[0]) => {
+  const handleSelect = (membership: (typeof memberships)[0]) => {
     if (membership.organization_id === currentOrgId) {
       setOpen(false);
       return;
@@ -73,7 +69,7 @@ export function OrgSwitcher() {
           role="combobox"
           aria-expanded={open}
           aria-label="Switch organization"
-          className="hidden sm:flex items-center gap-1.5 h-9 px-2.5 text-xs max-w-[160px] xl:max-w-[200px] border border-border/40"
+          className="hidden h-9 max-w-[160px] items-center gap-1.5 border border-border/40 px-2.5 text-xs sm:flex xl:max-w-[200px]"
         >
           <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
           <span className="truncate">{organization?.name ?? 'Organization'}</span>
@@ -96,17 +92,18 @@ export function OrgSwitcher() {
                   <Check
                     className={cn(
                       'h-3.5 w-3.5 shrink-0',
-                      m.organization_id === currentOrgId ? 'opacity-100' : 'opacity-0',
+                      m.organization_id === currentOrgId ? 'opacity-100' : 'opacity-0'
                     )}
                   />
-                  <div className="flex flex-col min-w-0">
+                  <div className="flex min-w-0 flex-col">
                     <span className="truncate text-sm">{m.organization_name}</span>
                     <span className="text-xs text-muted-foreground">
-                      {m.role_name} · {m.facilities.length} facilit{m.facilities.length === 1 ? 'y' : 'ies'}
+                      {m.role_name} · {m.facilities.length} facilit
+                      {m.facilities.length === 1 ? 'y' : 'ies'}
                     </span>
                   </div>
                   {m.is_primary && (
-                    <Badge variant="secondary" className="ml-auto text-[10px] px-1 h-4 shrink-0">
+                    <Badge variant="secondary" className="ml-auto h-4 shrink-0 px-1 text-[10px]">
                       Primary
                     </Badge>
                   )}

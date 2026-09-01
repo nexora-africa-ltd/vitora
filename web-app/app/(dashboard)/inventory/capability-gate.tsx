@@ -20,8 +20,7 @@ export function InventoryCapabilityGate({ children }: { children: React.ReactNod
     queryFn: inventoryApi.getBootstrap,
   });
   const hideCapabilityBadges =
-    pathname.includes('/inventory/') &&
-    (pathname.includes('/new') || pathname.includes('/edit'));
+    pathname.includes('/inventory/') && (pathname.includes('/new') || pathname.includes('/edit'));
 
   if (isLoading && !bootstrap) {
     return (
@@ -36,7 +35,7 @@ export function InventoryCapabilityGate({ children }: { children: React.ReactNod
       <Card>
         <CardContent className="p-6">
           <p className="text-sm font-medium">Inventory module unavailable</p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             Inventory is currently disabled for this facility.
           </p>
         </CardContent>
@@ -48,7 +47,9 @@ export function InventoryCapabilityGate({ children }: { children: React.ReactNod
     <div className="space-y-3">
       {!hideCapabilityBadges ? (
         <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className="w-fit">Inventory: Enabled</Badge>
+          <Badge variant="outline" className="w-fit">
+            Inventory: Enabled
+          </Badge>
           <Badge variant="outline" className="w-fit">
             Billing Module: {bootstrap.modules.billing ? 'Enabled' : 'Disabled'}
           </Badge>

@@ -3,19 +3,37 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
-  PlayCircle, User, Calendar, Stethoscope, Eye,
-  ClipboardList, FileText, Beaker, ScanLine, Pill, Scissors,
-  HeartHandshake, ArrowRightLeft, ScrollText, ShieldCheck, MessageCircle, Droplets, AlertTriangle,
+  PlayCircle,
+  User,
+  Calendar,
+  Stethoscope,
+  Eye,
+  ClipboardList,
+  FileText,
+  Beaker,
+  ScanLine,
+  Pill,
+  Scissors,
+  HeartHandshake,
+  ArrowRightLeft,
+  ScrollText,
+  ShieldCheck,
+  MessageCircle,
+  Droplets,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from '@/components/ui/tooltip';
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterDiagnoses, useEncounterTreatmentPlan } from '@/lib/hooks/use-encounters';
@@ -76,7 +94,10 @@ import type { AIQuickAction } from '@/lib/types/ai';
 import type { EncounterFocusTarget } from '@/lib/utils/encounter-focus';
 
 // Parse blood pressure string "120/80" to systolic/diastolic
-function parseBP(bp: string | null | undefined): { systolic: number | null; diastolic: number | null } {
+function parseBP(bp: string | null | undefined): {
+  systolic: number | null;
+  diastolic: number | null;
+} {
   if (!bp) return { systolic: null, diastolic: null };
   const parts = bp.split('/');
   if (parts.length !== 2) return { systolic: null, diastolic: null };
@@ -140,7 +161,7 @@ const ENCOUNTER_QUICK_ACTIONS: AIQuickAction[] = [
     id: 'encounter-ddx',
     label: 'Differential diagnosis',
     query:
-      'Provide a differential diagnosis for this patient\'s presentation. Consider the chief complaint, vital signs, age, history, and any risk factors. Rank by likelihood.',
+      "Provide a differential diagnosis for this patient's presentation. Consider the chief complaint, vital signs, age, history, and any risk factors. Rank by likelihood.",
     userMessage: '\uD83E\uDE7A Requesting differential diagnosis...',
   },
   {
@@ -206,26 +227,30 @@ export default function EncounterDetailPage() {
   const referralsCount = referralsList?.length || 0;
   const { data: vitalFlagSuggestions } = usePatientVitalFlagSuggestions(encounter?.patient ?? 0);
   const { data: storedCarePlans } = useStoredCarePlans({ encounter_id: encounterId });
-  const { data: structuredAllergies, isLoading: isLoadingStructuredAllergies } = usePatientAllergies(
-    encounter?.patient ?? 0,
-  );
-  const { data: structuredConditions, isLoading: isLoadingStructuredConditions } = usePatientChronicConditions(
-    encounter?.patient ?? 0,
-  );
-  const { data: structuredMedications, isLoading: isLoadingStructuredMedications } = usePatientCurrentMedications(
-    encounter?.patient ?? 0,
-  );
+  const { data: structuredAllergies, isLoading: isLoadingStructuredAllergies } =
+    usePatientAllergies(encounter?.patient ?? 0);
+  const { data: structuredConditions, isLoading: isLoadingStructuredConditions } =
+    usePatientChronicConditions(encounter?.patient ?? 0);
+  const { data: structuredMedications, isLoading: isLoadingStructuredMedications } =
+    usePatientCurrentMedications(encounter?.patient ?? 0);
 
   // Vitals history for trend chart
   const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(
-    encounter?.patient ?? 0, 'all'
+    encounter?.patient ?? 0,
+    'all'
   );
 
   // Computed counts for grouped tabs
   const procedureOrdersCount = procedureOrdersData?.results?.length || 0;
-  const ordersCount = (labOrders?.length || 0) + (imagingOrders?.length || 0) + (prescriptions?.length || 0) + procedureOrdersCount;
+  const ordersCount =
+    (labOrders?.length || 0) +
+    (imagingOrders?.length || 0) +
+    (prescriptions?.length || 0) +
+    procedureOrdersCount;
   const servicesCount = alliedHealthCount + referralsCount;
-  const openVitalFlagCount = (vitalFlagSuggestions || []).filter((item) => ['NEW', 'ACKNOWLEDGED', 'MAPPED'].includes(item.status)).length;
+  const openVitalFlagCount = (vitalFlagSuggestions || []).filter((item) =>
+    ['NEW', 'ACKNOWLEDGED', 'MAPPED'].includes(item.status)
+  ).length;
 
   // Real-time WebSocket subscription for lab result updates
   // Automatically invalidates lab orders cache when results are verified
@@ -255,50 +280,41 @@ export default function EncounterDetailPage() {
     };
   }, [encounter]);
 
-  const clinicalAllergies = useMemo(
-    () => {
-      const encounterAllergies = parseClinicalList(encounter?.allergies);
-      if (encounterAllergies.length > 0) return encounterAllergies;
+  const clinicalAllergies = useMemo(() => {
+    const encounterAllergies = parseClinicalList(encounter?.allergies);
+    if (encounterAllergies.length > 0) return encounterAllergies;
 
-      const fromStructured = (structuredAllergies || [])
-        .filter((item: any) => item?.status === 'active' || item?.status === 'ACTIVE')
-        .map((item: any) => String(item?.substance || '').trim())
-        .filter(Boolean);
+    const fromStructured = (structuredAllergies || [])
+      .filter((item: { status?: string }) => item?.status === 'active' || item?.status === 'ACTIVE')
+      .map((item: { substance?: string }) => String(item?.substance || '').trim())
+      .filter(Boolean);
 
-      return fromStructured;
-    },
-    [encounter?.allergies, structuredAllergies],
-  );
+    return fromStructured;
+  }, [encounter?.allergies, structuredAllergies]);
 
-  const clinicalConditions = useMemo(
-    () => {
-      const encounterConditions = parseClinicalList(encounter?.chronic_conditions);
-      if (encounterConditions.length > 0) return encounterConditions;
+  const clinicalConditions = useMemo(() => {
+    const encounterConditions = parseClinicalList(encounter?.chronic_conditions);
+    if (encounterConditions.length > 0) return encounterConditions;
 
-      const fromStructured = (structuredConditions || [])
-        .filter((item: any) => item?.status === 'ACTIVE' || item?.status === 'active')
-        .map((item: any) => String(item?.condition_name || '').trim())
-        .filter(Boolean);
+    const fromStructured = (structuredConditions || [])
+      .filter((item: { status?: string }) => item?.status === 'ACTIVE' || item?.status === 'active')
+      .map((item: { condition_name?: string }) => String(item?.condition_name || '').trim())
+      .filter(Boolean);
 
-      return fromStructured;
-    },
-    [encounter?.chronic_conditions, structuredConditions],
-  );
+    return fromStructured;
+  }, [encounter?.chronic_conditions, structuredConditions]);
 
-  const currentMedications = useMemo(
-    () => {
-      const encounterMeds = parseClinicalList(encounter?.current_medications);
-      if (encounterMeds.length > 0) return encounterMeds;
+  const currentMedications = useMemo(() => {
+    const encounterMeds = parseClinicalList(encounter?.current_medications);
+    if (encounterMeds.length > 0) return encounterMeds;
 
-      const fromStructured = (structuredMedications || [])
-        .filter((item: any) => item?.status === 'ACTIVE' || item?.status === 'active')
-        .map((item: any) => String(item?.medication_name || '').trim())
-        .filter(Boolean);
+    const fromStructured = (structuredMedications || [])
+      .filter((item: { status?: string }) => item?.status === 'ACTIVE' || item?.status === 'active')
+      .map((item: { medication_name?: string }) => String(item?.medication_name || '').trim())
+      .filter(Boolean);
 
-      return fromStructured;
-    },
-    [encounter?.current_medications, structuredMedications],
-  );
+    return fromStructured;
+  }, [encounter?.current_medications, structuredMedications]);
 
   const latestCarePlanInvestigations = useMemo(() => {
     const latest = storedCarePlans?.[0]?.result_data as
@@ -324,8 +340,14 @@ export default function EncounterDetailPage() {
     if (!encounter) return null;
     const bp = parseBP(encounter.blood_pressure);
     const diagnosisNames = diagnoses
-      ? (Array.isArray(diagnoses) ? diagnoses : (diagnoses as { results?: typeof diagnoses })?.results || [])
-          .map((d: any) => d.icd10_description || d.free_text_diagnosis || '')
+      ? (Array.isArray(diagnoses)
+          ? diagnoses
+          : (diagnoses as { results?: typeof diagnoses })?.results || []
+        )
+          .map(
+            (d: { icd10_description?: string | null; free_text_diagnosis?: string | null }) =>
+              d.icd10_description || d.free_text_diagnosis || ''
+          )
           .filter(Boolean)
       : [];
     return {
@@ -375,10 +397,7 @@ export default function EncounterDetailPage() {
   const [activeTab, setActiveTab] = useState('soap');
   const [highlightVitals, setHighlightVitals] = useState(false);
 
-  const focusTarget = useMemo(
-    () => parseEncounterFocus(searchParams.get('focus')),
-    [searchParams],
-  );
+  const focusTarget = useMemo(() => parseEncounterFocus(searchParams.get('focus')), [searchParams]);
 
   useEffect(() => {
     if (!focusTarget) return;
@@ -438,22 +457,25 @@ export default function EncounterDetailPage() {
         vitals: {
           spo2: encounter.spo2 != null ? Number(encounter.spo2) : undefined,
           pulse: encounter.pulse ?? undefined,
-          temperature: encounter.temperature != null
-            ? Number(encounter.temperature) : undefined,
+          temperature: encounter.temperature != null ? Number(encounter.temperature) : undefined,
           rr: encounter.respiratory_rate ?? undefined,
           map: parseBPToMAP(encounter.blood_pressure),
         },
-      },
+      }
     );
 
-    return () => { setEncounterAwareContext(null, null); };
+    return () => {
+      setEncounterAwareContext(null, null);
+    };
   }, [encounter, setEncounterAwareContext]);
 
   // Register encounter-specific quick actions
   useEffect(() => {
     if (!setQuickActions) return;
     setQuickActions(ENCOUNTER_QUICK_ACTIONS);
-    return () => { setQuickActions([]); };
+    return () => {
+      setQuickActions([]);
+    };
   }, [setQuickActions]);
 
   // Convert encounter to formData format for SOAP Note Summary
@@ -483,7 +505,7 @@ export default function EncounterDetailPage() {
       history_of_present_illness: encounter.history_of_present_illness || '',
       physical_examination: encounter.physical_examination || '',
       assessment: encounter.assessment || '',
-        status: encounter.status === 'CANCELLED' ? 'CREATED' : encounter.status,
+      status: encounter.status === 'CANCELLED' ? 'CREATED' : encounter.status,
       clinical_template: encounter.clinical_template || null,
       clinical_template_data: encounter.clinical_template_data || null,
     };
@@ -493,8 +515,10 @@ export default function EncounterDetailPage() {
   const diagnosisFormData = useMemo((): DiagnosisFormData[] => {
     if (!diagnoses) return [];
     // Handle both array and paginated response formats
-    const diagnosisArray = Array.isArray(diagnoses) ? diagnoses : (diagnoses as { results?: typeof diagnoses })?.results || [];
-    return diagnosisArray.map(d => ({
+    const diagnosisArray = Array.isArray(diagnoses)
+      ? diagnoses
+      : (diagnoses as { results?: typeof diagnoses })?.results || [];
+    return diagnosisArray.map((d) => ({
       icd10_code: d.icd10_code,
       icd10_display: d.icd10_code_display || d.icd10_description,
       diagnosis_type: d.diagnosis_type,
@@ -506,10 +530,8 @@ export default function EncounterDetailPage() {
   }, [diagnoses]);
 
   const diagnosisTexts = useMemo(
-    () => diagnosisFormData
-      .map((d) => d.icd10_display || d.free_text_diagnosis)
-      .filter(Boolean),
-    [diagnosisFormData],
+    () => diagnosisFormData.map((d) => d.icd10_display || d.free_text_diagnosis).filter(Boolean),
+    [diagnosisFormData]
   );
 
   const primaryDiagnosisForAI = useMemo(() => {
@@ -531,7 +553,9 @@ export default function EncounterDetailPage() {
       .filter(Boolean);
 
     const complaintNorm = normalizeClinicalText(encounter?.chief_complaint || undefined);
-    const nonChiefComplaint = labels.find((label) => normalizeClinicalText(label) !== complaintNorm);
+    const nonChiefComplaint = labels.find(
+      (label) => normalizeClinicalText(label) !== complaintNorm
+    );
 
     return nonChiefComplaint || labels[0] || undefined;
   }, [diagnosisFormData, encounter?.chief_complaint, isLoadingDiagnoses]);
@@ -550,9 +574,8 @@ export default function EncounterDetailPage() {
     return ranked[0]?.icd10_code?.toString() || undefined;
   }, [diagnosisFormData]);
 
-  const isLoadingAIClinicalHistory = isLoadingStructuredAllergies
-    || isLoadingStructuredConditions
-    || isLoadingStructuredMedications;
+  const isLoadingAIClinicalHistory =
+    isLoadingStructuredAllergies || isLoadingStructuredConditions || isLoadingStructuredMedications;
 
   if (isLoading) {
     return <EncounterDetailSkeleton />;
@@ -560,9 +583,9 @@ export default function EncounterDetailPage() {
 
   if (error || !encounter) {
     return (
-      <div className="container mx-auto px-3 py-12 sm:px-4 text-center">
+      <div className="container mx-auto px-3 py-12 text-center sm:px-4">
         <h2 className="text-xl font-semibold">Encounter not found</h2>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           The encounter you&apos;re looking for doesn&apos;t exist.
         </p>
         <Button className="mt-4" asChild>
@@ -582,14 +605,14 @@ export default function EncounterDetailPage() {
       {encounter.status === 'CLOSED' || encounter.status === 'CANCELLED' ? (
         <Button variant="outline" className="w-full sm:w-auto" asChild>
           <Link href={`/encounters/${encounterRouteId}/edit`}>
-            <Eye className="h-4 w-4 mr-2" />
+            <Eye className="mr-2 h-4 w-4" />
             View Details
           </Link>
         </Button>
       ) : (
         <Button className="w-full sm:w-auto" asChild>
           <Link href={`/encounters/${encounterRouteId}/edit`}>
-            <PlayCircle className="h-4 w-4 mr-2" />
+            <PlayCircle className="mr-2 h-4 w-4" />
             Continue Encounter
           </Link>
         </Button>
@@ -600,8 +623,10 @@ export default function EncounterDetailPage() {
       {/* Blood Bank — only visible when module enabled */}
       {hasModule('blood_bank') && encounter.patient && (
         <Button variant="outline" className="w-full sm:w-auto" asChild>
-          <Link href={`/blood-bank/requests/new?patient=${encounter.patient}&encounter=${encounter.id}`}>
-            <Droplets className="h-4 w-4 mr-2" />
+          <Link
+            href={`/blood-bank/requests/new?patient=${encounter.patient}&encounter=${encounter.id}`}
+          >
+            <Droplets className="mr-2 h-4 w-4" />
             Request Blood
           </Link>
         </Button>
@@ -610,7 +635,7 @@ export default function EncounterDetailPage() {
   );
 
   return (
-    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-6">
       {/* Header with PageHeader component */}
       <PageHeader
         title={`${type?.label || ''} Encounter`}
@@ -619,23 +644,23 @@ export default function EncounterDetailPage() {
       />
 
       {/* Patient Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <button
             type="button"
             onClick={() => setPatientSheetOpen(true)}
-            className="flex items-center gap-1.5 hover:text-primary text-sm font-medium text-left cursor-pointer transition-colors"
+            className="flex cursor-pointer items-center gap-1.5 text-left text-sm font-medium transition-colors hover:text-primary"
           >
             <User className="h-4 w-4 shrink-0" />
             <span className="truncate">{encounter.patient_name}</span>
             <span className="text-muted-foreground">({encounter.patient_mrn})</span>
           </button>
-          <p className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
             <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             {formatDate(encounter.encounter_date)}
           </p>
         </div>
-        <Badge className={`${status?.color} shrink-0 w-fit self-start sm:self-auto`}>
+        <Badge className={`${status?.color} w-fit shrink-0 self-start sm:self-auto`}>
           {status?.label}
         </Badge>
       </div>
@@ -665,7 +690,7 @@ export default function EncounterDetailPage() {
       <div
         id="encounter-vitals-focus"
         className={`space-y-4 rounded-lg transition-all duration-500 ${
-          highlightVitals ? 'ring-2 ring-primary/60 bg-primary/5 p-2 sm:p-3' : ''
+          highlightVitals ? 'bg-primary/5 p-2 ring-2 ring-primary/60 sm:p-3' : ''
         }`}
       >
         {/* Vitals */}
@@ -685,15 +710,16 @@ export default function EncounterDetailPage() {
 
       {/* AI Enhanced CDS Panel (Phase 5) — drug interactions, contraindications */}
       <EnhancedCDSPanel
-        medications={encounter.current_medications
-          ? currentMedications
-          : undefined}
+        medications={encounter.current_medications ? currentMedications : undefined}
         diagnoses={diagnosisTexts}
         allergies={clinicalAllergies}
         patientAge={calculateAge(encounter.patient_date_of_birth)}
         patientSex={
-          encounter.patient_gender === 'F' ? 'female' :
-          encounter.patient_gender === 'M' ? 'male' : null
+          encounter.patient_gender === 'F'
+            ? 'female'
+            : encounter.patient_gender === 'M'
+              ? 'male'
+              : null
         }
         autoTrigger={autoTriggerCDS && !isLoadingDiagnoses}
         onAutoTriggerConsumed={() => setAutoTriggerCDS(false)}
@@ -713,15 +739,17 @@ export default function EncounterDetailPage() {
         vitals={{
           ...(encounter.temperature != null && { temperature: Number(encounter.temperature) }),
           ...(encounter.pulse != null && { pulse: encounter.pulse }),
-          ...(encounter.respiratory_rate != null && { respiratory_rate: encounter.respiratory_rate }),
+          ...(encounter.respiratory_rate != null && {
+            respiratory_rate: encounter.respiratory_rate,
+          }),
           ...(encounter.spo2 != null && { spo2: Number(encounter.spo2) }),
           ...(encounter.weight != null && { weight: Number(encounter.weight) }),
           ...(encounter.height != null && { height: Number(encounter.height) }),
         }}
-        labResults={labOrders?.flatMap(order =>
+        labResults={labOrders?.flatMap((order) =>
           (order.items || [])
-            .filter(item => item.result?.numeric_value != null && item.test_name)
-            .map(item => ({
+            .filter((item) => item.result?.numeric_value != null && item.test_name)
+            .map((item) => ({
               test_name: item.test_name,
               value: item.result!.numeric_value!,
               unit: item.result!.result_unit || '',
@@ -734,10 +762,13 @@ export default function EncounterDetailPage() {
 
       {/* eGFR Calculator Panel — always visible when creatinine result exists, or on AI trigger */}
       {(() => {
-        const creatinineItem = labOrders?.flatMap(o => o.items || []).find(
-          item => item.result?.numeric_value != null &&
-            (item.test_code === 'CREA' || item.test_name?.toLowerCase().includes('creatinine'))
-        );
+        const creatinineItem = labOrders
+          ?.flatMap((o) => o.items || [])
+          .find(
+            (item) =>
+              item.result?.numeric_value != null &&
+              (item.test_code === 'CREA' || item.test_name?.toLowerCase().includes('creatinine'))
+          );
         const showEGFR = autoTriggerEGFR || creatinineItem != null;
         if (!showEGFR) return null;
         return (
@@ -749,9 +780,7 @@ export default function EncounterDetailPage() {
             weightKg={encounter.weight != null ? Number(encounter.weight) : undefined}
             creatinine={creatinineItem?.result?.numeric_value ?? undefined}
             creatinineUnit={
-              creatinineItem?.result?.result_unit?.toLowerCase().includes('mg')
-                ? 'mg/dL'
-                : 'umol/L'
+              creatinineItem?.result?.result_unit?.toLowerCase().includes('mg') ? 'mg/dL' : 'umol/L'
             }
           />
         );
@@ -760,68 +789,90 @@ export default function EncounterDetailPage() {
       {/* Tabs — grouped: SOAP | Assessment & Dx | Orders | Referrals | History */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TooltipProvider delayDuration={400}>
-        <TabsList className="flex flex-wrap h-auto gap-1 p-1 justify-start">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <TabsTrigger value="soap" className="text-xs sm:text-sm">📋 SOAP</TabsTrigger>
-            </TooltipTrigger>
-            <TooltipContent><p>Subjective, Objective, Assessment & Plan summary</p></TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <TabsTrigger value="assessment-dx" className="text-xs sm:text-sm">
-                <span className="sm:hidden">A&Dx ({diagnoses?.length || 0})</span>
-                <span className="hidden sm:inline">Assessment & Dx ({diagnoses?.length || 0})</span>
-              </TabsTrigger>
-            </TooltipTrigger>
-            <TooltipContent><p>HPI, physical exam, assessment, diagnoses & treatment plan</p></TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <TabsTrigger value="orders" className="text-xs sm:text-sm">
-                Orders ({ordersCount})
-              </TabsTrigger>
-            </TooltipTrigger>
-            <TooltipContent><p>Lab orders, imaging requests, prescriptions & procedures</p></TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <TabsTrigger value="referrals" className="text-xs sm:text-sm">
-                <span className="sm:hidden">Ref ({servicesCount})</span>
-                <span className="hidden sm:inline">Referrals ({servicesCount})</span>
-              </TabsTrigger>
-            </TooltipTrigger>
-            <TooltipContent><p>Allied health services & internal/external referrals</p></TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <TabsTrigger value="history" className="text-xs sm:text-sm">
-                History
-                {openVitalFlagCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-4 min-w-4 rounded-full px-1 text-[10px]">
-                    {openVitalFlagCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TooltipTrigger>
-            <TooltipContent><p>Medical history & audit trail</p></TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <TabsTrigger value="comments" className="text-xs sm:text-sm">
-                <MessageCircle className="h-3.5 w-3.5 mr-1" />
-                <span className="sm:hidden">Notes</span>
-                <span className="hidden sm:inline">Comments</span>
-                {commentCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] rounded-full">
-                    {commentCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TooltipTrigger>
-            <TooltipContent><p>Clinical comments & team discussion</p></TooltipContent>
-          </Tooltip>
-        </TabsList>
+          <TabsList className="flex h-auto flex-wrap justify-start gap-1 p-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="soap" className="text-xs sm:text-sm">
+                  📋 SOAP
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Subjective, Objective, Assessment & Plan summary</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="assessment-dx" className="text-xs sm:text-sm">
+                  <span className="sm:hidden">A&Dx ({diagnoses?.length || 0})</span>
+                  <span className="hidden sm:inline">
+                    Assessment & Dx ({diagnoses?.length || 0})
+                  </span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>HPI, physical exam, assessment, diagnoses & treatment plan</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="orders" className="text-xs sm:text-sm">
+                  Orders ({ordersCount})
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Lab orders, imaging requests, prescriptions & procedures</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="referrals" className="text-xs sm:text-sm">
+                  <span className="sm:hidden">Ref ({servicesCount})</span>
+                  <span className="hidden sm:inline">Referrals ({servicesCount})</span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Allied health services & internal/external referrals</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="history" className="text-xs sm:text-sm">
+                  History
+                  {openVitalFlagCount > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 h-4 min-w-4 rounded-full px-1 text-[10px]"
+                    >
+                      {openVitalFlagCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Medical history & audit trail</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="comments" className="text-xs sm:text-sm">
+                  <MessageCircle className="mr-1 h-3.5 w-3.5" />
+                  <span className="sm:hidden">Notes</span>
+                  <span className="hidden sm:inline">Comments</span>
+                  {commentCount > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 h-4 min-w-4 rounded-full px-1 text-[10px]"
+                    >
+                      {commentCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Clinical comments & team discussion</p>
+              </TooltipContent>
+            </Tooltip>
+          </TabsList>
         </TooltipProvider>
 
         {/* SOAP Summary */}
@@ -843,7 +894,10 @@ export default function EncounterDetailPage() {
 
         {/* Assessment & Diagnoses — Clinical Assessment, Dx, Treatment Plan */}
         <TabsContent value="assessment-dx">
-          <Accordion type="multiple" defaultValue={['clinical-assessment', 'diagnoses', 'treatment']}>
+          <Accordion
+            type="multiple"
+            defaultValue={['clinical-assessment', 'diagnoses', 'treatment']}
+          >
             <AccordionItem value="clinical-assessment">
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-2">
@@ -855,7 +909,7 @@ export default function EncounterDetailPage() {
                 <div className="space-y-6">
                   {encounter.history_of_present_illness && (
                     <div>
-                      <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                      <h4 className="mb-1 text-sm font-medium text-muted-foreground">
                         History of Present Illness
                       </h4>
                       <p className="text-sm">{encounter.history_of_present_illness}</p>
@@ -863,7 +917,7 @@ export default function EncounterDetailPage() {
                   )}
                   {encounter.physical_examination && (
                     <div>
-                      <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                      <h4 className="mb-1 text-sm font-medium text-muted-foreground">
                         Physical Examination
                       </h4>
                       <p className="text-sm">{encounter.physical_examination}</p>
@@ -871,17 +925,13 @@ export default function EncounterDetailPage() {
                   )}
                   {encounter.assessment && (
                     <div>
-                      <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                        Assessment
-                      </h4>
+                      <h4 className="mb-1 text-sm font-medium text-muted-foreground">Assessment</h4>
                       <p className="text-sm">{encounter.assessment}</p>
                     </div>
                   )}
                   {treatmentPlan?.clinical_notes && (
                     <div>
-                      <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                        Plan
-                      </h4>
+                      <h4 className="mb-1 text-sm font-medium text-muted-foreground">Plan</h4>
                       <p className="text-sm">{treatmentPlan.clinical_notes}</p>
                     </div>
                   )}
@@ -889,7 +939,7 @@ export default function EncounterDetailPage() {
                     !encounter.physical_examination &&
                     !encounter.assessment &&
                     !treatmentPlan?.clinical_notes && (
-                      <p className="text-center text-muted-foreground py-4">
+                      <p className="py-4 text-center text-muted-foreground">
                         No assessment details recorded.
                       </p>
                     )}
@@ -903,7 +953,9 @@ export default function EncounterDetailPage() {
                   <Stethoscope className="h-4 w-4 text-muted-foreground" />
                   <span>Diagnoses</span>
                   {(diagnoses?.length || 0) > 0 && (
-                    <Badge variant="secondary" className="text-xs">{diagnoses?.length}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {diagnoses?.length}
+                    </Badge>
                   )}
                 </div>
               </AccordionTrigger>
@@ -936,38 +988,53 @@ export default function EncounterDetailPage() {
               chiefComplaint={encounter.chief_complaint || undefined}
               diagnoses={diagnosisTexts}
               symptoms={encounter.chief_complaint
-                ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
-              existingOrders={labOrders?.flatMap(order =>
-                (order.items || []).map(item => item.test_name)
+                ?.split(',')
+                .map((s: string) => s.trim())
+                .filter(Boolean)}
+              existingOrders={labOrders?.flatMap((order) =>
+                (order.items || []).map((item) => item.test_name)
               )}
               existingResults={(() => {
                 const results: Record<string, unknown> = {};
-                labOrders?.flatMap(o => o.items || []).forEach(item => {
-                  if (item.result?.numeric_value != null) {
-                    results[item.test_name || item.test_code || ''] = {
-                      value: item.result.numeric_value,
-                      unit: item.result.result_unit,
-                    };
-                  }
-                });
+                labOrders
+                  ?.flatMap((o) => o.items || [])
+                  .forEach((item) => {
+                    if (item.result?.numeric_value != null) {
+                      results[item.test_name || item.test_code || ''] = {
+                        value: item.result.numeric_value,
+                        unit: item.result.result_unit,
+                      };
+                    }
+                  });
                 return Object.keys(results).length > 0 ? results : undefined;
               })()}
               patientAge={calculateAge(encounter.patient_date_of_birth)}
-              patientSex={encounter.patient_gender === 'F' ? 'F' : encounter.patient_gender === 'M' ? 'M' : undefined}
+              patientSex={
+                encounter.patient_gender === 'F'
+                  ? 'F'
+                  : encounter.patient_gender === 'M'
+                    ? 'M'
+                    : undefined
+              }
               isPregnant={false}
               carePlanInvestigations={latestCarePlanInvestigations}
               autoTrigger={autoTriggerInvestigations}
               onAutoTriggerConsumed={() => setAutoTriggerInvestigations(false)}
             />
           )}
-          <Accordion type="multiple" defaultValue={['lab', 'imaging', 'prescriptions', 'procedures']}>
+          <Accordion
+            type="multiple"
+            defaultValue={['lab', 'imaging', 'prescriptions', 'procedures']}
+          >
             <AccordionItem value="lab">
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-2">
                   <Beaker className="h-4 w-4 text-muted-foreground" />
                   <span>Lab Orders</span>
                   {(labOrders?.length || 0) > 0 && (
-                    <Badge variant="secondary" className="text-xs">{labOrders?.length}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {labOrders?.length}
+                    </Badge>
                   )}
                 </div>
               </AccordionTrigger>
@@ -988,7 +1055,7 @@ export default function EncounterDetailPage() {
                     patientSex: encounter.patient_gender === 'F' ? 'female' : 'male',
                   }}
                   diagnoses={diagnosisFormData
-                    .map(d => d.icd10_display || d.free_text_diagnosis)
+                    .map((d) => d.icd10_display || d.free_text_diagnosis)
                     .filter(Boolean)}
                 />
               </AccordionContent>
@@ -1000,7 +1067,9 @@ export default function EncounterDetailPage() {
                   <ScanLine className="h-4 w-4 text-muted-foreground" />
                   <span>Imaging Orders</span>
                   {(imagingOrders?.length || 0) > 0 && (
-                    <Badge variant="secondary" className="text-xs">{imagingOrders?.length}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {imagingOrders?.length}
+                    </Badge>
                   )}
                 </div>
               </AccordionTrigger>
@@ -1020,7 +1089,9 @@ export default function EncounterDetailPage() {
                   <Pill className="h-4 w-4 text-muted-foreground" />
                   <span>Prescriptions</span>
                   {(prescriptions?.length || 0) > 0 && (
-                    <Badge variant="secondary" className="text-xs">{prescriptions?.length}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {prescriptions?.length}
+                    </Badge>
                   )}
                 </div>
               </AccordionTrigger>
@@ -1039,7 +1110,9 @@ export default function EncounterDetailPage() {
                   <Scissors className="h-4 w-4 text-muted-foreground" />
                   <span>Procedures</span>
                   {procedureOrdersCount > 0 && (
-                    <Badge variant="secondary" className="text-xs">{procedureOrdersCount}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {procedureOrdersCount}
+                    </Badge>
                   )}
                 </div>
               </AccordionTrigger>
@@ -1063,7 +1136,9 @@ export default function EncounterDetailPage() {
                   <HeartHandshake className="h-4 w-4 text-muted-foreground" />
                   <span>Allied Health</span>
                   {alliedHealthCount > 0 && (
-                    <Badge variant="secondary" className="text-xs">{alliedHealthCount}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {alliedHealthCount}
+                    </Badge>
                   )}
                 </div>
               </AccordionTrigger>
@@ -1083,7 +1158,9 @@ export default function EncounterDetailPage() {
                   <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
                   <span>Referrals</span>
                   {referralsCount > 0 && (
-                    <Badge variant="secondary" className="text-xs">{referralsCount}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {referralsCount}
+                    </Badge>
                   )}
                 </div>
               </AccordionTrigger>
@@ -1142,8 +1219,8 @@ export default function EncounterDetailPage() {
         {/* Clinical Comments */}
         <TabsContent value="comments">
           <Card>
-            <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <MessageCircle className="h-4 w-4 text-muted-foreground" />
                 Clinical Comments
               </CardTitle>
@@ -1165,15 +1242,15 @@ export default function EncounterDetailPage() {
 
 function EncounterDetailSkeleton() {
   return (
-    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-6">
       {/* Header skeleton */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-10 w-full sm:w-40" />
       </div>
       {/* Summary bar skeleton */}
-      <div className="p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+      <div className="rounded-lg bg-muted/50 p-3 sm:p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-3 w-24" />
@@ -1183,7 +1260,7 @@ function EncounterDetailSkeleton() {
       </div>
       {/* Chief complaint card skeleton */}
       <Card>
-        <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+        <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
           <Skeleton className="h-6 w-40" />
         </CardHeader>
         <CardContent className="px-3 sm:px-6">

@@ -36,7 +36,7 @@ export function PatientPhysioOrders({ patientId }: PatientPhysioOrdersProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Activity className="h-4 w-4" />
             Physiotherapy Orders
           </CardTitle>
@@ -56,7 +56,7 @@ export function PatientPhysioOrders({ patientId }: PatientPhysioOrdersProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Activity className="h-4 w-4" />
             Physiotherapy Orders
           </CardTitle>
@@ -76,14 +76,16 @@ export function PatientPhysioOrders({ patientId }: PatientPhysioOrdersProps) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Activity className="h-4 w-4" />
             Physiotherapy Orders
-            <Badge variant="secondary" className="ml-2">{orders.length}</Badge>
+            <Badge variant="secondary" className="ml-2">
+              {orders.length}
+            </Badge>
           </CardTitle>
           <Link
             href={`/allied-health/physiotherapy/orders?patient_id=${patientId}`}
-            className="text-xs text-primary hover:underline flex items-center gap-1"
+            className="flex items-center gap-1 text-xs text-primary hover:underline"
           >
             View All <ExternalLink className="h-3 w-3" />
           </Link>
@@ -96,12 +98,10 @@ export function PatientPhysioOrders({ patientId }: PatientPhysioOrdersProps) {
             href={`/allied-health/physiotherapy/orders/${order.id}`}
             className="block"
           >
-            <div className="flex items-start justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-              <div className="space-y-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-sm truncate">
-                    {order.treatment_type_name}
-                  </span>
+            <div className="flex items-start justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="truncate text-sm font-medium">{order.treatment_type_name}</span>
                   <Badge className={ORDER_STATUS_COLORS[order.status] || ''}>
                     {order.status.replace('_', ' ')}
                   </Badge>
@@ -119,7 +119,7 @@ export function PatientPhysioOrders({ patientId }: PatientPhysioOrdersProps) {
           </Link>
         ))}
         {orders.length > 5 && (
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-center text-xs text-muted-foreground">
             +{orders.length - 5} more orders
           </p>
         )}
@@ -132,14 +132,14 @@ function OrdersSkeleton({ title }: { title: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
           <Skeleton className="h-4 w-4 rounded" />
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="p-3 rounded-lg border">
+          <div key={i} className="rounded-lg border p-3">
             <div className="space-y-2">
               <Skeleton className="h-4 w-40" />
               <Skeleton className="h-3 w-32" />

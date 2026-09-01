@@ -114,67 +114,69 @@ export const AIConditionPredictResponseSchema = z.object({
 // =============================================================================
 
 /** Schema for POST /api/ai/predict/icu/ request patient data */
-export const AIICUPredictPatientDataSchema = z.object({
-  age: z.number().min(0).max(150),
-  gender: z.enum(['M', 'F', 'O']),
-  temperature: z.number().nullable().optional(),
-  heart_rate: z.number().nullable().optional(),
-  systolic_bp: z.number().nullable().optional(),
-  diastolic_bp: z.number().nullable().optional(),
-  respiratory_rate: z.number().nullable().optional(),
-  spo2: z.number().nullable().optional(),
-  mean_arterial_pressure: z.number().nullable().optional(),
-  wbc: z.number().nullable().optional(),
-  platelets: z.number().nullable().optional(),
-  creatinine: z.number().nullable().optional(),
-  bilirubin: z.number().nullable().optional(),
-  lactate: z.number().nullable().optional(),
-  pao2_fio2_ratio: z.number().nullable().optional(),
-  gcs: z.number().min(3).max(15).nullable().optional(),
-  urine_output_ml_day: z.number().nullable().optional(),
-  on_vasopressors: z.boolean().optional(),
-  on_mechanical_ventilation: z.boolean().optional(),
-  admission_diagnosis: z.string().optional(),
-  length_of_stay_days: z.number().int().min(0).nullable().optional(),
-}).superRefine((value, ctx) => {
-  const requiredCore: Array<keyof typeof value> = [
-    'respiratory_rate',
-    'systolic_bp',
-    'diastolic_bp',
-    'platelets',
-    'bilirubin',
-    'creatinine',
-    'gcs',
-  ];
+export const AIICUPredictPatientDataSchema = z
+  .object({
+    age: z.number().min(0).max(150),
+    gender: z.enum(['M', 'F', 'O']),
+    temperature: z.number().nullable().optional(),
+    heart_rate: z.number().nullable().optional(),
+    systolic_bp: z.number().nullable().optional(),
+    diastolic_bp: z.number().nullable().optional(),
+    respiratory_rate: z.number().nullable().optional(),
+    spo2: z.number().nullable().optional(),
+    mean_arterial_pressure: z.number().nullable().optional(),
+    wbc: z.number().nullable().optional(),
+    platelets: z.number().nullable().optional(),
+    creatinine: z.number().nullable().optional(),
+    bilirubin: z.number().nullable().optional(),
+    lactate: z.number().nullable().optional(),
+    pao2_fio2_ratio: z.number().nullable().optional(),
+    gcs: z.number().min(3).max(15).nullable().optional(),
+    urine_output_ml_day: z.number().nullable().optional(),
+    on_vasopressors: z.boolean().optional(),
+    on_mechanical_ventilation: z.boolean().optional(),
+    admission_diagnosis: z.string().optional(),
+    length_of_stay_days: z.number().int().min(0).nullable().optional(),
+  })
+  .superRefine((value, ctx) => {
+    const requiredCore: Array<keyof typeof value> = [
+      'respiratory_rate',
+      'systolic_bp',
+      'diastolic_bp',
+      'platelets',
+      'bilirubin',
+      'creatinine',
+      'gcs',
+    ];
 
-  for (const field of requiredCore) {
-    if (value[field] == null) {
+    for (const field of requiredCore) {
+      if (value[field] == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: 'Required for minimum practical SOFA assessment',
+        });
+      }
+    }
+
+    const hasRespiratoryContext =
+      value.pao2_fio2_ratio != null || value.on_mechanical_ventilation !== undefined;
+    if (!hasRespiratoryContext) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: [field],
-        message: 'Required for minimum practical SOFA assessment',
+        path: ['pao2_fio2_ratio'],
+        message: 'Provide PaO2/FiO2 ratio or mechanical ventilation status',
       });
     }
-  }
 
-  const hasRespiratoryContext =
-    value.pao2_fio2_ratio != null || value.on_mechanical_ventilation !== undefined;
-  if (!hasRespiratoryContext) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['pao2_fio2_ratio'],
-      message: 'Provide PaO2/FiO2 ratio or mechanical ventilation status',
-    });
-  }
-
-  if (value.on_vasopressors === undefined) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['on_vasopressors'],
-      message: 'Provide vasopressor status (true/false)',
-    });
-  }
-});
+    if (value.on_vasopressors === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['on_vasopressors'],
+        message: 'Provide vasopressor status (true/false)',
+      });
+    }
+  });
 
 /** Schema for POST /api/ai/predict/icu/ request */
 export const AIICUPredictRequestSchema = z.object({
@@ -184,20 +186,22 @@ export const AIICUPredictRequestSchema = z.object({
 });
 
 /** Schema for POST /api/ai/predict/icu/qsofa-lite/ request */
-export const AIICUQSOFALiteRequestSchema = z.object({
-  respiratory_rate: z.number(),
-  systolic_bp: z.number(),
-  gcs_total: z.number().min(3).max(15).nullable().optional(),
-  altered_mentation: z.boolean().nullable().optional(),
-}).superRefine((value, ctx) => {
-  if (value.gcs_total == null && value.altered_mentation == null) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['gcs_total'],
-      message: 'Provide gcs_total or altered_mentation',
-    });
-  }
-});
+export const AIICUQSOFALiteRequestSchema = z
+  .object({
+    respiratory_rate: z.number(),
+    systolic_bp: z.number(),
+    gcs_total: z.number().min(3).max(15).nullable().optional(),
+    altered_mentation: z.boolean().nullable().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.gcs_total == null && value.altered_mentation == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['gcs_total'],
+        message: 'Provide gcs_total or altered_mentation',
+      });
+    }
+  });
 
 /** Schema for SOFA score component breakdown */
 export const AISOFAScoreBreakdownSchema = z.object({
@@ -261,11 +265,13 @@ export const AIFeedbackStatsSchema = z.object({
 });
 
 /** Schema for POST /api/ai/suggestion-audit/ response */
-export const AISuggestionAuditResponseSchema = z.object({
-  status: z.string(),
-  message: z.string(),
-  logged_count: z.number(),
-}).passthrough();
+export const AISuggestionAuditResponseSchema = z
+  .object({
+    status: z.string(),
+    message: z.string(),
+    logged_count: z.number(),
+  })
+  .passthrough();
 
 // =============================================================================
 // Phase 4a — Smart Autopopulate
@@ -300,182 +306,260 @@ export const AILabResultItemSchema = z.object({
 });
 
 /** Schema for a flagged lab result */
-export const AILabFlagSchema = z.object({
-  test_name: z.string(),
-  value: z.number(),
-  unit: z.string(),
-  status: z.string(),
-  reference_range: z.union([
-    z.string(),
-    z.object({
-      low: z.number().optional(),
-      high: z.number().optional(),
-      unit: z.string().optional(),
-    }),
-  ]).nullable().optional(),
-  deviation_percent: z.number().nullable().optional(),
-  delta_from_normal_pct: z.number().nullable().optional(),
-  message: z.string().optional(),
-}).passthrough();
+export const AILabFlagSchema = z
+  .object({
+    test_name: z.string(),
+    value: z.number(),
+    unit: z.string(),
+    status: z.string(),
+    reference_range: z
+      .union([
+        z.string(),
+        z.object({
+          low: z.number().optional(),
+          high: z.number().optional(),
+          unit: z.string().optional(),
+        }),
+      ])
+      .nullable()
+      .optional(),
+    deviation_percent: z.number().nullable().optional(),
+    delta_from_normal_pct: z.number().nullable().optional(),
+    message: z.string().optional(),
+  })
+  .passthrough();
 
 /** Schema for a detected multi-lab pattern */
-export const AILabPatternSchema = z.object({
-  pattern_name: z.string(),
-  significance: z.enum(['critical', 'significant', 'monitor']),
-  confidence: z.number().min(0).max(1),
-  description: z.string().optional(),
-  contributing_tests: z.array(z.string()).optional(),
-}).passthrough();
+export const AILabPatternSchema = z
+  .object({
+    pattern_name: z.string(),
+    significance: z.enum(['critical', 'significant', 'monitor']),
+    confidence: z.number().min(0).max(1),
+    description: z.string().optional(),
+    contributing_tests: z.array(z.string()).optional(),
+  })
+  .passthrough();
 
 /** Schema for POST /api/ai/lab/interpret/ response */
-export const AILabInterpretResponseSchema = z.object({
-  flags: z.array(AILabFlagSchema),
-  patterns: z.array(AILabPatternSchema).optional(),
-  interpretation_summary: z.string().optional(),
-  suggested_followup_labs: z.array(z.string()).optional(),
-  critical_alerts: z.array(z.string()).optional(),
-  mode: z.string().optional(),
-  error: z.string().nullable().optional(),
-}).passthrough();
+export const AILabInterpretResponseSchema = z
+  .object({
+    flags: z.array(AILabFlagSchema),
+    patterns: z.array(AILabPatternSchema).optional(),
+    interpretation_summary: z.string().optional(),
+    suggested_followup_labs: z.array(z.string()).optional(),
+    critical_alerts: z.array(z.string()).optional(),
+    mode: z.string().optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 // =============================================================================
 // Phase 5 — Discharge Readiness
 // =============================================================================
 
 /** Schema for a single discharge criterion */
-export const AIDischargeCriterionSchema = z.object({
-  name: z.string().optional(),
-  criterion: z.string().optional(),
-  category: z.string(),
-  met: z.boolean(),
-  details: z.string().nullable().optional(),
-  current_value: z.string().nullable().optional(),
-  target_value: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
-}).passthrough().transform((data) => ({
-  ...data,
-  name: data.name || data.criterion || 'Unnamed criterion',
-}));
+export const AIDischargeCriterionSchema = z
+  .object({
+    name: z.string().optional(),
+    criterion: z.string().optional(),
+    category: z.string(),
+    met: z.boolean(),
+    details: z.string().nullable().optional(),
+    current_value: z.string().nullable().optional(),
+    target_value: z.string().nullable().optional(),
+    notes: z.string().nullable().optional(),
+  })
+  .passthrough()
+  .transform((data) => ({
+    ...data,
+    name: data.name || data.criterion || 'Unnamed criterion',
+  }));
 
 /** Schema for POST /api/ai/discharge/assess/ response */
-export const AIDischargeAssessResponseSchema = z.object({
-  readiness_score: z.number().min(0).max(1),
-  readiness_level: z.enum(['ready', 'near_ready', 'not_ready']),
-  criteria: z.array(AIDischargeCriterionSchema),
-  unmet_criteria_count: z.number(),
-  readmission_risk: z.number().min(0).max(1).nullable().optional(),
-  readmission_risk_level: z.string().nullable().optional(),
-  recommendations: z.array(z.string()).optional(),
-  vitals_stability: z.string().nullable().optional(),
-  mode: z.string().optional(),
-  error: z.string().nullable().optional(),
-  stored_id: z.string().nullable().optional(),
-}).passthrough();
+export const AIDischargeAssessResponseSchema = z
+  .object({
+    readiness_score: z.number().min(0).max(1),
+    readiness_level: z.enum(['ready', 'near_ready', 'not_ready']),
+    criteria: z.array(AIDischargeCriterionSchema),
+    unmet_criteria_count: z.number(),
+    readmission_risk: z.number().min(0).max(1).nullable().optional(),
+    readmission_risk_level: z.string().nullable().optional(),
+    recommendations: z.array(z.string()).optional(),
+    vitals_stability: z.string().nullable().optional(),
+    mode: z.string().optional(),
+    error: z.string().nullable().optional(),
+    stored_id: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 /** Schema for GET /api/ai/discharge/conditions/ response */
-export const AIDischargeConditionsResponseSchema = z.object({
-  conditions: z.array(z.string()),
-  count: z.number(),
-}).passthrough();
+export const AIDischargeConditionsResponseSchema = z
+  .object({
+    conditions: z.array(z.string()),
+    count: z.number(),
+  })
+  .passthrough();
 
 // =============================================================================
 // Phase 5 — Care Plan Generator
 // =============================================================================
 
 /** Schema for a care plan goal */
-export const AICarePlanGoalSchema = z.object({
-  id: z.string().optional(),
-  description: z.string(),
-  target: z.string().nullish().transform(v => v ?? undefined),
-  priority: z.enum(['high', 'medium', 'low']),
-  timeframe: z.string().nullish().transform(v => v ?? undefined),
-  measurable_target: z.string().nullish().transform(v => v ?? undefined),
-}).passthrough();
+export const AICarePlanGoalSchema = z
+  .object({
+    id: z.string().optional(),
+    description: z.string(),
+    target: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    priority: z.enum(['high', 'medium', 'low']),
+    timeframe: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    measurable_target: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+  })
+  .passthrough();
 
 /** Schema for a care plan intervention item */
-export const AICarePlanInterventionItemSchema = z.object({
-  action: z.string(),
-  frequency: z.string().nullish().transform(v => v ?? undefined),
-  rationale: z.string().nullish().transform(v => v ?? undefined),
-  duration: z.string().nullish().transform(v => v ?? undefined),
-  monitoring: z.string().nullish().transform(v => v ?? undefined),
-  timing: z.string().nullish().transform(v => v ?? undefined),
-  escalation: z.string().nullish().transform(v => v ?? undefined),
-}).passthrough();
+export const AICarePlanInterventionItemSchema = z
+  .object({
+    action: z.string(),
+    frequency: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    rationale: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    duration: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    monitoring: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    timing: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    escalation: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+  })
+  .passthrough();
 
 /** Schema for a care plan intervention category */
-export const AICarePlanInterventionCategorySchema = z.object({
-  category: z.string(),
-  items: z.array(AICarePlanInterventionItemSchema),
-}).passthrough();
+export const AICarePlanInterventionCategorySchema = z
+  .object({
+    category: z.string(),
+    items: z.array(AICarePlanInterventionItemSchema),
+  })
+  .passthrough();
 
 /** Schema for care plan follow-up */
-export const AICarePlanFollowUpSchema = z.object({
-  timing: z.string().nullish().transform(v => v ?? undefined),
-  appointment: z.string().nullish().transform(v => v ?? undefined),
-  instructions: z.string().nullish().transform(v => v ?? undefined),
-  investigations: z.string().nullish().transform(v => v ?? undefined),
-  red_flags: z.array(z.string()).nullish().transform(v => v ?? undefined),
-}).passthrough();
+export const AICarePlanFollowUpSchema = z
+  .object({
+    timing: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    appointment: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    instructions: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    investigations: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? undefined),
+    red_flags: z
+      .array(z.string())
+      .nullish()
+      .transform((v) => v ?? undefined),
+  })
+  .passthrough();
 
 /** Schema for ADPIE-aligned nursing entry */
-export const AICarePlanADPIEEntrySchema = z.object({
-  assessment: z.string(),
-  nursing_diagnosis: z.string(),
-  goal_and_outcome_criteria: z.string(),
-  plan_of_action: z.string(),
-  scientific_rationale: z.string(),
-  implementation: z.string().optional(),
-  evaluation: z.string().optional(),
-}).passthrough();
+export const AICarePlanADPIEEntrySchema = z
+  .object({
+    assessment: z.string(),
+    nursing_diagnosis: z.string(),
+    goal_and_outcome_criteria: z.string(),
+    plan_of_action: z.string(),
+    scientific_rationale: z.string(),
+    implementation: z.string().optional(),
+    evaluation: z.string().optional(),
+  })
+  .passthrough();
 
 /** Schema for POST /api/ai/care-plan/generate/ response */
-export const AICarePlanResponseSchema = z.object({
-  primary_diagnosis: z.string(),
-  icd10_code: z.string().nullable().optional(),
-  severity: z.string().nullable().optional(),
-  goals: z.array(AICarePlanGoalSchema),
-  interventions: z.array(AICarePlanInterventionCategorySchema),
-  discharge_criteria: z.array(z.string()).optional(),
-  follow_up: AICarePlanFollowUpSchema.nullable().optional(),
-  adpie_entries: z.array(AICarePlanADPIEEntrySchema).optional(),
-  references: z.array(z.string()).optional(),
-  cds_alerts: z.array(z.record(z.unknown())).optional(),
-  facility_level_notes: z.array(z.string()).optional(),
-  template_used: z.string().nullable().optional(),
-  mode: z.string().optional(),
-  llm_enriched: z.boolean().optional(),
-  evidence_sources: z.array(z.string()).optional(),
-  error: z.string().nullable().optional(),
-}).passthrough();
+export const AICarePlanResponseSchema = z
+  .object({
+    primary_diagnosis: z.string(),
+    icd10_code: z.string().nullable().optional(),
+    severity: z.string().nullable().optional(),
+    goals: z.array(AICarePlanGoalSchema),
+    interventions: z.array(AICarePlanInterventionCategorySchema),
+    discharge_criteria: z.array(z.string()).optional(),
+    follow_up: AICarePlanFollowUpSchema.nullable().optional(),
+    adpie_entries: z.array(AICarePlanADPIEEntrySchema).optional(),
+    references: z.array(z.string()).optional(),
+    cds_alerts: z.array(z.record(z.unknown())).optional(),
+    facility_level_notes: z.array(z.string()).optional(),
+    template_used: z.string().nullable().optional(),
+    mode: z.string().optional(),
+    llm_enriched: z.boolean().optional(),
+    evidence_sources: z.array(z.string()).optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 /** Schema for GET /api/ai/care-plan/conditions/ response */
-export const AICarePlanConditionsResponseSchema = z.object({
-  conditions: z.array(z.object({
-    key: z.string(),
-    name: z.string(),
-    description: z.string().optional(),
-  })),
-  count: z.number(),
-}).passthrough();
+export const AICarePlanConditionsResponseSchema = z
+  .object({
+    conditions: z.array(
+      z.object({
+        key: z.string(),
+        name: z.string(),
+        description: z.string().optional(),
+      })
+    ),
+    count: z.number(),
+  })
+  .passthrough();
 
 // =============================================================================
 // Phase 5 — Clerking Assist
 // =============================================================================
 
 /** Schema for a clerking autocomplete suggestion */
-export const AIClerkingAutocompleteSuggestionSchema = z.object({
-  text: z.string(),
-  confidence: z.number().min(0).max(1),
-  category: z.string().optional(),
-}).passthrough();
+export const AIClerkingAutocompleteSuggestionSchema = z
+  .object({
+    text: z.string(),
+    confidence: z.number().min(0).max(1),
+    category: z.string().optional(),
+  })
+  .passthrough();
 
 /** Schema for POST /api/ai/clerking/autocomplete/ response */
-export const AIClerkingAutocompleteResponseSchema = z.object({
-  suggestions: z.array(AIClerkingAutocompleteSuggestionSchema),
-  mode: z.string().optional(),
-  error: z.string().nullable().optional(),
-}).passthrough();
+export const AIClerkingAutocompleteResponseSchema = z
+  .object({
+    suggestions: z.array(AIClerkingAutocompleteSuggestionSchema),
+    mode: z.string().optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 /** Schema for an extracted diagnosis from structured note parsing */
 export const AIClerkingExtractedDiagnosisSchema = z.object({
@@ -485,107 +569,126 @@ export const AIClerkingExtractedDiagnosisSchema = z.object({
 });
 
 /** Schema for POST /api/ai/clerking/structure/ response */
-export const AIClerkingStructureResponseSchema = z.object({
-  structured_note: z.record(z.string()),
-  sections: z.array(z.string()),
-  original_text: z.string(),
-  extracted_diagnoses: z.array(AIClerkingExtractedDiagnosisSchema).optional(),
-  extracted_medications: z.array(z.string()).optional(),
-  suggested_investigations: z.array(z.string()).optional(),
-  completeness_score: z.number().min(0).max(1).optional(),
-  missing_sections: z.array(z.string()).optional(),
-  mode: z.string().optional(),
-  error: z.string().nullable().optional(),
-}).passthrough();
+export const AIClerkingStructureResponseSchema = z
+  .object({
+    structured_note: z.record(z.string()),
+    sections: z.array(z.string()),
+    original_text: z.string(),
+    extracted_diagnoses: z.array(AIClerkingExtractedDiagnosisSchema).optional(),
+    extracted_medications: z.array(z.string()).optional(),
+    suggested_investigations: z.array(z.string()).optional(),
+    completeness_score: z.number().min(0).max(1).optional(),
+    missing_sections: z.array(z.string()).optional(),
+    mode: z.string().optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 // =============================================================================
 // Phase 6 — Clinical Document Generation
 // =============================================================================
 
 /** Schema for a section of a generated clinical document */
-export const ClinicalDocSectionSchema = z.object({
-  section_id: z.string(),
-  title: z.string(),
-  content: z.string(),
-}).passthrough();
+export const ClinicalDocSectionSchema = z
+  .object({
+    section_id: z.string(),
+    title: z.string(),
+    content: z.string(),
+  })
+  .passthrough();
 
 /** Schema for a suggested ICD-10 code from the generated document */
-export const ClinicalDocICD10SuggestionSchema = z.object({
-  code: z.string(),
-  description: z.string(),
-  confidence: z.number().min(0).max(1),
-}).passthrough();
+export const ClinicalDocICD10SuggestionSchema = z
+  .object({
+    code: z.string(),
+    description: z.string(),
+    confidence: z.number().min(0).max(1),
+  })
+  .passthrough();
 
 /** Schema for a clinical guideline citation */
-export const ClinicalDocCitationSchema = z.object({
-  source: z.string(),
-  section: z.string().optional(),
-}).passthrough();
+export const ClinicalDocCitationSchema = z
+  .object({
+    source: z.string(),
+    section: z.string().optional(),
+  })
+  .passthrough();
 
 /** Schema for POST /api/ai/clinical/document/ response */
-export const AIClinicalDocumentResponseSchema = z.object({
-  document_type: z.string(),
-  sections: z.array(ClinicalDocSectionSchema),
-  full_text: z.string(),
-  suggested_icd10_codes: z.array(ClinicalDocICD10SuggestionSchema).nullable().optional(),
-  safety_alerts: z.array(z.union([z.string(), z.object({}).passthrough()])).nullable().optional(),
-  has_safety_concerns: z.boolean().optional(),
-  citations: z.array(ClinicalDocCitationSchema).optional(),
-  fhir_resource: z.record(z.unknown()).nullable().optional(),
-  processing_time_ms: z.number().optional(),
-  model_used: z.string().optional(),
-  disclaimer: z.string().optional(),
-  generation_mode: z.string().optional(),
-  section_provenance: z.record(z.string()).optional(),
-  mode: z.string().optional(),
-  error: z.string().nullable().optional(),
-}).passthrough();
+export const AIClinicalDocumentResponseSchema = z
+  .object({
+    document_type: z.string(),
+    sections: z.array(ClinicalDocSectionSchema),
+    full_text: z.string(),
+    suggested_icd10_codes: z.array(ClinicalDocICD10SuggestionSchema).nullable().optional(),
+    safety_alerts: z
+      .array(z.union([z.string(), z.object({}).passthrough()]))
+      .nullable()
+      .optional(),
+    has_safety_concerns: z.boolean().optional(),
+    citations: z.array(ClinicalDocCitationSchema).optional(),
+    fhir_resource: z.record(z.unknown()).nullable().optional(),
+    processing_time_ms: z.number().optional(),
+    model_used: z.string().optional(),
+    disclaimer: z.string().optional(),
+    generation_mode: z.string().optional(),
+    section_provenance: z.record(z.string()).optional(),
+    mode: z.string().optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 // =============================================================================
 // Phase 5 — Enhanced CDS Evaluation
 // =============================================================================
 
 /** Schema for a single CDS alert from TibaBot */
-export const AICDSAlertItemSchema = z.object({
-  rule_id: z.string().optional(),
-  rule_name: z.string().optional(),
-  severity: z.enum(['critical', 'high', 'medium', 'low']),
-  category: z.string(),
-  title: z.string(),
-  message: z.string(),
-  recommendation: z.string().optional(),
-  reference: z.string().nullable().optional(),
-  evidence_level: z.string().optional(),
-  evidence_snippets: z.array(z.string()).optional(),
-}).passthrough();
+export const AICDSAlertItemSchema = z
+  .object({
+    rule_id: z.string().optional(),
+    rule_name: z.string().optional(),
+    severity: z.enum(['critical', 'high', 'medium', 'low']),
+    category: z.string(),
+    title: z.string(),
+    message: z.string(),
+    recommendation: z.string().optional(),
+    reference: z.string().nullable().optional(),
+    evidence_level: z.string().optional(),
+    evidence_snippets: z.array(z.string()).optional(),
+  })
+  .passthrough();
 
 /** Schema for POST /api/ai/cds/evaluate/ response */
-export const AICDSEvaluateResponseSchema = z.object({
-  alerts: z.array(AICDSAlertItemSchema),
-  recommendations: z.array(AICDSAlertItemSchema).optional(),
-  rules_evaluated: z.number(),
-  rules_fired: z.number(),
-  processing_time_ms: z.number(),
-  mode: z.string().optional(),
-  error: z.string().nullable().optional(),
-}).passthrough();
+export const AICDSEvaluateResponseSchema = z
+  .object({
+    alerts: z.array(AICDSAlertItemSchema),
+    recommendations: z.array(AICDSAlertItemSchema).optional(),
+    rules_evaluated: z.number(),
+    rules_fired: z.number(),
+    processing_time_ms: z.number(),
+    mode: z.string().optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 // =============================================================================
 // eGFR Calculator
 // =============================================================================
 
-export const AIEGFRCalculateResponseSchema = z.object({
-  egfr_ckd_epi: z.number(),
-  egfr_cockcroft_gault: z.number().nullable(),
-  ckd_stage: z.string(),
-  category: z.string(),
-  dose_adjustment_band: z.string(),
-  flags: z.array(z.string()),
-  interpretation: z.string(),
-  creatinine_used_mg_dl: z.number(),
-  mode: z.string().optional(),
-  stored_id: z.string().nullable().optional(),
-}).passthrough();
+export const AIEGFRCalculateResponseSchema = z
+  .object({
+    egfr_ckd_epi: z.number(),
+    egfr_cockcroft_gault: z.number().nullable(),
+    ckd_stage: z.string(),
+    category: z.string(),
+    dose_adjustment_band: z.string(),
+    flags: z.array(z.string()),
+    interpretation: z.string(),
+    creatinine_used_mg_dl: z.number(),
+    mode: z.string().optional(),
+    stored_id: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 export const StoredEGFRResultSchema = z.object({
   id: z.string(),
@@ -648,108 +751,130 @@ export const StoredICURiskResultSchema = StoredAIResultBaseSchema.extend({
 // Phase 7 — Surgical Assistant
 // =============================================================================
 
-export const AISurgicalRiskScoresSchema = z.object({
-  overall_risk_level: z.string().optional(),
-  alerts: z.array(z.string()).optional(),
-  recommendations: z.array(z.string()).optional(),
-}).catchall(z.unknown());
+export const AISurgicalRiskScoresSchema = z
+  .object({
+    overall_risk_level: z.string().optional(),
+    alerts: z.array(z.string()).optional(),
+    recommendations: z.array(z.string()).optional(),
+  })
+  .catchall(z.unknown());
 
-export const AISurgicalPreOpAssessResponseSchema = z.object({
-  risk_scores: AISurgicalRiskScoresSchema,
-  procedure_template: z.record(z.unknown()).nullable().optional(),
-  facility_capable: z.boolean().nullable().optional(),
-  facility_alert: z.string().nullable().optional(),
-  cds_alerts: z.array(z.record(z.unknown())).optional(),
-  fhir_risk_assessment: z.record(z.unknown()).nullable().optional(),
-  stored_id: z.string().optional(),
-  mode: z.string().optional(),
-  error: z.string().nullable().optional(),
-}).passthrough();
+export const AISurgicalPreOpAssessResponseSchema = z
+  .object({
+    risk_scores: AISurgicalRiskScoresSchema,
+    procedure_template: z.record(z.unknown()).nullable().optional(),
+    facility_capable: z.boolean().nullable().optional(),
+    facility_alert: z.string().nullable().optional(),
+    cds_alerts: z.array(z.record(z.unknown())).optional(),
+    fhir_risk_assessment: z.record(z.unknown()).nullable().optional(),
+    stored_id: z.string().optional(),
+    mode: z.string().optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough();
 
-export const AISurgicalChecklistItemSchema = z.object({
-  id: z.string(),
-  phase: z.string().optional(),
-  description: z.string(),
-  responsible: z.string().optional().nullable(),
-  checked: z.boolean().optional(),
-  checked_by: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  critical: z.boolean().optional(),
-}).catchall(z.unknown());
+export const AISurgicalChecklistItemSchema = z
+  .object({
+    id: z.string(),
+    phase: z.string().optional(),
+    description: z.string(),
+    responsible: z.string().optional().nullable(),
+    checked: z.boolean().optional(),
+    checked_by: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
+    critical: z.boolean().optional(),
+  })
+  .catchall(z.unknown());
 
-export const AISurgicalChecklistSessionSchema = z.object({
-  id: z.string().optional(),
-  session_id: z.string().optional(),
-  procedure_key: z.string().optional(),
-  patient_id: z.string().optional(),
-  state: z.string().optional(),
-  items: z.array(AISurgicalChecklistItemSchema).optional(),
-}).catchall(z.unknown());
+export const AISurgicalChecklistSessionSchema = z
+  .object({
+    id: z.string().optional(),
+    session_id: z.string().optional(),
+    procedure_key: z.string().optional(),
+    patient_id: z.string().optional(),
+    state: z.string().optional(),
+    items: z.array(AISurgicalChecklistItemSchema).optional(),
+  })
+  .catchall(z.unknown());
 
-export const AISurgicalChecklistProgressSchema = z.object({
-  current_phase: z.string().optional(),
-  total_items: z.number().optional(),
-  total_checked: z.number().optional(),
-  percent_complete: z.number().optional(),
-}).catchall(z.unknown());
+export const AISurgicalChecklistProgressSchema = z
+  .object({
+    current_phase: z.string().optional(),
+    total_items: z.number().optional(),
+    total_checked: z.number().optional(),
+    percent_complete: z.number().optional(),
+  })
+  .catchall(z.unknown());
 
-export const AISurgicalChecklistSessionResponseSchema = z.object({
-  session: AISurgicalChecklistSessionSchema.optional(),
-  progress: AISurgicalChecklistProgressSchema.optional(),
-  message: z.string().optional(),
-  phase_complete: z.boolean().optional(),
-  unchecked_critical_items: z.array(z.string()).optional(),
-  stored_id: z.string().optional(),
-  tibabot_session_id: z.string().optional(),
-  mode: z.string().optional(),
-  error: z.string().nullable().optional(),
-}).passthrough();
+export const AISurgicalChecklistSessionResponseSchema = z
+  .object({
+    session: AISurgicalChecklistSessionSchema.optional(),
+    progress: AISurgicalChecklistProgressSchema.optional(),
+    message: z.string().optional(),
+    phase_complete: z.boolean().optional(),
+    unchecked_critical_items: z.array(z.string()).optional(),
+    stored_id: z.string().optional(),
+    tibabot_session_id: z.string().optional(),
+    mode: z.string().optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough();
 
-export const AISurgicalApgarSchema = z.object({
-  score: z.number().optional(),
-  risk_level: z.string().optional(),
-  complication_rate: z.string().optional(),
-}).catchall(z.unknown());
+export const AISurgicalApgarSchema = z
+  .object({
+    score: z.number().optional(),
+    risk_level: z.string().optional(),
+    complication_rate: z.string().optional(),
+  })
+  .catchall(z.unknown());
 
-export const AISurgicalFollowUpSchema = z.object({
-  timing: z.string().optional(),
-  actions: z.array(z.string()).optional(),
-}).catchall(z.unknown());
+export const AISurgicalFollowUpSchema = z
+  .object({
+    timing: z.string().optional(),
+    actions: z.array(z.string()).optional(),
+  })
+  .catchall(z.unknown());
 
-export const AISurgicalPostOpCarePlanResponseSchema = z.object({
-  procedure_key: z.string(),
-  procedure_name: z.string().optional(),
-  surgical_apgar: AISurgicalApgarSchema.nullable().optional(),
-  monitoring: z.string().optional(),
-  medications: z.array(z.string()).optional(),
-  activity: z.string().optional(),
-  nutrition: z.string().optional(),
-  wound_care: z.string().optional(),
-  complications_to_watch: z.array(z.record(z.unknown())).optional(),
-  discharge_criteria: z.array(z.string()).optional(),
-  follow_up: AISurgicalFollowUpSchema.nullable().optional(),
-  cds_alerts: z.array(z.record(z.unknown())).optional(),
-  fhir_care_plan: z.record(z.unknown()).nullable().optional(),
-  stored_id: z.string().optional(),
-  mode: z.string().optional(),
-  error: z.string().nullable().optional(),
-}).passthrough();
+export const AISurgicalPostOpCarePlanResponseSchema = z
+  .object({
+    procedure_key: z.string(),
+    procedure_name: z.string().optional(),
+    surgical_apgar: AISurgicalApgarSchema.nullable().optional(),
+    monitoring: z.string().optional(),
+    medications: z.array(z.string()).optional(),
+    activity: z.string().optional(),
+    nutrition: z.string().optional(),
+    wound_care: z.string().optional(),
+    complications_to_watch: z.array(z.record(z.unknown())).optional(),
+    discharge_criteria: z.array(z.string()).optional(),
+    follow_up: AISurgicalFollowUpSchema.nullable().optional(),
+    cds_alerts: z.array(z.record(z.unknown())).optional(),
+    fhir_care_plan: z.record(z.unknown()).nullable().optional(),
+    stored_id: z.string().optional(),
+    mode: z.string().optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough();
 
-export const AISurgicalProcedureTemplateSchema = z.object({
-  key: z.string(),
-  name: z.string().optional(),
-  display_name: z.string().optional(),
-  specialty: z.string().optional(),
-  min_facility_level: z.string().optional(),
-  urgency_categories: z.array(z.string()).optional(),
-  icd10_code: z.string().optional(),
-}).passthrough();
+export const AISurgicalProcedureTemplateSchema = z
+  .object({
+    key: z.string(),
+    name: z.string().optional(),
+    display_name: z.string().optional(),
+    specialty: z.string().optional(),
+    min_facility_level: z.string().optional(),
+    urgency_categories: z.array(z.string()).optional(),
+    icd10_code: z.string().optional(),
+  })
+  .passthrough();
 
-export const AISurgicalProcedureListResponseSchema = z.object({
-  procedures: z.array(AISurgicalProcedureTemplateSchema).optional(),
-  results: z.array(AISurgicalProcedureTemplateSchema).optional(),
-  error: z.string().nullable().optional(),
-}).passthrough();
+export const AISurgicalProcedureListResponseSchema = z
+  .object({
+    procedures: z.array(AISurgicalProcedureTemplateSchema).optional(),
+    results: z.array(AISurgicalProcedureTemplateSchema).optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 export const StoredSurgicalPreOpAssessResultSchema = StoredAIResultBaseSchema.extend({
   surgery_case_id: z.number().nullable(),
@@ -777,30 +902,38 @@ export const StoredSurgicalPostOpCarePlanResultSchema = StoredAIResultBaseSchema
 // =============================================================================
 
 /** Schema for a single investigation suggestion */
-export const AIInvestigationSuggestionSchema = z.object({
-  name: z.string(),
-  category: z.string(),
-  priority: z.enum(['stat', 'urgent', 'routine']),
-  rationale: z.string(),
-  timing: z.string().optional(),
-  loinc_code: z.string().nullable().optional(),
-  loinc_display: z.string().nullable().optional(),
-  source: z.string().optional(),
-  condition_key: z.string().optional(),
-  min_facility_level: z.string().nullable().optional().transform(v => v ?? undefined),
-}).passthrough();
+export const AIInvestigationSuggestionSchema = z
+  .object({
+    name: z.string(),
+    category: z.string(),
+    priority: z.enum(['stat', 'urgent', 'routine']),
+    rationale: z.string(),
+    timing: z.string().optional(),
+    loinc_code: z.string().nullable().optional(),
+    loinc_display: z.string().nullable().optional(),
+    source: z.string().optional(),
+    condition_key: z.string().optional(),
+    min_facility_level: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((v) => v ?? undefined),
+  })
+  .passthrough();
 
 /** Schema for POST /api/ai/investigations/suggest/ response */
-export const AIInvestigationSuggestResponseSchema = z.object({
-  suggestions: z.array(AIInvestigationSuggestionSchema),
-  fhir_service_requests: z.array(z.record(z.unknown())).nullable().optional(),
-  matched_conditions: z.array(z.string()),
-  cds_alerts_applied: z.number(),
-  total_suggestions: z.number(),
-  disclaimer: z.string(),
-  mode: z.string().optional(),
-  stored_id: z.string().optional(),
-}).passthrough();
+export const AIInvestigationSuggestResponseSchema = z
+  .object({
+    suggestions: z.array(AIInvestigationSuggestionSchema),
+    fhir_service_requests: z.array(z.record(z.unknown())).nullable().optional(),
+    matched_conditions: z.array(z.string()),
+    cds_alerts_applied: z.number(),
+    total_suggestions: z.number(),
+    disclaimer: z.string(),
+    mode: z.string().optional(),
+    stored_id: z.string().optional(),
+  })
+  .passthrough();
 
 export const StoredInvestigationSuggestResultSchema = StoredAIResultBaseSchema.extend({
   encounter_id: z.number().nullable(),
@@ -975,13 +1108,15 @@ export const FacilityKBDocumentSchema = z.object({
   status: z.string().optional().default('processed'),
 });
 
-export const FacilityKBInfoResponseSchema = z.object({
-  facility_name: z.string().optional().default(''),
-  document_count: z.number().optional().default(0),
-  documents: z.array(FacilityKBDocumentSchema).optional().default([]),
-  total_size_bytes: z.number().optional().default(0),
-  error: z.string().optional(),
-}).passthrough();
+export const FacilityKBInfoResponseSchema = z
+  .object({
+    facility_name: z.string().optional().default(''),
+    document_count: z.number().optional().default(0),
+    documents: z.array(FacilityKBDocumentSchema).optional().default([]),
+    total_size_bytes: z.number().optional().default(0),
+    error: z.string().optional(),
+  })
+  .passthrough();
 
 export const FacilityKBSearchResultSchema = z.object({
   id: z.string(),

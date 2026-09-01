@@ -18,12 +18,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { StaffSearchCombobox } from '@/components/clinics/staff-search-combobox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -78,12 +73,22 @@ function certificateErrorMessage(error: unknown, fallback: string): string {
 
 function CertStatusBadge({ cert }: { cert: UserCertificate }) {
   if (cert.is_revoked) {
-    return <Badge variant="destructive" className="shrink-0 w-fit">Revoked</Badge>;
+    return (
+      <Badge variant="destructive" className="w-fit shrink-0">
+        Revoked
+      </Badge>
+    );
   }
   if (cert.is_expired) {
-    return <Badge variant="outline" className="shrink-0 w-fit text-amber-600 border-amber-300">Expired</Badge>;
+    return (
+      <Badge variant="outline" className="w-fit shrink-0 border-amber-300 text-amber-600">
+        Expired
+      </Badge>
+    );
   }
-  return <Badge className="shrink-0 w-fit bg-green-100 text-green-700 border-green-300">Valid</Badge>;
+  return (
+    <Badge className="w-fit shrink-0 border-green-300 bg-green-100 text-green-700">Valid</Badge>
+  );
 }
 
 export default function CertificatesPage() {
@@ -145,8 +150,7 @@ export default function CertificatesPage() {
   });
 
   const revokeMutation = useMutation({
-    mutationFn: () =>
-      certificatesApi.revoke(selectedCert!.id, { reason: revokeReason }),
+    mutationFn: () => certificatesApi.revoke(selectedCert!.id, { reason: revokeReason }),
     onSuccess: () => {
       toast.success('Certificate revoked.');
       queryClient.invalidateQueries({ queryKey: ['user-certificates'] });
@@ -171,25 +175,26 @@ export default function CertificatesPage() {
           helpContent="Manage X.509 PKI certificates for document digital signatures. Certificate and intermediate CA operations are organization-scoped. Issue certificates to clinical staff so they can cryptographically sign lab results, prescriptions, and reports. DHA Compliance: Gap #32."
           actions={
             <Button size="sm" onClick={() => setIssueDialogOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-2" />
+              <UserPlus className="mr-2 h-4 w-4" />
               Issue Certificate
             </Button>
           }
         />
 
         <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
-          Tenant scope enforcement is active: this page lists and manages certificates only for your organization.
+          Tenant scope enforcement is active: this page lists and manages certificates only for your
+          organization.
         </div>
 
         {/* Stats */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Card className="relative overflow-hidden">
             <div
               className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
               aria-hidden="true"
             />
             <CardContent className="relative p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                 <Award className="h-4 w-4" />
                 CAs
               </div>
@@ -205,7 +210,7 @@ export default function CertificatesPage() {
               aria-hidden="true"
             />
             <CardContent className="relative p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                 <Key className="h-4 w-4" />
                 Total Certificates
               </div>
@@ -221,7 +226,7 @@ export default function CertificatesPage() {
               aria-hidden="true"
             />
             <CardContent className="relative p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 Valid
               </div>
@@ -237,7 +242,7 @@ export default function CertificatesPage() {
               aria-hidden="true"
             />
             <CardContent className="relative p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                 <XCircle className="h-4 w-4 text-destructive" />
                 Revoked
               </div>
@@ -263,11 +268,11 @@ export default function CertificatesPage() {
                 <Skeleton className="h-12 w-full" />
               </div>
             ) : tenantScopePending ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
+              <p className="py-6 text-center text-sm text-muted-foreground">
                 Resolving organization scope before loading certificate authorities...
               </p>
             ) : casError ? (
-              <div className="text-center py-6 space-y-2">
+              <div className="space-y-2 py-6 text-center">
                 <p className="text-sm text-muted-foreground">
                   Could not load certificate authorities for your organization.
                 </p>
@@ -276,24 +281,32 @@ export default function CertificatesPage() {
                 </Button>
               </div>
             ) : cas.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No Certificate Authority has been set up yet. Please contact your system administrator to initialize the PKI infrastructure.
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No Certificate Authority has been set up yet. Please contact your system
+                administrator to initialize the PKI infrastructure.
               </p>
             ) : (
               <div className="space-y-3">
                 {cas.map((ca) => (
                   <div
                     key={ca.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border"
+                    className="flex flex-col justify-between gap-2 rounded-lg border p-3 sm:flex-row sm:items-center"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-green-600 shrink-0" />
-                        <span className="font-medium text-sm truncate">{ca.name}</span>
+                        <ShieldCheck className="h-4 w-4 shrink-0 text-green-600" />
+                        <span className="truncate text-sm font-medium">{ca.name}</span>
                         {ca.is_root ? (
-                          <Badge variant="outline" className="text-xs">Root</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            Root
+                          </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Intermediate</Badge>
+                          <Badge
+                            variant="outline"
+                            className="border-blue-300 text-xs text-blue-600"
+                          >
+                            Intermediate
+                          </Badge>
                         )}
                         {!ca.is_root && (
                           <Badge variant="secondary" className="text-xs">
@@ -301,11 +314,11 @@ export default function CertificatesPage() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
                         {ca.subject_dn} &bull; RSA-{ca.key_size}
                       </p>
                     </div>
-                    <div className="text-xs text-muted-foreground shrink-0">
+                    <div className="shrink-0 text-xs text-muted-foreground">
                       Valid until {new Date(ca.valid_to).toLocaleDateString()}
                     </div>
                   </div>
@@ -328,15 +341,15 @@ export default function CertificatesPage() {
                 ))}
               </div>
             ) : tenantScopePending ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
+              <p className="py-6 text-center text-sm text-muted-foreground">
                 Resolving organization scope before loading certificates...
               </p>
             ) : certsError ? (
-              <p className="text-sm text-destructive text-center py-6">
+              <p className="py-6 text-center text-sm text-destructive">
                 Failed to load certificates for your organization.
               </p>
             ) : certs.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
+              <p className="py-6 text-center text-sm text-muted-foreground">
                 No certificates issued yet.
               </p>
             ) : (
@@ -344,16 +357,16 @@ export default function CertificatesPage() {
                 {certs.map((cert) => (
                   <div
                     key={cert.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border"
+                    className="flex flex-col justify-between gap-2 rounded-lg border p-3 sm:flex-row sm:items-center"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium">
                           {cert.user_name || cert.username}
                         </span>
                         <CertStatusBadge cert={cert} />
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Serial: {cert.serial_number} &bull; CA: {cert.ca_name}
                       </p>
                       {cert.organization_name && (
@@ -370,13 +383,13 @@ export default function CertificatesPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="shrink-0 text-destructive border-destructive/30 hover:bg-destructive/10"
+                        className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10"
                         onClick={() => {
                           setSelectedCert(cert);
                           setRevokeDialogOpen(true);
                         }}
                       >
-                        <Ban className="h-3 w-3 mr-1" />
+                        <Ban className="mr-1 h-3 w-3" />
                         Revoke
                       </Button>
                     )}
@@ -429,7 +442,7 @@ export default function CertificatesPage() {
               onClick={() => issueMutation.mutate()}
               disabled={!selectedUserId || issueMutation.isPending}
             >
-              {issueMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {issueMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Issue
             </Button>
           </DialogFooter>
@@ -452,7 +465,7 @@ export default function CertificatesPage() {
                   Revoking certificate for{' '}
                   <strong>{selectedCert.user_name || selectedCert.username}</strong>
                 </p>
-                <p className="text-muted-foreground text-xs mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Serial: {selectedCert.serial_number}
                 </p>
               </div>
@@ -482,7 +495,7 @@ export default function CertificatesPage() {
               onClick={() => revokeMutation.mutate()}
               disabled={revokeMutation.isPending}
             >
-              {revokeMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {revokeMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Revoke
             </Button>
           </DialogFooter>

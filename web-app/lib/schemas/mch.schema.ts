@@ -27,28 +27,42 @@ function createPaginatedSchema<T extends z.ZodTypeAny>(itemSchema: T) {
 // =============================================================================
 
 export const MCHRegistrationStatusSchema = z.enum([
-  'ACTIVE', 'DELIVERED', 'POSTNATAL', 'COMPLETED',
-  'TRANSFERRED_OUT', 'LOST_TO_FOLLOW_UP', 'DECEASED',
+  'ACTIVE',
+  'DELIVERED',
+  'POSTNATAL',
+  'COMPLETED',
+  'TRANSFERRED_OUT',
+  'LOST_TO_FOLLOW_UP',
+  'DECEASED',
 ]);
 
 export const FetalPresentationSchema = z.enum([
-  'CEPHALIC', 'BREECH', 'TRANSVERSE', 'OBLIQUE', 'UNKNOWN', '',
+  'CEPHALIC',
+  'BREECH',
+  'TRANSVERSE',
+  'OBLIQUE',
+  'UNKNOWN',
+  '',
 ]);
 
-export const FetalLieSchema = z.enum([
-  'LONGITUDINAL', 'TRANSVERSE', 'OBLIQUE', '',
-]);
+export const FetalLieSchema = z.enum(['LONGITUDINAL', 'TRANSVERSE', 'OBLIQUE', '']);
 
-export const UrineResultSchema = z.enum([
-  'NEGATIVE', 'TRACE', '1+', '2+', '3+', '4+', '',
-]);
+export const UrineResultSchema = z.enum(['NEGATIVE', 'TRACE', '1+', '2+', '3+', '4+', '']);
 
 export const DeliveryTypeSchema = z.enum([
-  'SVD', 'ASSISTED_VAGINAL', 'ELECTIVE_CS', 'EMERGENCY_CS', 'VACUUM', 'FORCEPS',
+  'SVD',
+  'ASSISTED_VAGINAL',
+  'ELECTIVE_CS',
+  'EMERGENCY_CS',
+  'VACUUM',
+  'FORCEPS',
 ]);
 
 export const DeliveryOutcomeSchema = z.enum([
-  'LIVE_BIRTH', 'STILLBIRTH', 'NEONATAL_DEATH', 'MATERNAL_DEATH',
+  'LIVE_BIRTH',
+  'STILLBIRTH',
+  'NEONATAL_DEATH',
+  'MATERNAL_DEATH',
 ]);
 
 export const DeliveryStatusSchema = z.enum(['PENDING', 'COMPLETED', 'REFERRED']);
@@ -59,60 +73,103 @@ export const BabyGenderSchema = z.enum(['M', 'F', 'O', '']);
 
 export const UterineInvolutionSchema = z.string();
 
-export const LochiaStatusSchema = z.enum([
-  'NORMAL', 'FOUL_SMELLING', 'HEAVY', 'ABSENT', '',
-]);
+export const LochiaStatusSchema = z.enum(['NORMAL', 'FOUL_SMELLING', 'HEAVY', 'ABSENT', '']);
 
 export const BreastConditionSchema = z.enum([
-  'NORMAL', 'ENGORGED', 'MASTITIS', 'CRACKED_NIPPLES', 'ABSCESS', '',
+  'NORMAL',
+  'ENGORGED',
+  'MASTITIS',
+  'CRACKED_NIPPLES',
+  'ABSCESS',
+  '',
 ]);
 
 export const MoodAssessmentSchema = z.enum([
-  'NORMAL', 'MILDLY_LOW', 'DEPRESSED', 'SEVERELY_DEPRESSED', '',
+  'NORMAL',
+  'MILDLY_LOW',
+  'DEPRESSED',
+  'SEVERELY_DEPRESSED',
+  '',
 ]);
 
 export const CordStatusSchema = z.enum(['CLEAN', 'INFECTED', 'SEPARATED', '']);
 
 export const BreastfeedingStatusSchema = z.enum([
-  'EXCLUSIVE', 'MIXED', 'FORMULA', 'NOT_FEEDING', '',
+  'EXCLUSIVE',
+  'MIXED',
+  'FORMULA',
+  'NOT_FEEDING',
+  '',
 ]);
 
 export const ContraceptiveMethodSchema = z.string();
 
 export const MUACClassificationSchema = z.enum(['SAM', 'MAM', 'NORMAL', '']).nullable();
 
-export const NutritionalStatusSchema = z.enum([
-  'NORMAL', 'MILD_UNDERWEIGHT', 'MODERATE_UNDERWEIGHT', 'SEVERE_UNDERWEIGHT', 'OVERWEIGHT', 'OBESE', '',
-]).nullable();
+export const NutritionalStatusSchema = z
+  .enum([
+    'NORMAL',
+    'MILD_UNDERWEIGHT',
+    'MODERATE_UNDERWEIGHT',
+    'SEVERE_UNDERWEIGHT',
+    'OVERWEIGHT',
+    'OBESE',
+    '',
+  ])
+  .nullable();
 
 export const GrowthChartTypeSchema = z.enum([
-  'weight_for_age', 'height_for_age', 'weight_for_height',
-  'head_circumference_for_age', 'bmi_for_age',
+  'weight_for_age',
+  'height_for_age',
+  'weight_for_height',
+  'head_circumference_for_age',
+  'bmi_for_age',
 ]);
 
 export const VaccineRouteSchema = z.enum(['IM', 'SC', 'ORAL', 'ID', '']);
 
 export const ImmunizationStatusSchema = z.enum([
-  'SCHEDULED', 'ADMINISTERED', 'MISSED', 'CONTRAINDICATED', 'DEFERRED',
+  'SCHEDULED',
+  'ADMINISTERED',
+  'MISSED',
+  'CONTRAINDICATED',
+  'DEFERRED',
 ]);
 
 export const InjectionSiteSchema = z.enum([
-  'LEFT_THIGH', 'RIGHT_THIGH', 'LEFT_ARM', 'RIGHT_ARM', 'ORAL', '',
+  'LEFT_THIGH',
+  'RIGHT_THIGH',
+  'LEFT_ARM',
+  'RIGHT_ARM',
+  'ORAL',
+  '',
 ]);
 
 export const AEFIEventTypeSchema = z.enum([
-  'LOCAL_REACTION', 'SYSTEMIC_REACTION', 'SEVERE', 'DEATH',
+  'LOCAL_REACTION',
+  'SYSTEMIC_REACTION',
+  'SEVERE',
+  'DEATH',
 ]);
 
 export const AEFISeveritySchema = z.enum(['MILD', 'MODERATE', 'SEVERE']);
 
 export const AEFIOutcomeSchema = z.enum([
-  'RECOVERED', 'RECOVERING', 'NOT_RECOVERED', 'SEQUELAE', 'DEATH', 'UNKNOWN',
+  'RECOVERED',
+  'RECOVERING',
+  'NOT_RECOVERED',
+  'SEQUELAE',
+  'DEATH',
+  'UNKNOWN',
 ]);
 
 export const HEIStatusSchema = z.enum([
-  'ACTIVE', 'CONFIRMED_NEGATIVE', 'CONFIRMED_POSITIVE',
-  'LOST_TO_FOLLOW_UP', 'TRANSFERRED', 'DECEASED',
+  'ACTIVE',
+  'CONFIRMED_NEGATIVE',
+  'CONFIRMED_POSITIVE',
+  'LOST_TO_FOLLOW_UP',
+  'TRANSFERRED',
+  'DECEASED',
 ]);
 
 export const MotherARTStatusSchema = z.enum(['ON_ART', 'NOT_ON_ART', 'UNKNOWN']);
@@ -199,7 +256,9 @@ export const SuggestedObstetricHistorySchema = z.object({
   previous_stillbirths: z.number(),
 });
 
-export const PaginatedMCHRegistrationListSchema = createPaginatedSchema(MCHRegistrationListItemSchema);
+export const PaginatedMCHRegistrationListSchema = createPaginatedSchema(
+  MCHRegistrationListItemSchema
+);
 
 // =============================================================================
 // ANC VISIT SCHEMAS
@@ -389,7 +448,14 @@ export const LabourPartographStatusSchema = z.enum(['ACTIVE', 'COMPLETED', 'REFE
 
 export const MembraneStatusSchema = z.enum(['INTACT', 'RUPTURED', 'UNKNOWN', '']);
 
-export const LiquorStatusSchema = z.enum(['CLEAR', 'MECONIUM', 'BLOOD_STAINED', 'OFFENSIVE', 'UNKNOWN', '']);
+export const LiquorStatusSchema = z.enum([
+  'CLEAR',
+  'MECONIUM',
+  'BLOOD_STAINED',
+  'OFFENSIVE',
+  'UNKNOWN',
+  '',
+]);
 
 export const MouldingGradeSchema = z.enum(['0', '+', '++', '+++', '']);
 
@@ -447,7 +513,9 @@ export const LabourPartographSchema = z.object({
 
 export const PaginatedLabourPartographListSchema = createPaginatedSchema(LabourPartographSchema);
 
-export const PaginatedLabourPartographObservationListSchema = createPaginatedSchema(LabourPartographObservationSchema);
+export const PaginatedLabourPartographObservationListSchema = createPaginatedSchema(
+  LabourPartographObservationSchema
+);
 
 // =============================================================================
 // PNC VISIT SCHEMAS
@@ -547,7 +615,9 @@ export const GrowthMeasurementSchema = z.object({
   updated_at: z.string(),
 });
 
-export const PaginatedGrowthMeasurementListSchema = createPaginatedSchema(GrowthMeasurementListItemSchema);
+export const PaginatedGrowthMeasurementListSchema = createPaginatedSchema(
+  GrowthMeasurementListItemSchema
+);
 
 export const GrowthChartDataSchema = z.object({
   measurements: z.array(GrowthMeasurementListItemSchema),
@@ -619,7 +689,9 @@ export const ImmunizationRecordSchema = z.object({
   updated_at: z.string(),
 });
 
-export const PaginatedImmunizationRecordListSchema = createPaginatedSchema(ImmunizationRecordListItemSchema);
+export const PaginatedImmunizationRecordListSchema = createPaginatedSchema(
+  ImmunizationRecordListItemSchema
+);
 
 // =============================================================================
 // VITAMIN A SCHEMAS
@@ -637,7 +709,8 @@ export const VitaminASupplementSchema = z.object({
   created_at: z.string(),
 });
 
-export const PaginatedVitaminASupplementListSchema = createPaginatedSchema(VitaminASupplementSchema);
+export const PaginatedVitaminASupplementListSchema =
+  createPaginatedSchema(VitaminASupplementSchema);
 
 // =============================================================================
 // AEFI SCHEMAS

@@ -19,7 +19,12 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-import { DICOMStudyDetail, DICOMSeriesList, DICOMInstance, DICOMViewerTool } from '@/lib/types/imaging';
+import {
+  DICOMStudyDetail,
+  DICOMSeriesList,
+  DICOMInstance,
+  DICOMViewerTool,
+} from '@/lib/types/imaging';
 import { imagingApi } from '@/lib/api/imaging';
 import { ViewerToolbar } from './viewer-toolbar';
 import { SeriesPanel } from './series-panel';
@@ -63,10 +68,14 @@ function ImageInfo({
   windowCenter?: number;
 }) {
   return (
-    <div className="absolute bottom-2 left-2 z-10 bg-black/60 text-white text-xs px-2 py-1 rounded">
-      <div>Image: {currentIndex + 1} / {totalImages}</div>
+    <div className="absolute bottom-2 left-2 z-10 rounded bg-black/60 px-2 py-1 text-xs text-white">
+      <div>
+        Image: {currentIndex + 1} / {totalImages}
+      </div>
       {windowWidth !== undefined && windowCenter !== undefined && (
-        <div>W: {Math.round(windowWidth)} L: {Math.round(windowCenter)}</div>
+        <div>
+          W: {Math.round(windowWidth)} L: {Math.round(windowCenter)}
+        </div>
       )}
     </div>
   );
@@ -75,16 +84,16 @@ function ImageInfo({
 // Loading overlay
 function LoadingOverlay({ progress }: { progress: number }) {
   return (
-    <div className="absolute inset-0 z-20 bg-black/80 flex flex-col items-center justify-center gap-4">
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/80">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <div className="text-white text-sm">Loading DICOM images...</div>
-      <div className="w-48 h-2 bg-muted rounded-full overflow-hidden">
+      <div className="text-sm text-white">Loading DICOM images...</div>
+      <div className="h-2 w-48 overflow-hidden rounded-full bg-muted">
         <div
           className="h-full bg-primary transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>
-      <div className="text-muted-foreground text-xs">{Math.round(progress)}%</div>
+      <div className="text-xs text-muted-foreground">{Math.round(progress)}%</div>
     </div>
   );
 }
@@ -92,10 +101,10 @@ function LoadingOverlay({ progress }: { progress: number }) {
 // Error display
 function ErrorDisplay({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="absolute inset-0 z-20 bg-black/90 flex flex-col items-center justify-center gap-4 p-8">
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/90 p-8">
       <AlertCircle className="h-12 w-12 text-destructive" />
-      <h4 className="text-white font-medium">Failed to load viewer</h4>
-      <p className="text-muted-foreground text-sm text-center max-w-md">{message}</p>
+      <h4 className="font-medium text-white">Failed to load viewer</h4>
+      <p className="max-w-md text-center text-sm text-muted-foreground">{message}</p>
       {onRetry && (
         <Button variant="outline" onClick={onRetry}>
           Try Again
@@ -145,9 +154,7 @@ export function DICOMViewer({
 
   // Build image URLs for the current series
   const imageUrls = useMemo(() => {
-    return instances.map((instance) =>
-      imagingApi.getDICOMFileUrl(instance.sop_instance_uid)
-    );
+    return instances.map((instance) => imagingApi.getDICOMFileUrl(instance.sop_instance_uid));
   }, [instances]);
 
   // Initialize Cornerstone
@@ -175,9 +182,7 @@ export function DICOMViewer({
         setInstances(seriesInstances);
       } catch (error) {
         console.error('Failed to load DICOM instances:', error);
-        setInstanceError(
-          error instanceof Error ? error.message : 'Failed to load images'
-        );
+        setInstanceError(error instanceof Error ? error.message : 'Failed to load images');
       } finally {
         setIsLoadingInstances(false);
       }
@@ -192,10 +197,13 @@ export function DICOMViewer({
   }, []);
 
   // Handle tool change
-  const handleToolChange = useCallback((tool: DICOMViewerTool) => {
-    setActiveTool(tool);
-    cornerstone.setActiveTool(tool);
-  }, [cornerstone]);
+  const handleToolChange = useCallback(
+    (tool: DICOMViewerTool) => {
+      setActiveTool(tool);
+      cornerstone.setActiveTool(tool);
+    },
+    [cornerstone]
+  );
 
   // Toggle fullscreen
   const toggleFullscreen = useCallback(() => {
@@ -213,17 +221,17 @@ export function DICOMViewer({
   return (
     <div
       className={cn(
-        'relative bg-black rounded-lg overflow-hidden',
+        'relative overflow-hidden rounded-lg bg-black',
         isFullscreen && 'fixed inset-0 z-50 rounded-none',
         className
       )}
       style={{ height: isFullscreen ? '100vh' : viewerHeight }}
     >
-      <div className="h-full flex flex-col">
+      <div className="flex h-full flex-col">
         {/* Toolbar */}
         {showToolbar && (
           <div
-            className="absolute top-2 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-6rem)] sm:max-w-none overflow-x-auto"
+            className="absolute left-1/2 top-2 z-30 max-w-[calc(100%-6rem)] -translate-x-1/2 overflow-x-auto sm:max-w-none"
             onPointerDown={(e) => e.stopPropagation()}
             onPointerUp={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
@@ -251,15 +259,11 @@ export function DICOMViewer({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-2 right-2 z-30 bg-black/60 hover:bg-black/80 text-white"
+            className="absolute right-2 top-2 z-30 bg-black/60 text-white hover:bg-black/80"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={toggleFullscreen}
           >
-            {isFullscreen ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
         )}
 
@@ -268,7 +272,7 @@ export function DICOMViewer({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-2 left-2 z-30 bg-black/60 hover:bg-black/80 text-white"
+            className="absolute left-2 top-2 z-30 bg-black/60 text-white hover:bg-black/80"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => setIsPanelCollapsed((prev) => !prev)}
           >
@@ -281,7 +285,7 @@ export function DICOMViewer({
         )}
 
         {/* Main content */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex flex-1 overflow-hidden">
           {/* Series Panel */}
           {showSeriesPanel && (
             <SeriesPanel
@@ -297,7 +301,7 @@ export function DICOMViewer({
           )}
 
           {/* Viewport */}
-          <div className="flex-1 relative bg-black">
+          <div className="relative flex-1 bg-black">
             {/* Cornerstone viewport container */}
             <div
               ref={cornerstone.containerRef}
@@ -306,9 +310,7 @@ export function DICOMViewer({
             />
 
             {/* Loading states */}
-            {isLoadingInstances && (
-              <LoadingOverlay progress={50} />
-            )}
+            {isLoadingInstances && <LoadingOverlay progress={50} />}
 
             {!isLoadingInstances && !cornerstone.isReady && imageUrls.length > 0 && (
               <LoadingOverlay progress={cornerstone.loadingProgress} />
@@ -326,7 +328,7 @@ export function DICOMViewer({
             {!isLoadingInstances && instances.length === 0 && !instanceError && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center text-muted-foreground">
-                  <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <AlertCircle className="mx-auto mb-4 h-12 w-12 opacity-50" />
                   <p>No images in this study</p>
                 </div>
               </div>
@@ -341,12 +343,12 @@ export function DICOMViewer({
             )}
 
             {/* Study info overlay */}
-            <div className="absolute top-2 right-12 z-10 text-right text-white text-xs hidden sm:block">
-              <div className="bg-black/60 px-2 py-1 rounded">
+            <div className="absolute right-12 top-2 z-10 hidden text-right text-xs text-white sm:block">
+              <div className="rounded bg-black/60 px-2 py-1">
                 <div className="font-medium">{study.patient_name}</div>
                 <div className="text-muted-foreground">{study.study_date}</div>
                 {study.study_description && (
-                  <div className="text-muted-foreground truncate max-w-48">
+                  <div className="max-w-48 truncate text-muted-foreground">
                     {study.study_description}
                   </div>
                 )}

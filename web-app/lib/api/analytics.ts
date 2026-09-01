@@ -89,9 +89,9 @@ export const analyticsApi = {
   /**
    * Patient demographic snapshots.
    */
-  getDemographics: async (
-    params?: { page?: number }
-  ): Promise<PaginatedResponse<PatientDemographicSnapshot>> => {
+  getDemographics: async (params?: {
+    page?: number;
+  }): Promise<PaginatedResponse<PatientDemographicSnapshot>> => {
     const response = await apiClient.get('/api/analytics/demographics/', { params });
     return parseResponse(PaginatedDemographicSnapshotSchema, response.data, {
       context: 'analyticsApi.getDemographics',
@@ -134,9 +134,7 @@ export const analyticsApi = {
   /**
    * Get a Superset guest token for embedding a dashboard.
    */
-  getSupersetGuestToken: async (
-    dashboardId: number
-  ): Promise<SupersetGuestTokenResponse> => {
+  getSupersetGuestToken: async (dashboardId: number): Promise<SupersetGuestTokenResponse> => {
     const response = await apiClient.get('/api/analytics/superset-guest-token/', {
       params: { dashboard_id: dashboardId },
     });
@@ -182,9 +180,7 @@ export const analyticsApi = {
     });
   },
 
-  getRoomUtilization: async (
-    params?: RoomUtilizationParams
-  ): Promise<RoomUtilizationRow[]> => {
+  getRoomUtilization: async (params?: RoomUtilizationParams): Promise<RoomUtilizationRow[]> => {
     const response = await apiClient.get('/api/projections/room-utilization/', { params });
     return parseResponse(RoomUtilizationArraySchema, response.data, {
       context: 'analyticsApi.getRoomUtilization',

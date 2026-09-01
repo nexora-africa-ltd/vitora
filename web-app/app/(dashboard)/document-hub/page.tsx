@@ -29,11 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { StaffSearchCombobox } from '@/components/clinics/staff-search-combobox';
 import { useToast } from '@/lib/hooks';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import {
-  useDocumentHub,
-  useShareDocument,
-  useSignFromHub,
-} from '@/lib/hooks/use-document-hub';
+import { useDocumentHub, useShareDocument, useSignFromHub } from '@/lib/hooks/use-document-hub';
 import type { DocumentHubItem } from '@/lib/types/security';
 
 type HubTab = 'mine' | 'shared' | 'signed' | 'pending';
@@ -195,7 +191,10 @@ export default function DocumentHubPage() {
   };
 
   const previewHref = previewItem ? resolveDocumentHref(previewItem) : null;
-  const previewHrefs = useMemo(() => (previewItem ? resolvePreviewHrefs(previewItem) : []), [previewItem]);
+  const previewHrefs = useMemo(
+    () => (previewItem ? resolvePreviewHrefs(previewItem) : []),
+    [previewItem]
+  );
   const iframeSrc = previewHrefs[previewUrlIndex] ?? null;
   const formatDateTime = (value: string | null) => {
     if (!value) return 'N/A';
@@ -205,24 +204,51 @@ export default function DocumentHubPage() {
   };
 
   return (
-    <PullToRefresh onRefresh={() => { refresh(); refetch(); }} isRefreshing={isRefreshing} className="min-h-full">
+    <PullToRefresh
+      onRefresh={() => {
+        refresh();
+        refetch();
+      }}
+      isRefreshing={isRefreshing}
+      className="min-h-full"
+    >
       <div className="space-y-6">
         <PageHeader
           title="Document Hub"
           helpContent="View documents attributable to you, access shared documents, and apply cryptographic signatures."
         />
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card><CardContent className="pt-4 pb-4"><p className="text-2xl font-bold">{stats.total}</p><p className="text-xs text-muted-foreground">Visible</p></CardContent></Card>
-          <Card><CardContent className="pt-4 pb-4"><p className="text-2xl font-bold">{stats.signed}</p><p className="text-xs text-muted-foreground">Signed</p></CardContent></Card>
-          <Card><CardContent className="pt-4 pb-4"><p className="text-2xl font-bold">{stats.pending}</p><p className="text-xs text-muted-foreground">Pending Signature</p></CardContent></Card>
-          <Card><CardContent className="pt-4 pb-4"><p className="text-2xl font-bold">{stats.shared}</p><p className="text-xs text-muted-foreground">Shared</p></CardContent></Card>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Card>
+            <CardContent className="pb-4 pt-4">
+              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xs text-muted-foreground">Visible</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pb-4 pt-4">
+              <p className="text-2xl font-bold">{stats.signed}</p>
+              <p className="text-xs text-muted-foreground">Signed</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pb-4 pt-4">
+              <p className="text-2xl font-bold">{stats.pending}</p>
+              <p className="text-xs text-muted-foreground">Pending Signature</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pb-4 pt-4">
+              <p className="text-2xl font-bold">{stats.shared}</p>
+              <p className="text-xs text-muted-foreground">Shared</p>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>
-          <CardContent className="pt-4 pb-4 space-y-3">
+          <CardContent className="space-y-3 pb-4 pt-4">
             <Tabs value={tab} onValueChange={(value) => setTab(value as HubTab)}>
-              <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                 <TabsTrigger value="mine">Mine</TabsTrigger>
                 <TabsTrigger value="shared">Shared With Me</TabsTrigger>
                 <TabsTrigger value="signed">Signed</TabsTrigger>
@@ -239,30 +265,42 @@ export default function DocumentHubPage() {
 
         <Card>
           <CardContent className="pt-2">
-             {isLoading ? (
-               <p className="text-sm text-muted-foreground py-6">Loading documents...</p>
+            {isLoading ? (
+              <p className="py-6 text-sm text-muted-foreground">Loading documents...</p>
             ) : items.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6">No documents found.</p>
+              <p className="py-6 text-sm text-muted-foreground">No documents found.</p>
             ) : (
               <div className="space-y-3 py-3">
                 {items.map((item) => {
                   const href = resolveDocumentHref(item);
                   return (
-                    <div key={`${item.document_type}-${item.document_id}`} className="border rounded-md p-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div
+                      key={`${item.document_type}-${item.document_id}`}
+                      className="flex flex-col gap-2 rounded-md border p-3 md:flex-row md:items-center md:justify-between"
+                    >
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium truncate">{item.document_type} - {item.document_number}</p>
-                          <Badge variant={item.is_signed ? 'default' : 'secondary'}>{item.is_signed ? 'Signed' : 'Unsigned'}</Badge>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate font-medium">
+                            {item.document_type} - {item.document_number}
+                          </p>
+                          <Badge variant={item.is_signed ? 'default' : 'secondary'}>
+                            {item.is_signed ? 'Signed' : 'Unsigned'}
+                          </Badge>
                           {item.is_shared_with_me && item.share_permission ? (
                             <Badge variant="outline">Shared ({item.share_permission})</Badge>
                           ) : null}
                         </div>
-                        <p className="text-xs text-muted-foreground">{item.patient_name || 'No patient'} • Owner: {item.owner_name || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.patient_name || 'No patient'} • Owner:{' '}
+                          {item.owner_name || 'Unknown'}
+                        </p>
                         {item.shared_by_name ? (
-                          <p className="text-xs text-muted-foreground">Shared by {item.shared_by_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Shared by {item.shared_by_name}
+                          </p>
                         ) : null}
                       </div>
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex flex-wrap gap-2">
                         {href ? (
                           <Button
                             variant="outline"
@@ -275,12 +313,16 @@ export default function DocumentHubPage() {
                             }}
                             className="inline-flex items-center gap-1"
                           >
-                              <Eye className="h-4 w-4" />
-                              View
+                            <Eye className="h-4 w-4" />
+                            View
                           </Button>
                         ) : null}
                         {item.can_sign ? (
-                          <Button size="sm" onClick={() => handleSign(item)} disabled={signDocument.isPending}>
+                          <Button
+                            size="sm"
+                            onClick={() => handleSign(item)}
+                            disabled={signDocument.isPending}
+                          >
                             Sign
                           </Button>
                         ) : null}
@@ -303,14 +345,17 @@ export default function DocumentHubPage() {
               </div>
             )}
 
-            <div className="border-t mt-2 pt-3 pb-1 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="mt-2 flex flex-col gap-3 border-t pb-1 pt-3 md:flex-row md:items-center md:justify-between">
               <p className="text-xs text-muted-foreground">
                 Showing {pageStart}-{pageEnd} of {totalCount}
                 {isFetching && !isLoading ? ' • Refreshing...' : ''}
               </p>
-              <div className="flex items-center gap-2 justify-end">
-                <Select value={String(pageSize)} onValueChange={(value) => setPageSize(Number(value))}>
-                  <SelectTrigger className="w-[110px] h-8">
+              <div className="flex items-center justify-end gap-2">
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(value) => setPageSize(Number(value))}
+                >
+                  <SelectTrigger className="h-8 w-[110px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -327,7 +372,9 @@ export default function DocumentHubPage() {
                 >
                   Previous
                 </Button>
-                <p className="text-xs text-muted-foreground min-w-[60px] text-center">Page {page} / {pageCount}</p>
+                <p className="min-w-[60px] text-center text-xs text-muted-foreground">
+                  Page {page} / {pageCount}
+                </p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -370,7 +417,10 @@ export default function DocumentHubPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Permission</label>
-                <Select value={permission} onValueChange={(value) => setPermission(value as 'VIEW' | 'SIGN')}>
+                <Select
+                  value={permission}
+                  onValueChange={(value) => setPermission(value as 'VIEW' | 'SIGN')}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -379,7 +429,7 @@ export default function DocumentHubPage() {
                     <SelectItem value="SIGN">SIGN (includes VIEW)</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   SIGN grants both viewing and signing rights.
                 </p>
               </div>
@@ -419,13 +469,14 @@ export default function DocumentHubPage() {
                 {previewItem?.document_type} {previewItem?.document_number}
               </DialogTitle>
               <DialogDescription>
-                Quick preview from Document Hub. Use Open Full Page for complete workflows and editing.
+                Quick preview from Document Hub. Use Open Full Page for complete workflows and
+                editing.
               </DialogDescription>
             </DialogHeader>
             {previewItem ? (
               <div className="space-y-4 py-2 text-sm">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div className="rounded-md border p-3 space-y-2">
+                  <div className="space-y-2 rounded-md border p-3">
                     <div className="flex items-center gap-2">
                       <Badge variant={previewItem.is_signed ? 'default' : 'secondary'}>
                         {previewItem.is_signed ? 'Signed' : 'Unsigned'}
@@ -435,31 +486,63 @@ export default function DocumentHubPage() {
                       ) : null}
                       {previewItem.can_sign ? <Badge variant="secondary">Can Sign</Badge> : null}
                     </div>
-                    <p><span className="text-muted-foreground">Title:</span> {previewItem.title}</p>
-                    <p><span className="text-muted-foreground">Type:</span> {previewItem.document_type}</p>
-                    <p><span className="text-muted-foreground">Document ID:</span> {previewItem.document_id}</p>
-                    <p><span className="text-muted-foreground">Document Number:</span> {previewItem.document_number}</p>
-                    <p><span className="text-muted-foreground">Status:</span> {previewItem.status || 'N/A'}</p>
+                    <p>
+                      <span className="text-muted-foreground">Title:</span> {previewItem.title}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Type:</span>{' '}
+                      {previewItem.document_type}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Document ID:</span>{' '}
+                      {previewItem.document_id}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Document Number:</span>{' '}
+                      {previewItem.document_number}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Status:</span>{' '}
+                      {previewItem.status || 'N/A'}
+                    </p>
                   </div>
-                  <div className="rounded-md border p-3 space-y-2">
-                    <p><span className="text-muted-foreground">Patient:</span> {previewItem.patient_name || 'No patient'}</p>
-                    <p><span className="text-muted-foreground">Owner:</span> {previewItem.owner_name || 'Unknown'}</p>
-                    <p><span className="text-muted-foreground">Signed At:</span> {formatDateTime(previewItem.signed_at)}</p>
-                    <p><span className="text-muted-foreground">Shared At:</span> {formatDateTime(previewItem.shared_at)}</p>
-                    <p><span className="text-muted-foreground">Shared By:</span> {previewItem.shared_by_name || 'N/A'}</p>
-                    <p><span className="text-muted-foreground">Share Permission:</span> {previewItem.share_permission || 'N/A'}</p>
+                  <div className="space-y-2 rounded-md border p-3">
+                    <p>
+                      <span className="text-muted-foreground">Patient:</span>{' '}
+                      {previewItem.patient_name || 'No patient'}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Owner:</span>{' '}
+                      {previewItem.owner_name || 'Unknown'}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Signed At:</span>{' '}
+                      {formatDateTime(previewItem.signed_at)}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Shared At:</span>{' '}
+                      {formatDateTime(previewItem.shared_at)}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Shared By:</span>{' '}
+                      {previewItem.shared_by_name || 'N/A'}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Share Permission:</span>{' '}
+                      {previewItem.share_permission || 'N/A'}
+                    </p>
                   </div>
                 </div>
 
                 {iframeSrc ? (
-                  <div className="rounded-md border overflow-hidden">
+                  <div className="overflow-hidden rounded-md border">
                     {iframeLoading ? (
-                      <div className="h-[420px] flex items-center justify-center text-muted-foreground">
+                      <div className="flex h-[420px] items-center justify-center text-muted-foreground">
                         Loading preview...
                       </div>
                     ) : null}
                     {iframeError ? (
-                      <div className="h-[420px] flex items-center justify-center text-muted-foreground px-4 text-center">
+                      <div className="flex h-[420px] items-center justify-center px-4 text-center text-muted-foreground">
                         Unable to load inline preview. Use Open Full Page to view this document.
                       </div>
                     ) : (
@@ -467,7 +550,7 @@ export default function DocumentHubPage() {
                         ref={iframeRef}
                         title={`Document preview ${previewItem.document_type} ${previewItem.document_number}`}
                         src={iframeSrc}
-                        className={`w-full h-[420px] ${iframeLoading ? 'hidden' : 'block'}`}
+                        className={`h-[420px] w-full ${iframeLoading ? 'hidden' : 'block'}`}
                         onLoad={() => {
                           const frame = iframeRef.current;
                           let detected404 = false;
@@ -516,7 +599,9 @@ export default function DocumentHubPage() {
               </div>
             ) : null}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setPreviewItem(null)}>Close</Button>
+              <Button variant="outline" onClick={() => setPreviewItem(null)}>
+                Close
+              </Button>
               {previewHref ? (
                 <Button asChild>
                   <Link href={previewHref} onClick={() => setPreviewItem(null)}>

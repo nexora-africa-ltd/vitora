@@ -212,12 +212,7 @@ export interface AnalyzerRun {
 
 // =========== Phase L4 — Diagnostic Reports ===========
 
-export type DiagnosticReportStatus =
-  | 'DRAFT'
-  | 'PRELIMINARY'
-  | 'FINAL'
-  | 'AMENDED'
-  | 'CANCELLED';
+export type DiagnosticReportStatus = 'DRAFT' | 'PRELIMINARY' | 'FINAL' | 'AMENDED' | 'CANCELLED';
 
 export interface DiagnosticReport {
   id: number;
@@ -679,12 +674,7 @@ export interface LabQueue {
   is_overdue?: boolean | null;
 }
 
-export type QueueStatus =
-  | 'PENDING'
-  | 'COLLECTED'
-  | 'PROCESSING'
-  | 'REVIEW'
-  | 'RELEASED';
+export type QueueStatus = 'PENDING' | 'COLLECTED' | 'PROCESSING' | 'REVIEW' | 'RELEASED';
 
 // Technician type
 export interface LabTechnician {
@@ -762,7 +752,14 @@ export interface CriticalAlert {
 
 export type GramStain = 'POSITIVE' | 'NEGATIVE' | 'VARIABLE' | 'NA';
 export type OrganismType = 'BACTERIA' | 'FUNGUS' | 'PARASITE' | 'VIRUS' | 'MYCOBACTERIA' | 'OTHER';
-export type CultureStatus = 'INOCULATED' | 'INCUBATING' | 'READING' | 'PRELIMINARY' | 'FINAL' | 'NO_GROWTH' | 'CANCELLED';
+export type CultureStatus =
+  | 'INOCULATED'
+  | 'INCUBATING'
+  | 'READING'
+  | 'PRELIMINARY'
+  | 'FINAL'
+  | 'NO_GROWTH'
+  | 'CANCELLED';
 export type SensitivityInterpretation = 'S' | 'I' | 'R';
 export type SensitivityTestMethod = 'DISK' | 'MIC_BROTH' | 'MIC_ETEST' | 'VITEK' | 'OTHER';
 export type BreakpointStandard = 'CLSI' | 'EUCAST' | 'OTHER';
@@ -912,8 +909,21 @@ export type ChannelProtocol = 'ASTM' | 'HL7' | 'SERIAL' | 'TCP';
 export type ChannelDirection = 'BIDIRECTIONAL' | 'HOST_TO_INSTRUMENT' | 'INSTRUMENT_TO_HOST';
 export type ChannelConnectionStatus = 'CONNECTED' | 'DISCONNECTED' | 'ERROR' | 'IDLE';
 export type AnalyzerMessageDirection = 'INBOUND' | 'OUTBOUND';
-export type AnalyzerMessageType = 'RESULT' | 'ORDER_DOWNLOAD' | 'QUERY' | 'ACK' | 'STATUS' | 'OTHER';
-export type AnalyzerMessageStatus = 'RECEIVED' | 'PARSED' | 'APPLIED' | 'FAILED' | 'PENDING' | 'SENT' | 'TIMEOUT';
+export type AnalyzerMessageType =
+  | 'RESULT'
+  | 'ORDER_DOWNLOAD'
+  | 'QUERY'
+  | 'ACK'
+  | 'STATUS'
+  | 'OTHER';
+export type AnalyzerMessageStatus =
+  | 'RECEIVED'
+  | 'PARSED'
+  | 'APPLIED'
+  | 'FAILED'
+  | 'PENDING'
+  | 'SENT'
+  | 'TIMEOUT';
 
 export interface InstrumentChannel {
   id: number;
@@ -1027,7 +1037,12 @@ export interface SpecimenRejectionReason {
   display_order: number;
 }
 
-export type CommentTemplateCategory = 'GENERAL' | 'CRITICAL' | 'FOLLOW_UP' | 'METHODOLOGY' | 'QUALITY';
+export type CommentTemplateCategory =
+  | 'GENERAL'
+  | 'CRITICAL'
+  | 'FOLLOW_UP'
+  | 'METHODOLOGY'
+  | 'QUALITY';
 
 export interface ResultCommentTemplate {
   id: number;

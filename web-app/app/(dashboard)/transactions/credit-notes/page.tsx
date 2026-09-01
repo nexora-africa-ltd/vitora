@@ -7,14 +7,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import {
-  ScrollText,
-  Search,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Undo2,
-} from 'lucide-react';
+import { ScrollText, Search, AlertCircle, CheckCircle, XCircle, Undo2 } from 'lucide-react';
 
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -48,7 +41,7 @@ function CreditNoteStatusBadge({ status }: { status: string }) {
   const config = statusConfig[status] ?? { color: 'bg-slate-100 text-slate-700', icon: ScrollText };
   const Icon = config.icon;
   return (
-    <Badge className={`${config.color} text-xs shrink-0 w-fit gap-1`}>
+    <Badge className={`${config.color} w-fit shrink-0 gap-1 text-xs`}>
       <Icon className="h-3 w-3" />
       {status}
     </Badge>
@@ -78,7 +71,10 @@ export default function CreditNotesPage() {
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
 
   const { data, isLoading, error, refetch, isFetching } = useCreditNotes({
-    status: statusFilter === 'all' ? undefined : (statusFilter as 'DRAFT' | 'APPROVED' | 'REJECTED' | 'REFUNDED'),
+    status:
+      statusFilter === 'all'
+        ? undefined
+        : (statusFilter as 'DRAFT' | 'APPROVED' | 'REJECTED' | 'REFUNDED'),
     ordering: '-created_at',
   });
 
@@ -106,7 +102,7 @@ export default function CreditNotesPage() {
   if (error) {
     return (
       <div className="py-8 text-center">
-        <AlertCircle className="h-8 w-8 mx-auto text-destructive mb-2" />
+        <AlertCircle className="mx-auto mb-2 h-8 w-8 text-destructive" />
         <p className="text-destructive">Failed to load credit notes</p>
       </div>
     );
@@ -121,14 +117,14 @@ export default function CreditNotesPage() {
         />
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1 sm:flex-initial">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search credit notes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 w-full sm:w-64"
+              className="w-full pl-9 sm:w-64"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -150,7 +146,11 @@ export default function CreditNotesPage() {
           data={filteredNotes}
           keyExtractor={(cn) => cn.id}
           isLoading={isLoading}
-          emptyMessage={searchTerm || statusFilter !== 'all' ? 'No credit notes match your filters' : 'No credit notes yet'}
+          emptyMessage={
+            searchTerm || statusFilter !== 'all'
+              ? 'No credit notes match your filters'
+              : 'No credit notes yet'
+          }
           defaultSortColumn="created_at"
           defaultSortDirection="desc"
           onRowClick={handleView}
@@ -184,9 +184,7 @@ export default function CreditNotesPage() {
               key: 'reason',
               header: 'Reason',
               sortable: true,
-              cell: (cn) => (
-                <span className="text-sm">{reasonLabels[cn.reason] || cn.reason}</span>
-              ),
+              cell: (cn) => <span className="text-sm">{reasonLabels[cn.reason] || cn.reason}</span>,
               hideOnMobile: true,
             },
             {
@@ -222,18 +220,19 @@ export default function CreditNotesPage() {
             <Card className="p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-sm font-medium truncate">
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="truncate font-mono text-sm font-medium">
                       {cn.credit_note_number}
                     </span>
                     <CreditNoteStatusBadge status={cn.status} />
                   </div>
-                  <p className="text-sm truncate">{cn.patient_name || 'Unknown'}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {reasonLabels[cn.reason] || cn.reason} • {format(new Date(cn.created_at), 'dd MMM yyyy')}
+                  <p className="truncate text-sm">{cn.patient_name || 'Unknown'}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {reasonLabels[cn.reason] || cn.reason} •{' '}
+                    {format(new Date(cn.created_at), 'dd MMM yyyy')}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="shrink-0 text-right">
                   <p className="font-semibold">{formatCurrency(parseFloat(cn.amount))}</p>
                 </div>
               </div>

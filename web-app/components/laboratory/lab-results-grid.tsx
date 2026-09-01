@@ -13,12 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertTriangle, CheckCircle, Save, Loader2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useAddLabResultsBatch } from '@/lib/hooks/use-laboratory';
@@ -135,13 +130,13 @@ export function LabResultsGrid({
   // Filter to resultable items (non-panel-headers without existing results)
   const resultableItems = useMemo(() => {
     const hasChildren = (item: LabOrderItem) =>
-      items.some(child => child.panel_parent === item.id);
-    return items.filter(item => !(item.is_panel && hasChildren(item)));
+      items.some((child) => child.panel_parent === item.id);
+    return items.filter((item) => !(item.is_panel && hasChildren(item)));
   }, [items]);
 
   // Initialize grid rows
   const [rows, setRows] = useState<RowData[]>(() =>
-    resultableItems.map(item => {
+    resultableItems.map((item) => {
       const ref = getReferenceRange(item, patientGender, patientAge);
       return {
         itemId: item.id,
@@ -151,12 +146,11 @@ export function LabResultsGrid({
         referenceLow: ref.low,
         referenceHigh: ref.high,
         referenceText: ref.text,
-        value: item.has_result && item.result?.numeric_value != null
-          ? String(item.result.numeric_value)
-          : '',
-        flag: item.has_result && item.result?.result_flag
-          ? item.result.result_flag
-          : '',
+        value:
+          item.has_result && item.result?.numeric_value != null
+            ? String(item.result.numeric_value)
+            : '',
+        flag: item.has_result && item.result?.result_flag ? item.result.result_flag : '',
         isCritical: false,
         hasExistingResult: item.has_result,
       };
@@ -168,7 +162,7 @@ export function LabResultsGrid({
 
   // Update flag when value changes
   const updateValue = useCallback((index: number, newValue: string) => {
-    setRows(prev => {
+    setRows((prev) => {
       const updated = [...prev];
       const current = updated[index];
       if (!current) return prev;
@@ -190,52 +184,57 @@ export function LabResultsGrid({
   }, []);
 
   // Handle keyboard navigation (Tab/Enter to next row)
-  const handleKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
-    if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
-      e.preventDefault();
-      const nextIndex = index + 1;
-      // Skip rows with existing results
-      let target = nextIndex;
-      while (target < rows.length && rows[target]?.hasExistingResult) {
-        target++;
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, index: number) => {
+      if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
+        e.preventDefault();
+        const nextIndex = index + 1;
+        // Skip rows with existing results
+        let target = nextIndex;
+        while (target < rows.length && rows[target]?.hasExistingResult) {
+          target++;
+        }
+        if (target < rows.length) {
+          inputRefs.current[target]?.focus();
+          inputRefs.current[target]?.select();
+        }
+      } else if (e.key === 'Tab' && e.shiftKey) {
+        e.preventDefault();
+        let target = index - 1;
+        while (target >= 0 && rows[target]?.hasExistingResult) {
+          target--;
+        }
+        if (target >= 0) {
+          inputRefs.current[target]?.focus();
+          inputRefs.current[target]?.select();
+        }
       }
-      if (target < rows.length) {
-        inputRefs.current[target]?.focus();
-        inputRefs.current[target]?.select();
-      }
-    } else if (e.key === 'Tab' && e.shiftKey) {
-      e.preventDefault();
-      let target = index - 1;
-      while (target >= 0 && rows[target]?.hasExistingResult) {
-        target--;
-      }
-      if (target >= 0) {
-        inputRefs.current[target]?.focus();
-        inputRefs.current[target]?.select();
-      }
-    }
-  }, [rows]);
+    },
+    [rows]
+  );
 
   // Focus the first empty input on mount
   useEffect(() => {
-    const firstEmpty = rows.findIndex(r => !r.hasExistingResult && r.value === '');
+    const firstEmpty = rows.findIndex((r) => !r.hasExistingResult && r.value === '');
     if (firstEmpty >= 0) {
       setTimeout(() => inputRefs.current[firstEmpty]?.focus(), 100);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Computed stats
-  const filledRows = rows.filter(r => !r.hasExistingResult && r.value.trim() !== '');
-  const pendingRows = rows.filter(r => !r.hasExistingResult);
-  const criticalCount = rows.filter(r => r.isCritical).length;
+  const filledRows = rows.filter((r) => !r.hasExistingResult && r.value.trim() !== '');
+  const pendingRows = rows.filter((r) => !r.hasExistingResult);
+  const criticalCount = rows.filter((r) => r.isCritical).length;
   const canSubmit = filledRows.length > 0 && !batchMutation.isPending;
 
   // Reset all unfilled values
   const handleReset = () => {
-    setRows(prev => prev.map(row => {
-      if (row.hasExistingResult) return row;
-      return { ...row, value: '', flag: '', isCritical: false };
-    }));
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.hasExistingResult) return row;
+        return { ...row, value: '', flag: '', isCritical: false };
+      })
+    );
     setInterpretation('');
   };
 
@@ -258,7 +257,11 @@ export function LabResultsGrid({
     }
 
     if (results.length === 0) {
-      toast({ title: 'No valid results', description: 'Enter numeric values before saving.', variant: 'destructive' });
+      toast({
+        title: 'No valid results',
+        description: 'Enter numeric values before saving.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -269,15 +272,19 @@ export function LabResultsGrid({
         description: `${results.length} result${results.length > 1 ? 's' : ''} recorded successfully.`,
       });
       // Mark submitted rows as having results
-      setRows(prev => prev.map(row => {
-        if (results.some(r => r.order_item === row.itemId)) {
-          return { ...row, hasExistingResult: true };
-        }
-        return row;
-      }));
+      setRows((prev) =>
+        prev.map((row) => {
+          if (results.some((r) => r.order_item === row.itemId)) {
+            return { ...row, hasExistingResult: true };
+          }
+          return row;
+        })
+      );
       onResultAdded?.();
       // If all done, call onComplete
-      const allDone = rows.every(r => r.hasExistingResult || results.some(res => res.order_item === r.itemId));
+      const allDone = rows.every(
+        (r) => r.hasExistingResult || results.some((res) => res.order_item === r.itemId)
+      );
       if (allDone) {
         onComplete?.();
       }
@@ -324,11 +331,15 @@ export function LabResultsGrid({
           <table className="w-full min-w-[600px] text-sm">
             <thead>
               <tr className="border-b text-left">
-                <th className="pb-2 pl-4 sm:pl-0 font-medium text-muted-foreground w-[30%]">Test</th>
-                <th className="pb-2 font-medium text-muted-foreground w-[20%]">Value</th>
-                <th className="pb-2 font-medium text-muted-foreground w-[12%]">Unit</th>
-                <th className="pb-2 font-medium text-muted-foreground w-[20%]">Ref Range</th>
-                <th className="pb-2 font-medium text-muted-foreground w-[18%] pr-4 sm:pr-0">Flag</th>
+                <th className="w-[30%] pb-2 pl-4 font-medium text-muted-foreground sm:pl-0">
+                  Test
+                </th>
+                <th className="w-[20%] pb-2 font-medium text-muted-foreground">Value</th>
+                <th className="w-[12%] pb-2 font-medium text-muted-foreground">Unit</th>
+                <th className="w-[20%] pb-2 font-medium text-muted-foreground">Ref Range</th>
+                <th className="w-[18%] pb-2 pr-4 font-medium text-muted-foreground sm:pr-0">
+                  Flag
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -345,7 +356,7 @@ export function LabResultsGrid({
                     <TooltipProvider delayDuration={300}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="font-medium text-xs sm:text-sm truncate block max-w-[180px]">
+                          <span className="block max-w-[180px] truncate text-xs font-medium sm:text-sm">
                             {row.testName}
                           </span>
                         </TooltipTrigger>
@@ -357,13 +368,15 @@ export function LabResultsGrid({
                   </td>
                   <td className="py-2 pr-2">
                     {row.hasExistingResult ? (
-                      <span className="text-sm flex items-center gap-1">
+                      <span className="flex items-center gap-1 text-sm">
                         <CheckCircle className="h-3 w-3 text-green-500" />
                         {row.value || '—'}
                       </span>
                     ) : (
                       <Input
-                        ref={(el) => { inputRefs.current[index] = el; }}
+                        ref={(el) => {
+                          inputRefs.current[index] = el;
+                        }}
                         type="number"
                         step="any"
                         value={row.value}
@@ -379,7 +392,7 @@ export function LabResultsGrid({
                     )}
                   </td>
                   <td className="py-2 text-xs text-muted-foreground">{row.unit}</td>
-                  <td className="py-2 text-xs text-muted-foreground font-mono">
+                  <td className="py-2 font-mono text-xs text-muted-foreground">
                     {row.referenceText || '—'}
                   </td>
                   <td className="py-2 pr-4 sm:pr-0">
@@ -397,7 +410,7 @@ export function LabResultsGrid({
 
         {/* Interpretation (optional, shared) */}
         <div className="mt-4 px-4 sm:px-0">
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">
             Interpretation / Comments (optional)
           </label>
           <Textarea
@@ -424,11 +437,7 @@ export function LabResultsGrid({
               </span>
             )}
           </div>
-          <Button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="gap-1.5"
-          >
+          <Button onClick={handleSubmit} disabled={!canSubmit} className="gap-1.5">
             {batchMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

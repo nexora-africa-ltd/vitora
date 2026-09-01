@@ -239,10 +239,10 @@ export const INTERVENTION_CATEGORIES = [
   'Other',
 ] as const;
 
-export type InterventionCategory = typeof INTERVENTION_CATEGORIES[number];
+export type InterventionCategory = (typeof INTERVENTION_CATEGORIES)[number];
 
 export const FACILITY_LEVELS = [1, 2, 3, 4, 5, 6] as const;
-export type FacilityLevel = typeof FACILITY_LEVELS[number];
+export type FacilityLevel = (typeof FACILITY_LEVELS)[number];
 
 export const DOSAGE_FORMS = [
   'Tablet',
@@ -257,4 +257,4 @@ export const DOSAGE_FORMS = [
   'Other',
 ] as const;
 
-export type DosageForm = typeof DOSAGE_FORMS[number];
+export type DosageForm = (typeof DOSAGE_FORMS)[number];

@@ -22,11 +22,7 @@ interface EnrollmentSearchInputProps {
  * NOTE: This is a simplified placeholder. In the full implementation,
  * it would query the clinics API for enrollments filtered by patient.
  */
-export function EnrollmentSearchInput({
-  patientId,
-  value,
-  onChange,
-}: EnrollmentSearchInputProps) {
+export function EnrollmentSearchInput({ patientId, value, onChange }: EnrollmentSearchInputProps) {
   return (
     <div className="space-y-1">
       <Select

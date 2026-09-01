@@ -29,7 +29,12 @@ export const AutoVerifyConditionTypeSchema = z.enum([
   'NOT_AMENDED',
 ]);
 
-export const AutoVerifyOutcomeSchema = z.enum(['AUTO_VERIFIED', 'BLOCKED', 'SKIPPED', 'CAP_EXCEEDED']);
+export const AutoVerifyOutcomeSchema = z.enum([
+  'AUTO_VERIFIED',
+  'BLOCKED',
+  'SKIPPED',
+  'CAP_EXCEEDED',
+]);
 
 // =============================================================================
 // Delta Check Rule

@@ -72,14 +72,17 @@ export default function ImagingSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['imaging-integration-settings'] });
       toast({ title: 'Imaging settings saved' });
     },
-    onError: (error: any) => {
-      const detail = error?.response?.data;
-      const firstError = typeof detail === 'object' && detail
-        ? Object.values(detail).flat().find(Boolean)
-        : null;
+    onError: (error: unknown) => {
+      const detail =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { data?: unknown } }).response?.data
+          : undefined;
+      const firstError =
+        typeof detail === 'object' && detail ? Object.values(detail).flat().find(Boolean) : null;
       toast({
         title: 'Failed to save settings',
-        description: typeof firstError === 'string' ? firstError : 'Check form values and try again.',
+        description:
+          typeof firstError === 'string' ? firstError : 'Check form values and try again.',
         variant: 'destructive',
       });
     },
@@ -104,7 +107,7 @@ export default function ImagingSettingsPage() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Network className="h-4 w-4" />
                 DICOM Listener Profile
               </CardTitle>
@@ -116,13 +119,19 @@ export default function ImagingSettingsPage() {
                 <>
                   <div className="flex items-center justify-between rounded-lg border p-3">
                     <div>
-                      <Label htmlFor="listener_enabled" className="text-sm font-medium">Enable inbound C-STORE listener</Label>
-                      <p className="text-xs text-muted-foreground">Use this when modalities push studies directly to Vitora.</p>
+                      <Label htmlFor="listener_enabled" className="text-sm font-medium">
+                        Enable inbound C-STORE listener
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Use this when modalities push studies directly to Vitora.
+                      </p>
                     </div>
                     <Switch
                       id="listener_enabled"
                       checked={form.listener_enabled}
-                      onCheckedChange={(checked) => setForm((prev) => ({ ...prev, listener_enabled: checked }))}
+                      onCheckedChange={(checked) =>
+                        setForm((prev) => ({ ...prev, listener_enabled: checked }))
+                      }
                     />
                   </div>
 
@@ -133,7 +142,9 @@ export default function ImagingSettingsPage() {
                         id="ae_title"
                         value={form.ae_title}
                         maxLength={16}
-                        onChange={(e) => setForm((prev) => ({ ...prev, ae_title: e.target.value.toUpperCase() }))}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, ae_title: e.target.value.toUpperCase() }))
+                        }
                       />
                     </div>
                     <div className="space-y-2 sm:col-span-2">
@@ -141,7 +152,9 @@ export default function ImagingSettingsPage() {
                       <Input
                         id="bind_host"
                         value={form.bind_host}
-                        onChange={(e) => setForm((prev) => ({ ...prev, bind_host: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, bind_host: e.target.value }))
+                        }
                         placeholder="0.0.0.0"
                       />
                     </div>
@@ -164,10 +177,17 @@ export default function ImagingSettingsPage() {
                       <Input
                         id="allowed_peers"
                         value={form.allowed_peers}
-                        onChange={(e) => setForm((prev) => ({ ...prev, allowed_peers: e.target.value.toUpperCase() }))}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            allowed_peers: e.target.value.toUpperCase(),
+                          }))
+                        }
                         placeholder="XRAY_ROOM_1,US_CONSOLE_A"
                       />
-                      <p className="text-xs text-muted-foreground">Comma-separated AE titles. Leave blank to allow all peers.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Comma-separated AE titles. Leave blank to allow all peers.
+                      </p>
                     </div>
                   </div>
 
@@ -183,7 +203,7 @@ export default function ImagingSettingsPage() {
                   </div>
 
                   <div className="rounded-lg bg-muted/40 p-3 text-sm">
-                    <p className="font-medium mb-1">Runbook values</p>
+                    <p className="mb-1 font-medium">Runbook values</p>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="outline">AE: {form.ae_title || 'VITORA'}</Badge>
                       <Badge variant="outline">Bind: {form.bind_host || '0.0.0.0'}</Badge>
@@ -192,11 +212,14 @@ export default function ImagingSettingsPage() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+                    <Button
+                      onClick={() => updateMutation.mutate()}
+                      disabled={updateMutation.isPending}
+                    >
                       {updateMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                       ) : (
-                        <Save className="h-4 w-4 mr-1" />
+                        <Save className="mr-1 h-4 w-4" />
                       )}
                       Save Settings
                     </Button>

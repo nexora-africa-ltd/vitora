@@ -24,7 +24,11 @@ interface ConstraintOverrideMetricsProps {
 export function ConstraintOverrideMetrics({ className }: ConstraintOverrideMetricsProps) {
   const [days, setDays] = useState<number>(30);
 
-  const { data: metrics, isLoading, error } = useQuery({
+  const {
+    data: metrics,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['constraint-override-metrics', days],
     queryFn: () => inpatientApi.getConstraintOverrideMetrics(days),
     refetchInterval: 60000, // Refresh every minute
@@ -46,9 +50,9 @@ export function ConstraintOverrideMetrics({ className }: ConstraintOverrideMetri
           <div className="space-y-3 border-t pt-6">
             <Skeleton className="h-5 w-32" />
             <div className="flex gap-4 overflow-hidden">
-            {[...Array(4)].map((_, i) => (
+              {[...Array(4)].map((_, i) => (
                 <Skeleton key={i} className="h-28 min-w-[180px] flex-1" />
-            ))}
+              ))}
             </div>
           </div>
         </CardContent>
@@ -66,7 +70,7 @@ export function ConstraintOverrideMetrics({ className }: ConstraintOverrideMetri
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-4 text-muted-foreground">
+          <div className="py-4 text-center text-muted-foreground">
             <p>Failed to load metrics</p>
             <p className="text-sm">{error instanceof Error ? error.message : 'Unknown error'}</p>
           </div>
@@ -106,7 +110,7 @@ export function ConstraintOverrideMetrics({ className }: ConstraintOverrideMetri
       <CardContent className="space-y-6">
         {/* Pending Acknowledgments */}
         {metrics.pending_acknowledgment_count > 0 && (
-          <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
             <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
               <Clock className="h-5 w-5" />
               <span className="font-medium">
@@ -132,10 +136,7 @@ export function ConstraintOverrideMetrics({ className }: ConstraintOverrideMetri
                       <span>{getViolationLabel(v.code)}</span>
                       <span className="font-medium">{v.count}</span>
                     </div>
-                    <Progress
-                      value={(v.count / metrics.override_count) * 100}
-                      className="h-2"
-                    />
+                    <Progress value={(v.count / metrics.override_count) * 100} className="h-2" />
                   </div>
                 ))}
               </div>
@@ -149,13 +150,13 @@ export function ConstraintOverrideMetrics({ className }: ConstraintOverrideMetri
                 <Building className="h-4 w-4" />
                 Overrides by Ward
               </h4>
-              <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {metrics.ward_breakdown.slice(0, 6).map((w) => (
                   <div
                     key={w.ward_id}
                     className="flex items-center justify-between rounded-lg bg-muted/50 p-2"
                   >
-                    <span className="text-sm truncate">{w.ward_name}</span>
+                    <span className="truncate text-sm">{w.ward_name}</span>
                     <Badge variant="secondary">{w.override_count}</Badge>
                   </div>
                 ))}

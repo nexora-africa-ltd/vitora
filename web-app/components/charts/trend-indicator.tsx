@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export type TrendDirection = "up" | "down" | "neutral";
+export type TrendDirection = 'up' | 'down' | 'neutral';
 
 export interface TrendIndicatorProps {
   /** Current value */
@@ -20,13 +20,13 @@ export interface TrendIndicatorProps {
   /** Show icon */
   showIcon?: boolean;
   /** Size variant */
-  size?: "sm" | "md" | "lg";
+  size?: 'sm' | 'md' | 'lg';
   /** Invert colors (e.g., for costs where down is good) */
   invertColors?: boolean;
   /** Additional className */
   className?: string;
   /** Format for displaying percentage */
-  percentageFormat?: "decimal" | "integer";
+  percentageFormat?: 'decimal' | 'integer';
   /** Suffix text (e.g., "vs last month") */
   suffix?: string;
 }
@@ -40,7 +40,7 @@ export function calculateTrend(
 ): { direction: TrendDirection; percentage: number } {
   if (previous === 0) {
     return {
-      direction: current > 0 ? "up" : current < 0 ? "down" : "neutral",
+      direction: current > 0 ? 'up' : current < 0 ? 'down' : 'neutral',
       percentage: current > 0 ? 100 : 0,
     };
   }
@@ -48,11 +48,11 @@ export function calculateTrend(
   const change = ((current - previous) / Math.abs(previous)) * 100;
 
   if (Math.abs(change) < 0.1) {
-    return { direction: "neutral", percentage: 0 };
+    return { direction: 'neutral', percentage: 0 };
   }
 
   return {
-    direction: change > 0 ? "up" : "down",
+    direction: change > 0 ? 'up' : 'down',
     percentage: Math.abs(change),
   };
 }
@@ -85,10 +85,10 @@ export function TrendIndicator({
   direction: forcedDirection,
   showPercentage = true,
   showIcon = true,
-  size = "md",
+  size = 'md',
   invertColors = false,
   className,
-  percentageFormat = "decimal",
+  percentageFormat = 'decimal',
   suffix,
 }: TrendIndicatorProps) {
   // Calculate trend if not provided
@@ -101,55 +101,55 @@ export function TrendIndicator({
     }
     if (percentageChange !== undefined) {
       return {
-        direction: percentageChange > 0 ? "up" : percentageChange < 0 ? "down" : "neutral",
+        direction: percentageChange > 0 ? 'up' : percentageChange < 0 ? 'down' : 'neutral',
         percentage: Math.abs(percentageChange),
       } as { direction: TrendDirection; percentage: number };
     }
-    return { direction: "neutral" as TrendDirection, percentage: 0 };
+    return { direction: 'neutral' as TrendDirection, percentage: 0 };
   }, [value, previousValue, percentageChange, forcedDirection]);
 
   // Determine colors based on direction and inversion
   const colorClasses = React.useMemo(() => {
-    const isPositive = invertColors ? direction === "down" : direction === "up";
-    const isNegative = invertColors ? direction === "up" : direction === "down";
+    const isPositive = invertColors ? direction === 'down' : direction === 'up';
+    const isNegative = invertColors ? direction === 'up' : direction === 'down';
 
     if (isPositive) {
-      return "text-success";
+      return 'text-success';
     }
     if (isNegative) {
-      return "text-destructive";
+      return 'text-destructive';
     }
-    return "text-muted-foreground";
+    return 'text-muted-foreground';
   }, [direction, invertColors]);
 
   // Size classes
   const sizeClasses = {
-    sm: "text-xs gap-0.5",
-    md: "text-sm gap-1",
-    lg: "text-base gap-1.5",
+    sm: 'text-xs gap-0.5',
+    md: 'text-sm gap-1',
+    lg: 'text-base gap-1.5',
   };
 
   const iconSizes = {
-    sm: "h-3 w-3",
-    md: "h-4 w-4",
-    lg: "h-5 w-5",
+    sm: 'h-3 w-3',
+    md: 'h-4 w-4',
+    lg: 'h-5 w-5',
   };
 
   // Format percentage
   const formattedPercentage = React.useMemo(() => {
-    if (percentageFormat === "integer") {
+    if (percentageFormat === 'integer') {
       return Math.round(percentage);
     }
     return percentage.toFixed(1);
   }, [percentage, percentageFormat]);
 
   // Icon component
-  const Icon = direction === "up" ? TrendingUp : direction === "down" ? TrendingDown : Minus;
+  const Icon = direction === 'up' ? TrendingUp : direction === 'down' ? TrendingDown : Minus;
 
   return (
     <span
       className={cn(
-        "inline-flex items-center font-medium",
+        'inline-flex items-center font-medium',
         sizeClasses[size],
         colorClasses,
         className
@@ -158,19 +158,17 @@ export function TrendIndicator({
       {showIcon && <Icon className={iconSizes[size]} />}
       {showPercentage && percentage > 0 && (
         <span>
-          {direction === "up" ? "+" : direction === "down" ? "-" : ""}
+          {direction === 'up' ? '+' : direction === 'down' ? '-' : ''}
           {formattedPercentage}%
         </span>
       )}
-      {showPercentage && percentage === 0 && direction === "neutral" && (
-        <span>0%</span>
-      )}
-      {suffix && <span className="text-muted-foreground font-normal ml-1">{suffix}</span>}
+      {showPercentage && percentage === 0 && direction === 'neutral' && <span>0%</span>}
+      {suffix && <span className="ml-1 font-normal text-muted-foreground">{suffix}</span>}
     </span>
   );
 }
 
-TrendIndicator.displayName = "TrendIndicator";
+TrendIndicator.displayName = 'TrendIndicator';
 
 /**
  * Compact trend badge for use in tables/lists
@@ -179,7 +177,7 @@ export interface TrendBadgeProps {
   /** Percentage change */
   change: number;
   /** Size variant */
-  size?: "sm" | "md";
+  size?: 'sm' | 'md';
   /** Invert colors (down is good) */
   invertColors?: boolean;
   /** Additional className */
@@ -188,30 +186,30 @@ export interface TrendBadgeProps {
 
 export function TrendBadge({
   change,
-  size = "sm",
+  size = 'sm',
   invertColors = false,
   className,
 }: TrendBadgeProps) {
-  const direction: TrendDirection = change > 0 ? "up" : change < 0 ? "down" : "neutral";
+  const direction: TrendDirection = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
 
-  const isPositive = invertColors ? direction === "down" : direction === "up";
-  const isNegative = invertColors ? direction === "up" : direction === "down";
+  const isPositive = invertColors ? direction === 'down' : direction === 'up';
+  const isNegative = invertColors ? direction === 'up' : direction === 'down';
 
   const bgClasses = isPositive
-    ? "bg-success/10 text-success"
+    ? 'bg-success/10 text-success'
     : isNegative
-    ? "bg-destructive/10 text-destructive"
-    : "bg-muted text-muted-foreground";
+      ? 'bg-destructive/10 text-destructive'
+      : 'bg-muted text-muted-foreground';
 
-  const sizeClasses = size === "sm" ? "text-xs px-1.5 py-0.5" : "text-sm px-2 py-1";
-  const iconSize = size === "sm" ? "h-3 w-3" : "h-4 w-4";
+  const sizeClasses = size === 'sm' ? 'text-xs px-1.5 py-0.5' : 'text-sm px-2 py-1';
+  const iconSize = size === 'sm' ? 'h-3 w-3' : 'h-4 w-4';
 
-  const Icon = direction === "up" ? TrendingUp : direction === "down" ? TrendingDown : Minus;
+  const Icon = direction === 'up' ? TrendingUp : direction === 'down' ? TrendingDown : Minus;
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full font-medium",
+        'inline-flex items-center gap-1 rounded-full font-medium',
         sizeClasses,
         bgClasses,
         className
@@ -219,11 +217,11 @@ export function TrendBadge({
     >
       <Icon className={iconSize} />
       <span>
-        {change > 0 ? "+" : ""}
+        {change > 0 ? '+' : ''}
         {Math.abs(change).toFixed(1)}%
       </span>
     </span>
   );
 }
 
-TrendBadge.displayName = "TrendBadge";
+TrendBadge.displayName = 'TrendBadge';

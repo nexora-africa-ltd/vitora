@@ -101,7 +101,7 @@ export default function NewPurchaseOrderPage() {
         <PageHeader title="New Purchase Order" />
         <Card className="p-6 text-center">
           <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             You do not have permission to create purchase orders.
           </p>
         </Card>
@@ -112,7 +112,7 @@ export default function NewPurchaseOrderPage() {
   const watchedItems = form.watch('items');
   const grandTotal = watchedItems.reduce(
     (sum, item) => sum + (Number(item.quantity_ordered) || 0) * (Number(item.unit_cost) || 0),
-    0,
+    0
   );
 
   async function onSubmit(data: POFormValues) {
@@ -132,23 +132,36 @@ export default function NewPurchaseOrderPage() {
       toast({ variant: 'success', title: 'Purchase order created' });
       router.push(`/inventory/purchase-orders/${created.id}`);
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Failed to create PO', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to create PO',
+        description: getApiErrorMessage(err),
+      });
     }
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
-      <PageHeader title="New Purchase Order" helpContent="Create a purchase order for a supplier. Add line items with items, quantities, and prices." />
+    <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
+      <PageHeader
+        title="New Purchase Order"
+        helpContent="Create a purchase order for a supplier. Add line items with items, quantities, and prices."
+      />
       <div className="flex flex-wrap gap-2">
-        <Badge variant="outline" className="w-fit">Item Source: {orderItemSource}</Badge>
-        <Badge variant="outline" className="w-fit">Pricing: {unifiedPricingEnabled ? 'Unified' : 'Manual'}</Badge>
+        <Badge variant="outline" className="w-fit">
+          Item Source: {orderItemSource}
+        </Badge>
+        <Badge variant="outline" className="w-fit">
+          Pricing: {unifiedPricingEnabled ? 'Unified' : 'Manual'}
+        </Badge>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
           {/* Header info */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Order Details</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Order Details</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-3">
                 <FormField
@@ -158,7 +171,11 @@ export default function NewPurchaseOrderPage() {
                     <FormItem>
                       <FormLabel>Supplier *</FormLabel>
                       <SearchableSelect
-                        options={suppliers.map((s) => ({ value: String(s.id), label: s.name, sublabel: s.code }))}
+                        options={suppliers.map((s) => ({
+                          value: String(s.id),
+                          label: s.name,
+                          sublabel: s.code,
+                        }))}
                         value={String(field.value || '')}
                         onValueChange={field.onChange}
                         placeholder="Select supplier"
@@ -175,7 +192,9 @@ export default function NewPurchaseOrderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Order Date *</FormLabel>
-                      <FormControl><Input type="date" {...field} /></FormControl>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -186,7 +205,9 @@ export default function NewPurchaseOrderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Expected Delivery</FormLabel>
-                      <FormControl><Input type="date" {...field} /></FormControl>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -198,7 +219,9 @@ export default function NewPurchaseOrderPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Notes</FormLabel>
-                    <FormControl><Textarea placeholder="Additional notes" rows={2} {...field} /></FormControl>
+                    <FormControl>
+                      <Textarea placeholder="Additional notes" rows={2} {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -214,7 +237,9 @@ export default function NewPurchaseOrderPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({ drug: 0, drug_name: '', quantity_ordered: 1, unit_cost: 0, notes: '' })}
+                onClick={() =>
+                  append({ drug: 0, drug_name: '', quantity_ordered: 1, unit_cost: 0, notes: '' })
+                }
                 className="w-full sm:w-auto"
               >
                 <Plus className="mr-1 h-4 w-4" />
@@ -223,17 +248,19 @@ export default function NewPurchaseOrderPage() {
             </CardHeader>
             <CardContent className="px-0 sm:px-6">
               {form.formState.errors.items?.root && (
-                <p className="text-sm text-destructive mb-3 px-4 sm:px-0">{form.formState.errors.items.root.message}</p>
+                <p className="mb-3 px-4 text-sm text-destructive sm:px-0">
+                  {form.formState.errors.items.root.message}
+                </p>
               )}
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[600px] text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="pb-2 pr-3 font-medium">Item *</th>
-                      <th className="pb-2 pr-3 font-medium w-24 text-right">Qty *</th>
-                      <th className="pb-2 pr-3 font-medium w-32 text-right">Unit Cost *</th>
-                      <th className="pb-2 pr-3 font-medium w-32 text-right">Total</th>
-                      <th className="pb-2 w-10"></th>
+                      <th className="w-24 pb-2 pr-3 text-right font-medium">Qty *</th>
+                      <th className="w-32 pb-2 pr-3 text-right font-medium">Unit Cost *</th>
+                      <th className="w-32 pb-2 pr-3 text-right font-medium">Total</th>
+                      <th className="w-10 pb-2"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -250,7 +277,11 @@ export default function NewPurchaseOrderPage() {
                               render={({ field: drugField }) => (
                                 <FormItem className="space-y-0">
                                   <SearchableSelect
-                                    options={drugs.map((d) => ({ value: String(d.id), label: d.generic_name, sublabel: d.code }))}
+                                    options={drugs.map((d) => ({
+                                      value: String(d.id),
+                                      label: d.generic_name,
+                                      sublabel: d.code,
+                                    }))}
                                     value={String(drugField.value || '')}
                                     onValueChange={drugField.onChange}
                                     placeholder="Select item"
@@ -270,7 +301,12 @@ export default function NewPurchaseOrderPage() {
                               render={({ field: qtyField }) => (
                                 <FormItem className="space-y-0">
                                   <FormControl>
-                                    <Input type="number" min={1} className="h-8 text-xs text-right" {...qtyField} />
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      className="h-8 text-right text-xs"
+                                      {...qtyField}
+                                    />
                                   </FormControl>
                                   <FormMessage className="text-xs" />
                                 </FormItem>
@@ -289,7 +325,7 @@ export default function NewPurchaseOrderPage() {
                                       min={0}
                                       step="0.01"
                                       disabled={unifiedPricingEnabled}
-                                      className="h-8 text-xs text-right"
+                                      className="h-8 text-right text-xs"
                                       {...costField}
                                     />
                                   </FormControl>
@@ -298,7 +334,9 @@ export default function NewPurchaseOrderPage() {
                               )}
                             />
                           </td>
-                          <td className="py-2 pr-3 text-right text-xs font-medium">{formatCurrency(lineTotal)}</td>
+                          <td className="py-2 pr-3 text-right text-xs font-medium">
+                            {formatCurrency(lineTotal)}
+                          </td>
                           <td className="py-2">
                             <Button
                               type="button"
@@ -317,7 +355,9 @@ export default function NewPurchaseOrderPage() {
                   </tbody>
                   <tfoot>
                     <tr className="border-t">
-                      <td colSpan={3} className="py-2.5 text-right font-medium">Grand Total</td>
+                      <td colSpan={3} className="py-2.5 text-right font-medium">
+                        Grand Total
+                      </td>
                       <td className="py-2.5 text-right font-bold">{formatCurrency(grandTotal)}</td>
                       <td />
                     </tr>
@@ -329,7 +369,12 @@ export default function NewPurchaseOrderPage() {
 
           {/* Actions */}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">

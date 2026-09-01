@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import {
-  Plus,
-} from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -100,8 +98,12 @@ export default function AEFIPage() {
           title="AEFI Reports"
           helpContent="Adverse Event Following Immunization reports aligned with the Kenya MOH AEFI Reporting Form. Track, investigate, and report vaccine adverse events. Severe cases must be reported to national authorities within 24 hours."
           actions={
-            <Button size="sm" onClick={() => router.push('/immunizations/aefi/new')} disabled={!canCreateRoute('/immunizations/aefi/new')}>
-              <Plus className="h-4 w-4 mr-1" />
+            <Button
+              size="sm"
+              onClick={() => router.push('/immunizations/aefi/new')}
+              disabled={!canCreateRoute('/immunizations/aefi/new')}
+            >
+              <Plus className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">Report AEFI</span>
               <span className="sm:hidden">Report</span>
             </Button>
@@ -175,16 +177,14 @@ export default function AEFIPage() {
             {
               key: 'event_types',
               header: 'Type',
-              cell: (r) => (
-                <span className="text-sm">{formatEventTypes(r.event_types)}</span>
-              ),
+              cell: (r) => <span className="text-sm">{formatEventTypes(r.event_types)}</span>,
             },
             {
               key: 'severity',
               header: 'Severity',
               sortable: true,
               cell: (r) => (
-                <Badge className={`${severityColors[r.severity]} shrink-0 w-fit`}>
+                <Badge className={`${severityColors[r.severity]} w-fit shrink-0`}>
                   {r.severity}
                 </Badge>
               ),
@@ -203,7 +203,10 @@ export default function AEFIPage() {
               key: 'reported_to_authorities',
               header: 'Reported',
               cell: (r) => (
-                <Badge variant={r.reported_to_authorities ? 'default' : 'outline'} className="shrink-0 w-fit">
+                <Badge
+                  variant={r.reported_to_authorities ? 'default' : 'outline'}
+                  className="w-fit shrink-0"
+                >
                   {r.reported_to_authorities ? 'Yes' : 'No'}
                 </Badge>
               ),
@@ -212,22 +215,24 @@ export default function AEFIPage() {
           ]}
           mobileCard={(r: AEFIListItem) => (
             <Card className="p-3">
-              <div className="flex justify-between items-start">
+              <div className="flex items-start justify-between">
                 <div className="min-w-0">
                   <p className="font-medium">{r.patient_name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {r.vaccine_code} • {formatDate(r.event_date)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {formatEventTypes(r.event_types)}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <Badge className={`${severityColors[r.severity]} shrink-0 w-fit self-start`}>
+                  <Badge className={`${severityColors[r.severity]} w-fit shrink-0 self-start`}>
                     {r.severity}
                   </Badge>
                   {r.reported_to_authorities && (
-                    <Badge variant="default" className="text-xs shrink-0">Reported</Badge>
+                    <Badge variant="default" className="shrink-0 text-xs">
+                      Reported
+                    </Badge>
                   )}
                 </div>
               </div>

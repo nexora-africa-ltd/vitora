@@ -70,9 +70,7 @@ export function SupersetEmbed({
         if (!cancelled) setLoading(false);
       } catch (err) {
         if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : 'Failed to load dashboard'
-          );
+          setError(err instanceof Error ? err.message : 'Failed to load dashboard');
           setLoading(false);
         }
       }
@@ -93,7 +91,7 @@ export function SupersetEmbed({
       <Card>
         <CardContent className="flex flex-col items-center justify-center gap-3 py-12">
           <AlertTriangle className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground text-center max-w-md">
+          <p className="max-w-md text-center text-sm text-muted-foreground">
             {isNotConfigured
               ? 'Superset embedding is not configured. Contact your administrator.'
               : `Failed to load the embedded dashboard: ${error}`}
@@ -105,15 +103,13 @@ export function SupersetEmbed({
 
   return (
     <div className="space-y-2">
-      {title && (
-        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
-      )}
+      {title && <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>}
       <div
-        className="relative rounded-lg border overflow-hidden"
+        className="relative overflow-hidden rounded-lg border"
         style={{ minHeight, height: minHeight }}
       >
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         )}

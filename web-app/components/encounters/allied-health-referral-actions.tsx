@@ -1,14 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import {
-  Activity,
-  Apple,
-  Hand,
-  Heart,
-  Users,
-  ArrowRight
-} from 'lucide-react';
+import { Activity, Apple, Hand, Heart, Users, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -82,15 +75,13 @@ export function AlliedHealthReferralActions({
 
   return (
     <Card>
-      <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+      <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-2">
-          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-            <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <ArrowRight className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
             <span className="truncate">Allied Health Referrals</span>
           </CardTitle>
-          <HelpPopover
-            content="Create referrals to allied health services. Orders will be linked to this encounter and auto-route to the appropriate clinic queue when approved."
-          />
+          <HelpPopover content="Create referrals to allied health services. Orders will be linked to this encounter and auto-route to the appropriate clinic queue when approved." />
         </div>
       </CardHeader>
       <CardContent className="px-3 sm:px-6">
@@ -107,7 +98,7 @@ export function AlliedHealthReferralActions({
                 className="h-9 sm:h-10"
                 title={option.description}
               >
-                <Icon className="h-4 w-4 mr-1.5" />
+                <Icon className="mr-1.5 h-4 w-4" />
                 <span className="hidden sm:inline">{option.label}</span>
                 <span className="sm:hidden">{option.shortLabel}</span>
               </Button>
@@ -115,7 +106,7 @@ export function AlliedHealthReferralActions({
           })}
         </div>
         {disabled && (
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="mt-2 text-xs text-muted-foreground">
             Referrals cannot be created for closed or cancelled encounters.
           </p>
         )}

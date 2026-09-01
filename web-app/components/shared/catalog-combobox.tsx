@@ -12,11 +12,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 export type CatalogComboboxOption = {
@@ -73,7 +69,7 @@ export function CatalogCombobox({
               ? selected.description
                 ? `${selected.label} ${selected.description}`
                 : selected.label
-              : placeholder ?? `Select ${type}...`}
+              : (placeholder ?? `Select ${type}...`)}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -84,8 +80,7 @@ export function CatalogCombobox({
             // itemValue is the option.code; build a richer haystack to search.
             const opt = options.find((o) => o.code === itemValue);
             if (!opt) return 0;
-            const haystack =
-              `${opt.code} ${opt.label} ${opt.description ?? ''}`.toLowerCase();
+            const haystack = `${opt.code} ${opt.label} ${opt.description ?? ''}`.toLowerCase();
             return haystack.includes(search.toLowerCase()) ? 1 : 0;
           }}
         >
@@ -103,17 +98,12 @@ export function CatalogCombobox({
                   }}
                 >
                   <Check
-                    className={cn(
-                      'mr-2 h-4 w-4',
-                      value === opt.code ? 'opacity-100' : 'opacity-0',
-                    )}
+                    className={cn('mr-2 h-4 w-4', value === opt.code ? 'opacity-100' : 'opacity-0')}
                   />
                   <span className="truncate">
                     {opt.label}
                     {opt.description && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        {opt.description}
-                      </span>
+                      <span className="ml-1 text-xs text-muted-foreground">{opt.description}</span>
                     )}
                   </span>
                 </CommandItem>

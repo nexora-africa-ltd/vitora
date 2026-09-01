@@ -28,12 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
@@ -111,7 +106,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm mt-0.5">{value || '—'}</dd>
+      <dd className="mt-0.5 text-sm">{value || '—'}</dd>
     </div>
   );
 }
@@ -167,7 +162,11 @@ export default function AEFIDetailPage() {
       setShowSubmit(false);
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to submit to authorities.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to submit to authorities.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -186,7 +185,11 @@ export default function AEFIDetailPage() {
     return (
       <div className="space-y-4">
         <PageHeader title="AEFI Report" />
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Report not found.</CardContent></Card>
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Report not found.
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -203,20 +206,20 @@ export default function AEFIDetailPage() {
           <div className="flex flex-wrap gap-2">
             {!report.reported_to_authorities && (
               <Button size="sm" variant="destructive" onClick={() => setShowSubmit(true)}>
-                <Send className="h-4 w-4 mr-1" />
+                <Send className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">Submit to Authorities</span>
                 <span className="sm:hidden">Submit</span>
               </Button>
             )}
             {report.report_type === 'INITIAL' && (
               <Button size="sm" variant="outline" onClick={() => setShowFollowUp(true)}>
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">Follow-up</span>
                 <span className="sm:hidden">F/U</span>
               </Button>
             )}
             <Button size="sm" variant="outline" onClick={() => window.print()}>
-              <Printer className="h-4 w-4 mr-1" />
+              <Printer className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">Print MOH Form</span>
               <span className="sm:hidden">Print</span>
             </Button>
@@ -225,9 +228,9 @@ export default function AEFIDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50 print:bg-white print:border">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4 print:border print:bg-white">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {report.patient_name}
             <span className="text-muted-foreground"> • {report.patient_mrn}</span>
           </p>
@@ -236,25 +239,28 @@ export default function AEFIDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge className={`${severityColors[report.severity]} shrink-0 w-fit`}>
+          <Badge className={`${severityColors[report.severity]} w-fit shrink-0`}>
             {report.severity}
           </Badge>
-          <Badge className={`${outcomeColors[report.outcome]} shrink-0 w-fit`}>
+          <Badge className={`${outcomeColors[report.outcome]} w-fit shrink-0`}>
             {outcomeLabels[report.outcome]}
           </Badge>
-          <Badge variant={report.report_type === 'INITIAL' ? 'default' : 'secondary'} className="shrink-0 w-fit">
+          <Badge
+            variant={report.report_type === 'INITIAL' ? 'default' : 'secondary'}
+            className="w-fit shrink-0"
+          >
             {report.report_type === 'INITIAL' ? 'Initial' : 'Follow-up'}
           </Badge>
           {report.reported_to_authorities ? (
-            <Badge variant="default" className="shrink-0 w-fit gap-1">
+            <Badge variant="default" className="w-fit shrink-0 gap-1">
               <CheckCircle2 className="h-3 w-3" /> Reported
             </Badge>
           ) : report.severity === 'SEVERE' ? (
-            <Badge variant="destructive" className="shrink-0 w-fit gap-1">
+            <Badge variant="destructive" className="w-fit shrink-0 gap-1">
               <AlertTriangle className="h-3 w-3" /> Not Reported
             </Badge>
           ) : (
-            <Badge variant="outline" className="shrink-0 w-fit gap-1">
+            <Badge variant="outline" className="w-fit shrink-0 gap-1">
               <Clock className="h-3 w-3" /> Pending
             </Badge>
           )}
@@ -263,9 +269,11 @@ export default function AEFIDetailPage() {
 
       {/* Severe AEFI Alert */}
       {report.severity === 'SEVERE' && !report.reported_to_authorities && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>Severe AEFI must be reported to national authorities within 24 hours of detection.</span>
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Severe AEFI must be reported to national authorities within 24 hours of detection.
+          </span>
         </div>
       )}
 
@@ -273,7 +281,6 @@ export default function AEFIDetailPage() {
       {/* PRINTABLE MOH FORM CONTENT */}
       {/* ================================================================= */}
       <div className="print-aefi-form">
-
         {/* Section 1: Patient Details */}
         <Card>
           <CardHeader>
@@ -283,14 +290,12 @@ export default function AEFIDetailPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-3">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
               <Field label="Name" value={report.patient_name} />
               <Field label="MRN" value={report.patient_mrn} />
               <Field label="Gender" value={report.patient_gender} />
               <Field label="Date of Birth" value={formatDate(report.patient_date_of_birth)} />
-              {report.guardian_name && (
-                <Field label="Guardian" value={report.guardian_name} />
-              )}
+              {report.guardian_name && <Field label="Guardian" value={report.guardian_name} />}
             </dl>
           </CardContent>
         </Card>
@@ -304,7 +309,7 @@ export default function AEFIDetailPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
               <Field label="Centre Name" value={report.vaccination_centre_name} />
               <Field label="MFL Code" value={report.institution_mfl_code} />
               <Field
@@ -337,7 +342,7 @@ export default function AEFIDetailPage() {
               ))}
             </div>
             {report.other_event_type_detail && (
-              <p className="text-sm mt-2">
+              <p className="mt-2 text-sm">
                 <span className="text-muted-foreground">Other detail: </span>
                 {report.other_event_type_detail}
               </p>
@@ -351,7 +356,7 @@ export default function AEFIDetailPage() {
             <CardTitle className="text-base sm:text-lg">4. Event Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 mb-4">
+            <dl className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
               <Field label="Event Date" value={formatDate(report.event_date)} />
               <Field label="Onset Time" value={report.onset_time || '—'} />
               <Field
@@ -365,7 +370,7 @@ export default function AEFIDetailPage() {
             </dl>
             <div>
               <dt className="text-xs text-muted-foreground">Description / Timeline</dt>
-              <dd className="text-sm mt-1 whitespace-pre-wrap">{report.description || '—'}</dd>
+              <dd className="mt-1 whitespace-pre-wrap text-sm">{report.description || '—'}</dd>
             </div>
           </CardContent>
         </Card>
@@ -376,23 +381,32 @@ export default function AEFIDetailPage() {
             <CardTitle className="text-base sm:text-lg">5. Suspected Vaccine</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-3">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
               <Field label="Vaccine" value={report.vaccine_name} />
               <Field label="Dose" value={`Dose ${vd.dose_number}`} />
-              <Field label="Date Given" value={vd.administered_date ? formatDate(vd.administered_date) : '—'} />
+              <Field
+                label="Date Given"
+                value={vd.administered_date ? formatDate(vd.administered_date) : '—'}
+              />
               <Field label="Route / Site" value={`${vd.route || '—'} / ${vd.site || '—'}`} />
               <Field label="Batch Number" value={vd.batch_number} />
               <Field label="Manufacturer" value={vd.vaccine_manufacturer} />
-              <Field label="Expiry Date" value={vd.expiry_date ? formatDate(vd.expiry_date) : '—'} />
+              <Field
+                label="Expiry Date"
+                value={vd.expiry_date ? formatDate(vd.expiry_date) : '—'}
+              />
             </dl>
             {(vd.diluent_batch_number || vd.diluent_manufacturer) && (
               <>
                 <hr className="my-3" />
-                <p className="text-xs text-muted-foreground mb-2 font-medium">Diluent Details</p>
-                <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Diluent Details</p>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
                   <Field label="Diluent Batch" value={vd.diluent_batch_number} />
                   <Field label="Diluent Manufacturer" value={vd.diluent_manufacturer} />
-                  <Field label="Diluent Expiry" value={vd.diluent_expiry_date ? formatDate(vd.diluent_expiry_date) : '—'} />
+                  <Field
+                    label="Diluent Expiry"
+                    value={vd.diluent_expiry_date ? formatDate(vd.diluent_expiry_date) : '—'}
+                  />
                 </dl>
               </>
             )}
@@ -405,7 +419,7 @@ export default function AEFIDetailPage() {
             <CardTitle className="text-base sm:text-lg">6. Past Medical History</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm whitespace-pre-wrap">
+            <p className="whitespace-pre-wrap text-sm">
               {report.past_medical_history_notes || 'None recorded.'}
             </p>
           </CardContent>
@@ -417,18 +431,12 @@ export default function AEFIDetailPage() {
             <CardTitle className="text-base sm:text-lg">7. Action Taken</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-              <Field
-                label="Treatment Given"
-                value={report.treatment_given ? 'Yes' : 'No'}
-              />
+            <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+              <Field label="Treatment Given" value={report.treatment_given ? 'Yes' : 'No'} />
               {report.treatment_given && (
                 <Field label="Treatment Details" value={report.treatment_details} />
               )}
-              <Field
-                label="Specimen Collected"
-                value={report.specimen_collected ? 'Yes' : 'No'}
-              />
+              <Field label="Specimen Collected" value={report.specimen_collected ? 'Yes' : 'No'} />
               {report.specimen_collected && (
                 <Field label="Specimen Type" value={report.specimen_type} />
               )}
@@ -454,12 +462,15 @@ export default function AEFIDetailPage() {
             <CardTitle className="text-base sm:text-lg">9. Reporter</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
               <Field label="Reported By" value={report.reported_by_name || '—'} />
               <Field label="Designation" value={report.reported_by_designation} />
               <Field label="Report Created" value={formatDateTime(report.created_at)} />
               {report.reported_to_authorities && (
-                <Field label="Submitted to Authorities" value={formatDateTime(report.report_date || '')} />
+                <Field
+                  label="Submitted to Authorities"
+                  value={formatDateTime(report.report_date || '')}
+                />
               )}
               {report.dhis2_submitted_at && (
                 <Field label="DHIS2 Submitted" value={formatDateTime(report.dhis2_submitted_at)} />
@@ -475,13 +486,13 @@ export default function AEFIDetailPage() {
               <CardTitle className="text-base sm:text-lg">Investigation</CardTitle>
             </CardHeader>
             <CardContent>
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+              <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
                 <Field label="Investigated By" value={report.investigated_by_name || '—'} />
                 <Field label="National Classification" value={report.national_classification} />
               </dl>
               <div className="mt-3">
                 <dt className="text-xs text-muted-foreground">Investigation Notes</dt>
-                <dd className="text-sm mt-1 whitespace-pre-wrap">{report.investigation_notes}</dd>
+                <dd className="mt-1 whitespace-pre-wrap text-sm">{report.investigation_notes}</dd>
               </div>
             </CardContent>
           </Card>
@@ -497,8 +508,8 @@ export default function AEFIDetailPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                This initial report has {report.follow_up_count} follow-up report(s).
-                View them from the AEFI list filtered by this record.
+                This initial report has {report.follow_up_count} follow-up report(s). View them from
+                the AEFI list filtered by this record.
               </p>
             </CardContent>
           </Card>
@@ -512,16 +523,15 @@ export default function AEFIDetailPage() {
             <CardContent>
               <Button
                 variant="link"
-                className="p-0 h-auto text-sm"
+                className="h-auto p-0 text-sm"
                 onClick={() => router.push(`/immunizations/aefi/${report.parent_report}`)}
               >
-                <FileText className="h-4 w-4 mr-1" />
+                <FileText className="mr-1 h-4 w-4" />
                 View Initial Report #{report.parent_report}
               </Button>
             </CardContent>
           </Card>
         )}
-
       </div>
       {/* END PRINTABLE FORM CONTENT */}
 
@@ -540,7 +550,8 @@ export default function AEFIDetailPage() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              This will mark the AEFI report as submitted and trigger a DHIS2 AEFI Tracker submission.
+              This will mark the AEFI report as submitted and trigger a DHIS2 AEFI Tracker
+              submission.
             </p>
             <div>
               <Label>Notes (optional)</Label>
@@ -552,13 +563,15 @@ export default function AEFIDetailPage() {
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowSubmit(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setShowSubmit(false)}>
+                Cancel
+              </Button>
               <Button
                 variant="destructive"
                 onClick={() => submitMutation.mutate()}
                 disabled={submitMutation.isPending}
               >
-                {submitMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                {submitMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                 Confirm Submit
               </Button>
             </div>
@@ -584,7 +597,9 @@ export default function AEFIDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {SEVERITY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -597,7 +612,9 @@ export default function AEFIDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {OUTCOME_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -627,7 +644,9 @@ export default function AEFIDetailPage() {
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowFollowUp(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setShowFollowUp(false)}>
+                Cancel
+              </Button>
               <Button
                 onClick={() =>
                   followUpMutation.mutate({
@@ -640,7 +659,7 @@ export default function AEFIDetailPage() {
                 }
                 disabled={followUpMutation.isPending}
               >
-                {followUpMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                {followUpMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                 Create Follow-up
               </Button>
             </div>

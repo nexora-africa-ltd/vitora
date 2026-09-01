@@ -8,7 +8,10 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PatientSelector } from '@/components/encounters/patient-selector';
-import { DiagnosisCodeInput, type DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import {
+  DiagnosisCodeInput,
+  type DiagnosisCodeValue,
+} from '@/components/shared/diagnosis-code-input';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -109,7 +112,10 @@ export default function NewSurgeryCasePage() {
   });
 
   useEffect(() => {
-    theatreApi.listTheatres().then(data => setTheatres(data.results)).catch(() => {});
+    theatreApi
+      .listTheatres()
+      .then((data) => setTheatres(data.results))
+      .catch(() => {});
   }, []);
 
   const selectedPatientId = form.watch('patient');
@@ -138,7 +144,8 @@ export default function NewSurgeryCasePage() {
   if (errors.diagnosis || !form.watch('diagnosis')) missingFields.push('Diagnosis');
   if (errors.theatre || !form.watch('theatre')) missingFields.push('Theatre');
   if (errors.scheduled_date || !form.watch('scheduled_date')) missingFields.push('Date');
-  if (errors.scheduled_start_time || !form.watch('scheduled_start_time')) missingFields.push('Start Time');
+  if (errors.scheduled_start_time || !form.watch('scheduled_start_time'))
+    missingFields.push('Start Time');
   if (timeOutsideHours) missingFields.push('Start Time is outside operating hours');
 
   const canSubmit = isValid && !!selectedPatientId && !!selectedProcedure && !timeOutsideHours;
@@ -182,20 +189,25 @@ export default function NewSurgeryCasePage() {
         for (const [key, value] of Object.entries(responseData)) {
           if (key === 'conflicts') continue; // handled separately
           const fieldLabel =
-            key === 'scheduled_start_time' ? 'Start Time'
-            : key === 'primary_procedure' ? 'Procedure'
-            : key === 'scheduled_date' ? 'Date'
-            : key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+            key === 'scheduled_start_time'
+              ? 'Start Time'
+              : key === 'primary_procedure'
+                ? 'Procedure'
+                : key === 'scheduled_date'
+                  ? 'Date'
+                  : key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
           const msg = Array.isArray(value) ? value.join(', ') : String(value);
           messages.push(`${fieldLabel}: ${msg}`);
         }
         // Show conflict details
-        const conflicts = responseData.conflicts as Array<{
-          case_number?: string;
-          start_time?: string;
-          duration?: number;
-          patient_name?: string;
-        }> | undefined;
+        const conflicts = responseData.conflicts as
+          | Array<{
+              case_number?: string;
+              start_time?: string;
+              duration?: number;
+              patient_name?: string;
+            }>
+          | undefined;
         if (conflicts?.length) {
           for (const c of conflicts) {
             messages.push(
@@ -235,18 +247,20 @@ export default function NewSurgeryCasePage() {
               <FormField
                 control={form.control}
                 name="patient"
-                  render={({ field, fieldState }) => (
+                render={({ field, fieldState }) => (
                   <FormItem>
-                      <FormLabel>Patient <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Patient <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
-                        <PatientSelector
-                          value={field.value ?? null}
-                          selectedPatient={selectedPatient}
-                          onChange={(patientId, patient) => {
-                            field.onChange(patientId ?? undefined);
-                            setSelectedPatient(patient);
-                          }}
-                          error={fieldState.error?.message}
+                      <PatientSelector
+                        value={field.value ?? null}
+                        selectedPatient={selectedPatient}
+                        onChange={(patientId, patient) => {
+                          field.onChange(patientId ?? undefined);
+                          setSelectedPatient(patient);
+                        }}
+                        error={fieldState.error?.message}
                       />
                     </FormControl>
                   </FormItem>
@@ -255,125 +269,145 @@ export default function NewSurgeryCasePage() {
               <FormField
                 control={form.control}
                 name="primary_procedure"
-                  render={({ field }) => (
+                render={({ field }) => (
                   <FormItem>
-                      <FormLabel>Procedure <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Procedure <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
-                        <Popover open={procedureOpen} onOpenChange={setProcedureOpen}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={procedureOpen}
-                              className={cn(
-                                'w-full justify-between overflow-hidden px-3 font-normal',
-                                !selectedProcedure && 'text-muted-foreground'
-                              )}
-                            >
-                              {selectedProcedure ? (
-                                <span className="flex min-w-0 items-center gap-2 overflow-hidden text-left">
-                                  <Syringe className="h-4 w-4 shrink-0 text-primary" />
-                                  <span className="truncate">{selectedProcedure.name}</span>
-                                </span>
-                              ) : (
-                                'Search and select a surgical procedure'
-                              )}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                            <Command shouldFilter={false}>
-                              <CommandInput
-                                placeholder="Search by procedure name or code..."
-                                value={procedureSearch}
-                                onValueChange={setProcedureSearch}
-                              />
-                              <CommandList>
-                                {isLoadingProcedures ? (
-                                  <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Loading procedures...
-                                  </div>
-                                ) : (
-                                  <>
-                                    <CommandEmpty>No surgical procedures found.</CommandEmpty>
-                                    <CommandGroup heading={debouncedProcedureSearch ? 'Search Results' : 'Surgical Procedures'}>
-                                      {procedures.map((procedure) => (
-                                        <CommandItem
-                                          key={procedure.id}
-                                          value={`${procedure.code} ${procedure.name}`}
-                                          onSelect={() => {
-                                            field.onChange(procedure.id);
-                                            setSelectedProcedure(procedure);
-                                            setProcedureSearch('');
-                                            setProcedureOpen(false);
-                                            if (!form.getValues('estimated_duration_minutes')) {
-                                              form.setValue(
-                                                'estimated_duration_minutes',
-                                                procedure.typical_duration_minutes,
-                                                { shouldDirty: true }
-                                              );
-                                            }
-                                          }}
-                                          className="items-start gap-3 py-3"
-                                        >
-                                          <Check
-                                            className={cn(
-                                              'mt-0.5 h-4 w-4 shrink-0',
-                                              field.value === procedure.id ? 'opacity-100' : 'opacity-0'
-                                            )}
-                                          />
-                                          <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                              <span className="font-medium">{procedure.name}</span>
-                                              <span className="font-mono text-xs text-muted-foreground">
-                                                {procedure.code}
-                                              </span>
-                                            </div>
-                                            <div className="mt-1 flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
-                                              <Badge variant="outline" className="text-[10px]">
-                                                {procedure.category}
-                                              </Badge>
-                                              <span>{procedure.typical_duration_minutes} min</span>
-                                              {procedure.base_fee != null && (
-                                                <span>{formatCurrency(procedure.base_fee)}</span>
-                                              )}
-                                              {procedure.consent_required && (
-                                                <Badge variant="outline" className="text-[10px] text-amber-700">
-                                                  Consent required
-                                                </Badge>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </>
-                                )}
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                    </FormControl>
-                      {selectedProcedure && (
-                        <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className="text-[10px]">{selectedProcedure.category}</Badge>
-                            <span className="text-muted-foreground">
-                              {selectedProcedure.typical_duration_minutes} min typical duration
-                            </span>
-                            {selectedProcedure.consent_required && (
-                              <Badge variant="outline" className="text-[10px] text-amber-700">
-                                Written consent required
-                              </Badge>
+                      <Popover open={procedureOpen} onOpenChange={setProcedureOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={procedureOpen}
+                            className={cn(
+                              'w-full justify-between overflow-hidden px-3 font-normal',
+                              !selectedProcedure && 'text-muted-foreground'
                             )}
-                          </div>
-                          {selectedProcedure.description && (
-                            <p className="mt-2 text-xs text-muted-foreground">{selectedProcedure.description}</p>
+                          >
+                            {selectedProcedure ? (
+                              <span className="flex min-w-0 items-center gap-2 overflow-hidden text-left">
+                                <Syringe className="h-4 w-4 shrink-0 text-primary" />
+                                <span className="truncate">{selectedProcedure.name}</span>
+                              </span>
+                            ) : (
+                              'Search and select a surgical procedure'
+                            )}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[var(--radix-popover-trigger-width)] p-0"
+                          align="start"
+                        >
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              placeholder="Search by procedure name or code..."
+                              value={procedureSearch}
+                              onValueChange={setProcedureSearch}
+                            />
+                            <CommandList>
+                              {isLoadingProcedures ? (
+                                <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Loading procedures...
+                                </div>
+                              ) : (
+                                <>
+                                  <CommandEmpty>No surgical procedures found.</CommandEmpty>
+                                  <CommandGroup
+                                    heading={
+                                      debouncedProcedureSearch
+                                        ? 'Search Results'
+                                        : 'Surgical Procedures'
+                                    }
+                                  >
+                                    {procedures.map((procedure) => (
+                                      <CommandItem
+                                        key={procedure.id}
+                                        value={`${procedure.code} ${procedure.name}`}
+                                        onSelect={() => {
+                                          field.onChange(procedure.id);
+                                          setSelectedProcedure(procedure);
+                                          setProcedureSearch('');
+                                          setProcedureOpen(false);
+                                          if (!form.getValues('estimated_duration_minutes')) {
+                                            form.setValue(
+                                              'estimated_duration_minutes',
+                                              procedure.typical_duration_minutes,
+                                              { shouldDirty: true }
+                                            );
+                                          }
+                                        }}
+                                        className="items-start gap-3 py-3"
+                                      >
+                                        <Check
+                                          className={cn(
+                                            'mt-0.5 h-4 w-4 shrink-0',
+                                            field.value === procedure.id
+                                              ? 'opacity-100'
+                                              : 'opacity-0'
+                                          )}
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-medium">{procedure.name}</span>
+                                            <span className="font-mono text-xs text-muted-foreground">
+                                              {procedure.code}
+                                            </span>
+                                          </div>
+                                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                            <Badge variant="outline" className="text-[10px]">
+                                              {procedure.category}
+                                            </Badge>
+                                            <span>{procedure.typical_duration_minutes} min</span>
+                                            {procedure.base_fee != null && (
+                                              <span>{formatCurrency(procedure.base_fee)}</span>
+                                            )}
+                                            {procedure.consent_required && (
+                                              <Badge
+                                                variant="outline"
+                                                className="text-[10px] text-amber-700"
+                                              >
+                                                Consent required
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </FormControl>
+                    {selectedProcedure && (
+                      <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="text-[10px]">
+                            {selectedProcedure.category}
+                          </Badge>
+                          <span className="text-muted-foreground">
+                            {selectedProcedure.typical_duration_minutes} min typical duration
+                          </span>
+                          {selectedProcedure.consent_required && (
+                            <Badge variant="outline" className="text-[10px] text-amber-700">
+                              Written consent required
+                            </Badge>
                           )}
                         </div>
-                      )}
+                        {selectedProcedure.description && (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {selectedProcedure.description}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -415,10 +449,12 @@ export default function NewSurgeryCasePage() {
                 name="theatre"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Theatre <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Theatre <span className="text-destructive">*</span>
+                    </FormLabel>
                     <Select
                       value={field.value?.toString() ?? ''}
-                      onValueChange={v => field.onChange(Number(v))}
+                      onValueChange={(v) => field.onChange(Number(v))}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -426,8 +462,10 @@ export default function NewSurgeryCasePage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {theatres.map(t => (
-                          <SelectItem key={t.id} value={t.id.toString()}>{t.name} ({t.theatre_type})</SelectItem>
+                        {theatres.map((t) => (
+                          <SelectItem key={t.id} value={t.id.toString()}>
+                            {t.name} ({t.theatre_type})
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -440,7 +478,9 @@ export default function NewSurgeryCasePage() {
                 name="scheduled_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Date <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -453,7 +493,9 @@ export default function NewSurgeryCasePage() {
                 name="scheduled_start_time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Time <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Start Time <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="time"
@@ -483,7 +525,9 @@ export default function NewSurgeryCasePage() {
                 name="estimated_duration_minutes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duration (min) <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Duration (min) <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input type="number" min={5} max={1440} {...field} />
                     </FormControl>
@@ -616,7 +660,10 @@ export default function NewSurgeryCasePage() {
 
           {/* Missing fields message */}
           {missingFields.length > 0 && (
-            <Alert variant="default" className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+            <Alert
+              variant="default"
+              className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"
+            >
               <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">
                 Please fill in the required fields: {missingFields.join(', ')}
               </AlertDescription>
@@ -629,7 +676,7 @@ export default function NewSurgeryCasePage() {
               Cancel
             </Button>
             <Button type="submit" disabled={submitting || !canSubmit}>
-              {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Book Surgery
             </Button>
           </div>

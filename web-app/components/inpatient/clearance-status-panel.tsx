@@ -30,7 +30,7 @@ function ClearanceRow({
 }) {
   if (!department) {
     return (
-      <div className="flex items-center gap-3 p-3 rounded-lg border">
+      <div className="flex items-center gap-3 rounded-lg border p-3">
         <Skeleton className="h-5 w-5 rounded-full" />
         <Skeleton className="h-4 w-32" />
       </div>
@@ -39,31 +39,37 @@ function ClearanceRow({
 
   return (
     <div
-      className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border ${
+      className={`flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between ${
         department.cleared
           ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
           : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'
       }`}
     >
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex min-w-0 items-center gap-3">
         {department.cleared ? (
-          <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
         ) : (
-          <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
+          <XCircle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
         )}
         <div className="min-w-0">
           <p className="text-sm font-medium">{label}</p>
-          <p className="text-xs text-muted-foreground break-words">{department.reason}</p>
+          <p className="break-words text-xs text-muted-foreground">{department.reason}</p>
         </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0 ml-8 sm:ml-0">
+      <div className="ml-8 flex shrink-0 items-center gap-2 sm:ml-0">
         {department.cleared ? (
-          <Badge variant="outline" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300 dark:border-green-700">
+          <Badge
+            variant="outline"
+            className="border-green-300 bg-green-100 text-green-700 dark:border-green-700 dark:bg-green-900 dark:text-green-300"
+          >
             Cleared
           </Badge>
         ) : (
           <>
-            <Badge variant="outline" className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border-red-300 dark:border-red-700">
+            <Badge
+              variant="outline"
+              className="border-red-300 bg-red-100 text-red-700 dark:border-red-700 dark:bg-red-900 dark:text-red-300"
+            >
               Pending
             </Badge>
             {resolveHref && (
@@ -73,7 +79,7 @@ function ClearanceRow({
                 className="h-7 px-2"
                 onClick={() => onResolveClick?.(label, resolveHref)}
               >
-                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                <ExternalLink className="mr-1 h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Resolve</span>
               </Button>
             )}
@@ -91,24 +97,30 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
   const { toast } = useToast();
 
   // Build search param from patient MRN or name for resolve links
-  const patientSearchParam = patientContext?.patient?.mrn
-    || (patientContext?.patient ? `${patientContext.patient.first_name} ${patientContext.patient.last_name}` : '');
+  const patientSearchParam =
+    patientContext?.patient?.mrn ||
+    (patientContext?.patient
+      ? `${patientContext.patient.first_name} ${patientContext.patient.last_name}`
+      : '');
   const searchQuery = patientSearchParam ? `?search=${encodeURIComponent(patientSearchParam)}` : '';
 
-  const handleResolveClick = useCallback((label: string, href: string) => {
-    window.open(href, '_blank', 'noopener,noreferrer');
-    toast({
-      title: `${label} opened in new tab`,
-      description: 'Resolve the pending items, then refresh clearances here.',
-    });
-  }, [toast]);
+  const handleResolveClick = useCallback(
+    (label: string, href: string) => {
+      window.open(href, '_blank', 'noopener,noreferrer');
+      toast({
+        title: `${label} opened in new tab`,
+        description: 'Resolve the pending items, then refresh clearances here.',
+      });
+    },
+    [toast]
+  );
 
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <CheckCircle2 className="h-5 w-5 shrink-0" />
               Department Clearances
             </CardTitle>
@@ -132,9 +144,9 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-lg border">
+              <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
                 <Skeleton className="h-5 w-5 rounded-full" />
                 <div className="space-y-1.5">
                   <Skeleton className="h-4 w-24" />
@@ -145,7 +157,7 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
           </div>
         ) : (
           <>
-            <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <ClearanceRow
                 label="Billing"
                 department={clearance?.billing}
@@ -188,17 +200,18 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
               />
             </div>
             {patientContext?.hasSHA && clearance?.billing && !clearance.billing.cleared && (
-              <p className="text-sm text-blue-600 dark:text-blue-400 mt-3">
+              <p className="mt-3 text-sm text-blue-600 dark:text-blue-400">
                 This patient has SHA coverage. Ensure SHA claims are filed before clearing billing.
               </p>
             )}
             {clearance && !clearance.all_cleared && (
-              <p className="text-sm text-amber-600 dark:text-amber-400 mt-4">
-                ⚠️ All departments must be cleared before a normal discharge can be processed. Use the &ldquo;Resolve&rdquo; links to address pending items.
+              <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
+                ⚠️ All departments must be cleared before a normal discharge can be processed. Use
+                the &ldquo;Resolve&rdquo; links to address pending items.
               </p>
             )}
             {clearance?.all_cleared && (
-              <p className="text-sm text-green-600 dark:text-green-400 mt-4">
+              <p className="mt-4 text-sm text-green-600 dark:text-green-400">
                 ✓ All department clearances verified — ready for discharge.
               </p>
             )}

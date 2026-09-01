@@ -24,7 +24,7 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Ban
+  Ban,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -155,7 +155,7 @@ export default function PrescriptionDetailPage() {
   if (error || !prescription) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <XCircle className="h-12 w-12 text-destructive mb-4" />
+        <XCircle className="mb-4 h-12 w-12 text-destructive" />
         <p className="text-destructive">Failed to load prescription details</p>
         <Button variant="outline" className="mt-4" onClick={() => router.back()}>
           Go Back
@@ -171,7 +171,11 @@ export default function PrescriptionDetailPage() {
   const facilityInfo: FacilityInfo | undefined = facilityDetail
     ? {
         name: facilityDetail.name,
-        address: [facilityDetail.ward_name, facilityDetail.sub_county_name, facilityDetail.county_name]
+        address: [
+          facilityDetail.ward_name,
+          facilityDetail.sub_county_name,
+          facilityDetail.county_name,
+        ]
           .filter(Boolean)
           .join(', '),
         phone: facilityDetail.dha_facility_phone || undefined,
@@ -191,11 +195,7 @@ export default function PrescriptionDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.back()}
-          >
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -210,18 +210,21 @@ export default function PrescriptionDetailPage() {
               onClick={() => setShowCancelDialog(true)}
               disabled={cancelMutation.isPending}
             >
-              <Ban className="h-4 w-4 mr-2" />
+              <Ban className="mr-2 h-4 w-4" />
               Cancel
             </Button>
           )}
           {canDispense && (
             <Button onClick={handleDispense}>
-              <Pill className="h-4 w-4 mr-2" />
+              <Pill className="mr-2 h-4 w-4" />
               Dispense
             </Button>
           )}
           {prescription.status === 'DISPENSED' && (
-            <Button variant="outline" onClick={() => router.push(`/pharmacy/dispensing?prescription=${prescriptionId}`)}>
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/pharmacy/dispensing?prescription=${prescriptionId}`)}
+            >
               View History
             </Button>
           )}
@@ -235,10 +238,11 @@ export default function PrescriptionDetailPage() {
 
       {/* Status Alert */}
       {isExpired && (
-        <div className="flex items-center gap-2 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4">
           <AlertCircle className="h-5 w-5 text-destructive" />
           <p className="text-sm font-medium text-destructive">
-            This prescription has expired (valid until {format(new Date(prescription.valid_until), 'MMM d, yyyy')})
+            This prescription has expired (valid until{' '}
+            {format(new Date(prescription.valid_until), 'MMM d, yyyy')})
           </p>
         </div>
       )}
@@ -279,16 +283,20 @@ export default function PrescriptionDetailPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Prescribed Date</p>
-              <p className="font-medium">{format(new Date(prescription.prescribed_date), 'MMM d, yyyy')}</p>
+              <p className="font-medium">
+                {format(new Date(prescription.prescribed_date), 'MMM d, yyyy')}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Valid Until</p>
-              <p className="font-medium">{format(new Date(prescription.valid_until), 'MMM d, yyyy')}</p>
+              <p className="font-medium">
+                {format(new Date(prescription.valid_until), 'MMM d, yyyy')}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Status</p>
               <Badge className={STATUS_COLORS[prescription.status]}>
-                <StatusIcon className="h-3 w-3 mr-1" />
+                <StatusIcon className="mr-1 h-3 w-3" />
                 {prescription.status}
               </Badge>
             </div>
@@ -310,7 +318,10 @@ export default function PrescriptionDetailPage() {
             </div>
             {prescription.is_discharge_medication && (
               <div>
-                <Badge variant="outline" className="border-green-300 text-green-700 dark:border-green-700 dark:text-green-400">
+                <Badge
+                  variant="outline"
+                  className="border-green-300 text-green-700 dark:border-green-700 dark:text-green-400"
+                >
                   Discharge Medication
                 </Badge>
               </div>
@@ -397,10 +408,10 @@ export default function PrescriptionDetailPage() {
       {/* Clinical Comments */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             Comments
             {commentCount > 0 && (
-              <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px] rounded-full">
+              <Badge variant="secondary" className="h-5 min-w-5 rounded-full px-1.5 text-[10px]">
                 {commentCount}
               </Badge>
             )}
@@ -422,7 +433,8 @@ export default function PrescriptionDetailPage() {
           <DialogHeader>
             <DialogTitle>Cancel Prescription</DialogTitle>
             <DialogDescription>
-              Please provide a reason for cancelling this prescription. This action cannot be undone.
+              Please provide a reason for cancelling this prescription. This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

@@ -32,7 +32,11 @@ import { getOrCreateIdempotencyKey, clearIdempotencyKey } from '@/lib/utils/idem
 import { getApiErrorMessage } from '@/lib/api/client';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { PatientCreateData, Patient } from '@/lib/types/patient';
-import type { ClientRegistryClient, DirectEligibilityCheckResponse, SHAPayloadPerson } from '@/lib/types/sha';
+import type {
+  ClientRegistryClient,
+  DirectEligibilityCheckResponse,
+  SHAPayloadPerson,
+} from '@/lib/types/sha';
 
 const IDEMPOTENCY_FORM_ID = 'patient-registration';
 
@@ -60,11 +64,19 @@ type HealthcloudEnrollmentContext = {
 
 function isDuplicateRegistrationError(error: unknown): boolean {
   const message = getApiErrorMessage(error).toLowerCase();
-  if (message.includes('already exists') || message.includes('already registered') || message.includes('duplicate')) {
+  if (
+    message.includes('already exists') ||
+    message.includes('already registered') ||
+    message.includes('duplicate')
+  ) {
     return true;
   }
 
-  if (error instanceof AxiosError && error.response?.data && typeof error.response.data === 'object') {
+  if (
+    error instanceof AxiosError &&
+    error.response?.data &&
+    typeof error.response.data === 'object'
+  ) {
     const data = error.response.data as Record<string, unknown>;
     return Object.entries(data).some(([, value]) => {
       if (!Array.isArray(value)) {
@@ -74,7 +86,8 @@ function isDuplicateRegistrationError(error: unknown): boolean {
       return value.some(
         (item) =>
           typeof item === 'string' &&
-          (item.toLowerCase().includes('already exists') || item.toLowerCase().includes('duplicate'))
+          (item.toLowerCase().includes('already exists') ||
+            item.toLowerCase().includes('duplicate'))
       );
     });
   }
@@ -86,6 +99,7 @@ export default function NewPatientPage() {
   const router = useRouter();
   const { hasPermission } = usePermissions();
   const canCreatePatient = hasPermission('patients.add_patient');
+  const hasPatientCreateAccess = canCreatePatient;
   const { toast } = useToast();
   const createPatient = useCreatePatient();
   const createEnrollment = useCreateEnrollment();
@@ -97,25 +111,14 @@ export default function NewPatientPage() {
   const [selectedShaPerson, setSelectedShaPerson] = useState<SHAPayloadPerson | null>(null);
   // Holds a SHA person waiting for ineligibility confirmation before being
   // pushed into the patient form.
-  const [pendingIneligiblePerson, setPendingIneligiblePerson] =
-    useState<SHAPayloadPerson | null>(null);
-  const [healthcloudDefaults, setHealthcloudDefaults] = useState<HealthcloudDefaults | undefined>(undefined);
+  const [pendingIneligiblePerson, setPendingIneligiblePerson] = useState<SHAPayloadPerson | null>(
+    null
+  );
+  const [healthcloudDefaults, setHealthcloudDefaults] = useState<HealthcloudDefaults | undefined>(
+    undefined
+  );
   const [healthcloudEnrollmentContext, setHealthcloudEnrollmentContext] =
     useState<HealthcloudEnrollmentContext | null>(null);
-
-  if (!canCreatePatient) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="Register New Patient" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to register patients.
-          </p>
-        </Card>
-      </div>
-    );
-  }
 
   // Generate idempotency key for form submission (Sprint 1.7)
   const idempotencyKey = useMemo(() => getOrCreateIdempotencyKey(IDEMPOTENCY_FORM_ID), []);
@@ -221,37 +224,43 @@ export default function NewPatientPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle CR client found from modal
-  const handleCRClientFound = useCallback((client: ClientRegistryClient) => {
-    setCrClient(client);
-    toast({
-      title: 'Client Registry Record Found',
-      description: `Found record for ${client.first_name} ${client.last_name}`,
-    });
-  }, [toast]);
+  const handleCRClientFound = useCallback(
+    (client: ClientRegistryClient) => {
+      setCrClient(client);
+      toast({
+        title: 'Client Registry Record Found',
+        description: `Found record for ${client.first_name} ${client.last_name}`,
+      });
+    },
+    [toast]
+  );
 
   // Handle eligibility verification from modal
   const handleEligibilityVerified = useCallback((result: DirectEligibilityCheckResponse) => {
     setEligibility(result);
   }, []);
 
-  const handleAddShaPersonToForm = useCallback((person: SHAPayloadPerson) => {
-    // Ineligible → confirm with the user that an alternative payment method
-    // (cash) will be applied before populating the form.
-    if (eligibility && eligibility.is_eligible === false) {
-      setPendingIneligiblePerson(person);
-      return;
-    }
-    // Clear principal's CR record when selecting a different person (esp. dependant)
-    // so the form doesn't show stale principal identification data
-    if (person.source === 'dependent') {
-      setCrClient(null);
-    }
-    setSelectedShaPerson(person);
-    toast({
-      title: 'Patient form updated',
-      description: `Loaded ${[person.first_name, person.last_name].filter(Boolean).join(' ') || 'selected member'} into the registration form.`,
-    });
-  }, [eligibility, toast]);
+  const handleAddShaPersonToForm = useCallback(
+    (person: SHAPayloadPerson) => {
+      // Ineligible → confirm with the user that an alternative payment method
+      // (cash) will be applied before populating the form.
+      if (eligibility && eligibility.is_eligible === false) {
+        setPendingIneligiblePerson(person);
+        return;
+      }
+      // Clear principal's CR record when selecting a different person (esp. dependant)
+      // so the form doesn't show stale principal identification data
+      if (person.source === 'dependent') {
+        setCrClient(null);
+      }
+      setSelectedShaPerson(person);
+      toast({
+        title: 'Patient form updated',
+        description: `Loaded ${[person.first_name, person.last_name].filter(Boolean).join(' ') || 'selected member'} into the registration form.`,
+      });
+    },
+    [eligibility, toast]
+  );
 
   const handleConfirmIneligible = useCallback(() => {
     if (!pendingIneligiblePerson) return;
@@ -286,7 +295,9 @@ export default function NewPatientPage() {
       const exact = providerPlans.find((plan) => plan.name.trim().toLowerCase() === requestedName);
       if (exact) return exact.id;
 
-      const fuzzy = providerPlans.find((plan) => plan.name.trim().toLowerCase().includes(requestedName));
+      const fuzzy = providerPlans.find((plan) =>
+        plan.name.trim().toLowerCase().includes(requestedName)
+      );
       if (fuzzy) return fuzzy.id;
 
       return providerPlans[0]?.id ?? null;
@@ -317,7 +328,9 @@ export default function NewPatientPage() {
         } else {
           const validTo = healthcloudEnrollmentContext.valid_to
             ? healthcloudEnrollmentContext.valid_to.slice(0, 10)
-            : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10);
+            : new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+                .toISOString()
+                .slice(0, 10);
           try {
             await createEnrollment.mutateAsync({
               patient: patient.id,
@@ -336,7 +349,8 @@ export default function NewPatientPage() {
           } catch {
             toast({
               title: 'Enrollment creation failed',
-              description: 'Patient is registered, but insurance enrollment could not be created automatically.',
+              description:
+                'Patient is registered, but insurance enrollment could not be created automatically.',
               variant: 'destructive',
             });
           }
@@ -417,8 +431,22 @@ export default function NewPatientPage() {
     );
   }
 
+  if (!hasPatientCreateAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="Register New Patient" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to register patients.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       {/* Header */}
       <PageHeader
         title="Register New Patient"
@@ -431,16 +459,16 @@ export default function NewPatientPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             {/* Left side - info */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted sm:h-10 sm:w-10">
                 <KenyaCoatOfArms size={20} className="sm:hidden" />
                 <KenyaCoatOfArms size={24} className="hidden sm:block" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm sm:text-base font-medium truncate">
+                <p className="truncate text-sm font-medium sm:text-base">
                   <span className="sm:hidden">Digital Health</span>
                   <span className="hidden sm:inline">Kenya Digital Health Services</span>
                 </p>
-                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+                <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
                   Verify patient information before registration
                 </p>
               </div>
@@ -450,10 +478,14 @@ export default function NewPatientPage() {
             <div className="flex items-center gap-2">
               <SHAVerificationModal
                 trigger={
-                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-8 text-xs sm:text-sm">
-                    <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 flex-1 text-xs sm:flex-none sm:text-sm"
+                  >
+                    <Search className="h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Verify Patient</span>
-                    <span className="sm:hidden ml-1">Verify</span>
+                    <span className="ml-1 sm:hidden">Verify</span>
                   </Button>
                 }
                 onClientFound={handleCRClientFound}
@@ -465,31 +497,37 @@ export default function NewPatientPage() {
 
           {/* Verification results - only show if we have data */}
           {(eligibility || crClient) && (
-            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t space-y-2 sm:space-y-3">
+            <div className="mt-3 space-y-2 border-t pt-3 sm:mt-4 sm:space-y-3 sm:pt-4">
               {eligibility && (
-                <div className={`p-2 sm:p-3 rounded-md ${
-                  eligibility.is_eligible
-                    ? 'bg-success/10 border border-success/30'
-                    : 'bg-warning/10 border border-warning/30'
-                }`}>
-                  <div className={`flex items-start gap-1.5 sm:gap-2 text-[11px] sm:text-sm ${
-                    eligibility.is_eligible ? 'text-success' : 'text-warning-foreground'
-                  }`}>
+                <div
+                  className={`rounded-md p-2 sm:p-3 ${
+                    eligibility.is_eligible
+                      ? 'border border-success/30 bg-success/10'
+                      : 'border border-warning/30 bg-warning/10'
+                  }`}
+                >
+                  <div
+                    className={`flex items-start gap-1.5 text-[11px] sm:gap-2 sm:text-sm ${
+                      eligibility.is_eligible ? 'text-success' : 'text-warning-foreground'
+                    }`}
+                  >
                     {eligibility.is_eligible ? (
                       <>
-                        <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-xs sm:text-sm">SHA Eligible</p>
-                          <p className="text-[10px] sm:text-xs mt-0.5 opacity-90">
-                            {eligibility.copay_percentage === 0 ? 'Full coverage' : `${eligibility.copay_percentage}% copay`}
+                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold sm:text-sm">SHA Eligible</p>
+                          <p className="mt-0.5 text-[10px] opacity-90 sm:text-xs">
+                            {eligibility.copay_percentage === 0
+                              ? 'Full coverage'
+                              : `${eligibility.copay_percentage}% copay`}
                           </p>
                         </div>
                       </>
                     ) : (
                       <>
-                        <SHALogo size="sm" className="shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-xs sm:text-sm">Not SHA Eligible</p>
+                        <SHALogo size="sm" className="mt-0.5 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold sm:text-sm">Not SHA Eligible</p>
                         </div>
                       </>
                     )}
@@ -497,16 +535,14 @@ export default function NewPatientPage() {
 
                   {/* Additional details for ineligible patients */}
                   {!eligibility.is_eligible && (
-                    <div className="mt-1.5 sm:mt-2 space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs ml-5 sm:ml-6">
+                    <div className="ml-5 mt-1.5 space-y-0.5 text-[10px] sm:ml-6 sm:mt-2 sm:space-y-1 sm:text-xs">
                       {eligibility.sha_number && (
-                        <p className="text-muted-foreground break-all">
+                        <p className="break-all text-muted-foreground">
                           <span className="font-medium">SHA:</span> {eligibility.sha_number}
                         </p>
                       )}
                       {eligibility.reason && (
-                        <p className="text-warning-foreground">
-                          {eligibility.reason}
-                        </p>
+                        <p className="text-warning-foreground">{eligibility.reason}</p>
                       )}
                       {eligibility.possible_solution && (
                         <p className="text-blue-600 dark:text-blue-400">
@@ -519,12 +555,12 @@ export default function NewPatientPage() {
               )}
 
               {crClient && (
-                <div className="p-2 rounded-md bg-primary/10 text-primary text-[11px] sm:text-sm">
+                <div className="rounded-md bg-primary/10 p-2 text-[11px] text-primary sm:text-sm">
                   <div className="flex items-start gap-1.5 sm:gap-2">
-                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-xs sm:text-sm">CR Verified</p>
-                      <p className="text-[10px] sm:text-xs opacity-90 truncate">
+                    <User className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold sm:text-sm">CR Verified</p>
+                      <p className="truncate text-[10px] opacity-90 sm:text-xs">
                         {crClient.first_name} {crClient.last_name} • {crClient.client_number}
                       </p>
                     </div>
@@ -542,9 +578,10 @@ export default function NewPatientPage() {
           <div className="flex items-center gap-2">
             <CardTitle>Patient Information</CardTitle>
             <HelpPopover
-              content={crClient
-                ? 'Form pre-populated from SHA Client Registry. Review and update if needed.'
-                : 'Fields marked with * are required. Patient data is encrypted and stored securely.'
+              content={
+                crClient
+                  ? 'Form pre-populated from SHA Client Registry. Review and update if needed.'
+                  : 'Fields marked with * are required. Patient data is encrypted and stored securely.'
               }
             />
           </div>

@@ -39,7 +39,7 @@ const moduleReports = [
 
 export default function ReportsPage() {
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <div className="print-hide-on-print">
         <PageHeader
           title="Reports & Analytics"
@@ -52,21 +52,21 @@ export default function ReportsPage() {
 
       {/* Module-Specific Reports — hidden in print (link cards have no value on paper) */}
       <section className="print-hide-section">
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-lg sm:text-xl font-semibold">Module Analytics</h2>
+        <div className="mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-semibold sm:text-xl">Module Analytics</h2>
           <HelpPopover content="Quick links to detailed analytics for each clinical and administrative module." />
         </div>
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           {moduleReports.map((report) => (
             <Link key={report.href} href={report.href}>
-              <Card variant="interactive" className="h-full min-h-[8rem] relative overflow-hidden">
+              <Card variant="interactive" className="relative h-full min-h-[8rem] overflow-hidden">
                 <div
                   className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
                   aria-hidden="true"
                 />
                 <CardHeader className="relative pb-2">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
+                    <div className="rounded-lg bg-primary/10 p-2">
                       <report.icon className="h-5 w-5 text-primary" />
                     </div>
                     <CardTitle className="text-base">{report.title}</CardTitle>

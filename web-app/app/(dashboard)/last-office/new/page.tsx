@@ -7,7 +7,10 @@ import { toast } from 'sonner';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { PatientSearchInput } from '@/components/patients/patient-search-input';
-import { DiagnosisCodeInput, emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import {
+  DiagnosisCodeInput,
+  emptyDiagnosisCodeValue,
+} from '@/components/shared/diagnosis-code-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,7 +27,12 @@ import {
 import { useCreateDeathRecord } from '@/lib/hooks/use-last-office';
 import { getApiErrorMessage } from '@/lib/api/client';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
-import type { DeathRecordCreateData, MannerOfDeath, PlaceOfDeath, NotificationSource } from '@/lib/types/last-office';
+import type {
+  DeathRecordCreateData,
+  MannerOfDeath,
+  PlaceOfDeath,
+  NotificationSource,
+} from '@/lib/types/last-office';
 
 export default function NewDeathRecordPage() {
   const router = useRouter();
@@ -51,11 +59,14 @@ export default function NewDeathRecordPage() {
 
   // Cause of death (WHO Medical Certificate format)
   const [primaryCause, setPrimaryCause] = useState('');
-  const [primaryCauseIcd, setPrimaryCauseIcd] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue);
+  const [primaryCauseIcd, setPrimaryCauseIcd] =
+    useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue);
   const [antecedentCause, setAntecedentCause] = useState('');
-  const [antecedentCauseIcd, setAntecedentCauseIcd] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue);
+  const [antecedentCauseIcd, setAntecedentCauseIcd] =
+    useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue);
   const [underlyingCause, setUnderlyingCause] = useState('');
-  const [underlyingCauseIcd, setUnderlyingCauseIcd] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue);
+  const [underlyingCauseIcd, setUnderlyingCauseIcd] =
+    useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue);
   const [contributingConditions, setContributingConditions] = useState('');
 
   // Morgue
@@ -84,8 +95,12 @@ export default function NewDeathRecordPage() {
       notification_source: notificationSource,
       primary_cause: primaryCause,
       primary_cause_icd10: primaryCauseIcd.icd10Code ? Number(primaryCauseIcd.icd10Code) : null,
-      antecedent_cause_icd10: antecedentCauseIcd.icd10Code ? Number(antecedentCauseIcd.icd10Code) : null,
-      underlying_cause_icd10: underlyingCauseIcd.icd10Code ? Number(underlyingCauseIcd.icd10Code) : null,
+      antecedent_cause_icd10: antecedentCauseIcd.icd10Code
+        ? Number(antecedentCauseIcd.icd10Code)
+        : null,
+      underlying_cause_icd10: underlyingCauseIcd.icd10Code
+        ? Number(underlyingCauseIcd.icd10Code)
+        : null,
     } as DeathRecordCreateData;
     if (timeOfDeath) data.time_of_death = timeOfDeath;
     if (placeOfDeathDetail) data.place_of_death_detail = placeOfDeathDetail;
@@ -105,15 +120,30 @@ export default function NewDeathRecordPage() {
       setError(getApiErrorMessage(err));
     }
   }, [
-    patientId, dateOfDeath, timeOfDeath, mannerOfDeath, placeOfDeath,
-    placeOfDeathDetail, notificationSource, primaryCause, primaryCauseIcd,
-    antecedentCause, antecedentCauseIcd, underlyingCause, underlyingCauseIcd,
-    contributingConditions, admissionIdParam, encounterIdParam,
-    morgueCompartment, notes, createMutation, router,
+    patientId,
+    dateOfDeath,
+    timeOfDeath,
+    mannerOfDeath,
+    placeOfDeath,
+    placeOfDeathDetail,
+    notificationSource,
+    primaryCause,
+    primaryCauseIcd,
+    antecedentCause,
+    antecedentCauseIcd,
+    underlyingCause,
+    underlyingCauseIcd,
+    contributingConditions,
+    admissionIdParam,
+    encounterIdParam,
+    morgueCompartment,
+    notes,
+    createMutation,
+    router,
   ]);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title="Record Death"
         helpContent="Create a new death record. This will mark the patient as deceased. Follow the WHO International Medical Certificate of Cause of Death format."
@@ -169,7 +199,10 @@ export default function NewDeathRecordPage() {
 
             <div>
               <Label>Manner of Death</Label>
-              <Select value={mannerOfDeath} onValueChange={(v) => setMannerOfDeath(v as MannerOfDeath)}>
+              <Select
+                value={mannerOfDeath}
+                onValueChange={(v) => setMannerOfDeath(v as MannerOfDeath)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -186,7 +219,10 @@ export default function NewDeathRecordPage() {
 
             <div>
               <Label>Place of Death</Label>
-              <Select value={placeOfDeath} onValueChange={(v) => setPlaceOfDeath(v as PlaceOfDeath)}>
+              <Select
+                value={placeOfDeath}
+                onValueChange={(v) => setPlaceOfDeath(v as PlaceOfDeath)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -208,14 +244,19 @@ export default function NewDeathRecordPage() {
                   id="place-detail"
                   value={placeOfDeathDetail}
                   onChange={(e) => setPlaceOfDeathDetail(e.target.value)}
-                  placeholder={placeOfDeath === 'INPATIENT' ? 'e.g., Medical Ward 2' : 'Specify location'}
+                  placeholder={
+                    placeOfDeath === 'INPATIENT' ? 'e.g., Medical Ward 2' : 'Specify location'
+                  }
                 />
               </div>
             )}
 
             <div>
               <Label>Notification Source</Label>
-              <Select value={notificationSource} onValueChange={(v) => setNotificationSource(v as NotificationSource)}>
+              <Select
+                value={notificationSource}
+                onValueChange={(v) => setNotificationSource(v as NotificationSource)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -241,7 +282,9 @@ export default function NewDeathRecordPage() {
           <CardContent className="space-y-4">
             {/* Line a — Immediate cause */}
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground font-medium">Line (a) — Immediate Cause *</Label>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Line (a) — Immediate Cause *
+              </Label>
               <Input
                 value={primaryCause}
                 onChange={(e) => setPrimaryCause(e.target.value)}
@@ -259,7 +302,9 @@ export default function NewDeathRecordPage() {
 
             {/* Line b — Antecedent cause */}
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground font-medium">Line (b) — Antecedent Cause</Label>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Line (b) — Antecedent Cause
+              </Label>
               <Input
                 value={antecedentCause}
                 onChange={(e) => setAntecedentCause(e.target.value)}
@@ -277,7 +322,9 @@ export default function NewDeathRecordPage() {
 
             {/* Line c — Underlying cause */}
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground font-medium">Line (c) — Underlying Cause</Label>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Line (c) — Underlying Cause
+              </Label>
               <Input
                 value={underlyingCause}
                 onChange={(e) => setUnderlyingCause(e.target.value)}
@@ -295,7 +342,9 @@ export default function NewDeathRecordPage() {
 
             {/* Part II — Contributing conditions */}
             <div>
-              <Label className="text-xs text-muted-foreground font-medium">Part II — Contributing Conditions</Label>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Part II — Contributing Conditions
+              </Label>
               <Textarea
                 value={contributingConditions}
                 onChange={(e) => setContributingConditions(e.target.value)}
@@ -340,11 +389,11 @@ export default function NewDeathRecordPage() {
       {/* Actions */}
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => router.back()}>
-          <X className="h-4 w-4 mr-2" />
+          <X className="mr-2 h-4 w-4" />
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={createMutation.isPending}>
-          <Save className="h-4 w-4 mr-2" />
+          <Save className="mr-2 h-4 w-4" />
           {createMutation.isPending ? 'Saving...' : 'Record Death'}
         </Button>
       </div>

@@ -32,19 +32,22 @@ export function DiagnosesList({ diagnoses }: DiagnosesListProps) {
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
                   {diagnosis.icd10_code_display && (
-                    <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
+                    <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm">
                       {diagnosis.icd10_code_display}
                     </code>
                   )}
                   {diagnosis.icd11_code && (
-                    <Badge variant="outline" className="text-xs font-mono">
+                    <Badge variant="outline" className="font-mono text-xs">
                       ICD-11: {diagnosis.icd11_code}
                     </Badge>
                   )}
                   {diagnosis.snomed_code && (
-                    <Badge variant="outline" className="text-xs font-mono bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                    <Badge
+                      variant="outline"
+                      className="bg-purple-50 font-mono text-xs text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                    >
                       SCT: {diagnosis.snomed_code}
                     </Badge>
                   )}
@@ -53,12 +56,13 @@ export function DiagnosesList({ diagnoses }: DiagnosesListProps) {
                   </Badge>
                 </div>
                 <p className="font-medium">
-                  {diagnosis.icd11_display?.split(' - ').slice(1).join(' - ') || diagnosis.icd10_description || diagnosis.snomed_display || diagnosis.free_text_diagnosis}
+                  {diagnosis.icd11_display?.split(' - ').slice(1).join(' - ') ||
+                    diagnosis.icd10_description ||
+                    diagnosis.snomed_display ||
+                    diagnosis.free_text_diagnosis}
                 </p>
                 {diagnosis.notes && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {diagnosis.notes}
-                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">{diagnosis.notes}</p>
                 )}
               </div>
             </div>

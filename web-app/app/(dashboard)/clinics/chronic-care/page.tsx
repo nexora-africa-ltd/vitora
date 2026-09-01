@@ -12,7 +12,15 @@ export default function ChronicCarePage() {
     <ClinicTypePage
       title="Chronic Care"
       description="CCC (HIV), Diabetic, Hypertension, TB, Mental Health, and other chronic care clinics"
-      clinicTypes={['CCC', 'TB', 'DIABETIC', 'HYPERTENSION', 'MENTAL_HEALTH', 'ONCOLOGY', 'DIALYSIS']}
+      clinicTypes={[
+        'CCC',
+        'TB',
+        'DIABETIC',
+        'HYPERTENSION',
+        'MENTAL_HEALTH',
+        'ONCOLOGY',
+        'DIALYSIS',
+      ]}
     />
   );
 }

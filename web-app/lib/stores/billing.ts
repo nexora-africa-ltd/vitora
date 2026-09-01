@@ -203,8 +203,7 @@ export const useBillingStore = create<BillingState>()(
           invoiceFilters: { ...state.invoiceFilters, page },
         })),
 
-      resetInvoiceFilters: () =>
-        set({ invoiceFilters: { ...defaultInvoiceFilters } }),
+      resetInvoiceFilters: () => set({ invoiceFilters: { ...defaultInvoiceFilters } }),
 
       // ========================================================================
       // Payment Filters
@@ -226,8 +225,7 @@ export const useBillingStore = create<BillingState>()(
           paymentFilters: { ...state.paymentFilters, page },
         })),
 
-      resetPaymentFilters: () =>
-        set({ paymentFilters: { ...defaultPaymentFilters } }),
+      resetPaymentFilters: () => set({ paymentFilters: { ...defaultPaymentFilters } }),
 
       // ========================================================================
       // Selected Items
@@ -247,9 +245,7 @@ export const useBillingStore = create<BillingState>()(
           const isSelected = state.selectedInvoiceIds.includes(invoiceId);
           if (isSelected) {
             return {
-              selectedInvoiceIds: state.selectedInvoiceIds.filter(
-                (id) => id !== invoiceId
-              ),
+              selectedInvoiceIds: state.selectedInvoiceIds.filter((id) => id !== invoiceId),
             };
           }
           return {
@@ -323,8 +319,7 @@ export const useBillingStore = create<BillingState>()(
           },
         })),
 
-      resetMpesaPayment: () =>
-        set({ mpesaPayment: { ...defaultMpesaPayment } }),
+      resetMpesaPayment: () => set({ mpesaPayment: { ...defaultMpesaPayment } }),
 
       // ========================================================================
       // Report State
@@ -334,8 +329,7 @@ export const useBillingStore = create<BillingState>()(
         endDate: getToday(),
       },
 
-      setReportDateRange: (startDate, endDate) =>
-        set({ reportDateRange: { startDate, endDate } }),
+      setReportDateRange: (startDate, endDate) => set({ reportDateRange: { startDate, endDate } }),
 
       reportType: 'daily-collection',
       setReportType: (reportType) => set({ reportType }),
@@ -391,8 +385,7 @@ export const useBillingStore = create<BillingState>()(
 export const selectHasSelectedInvoices = (state: BillingState) =>
   state.selectedInvoiceIds.length > 0;
 
-export const selectSelectedInvoiceCount = (state: BillingState) =>
-  state.selectedInvoiceIds.length;
+export const selectSelectedInvoiceCount = (state: BillingState) => state.selectedInvoiceIds.length;
 
 export const selectHasActiveInvoiceFilters = (state: BillingState) => {
   const filters = state.invoiceFilters;

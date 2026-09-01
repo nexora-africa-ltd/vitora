@@ -18,25 +18,32 @@ export default function TheatreAnesthesiaPage() {
 
   useEffect(() => {
     let mounted = true;
-    theatreApi.listCases({ page_size: 200 }).then((response) => {
-      if (!mounted) return;
-      setCases(response.results.filter((item) => ACTIVE_CASE_STATUSES.includes(item.status)));
-    }).catch(() => {
-      if (!mounted) return;
-      setCases([]);
-    }).finally(() => {
-      if (mounted) setLoading(false);
-    });
+    theatreApi
+      .listCases({ page_size: 200 })
+      .then((response) => {
+        if (!mounted) return;
+        setCases(response.results.filter((item) => ACTIVE_CASE_STATUSES.includes(item.status)));
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setCases([]);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
     return () => {
       mounted = false;
     };
   }, []);
 
-  const grouped = useMemo(() => ({
-    preOp: cases.filter((item) => ['SCHEDULED', 'PRE_OP'].includes(item.status)),
-    intraOp: cases.filter((item) => ['IN_THEATRE', 'IN_SURGERY'].includes(item.status)),
-    pacu: cases.filter((item) => item.status === 'IN_PACU'),
-  }), [cases]);
+  const grouped = useMemo(
+    () => ({
+      preOp: cases.filter((item) => ['SCHEDULED', 'PRE_OP'].includes(item.status)),
+      intraOp: cases.filter((item) => ['IN_THEATRE', 'IN_SURGERY'].includes(item.status)),
+      pacu: cases.filter((item) => item.status === 'IN_PACU'),
+    }),
+    [cases]
+  );
 
   return (
     <div className="space-y-6">
@@ -52,7 +59,10 @@ export default function TheatreAnesthesiaPage() {
           ['PACU Handover', grouped.pacu.length],
         ].map(([label, count]) => (
           <Card key={label} className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <p className="text-sm text-muted-foreground">{label}</p>
               <p className="text-2xl font-bold">{count}</p>
@@ -62,26 +72,43 @@ export default function TheatreAnesthesiaPage() {
       </div>
 
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Syringe className="h-4 w-4" />Case Queue</CardTitle></CardHeader>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Syringe className="h-4 w-4" />
+            Case Queue
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">Loading anesthesia queue...</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              Loading anesthesia queue...
+            </div>
           ) : cases.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">No active theatre cases currently need anesthesia follow-up.</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              No active theatre cases currently need anesthesia follow-up.
+            </div>
           ) : (
             <div className="space-y-3">
               {cases.map((item) => {
                 return (
-                  <div key={item.id} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div
+                    key={item.id}
+                    className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{item.primary_procedure_name}</p>
-                      <p className="text-sm text-muted-foreground truncate">{item.patient_name} · {item.case_number}</p>
+                      <p className="truncate font-medium">{item.primary_procedure_name}</p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {item.patient_name} · {item.case_number}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" size="sm" className="w-fit">{item.status.replace(/_/g, ' ')}</Badge>
+                      <Badge variant="outline" size="sm" className="w-fit">
+                        {item.status.replace(/_/g, ' ')}
+                      </Badge>
                       <Button asChild size="sm">
                         <Link href={`/theatre/anesthesia/${item.case_number}`}>
-                          <FileHeart className="mr-2 h-4 w-4" />Open case
+                          <FileHeart className="mr-2 h-4 w-4" />
+                          Open case
                         </Link>
                       </Button>
                     </div>

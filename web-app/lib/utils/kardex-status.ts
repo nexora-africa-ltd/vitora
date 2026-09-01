@@ -34,7 +34,8 @@ export const normalizeMobilityStatus = (value?: string | null): string => {
   if (normalized.includes('BEDBOUND') || normalized.includes('NON_AMBULATORY')) return 'BEDBOUND';
   if (normalized.includes('WHEELCHAIR')) return 'WHEELCHAIR_ONLY';
   if (normalized.includes('BED') && normalized.includes('CHAIR')) return 'BED_TO_CHAIR_ONLY';
-  if (normalized.includes('AMBUL') || normalized.includes('WALK')) return 'AMBULATORY_WITH_ASSISTANCE';
+  if (normalized.includes('AMBUL') || normalized.includes('WALK'))
+    return 'AMBULATORY_WITH_ASSISTANCE';
   if (normalized.includes('INDEPENDENT')) return 'INDEPENDENT';
   return 'UNKNOWN';
 };
@@ -97,16 +98,28 @@ export const resolveCanAmbulate = (mobilityStatus?: string | null): boolean | nu
   const rawCode = mobilityStatus.split('::')[0] ?? mobilityStatus;
   const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '_');
 
-  if (['INDEPENDENT', 'AMBULATORY_WITH_ASSISTANCE', 'AMBULANT', 'WALKS_INDEPENDENTLY'].includes(normalized)) {
+  if (
+    ['INDEPENDENT', 'AMBULATORY_WITH_ASSISTANCE', 'AMBULANT', 'WALKS_INDEPENDENTLY'].includes(
+      normalized
+    )
+  ) {
     return true;
   }
   if (['BEDBOUND', 'NON_AMBULATORY', 'WHEELCHAIR_ONLY', 'BED_TO_CHAIR_ONLY'].includes(normalized)) {
     return false;
   }
-  if (normalized.includes('BED') || normalized.includes('WHEELCHAIR') || normalized.includes('NON_AMBULAT')) {
+  if (
+    normalized.includes('BED') ||
+    normalized.includes('WHEELCHAIR') ||
+    normalized.includes('NON_AMBULAT')
+  ) {
     return false;
   }
-  if (normalized.includes('AMBULAT') || normalized.includes('WALK') || normalized.includes('INDEPENDENT')) {
+  if (
+    normalized.includes('AMBULAT') ||
+    normalized.includes('WALK') ||
+    normalized.includes('INDEPENDENT')
+  ) {
     return true;
   }
   return null;

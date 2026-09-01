@@ -325,10 +325,7 @@ function deriveKey(passphrase: string, salt: Buffer): Buffer {
  * File format:
  *   [14B magic] [32B salt] [12B iv] [encrypted data] [16B auth tag]
  */
-export function exportEncryptedBackup(
-  destPath: string,
-  passphrase: string
-): BackupInfo | null {
+export function exportEncryptedBackup(destPath: string, passphrase: string): BackupInfo | null {
   if (!isLocalDbAvailable()) return null;
   if (!passphrase || passphrase.length < 8) {
     console.error('[Backup] Passphrase must be at least 8 characters');
@@ -369,7 +366,11 @@ export function exportEncryptedBackup(
     fs.closeSync(fd);
 
     // Clean up temp file
-    try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+    try {
+      fs.unlinkSync(tmpPath);
+    } catch {
+      /* ignore */
+    }
 
     const stats = fs.statSync(destPath);
     console.log(`[Backup] Encrypted export: ${destPath} (${formatBytes(stats.size)})`);
@@ -390,10 +391,7 @@ export function exportEncryptedBackup(
  * Import and decrypt an encrypted backup file.
  * Returns the decrypted database as a temporary file path, or null on failure.
  */
-export function importEncryptedBackup(
-  encryptedPath: string,
-  passphrase: string
-): string | null {
+export function importEncryptedBackup(encryptedPath: string, passphrase: string): string | null {
   const crypto = require('crypto');
 
   try {
@@ -443,7 +441,11 @@ export function importEncryptedBackup(
 
     if (result[0]?.integrity_check !== 'ok') {
       console.error('[Backup] Decrypted database is corrupted');
-      try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+      try {
+        fs.unlinkSync(tmpPath);
+      } catch {
+        /* ignore */
+      }
       return null;
     }
 
@@ -458,17 +460,18 @@ export function importEncryptedBackup(
 /**
  * Restore from an encrypted backup: decrypt, verify, then replace current DB.
  */
-export function restoreFromEncryptedBackup(
-  encryptedPath: string,
-  passphrase: string
-): boolean {
+export function restoreFromEncryptedBackup(encryptedPath: string, passphrase: string): boolean {
   const tmpPath = importEncryptedBackup(encryptedPath, passphrase);
   if (!tmpPath) return false;
 
   const success = restoreFromBackup(tmpPath);
 
   // Clean up temp file
-  try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+  try {
+    fs.unlinkSync(tmpPath);
+  } catch {
+    /* ignore */
+  }
 
   return success;
 }

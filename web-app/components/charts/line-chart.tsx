@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   Line,
   LineChart as RechartsLineChart,
@@ -8,8 +8,8 @@ import {
   XAxis,
   YAxis,
   ReferenceLine,
-} from "recharts";
-import type { ValueType, NameType } from "recharts/types/component/DefaultTooltipContent";
+} from 'recharts';
+import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import {
   ChartContainer,
   ChartTooltip,
@@ -17,8 +17,8 @@ import {
   ChartLegend,
   ChartLegendContent,
   type ChartConfig,
-} from "@/components/ui/chart";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/chart';
+import { cn } from '@/lib/utils';
 
 export interface LineChartProps<T extends Record<string, unknown>> {
   /** Chart data array */
@@ -46,7 +46,7 @@ export interface LineChartProps<T extends Record<string, unknown>> {
   /** Show dots on data points */
   showDots?: boolean;
   /** Line type */
-  lineType?: "linear" | "monotone" | "step" | "natural";
+  lineType?: 'linear' | 'monotone' | 'step' | 'natural';
   /** Stroke width */
   strokeWidth?: number;
   /** Minimum height for the chart container */
@@ -66,7 +66,7 @@ export interface LineChartProps<T extends Record<string, unknown>> {
     payload: unknown
   ) => React.ReactNode;
   /** Tooltip indicator style */
-  tooltipIndicator?: "line" | "dot" | "dashed";
+  tooltipIndicator?: 'line' | 'dot' | 'dashed';
   /** Reference lines (horizontal thresholds) */
   referenceLines?: Array<{
     y: number;
@@ -75,7 +75,7 @@ export interface LineChartProps<T extends Record<string, unknown>> {
     strokeDasharray?: string;
   }>;
   /** Y-axis domain */
-  yAxisDomain?: [number | "auto", number | "auto"];
+  yAxisDomain?: [number | 'auto', number | 'auto'];
   /** Enable zoom/brush */
   enableBrush?: boolean;
   /** Animate lines */
@@ -125,14 +125,14 @@ export function LineChart<T extends Record<string, unknown>>({
   showTooltip = true,
   showLegend = false,
   showDots = true,
-  lineType = "monotone",
+  lineType = 'monotone',
   strokeWidth = 2,
-  minHeight = "200px",
+  minHeight = '200px',
   className,
   xAxisFormatter,
   yAxisFormatter,
   tooltipFormatter,
-  tooltipIndicator = "line",
+  tooltipIndicator = 'line',
   referenceLines = [],
   yAxisDomain,
   animate = true,
@@ -142,23 +142,17 @@ export function LineChart<T extends Record<string, unknown>>({
   };
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn('w-full', className)}>
       {(title || description) && (
         <div className="mb-4">
           {title && <h3 className="text-lg font-semibold">{title}</h3>}
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
       )}
-      <ChartContainer config={config} className={cn(`min-h-[${minHeight}]`, "w-full")}>
+      <ChartContainer config={config} className={cn(`min-h-[${minHeight}]`, 'w-full')}>
         <RechartsLineChart accessibilityLayer data={data}>
           {showGrid && (
-            <CartesianGrid
-              vertical={false}
-              strokeDasharray="3 3"
-              className="stroke-muted"
-            />
+            <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-muted" />
           )}
           {showXAxis && (
             <XAxis
@@ -167,7 +161,7 @@ export function LineChart<T extends Record<string, unknown>>({
               tickMargin={10}
               axisLine={false}
               tickFormatter={xAxisFormatter ?? defaultXFormatter}
-              className="text-xs fill-muted-foreground"
+              className="fill-muted-foreground text-xs"
             />
           )}
           {showYAxis && (
@@ -177,7 +171,7 @@ export function LineChart<T extends Record<string, unknown>>({
               axisLine={false}
               tickFormatter={yAxisFormatter}
               domain={yAxisDomain}
-              className="text-xs fill-muted-foreground"
+              className="fill-muted-foreground text-xs"
               width={60}
             />
           )}
@@ -186,17 +180,14 @@ export function LineChart<T extends Record<string, unknown>>({
               key={index}
               y={refLine.y}
               label={refLine.label}
-              stroke={refLine.color ?? "hsl(var(--muted-foreground))"}
-              strokeDasharray={refLine.strokeDasharray ?? "3 3"}
+              stroke={refLine.color ?? 'hsl(var(--muted-foreground))'}
+              strokeDasharray={refLine.strokeDasharray ?? '3 3'}
             />
           ))}
           {showTooltip && (
             <ChartTooltip
               content={
-                <ChartTooltipContent
-                  indicator={tooltipIndicator}
-                  formatter={tooltipFormatter}
-                />
+                <ChartTooltipContent indicator={tooltipIndicator} formatter={tooltipFormatter} />
               }
             />
           )}
@@ -219,4 +210,4 @@ export function LineChart<T extends Record<string, unknown>>({
   );
 }
 
-LineChart.displayName = "LineChart";
+LineChart.displayName = 'LineChart';

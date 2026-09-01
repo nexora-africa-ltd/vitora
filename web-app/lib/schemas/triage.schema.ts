@@ -53,7 +53,12 @@ export const ChiefComplaintCategorySchema = z.enum([
 ]);
 
 export const AgeGroupSchema = z.enum([
-  'neonate', 'infant', 'young_child', 'school_age', 'adolescent', 'adult',
+  'neonate',
+  'infant',
+  'young_child',
+  'school_age',
+  'adolescent',
+  'adult',
 ]);
 
 export const DehydrationLevelSchema = z.enum(['NONE', 'SOME', 'SEVERE']);
@@ -98,7 +103,12 @@ export const VitalTypeSchema = z.enum([
 
 export const AlertSeveritySchema = z.enum(['CRITICAL', 'WARNING']);
 
-export const WaitingQueueStatusSchema = z.enum(['WAITING_TRIAGE', 'IN_TRIAGE', 'TRIAGED', 'CANCELLED']);
+export const WaitingQueueStatusSchema = z.enum([
+  'WAITING_TRIAGE',
+  'IN_TRIAGE',
+  'TRIAGED',
+  'CANCELLED',
+]);
 
 // =============================================================================
 // TRIAGE ALERT SCHEMA
@@ -127,8 +137,12 @@ export type TriageAlertSchemaType = z.infer<typeof TriageAlertSchema>;
 
 /** Strict vital type schema for threshold records (backend has only 6 types) */
 export const ThresholdVitalTypeSchema = z.enum([
-  'SPO2', 'SYSTOLIC_BP', 'DIASTOLIC_BP',
-  'HEART_RATE', 'TEMPERATURE', 'RESPIRATORY_RATE',
+  'SPO2',
+  'SYSTOLIC_BP',
+  'DIASTOLIC_BP',
+  'HEART_RATE',
+  'TEMPERATURE',
+  'RESPIRATORY_RATE',
 ]);
 
 export const TriageVitalThresholdSchema = z.object({
@@ -195,7 +209,10 @@ export const TriageAssessmentSchema = z.object({
   etat_danger_signs: z.array(z.string()).optional().default([]),
   dehydration_level: DehydrationLevelSchema.or(z.literal('')).optional().nullable().default(null),
   fontanelle_status: FontanelleStatusSchema.or(z.literal('')).optional().nullable().default(null),
-  breastfeeding_ability: BreastfeedingAbilitySchema.or(z.literal('')).optional().nullable().default(null),
+  breastfeeding_ability: BreastfeedingAbilitySchema.or(z.literal(''))
+    .optional()
+    .nullable()
+    .default(null),
   capillary_refill_seconds: z.number().optional().nullable().default(null),
   muac_cm: z.number().optional().nullable().default(null),
 
@@ -353,11 +370,13 @@ export const LWBSStatsSchema = z.object({
   total_lwbs: z.number(),
   lwbs_rate: z.number(),
   avg_wait_before_lwbs_minutes: z.number(),
-  by_category: z.array(z.object({
-    category: TriageCategorySchema,
-    count: z.number(),
-    rate: z.number(),
-  })),
+  by_category: z.array(
+    z.object({
+      category: TriageCategorySchema,
+      count: z.number(),
+      rate: z.number(),
+    })
+  ),
 });
 
 export const StaffPerformanceSchema = z.object({
@@ -404,36 +423,46 @@ export const WaitTimeStatsResponseSchema = z.object({
   total_assessments: z.number().optional(),
   max_wait_minutes: z.number().optional(),
   min_wait_minutes: z.number().optional(),
-  current_queue: z.object({
-    count: z.number(),
-    avg_wait_minutes: z.number(),
-    max_wait_minutes: z.number(),
-    longest_waiting_patient: z.number(),
-  }).optional(),
-  completion_time: z.object({
-    count: z.number(),
-    avg_minutes: z.number(),
-    median_minutes: z.number(),
-  }).optional(),
-  triage_duration: z.object({
-    count: z.number(),
-    avg_minutes: z.number(),
-  }).optional(),
+  current_queue: z
+    .object({
+      count: z.number(),
+      avg_wait_minutes: z.number(),
+      max_wait_minutes: z.number(),
+      longest_waiting_patient: z.number(),
+    })
+    .optional(),
+  completion_time: z
+    .object({
+      count: z.number(),
+      avg_minutes: z.number(),
+      median_minutes: z.number(),
+    })
+    .optional(),
+  triage_duration: z
+    .object({
+      count: z.number(),
+      avg_minutes: z.number(),
+    })
+    .optional(),
 });
 
 export type WaitTimeStatsResponseSchemaType = z.infer<typeof WaitTimeStatsResponseSchema>;
 
 export const VolumeReportResponseSchema = z.object({
-  by_category: z.array(z.object({
-    category: TriageCategorySchema,
-    count: z.number(),
-    percentage: z.number(),
-  })),
-  by_area: z.array(z.object({
-    area: AssignedAreaSchema,
-    area_label: z.string(),
-    count: z.number(),
-  })),
+  by_category: z.array(
+    z.object({
+      category: TriageCategorySchema,
+      count: z.number(),
+      percentage: z.number(),
+    })
+  ),
+  by_area: z.array(
+    z.object({
+      area: AssignedAreaSchema,
+      area_label: z.string(),
+      count: z.number(),
+    })
+  ),
   total: z.number(),
 });
 
@@ -603,7 +632,6 @@ export type ERBed = z.infer<typeof ERBedSchema>;
 export type ERBedListItem = z.infer<typeof ERBedListItemSchema>;
 export type ERBedZoneGroup = z.infer<typeof ERBedZoneGroupSchema>;
 export type ERBedZoneSummary = z.infer<typeof ERBedZoneSummarySchema>;
-
 
 // =============================================================================
 // PHASE 4: AUTO-ESCALATION & ALERTS

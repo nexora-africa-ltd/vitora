@@ -1,9 +1,27 @@
 import { useCallback } from 'react';
 import { useAIClinicalDocument, useAIClinicalAssist } from '@/lib/hooks/use-ai';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, AIPatientContext, ClinicalDocSection, ClinicalDocEncounterContext } from '@/lib/types/ai';
+import type {
+  ClinicalDocAdmissionContext,
+  ClinicalDocPatientContext,
+  ClinicalDocGenerationMode,
+  AIPatientContext,
+  ClinicalDocSection,
+  ClinicalDocEncounterContext,
+  StoredCarePlanResult,
+} from '@/lib/types/ai';
 import type { Encounter } from '@/lib/types/encounter';
-import type { DischargeType, DischargeTemplateLayout, DischargeTemplateSectionConfig, DischargeMedication, AdmissionOrdersResponse, WardRound, TemperatureReading, BPMonitoringReading } from '@/lib/types/inpatient';
+import type {
+  Admission,
+  DischargeType,
+  DischargeTemplateLayout,
+  DischargeTemplateSectionConfig,
+  DischargeMedication,
+  AdmissionOrdersResponse,
+  WardRound,
+  TemperatureReading,
+  BPMonitoringReading,
+} from '@/lib/types/inpatient';
 import type { DiagnosisEntry } from '@/components/shared';
 import type { DischargeSummarySection, ParsedSection, SuggestedMedication } from './types';
 import { ROUTED_SECTION_IDS, HIDDEN_SECTION_IDS, DEDICATED_FIELD_KEYS } from './types';
@@ -17,6 +35,29 @@ import {
 } from './utils';
 
 const AI_EXEMPT_TEMPLATE_KEYS = new Set(['follow_up', 'follow_up_plan']);
+
+type StoredCarePlanGoal = { description?: string; goal?: string };
+type StoredCarePlanIntervention =
+  | { action?: string; description?: string; name?: string }
+  | { items?: Array<{ action?: string; description?: string; name?: string }> };
+type StoredCarePlanData = {
+  goals?: Array<StoredCarePlanGoal | string>;
+  interventions?: StoredCarePlanIntervention[];
+  discharge_criteria?: string[];
+};
+
+function hasInterventionItems(
+  intervention: StoredCarePlanIntervention
+): intervention is { items: Array<{ action?: string; description?: string; name?: string }> } {
+  return Array.isArray((intervention as { items?: unknown }).items);
+}
+
+function parseStoredCarePlanData(plan: StoredCarePlanResult): StoredCarePlanData {
+  if (typeof plan.result_data !== 'object' || !plan.result_data) {
+    return {};
+  }
+  return plan.result_data as unknown as StoredCarePlanData;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -92,7 +133,7 @@ function normalizeSections(sections: ClinicalDocSection[]): ClinicalDocSection[]
 // ---------------------------------------------------------------------------
 
 interface UseDischargeAIParams {
-  admission: any;
+  admission: Admission | null;
   diagnoses: DiagnosisEntry[];
   medications: DischargeMedication[];
   lengthOfStay: number;
@@ -108,7 +149,7 @@ interface UseDischargeAIParams {
   /** Ward rounds for condition-at-discharge and complication extraction */
   wardRounds?: { results: WardRound[] } | null;
   /** Stored AI care plans for management/follow-up context */
-  storedCarePlans?: any[] | null;
+  storedCarePlans?: StoredCarePlanResult[] | null;
   /** Observation chart: temperature/pulse/RR readings */
   temperatureReadings?: TemperatureReading[] | null;
   /** Observation chart: BP readings */
@@ -171,13 +212,14 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     if (!admission) return null;
     const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
     const primaryDisplay = primaryEntry?.code.icd11Display || primaryEntry?.code.icd10Display || '';
-    const diagnosis = primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
+    const diagnosis =
+      primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
     const sourceEncounterSummary = buildSourceEncounterClinicalSummary(sourceEncounter);
 
     // Extract ICD-10 code from the primary diagnosis entry
     const icd10Code = primaryEntry?.code.icd10Code
       ? String(primaryEntry.code.icd10Code)
-      : (primaryEntry?.code.icd10Display?.split(' - ')[0]) || '';
+      : primaryEntry?.code.icd10Display?.split(' - ')[0] || '';
 
     // Secondary diagnoses
     const secondaryDiagnoses = diagnoses
@@ -186,7 +228,13 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       .filter(Boolean);
 
     // Medications given during stay (from prescriptions) — structured objects
-    const medicationsGiven: { drug_name: string; dose: string; route: string; frequency: string; duration: string }[] = [];
+    const medicationsGiven: {
+      drug_name: string;
+      dose: string;
+      route: string;
+      frequency: string;
+      duration: string;
+    }[] = [];
     if (orders?.prescriptions) {
       for (const rx of orders.prescriptions) {
         if (rx.status !== 'CANCELLED') {
@@ -194,7 +242,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
             medicationsGiven.push({
               drug_name: item.drug_name || '',
               dose: item.dosage || '',
-              route: (item as any).route || 'PO',
+              route: item.route || 'PO',
               frequency: item.frequency || '',
               duration: item.duration || '',
             });
@@ -214,7 +262,9 @@ export function useDischargeAI(params: UseDischargeAIParams) {
           if (r?.formatted_value) {
             const dateStr = r.entered_at?.slice(0, 10) || lo.ordered_at?.slice(0, 10) || '';
             const dateSuffix = dateStr ? ` (${dateStr})` : '';
-            keyInvestigations.push(`${item.test_name}: ${r.formatted_value}${r.is_critical_result ? ' [CRITICAL]' : ''}${dateSuffix}`);
+            keyInvestigations.push(
+              `${item.test_name}: ${r.formatted_value}${r.is_critical_result ? ' [CRITICAL]' : ''}${dateSuffix}`
+            );
           } else {
             keyInvestigations.push(`${item.test_name}: ${lo.status}`);
           }
@@ -231,9 +281,13 @@ export function useDischargeAI(params: UseDischargeAIParams) {
           const report = io.report_summary;
           if (report && (report.findings || report.impression)) {
             const content = report.impression || report.findings;
-            keyInvestigations.push(`${item.procedure_name} (${item.modality}): ${content}${dateSuffix}`);
+            keyInvestigations.push(
+              `${item.procedure_name} (${item.modality}): ${content}${dateSuffix}`
+            );
           } else {
-            keyInvestigations.push(`${item.procedure_name} (${item.modality}): ${io.status}${dateSuffix}`);
+            keyInvestigations.push(
+              `${item.procedure_name} (${item.modality}): ${io.status}${dateSuffix}`
+            );
           }
         }
       }
@@ -271,13 +325,15 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     };
 
     // Structured discharge medications
-    const dischargeMedsStructured = medications.filter((m) => m.drug_name).map((m) => ({
-      drug_name: m.drug_name,
-      dose: m.dosage || '',
-      route: 'PO',
-      frequency: m.frequency || '',
-      duration: (m as any).duration || '',
-    }));
+    const dischargeMedsStructured = medications
+      .filter((m) => m.drug_name)
+      .map((m) => ({
+        drug_name: m.drug_name,
+        dose: m.dosage || '',
+        route: 'PO',
+        frequency: m.frequency || '',
+        duration: m.duration || '',
+      }));
 
     const admissionCtx: ClinicalDocAdmissionContext = {
       primary_diagnosis: diagnosis,
@@ -287,9 +343,19 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       discharge_date: new Date().toISOString(),
       length_of_stay_days: lengthOfStay,
       ward: admission.ward_name || '',
-      discharge_type: ({'ROUTINE': 'NORMAL', 'ABSCONDED': 'NORMAL', 'AGAINST_ADVICE': 'AMA', 'TRANSFERRED': 'TRANSFER', 'DECEASED': 'DEATH'} as Record<string, ClinicalDocAdmissionContext['discharge_type']>)[dischargeType] ?? dischargeType as ClinicalDocAdmissionContext['discharge_type'],
+      discharge_type:
+        (
+          {
+            ROUTINE: 'NORMAL',
+            ABSCONDED: 'NORMAL',
+            AGAINST_ADVICE: 'AMA',
+            TRANSFERRED: 'TRANSFER',
+            DECEASED: 'DEATH',
+          } as Record<string, ClinicalDocAdmissionContext['discharge_type']>
+        )[dischargeType] ?? (dischargeType as ClinicalDocAdmissionContext['discharge_type']),
       medications_given: medicationsGiven.length > 0 ? medicationsGiven : undefined,
-      discharge_medications: dischargeMedsStructured.length > 0 ? dischargeMedsStructured : undefined,
+      discharge_medications:
+        dischargeMedsStructured.length > 0 ? dischargeMedsStructured : undefined,
       key_investigations: keyInvestigations.length > 0 ? keyInvestigations : undefined,
       condition_at_discharge: conditionAtDischarge || undefined,
       follow_up_instructions: followUpInstructions || undefined,
@@ -299,17 +365,41 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         if (clinicalHistoryText) notes.push(clinicalHistoryText);
         // Append AI care plan summary (goals, interventions, discharge criteria)
         if (storedCarePlans?.length) {
-          const latestPlan = storedCarePlans[0]?.result_data as any;
+          const latestSourcePlan = storedCarePlans[0];
+          const latestPlan = latestSourcePlan ? parseStoredCarePlanData(latestSourcePlan) : null;
           if (latestPlan?.goals?.length || latestPlan?.interventions?.length) {
-            const parts: string[] = [`Care Plan (${storedCarePlans[0].primary_diagnosis || 'admission'}):`];
+            const parts: string[] = [
+              `Care Plan (${latestSourcePlan?.primary_diagnosis || 'admission'}):`,
+            ];
             if (latestPlan.goals?.length) {
-              parts.push(`Goals: ${latestPlan.goals.map((g: any) => g.description || g.goal || g).join('; ')}`);
+              parts.push(
+                `Goals: ${latestPlan.goals
+                  .map((g) => (typeof g === 'string' ? g : g.description || g.goal || ''))
+                  .filter(Boolean)
+                  .join('; ')}`
+              );
             }
             if (latestPlan.interventions?.length) {
-              const interventionItems = latestPlan.interventions.flatMap((cat: any) =>
-                (cat.items || [cat]).map((i: any) => i.action || i.description || i.name || String(i))
-              );
-              if (interventionItems.length) parts.push(`Interventions: ${interventionItems.slice(0, 10).join('; ')}`);
+              const interventionItems = latestPlan.interventions.flatMap((cat) => {
+                if (hasInterventionItems(cat)) {
+                  return cat.items
+                    .map((i) => i.action || i.description || i.name || '')
+                    .filter(Boolean);
+                }
+                const flatIntervention = cat as {
+                  action?: string;
+                  description?: string;
+                  name?: string;
+                };
+                return [
+                  flatIntervention.action ||
+                    flatIntervention.description ||
+                    flatIntervention.name ||
+                    '',
+                ].filter(Boolean);
+              });
+              if (interventionItems.length)
+                parts.push(`Interventions: ${interventionItems.slice(0, 10).join('; ')}`);
             }
             if (latestPlan.discharge_criteria?.length) {
               parts.push(`Discharge criteria: ${latestPlan.discharge_criteria.join('; ')}`);
@@ -325,7 +415,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     // pair of (OPD/ER source encounter, IPD encounter). Ward rounds are a fallback.
     const mergedComplaint = mergeEncounterClinicalText(
       sourceEncounter?.chief_complaint,
-      ipdEncounter?.chief_complaint,
+      ipdEncounter?.chief_complaint
     );
     const encounterCtx: ClinicalDocEncounterContext = {
       chief_complaint: mergedComplaint || '',
@@ -334,7 +424,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     // HPI from OPD + IPD encounters; fall back to earliest ward round subjective.
     const mergedHpi = mergeEncounterClinicalText(
       sourceEncounter?.history_of_present_illness,
-      ipdEncounter?.history_of_present_illness,
+      ipdEncounter?.history_of_present_illness
     );
     if (mergedHpi) {
       encounterCtx.hpi = mergedHpi;
@@ -347,7 +437,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     // round objectives (stripped of lab/imaging lines to keep PE clean).
     const mergedExam = mergeEncounterClinicalText(
       sourceEncounter?.physical_examination,
-      ipdEncounter?.physical_examination,
+      ipdEncounter?.physical_examination
     );
     if (mergedExam) {
       encounterCtx.examination_findings = mergedExam;
@@ -367,29 +457,37 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     const latestTPR = temperatureReadings?.[0];
     const wardRoundVitals = wardRounds?.results?.[0]?.vital_signs;
 
-    const systolic = latestBP?.systolic
-      ?? (wardRoundVitals?.blood_pressure ? Number(wardRoundVitals.blood_pressure.split('/')[0]) : null)
-      ?? sourceEncounter?.systolic_bp
-      ?? null;
-    const diastolic = latestBP?.diastolic
-      ?? (wardRoundVitals?.blood_pressure ? Number(wardRoundVitals.blood_pressure.split('/')[1]) : null)
-      ?? sourceEncounter?.diastolic_bp
-      ?? null;
-    const heartRate = latestBP?.pulse ?? latestTPR?.pulse
-      ?? wardRoundVitals?.pulse
-      ?? sourceEncounter?.pulse
-      ?? null;
-    const temperature = (latestTPR?.temperature != null ? Number(latestTPR.temperature) : undefined)
-      ?? wardRoundVitals?.temperature
-      ?? sourceEncounter?.temperature
-      ?? null;
-    const respiratoryRate = latestTPR?.respiratory_rate
-      ?? wardRoundVitals?.respiratory_rate
-      ?? sourceEncounter?.respiratory_rate
-      ?? null;
-    const spo2 = wardRoundVitals?.spo2
-      ?? sourceEncounter?.spo2
-      ?? null;
+    const systolic =
+      latestBP?.systolic ??
+      (wardRoundVitals?.blood_pressure
+        ? Number(wardRoundVitals.blood_pressure.split('/')[0])
+        : null) ??
+      sourceEncounter?.systolic_bp ??
+      null;
+    const diastolic =
+      latestBP?.diastolic ??
+      (wardRoundVitals?.blood_pressure
+        ? Number(wardRoundVitals.blood_pressure.split('/')[1])
+        : null) ??
+      sourceEncounter?.diastolic_bp ??
+      null;
+    const heartRate =
+      latestBP?.pulse ??
+      latestTPR?.pulse ??
+      wardRoundVitals?.pulse ??
+      sourceEncounter?.pulse ??
+      null;
+    const temperature =
+      (latestTPR?.temperature != null ? Number(latestTPR.temperature) : undefined) ??
+      wardRoundVitals?.temperature ??
+      sourceEncounter?.temperature ??
+      null;
+    const respiratoryRate =
+      latestTPR?.respiratory_rate ??
+      wardRoundVitals?.respiratory_rate ??
+      sourceEncounter?.respiratory_rate ??
+      null;
+    const spo2 = wardRoundVitals?.spo2 ?? sourceEncounter?.spo2 ?? null;
 
     if (systolic || diastolic || heartRate || temperature || respiratoryRate || spo2) {
       encounterCtx.vitals = {
@@ -403,7 +501,23 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     }
 
     return { docPatientCtx, admissionCtx, encounterCtx };
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, sourceEncounter, ipdEncounter, orders, wardRounds, storedCarePlans, followUpInstructions, clinicalHistoryText, temperatureReadings, bpReadings]);
+  }, [
+    admission,
+    diagnoses,
+    medications,
+    lengthOfStay,
+    dischargeType,
+    patientCtx,
+    sourceEncounter,
+    ipdEncounter,
+    orders,
+    wardRounds,
+    storedCarePlans,
+    followUpInstructions,
+    clinicalHistoryText,
+    temperatureReadings,
+    bpReadings,
+  ]);
 
   // Build template-alignment fields for TibaBot requests
   const templateFields = useCallback(() => {
@@ -412,11 +526,11 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     if (templateSections?.length) {
       // Only send sections TibaBot should generate — exclude data-sourced and dedicated-field sections
       const aiSections = templateSections.filter(
-        (s: any) => s.enabled && !HIDDEN_SECTION_IDS.has(s.key) && !DEDICATED_FIELD_KEYS.has(s.key)
+        (s) => s.enabled && !HIDDEN_SECTION_IDS.has(s.key) && !DEDICATED_FIELD_KEYS.has(s.key)
       );
       // Re-add routed sections that TibaBot should still produce content for
       const routedSections = templateSections.filter(
-        (s: any) => s.enabled && ROUTED_SECTION_IDS.has(s.key) && !AI_EXEMPT_TEMPLATE_KEYS.has(s.key)
+        (s) => s.enabled && ROUTED_SECTION_IDS.has(s.key) && !AI_EXEMPT_TEMPLATE_KEYS.has(s.key)
       );
       fields.template_sections = [...aiSections, ...routedSections];
     }
@@ -441,27 +555,35 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         hints.push(
           'This section must contain the patient\'s presenting SYMPTOMS and COMPLAINTS — what the patient reported (e.g. "abdominal pain for 2 days", "fever and vomiting").',
           'NEVER put the medical diagnosis here (e.g. "Acute Appendicitis" is a DIAGNOSIS, not a complaint).',
-          'If chief_complaint is empty in the context, infer symptoms from the HPI or ward round subjective notes.',
+          'If chief_complaint is empty in the context, infer symptoms from the HPI or ward round subjective notes.'
         );
       }
       if (t.includes('hospital course')) {
-        hints.push('Write a flowing clinical narrative that synthesizes ward round findings into a coherent story of the admission. Mention key dates and clinical inflection points. Do NOT list medications or treatments here — those belong in Management.');
+        hints.push(
+          'Write a flowing clinical narrative that synthesizes ward round findings into a coherent story of the admission. Mention key dates and clinical inflection points. Do NOT list medications or treatments here — those belong in Management.'
+        );
       }
       if (t.includes('management') || t.includes('treatment')) {
-        hints.push('List specific treatments administered: medications given during admission, procedures performed, nursing interventions. Do NOT repeat the hospital course narrative.');
+        hints.push(
+          'List specific treatments administered: medications given during admission, procedures performed, nursing interventions. Do NOT repeat the hospital course narrative.'
+        );
       }
       if (t.includes('condition') && t.includes('discharge')) {
-        hints.push("Describe the patient's clinical state at time of discharge: vitals, mobility, mental status, residual symptoms.");
+        hints.push(
+          "Describe the patient's clinical state at time of discharge: vitals, mobility, mental status, residual symptoms."
+        );
       }
       if (t.includes('physical') || t.includes('examination')) {
-        hints.push('This section must contain ONLY physical examination findings (inspection, palpation, auscultation, percussion, vital signs on examination). Never place laboratory results or investigation values here.');
+        hints.push(
+          'This section must contain ONLY physical examination findings (inspection, palpation, auscultation, percussion, vital signs on examination). Never place laboratory results or investigation values here.'
+        );
       }
       if (t.includes('investigation')) {
         hints.push(
           'List ALL investigations done during the admission with their results.',
           'Use the key_investigations from the admission context as your primary data source.',
           'Format as a list: "- Investigation: Result (Date)". Include ALL available results, not just abnormal ones.',
-          'If no investigation results are available in the context, state "No investigations recorded during this admission."',
+          'If no investigation results are available in the context, state "No investigations recorded during this admission."'
         );
       }
       hints.push('Only include documented clinical facts. No advisory notes or placeholders.');
@@ -471,9 +593,11 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     // Narrative sections to generate (excludes routed/dedicated/hidden keys).
     const narrativeSections = sections.filter((s) => {
       const key = s.templateKey ?? '';
-      return !ROUTED_SECTION_IDS.has(key)
-        && !DEDICATED_FIELD_KEYS.has(key)
-        && !HIDDEN_SECTION_IDS.has(key);
+      return (
+        !ROUTED_SECTION_IDS.has(key) &&
+        !DEDICATED_FIELD_KEYS.has(key) &&
+        !HIDDEN_SECTION_IDS.has(key)
+      );
     });
 
     type TaskResult = { ok: boolean; label: string };
@@ -497,10 +621,12 @@ export function useDischargeAI(params: UseDischargeAIParams) {
 
         if (result.sections?.length) {
           const normalized = normalizeSections(result.sections);
-          const match = normalized.find((s: any) =>
-            (section.templateKey && s.section_id === section.templateKey) ||
-            fuzzyTitleMatch(s.title, section.title)
-          ) ?? normalized[0];
+          const match =
+            normalized.find(
+              (s) =>
+                (section.templateKey && s.section_id === section.templateKey) ||
+                fuzzyTitleMatch(s.title, section.title)
+            ) ?? normalized[0];
           if (match) {
             const parsed = parseAdvisories(match.content);
             content = parsed.cleanContent;
@@ -549,7 +675,8 @@ export function useDischargeAI(params: UseDischargeAIParams) {
 
         let medText = '';
         if (result.sections?.length) {
-          const match = result.sections.find((s: any) => /medication/i.test(s.title)) || result.sections[0];
+          const match =
+            result.sections.find((s) => /medication/i.test(s.title)) || result.sections[0];
           if (match) medText = parseAdvisories(match.content).cleanContent;
         } else if (result.full_text) {
           medText = parseAdvisories(result.full_text).cleanContent;
@@ -587,7 +714,9 @@ export function useDischargeAI(params: UseDischargeAIParams) {
 
         let content = '';
         if (result.sections?.length) {
-          const match = result.sections.find((s: any) => /patient|education|instruction|discharge/i.test(s.title)) || result.sections[0];
+          const match =
+            result.sections.find((s) => /patient|education|instruction|discharge/i.test(s.title)) ||
+            result.sections[0];
           if (match) content = parseAdvisories(match.content).cleanContent;
         } else if (result.full_text) {
           content = parseAdvisories(result.full_text).cleanContent;
@@ -605,7 +734,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
 
     // Simple concurrency-limited task runner (cap = 2 in-flight calls).
     // Kept low so dev SQLite (single writer) doesn't hit "database is locked".
-    const runWithLimit = async <T,>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> => {
+    const runWithLimit = async <T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> => {
       const results: T[] = new Array(tasks.length);
       let idx = 0;
       const workers = Array.from({ length: Math.min(limit, tasks.length) }, async () => {
@@ -629,7 +758,10 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     ];
 
     if (allTasks.length === 0) {
-      toast({ title: 'Nothing to generate', description: 'All sections are pre-filled or hidden.' });
+      toast({
+        title: 'Nothing to generate',
+        description: 'All sections are pre-filled or hidden.',
+      });
       return;
     }
 
@@ -671,83 +803,99 @@ export function useDischargeAI(params: UseDischargeAIParams) {
   ]);
 
   // Generate a single section
-  const handleGenerateSection = useCallback(async (sectionId: string) => {
-    const ctx = buildAIContext();
-    if (!ctx || !admission) return;
-    const section = sections.find((s) => s.id === sectionId);
-    if (!section) return;
+  const handleGenerateSection = useCallback(
+    async (sectionId: string) => {
+      const ctx = buildAIContext();
+      if (!ctx || !admission) return;
+      const section = sections.find((s) => s.id === sectionId);
+      if (!section) return;
 
-    setGeneratingSectionId(sectionId);
-    try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: ctx.docPatientCtx,
-        admission_context: ctx.admissionCtx,
-        encounter_context: ctx.encounterCtx,
-        output_format: 'structured',
-        generation_mode: generationMode,
-        ...templateFields(),
-        additional_instructions: [
-          `Generate ONLY the "${section.title}" section of a discharge summary. Return focused, detailed content for this section only.`,
-          section.title.toLowerCase().includes('hospital course')
-            ? 'Write a flowing clinical narrative that synthesizes ward round findings into a coherent story of the admission. Mention key dates and clinical inflection points.'
-            : '',
-          section.title.toLowerCase().includes('physical') || section.title.toLowerCase().includes('examination')
-            ? 'This section must contain ONLY physical examination findings (inspection, palpation, auscultation, percussion, vital signs on examination). Never place laboratory results or investigation values here.'
-            : '',
-          section.title.toLowerCase().includes('investigation')
-            ? 'Present results in a table with columns: Investigation, Result, Date. Exclude CANCELLED orders. Group component results under their parent order (e.g. WBC under Full Blood Count).'
-            : '',
-        ].filter(Boolean).join(' '),
-      });
+      setGeneratingSectionId(sectionId);
+      try {
+        const result = await clinicalDocument.mutateAsync({
+          document_type: 'discharge_summary',
+          patient_context: ctx.docPatientCtx,
+          admission_context: ctx.admissionCtx,
+          encounter_context: ctx.encounterCtx,
+          output_format: 'structured',
+          generation_mode: generationMode,
+          ...templateFields(),
+          additional_instructions: [
+            `Generate ONLY the "${section.title}" section of a discharge summary. Return focused, detailed content for this section only.`,
+            section.title.toLowerCase().includes('hospital course')
+              ? 'Write a flowing clinical narrative that synthesizes ward round findings into a coherent story of the admission. Mention key dates and clinical inflection points.'
+              : '',
+            section.title.toLowerCase().includes('physical') ||
+            section.title.toLowerCase().includes('examination')
+              ? 'This section must contain ONLY physical examination findings (inspection, palpation, auscultation, percussion, vital signs on examination). Never place laboratory results or investigation values here.'
+              : '',
+            section.title.toLowerCase().includes('investigation')
+              ? 'Present results in a table with columns: Investigation, Result, Date. Exclude CANCELLED orders. Group component results under their parent order (e.g. WBC under Full Blood Count).'
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' '),
+        });
 
-      // Normalize legacy keys
-      if (result.sections?.length) {
-        result.sections = normalizeSections(result.sections);
-      }
+        // Normalize legacy keys
+        if (result.sections?.length) {
+          result.sections = normalizeSections(result.sections);
+        }
 
-      let content = '';
-      let advisories: ParsedSection['advisories'] = [];
-      let provenance: string | undefined;
+        let content = '';
+        let advisories: ParsedSection['advisories'] = [];
+        let provenance: string | undefined;
 
-      if (result.sections?.length) {
-        const match = result.sections.find((s: any) =>
-          fuzzyTitleMatch(s.title, section.title)
-        ) ?? result.sections[0];
-        if (match) {
-          const parsed = parseAdvisories(match.content);
+        if (result.sections?.length) {
+          const match =
+            result.sections.find((s) => fuzzyTitleMatch(s.title, section.title)) ??
+            result.sections[0];
+          if (match) {
+            const parsed = parseAdvisories(match.content);
+            content = parsed.cleanContent;
+            advisories = parsed.advisories;
+            provenance = result.section_provenance?.[match.section_id] || 'llm_generated';
+          }
+        } else if (result.full_text) {
+          const parsed = parseAdvisories(result.full_text);
           content = parsed.cleanContent;
           advisories = parsed.advisories;
-          provenance = result.section_provenance?.[match.section_id] || 'llm_generated';
+          provenance = 'llm_generated';
         }
-      } else if (result.full_text) {
-        const parsed = parseAdvisories(result.full_text);
-        content = parsed.cleanContent;
-        advisories = parsed.advisories;
-        provenance = 'llm_generated';
-      }
 
-      setSections((prev) =>
-        prev.map((s) =>
-          s.id === sectionId
-            ? { ...s, content, source: 'ai' as const, provenance, advisories }
-            : s
-        )
-      );
-      toast({
-        title: 'Section Generated',
-        description: `"${section.title}" generated by TibaBot. Review and edit as needed.`,
-      });
-    } catch {
-      toast({
-        title: 'Generation Failed',
-        description: `Could not generate "${section.title}". Please write it manually.`,
-        variant: 'destructive',
-      });
-    } finally {
-      setGeneratingSectionId(null);
-    }
-  }, [admission, sections, buildAIContext, clinicalDocument, templateFields, toast, generationMode, setSections, setGeneratingSectionId]);
+        setSections((prev) =>
+          prev.map((s) =>
+            s.id === sectionId
+              ? { ...s, content, source: 'ai' as const, provenance, advisories }
+              : s
+          )
+        );
+        toast({
+          title: 'Section Generated',
+          description: `"${section.title}" generated by TibaBot. Review and edit as needed.`,
+        });
+      } catch {
+        toast({
+          title: 'Generation Failed',
+          description: `Could not generate "${section.title}". Please write it manually.`,
+          variant: 'destructive',
+        });
+      } finally {
+        setGeneratingSectionId(null);
+      }
+    },
+    [
+      admission,
+      sections,
+      buildAIContext,
+      clinicalDocument,
+      templateFields,
+      toast,
+      generationMode,
+      setSections,
+      setGeneratingSectionId,
+    ]
+  );
 
   // Generate patient instructions
   const handleGeneratePatientInstructions = useCallback(async () => {
@@ -757,8 +905,12 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     try {
       const diagnosis = ctx.admissionCtx.primary_diagnosis || 'unspecified';
       const los = ctx.admissionCtx.length_of_stay_days ?? 0;
-      const medsGiven = ctx.admissionCtx.medications_given
-        ?.map((m: any) => m.drug_name).filter(Boolean).slice(0, 5).join(', ') || '';
+      const medsGiven =
+        ctx.admissionCtx.medications_given
+          ?.map((m) => (typeof m === 'string' ? m : m.drug_name || ''))
+          .filter(Boolean)
+          .slice(0, 5)
+          .join(', ') || '';
 
       const query = [
         `Generate concise patient discharge instructions for a patient discharged after ${los} days for ${diagnosis}.`,
@@ -768,7 +920,9 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         'Focus on: medications to take, activity restrictions, wound/site care, warning signs requiring return, and dietary advice.',
         'Do NOT explain disease pathophysiology, how treatments work, or include textbook information.',
         'Write in patient-friendly language.',
-      ].filter(Boolean).join(' ');
+      ]
+        .filter(Boolean)
+        .join(' ');
 
       const result = await clinicalAssist.mutateAsync({
         query,
@@ -792,16 +946,35 @@ export function useDischargeAI(params: UseDischargeAIParams) {
           .trim();
         setPatientInstructions(cleaned);
         setInstructionsGenerated(true);
-        toast({ title: 'Instructions Generated', description: 'Patient instructions generated. Review and edit as needed.' });
+        toast({
+          title: 'Instructions Generated',
+          description: 'Patient instructions generated. Review and edit as needed.',
+        });
       } else {
-        toast({ title: 'No Content', description: 'TibaBot returned no patient instructions.', variant: 'destructive' });
+        toast({
+          title: 'No Content',
+          description: 'TibaBot returned no patient instructions.',
+          variant: 'destructive',
+        });
       }
     } catch {
-      toast({ title: 'Generation Failed', description: 'Could not generate patient instructions.', variant: 'destructive' });
+      toast({
+        title: 'Generation Failed',
+        description: 'Could not generate patient instructions.',
+        variant: 'destructive',
+      });
     } finally {
       setGeneratingPatientInstructions(false);
     }
-  }, [admission, buildAIContext, clinicalAssist, toast, setGeneratingPatientInstructions, setPatientInstructions, setInstructionsGenerated]);
+  }, [
+    admission,
+    buildAIContext,
+    clinicalAssist,
+    toast,
+    setGeneratingPatientInstructions,
+    setPatientInstructions,
+    setInstructionsGenerated,
+  ]);
 
   // Generate medication suggestions
   const handleGenerateMedSuggestions = useCallback(async () => {
@@ -810,22 +983,29 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     setGeneratingMeds(true);
     try {
       // Build a focused medication context string
-      const medsGivenDuringStay = ctx.admissionCtx.medications_given
-        ?.map((m: any) => `${m.drug_name} ${m.dose} ${m.route} ${m.frequency}`.trim())
-        .filter(Boolean) ?? [];
+      const medsGivenDuringStay =
+        ctx.admissionCtx.medications_given
+          ?.map((m) =>
+            typeof m === 'string' ? m : `${m.drug_name} ${m.dose} ${m.route} ${m.frequency}`.trim()
+          )
+          .filter(Boolean) ?? [];
       const currentMeds = ctx.docPatientCtx.current_medications ?? [];
       const diagnosis = ctx.admissionCtx.primary_diagnosis || 'unspecified';
       const los = ctx.admissionCtx.length_of_stay_days ?? 0;
 
       const query = [
         `Suggest 3-8 discharge (take-home) medications for a patient admitted for ${diagnosis} (${los} days).`,
-        medsGivenDuringStay.length > 0 ? `Medications given during admission: ${medsGivenDuringStay.join('; ')}.` : '',
+        medsGivenDuringStay.length > 0
+          ? `Medications given during admission: ${medsGivenDuringStay.join('; ')}.`
+          : '',
         currentMeds.length > 0 ? `Pre-admission medications: ${currentMeds.join('; ')}.` : '',
         'For each medication use EXACTLY this format on its own line: "- Drug Name | Dosage | Frequency | Duration"',
         'Example: "- Amoxicillin | 500mg | TDS | 7 days"',
         'If IV medications were given during stay, suggest equivalent oral step-down.',
         'Return ONLY the medication list. No headers, no explanations, no disease information.',
-      ].filter(Boolean).join(' ');
+      ]
+        .filter(Boolean)
+        .join(' ');
 
       const result = await clinicalAssist.mutateAsync({
         query,
@@ -842,24 +1022,30 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       const content = result.response?.trim();
       if (content && content.length > 5) {
         // Strip markdown headers and non-medication lines
-        const lines = content
-          .split('\n')
-          .filter((l) => {
-            const t = l.trim();
-            if (!t) return false;
-            if (t.startsWith('#')) return false;
-            // Keep lines that look like medication entries (bullets or pipe-delimited)
-            if (t.startsWith('-') || t.startsWith('*') || t.includes('|') || /^\d+[.)]\s/.test(t)) return true;
-            return false;
-          });
+        const lines = content.split('\n').filter((l) => {
+          const t = l.trim();
+          if (!t) return false;
+          if (t.startsWith('#')) return false;
+          // Keep lines that look like medication entries (bullets or pipe-delimited)
+          if (t.startsWith('-') || t.startsWith('*') || t.includes('|') || /^\d+[.)]\s/.test(t))
+            return true;
+          return false;
+        });
 
         if (lines.length > 0) {
           const parsed = parseMedicationLines(lines);
           if (parsed.length > 0) {
             setSuggestedMeds(parsed);
-            toast({ title: 'Medications Suggested', description: `TibaBot suggested ${parsed.length} medication(s). Click + to add them.` });
+            toast({
+              title: 'Medications Suggested',
+              description: `TibaBot suggested ${parsed.length} medication(s). Click + to add them.`,
+            });
           } else {
-            toast({ title: 'No Suggestions', description: 'TibaBot could not extract specific medications. Add them manually.', variant: 'destructive' });
+            toast({
+              title: 'No Suggestions',
+              description: 'TibaBot could not extract specific medications. Add them manually.',
+              variant: 'destructive',
+            });
           }
         } else {
           // Fallback: try parsing the whole response through parseMedicationLines
@@ -867,16 +1053,31 @@ export function useDischargeAI(params: UseDischargeAIParams) {
           const parsed = parseMedicationLines(allLines);
           if (parsed.length > 0) {
             setSuggestedMeds(parsed);
-            toast({ title: 'Medications Suggested', description: `TibaBot suggested ${parsed.length} medication(s). Click + to add them.` });
+            toast({
+              title: 'Medications Suggested',
+              description: `TibaBot suggested ${parsed.length} medication(s). Click + to add them.`,
+            });
           } else {
-            toast({ title: 'No Suggestions', description: 'TibaBot returned no medication data. Add medications manually.', variant: 'destructive' });
+            toast({
+              title: 'No Suggestions',
+              description: 'TibaBot returned no medication data. Add medications manually.',
+              variant: 'destructive',
+            });
           }
         }
       } else {
-        toast({ title: 'No Suggestions', description: 'TibaBot returned no medication data. Add medications manually.', variant: 'destructive' });
+        toast({
+          title: 'No Suggestions',
+          description: 'TibaBot returned no medication data. Add medications manually.',
+          variant: 'destructive',
+        });
       }
     } catch {
-      toast({ title: 'Generation Failed', description: 'Could not generate medication suggestions.', variant: 'destructive' });
+      toast({
+        title: 'Generation Failed',
+        description: 'Could not generate medication suggestions.',
+        variant: 'destructive',
+      });
     } finally {
       setGeneratingMeds(false);
     }

@@ -57,7 +57,7 @@ export interface ClaimNextStep {
  */
 export function useClaimNextStep(
   claim: Claim | null | undefined,
-  flow: ClaimFlowInfo | null | undefined,
+  flow: ClaimFlowInfo | null | undefined
 ): ClaimNextStep {
   return useMemo<ClaimNextStep>(() => {
     if (!claim) {
@@ -114,11 +114,11 @@ export function useClaimNextStep(
 
     // 5. Missing documents → upload
     const activeInterventionCodes = toActiveInterventionCodeSet(
-      claim.claim_interventions?.filter((i) => i.status === 'active') ?? [],
+      claim.claim_interventions?.filter((i) => i.status === 'active') ?? []
     );
     const missing = filterClaimMissingDocumentTypesByActiveInterventions(
       claim.missing_document_types ?? [],
-      { activeInterventionCodes },
+      { activeInterventionCodes }
     );
     if (missing.length > 0) {
       const count = missing.reduce((sum, entry) => sum + entry.missing.length, 0);
@@ -136,14 +136,16 @@ export function useClaimNextStep(
       claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
         ? (claim.dha_discharge_snapshot as Record<string, unknown>)
         : null;
-    const dischargeWorkflowState = String(dischargeSnapshot?.workflow_state || '').trim().toUpperCase();
+    const dischargeWorkflowState = String(dischargeSnapshot?.workflow_state || '')
+      .trim()
+      .toUpperCase();
     const dischargeLikelySubmitted =
       claim.status === 'draft' &&
-      (
-        ['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(dischargeWorkflowState)
-        || Boolean(dischargeSnapshot?.visit_end)
-        || Boolean(dischargeSnapshot?.discharged_on)
-      );
+      (['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(
+        dischargeWorkflowState
+      ) ||
+        Boolean(dischargeSnapshot?.visit_end) ||
+        Boolean(dischargeSnapshot?.discharged_on));
 
     if (dischargeLikelySubmitted) {
       return {
@@ -166,8 +168,7 @@ export function useClaimNextStep(
       return {
         action: 'start-consent',
         title: 'Patient consent required',
-        description:
-          'Obtain OTP or biometric consent before the claim can be submitted to SHA.',
+        description: 'Obtain OTP or biometric consent before the claim can be submitted to SHA.',
         ctaLabel: 'Start consent',
         targetTab: 'workflow',
         severity: 'info',

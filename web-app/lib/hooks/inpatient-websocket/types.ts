@@ -5,11 +5,7 @@
  */
 
 import type { WebSocketConnectionState } from '../use-websocket';
-import type {
-  WardUpdateEvent,
-  WardCurrentState,
-  SupervisorAlert,
-} from '@/lib/types/inpatient';
+import type { WardUpdateEvent, WardCurrentState, SupervisorAlert } from '@/lib/types/inpatient';
 
 // =============================================================================
 // Ward WebSocket Message Types

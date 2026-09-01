@@ -19,11 +19,7 @@ import { Label } from '@/components/ui/label';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 
 // Import from shared vitals module
-import {
-  INPUT_THRESHOLDS,
-  evaluateVitalSeverity,
-  type VitalInputThresholds,
-} from '@/lib/vitals';
+import { INPUT_THRESHOLDS, evaluateVitalSeverity, type VitalInputThresholds } from '@/lib/vitals';
 
 // Re-export for backward compatibility
 export { INPUT_THRESHOLDS as DEFAULT_THRESHOLDS, evaluateVitalSeverity } from '@/lib/vitals';
@@ -84,8 +80,8 @@ function InlineAlertBadge({ severity, message }: InlineAlertBadgeProps) {
 
   if (severity === 'emergency') {
     return (
-      <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-rose-100 dark:bg-rose-950/70 border-2 border-rose-500 dark:border-rose-600">
-        <AlertCircle className="h-4 w-4 text-rose-700 dark:text-rose-300 shrink-0 animate-pulse" />
+      <div className="mt-1.5 flex items-center gap-1.5 rounded-md border-2 border-rose-500 bg-rose-100 p-2 dark:border-rose-600 dark:bg-rose-950/70">
+        <AlertCircle className="h-4 w-4 shrink-0 animate-pulse text-rose-700 dark:text-rose-300" />
         <span className="text-xs font-bold text-rose-800 dark:text-rose-200">{message}</span>
       </div>
     );
@@ -93,16 +89,16 @@ function InlineAlertBadge({ severity, message }: InlineAlertBadgeProps) {
 
   if (severity === 'critical') {
     return (
-      <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-red-50 dark:bg-red-950/50 border border-red-300 dark:border-red-700">
-        <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 animate-pulse" />
+      <div className="mt-1.5 flex items-center gap-1.5 rounded-md border border-red-300 bg-red-50 p-2 dark:border-red-700 dark:bg-red-950/50">
+        <AlertCircle className="h-4 w-4 shrink-0 animate-pulse text-red-600 dark:text-red-400" />
         <span className="text-xs font-medium text-red-700 dark:text-red-300">{message}</span>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700">
-      <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+    <div className="mt-1.5 flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 p-2 dark:border-amber-700 dark:bg-amber-950/50">
+      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
       <span className="text-xs font-medium text-amber-700 dark:text-amber-300">{message}</span>
     </div>
   );
@@ -165,14 +161,15 @@ export function VitalInputWithAlert({
     // Error state (from validation)
     error && 'border-destructive',
     // Critical state
-    severity === 'critical' && !error &&
+    severity === 'critical' &&
+      !error &&
       'border-red-500 bg-red-50 dark:bg-red-950/30 focus-within:ring-red-500/30',
     // Warning state
-    severity === 'warning' && !error &&
+    severity === 'warning' &&
+      !error &&
       'border-amber-500 bg-amber-50 dark:bg-amber-950/30 focus-within:ring-amber-500/30',
     // Normal state (value is present and within range)
-    severity === 'normal' && !error &&
-      'border-green-400 dark:border-green-600'
+    severity === 'normal' && !error && 'border-green-400 dark:border-green-600'
   );
 
   // Handle number input
@@ -194,7 +191,7 @@ export function VitalInputWithAlert({
         {label}
         {/* Status indicator */}
         {severity === 'normal' && value !== null && value !== undefined && (
-          <CheckCircle className="h-3.5 w-3.5 text-green-500 ml-1" />
+          <CheckCircle className="ml-1 h-3.5 w-3.5 text-green-500" />
         )}
       </Label>
 

@@ -11,8 +11,21 @@ import { useEncounter } from '@/lib/hooks/use-encounters';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { patientsApi } from '@/lib/api/patients';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { PatientSelector } from '@/components/encounters/patient-selector';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,8 +54,20 @@ export default function NewLabOrderPage() {
   const prefillTestSearch = searchParams.get('test_search');
 
   // Try to get from context first (if within patient/encounter shell)
-  let contextPatient: { id?: number; first_name?: string; last_name?: string; mrn?: string; gender?: string; date_of_birth?: string } | null = null;
-  let contextEncounter: { id?: number; encounter_type?: string; encounter_date?: string; chief_complaint?: string } | null = null;
+  let contextPatient: {
+    id?: number;
+    first_name?: string;
+    last_name?: string;
+    mrn?: string;
+    gender?: string;
+    date_of_birth?: string;
+  } | null = null;
+  let contextEncounter: {
+    id?: number;
+    encounter_type?: string;
+    encounter_date?: string;
+    chief_complaint?: string;
+  } | null = null;
   let canPlaceOrders = true;
 
   try {
@@ -69,7 +94,8 @@ export default function NewLabOrderPage() {
   const effectivePatient = contextPatient;
 
   // Determine patient info - encounter from API has patient, context encounter doesn't
-  const resolvedPatientId = effectivePatient?.id || encounter?.patient || (patientId ? parseInt(patientId) : null);
+  const resolvedPatientId =
+    effectivePatient?.id || encounter?.patient || (patientId ? parseInt(patientId) : null);
   const resolvedEncounterId = contextEncounter?.id || (encounterId ? parseInt(encounterId) : null);
 
   const [isPatientSheetOpen, setIsPatientSheetOpen] = useState(false);
@@ -124,7 +150,12 @@ export default function NewLabOrderPage() {
   const { data: donorPatientFromApi } = usePatient(effectiveSubjectPatientId ?? 0);
 
   const { data: patientEncounters = [], isLoading: loadingPatientEncounters } = useQuery({
-    queryKey: ['patients', effectiveBillingPatientId || activePatientId, 'encounters', 'new-lab-order'],
+    queryKey: [
+      'patients',
+      effectiveBillingPatientId || activePatientId,
+      'encounters',
+      'new-lab-order',
+    ],
     queryFn: () => patientsApi.getEncounters((effectiveBillingPatientId || activePatientId)!),
     enabled: !!(effectiveBillingPatientId || activePatientId),
   });
@@ -162,7 +193,7 @@ export default function NewLabOrderPage() {
     ? `${selectedSubjectPatientRecord.first_name} ${selectedSubjectPatientRecord.last_name}`
     : effectivePatient
       ? `${effectivePatient.first_name} ${effectivePatient.last_name}`
-      : (encounter?.patient_name || 'patient');
+      : encounter?.patient_name || 'patient';
 
   const header = (
     <PageHeader
@@ -189,15 +220,14 @@ export default function NewLabOrderPage() {
 
         <Card>
           <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <AlertTriangle className="h-12 w-12 mx-auto text-yellow-500 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Encounter Not Active</h3>
-              <p className="text-muted-foreground mb-4">
-                Lab orders can only be created for active encounters. This encounter has been completed or cancelled.
+            <div className="py-8 text-center">
+              <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-yellow-500" />
+              <h3 className="mb-2 text-lg font-semibold">Encounter Not Active</h3>
+              <p className="mb-4 text-muted-foreground">
+                Lab orders can only be created for active encounters. This encounter has been
+                completed or cancelled.
               </p>
-              <Button onClick={() => router.push('/encounters')}>
-                Go to Encounters
-              </Button>
+              <Button onClick={() => router.push('/encounters')}>Go to Encounters</Button>
             </div>
           </CardContent>
         </Card>
@@ -213,7 +243,7 @@ export default function NewLabOrderPage() {
       />
 
       <Card>
-        <CardContent className="pt-6 space-y-4">
+        <CardContent className="space-y-4 pt-6">
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
               <Label>{isBloodUnitTest ? 'Recipient (Bill To)' : 'Patient'}</Label>
@@ -225,7 +255,9 @@ export default function NewLabOrderPage() {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-lg">
                   <SheetHeader>
-                    <SheetTitle>{isBloodUnitTest ? 'Configure blood unit test order' : 'Select patient'}</SheetTitle>
+                    <SheetTitle>
+                      {isBloodUnitTest ? 'Configure blood unit test order' : 'Select patient'}
+                    </SheetTitle>
                     <SheetDescription>
                       {isBloodUnitTest
                         ? 'Choose recipient (billing), donor, and blood unit.'
@@ -237,7 +269,9 @@ export default function NewLabOrderPage() {
                       <div className="flex items-center justify-between rounded-md border p-3">
                         <div>
                           <Label htmlFor="blood-unit-test-toggle">Blood Unit Test</Label>
-                          <p className="text-xs text-muted-foreground">Enable donor/unit testing with separate recipient billing.</p>
+                          <p className="text-xs text-muted-foreground">
+                            Enable donor/unit testing with separate recipient billing.
+                          </p>
                         </div>
                         <Switch
                           id="blood-unit-test-toggle"
@@ -288,7 +322,9 @@ export default function NewLabOrderPage() {
                             </SelectContent>
                           </Select>
                           {selectedDonor && !selectedDonor.patient && (
-                            <p className="text-xs text-destructive">Selected donor is not linked to a patient record.</p>
+                            <p className="text-xs text-destructive">
+                              Selected donor is not linked to a patient record.
+                            </p>
                           )}
                         </div>
 
@@ -296,27 +332,37 @@ export default function NewLabOrderPage() {
                           <Label>Blood Unit</Label>
                           <Select
                             value={selectedBloodUnitId ? String(selectedBloodUnitId) : 'none'}
-                            onValueChange={(value) => setSelectedBloodUnitId(value === 'none' ? null : Number(value))}
+                            onValueChange={(value) =>
+                              setSelectedBloodUnitId(value === 'none' ? null : Number(value))
+                            }
                             disabled={!selectedDonorId || donorUnits.length === 0 || loadingUnits}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder={!selectedDonorId ? 'Select donor first' : 'Select blood unit'} />
+                              <SelectValue
+                                placeholder={
+                                  !selectedDonorId ? 'Select donor first' : 'Select blood unit'
+                                }
+                              />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">No blood unit selected</SelectItem>
                               {donorUnits.map((unit) => (
                                 <SelectItem key={unit.id} value={String(unit.id)}>
-                                  {unit.unit_number} - {unit.blood_group} - {unit.component.replace('_', ' ')} ({unit.status})
+                                  {unit.unit_number} - {unit.blood_group} -{' '}
+                                  {unit.component.replace('_', ' ')} ({unit.status})
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                           {!loadingUnits && selectedDonorId && donorUnits.length === 0 && (
-                            <p className="text-xs text-muted-foreground">No eligible units for this donor (expired/transfused excluded).</p>
+                            <p className="text-xs text-muted-foreground">
+                              No eligible units for this donor (expired/transfused excluded).
+                            </p>
                           )}
                           {selectedDonorId && !donorPatientId && (
                             <p className="text-xs text-amber-700">
-                              Donor has no linked patient record. Order will be created as donor-unit screening with billing to the selected recipient.
+                              Donor has no linked patient record. Order will be created as
+                              donor-unit screening with billing to the selected recipient.
                             </p>
                           )}
                         </div>
@@ -325,33 +371,54 @@ export default function NewLabOrderPage() {
 
                     <div className="space-y-2">
                       <Label>
-                        Encounter {encounterRequired ? '' : <span className="text-muted-foreground">(optional)</span>}
+                        Encounter{' '}
+                        {encounterRequired ? (
+                          ''
+                        ) : (
+                          <span className="text-muted-foreground">(optional)</span>
+                        )}
                       </Label>
                       <Select
                         value={activeEncounterId ? String(activeEncounterId) : 'none'}
-                        onValueChange={(value) => setSelectedEncounterId(value === 'none' ? null : Number(value))}
-                        disabled={!(effectiveBillingPatientId || activePatientId) || loadingPatientEncounters}
+                        onValueChange={(value) =>
+                          setSelectedEncounterId(value === 'none' ? null : Number(value))
+                        }
+                        disabled={
+                          !(effectiveBillingPatientId || activePatientId) ||
+                          loadingPatientEncounters
+                        }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={(effectiveBillingPatientId || activePatientId) ? 'Select encounter' : 'Select a patient first'} />
+                          <SelectValue
+                            placeholder={
+                              effectiveBillingPatientId || activePatientId
+                                ? 'Select encounter'
+                                : 'Select a patient first'
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {!encounterRequired && <SelectItem value="none">No encounter</SelectItem>}
                           {patientEncounters.map((encounterOption) => (
                             <SelectItem key={encounterOption.id} value={String(encounterOption.id)}>
-                              {encounterOption.encounter_type} - {new Date(encounterOption.encounter_date).toLocaleDateString()} - {encounterOption.status}
+                              {encounterOption.encounter_type} -{' '}
+                              {new Date(encounterOption.encounter_date).toLocaleDateString()} -{' '}
+                              {encounterOption.status}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      {(effectiveBillingPatientId || activePatientId) && !loadingPatientEncounters && patientEncounters.length === 0 && (
-                        <p className="text-sm text-muted-foreground">
-                          No encounters found for this patient. You can still create a lab order without linking an encounter.
-                        </p>
-                      )}
+                      {(effectiveBillingPatientId || activePatientId) &&
+                        !loadingPatientEncounters &&
+                        patientEncounters.length === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            No encounters found for this patient. You can still create a lab order
+                            without linking an encounter.
+                          </p>
+                        )}
                     </div>
 
-                    <div className="flex justify-end pt-2 border-t">
+                    <div className="flex justify-end border-t pt-2">
                       <Button type="button" size="sm" onClick={() => setIsPatientSheetOpen(false)}>
                         Save Selection
                       </Button>
@@ -371,13 +438,16 @@ export default function NewLabOrderPage() {
             )}
             {isBloodUnitTest && selectedSubjectPatientRecord && (
               <p className="text-sm text-muted-foreground">
-                Donor subject: {selectedSubjectPatientRecord.first_name} {selectedSubjectPatientRecord.last_name}
+                Donor subject: {selectedSubjectPatientRecord.first_name}{' '}
+                {selectedSubjectPatientRecord.last_name}
                 {selectedSubjectPatientRecord.mrn ? ` - ${selectedSubjectPatientRecord.mrn}` : ''}
               </p>
             )}
             {selectedEncounterRecord && (
               <p className="text-sm text-muted-foreground">
-                Encounter: {selectedEncounterRecord.encounter_type} - {new Date(selectedEncounterRecord.encounter_date).toLocaleDateString()} - {selectedEncounterRecord.status}
+                Encounter: {selectedEncounterRecord.encounter_type} -{' '}
+                {new Date(selectedEncounterRecord.encounter_date).toLocaleDateString()} -{' '}
+                {selectedEncounterRecord.status}
               </p>
             )}
           </div>
@@ -387,8 +457,8 @@ export default function NewLabOrderPage() {
       {((!activePatientId && !isBloodUnitTest) || (isBloodUnitTest && !selectedBloodUnitId)) && (
         <Card>
           <CardContent className="pt-6">
-            <div className="text-center py-4">
-              <AlertTriangle className="h-8 w-8 mx-auto text-yellow-500 mb-3" />
+            <div className="py-4 text-center">
+              <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-yellow-500" />
               <p className="text-sm text-muted-foreground">
                 {isBloodUnitTest
                   ? 'Select recipient, donor subject, and blood unit before placing a lab order.'
@@ -404,18 +474,58 @@ export default function NewLabOrderPage() {
         <LabOrderForm
           patientId={effectiveSubjectPatientId ?? undefined}
           billingPatientId={effectiveBillingPatientId ?? undefined}
-          billingPatientName={isBloodUnitTest && selectedPatientRecord ? `${selectedPatientRecord.first_name} ${selectedPatientRecord.last_name}` : undefined}
+          billingPatientName={
+            isBloodUnitTest && selectedPatientRecord
+              ? `${selectedPatientRecord.first_name} ${selectedPatientRecord.last_name}`
+              : undefined
+          }
           bloodBankUnitId={isBloodUnitTest ? (selectedBloodUnitId ?? undefined) : undefined}
           encounterId={activeEncounterId ?? undefined}
           encounterRequired={encounterRequired}
           admissionId={admissionId ? parseInt(admissionId) : undefined}
-          patientName={selectedSubjectPatientRecord ? `${selectedSubjectPatientRecord.first_name} ${selectedSubjectPatientRecord.last_name}` : (effectivePatient ? `${effectivePatient.first_name} ${effectivePatient.last_name}` : (encounter?.patient_name ?? undefined))}
-          patientMrn={(selectedSubjectPatientRecord?.mrn || effectivePatient?.mrn || encounter?.patient_mrn) ?? undefined}
-          patientGender={(selectedSubjectPatientRecord?.gender || effectivePatient?.gender || encounter?.patient_gender) ?? undefined}
-          patientDateOfBirth={(selectedSubjectPatientRecord?.date_of_birth || effectivePatient?.date_of_birth || encounter?.patient_date_of_birth) ?? undefined}
-          encounterType={(selectedEncounterRecord?.encounter_type || contextEncounter?.encounter_type || encounter?.encounter_type) ?? undefined}
-          encounterDate={(selectedEncounterRecord?.encounter_date || contextEncounter?.encounter_date || encounter?.encounter_date) ?? undefined}
-          chiefComplaint={(selectedEncounterRecord?.chief_complaint || contextEncounter?.chief_complaint || encounter?.chief_complaint) ?? undefined}
+          patientName={
+            selectedSubjectPatientRecord
+              ? `${selectedSubjectPatientRecord.first_name} ${selectedSubjectPatientRecord.last_name}`
+              : effectivePatient
+                ? `${effectivePatient.first_name} ${effectivePatient.last_name}`
+                : (encounter?.patient_name ?? undefined)
+          }
+          patientMrn={
+            (selectedSubjectPatientRecord?.mrn ||
+              effectivePatient?.mrn ||
+              encounter?.patient_mrn) ??
+            undefined
+          }
+          patientGender={
+            (selectedSubjectPatientRecord?.gender ||
+              effectivePatient?.gender ||
+              encounter?.patient_gender) ??
+            undefined
+          }
+          patientDateOfBirth={
+            (selectedSubjectPatientRecord?.date_of_birth ||
+              effectivePatient?.date_of_birth ||
+              encounter?.patient_date_of_birth) ??
+            undefined
+          }
+          encounterType={
+            (selectedEncounterRecord?.encounter_type ||
+              contextEncounter?.encounter_type ||
+              encounter?.encounter_type) ??
+            undefined
+          }
+          encounterDate={
+            (selectedEncounterRecord?.encounter_date ||
+              contextEncounter?.encounter_date ||
+              encounter?.encounter_date) ??
+            undefined
+          }
+          chiefComplaint={
+            (selectedEncounterRecord?.chief_complaint ||
+              contextEncounter?.chief_complaint ||
+              encounter?.chief_complaint) ??
+            undefined
+          }
           prefillPriority={prefillPriority || undefined}
           prefillClinicalNotes={prefillClinicalNotes || undefined}
           prefillTestSearch={prefillTestSearch || undefined}

@@ -19,17 +19,16 @@ import { formatRelativeTime } from '@/lib/utils/format';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMyClaimedEncounters, useReleaseEncounter } from '@/lib/hooks/use-consultation-queue';
 import { useToast } from '@/lib/hooks/use-toast';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { buildEncounterHref, getEncounterFocusFromStatus } from '@/lib/utils/encounter-focus';
-import { DashboardEmptyState, DashboardFooterLink, DashboardListSkeleton } from './widget-primitives';
+import {
+  DashboardEmptyState,
+  DashboardFooterLink,
+  DashboardListSkeleton,
+} from './widget-primitives';
 
 const MAX_DISPLAY_ITEMS = 5;
 
@@ -81,12 +80,15 @@ export function MyClaimedEncountersWidget() {
           {displayItems.map((encounter) => (
             <li key={encounter.id}>
               <Link
-                href={buildEncounterHref(encounter.id, getEncounterFocusFromStatus(encounter.status))}
+                href={buildEncounterHref(
+                  encounter.id,
+                  getEncounterFocusFromStatus(encounter.status)
+                )}
                 className="group block rounded-xl border border-border/60 bg-muted/10 p-3 transition-colors hover:border-primary/30 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <div className="flex items-start gap-3">
                   <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                    <AvatarFallback className="bg-primary/10 text-sm text-primary">
                       {encounter.patient_name
                         ?.split(' ')
                         .map((namePart) => namePart[0])
@@ -101,7 +103,7 @@ export function MyClaimedEncountersWidget() {
                         <p className="truncate text-sm font-medium text-foreground group-hover:text-primary">
                           {encounter.patient_name || 'Unknown Patient'}
                         </p>
-                        <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                           {encounter.chief_complaint || 'Chief complaint not recorded.'}
                         </p>
                       </div>
@@ -144,7 +146,10 @@ export function MyClaimedEncountersWidget() {
       </TooltipProvider>
 
       {hasMore && (
-        <DashboardFooterLink href="/encounters?filter=my_claimed" label={`View All (${data.count})`} />
+        <DashboardFooterLink
+          href="/encounters?filter=my_claimed"
+          label={`View All (${data.count})`}
+        />
       )}
     </div>
   );

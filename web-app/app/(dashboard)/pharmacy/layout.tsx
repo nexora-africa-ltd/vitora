@@ -6,10 +6,6 @@
  */
 import { PharmacyCapabilityGate } from './capability-gate';
 
-export default function PharmacyLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function PharmacyLayout({ children }: { children: React.ReactNode }) {
   return <PharmacyCapabilityGate>{children}</PharmacyCapabilityGate>;
 }

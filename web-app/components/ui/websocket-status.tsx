@@ -16,17 +16,9 @@
 'use client';
 
 import React from 'react';
-import {
-  type WebSocketConnectionState,
-  getConnectionStatusText,
-} from '@/lib/hooks/use-websocket';
+import { type WebSocketConnectionState, getConnectionStatusText } from '@/lib/hooks/use-websocket';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import StatusIndicator from '@/components/ui/status-indicator';
 import { cn } from '@/lib/utils';
 
@@ -102,9 +94,7 @@ export function WebSocketStatus({
   // Determine effective state: network offline overrides everything
   const effectiveState = !isOnline ? 'offline' : connectionState;
 
-  const indicatorState = !isOnline
-    ? 'down' as const
-    : mapConnectionState(connectionState);
+  const indicatorState = !isOnline ? ('down' as const) : mapConnectionState(connectionState);
 
   const getLabel = () => {
     if (!isOnline) return 'Offline';
@@ -133,18 +123,19 @@ export function WebSocketStatus({
             : statusText}
       </div>
       {isOnline && connectionState === 'reconnecting' && (
-        <div className="text-muted-foreground mt-1">
+        <div className="mt-1 text-muted-foreground">
           Attempt {reconnectAttempts}/{maxReconnectAttempts}
         </div>
       )}
       {!isOnline && (
-        <div className="text-muted-foreground mt-1">
+        <div className="mt-1 text-muted-foreground">
           Cannot reach the server. Data may be stale.
         </div>
       )}
       {isOnline && (connectionState === 'disconnected' || connectionState === 'error') && (
-        <div className="text-muted-foreground mt-1">
-          Real-time WebSocket is unavailable; dashboard data is still refreshing over HTTP every 15-30s.
+        <div className="mt-1 text-muted-foreground">
+          Real-time WebSocket is unavailable; dashboard data is still refreshing over HTTP every
+          15-30s.
         </div>
       )}
     </div>
@@ -163,9 +154,7 @@ export function WebSocketStatus({
               <span className={cn('text-xs font-medium', labelColorClasses[indicatorState])}>
                 {getLabel()}
                 {connectionState === 'connected' && lastUpdateText && (
-                  <span className="text-muted-foreground font-normal ml-1">
-                    · {lastUpdateText}
-                  </span>
+                  <span className="ml-1 font-normal text-muted-foreground">· {lastUpdateText}</span>
                 )}
               </span>
             )}

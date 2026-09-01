@@ -44,15 +44,16 @@ export function ClinicQueueMobileCard({
       )}
     >
       {/* Header: Queue # + Patient Name + Priority */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-lg font-bold text-muted-foreground shrink-0">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-lg font-bold text-muted-foreground">
             #{visit.queue_number}
           </span>
           <div className="min-w-0">
-            <p className="font-medium truncate">{visit.patient.full_name}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {visit.patient.mrn} • {visit.patient.age ? `${visit.patient.age}y` : ''} {visit.patient.gender}
+            <p className="truncate font-medium">{visit.patient.full_name}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {visit.patient.mrn} • {visit.patient.age ? `${visit.patient.age}y` : ''}{' '}
+              {visit.patient.gender}
             </p>
           </div>
         </div>
@@ -60,11 +61,8 @@ export function ClinicQueueMobileCard({
       </div>
 
       {/* Status + Wait Time */}
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <ClinicVisitStatusBadge
-          status={visit.status}
-          statusDisplay={visit.status_display}
-        />
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <ClinicVisitStatusBadge status={visit.status} statusDisplay={visit.status_display} />
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <Clock className="h-3 w-3" />
           <span>{waitTime}</span>
@@ -73,7 +71,7 @@ export function ClinicQueueMobileCard({
 
       {/* Room Assignment (shown when CALLED or IN_CONSULTATION) */}
       {visit.room_name && (visit.status === 'CALLED' || visit.status === 'IN_CONSULTATION') && (
-        <div className="flex items-center gap-1.5 text-sm mb-2">
+        <div className="mb-2 flex items-center gap-1.5 text-sm">
           <DoorOpen className="h-3.5 w-3.5 text-blue-500" />
           <span className="font-medium text-blue-700 dark:text-blue-400">{visit.room_name}</span>
         </div>
@@ -81,7 +79,7 @@ export function ClinicQueueMobileCard({
 
       {/* Chief Complaint */}
       {(visit.chief_complaint || visit.notes) && (
-        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+        <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
           {visit.chief_complaint || visit.notes}
         </p>
       )}
@@ -100,7 +98,7 @@ export function ClinicQueueMobileCard({
               disabled={isPending}
               className="flex-1"
             >
-              <Phone className="h-3 w-3 mr-1" />
+              <Phone className="mr-1 h-3 w-3" />
               Call
             </Button>
           )}
@@ -114,7 +112,7 @@ export function ClinicQueueMobileCard({
               disabled={isPending}
               className="flex-1"
             >
-              <Play className="h-3 w-3 mr-1" />
+              <Play className="mr-1 h-3 w-3" />
               Start
             </Button>
           )}

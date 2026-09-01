@@ -112,7 +112,8 @@ export default function CriticalValuesPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const queryClient = useQueryClient();
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState<CriticalValueNotification | null>(null);
+  const [selectedNotification, setSelectedNotification] =
+    useState<CriticalValueNotification | null>(null);
   const [notifyMethod, setNotifyMethod] = useState<CriticalNotificationMethod>('PHONE_CALL');
   const [notifyToName, setNotifyToName] = useState('');
   const [readBackValue, setReadBackValue] = useState('');
@@ -142,8 +143,13 @@ export default function CriticalValuesPage() {
 
   // Mutations
   const notifyMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { method: CriticalNotificationMethod; notified_to_name: string } }) =>
-      criticalValuesApi.notify(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: { method: CriticalNotificationMethod; notified_to_name: string };
+    }) => criticalValuesApi.notify(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['critical-notifications'] });
       queryClient.invalidateQueries({ queryKey: ['critical-compliance'] });
@@ -230,7 +236,10 @@ export default function CriticalValuesPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -240,7 +249,10 @@ export default function CriticalValuesPage() {
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4 text-red-500" />
@@ -250,7 +262,10 @@ export default function CriticalValuesPage() {
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-500" />
@@ -260,7 +275,10 @@ export default function CriticalValuesPage() {
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
@@ -299,7 +317,7 @@ export default function CriticalValuesPage() {
                   cell: (item) => (
                     <div>
                       <p className="font-medium">{item.test_name}</p>
-                      <p className="text-xs font-mono text-destructive font-bold">
+                      <p className="font-mono text-xs font-bold text-destructive">
                         {item.critical_value}
                       </p>
                     </div>
@@ -321,7 +339,7 @@ export default function CriticalValuesPage() {
                   header: 'Severity',
                   sortable: true,
                   cell: (item) => (
-                    <Badge className={`${severityColor(item.severity)} shrink-0 w-fit`}>
+                    <Badge className={`${severityColor(item.severity)} w-fit shrink-0`}>
                       {item.severity}
                     </Badge>
                   ),
@@ -332,11 +350,11 @@ export default function CriticalValuesPage() {
                   sortable: true,
                   cell: (item) => (
                     <div className="flex items-center gap-1">
-                      <Badge className={`${statusColor(item.status)} shrink-0 w-fit`}>
+                      <Badge className={`${statusColor(item.status)} w-fit shrink-0`}>
                         {item.status.replace('_', ' ')}
                       </Badge>
                       {item.is_overdue && (
-                        <Badge className="bg-red-600 text-white shrink-0 w-fit text-[10px]">
+                        <Badge className="w-fit shrink-0 bg-red-600 text-[10px] text-white">
                           OVERDUE
                         </Badge>
                       )}
@@ -391,30 +409,28 @@ export default function CriticalValuesPage() {
                 },
               ]}
               mobileCard={(item) => (
-                <div className="p-3 space-y-2">
-                  <div className="flex justify-between items-start">
+                <div className="space-y-2 p-3">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">{item.test_name}</p>
-                      <p className="text-xs font-mono text-destructive font-bold">
+                      <p className="font-mono text-xs font-bold text-destructive">
                         {item.critical_value}
                       </p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Badge className={`${severityColor(item.severity)} shrink-0 w-fit`}>
+                      <Badge className={`${severityColor(item.severity)} w-fit shrink-0`}>
                         {item.severity}
                       </Badge>
                       {item.is_overdue && (
-                        <Badge className="bg-red-600 text-white shrink-0 w-fit text-[10px]">
+                        <Badge className="w-fit shrink-0 bg-red-600 text-[10px] text-white">
                           !
                         </Badge>
                       )}
                     </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
-                      {item.patient_name}
-                    </span>
-                    <Badge className={`${statusColor(item.status)} shrink-0 w-fit`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{item.patient_name}</span>
+                    <Badge className={`${statusColor(item.status)} w-fit shrink-0`}>
                       {item.status.replace('_', ' ')}
                     </Badge>
                   </div>
@@ -445,12 +461,17 @@ export default function CriticalValuesPage() {
                 size="sm"
               >
                 <Zap className="mr-1 h-4 w-4" />
-                <span className="hidden sm:inline">{seedMutation.isPending ? 'Seeding...' : 'Seed Defaults'}</span>
+                <span className="hidden sm:inline">
+                  {seedMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
+                </span>
                 <span className="sm:hidden">Seed</span>
               </Button>
               <Button
                 size="sm"
-                onClick={() => { setEditingRange(null); setShowRangeDialog(true); }}
+                onClick={() => {
+                  setEditingRange(null);
+                  setShowRangeDialog(true);
+                }}
               >
                 <Plus className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">Add Range</span>
@@ -535,7 +556,11 @@ export default function CriticalValuesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => { e.stopPropagation(); setEditingRange(item); setShowRangeDialog(true); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingRange(item);
+                          setShowRangeDialog(true);
+                        }}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -554,7 +579,8 @@ export default function CriticalValuesPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete critical value range?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will permanently delete the critical value range for &quot;{item.test_name}&quot;.
+                              This will permanently delete the critical value range for &quot;
+                              {item.test_name}&quot;.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -573,8 +599,8 @@ export default function CriticalValuesPage() {
                 },
               ]}
               mobileCard={(item) => (
-                <div className="p-3 space-y-2">
-                  <div className="flex justify-between items-start">
+                <div className="space-y-2 p-3">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">{item.test_name}</p>
                       <p className="text-xs text-muted-foreground">{item.test_code}</p>
@@ -590,15 +616,23 @@ export default function CriticalValuesPage() {
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Critical: {item.critical_low ?? '—'} – {item.critical_high ?? '—'} |
-                    Panic: {item.panic_low ?? '—'} – {item.panic_high ?? '—'}
+                    Critical: {item.critical_low ?? '—'} – {item.critical_high ?? '—'} | Panic:{' '}
+                    {item.panic_low ?? '—'} – {item.panic_high ?? '—'}
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
                       Deadline: {item.notification_deadline_minutes} min
                     </span>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" className="h-7" onClick={() => { setEditingRange(item); setShowRangeDialog(true); }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7"
+                        onClick={() => {
+                          setEditingRange(item);
+                          setShowRangeDialog(true);
+                        }}
+                      >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button
@@ -630,7 +664,8 @@ export default function CriticalValuesPage() {
                     {selectedNotification.test_name}: {selectedNotification.critical_value}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Patient: {selectedNotification.patient_name} ({selectedNotification.patient_mrn})
+                    Patient: {selectedNotification.patient_name} ({selectedNotification.patient_mrn}
+                    )
                   </p>
                 </div>
                 <div>
@@ -685,7 +720,10 @@ export default function CriticalValuesPage() {
         {/* Critical Value Range Dialog */}
         <CriticalValueRangeDialog
           open={showRangeDialog}
-          onOpenChange={(open) => { setShowRangeDialog(open); if (!open) setEditingRange(null); }}
+          onOpenChange={(open) => {
+            setShowRangeDialog(open);
+            if (!open) setEditingRange(null);
+          }}
           editingRange={editingRange}
           tests={tests}
           onSubmit={(data) => {
@@ -783,7 +821,9 @@ function CriticalValueRangeDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{editingRange ? 'Edit Critical Value Range' : 'Add Critical Value Range'}</DialogTitle>
+          <DialogTitle>
+            {editingRange ? 'Edit Critical Value Range' : 'Add Critical Value Range'}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {!editingRange && (

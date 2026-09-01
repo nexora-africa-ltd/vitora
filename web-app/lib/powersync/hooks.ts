@@ -41,7 +41,7 @@ export function usePowerSyncQuery<T extends Record<string, unknown> = Record<str
   const paramsKey = JSON.stringify(params);
 
   const refresh = useCallback(() => {
-    setRefreshKey(k => k + 1);
+    setRefreshKey((k) => k + 1);
   }, []);
 
   useEffect(() => {
@@ -76,11 +76,14 @@ export function usePowerSyncQuery<T extends Record<string, unknown> = Record<str
     runQuery();
 
     // Watch for changes using PowerSync's onChange callback
-    const unsubscribe = db.onChange({
-      onChange: () => {
-        if (!disposed) runQuery();
+    const unsubscribe = db.onChange(
+      {
+        onChange: () => {
+          if (!disposed) runQuery();
+        },
       },
-    }, { signal: abortController.signal });
+      { signal: abortController.signal }
+    );
 
     return () => {
       disposed = true;

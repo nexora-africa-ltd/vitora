@@ -26,11 +26,7 @@ export default function EditSWCasePage() {
   }
 
   if (error || !swCase) {
-    return (
-      <div className="p-4 text-center text-destructive">
-        Failed to load case for editing.
-      </div>
-    );
+    return <div className="p-4 text-center text-destructive">Failed to load case for editing.</div>;
   }
 
   return (

@@ -9,7 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
   useCreateProviderConfig,
@@ -37,18 +43,30 @@ export default function InsuranceProviderConfigsPage() {
     { page: 1, page_size: 200 },
     { enabled: !!facility?.id && !!organization?.id }
   );
-  const { data: configsData, isLoading, refetch } = useProviderConfigs(
+  const {
+    data: configsData,
+    isLoading,
+    refetch,
+  } = useProviderConfigs(
     { page: 1, page_size: 200 },
     { enabled: !!facility?.id && !!organization?.id }
   );
   const createConfig = useCreateProviderConfig();
 
   const [provider, setProvider] = useState('');
-  const [apiBaseUrl, setApiBaseUrl] = useState('https://provider-edi-api.multitenant.slade360.co.ke/v1');
+  const [apiBaseUrl, setApiBaseUrl] = useState(
+    'https://provider-edi-api.multitenant.slade360.co.ke/v1'
+  );
   const [authBaseUrl, setAuthBaseUrl] = useState('https://accounts.multitenant.slade360.co.ke');
-  const [providerEdiBaseUrl, setProviderEdiBaseUrl] = useState('https://provider-edi-api.multitenant.slade360.co.ke/v1');
-  const [providerIsBaseUrl, setProviderIsBaseUrl] = useState('https://is-api.multitenant.slade360.co.ke/v1');
-  const [healthCrmBaseUrl, setHealthCrmBaseUrl] = useState('https://is-api.multitenant.slade360.co.ke/v1');
+  const [providerEdiBaseUrl, setProviderEdiBaseUrl] = useState(
+    'https://provider-edi-api.multitenant.slade360.co.ke/v1'
+  );
+  const [providerIsBaseUrl, setProviderIsBaseUrl] = useState(
+    'https://is-api.multitenant.slade360.co.ke/v1'
+  );
+  const [healthCrmBaseUrl, setHealthCrmBaseUrl] = useState(
+    'https://is-api.multitenant.slade360.co.ke/v1'
+  );
   const [payerSladeCode, setPayerSladeCode] = useState('');
   const [apiEnabled, setApiEnabled] = useState(true);
   const [healthcloudEnabled, setHealthcloudEnabled] = useState(true);
@@ -57,7 +75,10 @@ export default function InsuranceProviderConfigsPage() {
     providersData?.results ??
     Array.from(
       new Map(
-        (configsData?.results ?? []).map((c) => [c.provider, { id: c.provider, name: c.provider_name }])
+        (configsData?.results ?? []).map((c) => [
+          c.provider,
+          { id: c.provider, name: c.provider_name },
+        ])
       ).values()
     );
 
@@ -96,20 +117,29 @@ export default function InsuranceProviderConfigsPage() {
       toast({ title: 'Provider config created' });
       refetch();
     } catch {
-      toast({ title: 'Error', description: 'Failed to create provider config.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to create provider config.',
+        variant: 'destructive',
+      });
     }
   };
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <PageHeader title="Insurance Provider Configs" helpContent="Configure HealthCloud settings per provider and facility." />
+      <PageHeader
+        title="Insurance Provider Configs"
+        helpContent="Configure HealthCloud settings per provider and facility."
+      />
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Slade Credentials</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">Manage shared facility-level Slade OAuth credentials in a separate page.</p>
+          <p className="text-sm text-muted-foreground">
+            Manage shared facility-level Slade OAuth credentials in a separate page.
+          </p>
           <Button asChild variant="outline">
             <Link href="/insurance/slade-credentials">Open Slade Credentials</Link>
           </Button>
@@ -121,13 +151,15 @@ export default function InsuranceProviderConfigsPage() {
           <CardTitle className="text-base">Create Config</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="border rounded-lg p-3 space-y-3">
+          <div className="space-y-3 rounded-lg border p-3">
             <p className="text-sm font-medium">Provider Mapping</p>
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label>Payer Slade Code</Label>
                 <Select value={payerSladeCode} onValueChange={setPayerSladeCode}>
-                  <SelectTrigger><SelectValue placeholder="Select payer code" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payer code" />
+                  </SelectTrigger>
                   <SelectContent>
                     {KNOWN_PAYER_CODES.map((entry) => (
                       <SelectItem key={entry.code} value={String(entry.code)}>
@@ -140,10 +172,14 @@ export default function InsuranceProviderConfigsPage() {
               <div>
                 <Label>Provider</Label>
                 <Select value={provider} onValueChange={setProvider}>
-                  <SelectTrigger><SelectValue placeholder="Select provider" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select provider" />
+                  </SelectTrigger>
                   <SelectContent>
                     {providerOptions.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -151,9 +187,9 @@ export default function InsuranceProviderConfigsPage() {
             </div>
           </div>
 
-          <div className="border rounded-lg p-3 space-y-3">
+          <div className="space-y-3 rounded-lg border p-3">
             <p className="text-sm font-medium">API Endpoints</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <Label>Auth Base URL</Label>
                 <Input value={authBaseUrl} onChange={(e) => setAuthBaseUrl(e.target.value)} />
@@ -164,31 +200,43 @@ export default function InsuranceProviderConfigsPage() {
               </div>
               <div>
                 <Label>Provider EDI Base URL</Label>
-                <Input value={providerEdiBaseUrl} onChange={(e) => setProviderEdiBaseUrl(e.target.value)} />
+                <Input
+                  value={providerEdiBaseUrl}
+                  onChange={(e) => setProviderEdiBaseUrl(e.target.value)}
+                />
               </div>
               <div>
                 <Label>Provider IS Base URL</Label>
-                <Input value={providerIsBaseUrl} onChange={(e) => setProviderIsBaseUrl(e.target.value)} />
+                <Input
+                  value={providerIsBaseUrl}
+                  onChange={(e) => setProviderIsBaseUrl(e.target.value)}
+                />
               </div>
               <div>
                 <Label>Health CRM Base URL</Label>
-                <Input value={healthCrmBaseUrl} onChange={(e) => setHealthCrmBaseUrl(e.target.value)} />
+                <Input
+                  value={healthCrmBaseUrl}
+                  onChange={(e) => setHealthCrmBaseUrl(e.target.value)}
+                />
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex items-center gap-2">
               <Checkbox checked={apiEnabled} onCheckedChange={(v) => setApiEnabled(Boolean(v))} />
               <Label>API Enabled</Label>
             </div>
             <div className="flex items-center gap-2">
-              <Checkbox checked={healthcloudEnabled} onCheckedChange={(v) => setHealthcloudEnabled(Boolean(v))} />
+              <Checkbox
+                checked={healthcloudEnabled}
+                onCheckedChange={(v) => setHealthcloudEnabled(Boolean(v))}
+              />
               <Label>HealthCloud Enabled</Label>
             </div>
           </div>
 
-          <div className="md:col-span-2 flex justify-end">
+          <div className="flex justify-end md:col-span-2">
             <Button onClick={handleCreate} disabled={createConfig.isPending}>
               {createConfig.isPending ? 'Saving...' : 'Create Config'}
             </Button>
@@ -203,9 +251,21 @@ export default function InsuranceProviderConfigsPage() {
         emptyMessage="No provider configs found."
         columns={[
           { key: 'provider_name', header: 'Provider', cell: (item) => item.provider_name },
-          { key: 'payer_slade_code', header: 'Payer Code', cell: (item) => item.payer_slade_code ?? '-' },
-          { key: 'api_enabled', header: 'API', cell: (item) => (item.api_enabled ? 'Enabled' : 'Disabled') },
-          { key: 'healthcloud_enabled', header: 'HealthCloud', cell: (item) => (item.healthcloud_enabled ? 'Enabled' : 'Disabled') },
+          {
+            key: 'payer_slade_code',
+            header: 'Payer Code',
+            cell: (item) => item.payer_slade_code ?? '-',
+          },
+          {
+            key: 'api_enabled',
+            header: 'API',
+            cell: (item) => (item.api_enabled ? 'Enabled' : 'Disabled'),
+          },
+          {
+            key: 'healthcloud_enabled',
+            header: 'HealthCloud',
+            cell: (item) => (item.healthcloud_enabled ? 'Enabled' : 'Disabled'),
+          },
         ]}
       />
     </div>

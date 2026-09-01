@@ -133,7 +133,7 @@ export function ApplyDiscountDialog({
 
           {/* Preview */}
           {discountValue && (
-            <div className="rounded-md bg-muted p-3 space-y-1">
+            <div className="space-y-1 rounded-md bg-muted p-3">
               <div className="flex justify-between text-sm">
                 <span>Subtotal:</span>
                 <span>{formatCurrency(subtotal)}</span>
@@ -144,7 +144,7 @@ export function ApplyDiscountDialog({
                 </span>
                 <span>-{formatCurrency(discountAmount)}</span>
               </div>
-              <div className="flex justify-between text-sm font-semibold border-t pt-1">
+              <div className="flex justify-between border-t pt-1 text-sm font-semibold">
                 <span>New Total:</span>
                 <span>{formatCurrency(newTotal)}</span>
               </div>
@@ -152,12 +152,7 @@ export function ApplyDiscountDialog({
           )}
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isLoading}
-            >
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" disabled={!discountValue || isLoading}>

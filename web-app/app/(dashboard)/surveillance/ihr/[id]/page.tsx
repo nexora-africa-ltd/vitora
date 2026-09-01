@@ -35,7 +35,10 @@ import { formatDateTime, formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
 import type { IHRNotificationStatus } from '@/lib/types/surveillance';
 
-const STATUS_BADGE_VARIANTS: Record<string, 'secondary' | 'warning' | 'info' | 'success' | 'destructive' | 'outline'> = {
+const STATUS_BADGE_VARIANTS: Record<
+  string,
+  'secondary' | 'warning' | 'info' | 'success' | 'destructive' | 'outline'
+> = {
   DRAFT: 'secondary',
   PENDING_REVIEW: 'warning',
   SUBMITTED_COUNTY: 'info',
@@ -90,7 +93,11 @@ export default function IHRNotificationDetailPage() {
   const [actionNotes, setActionNotes] = useState('');
   const [whoReference, setWhoReference] = useState('');
 
-  const { data: notification, isLoading, error } = useQuery({
+  const {
+    data: notification,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['ihr-notification', id],
     queryFn: () => surveillanceApi.getIHRNotification(Number(id)),
     enabled: !!id,
@@ -206,7 +213,7 @@ export default function IHRNotificationDetailPage() {
 
   if (error || !notification) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <p className="text-muted-foreground">IHR notification not found.</p>
       </div>
     );
@@ -223,20 +230,20 @@ export default function IHRNotificationDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {notification.disease_name}
             {notification.patient_name && (
               <span className="text-muted-foreground"> • {notification.patient_name}</span>
             )}
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Event {formatDate(notification.event_date)} • Reported{' '}
             {formatDateTime(notification.report_date)}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <Badge variant={URGENCY_BADGE_VARIANTS[notification.urgency] ?? 'secondary'}>
             {notification.urgency}
           </Badge>
@@ -275,13 +282,13 @@ export default function IHRNotificationDetailPage() {
                   <div key={step.status} className="flex items-center">
                     {idx > 0 && (
                       <ArrowRight
-                        className={`h-4 w-4 mx-1 shrink-0 ${
+                        className={`mx-1 h-4 w-4 shrink-0 ${
                           isComplete ? 'text-green-600' : 'text-muted-foreground/40'
                         }`}
                       />
                     )}
                     <div
-                      className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${
+                      className={`flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium ${
                         isActive
                           ? 'bg-primary text-primary-foreground'
                           : isComplete
@@ -300,8 +307,10 @@ export default function IHRNotificationDetailPage() {
           )}
 
           {notification.hours_since_detection != null && !isTerminal && (
-            <p className={`text-xs mt-2 ${notification.is_overdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-              <Clock className="h-3 w-3 inline mr-1" />
+            <p
+              className={`mt-2 text-xs ${notification.is_overdue ? 'font-medium text-destructive' : 'text-muted-foreground'}`}
+            >
+              <Clock className="mr-1 inline h-3 w-3" />
               {notification.hours_since_detection}h since detection
               {notification.is_overdue && ' — exceeds 24h IHR deadline'}
             </p>
@@ -314,43 +323,43 @@ export default function IHRNotificationDetailPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           {notification.status === 'DRAFT' && (
             <Button onClick={() => setActionDialog('submit_county')}>
-              <ArrowRight className="h-4 w-4 mr-1" />
+              <ArrowRight className="mr-1 h-4 w-4" />
               Submit to County
             </Button>
           )}
           {notification.status === 'PENDING_REVIEW' && (
             <Button onClick={() => setActionDialog('submit_county')}>
-              <ArrowRight className="h-4 w-4 mr-1" />
+              <ArrowRight className="mr-1 h-4 w-4" />
               Submit to County
             </Button>
           )}
           {notification.status === 'SUBMITTED_COUNTY' && (
             <Button onClick={() => setActionDialog('escalate_national')}>
-              <ArrowRight className="h-4 w-4 mr-1" />
+              <ArrowRight className="mr-1 h-4 w-4" />
               Escalate to MOH
             </Button>
           )}
           {notification.status === 'ESCALATED_NATIONAL' && (
             <Button onClick={() => setActionDialog('notify_who')}>
-              <Globe className="h-4 w-4 mr-1" />
+              <Globe className="mr-1 h-4 w-4" />
               Notify WHO
             </Button>
           )}
           {notification.status === 'NOTIFIED_WHO' && (
             <Button onClick={() => acknowledgeWHO.mutate()}>
-              <CheckCircle className="h-4 w-4 mr-1" />
+              <CheckCircle className="mr-1 h-4 w-4" />
               Record WHO Acknowledgement
             </Button>
           )}
 
           <Button variant="outline" onClick={() => setActionDialog('close')}>
-            <CheckCircle className="h-4 w-4 mr-1" />
+            <CheckCircle className="mr-1 h-4 w-4" />
             Close
           </Button>
 
           {!notification.is_who_notified && (
             <Button variant="destructive" onClick={() => setActionDialog('reject')}>
-              <XCircle className="h-4 w-4 mr-1" />
+              <XCircle className="mr-1 h-4 w-4" />
               Reject
             </Button>
           )}
@@ -463,7 +472,7 @@ export default function IHRNotificationDetailPage() {
           <CardContent className="space-y-3 text-sm">
             {notification.county_notified_at && (
               <div className="flex items-start gap-2">
-                <Shield className="h-4 w-4 mt-0.5 text-blue-500" />
+                <Shield className="mt-0.5 h-4 w-4 text-blue-500" />
                 <div>
                   <p className="font-medium">County Notified</p>
                   <p className="text-xs text-muted-foreground">
@@ -472,14 +481,14 @@ export default function IHRNotificationDetailPage() {
                       ` by ${notification.county_reviewed_by_name}`}
                   </p>
                   {notification.county_notes && (
-                    <p className="text-xs mt-0.5">{notification.county_notes}</p>
+                    <p className="mt-0.5 text-xs">{notification.county_notes}</p>
                   )}
                 </div>
               </div>
             )}
             {notification.national_notified_at && (
               <div className="flex items-start gap-2">
-                <Shield className="h-4 w-4 mt-0.5 text-purple-500" />
+                <Shield className="mt-0.5 h-4 w-4 text-purple-500" />
                 <div>
                   <p className="font-medium">MOH Notified</p>
                   <p className="text-xs text-muted-foreground">
@@ -488,14 +497,14 @@ export default function IHRNotificationDetailPage() {
                       ` by ${notification.national_reviewed_by_name}`}
                   </p>
                   {notification.national_notes && (
-                    <p className="text-xs mt-0.5">{notification.national_notes}</p>
+                    <p className="mt-0.5 text-xs">{notification.national_notes}</p>
                   )}
                 </div>
               </div>
             )}
             {notification.who_notified_at && (
               <div className="flex items-start gap-2">
-                <Globe className="h-4 w-4 mt-0.5 text-green-500" />
+                <Globe className="mt-0.5 h-4 w-4 text-green-500" />
                 <div>
                   <p className="font-medium">WHO Notified</p>
                   <p className="text-xs text-muted-foreground">
@@ -508,7 +517,7 @@ export default function IHRNotificationDetailPage() {
             )}
             {notification.who_acknowledged_at && (
               <div className="flex items-start gap-2">
-                <CheckCircle className="h-4 w-4 mt-0.5 text-green-600" />
+                <CheckCircle className="mt-0.5 h-4 w-4 text-green-600" />
                 <div>
                   <p className="font-medium">WHO Acknowledged</p>
                   <p className="text-xs text-muted-foreground">
@@ -520,9 +529,9 @@ export default function IHRNotificationDetailPage() {
             {notification.resolved_at && (
               <div className="flex items-start gap-2">
                 {notification.status === 'REJECTED' ? (
-                  <XCircle className="h-4 w-4 mt-0.5 text-destructive" />
+                  <XCircle className="mt-0.5 h-4 w-4 text-destructive" />
                 ) : (
-                  <CheckCircle className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <CheckCircle className="mt-0.5 h-4 w-4 text-muted-foreground" />
                 )}
                 <div>
                   <p className="font-medium">
@@ -532,13 +541,13 @@ export default function IHRNotificationDetailPage() {
                     {formatDateTime(notification.resolved_at)}
                   </p>
                   {notification.resolution_notes && (
-                    <p className="text-xs mt-0.5">{notification.resolution_notes}</p>
+                    <p className="mt-0.5 text-xs">{notification.resolution_notes}</p>
                   )}
                 </div>
               </div>
             )}
             {!notification.county_notified_at && !notification.resolved_at && (
-              <p className="text-muted-foreground text-xs">No escalation actions yet.</p>
+              <p className="text-xs text-muted-foreground">No escalation actions yet.</p>
             )}
           </CardContent>
         </Card>
@@ -590,9 +599,7 @@ export default function IHRNotificationDetailPage() {
                 value={actionNotes}
                 onChange={(e) => setActionNotes(e.target.value)}
                 placeholder={
-                  actionDialog === 'reject'
-                    ? 'Reason for rejection...'
-                    : 'Additional notes...'
+                  actionDialog === 'reject' ? 'Reason for rejection...' : 'Additional notes...'
                 }
                 rows={3}
               />

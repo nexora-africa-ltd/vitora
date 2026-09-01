@@ -76,12 +76,15 @@ const priorityOrder: Record<CDSPriority, number> = {
   INFO: 4,
 };
 
-const priorityConfig: Record<CDSPriority, {
-  semanticColor: 'destructive' | 'warning' | 'info' | 'default' | 'success';
-  icon: typeof ShieldAlert;
-  label: string;
-  badgeClass: string;
-}> = {
+const priorityConfig: Record<
+  CDSPriority,
+  {
+    semanticColor: 'destructive' | 'warning' | 'info' | 'default' | 'success';
+    icon: typeof ShieldAlert;
+    label: string;
+    badgeClass: string;
+  }
+> = {
   CRITICAL: {
     semanticColor: 'destructive',
     icon: ShieldAlert,
@@ -130,14 +133,14 @@ function AlertActions({ alert, onAccept, onOverride, onDismiss, isActing }: Aler
   const priority = normalizePriority(alert.priority);
 
   return (
-    <div className="flex items-center gap-1.5 mt-2 sm:mt-0 sm:ml-auto shrink-0">
+    <div className="mt-2 flex shrink-0 items-center gap-1.5 sm:ml-auto sm:mt-0">
       {/* Accept recommendation */}
       <Button
         size="sm"
         variant="ghost"
         onClick={() => onAccept(alert.id)}
         disabled={isActing}
-        className="h-7 px-2 text-xs gap-1"
+        className="h-7 gap-1 px-2 text-xs"
         title="Accept recommendation"
       >
         <Check className="h-3.5 w-3.5" />
@@ -151,7 +154,7 @@ function AlertActions({ alert, onAccept, onOverride, onDismiss, isActing }: Aler
           variant="ghost"
           onClick={() => onOverride(alert.id)}
           disabled={isActing}
-          className="h-7 px-2 text-xs gap-1"
+          className="h-7 gap-1 px-2 text-xs"
           title="Override with reason"
         >
           <ShieldOff className="h-3.5 w-3.5" />
@@ -166,7 +169,7 @@ function AlertActions({ alert, onAccept, onOverride, onDismiss, isActing }: Aler
           variant="ghost"
           onClick={() => onDismiss(alert.id)}
           disabled={isActing}
-          className="h-7 px-2 text-xs gap-1"
+          className="h-7 gap-1 px-2 text-xs"
           title="Dismiss"
         >
           <X className="h-3.5 w-3.5" />
@@ -199,7 +202,7 @@ function AlertRow({ alert, onAccept, onOverride, onDismiss, isActing }: AlertRow
       text={alert.message}
       icon={<config.icon className="h-4 w-4" />}
       description={
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
           <span>{alert.suggestion}</span>
           <AlertActions
             alert={alert}
@@ -227,7 +230,13 @@ interface OverrideDialogProps {
   isPending: boolean;
 }
 
-function OverrideDialog({ open, onOpenChange, onConfirm, alertMessage, isPending }: OverrideDialogProps) {
+function OverrideDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+  alertMessage,
+  isPending,
+}: OverrideDialogProps) {
   const [reason, setReason] = useState('');
 
   const handleConfirm = () => {
@@ -245,8 +254,8 @@ function OverrideDialog({ open, onOpenChange, onConfirm, alertMessage, isPending
             <DialogTitle>Override CDS Alert</DialogTitle>
           </div>
           <DialogDescription>
-            You are overriding a clinical decision support recommendation.
-            This action is audited and requires a documented clinical rationale.
+            You are overriding a clinical decision support recommendation. This action is audited
+            and requires a documented clinical rationale.
           </DialogDescription>
         </DialogHeader>
 
@@ -313,14 +322,18 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
   const [showLower, setShowLower] = useState(false);
   const [overrideTarget, setOverrideTarget] = useState<CDSAlertListItem | null>(null);
 
-  const isActing = acknowledgeAlert.isPending || acceptAlert.isPending ||
-    overrideAlert.isPending || dismissAlert.isPending;
+  const isActing =
+    acknowledgeAlert.isPending ||
+    acceptAlert.isPending ||
+    overrideAlert.isPending ||
+    dismissAlert.isPending;
 
   // Group alerts by priority tier
   const { critical, high, lower, totalCount } = useMemo(() => {
     const alerts = data?.results || [];
     const sorted = [...alerts].sort(
-      (a, b) => priorityOrder[normalizePriority(a.priority)] - priorityOrder[normalizePriority(b.priority)]
+      (a, b) =>
+        priorityOrder[normalizePriority(a.priority)] - priorityOrder[normalizePriority(b.priority)]
     );
 
     return {
@@ -335,47 +348,61 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
   }, [data]);
 
   // Handlers
-  const handleAccept = useCallback((id: number) => {
-    acceptAlert.mutate(id);
-    // Emit suggested actions if smart_autopopulate is on
-    if (smartAutopopulate && onSuggestedAction) {
-      const alert = data?.results.find((a) => a.id === id);
-      if (alert?.suggested_actions?.length) {
-        onSuggestedAction(alert.suggested_actions);
+  const handleAccept = useCallback(
+    (id: number) => {
+      acceptAlert.mutate(id);
+      // Emit suggested actions if smart_autopopulate is on
+      if (smartAutopopulate && onSuggestedAction) {
+        const alert = data?.results.find((a) => a.id === id);
+        if (alert?.suggested_actions?.length) {
+          onSuggestedAction(alert.suggested_actions);
+        }
       }
-    }
-  }, [acceptAlert, smartAutopopulate, onSuggestedAction, data]);
+    },
+    [acceptAlert, smartAutopopulate, onSuggestedAction, data]
+  );
 
-  const handleOverride = useCallback((id: number) => {
-    const alert = data?.results.find((a) => a.id === id);
-    if (alert) setOverrideTarget(alert);
-  }, [data]);
+  const handleOverride = useCallback(
+    (id: number) => {
+      const alert = data?.results.find((a) => a.id === id);
+      if (alert) setOverrideTarget(alert);
+    },
+    [data]
+  );
 
-  const handleOverrideConfirm = useCallback((reason: string) => {
-    if (!overrideTarget) return;
-    overrideAlert.mutate(
-      { alertId: overrideTarget.id, reason },
-      { onSuccess: () => setOverrideTarget(null) }
-    );
-  }, [overrideTarget, overrideAlert]);
+  const handleOverrideConfirm = useCallback(
+    (reason: string) => {
+      if (!overrideTarget) return;
+      overrideAlert.mutate(
+        { alertId: overrideTarget.id, reason },
+        { onSuccess: () => setOverrideTarget(null) }
+      );
+    },
+    [overrideTarget, overrideAlert]
+  );
 
-  const handleDismiss = useCallback((id: number) => {
-    dismissAlert.mutate(id);
-  }, [dismissAlert]);
+  const handleDismiss = useCallback(
+    (id: number) => {
+      dismissAlert.mutate(id);
+    },
+    [dismissAlert]
+  );
 
   // Nothing to show
   if (isLoading || totalCount === 0) return null;
 
   return (
     <>
-      <Card className={cn(
-        critical.length > 0 && 'border-red-300 dark:border-red-800',
-        critical.length === 0 && high.length > 0 && 'border-amber-300 dark:border-amber-800',
-        className
-      )}>
-        <CardHeader className="pb-3 px-3 sm:px-6 py-3 sm:py-4">
+      <Card
+        className={cn(
+          critical.length > 0 && 'border-red-300 dark:border-red-800',
+          critical.length === 0 && high.length > 0 && 'border-amber-300 dark:border-amber-800',
+          className
+        )}
+      >
+        <CardHeader className="px-3 py-3 pb-3 sm:px-6 sm:py-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="sm:hidden">CDS Alerts</span>
               <span className="hidden sm:inline">Clinical Decision Support</span>
@@ -383,18 +410,18 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
             </CardTitle>
             <div className="flex items-center gap-1.5">
               {critical.length > 0 && (
-                <Badge className={priorityConfig.CRITICAL.badgeClass}>{critical.length} Critical</Badge>
+                <Badge className={priorityConfig.CRITICAL.badgeClass}>
+                  {critical.length} Critical
+                </Badge>
               )}
               {high.length > 0 && (
                 <Badge className={priorityConfig.HIGH.badgeClass}>{high.length} High</Badge>
               )}
-              {lower.length > 0 && (
-                <Badge variant="secondary">{lower.length} Other</Badge>
-              )}
+              {lower.length > 0 && <Badge variant="secondary">{lower.length} Other</Badge>}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="px-3 sm:px-6 space-y-3">
+        <CardContent className="space-y-3 px-3 sm:px-6">
           {/* Critical alerts — always visible */}
           {critical.map((alert) => (
             <AlertRow
@@ -425,10 +452,15 @@ export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CD
               <button
                 type="button"
                 onClick={() => setShowLower(!showLower)}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+                className="flex w-full items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
-                {showLower ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                {showLower ? 'Hide' : 'Show'} {lower.length} additional advisor{lower.length !== 1 ? 'ies' : 'y'}
+                {showLower ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+                {showLower ? 'Hide' : 'Show'} {lower.length} additional advisor
+                {lower.length !== 1 ? 'ies' : 'y'}
               </button>
               {showLower && (
                 <div className="mt-2 space-y-2">

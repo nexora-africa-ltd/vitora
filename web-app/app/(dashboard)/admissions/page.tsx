@@ -3,7 +3,21 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, BedDouble, Building2, Calendar, Hash, User, ClipboardList, Users, AlertTriangle, Clock, Activity, TrendingUp } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  BedDouble,
+  Building2,
+  Calendar,
+  Hash,
+  User,
+  ClipboardList,
+  Users,
+  AlertTriangle,
+  Clock,
+  Activity,
+  TrendingUp,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PermissionGate } from '@/components/shared/permission-gate';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -30,7 +44,12 @@ import { useFacility } from '@/lib/context/facility-context';
 import { useInterfacilityTransfersEnabled } from '@/lib/hooks/use-interfacility-transfers-enabled';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { formatDate } from '@/lib/utils/format';
-import type { Admission, AdmissionRecommendation, AdmissionRecommendationUrgency, InpatientWardType } from '@/lib/types/inpatient';
+import type {
+  Admission,
+  AdmissionRecommendation,
+  AdmissionRecommendationUrgency,
+  InpatientWardType,
+} from '@/lib/types/inpatient';
 
 export default function AdmissionsPage() {
   const router = useRouter();
@@ -44,7 +63,8 @@ export default function AdmissionsPage() {
   const [recommendationsViewMode, setRecommendationsViewMode] = useState<ViewMode>('list');
 
   const debouncedSearch = useDebounce(search, 300);
-  const wardTypeParam = wardTypeFilter !== 'all' ? wardTypeFilter as InpatientWardType : undefined;
+  const wardTypeParam =
+    wardTypeFilter !== 'all' ? (wardTypeFilter as InpatientWardType) : undefined;
 
   const {
     data: recommendations,
@@ -67,9 +87,11 @@ export default function AdmissionsPage() {
 
   // Compute stats from loaded data
   const stats = useMemo(() => {
-    const activeAdmissions = admissions?.results?.filter((a) => a.admission_status === 'ACTIVE') || [];
+    const activeAdmissions =
+      admissions?.results?.filter((a) => a.admission_status === 'ACTIVE') || [];
     const pendingRecommendations = recommendations?.count || 0;
-    const emergencyRecommendations = recommendations?.results?.filter((r) => r.urgency === 'EMERGENCY').length || 0;
+    const emergencyRecommendations =
+      recommendations?.results?.filter((r) => r.urgency === 'EMERGENCY').length || 0;
 
     // Calculate average LOS for active admissions
     const totalLos = activeAdmissions.reduce((sum, adm) => {
@@ -91,7 +113,7 @@ export default function AdmissionsPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Admissions"
           helpContent="Manage inpatient admissions and bed assignments."
@@ -99,7 +121,7 @@ export default function AdmissionsPage() {
             <>
               <Button variant="outline" asChild>
                 <Link href="/admissions/bulk-assign">
-                  <Users className="h-4 w-4 mr-2" />
+                  <Users className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Bulk Assign</span>
                   <span className="sm:hidden">Bulk</span>
                 </Link>
@@ -107,7 +129,7 @@ export default function AdmissionsPage() {
               {hasCriticalCareModule && (
                 <Button variant="outline" asChild>
                   <Link href="/inpatient/critical-care">
-                    <Activity className="h-4 w-4 mr-2" />
+                    <Activity className="mr-2 h-4 w-4" />
                     <span className="hidden sm:inline">Critical Care Dashboard</span>
                     <span className="sm:hidden">Critical Care</span>
                   </Link>
@@ -125,7 +147,7 @@ export default function AdmissionsPage() {
               )}
               <Button asChild>
                 <Link href="/admissions/new">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">New Admission</span>
                   <span className="sm:hidden">New</span>
                 </Link>
@@ -135,7 +157,7 @@ export default function AdmissionsPage() {
         />
 
         {/* Stats Section */}
-        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
           <StatsCard
             title="Active Admissions"
             value={admissionsLoading ? '-' : stats.activeAdmissions}
@@ -150,7 +172,11 @@ export default function AdmissionsPage() {
             icon={ClipboardList}
             variant={stats.pendingRecommendations > 0 ? 'warning' : 'default'}
             loading={recommendationsLoading}
-            description={stats.emergencyRecommendations > 0 ? `${stats.emergencyRecommendations} emergency` : undefined}
+            description={
+              stats.emergencyRecommendations > 0
+                ? `${stats.emergencyRecommendations} emergency`
+                : undefined
+            }
           />
           <StatsCard
             title="Avg. Length of Stay"
@@ -169,57 +195,59 @@ export default function AdmissionsPage() {
           />
         </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by patient name, admission number..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                  aria-label="Search admissions"
-                />
+        {/* Filters */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="min-w-[200px] flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by patient name, admission number..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                    aria-label="Search admissions"
+                  />
+                </div>
               </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]" aria-label="Status">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="DISCHARGED">Discharged</SelectItem>
+                  <SelectItem value="TRANSFERRED_OUT">Transferred</SelectItem>
+                  <SelectItem value="DECEASED">Deceased</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={wardTypeFilter} onValueChange={setWardTypeFilter}>
+                <SelectTrigger className="w-[180px]" aria-label="Ward Type">
+                  <SelectValue placeholder="Ward Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Ward Types</SelectItem>
+                  <SelectItem value="MEDICAL">Medical</SelectItem>
+                  <SelectItem value="SURGICAL">Surgical</SelectItem>
+                  <SelectItem value="PEDIATRIC">Pediatric</SelectItem>
+                  <SelectItem value="MATERNITY">Maternity</SelectItem>
+                  <SelectItem value="HDU">HDU</SelectItem>
+                  <SelectItem value="ICU">ICU</SelectItem>
+                  <SelectItem value="NBU">NBU</SelectItem>
+                  <SelectItem value="ISOLATION">Isolation</SelectItem>
+                </SelectContent>
+              </Select>
+              <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]" aria-label="Status">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="DISCHARGED">Discharged</SelectItem>
-                <SelectItem value="TRANSFERRED_OUT">Transferred</SelectItem>
-                <SelectItem value="DECEASED">Deceased</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={wardTypeFilter} onValueChange={setWardTypeFilter}>
-              <SelectTrigger className="w-[180px]" aria-label="Ward Type">
-                <SelectValue placeholder="Ward Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Ward Types</SelectItem>
-                <SelectItem value="MEDICAL">Medical</SelectItem>
-                <SelectItem value="SURGICAL">Surgical</SelectItem>
-                <SelectItem value="PEDIATRIC">Pediatric</SelectItem>
-                <SelectItem value="MATERNITY">Maternity</SelectItem>
-                <SelectItem value="HDU">HDU</SelectItem>
-                <SelectItem value="ICU">ICU</SelectItem>
-                <SelectItem value="NBU">NBU</SelectItem>
-                <SelectItem value="ISOLATION">Isolation</SelectItem>
-              </SelectContent>
-            </Select>
-            <ViewToggle value={viewMode} onChange={setViewMode} />
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
         {/* Pending Recommendations Section */}
-        {(recommendationsLoading || (recommendations?.results?.length ?? 0) > 0 || recommendationsError) && (
+        {(recommendationsLoading ||
+          (recommendations?.results?.length ?? 0) > 0 ||
+          recommendationsError) && (
           <Card>
             <CardHeader>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -227,7 +255,10 @@ export default function AdmissionsPage() {
                   <ClipboardList className="h-5 w-5" />
                   Pending Recommendations
                   {recommendations?.count !== undefined && (
-                    <Badge variant="warning" className="ml-2 shrink-0 w-fit self-start sm:self-auto">
+                    <Badge
+                      variant="warning"
+                      className="ml-2 w-fit shrink-0 self-start sm:self-auto"
+                    >
                       {recommendations.count}
                     </Badge>
                   )}
@@ -251,7 +282,7 @@ export default function AdmissionsPage() {
                   </EntityGrid>
                 )
               ) : recommendationsError ? (
-                <div className="text-center py-8 text-destructive">
+                <div className="py-8 text-center text-destructive">
                   Failed to load recommendations. Please try again.
                 </div>
               ) : recommendationsViewMode === 'list' ? (
@@ -273,39 +304,39 @@ export default function AdmissionsPage() {
               <BedDouble className="h-5 w-5" />
               Admissions
               {admissions?.count !== undefined && (
-                <Badge variant="secondary" className="ml-2 shrink-0 w-fit self-start sm:self-auto">
+                <Badge variant="secondary" className="ml-2 w-fit shrink-0 self-start sm:self-auto">
                   {admissions.count}
                 </Badge>
               )}
             </CardTitle>
           </CardHeader>
           <CardContent>
-          {admissionsLoading ? (
-            viewMode === 'list' ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
+            {admissionsLoading ? (
+              viewMode === 'list' ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <EntityGrid>
+                  {[...Array(8)].map((_, i) => (
+                    <Skeleton key={i} className="h-40 w-full rounded-lg" />
+                  ))}
+                </EntityGrid>
+              )
+            ) : admissionsError ? (
+              <div className="py-8 text-center text-destructive">
+                Failed to load admissions. Please try again.
               </div>
+            ) : viewMode === 'list' ? (
+              <AdmissionsTableView
+                admissions={admissions?.results || []}
+                onSelect={(id) => router.push(`/admissions/${id}`)}
+              />
             ) : (
-              <EntityGrid>
-                {[...Array(8)].map((_, i) => (
-                  <Skeleton key={i} className="h-40 w-full rounded-lg" />
-                ))}
-              </EntityGrid>
-            )
-          ) : admissionsError ? (
-            <div className="text-center py-8 text-destructive">
-              Failed to load admissions. Please try again.
-            </div>
-          ) : viewMode === 'list' ? (
-            <AdmissionsTableView
-              admissions={admissions?.results || []}
-              onSelect={(id) => router.push(`/admissions/${id}`)}
-            />
-          ) : (
-            <AdmissionsGridView admissions={admissions?.results || []} />
-          )}
+              <AdmissionsGridView admissions={admissions?.results || []} />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -324,11 +355,7 @@ function AdmissionsTableView({
   onSelect: (id: number) => void;
 }) {
   if (admissions.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        No admissions found.
-      </div>
-    );
+    return <div className="py-8 text-center text-muted-foreground">No admissions found.</div>;
   }
 
   return (
@@ -381,7 +408,7 @@ function AdmissionsTableView({
           cell: (adm) => (
             <Badge
               variant={getStatusVariant(adm.admission_status)}
-              className="shrink-0 w-fit self-start sm:self-auto"
+              className="w-fit shrink-0 self-start sm:self-auto"
             >
               {adm.admission_status_display || adm.admission_status}
             </Badge>
@@ -392,12 +419,12 @@ function AdmissionsTableView({
         <Card className="p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{adm.patient_name}</p>
-              <p className="text-xs text-muted-foreground truncate">{adm.admission_number}</p>
+              <p className="truncate text-sm font-medium">{adm.patient_name}</p>
+              <p className="truncate text-xs text-muted-foreground">{adm.admission_number}</p>
             </div>
             <Badge
               variant={getStatusVariant(adm.admission_status)}
-              className="shrink-0 w-fit self-start sm:self-auto"
+              className="w-fit shrink-0 self-start sm:self-auto"
             >
               {adm.admission_status_display || adm.admission_status}
             </Badge>
@@ -422,11 +449,7 @@ function AdmissionsGridView({ admissions }: { admissions: Admission[] }) {
   const { canPerformAction } = usePermissions();
 
   if (admissions.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        No admissions found.
-      </div>
-    );
+    return <div className="py-8 text-center text-muted-foreground">No admissions found.</div>;
   }
 
   return (
@@ -442,10 +465,16 @@ function AdmissionsGridView({ admissions }: { admissions: Admission[] }) {
             label: adm.admission_status_display || adm.admission_status,
             variant: getStatusVariant(adm.admission_status),
           }}
-          badges={adm.payer_type ? [{
-            label: adm.payer_type_display || adm.payer_type,
-            variant: 'outline'
-          }] : []}
+          badges={
+            adm.payer_type
+              ? [
+                  {
+                    label: adm.payer_type_display || adm.payer_type,
+                    variant: 'outline',
+                  },
+                ]
+              : []
+          }
           metadata={[
             {
               icon: <Hash className="h-3 w-3" />,
@@ -467,16 +496,24 @@ function AdmissionsGridView({ admissions }: { admissions: Admission[] }) {
               label: 'Admitted',
               value: formatDate(adm.admission_date),
             },
-            ...(adm.attending_doctor_username ? [{
-              icon: <User className="h-3 w-3" />,
-              label: 'Doctor',
-              value: adm.attending_doctor_username,
-            }] : []),
+            ...(adm.attending_doctor_username
+              ? [
+                  {
+                    icon: <User className="h-3 w-3" />,
+                    label: 'Doctor',
+                    value: adm.attending_doctor_username,
+                  },
+                ]
+              : []),
           ]}
           actions={[
             { label: 'View Details', href: `/admissions/${adm.id}` },
-            ...(canPerformAction('inpatient.make_rounds') ? [{ label: 'Ward Round', href: `/admissions/${adm.id}/ward-round/new` }] : []),
-            ...(canPerformAction('inpatient.discharge') ? [{ label: 'Discharge', href: `/admissions/${adm.id}/discharge` }] : []),
+            ...(canPerformAction('inpatient.make_rounds')
+              ? [{ label: 'Ward Round', href: `/admissions/${adm.id}/ward-round/new` }]
+              : []),
+            ...(canPerformAction('inpatient.discharge')
+              ? [{ label: 'Discharge', href: `/admissions/${adm.id}/discharge` }]
+              : []),
           ]}
         />
       ))}
@@ -517,7 +554,9 @@ function getStatusVariant(status: string): 'default' | 'secondary' | 'destructiv
 /**
  * Get badge variant based on recommendation urgency
  */
-function getUrgencyVariant(urgency: AdmissionRecommendationUrgency): 'default' | 'secondary' | 'destructive' | 'outline' {
+function getUrgencyVariant(
+  urgency: AdmissionRecommendationUrgency
+): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (urgency) {
     case 'EMERGENCY':
       return 'destructive';
@@ -542,9 +581,7 @@ function RecommendationsTableView({
 }) {
   if (recommendations.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        No pending recommendations.
-      </div>
+      <div className="py-8 text-center text-muted-foreground">No pending recommendations.</div>
     );
   }
 
@@ -561,7 +598,7 @@ function RecommendationsTableView({
           sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
           cell: (rec) => (
             <div className="min-w-0">
-              <p className="font-medium truncate">{rec.patient_name || 'Unknown'}</p>
+              <p className="truncate font-medium">{rec.patient_name || 'Unknown'}</p>
               <p className="text-xs text-muted-foreground">{rec.patient_mrn}</p>
             </div>
           ),
@@ -571,16 +608,17 @@ function RecommendationsTableView({
           header: 'Reason',
           hideOnMobile: true,
           sortable: true,
-          cell: (rec) => <span className="text-sm truncate max-w-[200px]">{rec.reason}</span>,
+          cell: (rec) => <span className="max-w-[200px] truncate text-sm">{rec.reason}</span>,
         },
         {
           key: 'diagnosis',
           header: 'Diagnosis',
           hideOnMobile: true,
           sortable: true,
-          sortFn: (a, b) => (a.provisional_diagnosis_text || '').localeCompare(b.provisional_diagnosis_text || ''),
+          sortFn: (a, b) =>
+            (a.provisional_diagnosis_text || '').localeCompare(b.provisional_diagnosis_text || ''),
           cell: (rec) => (
-            <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+            <span className="max-w-[200px] truncate text-sm text-muted-foreground">
               {rec.provisional_diagnosis_text}
             </span>
           ),
@@ -590,11 +628,8 @@ function RecommendationsTableView({
           header: 'Urgency',
           sortable: true,
           cell: (rec) => (
-            <Badge
-              variant={getUrgencyVariant(rec.urgency)}
-              className="shrink-0 w-fit"
-            >
-              {rec.urgency === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
+            <Badge variant={getUrgencyVariant(rec.urgency)} className="w-fit shrink-0">
+              {rec.urgency === 'EMERGENCY' && <AlertTriangle className="mr-1 h-3 w-3" />}
               {rec.urgency}
             </Badge>
           ),
@@ -604,7 +639,8 @@ function RecommendationsTableView({
           header: 'Ward Type',
           hideOnMobile: true,
           sortable: true,
-          sortFn: (a, b) => (a.preferred_ward_type || '').localeCompare(b.preferred_ward_type || ''),
+          sortFn: (a, b) =>
+            (a.preferred_ward_type || '').localeCompare(b.preferred_ward_type || ''),
           cell: (rec) => (
             <div className="flex items-center gap-1">
               <Building2 className="h-3 w-3 text-muted-foreground" />
@@ -617,14 +653,11 @@ function RecommendationsTableView({
         <Card className="p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{rec.patient_name || 'Unknown'}</p>
-              <p className="text-xs text-muted-foreground truncate">{rec.patient_mrn}</p>
+              <p className="truncate text-sm font-medium">{rec.patient_name || 'Unknown'}</p>
+              <p className="truncate text-xs text-muted-foreground">{rec.patient_mrn}</p>
             </div>
-            <Badge
-              variant={getUrgencyVariant(rec.urgency)}
-              className="shrink-0 w-fit"
-            >
-              {rec.urgency === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
+            <Badge variant={getUrgencyVariant(rec.urgency)} className="w-fit shrink-0">
+              {rec.urgency === 'EMERGENCY' && <AlertTriangle className="mr-1 h-3 w-3" />}
               {rec.urgency}
             </Badge>
           </div>
@@ -646,12 +679,14 @@ function RecommendationsTableView({
 /**
  * Recommendations Grid View Component
  */
-function RecommendationsGridView({ recommendations }: { recommendations: AdmissionRecommendation[] }) {
+function RecommendationsGridView({
+  recommendations,
+}: {
+  recommendations: AdmissionRecommendation[];
+}) {
   if (recommendations.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        No pending recommendations.
-      </div>
+      <div className="py-8 text-center text-muted-foreground">No pending recommendations.</div>
     );
   }
 
@@ -668,10 +703,12 @@ function RecommendationsGridView({ recommendations }: { recommendations: Admissi
             label: rec.urgency,
             variant: getUrgencyVariant(rec.urgency),
           }}
-          badges={[{
-            label: rec.preferred_ward_type,
-            variant: 'outline'
-          }]}
+          badges={[
+            {
+              label: rec.preferred_ward_type,
+              variant: 'outline',
+            },
+          ]}
           metadata={[
             {
               icon: <ClipboardList className="h-3 w-3" />,

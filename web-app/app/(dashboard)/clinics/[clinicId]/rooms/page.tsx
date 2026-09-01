@@ -75,7 +75,7 @@ export default function ClinicRoomsPage() {
   // Filter out already-linked rooms
   const linkedRoomIds = new Set(rooms.map((r: ClinicRoom) => r.room));
   const availableToLink = (allPlaceResources?.results ?? []).filter(
-    (r) => !linkedRoomIds.has(r.id),
+    (r) => !linkedRoomIds.has(r.id)
   );
 
   const resetDialog = () => {
@@ -134,10 +134,16 @@ export default function ClinicRoomsPage() {
         title="Rooms"
         helpContent="Manage rooms linked to this clinic. Linked rooms appear in the clock-in room picker and automatically get assigned when clinicians call patients."
         actions={
-          <Dialog open={linkDialogOpen} onOpenChange={(open) => { setLinkDialogOpen(open); if (!open) resetDialog(); }}>
+          <Dialog
+            open={linkDialogOpen}
+            onOpenChange={(open) => {
+              setLinkDialogOpen(open);
+              if (!open) resetDialog();
+            }}
+          >
             <DialogTrigger asChild>
               <Button size="sm">
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 Add Room
               </Button>
             </DialogTrigger>
@@ -147,8 +153,12 @@ export default function ClinicRoomsPage() {
               </DialogHeader>
               <Tabs defaultValue="create" className="mt-2">
                 <TabsList className="w-full">
-                  <TabsTrigger value="create" className="flex-1">Create New</TabsTrigger>
-                  <TabsTrigger value="link" className="flex-1">Link Existing</TabsTrigger>
+                  <TabsTrigger value="create" className="flex-1">
+                    Create New
+                  </TabsTrigger>
+                  <TabsTrigger value="link" className="flex-1">
+                    Link Existing
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Create new room */}
@@ -183,11 +193,13 @@ export default function ClinicRoomsPage() {
                   </div>
                   <Button
                     className="w-full"
-                    disabled={!newRoomName.trim() || !newRoomCode.trim() || createAndLinkMutation.isPending}
+                    disabled={
+                      !newRoomName.trim() || !newRoomCode.trim() || createAndLinkMutation.isPending
+                    }
                     onClick={() => createAndLinkMutation.mutate()}
                   >
                     {createAndLinkMutation.isPending && (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                     )}
                     Create &amp; Link
                   </Button>
@@ -217,9 +229,7 @@ export default function ClinicRoomsPage() {
                     disabled={!selectedRoomId || linkMutation.isPending}
                     onClick={() => linkMutation.mutate(Number(selectedRoomId))}
                   >
-                    {linkMutation.isPending && (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    )}
+                    {linkMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                     Link Room
                   </Button>
                 </TabsContent>
@@ -239,11 +249,9 @@ export default function ClinicRoomsPage() {
       ) : rooms.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <DoorOpen className="h-12 w-12 text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">
-              No rooms linked to this clinic yet.
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <DoorOpen className="mb-3 h-12 w-12 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">No rooms linked to this clinic yet.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
               Link rooms so clinicians can select them during clock-in.
             </p>
           </CardContent>
@@ -253,25 +261,25 @@ export default function ClinicRoomsPage() {
           {rooms.map((room: ClinicRoom) => (
             <Card
               key={room.id}
-              className="relative overflow-hidden cursor-pointer hover:border-primary/40 transition-colors"
+              className="relative cursor-pointer overflow-hidden transition-colors hover:border-primary/40"
               onClick={() => router.push(`/scheduling/resources/${room.room}`)}
             >
               <div
                 className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
                 aria-hidden="true"
               />
-              <CardContent className="relative pt-5 pb-4 px-5">
+              <CardContent className="relative px-5 pb-4 pt-5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold truncate">{room.room_name}</h3>
+                      <h3 className="truncate font-semibold">{room.room_name}</h3>
                       {room.is_default && (
                         <Badge variant="outline" className="shrink-0 gap-1 text-xs">
                           <Star className="h-3 w-3" /> Default
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">
+                    <p className="mt-0.5 text-sm text-muted-foreground">
                       {room.room_code}
                       {room.room_capacity > 0 && ` • Capacity: ${room.room_capacity}`}
                     </p>
@@ -281,7 +289,7 @@ export default function ClinicRoomsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -291,7 +299,8 @@ export default function ClinicRoomsPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Unlink {room.room_name}?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will remove the room from this clinic. Active shifts in this room will not be affected.
+                          This will remove the room from this clinic. Active shifts in this room
+                          will not be affected.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

@@ -12,7 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useDialysisOrders } from '@/lib/hooks/use-dialysis';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -45,9 +49,7 @@ export default function DialysisOrdersPage() {
       header: 'Patient',
       sortable: true,
       sortType: 'number' as const,
-      cell: (item: DialysisOrder) => (
-        <span className="font-medium">Patient #{item.patient}</span>
-      ),
+      cell: (item: DialysisOrder) => <span className="font-medium">Patient #{item.patient}</span>,
     },
     {
       key: 'dialysis_type',
@@ -68,14 +70,15 @@ export default function DialysisOrdersPage() {
       sortable: true,
       sortType: 'number' as const,
       hideOnMobile: true,
-      cell: (item: DialysisOrder) => `${Math.floor(item.target_duration_minutes / 60)}h ${item.target_duration_minutes % 60}m`,
+      cell: (item: DialysisOrder) =>
+        `${Math.floor(item.target_duration_minutes / 60)}h ${item.target_duration_minutes % 60}m`,
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
       cell: (item: DialysisOrder) => (
-        <Badge className={`${ORDER_STATUS_COLORS[item.status]} shrink-0 w-fit`}>
+        <Badge className={`${ORDER_STATUS_COLORS[item.status]} w-fit shrink-0`}>
           {item.status}
         </Badge>
       ),
@@ -92,15 +95,18 @@ export default function DialysisOrdersPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Dialysis Orders"
           helpContent="Standing dialysis prescriptions define treatment parameters (flow rates, duration, frequency) for ongoing patients."
           actions={
             hasModule('dialysis') ? (
               <PermissionGate action="dialysis.create_order">
-                <Button onClick={() => router.push('/dialysis/orders/new')} disabled={!canCreateRoute('/dialysis/orders/new')}>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button
+                  onClick={() => router.push('/dialysis/orders/new')}
+                  disabled={!canCreateRoute('/dialysis/orders/new')}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">New Order</span>
                   <span className="sm:hidden">New</span>
                 </Button>
@@ -111,8 +117,8 @@ export default function DialysisOrdersPage() {
 
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by patient..."
               value={search}

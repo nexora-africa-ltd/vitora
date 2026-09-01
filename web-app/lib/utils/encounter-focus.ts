@@ -26,13 +26,15 @@ export type EncounterFocusTarget =
 
 export function buildEncounterHref(
   encounterId: number | string,
-  focus?: EncounterFocusTarget | null,
+  focus?: EncounterFocusTarget | null
 ): string {
   const base = `/encounters/${encounterId}`;
   return focus ? `${base}?focus=${focus}` : base;
 }
 
-export function getEncounterFocusFromStatus(status: string | null | undefined): EncounterFocusTarget {
+export function getEncounterFocusFromStatus(
+  status: string | null | undefined
+): EncounterFocusTarget {
   switch ((status || '').toUpperCase()) {
     case 'CREATED':
     case 'CHECKED_IN':

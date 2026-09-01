@@ -7,14 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import {
-  Building2,
-  Bell,
-  Palette,
-  Shield,
-  Database,
-  Monitor,
-} from 'lucide-react';
+import { Building2, Bell, Palette, Shield, Database, Monitor } from 'lucide-react';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -58,14 +51,14 @@ export default function SettingsPage() {
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-muted h-10 sm:h-11 p-1">
+        <TabsList className="h-10 bg-muted p-1 sm:h-11">
           <TabsTrigger value="security" className="gap-1.5 text-xs sm:text-sm">
             <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">MFA</span>
             <span className="hidden sm:inline">Security</span>
           </TabsTrigger>
           <TabsTrigger value="sha" className="gap-1.5 text-xs sm:text-sm">
-            <KenyaCoatOfArms size={14} className="sm:w-4 sm:h-4" />
+            <KenyaCoatOfArms size={14} className="sm:h-4 sm:w-4" />
             <span className="sm:hidden">SHA</span>
             <span className="hidden sm:inline">SHA Integration</span>
           </TabsTrigger>
@@ -99,28 +92,28 @@ export default function SettingsPage() {
         </TabsList>
 
         {/* Security Settings (MFA) */}
-        <TabsContent value="security" className="space-y-4 mt-4">
+        <TabsContent value="security" className="mt-4 space-y-4">
           <MFASettingsTab />
         </TabsContent>
 
         {/* SHA Integration Settings */}
-        <TabsContent value="sha" className="space-y-4 mt-4">
+        <TabsContent value="sha" className="mt-4 space-y-4">
           <SHASettingsTab />
         </TabsContent>
 
         {/* Facility Settings */}
-        <TabsContent value="facility" className="space-y-4 mt-4">
+        <TabsContent value="facility" className="mt-4 space-y-4">
           <FacilitySettingsTab />
           <DischargeTemplateSettings />
         </TabsContent>
 
         {/* DHIS2 / KHIS Settings */}
-        <TabsContent value="dhis2" className="space-y-4 mt-4">
+        <TabsContent value="dhis2" className="mt-4 space-y-4">
           <DHIS2SettingsTab />
         </TabsContent>
 
         {/* Notification Settings */}
-        <TabsContent value="notifications" className="space-y-4 mt-4">
+        <TabsContent value="notifications" className="mt-4 space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -137,13 +130,13 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* Appearance Settings */}
-        <TabsContent value="appearance" className="space-y-4 mt-4">
+        <TabsContent value="appearance" className="mt-4 space-y-4">
           <AppearanceSettings />
         </TabsContent>
 
         {/* Desktop Settings (Tauri only) */}
         {showDesktopSettings && (
-          <TabsContent value="desktop" className="space-y-4 mt-4">
+          <TabsContent value="desktop" className="mt-4 space-y-4">
             <DesktopSettingsTab />
           </TabsContent>
         )}

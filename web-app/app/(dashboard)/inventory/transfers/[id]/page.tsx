@@ -82,9 +82,9 @@ function TransferStepper({ status }: { status: TransferStatus }) {
         const isCompleted = i < currentIndex;
         const isCurrent = i === currentIndex;
         return (
-          <div key={step} className="flex items-center gap-1 shrink-0">
+          <div key={step} className="flex shrink-0 items-center gap-1">
             <div
-              className={`flex items-center justify-center h-7 w-7 rounded-full border-2 text-xs font-medium ${
+              className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-medium ${
                 isCompleted
                   ? 'border-green-500 bg-green-500 text-white'
                   : isCurrent
@@ -95,7 +95,7 @@ function TransferStepper({ status }: { status: TransferStatus }) {
               {isCompleted ? <Check className="h-3.5 w-3.5" /> : i + 1}
             </div>
             <span
-              className={`text-xs hidden sm:inline ${
+              className={`hidden text-xs sm:inline ${
                 isCurrent ? 'font-medium' : 'text-muted-foreground'
               }`}
             >
@@ -115,11 +115,7 @@ function TransferStepper({ status }: { status: TransferStatus }) {
   );
 }
 
-export default function StockTransferDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function StockTransferDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = parseInt(resolvedParams.id, 10);
   const { toast } = useToast();
@@ -205,7 +201,8 @@ export default function StockTransferDetailPage({
   }
 
   const canSubmit = transfer.status === 'DRAFT';
-  const canApprove = transfer.status === 'REQUESTED' && canPerformAction('inventory.approve_transfer' as never);
+  const canApprove =
+    transfer.status === 'REQUESTED' && canPerformAction('inventory.approve_transfer' as never);
   const canDispatch = transfer.status === 'APPROVED';
   const canReceive = transfer.status === 'IN_TRANSIT';
   const canCancel = !['RECEIVED', 'CANCELLED'].includes(transfer.status);
@@ -282,7 +279,8 @@ export default function StockTransferDetailPage({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Dispatch Transfer?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will deduct stock from the source location and mark the transfer as in transit.
+                      This will deduct stock from the source location and mark the transfer as in
+                      transit.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -306,7 +304,8 @@ export default function StockTransferDetailPage({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Receive Transfer?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will create stock at the destination location and mark the transfer as received.
+                      This will create stock at the destination location and mark the transfer as
+                      received.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -366,33 +365,33 @@ export default function StockTransferDetailPage({
 
       {/* Progress stepper */}
       <Card>
-        <CardContent className="py-3 px-4">
+        <CardContent className="px-4 py-3">
           <TransferStepper status={transfer.status} />
         </CardContent>
       </Card>
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <div className="flex items-center gap-1 text-sm font-medium">
             <span className="truncate">{transfer.source_facility_name}</span>
             {transfer.source_store_name && (
-              <span className="text-muted-foreground text-xs">({transfer.source_store_name})</span>
+              <span className="text-xs text-muted-foreground">({transfer.source_store_name})</span>
             )}
             <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="truncate">{transfer.destination_facility_name}</span>
             {transfer.destination_store_name && (
-              <span className="text-muted-foreground text-xs">
+              <span className="text-xs text-muted-foreground">
                 ({transfer.destination_store_name})
               </span>
             )}
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Requested {new Date(transfer.request_date).toLocaleDateString()} by{' '}
             {transfer.requested_by_name}
           </p>
         </div>
-        <Badge variant="outline" className={`${statusColors[transfer.status]} shrink-0 w-fit`}>
+        <Badge variant="outline" className={`${statusColors[transfer.status]} w-fit shrink-0`}>
           {statusLabels[transfer.status]}
         </Badge>
       </div>
@@ -403,10 +402,12 @@ export default function StockTransferDetailPage({
           <CardTitle className="text-base">Timeline</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <dt className="text-muted-foreground">Request Date</dt>
-              <dd className="font-medium">{new Date(transfer.request_date).toLocaleDateString()}</dd>
+              <dd className="font-medium">
+                {new Date(transfer.request_date).toLocaleDateString()}
+              </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Requested By</dt>
@@ -463,23 +464,21 @@ export default function StockTransferDetailPage({
             {transfer.cancelled_at && (
               <div>
                 <dt className="text-muted-foreground">Cancelled At</dt>
-                <dd className="font-medium">
-                  {new Date(transfer.cancelled_at).toLocaleString()}
-                </dd>
+                <dd className="font-medium">{new Date(transfer.cancelled_at).toLocaleString()}</dd>
               </div>
             )}
           </dl>
 
           {transfer.notes && (
-            <div className="mt-4 pt-4 border-t text-sm">
-              <p className="text-muted-foreground mb-1">Notes</p>
+            <div className="mt-4 border-t pt-4 text-sm">
+              <p className="mb-1 text-muted-foreground">Notes</p>
               <p className="whitespace-pre-wrap">{transfer.notes}</p>
             </div>
           )}
 
           {transfer.cancellation_reason && (
-            <div className="mt-4 pt-4 border-t text-sm">
-              <p className="text-muted-foreground mb-1">Cancellation Reason</p>
+            <div className="mt-4 border-t pt-4 text-sm">
+              <p className="mb-1 text-muted-foreground">Cancellation Reason</p>
               <p className="whitespace-pre-wrap text-destructive">{transfer.cancellation_reason}</p>
             </div>
           )}
@@ -515,14 +514,14 @@ export default function StockTransferDetailPage({
                       <TableCell className="text-right">{item.quantity_requested}</TableCell>
                       <TableCell className="text-right">{item.quantity_dispatched}</TableCell>
                       <TableCell className="text-right">{item.quantity_received}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground text-xs">
+                      <TableCell className="hidden text-xs text-muted-foreground sm:table-cell">
                         {item.notes || '—'}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                       No items
                     </TableCell>
                   </TableRow>

@@ -45,13 +45,19 @@ export function LabTatChart({ data }: LabTatChartProps) {
   );
 
   if (chartData.length === 0) {
-    return <ChartEmptyState chartType="line" title="No turnaround data" description="No turnaround time data available for this period" />;
+    return (
+      <ChartEmptyState
+        chartType="line"
+        title="No turnaround data"
+        description="No turnaround time data available for this period"
+      />
+    );
   }
 
   return (
     <div className="space-y-4">
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-        <TabsList className="grid w-full grid-cols-2 max-w-[240px]">
+        <TabsList className="grid w-full max-w-[240px] grid-cols-2">
           <TabsTrigger value="by_test">By Test</TabsTrigger>
           <TabsTrigger value="by_priority">By Priority</TabsTrigger>
         </TabsList>
@@ -70,7 +76,7 @@ export function LabTatChart({ data }: LabTatChartProps) {
         yAxisFormatter={(value) => `${value}h`}
       />
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground px-2">
+      <div className="flex items-center justify-between px-2 text-sm text-muted-foreground">
         <span>
           Overall Average:{' '}
           <strong className="text-foreground">

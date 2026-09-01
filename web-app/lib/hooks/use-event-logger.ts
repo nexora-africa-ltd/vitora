@@ -24,7 +24,12 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { eventsApi, type FrontendEventType, type ResourceType, type FrontendEvent } from '@/lib/api/events';
+import {
+  eventsApi,
+  type FrontendEventType,
+  type ResourceType,
+  type FrontendEvent,
+} from '@/lib/api/events';
 import { useNetworkStatus } from './use-network-status';
 import { useAuth } from '@/lib/auth/context';
 
@@ -65,7 +70,11 @@ function getDeviceType(): 'web' | 'desktop' | 'mobile' {
   }
 
   // Check for mobile
-  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent)) {
+  if (
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      window.navigator.userAgent
+    )
+  ) {
     return 'mobile';
   }
 
@@ -214,105 +223,123 @@ export function useEventLogger(): UseEventLoggerReturn {
   /**
    * Log an event (handles offline queueing)
    */
-  const logEvent = useCallback((
-    eventType: FrontendEventType,
-    resourceType: ResourceType = '',
-    resourceId?: number | null,
-    details: Record<string, unknown> = {}
-  ) => {
-    // Don't log if user is not authenticated
-    if (!user) return;
+  const logEvent = useCallback(
+    (
+      eventType: FrontendEventType,
+      resourceType: ResourceType = '',
+      resourceId?: number | null,
+      details: Record<string, unknown> = {}
+    ) => {
+      // Don't log if user is not authenticated
+      if (!user) return;
 
-    const event: Omit<FrontendEvent, 'id' | 'server_timestamp'> = {
-      event_type: eventType,
-      resource_type: resourceType,
-      resource_id: resourceId ?? null,
-      client_timestamp: new Date().toISOString(),
-      session_id: getSessionId(),
-      device_type: getDeviceType(),
-      details,
-      was_offline: !isOnline,
-    };
+      const event: Omit<FrontendEvent, 'id' | 'server_timestamp'> = {
+        event_type: eventType,
+        resource_type: resourceType,
+        resource_id: resourceId ?? null,
+        client_timestamp: new Date().toISOString(),
+        session_id: getSessionId(),
+        device_type: getDeviceType(),
+        details,
+        was_offline: !isOnline,
+      };
 
-    if (isOnline) {
-      // Send immediately
-      eventsApi.logEvent(event).catch((error) => {
-        // If sending fails, queue for later
-        console.warn('[EventLogger] Failed to send event, queueing:', error);
-        queueRef.current.push({ ...event, was_offline: true });
+      if (isOnline) {
+        // Send immediately
+        eventsApi.logEvent(event).catch((error) => {
+          // If sending fails, queue for later
+          console.warn('[EventLogger] Failed to send event, queueing:', error);
+          queueRef.current.push({ ...event, was_offline: true });
+          saveEventQueue(queueRef.current);
+        });
+      } else {
+        // Queue for later sync
+        queueRef.current.push(event);
         saveEventQueue(queueRef.current);
-      });
-    } else {
-      // Queue for later sync
-      queueRef.current.push(event);
-      saveEventQueue(queueRef.current);
-    }
-  }, [isOnline, user]);
+      }
+    },
+    [isOnline, user]
+  );
 
   /**
    * Log a page view
    */
-  const logPageView = useCallback((page: string, details: Record<string, unknown> = {}) => {
-    logEvent('page_view', '', null, { page, ...details });
-  }, [logEvent]);
+  const logPageView = useCallback(
+    (page: string, details: Record<string, unknown> = {}) => {
+      logEvent('page_view', '', null, { page, ...details });
+    },
+    [logEvent]
+  );
 
   /**
    * Log a form save
    */
-  const logFormSave = useCallback((
-    resourceType: ResourceType,
-    resourceId: number,
-    details: Record<string, unknown> = {}
-  ) => {
-    logEvent('form_save', resourceType, resourceId, details);
-  }, [logEvent]);
+  const logFormSave = useCallback(
+    (resourceType: ResourceType, resourceId: number, details: Record<string, unknown> = {}) => {
+      logEvent('form_save', resourceType, resourceId, details);
+    },
+    [logEvent]
+  );
 
   /**
    * Log a form error
    */
-  const logFormError = useCallback((
-    resourceType: ResourceType,
-    resourceId?: number | null,
-    error?: string,
-    details: Record<string, unknown> = {}
-  ) => {
-    logEvent('form_error', resourceType, resourceId, { error, ...details });
-  }, [logEvent]);
+  const logFormError = useCallback(
+    (
+      resourceType: ResourceType,
+      resourceId?: number | null,
+      error?: string,
+      details: Record<string, unknown> = {}
+    ) => {
+      logEvent('form_error', resourceType, resourceId, { error, ...details });
+    },
+    [logEvent]
+  );
 
   /**
    * Log an encounter workflow event
    */
-  const logEncounterEvent = useCallback((
-    eventType: 'encounter_open' | 'encounter_save' | 'encounter_finalize',
-    encounterId: number,
-    details: Record<string, unknown> = {}
-  ) => {
-    logEvent(eventType, 'Encounter', encounterId, details);
-  }, [logEvent]);
+  const logEncounterEvent = useCallback(
+    (
+      eventType: 'encounter_open' | 'encounter_save' | 'encounter_finalize',
+      encounterId: number,
+      details: Record<string, unknown> = {}
+    ) => {
+      logEvent(eventType, 'Encounter', encounterId, details);
+    },
+    [logEvent]
+  );
 
   /**
    * Log a diagnosis event
    */
-  const logDiagnosisEvent = useCallback((
-    eventType: 'diagnosis_add' | 'diagnosis_update' | 'diagnosis_remove',
-    encounterId: number,
-    diagnosisId?: number,
-    details: Record<string, unknown> = {}
-  ) => {
-    logEvent(eventType, 'Diagnosis', diagnosisId, { encounterId, ...details });
-  }, [logEvent]);
+  const logDiagnosisEvent = useCallback(
+    (
+      eventType: 'diagnosis_add' | 'diagnosis_update' | 'diagnosis_remove',
+      encounterId: number,
+      diagnosisId?: number,
+      details: Record<string, unknown> = {}
+    ) => {
+      logEvent(eventType, 'Diagnosis', diagnosisId, { encounterId, ...details });
+    },
+    [logEvent]
+  );
 
   /**
    * Log a lab event
    */
-  const logLabEvent = useCallback((
-    eventType: 'lab_order_create' | 'lab_result_view',
-    resourceId: number,
-    details: Record<string, unknown> = {}
-  ) => {
-    const resourceType: ResourceType = eventType === 'lab_order_create' ? 'LabOrder' : 'LabResult';
-    logEvent(eventType, resourceType, resourceId, details);
-  }, [logEvent]);
+  const logLabEvent = useCallback(
+    (
+      eventType: 'lab_order_create' | 'lab_result_view',
+      resourceId: number,
+      details: Record<string, unknown> = {}
+    ) => {
+      const resourceType: ResourceType =
+        eventType === 'lab_order_create' ? 'LabOrder' : 'LabResult';
+      logEvent(eventType, resourceType, resourceId, details);
+    },
+    [logEvent]
+  );
 
   return {
     logEvent,

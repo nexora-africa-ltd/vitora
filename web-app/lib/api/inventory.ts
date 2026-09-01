@@ -413,9 +413,7 @@ export const inventoryApi = {
   // Stock Transfers
   // ==========================================================================
 
-  async listTransfers(
-    params?: StockTransferListParams
-  ): Promise<PaginatedResponse<StockTransfer>> {
+  async listTransfers(params?: StockTransferListParams): Promise<PaginatedResponse<StockTransfer>> {
     const response = await apiClient.get(`${BASE}/transfers/`, { params });
     return parseResponse(PaginatedStockTransferSchema, response.data, {
       context: 'inventoryApi.listTransfers',
@@ -677,10 +675,7 @@ export const inventoryApi = {
     });
   },
 
-  async updateETIMSConfig(
-    id: number,
-    data: Partial<ETIMSConfigCreateData>
-  ): Promise<ETIMSConfig> {
+  async updateETIMSConfig(id: number, data: Partial<ETIMSConfigCreateData>): Promise<ETIMSConfig> {
     const response = await apiClient.patch(`${BASE}/etims-config/${id}/`, data);
     return parseResponse(ETIMSConfigSchema, response.data, {
       context: 'inventoryApi.updateETIMSConfig',
@@ -742,14 +737,8 @@ export const inventoryApi = {
     });
   },
 
-  async createCreditNote(
-    id: number,
-    data: ETIMSCreditNoteData
-  ): Promise<ETIMSInvoice> {
-    const response = await apiClient.post(
-      `${BASE}/etims-invoices/${id}/credit-note/`,
-      data
-    );
+  async createCreditNote(id: number, data: ETIMSCreditNoteData): Promise<ETIMSInvoice> {
+    const response = await apiClient.post(`${BASE}/etims-invoices/${id}/credit-note/`, data);
     return parseResponse(ETIMSInvoiceSchema, response.data, {
       context: 'inventoryApi.createCreditNote',
     });
@@ -759,22 +748,19 @@ export const inventoryApi = {
   // eTIMS Daily Reports
   // ==========================================================================
 
-  async listETIMSDailyReports(
-    params?: { page?: number; page_size?: number; report_type?: string }
-  ): Promise<PaginatedResponse<ETIMSDailyReport>> {
+  async listETIMSDailyReports(params?: {
+    page?: number;
+    page_size?: number;
+    report_type?: string;
+  }): Promise<PaginatedResponse<ETIMSDailyReport>> {
     const response = await apiClient.get(`${BASE}/etims-daily-reports/`, { params });
     return parseResponse(PaginatedETIMSDailyReportSchema, response.data, {
       context: 'inventoryApi.listETIMSDailyReports',
     });
   },
 
-  async generateETIMSDailyReport(
-    data: ETIMSDailyReportGenerateData
-  ): Promise<ETIMSDailyReport> {
-    const response = await apiClient.post(
-      `${BASE}/etims-daily-reports/generate/`,
-      data
-    );
+  async generateETIMSDailyReport(data: ETIMSDailyReportGenerateData): Promise<ETIMSDailyReport> {
+    const response = await apiClient.post(`${BASE}/etims-daily-reports/generate/`, data);
     return parseResponse(ETIMSDailyReportSchema, response.data, {
       context: 'inventoryApi.generateETIMSDailyReport',
     });
@@ -858,9 +844,7 @@ export const inventoryApi = {
   async convertReorderToPO(
     id: number
   ): Promise<{ message: string; purchase_order_id: number; po_number: string }> {
-    const response = await apiClient.post(
-      `${BASE}/reorder-suggestions/${id}/convert_to_po/`
-    );
+    const response = await apiClient.post(`${BASE}/reorder-suggestions/${id}/convert_to_po/`);
     return parseResponse(ConvertReorderToPOSchema, response.data, {
       context: 'inventoryApi.convertReorderToPO',
     });

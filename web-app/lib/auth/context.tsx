@@ -60,21 +60,21 @@ export interface User {
   is_staff: boolean;
   is_superuser?: boolean;
   permissions: string[];
-  role?: string;  // User role (ADMIN, NURSE, DOCTOR, BILLING_CLERK, etc.)
-  role_display?: string;  // Human-readable role name (e.g. "Nurse", "Clinical Officer")
-  role_category?: string;  // Role category (CLINICAL, ADMINISTRATIVE, etc.)
-  phone_number?: string | null;  // From staff profile
+  role?: string; // User role (ADMIN, NURSE, DOCTOR, BILLING_CLERK, etc.)
+  role_display?: string; // Human-readable role name (e.g. "Nurse", "Clinical Officer")
+  role_category?: string; // Role category (CLINICAL, ADMINISTRATIVE, etc.)
+  phone_number?: string | null; // From staff profile
   // Practitioner/DHA fields from staff profile
   license_number?: string | null;
-  licensing_body?: string | null;  // e.g. "KMPDC", "NCK", "KPHC"
+  licensing_body?: string | null; // e.g. "KMPDC", "NCK", "KPHC"
   national_id?: string | null;
-  facility?: UserFacility | null;  // Primary facility with module capabilities
-  onboarding_complete?: boolean;  // Whether org has completed onboarding
-  memberships?: OrgMembership[];  // All active org memberships for multi-org users
+  facility?: UserFacility | null; // Primary facility with module capabilities
+  onboarding_complete?: boolean; // Whether org has completed onboarding
+  memberships?: OrgMembership[]; // All active org memberships for multi-org users
   // Subscription / plan data (from organization)
-  subscription_tier?: string | null;  // FREE, BASIC, PROFESSIONAL, ENTERPRISE
-  plan_features?: Record<string, boolean>;  // Feature flags from subscription plan
-  ai_tokens_available?: boolean;  // Whether org has remaining AI token quota
+  subscription_tier?: string | null; // FREE, BASIC, PROFESSIONAL, ENTERPRISE
+  plan_features?: Record<string, boolean>; // Feature flags from subscription plan
+  ai_tokens_available?: boolean; // Whether org has remaining AI token quota
 }
 
 // Auth tokens
@@ -98,7 +98,10 @@ export interface AuthContextValue extends AuthState {
   login: (username: string, password: string) => Promise<LoginResult>;
   logout: () => void;
   refreshToken: () => Promise<void>;
-  verifyMFA: (mfaToken: string, options: { token?: string; backupCode?: string }) => Promise<MFAResult>;
+  verifyMFA: (
+    mfaToken: string,
+    options: { token?: string; backupCode?: string }
+  ) => Promise<MFAResult>;
   verifyMFAWithWebAuthn: (mfaToken: string, credential: unknown) => Promise<MFAResult>;
   updateUserFacility: (facility: UserFacility | null) => void;
   clearMustChangePassword: () => void;
@@ -111,11 +114,11 @@ export interface LoginResult {
   mfaRequired?: boolean;
   mfaToken?: string;
   mfaSetupRequired?: boolean;
-  mfaGraceDeadline?: string;    // ISO 8601 — when MFA setup grace period expires
-  mfaGraceExpired?: boolean;    // true if grace period already passed
+  mfaGraceDeadline?: string; // ISO 8601 — when MFA setup grace period expires
+  mfaGraceExpired?: boolean; // true if grace period already passed
   mustChangePassword?: boolean;
   passwordResetToken?: string;
-  availableMethods?: string[];  // e.g. ['totp', 'webauthn', 'backup_code']
+  availableMethods?: string[]; // e.g. ['totp', 'webauthn', 'backup_code']
   error?: string;
 }
 
@@ -164,7 +167,7 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
       if (typeof data.message === 'string') return data.message;
 
       const fieldMessages = Object.values(data)
-        .flatMap((value) => Array.isArray(value) ? value : [value])
+        .flatMap((value) => (Array.isArray(value) ? value : [value]))
         .filter((value): value is string => typeof value === 'string');
       if (fieldMessages.length > 0) return fieldMessages.join(' ');
     }
@@ -202,28 +205,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: typeof userInfo.id === 'number' ? userInfo.id : fallbackUser.id,
         username: typeof userInfo.username === 'string' ? userInfo.username : fallbackUser.username,
         email: typeof userInfo.email === 'string' ? userInfo.email : fallbackUser.email,
-        first_name: typeof userInfo.first_name === 'string' ? userInfo.first_name : fallbackUser.first_name,
-        last_name: typeof userInfo.last_name === 'string' ? userInfo.last_name : fallbackUser.last_name,
-        is_staff: typeof userInfo.is_staff === 'boolean' ? userInfo.is_staff : fallbackUser.is_staff,
-        is_superuser: typeof userInfo.is_superuser === 'boolean' ? userInfo.is_superuser : fallbackUser.is_superuser,
+        first_name:
+          typeof userInfo.first_name === 'string' ? userInfo.first_name : fallbackUser.first_name,
+        last_name:
+          typeof userInfo.last_name === 'string' ? userInfo.last_name : fallbackUser.last_name,
+        is_staff:
+          typeof userInfo.is_staff === 'boolean' ? userInfo.is_staff : fallbackUser.is_staff,
+        is_superuser:
+          typeof userInfo.is_superuser === 'boolean'
+            ? userInfo.is_superuser
+            : fallbackUser.is_superuser,
         permissions: Array.isArray(userInfo.permissions)
-          ? userInfo.permissions.filter((permission: unknown): permission is string => typeof permission === 'string')
+          ? userInfo.permissions.filter(
+              (permission: unknown): permission is string => typeof permission === 'string'
+            )
           : fallbackUser.permissions,
         role: typeof userInfo.role === 'string' ? userInfo.role : fallbackUser.role,
-        role_display: typeof userInfo.role_display === 'string' ? userInfo.role_display : fallbackUser.role_display,
-        role_category: typeof userInfo.role_category === 'string' ? userInfo.role_category : fallbackUser.role_category,
-        phone_number: typeof userInfo.phone_number === 'string' ? userInfo.phone_number : fallbackUser.phone_number,
-        license_number: typeof userInfo.license_number === 'string' ? userInfo.license_number : fallbackUser.license_number,
-        licensing_body: typeof userInfo.licensing_body === 'string' ? userInfo.licensing_body : fallbackUser.licensing_body,
-        national_id: typeof userInfo.national_id === 'string' ? userInfo.national_id : fallbackUser.national_id,
-        facility: userInfo.facility && typeof userInfo.facility === 'object'
-          ? userInfo.facility as UserFacility
-          : null,
-        onboarding_complete: typeof userInfo.onboarding_complete === 'boolean' ? userInfo.onboarding_complete : undefined,
-        memberships: Array.isArray(userInfo.memberships) ? userInfo.memberships as OrgMembership[] : undefined,
-        subscription_tier: typeof userInfo.subscription_tier === 'string' ? userInfo.subscription_tier : null,
-        plan_features: userInfo.plan_features && typeof userInfo.plan_features === 'object' ? userInfo.plan_features as Record<string, boolean> : {},
-        ai_tokens_available: typeof userInfo.ai_tokens_available === 'boolean' ? userInfo.ai_tokens_available : undefined,
+        role_display:
+          typeof userInfo.role_display === 'string'
+            ? userInfo.role_display
+            : fallbackUser.role_display,
+        role_category:
+          typeof userInfo.role_category === 'string'
+            ? userInfo.role_category
+            : fallbackUser.role_category,
+        phone_number:
+          typeof userInfo.phone_number === 'string'
+            ? userInfo.phone_number
+            : fallbackUser.phone_number,
+        license_number:
+          typeof userInfo.license_number === 'string'
+            ? userInfo.license_number
+            : fallbackUser.license_number,
+        licensing_body:
+          typeof userInfo.licensing_body === 'string'
+            ? userInfo.licensing_body
+            : fallbackUser.licensing_body,
+        national_id:
+          typeof userInfo.national_id === 'string'
+            ? userInfo.national_id
+            : fallbackUser.national_id,
+        facility:
+          userInfo.facility && typeof userInfo.facility === 'object'
+            ? (userInfo.facility as UserFacility)
+            : null,
+        onboarding_complete:
+          typeof userInfo.onboarding_complete === 'boolean'
+            ? userInfo.onboarding_complete
+            : undefined,
+        memberships: Array.isArray(userInfo.memberships)
+          ? (userInfo.memberships as OrgMembership[])
+          : undefined,
+        subscription_tier:
+          typeof userInfo.subscription_tier === 'string' ? userInfo.subscription_tier : null,
+        plan_features:
+          userInfo.plan_features && typeof userInfo.plan_features === 'object'
+            ? (userInfo.plan_features as Record<string, boolean>)
+            : {},
+        ai_tokens_available:
+          typeof userInfo.ai_tokens_available === 'boolean'
+            ? userInfo.ai_tokens_available
+            : undefined,
       };
 
       localStorage.setItem(USER_KEY, JSON.stringify(syncedUser));
@@ -245,18 +287,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const userStr = localStorage.getItem(USER_KEY);
 
-if (userStr) {
-            const storedUser = JSON.parse(userStr) as User;
-            const storedMustChange = localStorage.getItem(MUST_CHANGE_PW_KEY) === 'true';
-            const storedResetToken = localStorage.getItem(RESET_TOKEN_KEY) || null;
-            setState({
-              user: storedUser,
-              tokens: null,  // Tokens are in httpOnly cookies
-              isAuthenticated: true,
-              isLoading: false,
-              mustChangePassword: storedMustChange,
-              resetToken: storedResetToken,
-            });
+        if (userStr) {
+          const storedUser = JSON.parse(userStr) as User;
+          const storedMustChange = localStorage.getItem(MUST_CHANGE_PW_KEY) === 'true';
+          const storedResetToken = localStorage.getItem(RESET_TOKEN_KEY) || null;
+          setState({
+            user: storedUser,
+            tokens: null, // Tokens are in httpOnly cookies
+            isAuthenticated: true,
+            isLoading: false,
+            mustChangePassword: storedMustChange,
+            resetToken: storedResetToken,
+          });
 
           // Verify auth is still valid by syncing from backend.
           // Skip when mustChangePassword is set — the API will reject with 401
@@ -346,20 +388,20 @@ if (userStr) {
       if (desktop) {
         headers['X-Vitora-Client'] = 'desktop/0.1.0';
       }
-      const tokenResponse = await fetch(
-        `${apiUrl}/api/auth/login/`,
-        {
-          method: 'POST',
-          headers,
-          credentials: 'include',  // Receive httpOnly cookies (web mode)
-          body: JSON.stringify({ username, password }),
-        }
-      );
+      const tokenResponse = await fetch(`${apiUrl}/api/auth/login/`, {
+        method: 'POST',
+        headers,
+        credentials: 'include', // Receive httpOnly cookies (web mode)
+        body: JSON.stringify({ username, password }),
+      });
 
       if (!tokenResponse.ok) {
         return {
           success: false,
-          error: await readErrorMessage(tokenResponse, 'Login failed. Please check your credentials and try again.'),
+          error: await readErrorMessage(
+            tokenResponse,
+            'Login failed. Please check your credentials and try again.'
+          ),
         };
       }
 
@@ -422,7 +464,7 @@ if (userStr) {
 
       setState({
         user,
-        tokens: null,  // Tokens are in httpOnly cookies
+        tokens: null, // Tokens are in httpOnly cookies
         isAuthenticated: true,
         isLoading: false,
         mustChangePassword: !!data.must_change_password,
@@ -447,118 +489,114 @@ if (userStr) {
   }, []);
 
   // MFA verification function — uses cookie-based endpoint
-  const verifyMFA = useCallback(async (
-    mfaToken: string,
-    options: { token?: string; backupCode?: string }
-  ) => {
-    setState((prev) => ({ ...prev, isLoading: true }));
+  const verifyMFA = useCallback(
+    async (mfaToken: string, options: { token?: string; backupCode?: string }) => {
+      setState((prev) => ({ ...prev, isLoading: true }));
 
-    try {
-      const apiUrl = await getAuthApiUrl();
-      const { isDesktop } = await import('@/lib/desktop');
-      const desktop = isDesktop();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (desktop) {
-        headers['X-Vitora-Client'] = 'desktop/0.1.0';
-      }
-      const response = await fetch(
-        `${apiUrl}/api/auth/mfa-verify/`,
-        {
+      try {
+        const apiUrl = await getAuthApiUrl();
+        const { isDesktop } = await import('@/lib/desktop');
+        const desktop = isDesktop();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (desktop) {
+          headers['X-Vitora-Client'] = 'desktop/0.1.0';
+        }
+        const response = await fetch(`${apiUrl}/api/auth/mfa-verify/`, {
           method: 'POST',
           headers,
-          credentials: 'include',  // Receive httpOnly cookies
+          credentials: 'include', // Receive httpOnly cookies
           body: JSON.stringify({
             mfa_token: mfaToken,
             ...(options.token && { token: options.token }),
             ...(options.backupCode && { backup_code: options.backupCode }),
           }),
+        });
+
+        if (!response.ok) {
+          throw new Error(await readErrorMessage(response, 'MFA verification failed'));
         }
-      );
 
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'MFA verification failed'));
-      }
+        const data = await response.json();
 
-      const data = await response.json();
+        if (desktop && data.access && data.refresh) {
+          const { tokenStorage } = await import('@/lib/auth/storage');
+          tokenStorage.setTokens(data.access, data.refresh);
+        }
 
-      if (desktop && data.access && data.refresh) {
-        const { tokenStorage } = await import('@/lib/auth/storage');
-        tokenStorage.setTokens(data.access, data.refresh);
-      }
+        // User info from response (tokens are in httpOnly cookies)
+        const user: User = {
+          id: data.user.id,
+          username: data.user.username,
+          email: data.user.email,
+          first_name: data.user.first_name,
+          last_name: data.user.last_name,
+          is_staff: data.user.is_staff,
+          is_superuser: data.user.is_superuser,
+          permissions: data.user.permissions,
+          role: data.user.role ?? undefined,
+          role_display: data.user.role_display ?? undefined,
+          role_category: data.user.role_category ?? undefined,
+          phone_number: data.user.phone_number ?? undefined,
+          facility: data.user.facility ?? null,
+          onboarding_complete: data.user.onboarding_complete ?? undefined,
+          memberships: Array.isArray(data.user.memberships) ? data.user.memberships : undefined,
+          subscription_tier: data.user.subscription_tier ?? null,
+          plan_features:
+            data.user.plan_features && typeof data.user.plan_features === 'object'
+              ? data.user.plan_features
+              : {},
+          ai_tokens_available:
+            typeof data.user.ai_tokens_available === 'boolean'
+              ? data.user.ai_tokens_available
+              : undefined,
+        };
 
-      // User info from response (tokens are in httpOnly cookies)
-      const user: User = {
-        id: data.user.id,
-        username: data.user.username,
-        email: data.user.email,
-        first_name: data.user.first_name,
-        last_name: data.user.last_name,
-        is_staff: data.user.is_staff,
-        is_superuser: data.user.is_superuser,
-        permissions: data.user.permissions,
-        role: data.user.role ?? undefined,
-        role_display: data.user.role_display ?? undefined,
-        role_category: data.user.role_category ?? undefined,
-        phone_number: data.user.phone_number ?? undefined,
-        facility: data.user.facility ?? null,
-        onboarding_complete: data.user.onboarding_complete ?? undefined,
-        memberships: Array.isArray(data.user.memberships) ? data.user.memberships : undefined,
-        subscription_tier: data.user.subscription_tier ?? null,
-        plan_features: data.user.plan_features && typeof data.user.plan_features === 'object'
-          ? data.user.plan_features
-          : {},
-        ai_tokens_available: typeof data.user.ai_tokens_available === 'boolean'
-          ? data.user.ai_tokens_available
-          : undefined,
-      };
-
-      // Store user profile (non-sensitive)
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
-      if (data.must_change_password) {
-        localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
-        if (data.password_reset_token) {
-          localStorage.setItem(RESET_TOKEN_KEY, data.password_reset_token);
+        // Store user profile (non-sensitive)
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        if (data.must_change_password) {
+          localStorage.setItem(MUST_CHANGE_PW_KEY, 'true');
+          if (data.password_reset_token) {
+            localStorage.setItem(RESET_TOKEN_KEY, data.password_reset_token);
+          } else {
+            localStorage.removeItem(RESET_TOKEN_KEY);
+          }
         } else {
+          localStorage.removeItem(MUST_CHANGE_PW_KEY);
           localStorage.removeItem(RESET_TOKEN_KEY);
         }
-      } else {
-        localStorage.removeItem(MUST_CHANGE_PW_KEY);
-        localStorage.removeItem(RESET_TOKEN_KEY);
+
+        // Reset idle timer
+        localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
+
+        // Set auth cookie for middleware
+        document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+
+        setState({
+          user,
+          tokens: null, // Tokens are in httpOnly cookies
+          isAuthenticated: true,
+          isLoading: false,
+          mustChangePassword: !!data.must_change_password,
+          resetToken: data.password_reset_token || null,
+        });
+
+        return {
+          mustChangePassword: !!data.must_change_password,
+          passwordResetToken: data.password_reset_token,
+        };
+      } catch (error) {
+        setState((prev) => ({ ...prev, isLoading: false }));
+        throw error;
       }
-
-      // Reset idle timer
-      localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
-
-      // Set auth cookie for middleware
-      document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-
-      setState({
-        user,
-        tokens: null,  // Tokens are in httpOnly cookies
-        isAuthenticated: true,
-        isLoading: false,
-        mustChangePassword: !!data.must_change_password,
-        resetToken: data.password_reset_token || null,
-      });
-
-      return {
-        mustChangePassword: !!data.must_change_password,
-        passwordResetToken: data.password_reset_token,
-      };
-    } catch (error) {
-      setState((prev) => ({ ...prev, isLoading: false }));
-      throw error;
-    }
-  }, []);
+    },
+    []
+  );
 
   // MFA verification via WebAuthn / passkey — uses the same response shape
   // as /api/auth/mfa-verify/ (the backend sets httpOnly cookies for web
   // clients and returns body tokens for desktop). Updating auth state here
   // is critical so AuthGuard does not bounce the user back to /login.
-  const verifyMFAWithWebAuthn = useCallback(async (
-    mfaToken: string,
-    credential: unknown,
-  ) => {
+  const verifyMFAWithWebAuthn = useCallback(async (mfaToken: string, credential: unknown) => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
@@ -569,18 +607,15 @@ if (userStr) {
       if (desktop) {
         headers['X-Vitora-Client'] = 'desktop/0.1.0';
       }
-      const response = await fetch(
-        `${apiUrl}/api/mfa/webauthn/authenticate/complete/`,
-        {
-          method: 'POST',
-          headers,
-          credentials: 'include',  // Receive httpOnly cookies (web mode)
-          body: JSON.stringify({
-            mfa_token: mfaToken,
-            credential,
-          }),
-        }
-      );
+      const response = await fetch(`${apiUrl}/api/mfa/webauthn/authenticate/complete/`, {
+        method: 'POST',
+        headers,
+        credentials: 'include', // Receive httpOnly cookies (web mode)
+        body: JSON.stringify({
+          mfa_token: mfaToken,
+          credential,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(await readErrorMessage(response, 'Passkey verification failed.'));
@@ -610,12 +645,14 @@ if (userStr) {
         onboarding_complete: data.user.onboarding_complete ?? undefined,
         memberships: Array.isArray(data.user.memberships) ? data.user.memberships : undefined,
         subscription_tier: data.user.subscription_tier ?? null,
-        plan_features: data.user.plan_features && typeof data.user.plan_features === 'object'
-          ? data.user.plan_features
-          : {},
-        ai_tokens_available: typeof data.user.ai_tokens_available === 'boolean'
-          ? data.user.ai_tokens_available
-          : undefined,
+        plan_features:
+          data.user.plan_features && typeof data.user.plan_features === 'object'
+            ? data.user.plan_features
+            : {},
+        ai_tokens_available:
+          typeof data.user.ai_tokens_available === 'boolean'
+            ? data.user.ai_tokens_available
+            : undefined,
       };
 
       localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -656,11 +693,15 @@ if (userStr) {
   const logout = useCallback(() => {
     // Clear httpOnly cookies server-side (fire-and-forget)
     getAuthApiUrl()
-      .then((apiUrl) => fetch(`${apiUrl}/api/auth/logout/`, {
-        method: 'POST',
-        credentials: 'include',
-      }))
-      .catch(() => { /* ignore — local cleanup still happens */ });
+      .then((apiUrl) =>
+        fetch(`${apiUrl}/api/auth/logout/`, {
+          method: 'POST',
+          credentials: 'include',
+        })
+      )
+      .catch(() => {
+        /* ignore — local cleanup still happens */
+      });
 
     // Clear local data
     localStorage.removeItem(USER_KEY);
@@ -687,13 +728,10 @@ if (userStr) {
   // Refresh token function — uses cookie-based refresh
   const refreshToken = useCallback(async () => {
     const apiUrl = await getAuthApiUrl();
-    const response = await fetch(
-      `${apiUrl}/api/auth/refresh/`,
-      {
-        method: 'POST',
-        credentials: 'include',
-      }
-    );
+    const response = await fetch(`${apiUrl}/api/auth/refresh/`, {
+      method: 'POST',
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       logout();

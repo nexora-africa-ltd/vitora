@@ -33,7 +33,13 @@ const mockQueueEntry = (overrides: Record<string, unknown> = {}) => ({
   called_by: null,
   called_by_name: null,
   position: 1,
-  alerts: [{ type: 'critical', message: 'Severe chest pain - possible cardiac event', vital_type: 'HEART_RATE' }],
+  alerts: [
+    {
+      type: 'critical',
+      message: 'Severe chest pain - possible cardiac event',
+      vital_type: 'HEART_RATE',
+    },
+  ],
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   ...overrides,
@@ -129,12 +135,60 @@ const mockWaitTimeStats = {
 };
 
 const mockThresholds = [
-  { id: 1, vital_type: 'SPO2', critical_low: 90, warning_low: 95, warning_high: null, critical_high: null, is_active: true },
-  { id: 2, vital_type: 'SYSTOLIC_BP', critical_low: 90, warning_low: 100, warning_high: 140, critical_high: 180, is_active: true },
-  { id: 3, vital_type: 'DIASTOLIC_BP', critical_low: null, warning_low: null, warning_high: 90, critical_high: 120, is_active: true },
-  { id: 4, vital_type: 'HEART_RATE', critical_low: 40, warning_low: 50, warning_high: 100, critical_high: 150, is_active: true },
-  { id: 5, vital_type: 'TEMPERATURE', critical_low: 35.0, warning_low: 36.5, warning_high: 37.5, critical_high: 40.0, is_active: true },
-  { id: 6, vital_type: 'RESPIRATORY_RATE', critical_low: 8, warning_low: 10, warning_high: 24, critical_high: 30, is_active: true },
+  {
+    id: 1,
+    vital_type: 'SPO2',
+    critical_low: 90,
+    warning_low: 95,
+    warning_high: null,
+    critical_high: null,
+    is_active: true,
+  },
+  {
+    id: 2,
+    vital_type: 'SYSTOLIC_BP',
+    critical_low: 90,
+    warning_low: 100,
+    warning_high: 140,
+    critical_high: 180,
+    is_active: true,
+  },
+  {
+    id: 3,
+    vital_type: 'DIASTOLIC_BP',
+    critical_low: null,
+    warning_low: null,
+    warning_high: 90,
+    critical_high: 120,
+    is_active: true,
+  },
+  {
+    id: 4,
+    vital_type: 'HEART_RATE',
+    critical_low: 40,
+    warning_low: 50,
+    warning_high: 100,
+    critical_high: 150,
+    is_active: true,
+  },
+  {
+    id: 5,
+    vital_type: 'TEMPERATURE',
+    critical_low: 35.0,
+    warning_low: 36.5,
+    warning_high: 37.5,
+    critical_high: 40.0,
+    is_active: true,
+  },
+  {
+    id: 6,
+    vital_type: 'RESPIRATORY_RATE',
+    critical_low: 8,
+    warning_low: 10,
+    warning_high: 24,
+    critical_high: 30,
+    is_active: true,
+  },
 ];
 
 const mockReportData = {
@@ -314,10 +368,13 @@ async function loginAndNavigate(page: Page, path: string) {
 
   // Wait for login to complete - the app redirects / -> /dashboard
   // Use a more flexible wait that handles the redirect chain
-  await page.waitForURL((url) => {
-    const pathname = url.pathname;
-    return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
-  }, { timeout: 15000 });
+  await page.waitForURL(
+    (url) => {
+      const pathname = url.pathname;
+      return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
+    },
+    { timeout: 15000 }
+  );
 
   // If we landed on /, wait for redirect to /dashboard
   if (page.url().endsWith('/')) {
@@ -382,7 +439,9 @@ test.describe('Triage Queue Dashboard', () => {
     const exceededCard = page.locator('[data-testid="queue-item-2"]');
     await expect(exceededCard.getByText('Mary Otieno')).toBeVisible();
     // Check for warning indicator (use first() since card may have multiple red elements)
-    await expect(exceededCard.locator('.text-destructive, .text-red-600, [data-exceeded="true"]').first()).toBeVisible();
+    await expect(
+      exceededCard.locator('.text-destructive, .text-red-600, [data-exceeded="true"]').first()
+    ).toBeVisible();
   });
 
   test('can call a patient', async ({ page }) => {
@@ -437,7 +496,10 @@ test.describe('Triage Queue Dashboard', () => {
     await expect(page.getByRole('heading', { name: 'Triage Queue' }).first()).toBeVisible();
 
     // Click refresh button (use first() as there may be header and inline refresh buttons)
-    await page.getByRole('button', { name: /refresh/i }).first().click();
+    await page
+      .getByRole('button', { name: /refresh/i })
+      .first()
+      .click();
 
     // Queue should still be visible after refresh
     await expect(page.getByText('Jane Wanjiku')).toBeVisible();
@@ -480,7 +542,10 @@ test.describe('Triage Reports', () => {
 
   test('can change date range', async ({ page }) => {
     // Click date range selector button
-    await page.getByRole('button', { name: /today|date range/i }).first().click();
+    await page
+      .getByRole('button', { name: /today|date range/i })
+      .first()
+      .click();
     // Click on an option in the dropdown
     await page.getByText(/last 7 days/i).click();
     // Should update (check page doesn't error)
@@ -489,9 +554,15 @@ test.describe('Triage Reports', () => {
 
   test('can filter by area', async ({ page }) => {
     // Click area filter button
-    await page.getByRole('button', { name: /all areas|area/i }).first().click();
+    await page
+      .getByRole('button', { name: /all areas|area/i })
+      .first()
+      .click();
     // Click on an area option
-    await page.getByText(/resuscitation/i).first().click();
+    await page
+      .getByText(/resuscitation/i)
+      .first()
+      .click();
     // Should apply filter
     await expect(page.getByRole('heading', { name: /triage reports/i }).first()).toBeVisible();
   });
@@ -565,14 +636,17 @@ test.describe('Triage Navigation', () => {
     await page.getByRole('button', { name: /sign in|login/i }).click();
 
     // Wait for login to complete - handle redirect chain / -> /dashboard
-    await page.waitForURL((url) => {
-      const pathname = url.pathname;
-      return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
-    }, { timeout: 15000 });
+    await page.waitForURL(
+      (url) => {
+        const pathname = url.pathname;
+        return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
+      },
+      { timeout: 15000 }
+    );
 
     if (page.url().endsWith('/')) {
       await page.waitForURL(/.*dashboard.*/, { timeout: 10000 });
-    };
+    }
   });
 
   test('triage appears in sidebar navigation', async ({ page }) => {

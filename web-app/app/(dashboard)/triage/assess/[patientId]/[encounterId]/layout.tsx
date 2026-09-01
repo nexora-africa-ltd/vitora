@@ -49,7 +49,7 @@ function TriageLayoutError({ message }: { message: string }) {
       <div className="mt-4">
         <Button variant="outline" className="w-full sm:w-auto" asChild>
           <Link href="/triage">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Triage Queue
           </Link>
         </Button>
@@ -64,10 +64,10 @@ function TriageLayoutError({ message }: { message: string }) {
 
 function TriageLayoutLoading() {
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="bg-card border-b px-3 py-2 sm:px-4 sm:py-3">
+    <div className="flex min-h-screen flex-col">
+      <header className="border-b bg-card px-3 py-2 sm:px-4 sm:py-3">
         <div className="flex items-center gap-3 sm:gap-4">
-          <Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full" />
+          <Skeleton className="h-8 w-8 rounded-full sm:h-10 sm:w-10" />
           <div className="space-y-1.5 sm:space-y-2">
             <Skeleton className="h-4 w-24 sm:w-32" />
             <Skeleton className="h-3 w-36 sm:w-48" />
@@ -84,8 +84,8 @@ function TriageLayoutLoading() {
         </div>
       </div>
       <main className="flex-1 p-4 sm:p-6">
-        <Skeleton className="h-6 w-48 sm:h-8 sm:w-64 mb-4" />
-        <Skeleton className="h-48 sm:h-64 w-full" />
+        <Skeleton className="mb-4 h-6 w-48 sm:h-8 sm:w-64" />
+        <Skeleton className="h-48 w-full sm:h-64" />
       </main>
     </div>
   );
@@ -100,21 +100,21 @@ const TRIAGE_QUICK_ACTIONS: AIQuickAction[] = [
     id: 'triage-priority',
     label: 'Suggest triage priority',
     query:
-      'Based on this patient\'s current vital signs, chief complaint, and clinical presentation, what KETA triage category (RED/ORANGE/YELLOW/GREEN/BLUE) would you recommend and why?',
+      "Based on this patient's current vital signs, chief complaint, and clinical presentation, what KETA triage category (RED/ORANGE/YELLOW/GREEN/BLUE) would you recommend and why?",
     userMessage: '🚦 Requesting triage priority recommendation...',
   },
   {
     id: 'triage-red-flags',
     label: 'Red flags to watch',
     query:
-      'What are the critical red flags and warning signs I should watch for with this patient\'s presentation? Include any vital sign trends that would require immediate escalation.',
+      "What are the critical red flags and warning signs I should watch for with this patient's presentation? Include any vital sign trends that would require immediate escalation.",
     userMessage: '🚩 Checking for clinical red flags...',
   },
   {
     id: 'triage-ddx',
     label: 'Differential diagnosis',
     query:
-      'Provide a differential diagnosis for this patient\'s triage presentation. Consider the chief complaint, vital signs, age, and any risk factors. Rank by likelihood.',
+      "Provide a differential diagnosis for this patient's triage presentation. Consider the chief complaint, vital signs, age, and any risk factors. Rank by likelihood.",
     userMessage: '🩺 Requesting differential diagnosis...',
   },
   {
@@ -142,7 +142,7 @@ function TriageLayoutContent({ children }: { children: React.ReactNode }) {
   // even before the triage assessment is submitted.
   const encounterId = encounter?.id;
   const triageSession = useTriageAssessStore((s) =>
-    encounterId ? s.sessions[encounterId] ?? null : null
+    encounterId ? (s.sessions[encounterId] ?? null) : null
   );
 
   // Wire encounter + patient + in-progress triage data into AI chat context.
@@ -153,29 +153,41 @@ function TriageLayoutContent({ children }: { children: React.ReactNode }) {
 
     if (patient && encounter) {
       // --- Patient context: merge saved encounter data + in-progress history ---
-      const savedAllergies = encounter.allergies
-        ?.split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean) ?? [];
-      const savedComorbidities = encounter.chronic_conditions
-        ?.split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean) ?? [];
-      const savedMeds = encounter.current_medications
-        ?.split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean) ?? [];
+      const savedAllergies =
+        encounter.allergies
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [];
+      const savedComorbidities =
+        encounter.chronic_conditions
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [];
+      const savedMeds =
+        encounter.current_medications
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [];
 
       // In-progress history from triage store overrides saved data when present
       const triageHistory = triageSession?.history;
       const allergies = triageHistory?.allergies_noted
-        ? triageHistory.allergies_noted.split(',').map((s) => s.trim()).filter(Boolean)
+        ? triageHistory.allergies_noted
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
         : savedAllergies;
       const comorbidities = triageHistory?.past_medical_history
-        ? triageHistory.past_medical_history.split(',').map((s) => s.trim()).filter(Boolean)
+        ? triageHistory.past_medical_history
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
         : savedComorbidities;
       const currentMeds = triageHistory?.current_medications
-        ? triageHistory.current_medications.split(',').map((s) => s.trim()).filter(Boolean)
+        ? triageHistory.current_medications
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
         : savedMeds;
 
       // --- Encounter context: merge saved vitals + in-progress vitals ---
@@ -183,22 +195,23 @@ function TriageLayoutContent({ children }: { children: React.ReactNode }) {
       const triageAssessment = triageSession?.assessment;
 
       // In-progress vitals override saved encounter vitals when present
-      const spo2 = triageVitals?.spo2
-        ?? (encounter.spo2 != null ? Number(encounter.spo2) : undefined);
+      const spo2 =
+        triageVitals?.spo2 ?? (encounter.spo2 != null ? Number(encounter.spo2) : undefined);
       const pulse = triageVitals?.heart_rate ?? encounter.pulse ?? undefined;
-      const temperature = triageVitals?.temperature
-        ?? (encounter.temperature != null ? Number(encounter.temperature) : undefined);
+      const temperature =
+        triageVitals?.temperature ??
+        (encounter.temperature != null ? Number(encounter.temperature) : undefined);
       const rr = triageVitals?.respiratory_rate ?? encounter.respiratory_rate ?? undefined;
 
       // Calculate MAP: prefer in-progress BP, fall back to saved BP string
-      const map = (triageVitals?.systolic_bp != null && triageVitals?.diastolic_bp != null)
-        ? (calculateMAP(triageVitals.systolic_bp, triageVitals.diastolic_bp) ?? undefined)
-        : (parseBPAndCalculateMAP(encounter.blood_pressure) ?? undefined);
+      const map =
+        triageVitals?.systolic_bp != null && triageVitals?.diastolic_bp != null
+          ? (calculateMAP(triageVitals.systolic_bp, triageVitals.diastolic_bp) ?? undefined)
+          : (parseBPAndCalculateMAP(encounter.blood_pressure) ?? undefined);
 
       // Chief complaint: prefer in-progress assessment, fall back to saved
-      const chiefComplaint = triageAssessment?.chief_complaint
-        ?? encounter.chief_complaint
-        ?? undefined;
+      const chiefComplaint =
+        triageAssessment?.chief_complaint ?? encounter.chief_complaint ?? undefined;
 
       setEncounterAwareContext(
         {
@@ -238,7 +251,7 @@ function TriageLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col min-h-full -m-4 md:-m-6 lg:-m-8">
+    <div className="-m-4 flex min-h-full flex-col md:-m-6 lg:-m-8">
       <PatientShellHeader compact />
       <TriageAssessTabs />
       <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
@@ -250,25 +263,17 @@ function TriageLayoutContent({ children }: { children: React.ReactNode }) {
 // Main Layout
 // =============================================================================
 
-export default function TriageAssessLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function TriageAssessLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const patientIdParam = params.patientId;
   const encounterIdParam = params.encounterId;
 
   // Validate IDs from params
-  const patientId =
-    typeof patientIdParam === 'string' ? parseInt(patientIdParam, 10) : null;
-  const encounterId =
-    typeof encounterIdParam === 'string' ? parseInt(encounterIdParam, 10) : null;
+  const patientId = typeof patientIdParam === 'string' ? parseInt(patientIdParam, 10) : null;
+  const encounterId = typeof encounterIdParam === 'string' ? parseInt(encounterIdParam, 10) : null;
 
-  const isValidPatientId =
-    patientId !== null && !isNaN(patientId) && patientId > 0;
-  const isValidEncounterId =
-    encounterId !== null && !isNaN(encounterId) && encounterId > 0;
+  const isValidPatientId = patientId !== null && !isNaN(patientId) && patientId > 0;
+  const isValidEncounterId = encounterId !== null && !isNaN(encounterId) && encounterId > 0;
 
   // Invalid patient ID
   if (!isValidPatientId) {
@@ -279,9 +284,7 @@ export default function TriageAssessLayout({
 
   // Invalid encounter ID
   if (!isValidEncounterId) {
-    return (
-      <TriageLayoutError message="Invalid encounter ID. Please select a valid encounter." />
-    );
+    return <TriageLayoutError message="Invalid encounter ID. Please select a valid encounter." />;
   }
 
   return (

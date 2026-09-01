@@ -123,23 +123,25 @@ const nextConfig = {
           //     wa-sqlite/SharedArrayBuffer.
           //   - HSTS: can cause localhost to be upgraded to https in the
           //     WebView2 cache, breaking subsequent requests.
-          ...(process.env.VITORA_DESKTOP !== '1' ? [
-            {
-              key: 'Strict-Transport-Security',
-              value: 'max-age=31536000; includeSubDomains; preload',
-            },
-            {
-              key: 'Cross-Origin-Opener-Policy',
-              value: 'same-origin',
-            },
-            {
-              key: 'Cross-Origin-Embedder-Policy',
-              value: 'credentialless',
-              // 'credentialless' is less restrictive than 'require-corp'
-              // and still enables SharedArrayBuffer in modern browsers.
-              // It allows loading cross-origin images/fonts without CORS.
-            },
-          ] : []),
+          ...(process.env.VITORA_DESKTOP !== '1'
+            ? [
+                {
+                  key: 'Strict-Transport-Security',
+                  value: 'max-age=31536000; includeSubDomains; preload',
+                },
+                {
+                  key: 'Cross-Origin-Opener-Policy',
+                  value: 'same-origin',
+                },
+                {
+                  key: 'Cross-Origin-Embedder-Policy',
+                  value: 'credentialless',
+                  // 'credentialless' is less restrictive than 'require-corp'
+                  // and still enables SharedArrayBuffer in modern browsers.
+                  // It allows loading cross-origin images/fonts without CORS.
+                },
+              ]
+            : []),
         ],
       },
       {
@@ -358,22 +360,21 @@ const nextConfig = {
       },
     ],
   },
-}
+};
 
-module.exports = nextConfig
-
+module.exports = nextConfig;
 
 // Injected content via Sentry wizard below
 
-const { withSentryConfig } = require("@sentry/nextjs");
+const { withSentryConfig } = require('@sentry/nextjs');
 
 if (enableSentryBuildPlugin) {
   module.exports = withSentryConfig(module.exports, {
     // For all available options, see:
     // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
-    org: "nexora-consulting-limited",
-    project: "web-app",
+    org: 'nexora-consulting-limited',
+    project: 'web-app',
 
     // Only print logs for uploading source maps in CI
     silent: !process.env.CI,

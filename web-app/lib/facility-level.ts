@@ -34,12 +34,14 @@ export function supportsFacilityLevelSubtype(level?: string | null): boolean {
 export function formatFacilityLevel(
   level?: string | null,
   subtype?: string | null,
-  compact = false,
+  compact = false
 ): string {
   const levelText = String(level || '').trim();
   if (!levelText) return '—';
 
-  const normalizedSubtype = String(subtype || '').trim().toUpperCase();
+  const normalizedSubtype = String(subtype || '')
+    .trim()
+    .toUpperCase();
   const suffix = normalizedSubtype ? normalizedSubtype : '';
   const code = `${levelText}${suffix}`;
   if (compact) {

@@ -81,7 +81,9 @@ test.describe('Navigation', () => {
     }
 
     // Get the sidebar patients link and click using evaluate for reliable mobile clicking
-    const patientsLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /patients/i });
+    const patientsLink = page
+      .locator('[data-testid="sidebar"]')
+      .getByRole('link', { name: /patients/i });
     await patientsLink.evaluate((el: HTMLElement) => el.click());
 
     await expect(page).toHaveURL(/.*patients.*/);
@@ -102,7 +104,9 @@ test.describe('Navigation', () => {
     }
 
     // Get the sidebar encounters link and click using evaluate for reliable mobile clicking
-    const encountersLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /encounters/i });
+    const encountersLink = page
+      .locator('[data-testid="sidebar"]')
+      .getByRole('link', { name: /encounters/i });
     await encountersLink.evaluate((el: HTMLElement) => el.click());
 
     await expect(page).toHaveURL(/.*encounters.*/);
@@ -122,7 +126,9 @@ test.describe('Navigation', () => {
     }
 
     // Get the sidebar dashboard link specifically (not breadcrumb or other links)
-    const dashboardLink = page.locator('[data-testid="sidebar"]').getByRole('link', { name: /dashboard/i });
+    const dashboardLink = page
+      .locator('[data-testid="sidebar"]')
+      .getByRole('link', { name: /dashboard/i });
 
     // Wait for the link to be present
     await expect(dashboardLink).toBeAttached();

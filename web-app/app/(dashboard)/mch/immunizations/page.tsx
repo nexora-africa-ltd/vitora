@@ -24,12 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -114,11 +109,7 @@ export default function ImmunizationsPage() {
   });
 
   // Fetch immunization records
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['immunizations', selectedPatientId, statusFilter, page],
     queryFn: () =>
       immunizationsApi.list({
@@ -139,10 +130,17 @@ export default function ImmunizationsPage() {
     mutationFn: () => immunizationsApi.generateSchedule(selectedPatientId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['immunizations', selectedPatientId] });
-      toast({ title: 'Schedule Generated', description: 'KEPI immunization schedule has been created.' });
+      toast({
+        title: 'Schedule Generated',
+        description: 'KEPI immunization schedule has been created.',
+      });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to generate schedule.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to generate schedule.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -164,7 +162,11 @@ export default function ImmunizationsPage() {
       resetAdminForm();
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to administer vaccine.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to administer vaccine.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -205,7 +207,7 @@ export default function ImmunizationsPage() {
         acc[key]!.push(record);
         return acc;
       },
-      {} as Record<string, ImmunizationRecordListItem[]>,
+      {} as Record<string, ImmunizationRecordListItem[]>
     );
   }, [records]);
 
@@ -225,10 +227,10 @@ export default function ImmunizationsPage() {
 
         {/* Patient selection */}
         <Card>
-          <CardContent className="pt-4 pb-4">
+          <CardContent className="pb-4 pt-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="flex-1">
-                <Label className="text-sm text-muted-foreground mb-1 block">Select Patient</Label>
+                <Label className="mb-1 block text-sm text-muted-foreground">Select Patient</Label>
                 <PatientSearchInput
                   value={selectedPatientId}
                   onChange={(patientId) => {
@@ -259,7 +261,7 @@ export default function ImmunizationsPage() {
             <Skeleton className="h-64 w-full" />
           </div>
         ) : error ? (
-          <div className="text-center py-12">
+          <div className="py-12 text-center">
             <p className="text-destructive">Failed to load immunization records.</p>
           </div>
         ) : (
@@ -272,7 +274,7 @@ export default function ImmunizationsPage() {
                   {administeredCount}/{records.length} administered
                 </Badge>
                 {scheduledCount > 0 && (
-                  <Badge className="bg-blue-100 text-blue-800 gap-1">
+                  <Badge className="gap-1 bg-blue-100 text-blue-800">
                     {scheduledCount} scheduled
                   </Badge>
                 )}
@@ -283,7 +285,7 @@ export default function ImmunizationsPage() {
                   </Badge>
                 )}
                 {missedCount > 0 && (
-                  <Badge className="bg-orange-100 text-orange-800 gap-1">
+                  <Badge className="gap-1 bg-orange-100 text-orange-800">
                     {missedCount} missed
                   </Badge>
                 )}
@@ -343,7 +345,7 @@ export default function ImmunizationsPage() {
                   return (
                     <Card key={vaccineName}>
                       <CardHeader
-                        className="py-3 pb-2 cursor-pointer hover:bg-muted/30 transition-colors"
+                        className="cursor-pointer py-3 pb-2 transition-colors hover:bg-muted/30"
                         onClick={() => toggleGroup(vaccineName)}
                       >
                         <div className="flex items-center justify-between">
@@ -353,7 +355,7 @@ export default function ImmunizationsPage() {
                               ({groupAdministered}/{recs.length})
                             </span>
                             {groupOverdue > 0 && (
-                              <Badge variant="destructive" className="text-xs px-1.5 py-0">
+                              <Badge variant="destructive" className="px-1.5 py-0 text-xs">
                                 {groupOverdue} overdue
                               </Badge>
                             )}
@@ -373,9 +375,9 @@ export default function ImmunizationsPage() {
                                 key={record.id}
                                 className="flex items-center justify-between gap-2 text-sm"
                               >
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <div className="flex min-w-0 flex-1 items-center gap-2">
                                   <span>{statusIcons[record.status]}</span>
-                                  <span className="text-muted-foreground shrink-0">
+                                  <span className="shrink-0 text-muted-foreground">
                                     Dose {record.dose_number}
                                   </span>
                                   <span className="text-muted-foreground">•</span>
@@ -385,13 +387,11 @@ export default function ImmunizationsPage() {
                                       : `Due ${formatDate(record.scheduled_date)}`}
                                   </span>
                                   {record.is_overdue && (
-                                    <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" />
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <Badge
-                                    className={`${statusColors[record.status]} text-xs`}
-                                  >
+                                <div className="flex shrink-0 items-center gap-2">
+                                  <Badge className={`${statusColors[record.status]} text-xs`}>
                                     {record.status.replace(/_/g, ' ')}
                                   </Badge>
                                   {record.status === 'SCHEDULED' && (

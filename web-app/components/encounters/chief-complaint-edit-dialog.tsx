@@ -38,7 +38,7 @@ export const CHIEF_COMPLAINT_EDIT_REASONS = [
   { value: 'OTHER', label: 'Other (specify)' },
 ] as const;
 
-export type ChiefComplaintEditReason = typeof CHIEF_COMPLAINT_EDIT_REASONS[number]['value'];
+export type ChiefComplaintEditReason = (typeof CHIEF_COMPLAINT_EDIT_REASONS)[number]['value'];
 
 interface ChiefComplaintEditDialogProps {
   /** Whether the dialog is open */
@@ -129,14 +129,14 @@ export function ChiefComplaintEditDialog({
           {/* Show original complaint if different */}
           {originalComplaint && originalComplaint !== currentComplaint && (
             <div className="rounded-md bg-muted p-3 text-sm">
-              <p className="font-medium text-muted-foreground mb-1">Original from triage:</p>
+              <p className="mb-1 font-medium text-muted-foreground">Original from triage:</p>
               <p className="text-foreground">{originalComplaint}</p>
             </div>
           )}
 
           {/* Warning */}
-          <div className="flex items-start gap-3 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5 flex-shrink-0" />
+          <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
+            <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-500" />
             <div className="text-sm">
               <p className="font-medium text-amber-800 dark:text-amber-200">Audit Trail</p>
               <p className="text-amber-700 dark:text-amber-300">
@@ -170,9 +170,7 @@ export function ChiefComplaintEditDialog({
                 ))}
               </SelectContent>
             </Select>
-            {errors.reason && (
-              <p className="text-sm text-destructive">{errors.reason}</p>
-            )}
+            {errors.reason && <p className="text-sm text-destructive">{errors.reason}</p>}
           </div>
 
           {/* Other reason text */}
@@ -218,9 +216,7 @@ export function ChiefComplaintEditDialog({
               rows={3}
               className={errors.complaint ? 'border-destructive' : ''}
             />
-            {errors.complaint && (
-              <p className="text-sm text-destructive">{errors.complaint}</p>
-            )}
+            {errors.complaint && <p className="text-sm text-destructive">{errors.complaint}</p>}
           </div>
         </div>
 

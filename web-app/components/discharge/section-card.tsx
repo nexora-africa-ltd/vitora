@@ -1,6 +1,15 @@
 'use client';
 
-import { BrainCircuit, Loader2, AlertTriangle, Pencil, Eye, Trash2, Eraser, Printer } from 'lucide-react';
+import {
+  BrainCircuit,
+  Loader2,
+  AlertTriangle,
+  Pencil,
+  Eye,
+  Trash2,
+  Eraser,
+  Printer,
+} from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
@@ -54,44 +63,57 @@ export function SectionCard({
 
   return (
     <div className={`rounded-lg border bg-card ${borderColor} ${!isPrintable ? 'opacity-60' : ''}`}>
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between border-b px-3 py-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+      <div className="flex flex-col gap-1.5 border-b px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <input
             value={section.title}
             onChange={(e) => onRename(e.target.value)}
-            className="text-sm font-medium bg-transparent border-none outline-none focus:ring-1 focus:ring-primary rounded px-1 -mx-1 w-full min-w-0"
+            className="-mx-1 w-full min-w-0 rounded border-none bg-transparent px-1 text-sm font-medium outline-none focus:ring-1 focus:ring-primary"
             placeholder="Section title"
           />
           {section.source === 'ai' && section.provenance && (
-            <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
-              {section.provenance === 'from_input' ? 'From input'
-                : section.provenance === 'llm_generated' ? 'AI generated'
-                : section.provenance === 'llm_suggested' ? 'AI suggested'
-                : section.provenance === 'guideline_rag' ? 'Guideline'
-                : section.provenance === 'not_documented' ? 'Not documented'
-                : section.provenance === 'skeleton' ? 'Template'
-                : section.provenance}
+            <Badge variant="outline" className="shrink-0 px-1.5 py-0 text-[10px]">
+              {section.provenance === 'from_input'
+                ? 'From input'
+                : section.provenance === 'llm_generated'
+                  ? 'AI generated'
+                  : section.provenance === 'llm_suggested'
+                    ? 'AI suggested'
+                    : section.provenance === 'guideline_rag'
+                      ? 'Guideline'
+                      : section.provenance === 'not_documented'
+                        ? 'Not documented'
+                        : section.provenance === 'skeleton'
+                          ? 'Template'
+                          : section.provenance}
             </Badge>
           )}
           {hasAdvisories && (
             <TooltipProvider delayDuration={300}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 cursor-default ${
-                    hasCritical ? 'border-red-400 text-red-700 dark:text-red-400' : 'border-amber-400 text-amber-700 dark:text-amber-400'
-                  }`}>
-                    <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                  <Badge
+                    variant="outline"
+                    className={`shrink-0 cursor-default px-1.5 py-0 text-[10px] ${
+                      hasCritical
+                        ? 'border-red-400 text-red-700 dark:text-red-400'
+                        : 'border-amber-400 text-amber-700 dark:text-amber-400'
+                    }`}
+                  >
+                    <AlertTriangle className="mr-0.5 h-2.5 w-2.5" />
                     {section.advisories!.length}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {section.advisories!.length} AI {section.advisories!.length === 1 ? 'advisory' : 'advisories'} — review flagged items below
+                  {section.advisories!.length} AI{' '}
+                  {section.advisories!.length === 1 ? 'advisory' : 'advisories'} — review flagged
+                  items below
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
         </div>
-        <div className="flex items-center gap-0.5 shrink-0">
+        <div className="flex shrink-0 items-center gap-0.5">
           {isAIEnabled && (
             <TooltipProvider delayDuration={300}>
               <Tooltip>
@@ -123,21 +145,23 @@ export function SectionCard({
                   variant="ghost"
                   size="sm"
                   onClick={onTogglePrintable}
-                  className={`h-7 w-7 p-0 shrink-0 transition-transform active:scale-135 ${isPrintable ? 'text-green-600 dark:text-green-500' : 'text-muted-foreground'}`}
+                  className={`active:scale-135 h-7 w-7 shrink-0 p-0 transition-transform ${isPrintable ? 'text-green-600 dark:text-green-500' : 'text-muted-foreground'}`}
                 >
                   {isPrintable ? (
                     <Printer className="h-4 w-4" />
                   ) : (
-                    <span className="relative inline-flex items-center justify-center h-3.5 w-3.5">
+                    <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
                       <Printer className="h-3.5 w-3.5 opacity-50" />
                       <span className="absolute inset-0 flex items-center justify-center">
-                        <span className="block w-[1px] h-5 bg-current rotate-45" />
+                        <span className="block h-5 w-[1px] rotate-45 bg-current" />
                       </span>
                     </span>
                   )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{isPrintable ? 'Exclude from print' : 'Include in print'}</TooltipContent>
+              <TooltipContent>
+                {isPrintable ? 'Exclude from print' : 'Include in print'}
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <TooltipProvider delayDuration={300}>
@@ -148,7 +172,7 @@ export function SectionCard({
                   variant="ghost"
                   size="sm"
                   onClick={onToggleEdit}
-                  className="h-7 w-7 p-0 shrink-0"
+                  className="h-7 w-7 shrink-0 p-0"
                 >
                   {isEditing ? <Eye className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
                 </Button>
@@ -165,7 +189,7 @@ export function SectionCard({
                     variant="ghost"
                     size="sm"
                     onClick={onClear}
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-amber-600 shrink-0"
+                    className="h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-amber-600"
                   >
                     <Eraser className="h-3.5 w-3.5" />
                   </Button>
@@ -182,7 +206,7 @@ export function SectionCard({
                   variant="ghost"
                   size="sm"
                   onClick={onRemove}
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                  className="h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -194,7 +218,7 @@ export function SectionCard({
       </div>
       <div className="p-3">
         {isGenerating ? (
-          <div className="space-y-2 animate-pulse">
+          <div className="animate-pulse space-y-2">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-5/6" />
@@ -208,18 +232,18 @@ export function SectionCard({
             placeholder={`Write ${section.title.toLowerCase()} content...`}
           />
         ) : hasContent ? (
-          <div className="tibabot-markdown prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">
+          <div className="tibabot-markdown prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words">
             <Markdown remarkPlugins={[remarkGfm]}>{section.content}</Markdown>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground italic">
+          <p className="text-sm italic text-muted-foreground">
             No content — click edit to write or generate with TibaBot.
           </p>
         )}
       </div>
       {/* Advisory banners */}
       {section.advisories && section.advisories.length > 0 && !isEditing && (
-        <div className="border-t px-3 pb-3 pt-2 space-y-1.5">
+        <div className="space-y-1.5 border-t px-3 pb-3 pt-2">
           {section.advisories.map((adv, i) => (
             <div
               key={i}
@@ -229,9 +253,11 @@ export function SectionCard({
                   : 'bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300'
               }`}
             >
-              <AlertTriangle className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
-                adv.severity === 'critical' ? 'text-red-500' : 'text-amber-500'
-              }`} />
+              <AlertTriangle
+                className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
+                  adv.severity === 'critical' ? 'text-red-500' : 'text-amber-500'
+                }`}
+              />
               <span>{formatAdvisoryText(adv.text)}</span>
             </div>
           ))}

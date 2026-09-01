@@ -62,7 +62,7 @@ export function useClinicalTemplates(params?: ClinicalTemplateListParams) {
       count: rows.length < limit ? offset + rows.length : offset + limit + 1,
       next: null,
       previous: null,
-      results: rows.map(r => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
+      results: rows.map((r) => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
     }),
     queryKey: ['clinical-templates', params],
     queryFn: () => clinicalTemplatesApi.list(params),
@@ -112,7 +112,8 @@ export function useClinicalTemplateSearch(query: string, templateType?: Template
       ORDER BY usage_count DESC, name
       LIMIT 20`,
     params: sqlParams,
-    transform: (rows) => rows.map(r => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
+    transform: (rows) =>
+      rows.map((r) => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
     queryKey: ['clinical-templates', 'search', query, templateType],
     queryFn: () => clinicalTemplatesApi.search(query, templateType),
     forceApi: query.length < 2,
@@ -129,7 +130,8 @@ export function useClinicalTemplatesBySpecialty(specialty: string) {
       WHERE is_active = 1 AND specialty = ?
       ORDER BY usage_count DESC, name`,
     params: [specialty],
-    transform: (rows) => rows.map(r => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
+    transform: (rows) =>
+      rows.map((r) => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
     queryKey: ['clinical-templates', 'specialty', specialty],
     queryFn: () => clinicalTemplatesApi.getBySpecialty(specialty),
     forceApi: !specialty,
@@ -166,7 +168,7 @@ export function useActiveAssessmentTemplates() {
       count: rows.length,
       next: null,
       previous: null,
-      results: rows.map(r => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
+      results: rows.map((r) => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
     }),
     queryKey: ['clinical-templates', 'active', 'assessment'],
     queryFn: () =>
@@ -185,8 +187,7 @@ export function useCreateClinicalTemplate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: ClinicalTemplateCreateData) =>
-      clinicalTemplatesApi.create(data),
+    mutationFn: (data: ClinicalTemplateCreateData) => clinicalTemplatesApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clinical-templates'] });
     },
@@ -200,13 +201,8 @@ export function useUpdateClinicalTemplate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: number;
-      data: Partial<ClinicalTemplateCreateData>;
-    }) => clinicalTemplatesApi.update(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<ClinicalTemplateCreateData> }) =>
+      clinicalTemplatesApi.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['clinical-templates'] });
       queryClient.invalidateQueries({ queryKey: ['clinical-templates', id] });

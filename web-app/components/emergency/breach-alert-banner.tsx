@@ -13,13 +13,7 @@
 'use client';
 
 import React from 'react';
-import {
-  AlertTriangle,
-  Clock,
-  ChevronRight,
-  Bell,
-  Loader2,
-} from 'lucide-react';
+import { AlertTriangle, Clock, ChevronRight, Bell, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -110,13 +104,14 @@ export function WaitTimeBreachBanner({
   const warning = breaches.filter((b) => b.severity === 'WARNING');
   const info = breaches.filter((b) => b.severity === 'INFO');
 
-  const highestSeverity: BreachSeverity = critical.length > 0
-    ? 'CRITICAL'
-    : urgent.length > 0
-      ? 'URGENT'
-      : warning.length > 0
-        ? 'WARNING'
-        : 'INFO';
+  const highestSeverity: BreachSeverity =
+    critical.length > 0
+      ? 'CRITICAL'
+      : urgent.length > 0
+        ? 'URGENT'
+        : warning.length > 0
+          ? 'WARNING'
+          : 'INFO';
 
   const style = SEVERITY_STYLES[highestSeverity];
 
@@ -124,13 +119,11 @@ export function WaitTimeBreachBanner({
     <Card className={cn('border-l-4', style.border, style.bg)}>
       <CardContent className="p-3 sm:p-4">
         {/* Header */}
-        <div className="flex items-center gap-2 mb-3">
+        <div className="mb-3 flex items-center gap-2">
           <AlertTriangle className={cn('h-5 w-5', style.icon)} />
-          <h3 className="font-semibold text-sm">
-            Wait Time Breaches
-          </h3>
+          <h3 className="text-sm font-semibold">Wait Time Breaches</h3>
           {/* Summary badges */}
-          <div className="flex gap-1 ml-auto">
+          <div className="ml-auto flex gap-1">
             {summaryData?.map((s) => (
               <Badge
                 key={s.severity}
@@ -158,37 +151,36 @@ export function WaitTimeBreachBanner({
               <div
                 key={breach.id}
                 className={cn(
-                  'flex items-center gap-3 p-2 rounded-md border cursor-pointer hover:bg-background/60 transition-colors',
+                  'flex cursor-pointer items-center gap-3 rounded-md border p-2 transition-colors hover:bg-background/60',
                   !breach.acknowledged && severityStyle.bg,
-                  breach.acknowledged && 'opacity-60',
+                  breach.acknowledged && 'opacity-60'
                 )}
                 onClick={() => onViewPatient?.(breach.triage_assessment)}
               >
                 <Bell className={cn('h-4 w-4 shrink-0', severityStyle.icon)} />
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium truncate">{breach.patient_name}</span>
-                    <Badge variant="outline" className="text-xs shrink-0">
+                    <span className="truncate text-sm font-medium">{breach.patient_name}</span>
+                    <Badge variant="outline" className="shrink-0 text-xs">
                       {breach.triage_category}
                     </Badge>
-                    <Badge
-                      variant="outline"
-                      className={cn('text-xs shrink-0', severityStyle.icon)}
-                    >
+                    <Badge variant="outline" className={cn('shrink-0 text-xs', severityStyle.icon)}>
                       {severityConfig.label}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     <span>
-                      Waiting {breach.actual_wait_minutes}m
-                      (target {breach.target_wait_minutes}m) —{' '}
+                      Waiting {breach.actual_wait_minutes}m (target {breach.target_wait_minutes}m) —{' '}
                       {formatWaitExcess(breach.actual_wait_minutes, breach.target_wait_minutes)}
                     </span>
                     <span className="hidden sm:inline">• {breach.assigned_area_display}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="flex shrink-0 items-center gap-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {!breach.acknowledged && onAcknowledge && (
                     <Button
                       size="sm"
@@ -197,11 +189,7 @@ export function WaitTimeBreachBanner({
                       onClick={() => onAcknowledge(breach.id)}
                       disabled={acknowledgeLoading}
                     >
-                      {acknowledgeLoading ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        'Ack'
-                      )}
+                      {acknowledgeLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Ack'}
                     </Button>
                   )}
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -211,7 +199,7 @@ export function WaitTimeBreachBanner({
           })}
 
           {breaches.length > 5 && (
-            <p className="text-xs text-muted-foreground text-center pt-1">
+            <p className="pt-1 text-center text-xs text-muted-foreground">
               +{breaches.length - 5} more breach{breaches.length - 5 > 1 ? 'es' : ''}
             </p>
           )}
@@ -224,11 +212,11 @@ export function WaitTimeBreachBanner({
 function BreachBannerSkeleton() {
   return (
     <Card className="border-l-4 border-muted">
-      <CardContent className="p-3 sm:p-4 space-y-3">
+      <CardContent className="space-y-3 p-3 sm:p-4">
         <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-5 rounded-full" />
           <Skeleton className="h-4 w-36" />
-          <Skeleton className="h-5 w-20 ml-auto" />
+          <Skeleton className="ml-auto h-5 w-20" />
         </div>
         {[1, 2].map((i) => (
           <div key={i} className="flex items-center gap-3 p-2">

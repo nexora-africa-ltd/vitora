@@ -19,7 +19,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useBloodDonor, useUpdateBloodDonor } from '@/lib/hooks/use-blood-bank';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -90,7 +94,20 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
     } catch (err) {
       setError(getApiErrorMessage(err));
     }
-  }, [donor, firstName, lastName, patientId, dateOfBirth, gender, bloodGroup, phoneNumber, nationalId, notes, updateMutation, router]);
+  }, [
+    donor,
+    firstName,
+    lastName,
+    patientId,
+    dateOfBirth,
+    gender,
+    bloodGroup,
+    phoneNumber,
+    nationalId,
+    notes,
+    updateMutation,
+    router,
+  ]);
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">Loading donor...</div>;
@@ -101,7 +118,7 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title={`Edit ${donor.first_name} ${donor.last_name}`}
         helpContent="Update blood donor profile details."
@@ -123,11 +140,19 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="first-name">First Name *</Label>
-                <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                <Input
+                  id="first-name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
               </div>
               <div>
                 <Label htmlFor="last-name">Last Name *</Label>
-                <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                <Input
+                  id="last-name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
               </div>
             </div>
 
@@ -149,12 +174,19 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="dob">Date of Birth *</Label>
-                <Input id="dob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+                <Input
+                  id="dob"
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                />
               </div>
               <div>
                 <Label>Gender *</Label>
                 <Select value={gender} onValueChange={(v) => setGender(v as 'M' | 'F')}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="M">Male</SelectItem>
                     <SelectItem value="F">Female</SelectItem>
@@ -166,10 +198,14 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
             <div>
               <Label>Blood Group *</Label>
               <Select value={bloodGroup} onValueChange={(v) => setBloodGroup(v as BloodGroup)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {BLOOD_GROUPS.map((bg) => (
-                    <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                    <SelectItem key={bg} value={bg}>
+                      {bg}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -206,15 +242,28 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
             </div>
             <div>
               <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
+              <Input
+                id="phone"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+              />
             </div>
             <div>
               <Label htmlFor="national-id">National ID</Label>
-              <Input id="national-id" value={nationalId} onChange={(e) => setNationalId(e.target.value)} />
+              <Input
+                id="national-id"
+                value={nationalId}
+                onChange={(e) => setNationalId(e.target.value)}
+              />
             </div>
             <div>
               <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+              />
             </div>
           </CardContent>
         </Card>
@@ -222,11 +271,11 @@ export default function EditBloodDonorPage({ params }: { params: Promise<{ id: s
 
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => router.push(`/blood-bank/donors/${donor.id}`)}>
-          <X className="h-4 w-4 mr-2" />
+          <X className="mr-2 h-4 w-4" />
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={updateMutation.isPending}>
-          <Save className="h-4 w-4 mr-2" />
+          <Save className="mr-2 h-4 w-4" />
           {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>

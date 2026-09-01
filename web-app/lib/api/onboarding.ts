@@ -49,12 +49,16 @@ import type {
 export const invitationsApi = {
   list: async (params?: InvitationListParams): Promise<PaginatedResponse<StaffInvitation>> => {
     const response = await apiClient.get('/api/core/invitations/', { params });
-    return parseResponse(PaginatedInvitationSchema, response.data, { context: 'invitationsApi.list' });
+    return parseResponse(PaginatedInvitationSchema, response.data, {
+      context: 'invitationsApi.list',
+    });
   },
 
   create: async (data: InvitationCreateData): Promise<StaffInvitation> => {
     const response = await apiClient.post('/api/core/invitations/', data);
-    return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.create' });
+    return parseResponse(StaffInvitationSchema, response.data, {
+      context: 'invitationsApi.create',
+    });
   },
 
   get: async (id: number): Promise<StaffInvitation> => {
@@ -64,24 +68,32 @@ export const invitationsApi = {
 
   resend: async (id: number): Promise<StaffInvitation> => {
     const response = await apiClient.post(`/api/core/invitations/${id}/resend/`);
-    return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.resend' });
+    return parseResponse(StaffInvitationSchema, response.data, {
+      context: 'invitationsApi.resend',
+    });
   },
 
   revoke: async (id: number): Promise<StaffInvitation> => {
     const response = await apiClient.post(`/api/core/invitations/${id}/revoke/`);
-    return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.revoke' });
+    return parseResponse(StaffInvitationSchema, response.data, {
+      context: 'invitationsApi.revoke',
+    });
   },
 
   /** Accept a cross-org invitation (authenticated user) */
   acceptCrossOrg: async (token: string): Promise<{ message: string }> => {
     const response = await apiClient.post('/api/core/invitations/accept-cross-org/', { token });
-    return parseResponse(MessageResponseSchema, response.data, { context: 'invitationsApi.acceptCrossOrg' });
+    return parseResponse(MessageResponseSchema, response.data, {
+      context: 'invitationsApi.acceptCrossOrg',
+    });
   },
 
   /** Decline a cross-org invitation (authenticated user) */
   decline: async (id: number): Promise<{ message: string }> => {
     const response = await apiClient.post(`/api/core/invitations/${id}/decline/`);
-    return parseResponse(MessageResponseSchema, response.data, { context: 'invitationsApi.decline' });
+    return parseResponse(MessageResponseSchema, response.data, {
+      context: 'invitationsApi.decline',
+    });
   },
 };
 
@@ -111,13 +123,19 @@ export const invitationPublicApi = {
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       // Extract field-level errors or general error
-      if (error.username) throw new Error(Array.isArray(error.username) ? error.username[0] : error.username);
+      if (error.username)
+        throw new Error(Array.isArray(error.username) ? error.username[0] : error.username);
       if (error.error) throw new Error(error.error);
-      if (error.confirm_password) throw new Error(Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password);
+      if (error.confirm_password)
+        throw new Error(
+          Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password
+        );
       throw new Error('Failed to accept invitation');
     }
     const result = await response.json();
-    return parseResponse(InvitationAcceptResponseSchema, result, { context: 'invitationPublicApi.accept' });
+    return parseResponse(InvitationAcceptResponseSchema, result, {
+      context: 'invitationPublicApi.accept',
+    });
   },
 };
 
@@ -162,7 +180,9 @@ export const passwordResetApi = {
 export const changePasswordApi = {
   change: async (data: ChangePasswordData): Promise<{ message: string }> => {
     const response = await apiClient.post('/api/core/auth/change-password/', data);
-    return parseResponse(MessageResponseSchema, response.data, { context: 'changePasswordApi.change' });
+    return parseResponse(MessageResponseSchema, response.data, {
+      context: 'changePasswordApi.change',
+    });
   },
 
   validate: async (password: string): Promise<{ valid: boolean; errors?: string[] }> => {
@@ -170,7 +190,7 @@ export const changePasswordApi = {
     return parseResponse(
       z.object({ valid: z.boolean(), errors: z.array(z.string()).optional() }),
       response.data,
-      { context: 'changePasswordApi.validate' },
+      { context: 'changePasswordApi.validate' }
     );
   },
 };
@@ -188,11 +208,28 @@ export const orgSignupApi = {
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      if (error.org_name) throw new Error(Array.isArray(error.org_name) ? error.org_name[0] : error.org_name);
-      if (error.admin_email) throw new Error(Array.isArray(error.admin_email) ? error.admin_email[0] : error.admin_email);
-      if (error.confirm_password) throw new Error(Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password);
-      if (error.facility_mfl_code) throw new Error(Array.isArray(error.facility_mfl_code) ? error.facility_mfl_code[0] : error.facility_mfl_code);
-      if (error.facility_sub_county) throw new Error(Array.isArray(error.facility_sub_county) ? error.facility_sub_county[0] : error.facility_sub_county);
+      if (error.org_name)
+        throw new Error(Array.isArray(error.org_name) ? error.org_name[0] : error.org_name);
+      if (error.admin_email)
+        throw new Error(
+          Array.isArray(error.admin_email) ? error.admin_email[0] : error.admin_email
+        );
+      if (error.confirm_password)
+        throw new Error(
+          Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password
+        );
+      if (error.facility_mfl_code)
+        throw new Error(
+          Array.isArray(error.facility_mfl_code)
+            ? error.facility_mfl_code[0]
+            : error.facility_mfl_code
+        );
+      if (error.facility_sub_county)
+        throw new Error(
+          Array.isArray(error.facility_sub_county)
+            ? error.facility_sub_county[0]
+            : error.facility_sub_county
+        );
       throw new Error(error.error || error.detail || 'Signup failed');
     }
     const result = await response.json();
@@ -210,7 +247,9 @@ export const orgSignupApi = {
       throw new Error(error.error || 'Verification failed');
     }
     const result = await response.json();
-    return parseResponse(EmailVerifyResponseSchema, result, { context: 'orgSignupApi.verifyEmail' });
+    return parseResponse(EmailVerifyResponseSchema, result, {
+      context: 'orgSignupApi.verifyEmail',
+    });
   },
 };
 
@@ -236,10 +275,24 @@ export const setupApi = {
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      if (error.facility_mfl_code) throw new Error(Array.isArray(error.facility_mfl_code) ? error.facility_mfl_code[0] : error.facility_mfl_code);
-      if (error.admin_username) throw new Error(Array.isArray(error.admin_username) ? error.admin_username[0] : error.admin_username);
-      if (error.admin_email) throw new Error(Array.isArray(error.admin_email) ? error.admin_email[0] : error.admin_email);
-      if (error.confirm_password) throw new Error(Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password);
+      if (error.facility_mfl_code)
+        throw new Error(
+          Array.isArray(error.facility_mfl_code)
+            ? error.facility_mfl_code[0]
+            : error.facility_mfl_code
+        );
+      if (error.admin_username)
+        throw new Error(
+          Array.isArray(error.admin_username) ? error.admin_username[0] : error.admin_username
+        );
+      if (error.admin_email)
+        throw new Error(
+          Array.isArray(error.admin_email) ? error.admin_email[0] : error.admin_email
+        );
+      if (error.confirm_password)
+        throw new Error(
+          Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password
+        );
       throw new Error(error.error || error.detail || 'Setup failed');
     }
     const result = await response.json();
@@ -254,11 +307,15 @@ export const setupApi = {
 export const onboardingChecklistApi = {
   getStatus: async (): Promise<OnboardingStatusResponse> => {
     const response = await apiClient.get('/api/core/onboarding/status/');
-    return parseResponse(OnboardingStatusResponseSchema, response.data, { context: 'onboardingChecklistApi.getStatus' });
+    return parseResponse(OnboardingStatusResponseSchema, response.data, {
+      context: 'onboardingChecklistApi.getStatus',
+    });
   },
 
   markComplete: async (): Promise<OnboardingCompleteResponse> => {
     const response = await apiClient.post('/api/core/onboarding/status/');
-    return parseResponse(OnboardingCompleteResponseSchema, response.data, { context: 'onboardingChecklistApi.markComplete' });
+    return parseResponse(OnboardingCompleteResponseSchema, response.data, {
+      context: 'onboardingChecklistApi.markComplete',
+    });
   },
 };

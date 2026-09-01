@@ -7,14 +7,7 @@
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import {
-  Thermometer,
-  Heart,
-  Wind,
-  Droplets,
-  Scale,
-  Ruler,
-} from 'lucide-react';
+import { Thermometer, Heart, Wind, Droplets, Scale, Ruler } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Label } from '@/components/ui/label';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
@@ -57,8 +50,10 @@ export function VitalsInputSection({
   const getInputClassName = (field: string) => {
     const status = getFieldStatus(field, alerts);
     return cn(
-      status === 'critical' && 'border-destructive bg-destructive/5 focus-within:ring-destructive/30',
-      status === 'warning' && 'border-amber-500 bg-amber-50 dark:bg-amber-950/20 focus-within:ring-amber-500/30'
+      status === 'critical' &&
+        'border-destructive bg-destructive/5 focus-within:ring-destructive/30',
+      status === 'warning' &&
+        'border-amber-500 bg-amber-50 dark:bg-amber-950/20 focus-within:ring-amber-500/30'
     );
   };
 
@@ -76,7 +71,10 @@ export function VitalsInputSection({
             </Label>
             <InputGroup
               data-disabled={disabled}
-              className={cn(getInputClassName('temperature'), fieldState.error && 'border-destructive')}
+              className={cn(
+                getInputClassName('temperature'),
+                fieldState.error && 'border-destructive'
+              )}
             >
               <InputGroupInput
                 id="temperature"
@@ -86,7 +84,9 @@ export function VitalsInputSection({
                 max={VITAL_RANGES.temperature.max}
                 placeholder={getVitalPlaceholder('temperature', ageGroup)}
                 value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                onChange={(e) =>
+                  field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))
+                }
                 disabled={disabled}
               />
               <InputGroupAddon align="inline-end">°C</InputGroupAddon>
@@ -94,7 +94,9 @@ export function VitalsInputSection({
             {fieldState.error ? (
               <FormMessage>{fieldState.error.message}</FormMessage>
             ) : (
-              <p className="text-xs text-muted-foreground">{getVitalRangeHint('temperature', ageGroup)}</p>
+              <p className="text-xs text-muted-foreground">
+                {getVitalRangeHint('temperature', ageGroup)}
+              </p>
             )}
           </FormItem>
         )}
@@ -121,7 +123,9 @@ export function VitalsInputSection({
                 max={VITAL_RANGES.pulse.max}
                 placeholder={getVitalPlaceholder('pulse', ageGroup)}
                 value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))}
+                onChange={(e) =>
+                  field.onChange(e.target.value === '' ? null : parseInt(e.target.value))
+                }
                 disabled={disabled}
               />
               <InputGroupAddon align="inline-end">bpm</InputGroupAddon>
@@ -129,7 +133,9 @@ export function VitalsInputSection({
             {fieldState.error ? (
               <FormMessage>{fieldState.error.message}</FormMessage>
             ) : (
-              <p className="text-xs text-muted-foreground">{getVitalRangeHint('pulse', ageGroup)}</p>
+              <p className="text-xs text-muted-foreground">
+                {getVitalRangeHint('pulse', ageGroup)}
+              </p>
             )}
           </FormItem>
         )}
@@ -137,9 +143,7 @@ export function VitalsInputSection({
 
       {/* Blood Pressure */}
       <FormItem className="space-y-2">
-        <Label className="flex items-center gap-2">
-          Blood Pressure
-        </Label>
+        <Label className="flex items-center gap-2">Blood Pressure</Label>
         <InputGroup
           data-disabled={disabled}
           className={cn(
@@ -157,8 +161,10 @@ export function VitalsInputSection({
                 max={VITAL_RANGES.blood_pressure_systolic.max}
                 placeholder={getVitalPlaceholder('blood_pressure_systolic', ageGroup)}
                 value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))}
-                className="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                onChange={(e) =>
+                  field.onChange(e.target.value === '' ? null : parseInt(e.target.value))
+                }
+                className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 disabled={disabled}
               />
             )}
@@ -174,8 +180,10 @@ export function VitalsInputSection({
                 max={VITAL_RANGES.blood_pressure_diastolic.max}
                 placeholder={getVitalPlaceholder('blood_pressure_diastolic', ageGroup)}
                 value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))}
-                className="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                onChange={(e) =>
+                  field.onChange(e.target.value === '' ? null : parseInt(e.target.value))
+                }
+                className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 disabled={disabled}
               />
             )}
@@ -203,7 +211,10 @@ export function VitalsInputSection({
             </Label>
             <InputGroup
               data-disabled={disabled}
-              className={cn(getInputClassName('respiratory_rate'), fieldState.error && 'border-destructive')}
+              className={cn(
+                getInputClassName('respiratory_rate'),
+                fieldState.error && 'border-destructive'
+              )}
             >
               <InputGroupInput
                 id="respiratory_rate"
@@ -212,7 +223,9 @@ export function VitalsInputSection({
                 max={VITAL_RANGES.respiratory_rate.max}
                 placeholder={getVitalPlaceholder('respiratory_rate', ageGroup)}
                 value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))}
+                onChange={(e) =>
+                  field.onChange(e.target.value === '' ? null : parseInt(e.target.value))
+                }
                 disabled={disabled}
               />
               <InputGroupAddon align="inline-end">/min</InputGroupAddon>
@@ -220,7 +233,9 @@ export function VitalsInputSection({
             {fieldState.error ? (
               <FormMessage>{fieldState.error.message}</FormMessage>
             ) : (
-              <p className="text-xs text-muted-foreground">{getVitalRangeHint('respiratory_rate', ageGroup)}</p>
+              <p className="text-xs text-muted-foreground">
+                {getVitalRangeHint('respiratory_rate', ageGroup)}
+              </p>
             )}
           </FormItem>
         )}
@@ -247,7 +262,9 @@ export function VitalsInputSection({
                 max={VITAL_RANGES.spo2.max}
                 placeholder={getVitalPlaceholder('spo2', ageGroup)}
                 value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                onChange={(e) =>
+                  field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))
+                }
                 disabled={disabled}
               />
               <InputGroupAddon align="inline-end">%</InputGroupAddon>
@@ -281,7 +298,9 @@ export function VitalsInputSection({
                   max={VITAL_RANGES.weight.max}
                   placeholder={getVitalPlaceholder('weight', ageGroup)}
                   value={field.value ?? ''}
-                  onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))
+                  }
                   disabled={disabled}
                 />
                 <InputGroupAddon align="inline-end">kg</InputGroupAddon>
@@ -312,7 +331,9 @@ export function VitalsInputSection({
                   max={VITAL_RANGES.height.max}
                   placeholder={getVitalPlaceholder('height', ageGroup)}
                   value={field.value ?? ''}
-                  onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))
+                  }
                   disabled={disabled}
                 />
                 <InputGroupAddon align="inline-end">cm</InputGroupAddon>

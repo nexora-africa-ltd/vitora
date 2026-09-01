@@ -90,7 +90,11 @@ export default function NewSubscriptionPlanPage() {
     return (
       <div className="space-y-4">
         <PageHeader title="Access Denied" />
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Only Nexora superusers can manage subscription plans.
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -224,9 +228,7 @@ export default function NewSubscriptionPlanPage() {
               <CardTitle className="text-base">Limits</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-xs text-muted-foreground">
-                Leave blank for unlimited.
-              </p>
+              <p className="text-xs text-muted-foreground">Leave blank for unlimited.</p>
               <div>
                 <Label htmlFor="max_facilities">Max Facilities</Label>
                 <Input

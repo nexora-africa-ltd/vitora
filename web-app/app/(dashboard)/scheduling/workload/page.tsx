@@ -54,8 +54,16 @@ export default function StaffWorkloadPage() {
     const activeNow = staffList.reduce((sum, s) => sum + s.active_shifts, 0);
     const totalAppointments = staffList.reduce((sum, s) => sum + s.appointment_count, 0);
     const avgHoursPerStaff = totalStaff > 0 ? totalHours / totalStaff : 0;
-    const maxHours = Math.max(...staffList.map(s => s.total_hours), 1);
-    return { totalStaff, totalShifts, totalHours, activeNow, totalAppointments, avgHoursPerStaff, maxHours };
+    const maxHours = Math.max(...staffList.map((s) => s.total_hours), 1);
+    return {
+      totalStaff,
+      totalShifts,
+      totalHours,
+      activeNow,
+      totalAppointments,
+      avgHoursPerStaff,
+      maxHours,
+    };
   }, [staffList]);
 
   return (
@@ -68,8 +76,8 @@ export default function StaffWorkloadPage() {
 
         {/* Date Range */}
         <div className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-muted-foreground hidden sm:block" />
-          <div className="w-[125px] sm:w-[140px] shrink-0">
+          <CalendarDays className="hidden h-4 w-4 text-muted-foreground sm:block" />
+          <div className="w-[125px] shrink-0 sm:w-[140px]">
             <Input
               type="date"
               value={fromDate}
@@ -78,7 +86,7 @@ export default function StaffWorkloadPage() {
             />
           </div>
           <span className="text-xs text-muted-foreground">to</span>
-          <div className="w-[125px] sm:w-[140px] shrink-0">
+          <div className="w-[125px] shrink-0 sm:w-[140px]">
             <Input
               type="date"
               value={toDate}
@@ -89,7 +97,7 @@ export default function StaffWorkloadPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatsCard
             title="Staff Members"
             value={summary.totalStaff}
@@ -133,13 +141,18 @@ export default function StaffWorkloadPage() {
               sortable: true,
               cell: (s) => (
                 <div className="flex items-center gap-2">
-                  <div className="shrink-0 rounded-full bg-primary/10 border border-primary/20 w-7 h-7 flex items-center justify-center">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
                     <span className="text-xs font-medium text-primary">
-                      {s.resource_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      {s.resource_name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()}
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{s.resource_name}</p>
+                    <p className="truncate text-sm font-medium">{s.resource_name}</p>
                     <p className="text-xs text-muted-foreground">{s.resource_code}</p>
                   </div>
                 </div>
@@ -150,9 +163,7 @@ export default function StaffWorkloadPage() {
               header: 'Shifts',
               sortable: true,
               sortType: 'number',
-              cell: (s) => (
-                <span className="font-medium tabular-nums">{s.shift_count}</span>
-              ),
+              cell: (s) => <span className="font-medium tabular-nums">{s.shift_count}</span>,
             },
             {
               key: 'total_hours',
@@ -160,12 +171,14 @@ export default function StaffWorkloadPage() {
               sortable: true,
               sortType: 'number',
               cell: (s) => (
-                <div className="flex items-center gap-2 min-w-[120px]">
+                <div className="flex min-w-[120px] items-center gap-2">
                   <Progress
                     value={summary.maxHours > 0 ? (s.total_hours / summary.maxHours) * 100 : 0}
                     className="h-1.5 flex-1"
                   />
-                  <span className="text-sm font-medium tabular-nums w-12 text-right">{s.total_hours.toFixed(1)}h</span>
+                  <span className="w-12 text-right text-sm font-medium tabular-nums">
+                    {s.total_hours.toFixed(1)}h
+                  </span>
                 </div>
               ),
             },
@@ -175,9 +188,7 @@ export default function StaffWorkloadPage() {
               sortable: true,
               sortType: 'number',
               hideOnMobile: true,
-              cell: (s) => (
-                <span className="tabular-nums">{s.appointment_count}</span>
-              ),
+              cell: (s) => <span className="tabular-nums">{s.appointment_count}</span>,
             },
             {
               key: 'active_shifts',
@@ -186,7 +197,10 @@ export default function StaffWorkloadPage() {
               sortType: 'number',
               cell: (s) =>
                 s.active_shifts > 0 ? (
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 shrink-0 w-fit" variant="secondary">
+                  <Badge
+                    className="w-fit shrink-0 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                    variant="secondary"
+                  >
                     On Duty ({s.active_shifts})
                   </Badge>
                 ) : (
@@ -205,21 +219,29 @@ export default function StaffWorkloadPage() {
             },
           ]}
           mobileCard={(s: StaffWorkload) => (
-            <div className="p-3 space-y-3">
+            <div className="space-y-3 p-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="shrink-0 rounded-full bg-primary/10 border border-primary/20 w-8 h-8 flex items-center justify-center">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
                     <span className="text-xs font-bold text-primary">
-                      {s.resource_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      {s.resource_name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()}
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{s.resource_name}</p>
+                    <p className="truncate text-sm font-medium">{s.resource_name}</p>
                     <p className="text-xs text-muted-foreground">{s.resource_code}</p>
                   </div>
                 </div>
                 {s.active_shifts > 0 ? (
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs shrink-0" variant="secondary">
+                  <Badge
+                    className="shrink-0 bg-green-100 text-xs text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                    variant="secondary"
+                  >
                     On Duty
                   </Badge>
                 ) : (
@@ -232,21 +254,27 @@ export default function StaffWorkloadPage() {
                   value={summary.maxHours > 0 ? (s.total_hours / summary.maxHours) * 100 : 0}
                   className="h-2 flex-1"
                 />
-                <span className="text-xs font-medium tabular-nums">{s.total_hours.toFixed(1)}h</span>
+                <span className="text-xs font-medium tabular-nums">
+                  {s.total_hours.toFixed(1)}h
+                </span>
               </div>
               {/* Stats row */}
-              <div className="grid grid-cols-3 gap-2 text-center pt-1">
+              <div className="grid grid-cols-3 gap-2 pt-1 text-center">
                 <div>
                   <p className="text-lg font-bold tabular-nums">{s.shift_count}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Shifts</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Shifts
+                  </p>
                 </div>
                 <div>
                   <p className="text-lg font-bold tabular-nums">{s.appointment_count}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Appts</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Appts
+                  </p>
                 </div>
                 <div>
                   <p className="text-lg font-bold tabular-nums">{s.completed_shifts}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Done</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Done</p>
                 </div>
               </div>
             </div>

@@ -28,14 +28,29 @@ export default function EditDrugPage({ params }: { params: Promise<{ id: string 
     queryFn: pharmacyApi.getBootstrap,
   });
   const canManageCatalog = bootstrap?.permissions.can_manage_catalog ?? true;
+  const hasEditCatalogAccess = canEditDrug && canManageCatalog;
 
-  if (!canEditDrug || !canManageCatalog) {
+  const {
+    data: drug,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['drug', drugId],
+    queryFn: () => pharmacyApi.getDrug(drugId),
+    enabled: hasEditCatalogAccess,
+  });
+
+  const handleSuccess = (updatedDrug: Drug) => {
+    router.push(`/pharmacy/drugs/${updatedDrug.id}`);
+  };
+
+  if (!hasEditCatalogAccess) {
     return (
       <div className="space-y-4 sm:space-y-6">
         <PageHeader title="Edit Item" />
         <Card className="p-6 text-center">
           <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             You do not have permission to edit catalog items.
           </p>
         </Card>
@@ -43,20 +58,11 @@ export default function EditDrugPage({ params }: { params: Promise<{ id: string 
     );
   }
 
-  const { data: drug, isLoading, error } = useQuery({
-    queryKey: ['drug', drugId],
-    queryFn: () => pharmacyApi.getDrug(drugId),
-  });
-
-  const handleSuccess = (updatedDrug: Drug) => {
-    router.push(`/pharmacy/drugs/${updatedDrug.id}`);
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-4 sm:space-y-6">
         <Skeleton className="h-8 w-48" />
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="mx-auto max-w-3xl space-y-4">
           <Skeleton className="h-64" />
           <Skeleton className="h-48" />
         </div>
@@ -77,7 +83,12 @@ export default function EditDrugPage({ params }: { params: Promise<{ id: string 
     );
   }
 
-  const typeLabel = drug.item_type === 'REAGENT' ? 'Reagent' : drug.item_type === 'CONSUMABLE' ? 'Consumable' : 'Drug';
+  const typeLabel =
+    drug.item_type === 'REAGENT'
+      ? 'Reagent'
+      : drug.item_type === 'CONSUMABLE'
+        ? 'Consumable'
+        : 'Drug';
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -86,7 +97,7 @@ export default function EditDrugPage({ params }: { params: Promise<{ id: string 
         helpContent={`Update this ${typeLabel.toLowerCase()}'s details, categories, and inventory settings.`}
       />
 
-      <div className="max-w-3xl mx-auto">
+      <div className="mx-auto max-w-3xl">
         <DrugForm
           drug={drug}
           onSuccess={handleSuccess}

@@ -13,7 +13,18 @@
  */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { TriageCategory, AVPUStatus, MobilityStatus, ArrivalMode, ChiefComplaintCategory, AssignedArea, EtATDangerSign, DehydrationLevel, FontanelleStatus, BreastfeedingAbility } from '@/lib/types/triage';
+import type {
+  TriageCategory,
+  AVPUStatus,
+  MobilityStatus,
+  ArrivalMode,
+  ChiefComplaintCategory,
+  AssignedArea,
+  EtATDangerSign,
+  DehydrationLevel,
+  FontanelleStatus,
+  BreastfeedingAbility,
+} from '@/lib/types/triage';
 
 // =============================================================================
 // Types
@@ -122,11 +133,17 @@ interface TriageAssessState {
   getRouting: (encounterId: number) => TriageRouting | null;
 
   // Actions - Section Completion
-  markSectionComplete: (encounterId: number, section: keyof TriageAssessSession['completedSections']) => void;
+  markSectionComplete: (
+    encounterId: number,
+    section: keyof TriageAssessSession['completedSections']
+  ) => void;
   getSectionCompletion: (encounterId: number) => TriageAssessSession['completedSections'] | null;
 
   // Actions - Section Visited
-  markSectionVisited: (encounterId: number, section: keyof TriageAssessSession['visitedSections']) => void;
+  markSectionVisited: (
+    encounterId: number,
+    section: keyof TriageAssessSession['visitedSections']
+  ) => void;
   getVisitedSections: (encounterId: number) => TriageAssessSession['visitedSections'] | null;
 
   // Actions - Complete Assessment
@@ -140,79 +157,24 @@ interface TriageAssessState {
 export const useTriageAssessStore = create<TriageAssessState>()(
   persist(
     (set, get) => ({
-  sessions: {},
-  activeEncounterId: null,
+      sessions: {},
+      activeEncounterId: null,
 
-  // Session Management
-  startSession: (encounterId, patientId) => {
-    const now = new Date();
-    set((state) => ({
-      sessions: {
-        ...state.sessions,
-        [encounterId]: {
-          encounterId,
-          patientId,
-          vitals: {},
-          history: {},
-          assessment: {},
-          routing: {},
-          startedAt: now,
-          lastUpdatedAt: now,
-          completedSections: {
-            vitals: false,
-            history: false,
-            assessment: false,
-            route: false,
-          },
-          visitedSections: {
-            vitals: false,
-            history: false,
-            assessment: false,
-            route: false,
-          },
-        },
-      },
-      activeEncounterId: encounterId,
-    }));
-  },
-
-  getSession: (encounterId) => {
-    return get().sessions[encounterId] || null;
-  },
-
-  clearSession: (encounterId) => {
-    set((state) => {
-      const { [encounterId]: _, ...rest } = state.sessions;
-      return {
-        sessions: rest,
-        activeEncounterId:
-          state.activeEncounterId === encounterId ? null : state.activeEncounterId,
-      };
-    });
-  },
-
-  setActiveEncounter: (encounterId) => {
-    set({ activeEncounterId: encounterId });
-  },
-
-  // Vitals
-  setVitals: (encounterId, vitals) => {
-    set((state) => {
-      const session = state.sessions[encounterId];
-      if (!session) {
-        // Auto-create session if not exists
-        return {
+      // Session Management
+      startSession: (encounterId, patientId) => {
+        const now = new Date();
+        set((state) => ({
           sessions: {
             ...state.sessions,
             [encounterId]: {
               encounterId,
-              patientId: 0, // Will be set properly when session starts
-              vitals,
+              patientId,
+              vitals: {},
               history: {},
               assessment: {},
               routing: {},
-              startedAt: new Date(),
-              lastUpdatedAt: new Date(),
+              startedAt: now,
+              lastUpdatedAt: now,
               completedSections: {
                 vitals: false,
                 history: false,
@@ -227,153 +189,208 @@ export const useTriageAssessStore = create<TriageAssessState>()(
               },
             },
           },
-        };
-      }
-      return {
-        sessions: {
-          ...state.sessions,
-          [encounterId]: {
-            ...session,
-            vitals: { ...session.vitals, ...vitals },
-            lastUpdatedAt: new Date(),
-          },
-        },
-      };
-    });
-  },
+          activeEncounterId: encounterId,
+        }));
+      },
 
-  getVitals: (encounterId) => {
-    const session = get().sessions[encounterId];
-    return session?.vitals || null;
-  },
+      getSession: (encounterId) => {
+        return get().sessions[encounterId] || null;
+      },
 
-  // History
-  setHistory: (encounterId, history) => {
-    set((state) => {
-      const session = state.sessions[encounterId];
-      if (!session) return state;
-      return {
-        sessions: {
-          ...state.sessions,
-          [encounterId]: {
-            ...session,
-            history: { ...session.history, ...history },
-            lastUpdatedAt: new Date(),
-          },
-        },
-      };
-    });
-  },
+      clearSession: (encounterId) => {
+        set((state) => {
+          const { [encounterId]: _, ...rest } = state.sessions;
+          return {
+            sessions: rest,
+            activeEncounterId:
+              state.activeEncounterId === encounterId ? null : state.activeEncounterId,
+          };
+        });
+      },
 
-  getHistory: (encounterId) => {
-    const session = get().sessions[encounterId];
-    return session?.history || null;
-  },
+      setActiveEncounter: (encounterId) => {
+        set({ activeEncounterId: encounterId });
+      },
 
-  // Assessment
-  setAssessment: (encounterId, assessment) => {
-    set((state) => {
-      const session = state.sessions[encounterId];
-      if (!session) return state;
-      return {
-        sessions: {
-          ...state.sessions,
-          [encounterId]: {
-            ...session,
-            assessment: { ...session.assessment, ...assessment },
-            lastUpdatedAt: new Date(),
-          },
-        },
-      };
-    });
-  },
-
-  getAssessment: (encounterId) => {
-    const session = get().sessions[encounterId];
-    return session?.assessment || null;
-  },
-
-  // Routing
-  setRouting: (encounterId, routing) => {
-    set((state) => {
-      const session = state.sessions[encounterId];
-      if (!session) return state;
-      return {
-        sessions: {
-          ...state.sessions,
-          [encounterId]: {
-            ...session,
-            routing: { ...session.routing, ...routing },
-            lastUpdatedAt: new Date(),
-          },
-        },
-      };
-    });
-  },
-
-  getRouting: (encounterId) => {
-    const session = get().sessions[encounterId];
-    return session?.routing || null;
-  },
-
-  // Section Completion
-  markSectionComplete: (encounterId, section) => {
-    set((state) => {
-      const session = state.sessions[encounterId];
-      if (!session) return state;
-      return {
-        sessions: {
-          ...state.sessions,
-          [encounterId]: {
-            ...session,
-            completedSections: {
-              ...session.completedSections,
-              [section]: true,
+      // Vitals
+      setVitals: (encounterId, vitals) => {
+        set((state) => {
+          const session = state.sessions[encounterId];
+          if (!session) {
+            // Auto-create session if not exists
+            return {
+              sessions: {
+                ...state.sessions,
+                [encounterId]: {
+                  encounterId,
+                  patientId: 0, // Will be set properly when session starts
+                  vitals,
+                  history: {},
+                  assessment: {},
+                  routing: {},
+                  startedAt: new Date(),
+                  lastUpdatedAt: new Date(),
+                  completedSections: {
+                    vitals: false,
+                    history: false,
+                    assessment: false,
+                    route: false,
+                  },
+                  visitedSections: {
+                    vitals: false,
+                    history: false,
+                    assessment: false,
+                    route: false,
+                  },
+                },
+              },
+            };
+          }
+          return {
+            sessions: {
+              ...state.sessions,
+              [encounterId]: {
+                ...session,
+                vitals: { ...session.vitals, ...vitals },
+                lastUpdatedAt: new Date(),
+              },
             },
-            lastUpdatedAt: new Date(),
-          },
-        },
-      };
-    });
-  },
+          };
+        });
+      },
 
-  getSectionCompletion: (encounterId) => {
-    const session = get().sessions[encounterId];
-    return session?.completedSections || null;
-  },
+      getVitals: (encounterId) => {
+        const session = get().sessions[encounterId];
+        return session?.vitals || null;
+      },
 
-  // Section Visited
-  markSectionVisited: (encounterId, section) => {
-    set((state) => {
-      const session = state.sessions[encounterId];
-      if (!session) return state;
-      // Don't mark as visited if already completed
-      if (session.completedSections[section]) return state;
-      return {
-        sessions: {
-          ...state.sessions,
-          [encounterId]: {
-            ...session,
-            visitedSections: {
-              ...session.visitedSections,
-              [section]: true,
+      // History
+      setHistory: (encounterId, history) => {
+        set((state) => {
+          const session = state.sessions[encounterId];
+          if (!session) return state;
+          return {
+            sessions: {
+              ...state.sessions,
+              [encounterId]: {
+                ...session,
+                history: { ...session.history, ...history },
+                lastUpdatedAt: new Date(),
+              },
             },
-          },
-        },
-      };
-    });
-  },
+          };
+        });
+      },
 
-  getVisitedSections: (encounterId) => {
-    const session = get().sessions[encounterId];
-    return session?.visitedSections || null;
-  },
+      getHistory: (encounterId) => {
+        const session = get().sessions[encounterId];
+        return session?.history || null;
+      },
 
-  // Complete Assessment
-  getCompleteAssessment: (encounterId) => {
-    return get().sessions[encounterId] || null;
-  },
-}),
+      // Assessment
+      setAssessment: (encounterId, assessment) => {
+        set((state) => {
+          const session = state.sessions[encounterId];
+          if (!session) return state;
+          return {
+            sessions: {
+              ...state.sessions,
+              [encounterId]: {
+                ...session,
+                assessment: { ...session.assessment, ...assessment },
+                lastUpdatedAt: new Date(),
+              },
+            },
+          };
+        });
+      },
+
+      getAssessment: (encounterId) => {
+        const session = get().sessions[encounterId];
+        return session?.assessment || null;
+      },
+
+      // Routing
+      setRouting: (encounterId, routing) => {
+        set((state) => {
+          const session = state.sessions[encounterId];
+          if (!session) return state;
+          return {
+            sessions: {
+              ...state.sessions,
+              [encounterId]: {
+                ...session,
+                routing: { ...session.routing, ...routing },
+                lastUpdatedAt: new Date(),
+              },
+            },
+          };
+        });
+      },
+
+      getRouting: (encounterId) => {
+        const session = get().sessions[encounterId];
+        return session?.routing || null;
+      },
+
+      // Section Completion
+      markSectionComplete: (encounterId, section) => {
+        set((state) => {
+          const session = state.sessions[encounterId];
+          if (!session) return state;
+          return {
+            sessions: {
+              ...state.sessions,
+              [encounterId]: {
+                ...session,
+                completedSections: {
+                  ...session.completedSections,
+                  [section]: true,
+                },
+                lastUpdatedAt: new Date(),
+              },
+            },
+          };
+        });
+      },
+
+      getSectionCompletion: (encounterId) => {
+        const session = get().sessions[encounterId];
+        return session?.completedSections || null;
+      },
+
+      // Section Visited
+      markSectionVisited: (encounterId, section) => {
+        set((state) => {
+          const session = state.sessions[encounterId];
+          if (!session) return state;
+          // Don't mark as visited if already completed
+          if (session.completedSections[section]) return state;
+          return {
+            sessions: {
+              ...state.sessions,
+              [encounterId]: {
+                ...session,
+                visitedSections: {
+                  ...session.visitedSections,
+                  [section]: true,
+                },
+              },
+            },
+          };
+        });
+      },
+
+      getVisitedSections: (encounterId) => {
+        const session = get().sessions[encounterId];
+        return session?.visitedSections || null;
+      },
+
+      // Complete Assessment
+      getCompleteAssessment: (encounterId) => {
+        return get().sessions[encounterId] || null;
+      },
+    }),
     {
       name: 'vitora-triage-assess',
       storage: createJSONStorage(() => localStorage),
@@ -381,8 +398,8 @@ export const useTriageAssessStore = create<TriageAssessState>()(
         sessions: state.sessions,
         activeEncounterId: state.activeEncounterId,
       }),
-    },
-  ),
+    }
+  )
 );
 
 // =============================================================================
@@ -406,7 +423,7 @@ export type SectionStatus = 'not-started' | 'incomplete' | 'complete';
  */
 export function getSectionStatus(
   section: 'vitals' | 'history' | 'assessment' | 'route',
-  session: TriageAssessSession | null,
+  session: TriageAssessSession | null
 ): SectionStatus {
   if (!session) return 'not-started';
   if (session.completedSections[section]) return 'complete';

@@ -85,7 +85,9 @@ async function login(page: Page) {
 test.describe('UUID Route Smoke (Authenticated)', () => {
   test.setTimeout(90_000);
 
-  test('loads critical UUID routes post-login without invalid-id guards or crashes', async ({ page }) => {
+  test('loads critical UUID routes post-login without invalid-id guards or crashes', async ({
+    page,
+  }) => {
     const pageErrors: Error[] = [];
     page.on('pageerror', (err) => {
       pageErrors.push(err);
@@ -102,6 +104,9 @@ test.describe('UUID Route Smoke (Authenticated)', () => {
       await expect(page.locator('body')).toBeVisible();
     }
 
-    expect(pageErrors, `Unexpected page errors: ${pageErrors.map((e) => e.message).join(' | ')}`).toHaveLength(0);
+    expect(
+      pageErrors,
+      `Unexpected page errors: ${pageErrors.map((e) => e.message).join(' | ')}`
+    ).toHaveLength(0);
   });
 });

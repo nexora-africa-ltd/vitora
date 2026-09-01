@@ -60,7 +60,18 @@ export const ClaimStatusSchema = z.enum([
 
 export const ClaimItemStatusSchema = z.enum(['pending', 'approved', 'rejected', 'adjusted']);
 
-export const MembershipTypeSchema = z.enum(['PRINCIPAL', 'SPOUSE', 'CHILD', 'PARENT', 'OTHER', 'principal', 'spouse', 'child', 'parent', 'other']);
+export const MembershipTypeSchema = z.enum([
+  'PRINCIPAL',
+  'SPOUSE',
+  'CHILD',
+  'PARENT',
+  'OTHER',
+  'principal',
+  'spouse',
+  'child',
+  'parent',
+  'other',
+]);
 
 export const MemberStatusSchema = z.enum([
   'ACTIVE',
@@ -166,7 +177,9 @@ export const ClientRegistryFetchResponseSchema = z.object({
   message: z.string().optional(),
 });
 
-export type ClientRegistryFetchResponseSchemaType = z.infer<typeof ClientRegistryFetchResponseSchema>;
+export type ClientRegistryFetchResponseSchemaType = z.infer<
+  typeof ClientRegistryFetchResponseSchema
+>;
 
 export const ClientRegistryRegisterResponseSchema = z.object({
   success: z.boolean(),
@@ -174,14 +187,18 @@ export const ClientRegistryRegisterResponseSchema = z.object({
   message: z.string().optional(),
 });
 
-export type ClientRegistryRegisterResponseSchemaType = z.infer<typeof ClientRegistryRegisterResponseSchema>;
+export type ClientRegistryRegisterResponseSchemaType = z.infer<
+  typeof ClientRegistryRegisterResponseSchema
+>;
 
 export const ClientRegistryUpdateResponseSchema = z.object({
   success: z.boolean(),
   message: z.string().optional(),
 });
 
-export type ClientRegistryUpdateResponseSchemaType = z.infer<typeof ClientRegistryUpdateResponseSchema>;
+export type ClientRegistryUpdateResponseSchemaType = z.infer<
+  typeof ClientRegistryUpdateResponseSchema
+>;
 
 // =============================================================================
 // SHA MEMBER SCHEMAS
@@ -226,7 +243,10 @@ export const SHAMemberSchema = z.object({
   eligibility_valid_until: z.string().optional().nullable(),
   last_eligibility_check: z.string().optional().nullable(),
   is_pfms_eligible: z.boolean(),
-  pfms_category: z.union([PFMSCategorySchema, z.literal('')]).optional().nullable(),
+  pfms_category: z
+    .union([PFMSCategorySchema, z.literal('')])
+    .optional()
+    .nullable(),
   pfms_category_display: z.string().optional().nullable(),
   pfms_verified: z.boolean(),
   pfms_verified_at: z.string().optional().nullable(),
@@ -316,9 +336,11 @@ export const SHAEligibilityPrincipalContributorSchema = z.object({
   name: z.string().optional(),
   relationship: z.string().optional(),
   employmentType: z.string().optional(),
-  employerDetails: z.object({
-    name: z.string().optional(),
-  }).optional(),
+  employerDetails: z
+    .object({
+      name: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const SHAEligibilitySchemeSchema = z.object({
@@ -363,7 +385,9 @@ export const DirectEligibilityCheckResponseSchema = z.object({
   detail: z.string().nullable().optional(),
 });
 
-export type DirectEligibilityCheckResponseSchemaType = z.infer<typeof DirectEligibilityCheckResponseSchema>;
+export type DirectEligibilityCheckResponseSchemaType = z.infer<
+  typeof DirectEligibilityCheckResponseSchema
+>;
 
 // =============================================================================
 // TERMINOLOGY SCHEMAS
@@ -416,7 +440,7 @@ export const SHAInterventionSchema = z.object({
       }
       return v;
     },
-    z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional(),
+    z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional()
   ),
   access_point: z.preprocess(
     (v) => {
@@ -428,7 +452,7 @@ export const SHAInterventionSchema = z.object({
       }
       return v;
     },
-    z.enum(['IP', 'OP', 'BOTH']).optional(),
+    z.enum(['IP', 'OP', 'BOTH']).optional()
   ),
   needs_preauth: z.boolean().optional(),
   needs_manual_preauth_approval: z.boolean().optional(),
@@ -579,7 +603,10 @@ export const ClaimSchema = z.object({
   // Diagnosis
   primary_diagnosis_code: z.string().nullable().optional(),
   primary_diagnosis_description: z.string().nullable().optional(),
-  secondary_diagnosis_codes: z.union([z.array(z.string()), z.record(z.unknown())]).nullable().optional(),
+  secondary_diagnosis_codes: z
+    .union([z.array(z.string()), z.record(z.unknown())])
+    .nullable()
+    .optional(),
 
   // Amounts - backend uses claimed_amount, frontend alias total_amount
   claimed_amount: z.string().nullable().optional(),
@@ -645,84 +672,100 @@ export const ClaimSchema = z.object({
   dha_discharge_snapshot: z.record(z.unknown()).nullable().optional(),
 
   // Intervention tracking & document-type enforcement (Phase 1.1)
-  claim_interventions: z.array(z.object({
-    id: z.number(),
-    intervention_code: z.string(),
-    intervention_name: z.string().optional().default(''),
-    benefit_code: z.string().optional().default(''),
-    status: z.enum(['active', 'retired']),
-    preview_missing_streak: z.number().int().nonnegative().optional().default(0),
-    last_seen_in_preview_at: z.string().nullable().optional(),
-    auto_retired_by_omission: z.boolean().optional().default(false),
-    required_document_types: z.array(z.string()),
-    dha_intervention_id: z.string().optional().default(''),
-    tariff_amount: z.string().nullable().optional(),
-    // DHA routing flags
-payment_mechanism: z.preprocess(
-    (v) => {
-      if (v === '' || v === null) return undefined;
-      if (typeof v === 'string') {
-        const normalised = v.toUpperCase().replace(/\s+/g, '_');
-        if (normalised === 'FIXED_FEE_FOR_SERVICE') return 'FEE_FOR_SERVICE';
-        return normalised;
-      }
-      return v;
-    },
-    z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional(),
-  ),
-access_point: z.preprocess(
-    (v) => {
-      if (v === '' || v === null) return undefined;
-      if (typeof v === 'string') {
-        const normalised = v.toUpperCase().replace(/\s+/g, '_');
-        if (normalised === 'OP_AND_IP') return 'BOTH';
-        return normalised;
-      }
-      return v;
-    },
-    z.enum(['IP', 'OP', 'BOTH']).optional(),
-  ),
-    needs_preauth: z.boolean().optional(),
-    needs_manual_preauth_approval: z.boolean().optional(),
-    is_surgical_preauth: z.boolean().optional(),
-    is_renal_preauth: z.boolean().optional(),
-    is_oncology_preauth: z.boolean().optional(),
-    is_imaging_preauth: z.boolean().optional(),
-    is_optical_preauth: z.boolean().optional(),
-    fund: z.string().optional().default(''),
-    intervention_fund: z.string().optional().default(''),
-    supported_scheme: z.string().optional().default(''),
-    schemes: z.array(z.string()).optional().default([]),
-    intervention_payload: z.record(z.unknown()).optional().default({}),
-    level2_tariff: z.string().nullable().optional(),
-    level3_tariff: z.string().nullable().optional(),
-    level4_tariff: z.string().nullable().optional(),
-    level5_tariff: z.string().nullable().optional(),
-    level6_tariff: z.string().nullable().optional(),
-    // Computed properties
-    preauth_type: z.string().optional(),
-    is_per_diem: z.boolean().optional(),
-    is_elective_preauth: z.boolean().optional(),
-    preauth_exists: z.boolean().optional(),
-    preauth_status: z.string().optional().default(''),
-    preauth_approved: z.boolean().optional(),
-    created_at: z.string(),
-    updated_at: z.string(),
-  })).optional().default([]),
-  items: z.array(z.lazy(() => ClaimItemSchema)).optional().default([]),
-  missing_document_types: z.array(z.object({
-    intervention_code: z.string(),
-    intervention_name: z.string().optional().default(''),
-    missing: z.array(z.string()),
-  })).optional().default([]),
+  claim_interventions: z
+    .array(
+      z.object({
+        id: z.number(),
+        intervention_code: z.string(),
+        intervention_name: z.string().optional().default(''),
+        benefit_code: z.string().optional().default(''),
+        status: z.enum(['active', 'retired']),
+        preview_missing_streak: z.number().int().nonnegative().optional().default(0),
+        last_seen_in_preview_at: z.string().nullable().optional(),
+        auto_retired_by_omission: z.boolean().optional().default(false),
+        required_document_types: z.array(z.string()),
+        dha_intervention_id: z.string().optional().default(''),
+        tariff_amount: z.string().nullable().optional(),
+        // DHA routing flags
+        payment_mechanism: z.preprocess(
+          (v) => {
+            if (v === '' || v === null) return undefined;
+            if (typeof v === 'string') {
+              const normalised = v.toUpperCase().replace(/\s+/g, '_');
+              if (normalised === 'FIXED_FEE_FOR_SERVICE') return 'FEE_FOR_SERVICE';
+              return normalised;
+            }
+            return v;
+          },
+          z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional()
+        ),
+        access_point: z.preprocess(
+          (v) => {
+            if (v === '' || v === null) return undefined;
+            if (typeof v === 'string') {
+              const normalised = v.toUpperCase().replace(/\s+/g, '_');
+              if (normalised === 'OP_AND_IP') return 'BOTH';
+              return normalised;
+            }
+            return v;
+          },
+          z.enum(['IP', 'OP', 'BOTH']).optional()
+        ),
+        needs_preauth: z.boolean().optional(),
+        needs_manual_preauth_approval: z.boolean().optional(),
+        is_surgical_preauth: z.boolean().optional(),
+        is_renal_preauth: z.boolean().optional(),
+        is_oncology_preauth: z.boolean().optional(),
+        is_imaging_preauth: z.boolean().optional(),
+        is_optical_preauth: z.boolean().optional(),
+        fund: z.string().optional().default(''),
+        intervention_fund: z.string().optional().default(''),
+        supported_scheme: z.string().optional().default(''),
+        schemes: z.array(z.string()).optional().default([]),
+        intervention_payload: z.record(z.unknown()).optional().default({}),
+        level2_tariff: z.string().nullable().optional(),
+        level3_tariff: z.string().nullable().optional(),
+        level4_tariff: z.string().nullable().optional(),
+        level5_tariff: z.string().nullable().optional(),
+        level6_tariff: z.string().nullable().optional(),
+        // Computed properties
+        preauth_type: z.string().optional(),
+        is_per_diem: z.boolean().optional(),
+        is_elective_preauth: z.boolean().optional(),
+        preauth_exists: z.boolean().optional(),
+        preauth_status: z.string().optional().default(''),
+        preauth_approved: z.boolean().optional(),
+        created_at: z.string(),
+        updated_at: z.string(),
+      })
+    )
+    .optional()
+    .default([]),
+  items: z
+    .array(z.lazy(() => ClaimItemSchema))
+    .optional()
+    .default([]),
+  missing_document_types: z
+    .array(
+      z.object({
+        intervention_code: z.string(),
+        intervention_name: z.string().optional().default(''),
+        missing: z.array(z.string()),
+      })
+    )
+    .optional()
+    .default([]),
 
-  encounter_clinician: z.object({
-    id: z.number(),
-    name: z.string().nullable().optional(),
-    license_number: z.string().nullable().optional(),
-    licensing_body: z.string().nullable().optional(),
-    national_id: z.string().nullable().optional(),
-  }).nullable().optional(),
+  encounter_clinician: z
+    .object({
+      id: z.number(),
+      name: z.string().nullable().optional(),
+      license_number: z.string().nullable().optional(),
+      licensing_body: z.string().nullable().optional(),
+      national_id: z.string().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export type ClaimSchemaType = z.infer<typeof ClaimSchema>;
@@ -878,7 +921,9 @@ export const DHAPractitionerSearchResponseSchema = z.object({
   message: DHAPractitionerSchema,
 });
 
-export type DHAPractitionerSearchResponseSchemaType = z.infer<typeof DHAPractitionerSearchResponseSchema>;
+export type DHAPractitionerSearchResponseSchemaType = z.infer<
+  typeof DHAPractitionerSearchResponseSchema
+>;
 
 // Legacy practitioner validation
 export const PractitionerInfoSchema = z.object({
@@ -898,7 +943,9 @@ export const PractitionerValidationResponseSchema = z.object({
   errors: z.array(z.string()),
 });
 
-export type PractitionerValidationResponseSchemaType = z.infer<typeof PractitionerValidationResponseSchema>;
+export type PractitionerValidationResponseSchemaType = z.infer<
+  typeof PractitionerValidationResponseSchema
+>;
 
 // =============================================================================
 // PAGINATED RESPONSES
@@ -1091,7 +1138,6 @@ export const SHAClaimItemArrayResponseSchema = z.object({
   results: ClaimItemArraySchema,
 });
 
-
 // =============================================================================
 // DHA HIE Middleware (ILM) — per-action claim workflow
 // =============================================================================
@@ -1099,42 +1145,49 @@ export const SHAClaimItemArrayResponseSchema = z.object({
 export const IlmCallResultSchema = z.object({
   status_code: z.number(),
   payload: z.unknown().optional(),
-  reconciliation_summary: z.object({
-    reconciled: z.boolean(),
-    reason: z.string(),
-    created: z.number().optional(),
-    updated: z.number().optional(),
-    restored: z.number().optional(),
-    retired: z.number().optional(),
-    created_codes: z.array(z.string()).optional(),
-    updated_codes: z.array(z.string()).optional(),
-    restored_codes: z.array(z.string()).optional(),
-    retired_codes: z.array(z.string()).optional(),
-  }).optional(),
+  reconciliation_summary: z
+    .object({
+      reconciled: z.boolean(),
+      reason: z.string(),
+      created: z.number().optional(),
+      updated: z.number().optional(),
+      restored: z.number().optional(),
+      retired: z.number().optional(),
+      created_codes: z.array(z.string()).optional(),
+      updated_codes: z.array(z.string()).optional(),
+      restored_codes: z.array(z.string()).optional(),
+      retired_codes: z.array(z.string()).optional(),
+    })
+    .optional(),
 });
 
 export type IlmCallResult = z.infer<typeof IlmCallResultSchema>;
 
-export const IlmStartVisitRequestSchema = z.object({
-  otp: z.string().optional(),
-  auth_guid: z.string().optional(),
-  reuse_existing_consent: z.boolean().optional(),
-  patient_id: z.string().min(1),
-  intervention_codes: z.array(z.string().min(1)),
-  service_type: z.enum(['OUTPATIENT', 'INPATIENT']).default('OUTPATIENT'),
-  admission_date: z.string().optional(),
-  estimated_days_of_admission: z.number().int().nonnegative().optional(),
-  // Practitioner (doctor) details — DHA 2026-06 requirement
-  practitioner_identification_number: z.string().optional(),
-  practitioner_identification_type: z.string().optional(),
-  practitioner_regulation_body: z.string().optional(),
-}).refine((data) => {
-  if (data.reuse_existing_consent) return true;
-  return (!!data.otp) !== (!!data.auth_guid);
-}, {
-  message: 'Provide exactly one of otp or auth_guid, unless reuse_existing_consent is true',
-  path: ['otp'],
-});
+export const IlmStartVisitRequestSchema = z
+  .object({
+    otp: z.string().optional(),
+    auth_guid: z.string().optional(),
+    reuse_existing_consent: z.boolean().optional(),
+    patient_id: z.string().min(1),
+    intervention_codes: z.array(z.string().min(1)),
+    service_type: z.enum(['OUTPATIENT', 'INPATIENT']).default('OUTPATIENT'),
+    admission_date: z.string().optional(),
+    estimated_days_of_admission: z.number().int().nonnegative().optional(),
+    // Practitioner (doctor) details — DHA 2026-06 requirement
+    practitioner_identification_number: z.string().optional(),
+    practitioner_identification_type: z.string().optional(),
+    practitioner_regulation_body: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.reuse_existing_consent) return true;
+      return !!data.otp !== !!data.auth_guid;
+    },
+    {
+      message: 'Provide exactly one of otp or auth_guid, unless reuse_existing_consent is true',
+      path: ['otp'],
+    }
+  );
 
 export type IlmStartVisitRequest = z.infer<typeof IlmStartVisitRequestSchema>;
 
@@ -1222,9 +1275,7 @@ export const IlmSubmitRequestSchema = z.object({
   // Outpatient discharge consent — DHA 2026-06 requirement
   otp: z.string().optional(),
   discharge_auth_guid: z.string().optional(),
-  discharge_reason: z.enum([
-    'RECOVERED', 'REFERRED', 'ABSCONDED', 'OTHER',
-  ]).optional(),
+  discharge_reason: z.enum(['RECOVERED', 'REFERRED', 'ABSCONDED', 'OTHER']).optional(),
   notes: z.string().optional(),
   // Practitioner (doctor) details — fallback if not provided at start_visit
   practitioner_identification_number: z.string().optional(),
@@ -1261,34 +1312,43 @@ export type IlmRegistryResponse = z.infer<typeof IlmRegistryResponseSchema>;
 // Loose schemas — DHA payloads are deeply nested and partly free-form, so we
 // validate the envelope (data + http_status) and let UI consumers drill into
 // `data` with their own narrow schemas as needed.
-export const IlmFacilityResultSchema = z.object({
-  fidCode: z.string().optional(),
-  frCode: z.string().optional(),
-  officialName: z.string().optional(),
-  facilityType: z.string().optional(),
-  kephLevel: z.string().optional(),
-  shaContractStatus: z.string().optional(),
-  shaContractedServices: z.array(z.string()).optional(),
-}).passthrough();
+export const IlmFacilityResultSchema = z
+  .object({
+    fidCode: z.string().optional(),
+    frCode: z.string().optional(),
+    officialName: z.string().optional(),
+    facilityType: z.string().optional(),
+    kephLevel: z.string().optional(),
+    shaContractStatus: z.string().optional(),
+    shaContractedServices: z.array(z.string()).optional(),
+  })
+  .passthrough();
 
-export const IlmEligibilitySchemeSchema = z.object({
-  schemeName: z.string().optional(),
-  memberType: z.string().optional(),
-  coverage: z.object({
-    status: z.string().optional(),
-    startDate: z.string().optional(),
-    endDate: z.string().optional(),
-  }).partial().optional(),
-}).passthrough();
+export const IlmEligibilitySchemeSchema = z
+  .object({
+    schemeName: z.string().optional(),
+    memberType: z.string().optional(),
+    coverage: z
+      .object({
+        status: z.string().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+  })
+  .passthrough();
 
-export const IlmEligibilityResultSchema = z.object({
-  fullName: z.string().optional(),
-  memberCrNumber: z.string().optional(),
-  age: z.number().optional(),
-  gender: z.string().optional(),
-  schemes: z.array(IlmEligibilitySchemeSchema).optional(),
-  whitelistedForOTP: z.boolean().optional(),
-}).passthrough();
+export const IlmEligibilityResultSchema = z
+  .object({
+    fullName: z.string().optional(),
+    memberCrNumber: z.string().optional(),
+    age: z.number().optional(),
+    gender: z.string().optional(),
+    schemes: z.array(IlmEligibilitySchemeSchema).optional(),
+    whitelistedForOTP: z.boolean().optional(),
+  })
+  .passthrough();
 
 export const PatientContactSchema = z.object({
   id: z.number(),
@@ -1340,46 +1400,50 @@ export const IlmPreauthResponseSchema = z.object({
 });
 export type IlmPreauthResponse = z.infer<typeof IlmPreauthResponseSchema>;
 
-export const SHAPreauthSchema = z.object({
-  id: z.number(),
-  claim: z.number().nullable().optional(),
-  patient: z.number().nullable().optional(),
-  facility: z.number().nullable().optional(),
-  consent_token: z.string(),
-  intervention_code: z.string(),
-  status: z.enum(['draft', 'submitted', 'approved', 'denied', 'cancelled']),
-  dha_external_id: z.string().optional().default(''),
-  correlation_id: z.string().optional().default(''),
-  diagnoses: z.unknown().optional(),
-  doctor_consent_state: z.string().optional().default(''),
-  submitted_at: z.string().nullable().optional(),
-  decided_at: z.string().nullable().optional(),
-  cancelled_at: z.string().nullable().optional(),
-  created_at: z.string().optional(),
-  updated_at: z.string().optional(),
-}).passthrough();
+export const SHAPreauthSchema = z
+  .object({
+    id: z.number(),
+    claim: z.number().nullable().optional(),
+    patient: z.number().nullable().optional(),
+    facility: z.number().nullable().optional(),
+    consent_token: z.string(),
+    intervention_code: z.string(),
+    status: z.enum(['draft', 'submitted', 'approved', 'denied', 'cancelled']),
+    dha_external_id: z.string().optional().default(''),
+    correlation_id: z.string().optional().default(''),
+    diagnoses: z.unknown().optional(),
+    doctor_consent_state: z.string().optional().default(''),
+    submitted_at: z.string().nullable().optional(),
+    decided_at: z.string().nullable().optional(),
+    cancelled_at: z.string().nullable().optional(),
+    created_at: z.string().optional(),
+    updated_at: z.string().optional(),
+  })
+  .passthrough();
 export type SHAPreauth = z.infer<typeof SHAPreauthSchema>;
 
 export const SHAPreauthListSchema = z.object({ results: z.array(SHAPreauthSchema) });
 
-export const SHAEmergencyClaimSchema = z.object({
-  id: z.number(),
-  patient: z.number().nullable().optional(),
-  facility: z.number().nullable().optional(),
-  kind: z.enum(['emergency', 'emt']),
-  status: z.enum(['open', 'submitted', 'authorized', 'cancelled']),
-  consent_token: z.string().optional().default(''),
-  reference_number: z.string().optional().default(''),
-  case_number: z.string().optional().default(''),
-  beneficiary_cr_id: z.string().optional().default(''),
-  brought_by: z.string().optional().default(''),
-  mode_of_arrival: z.string().optional().default(''),
-  interventions: z.unknown().optional(),
-  diagnoses: z.unknown().optional(),
-  dha_external_id: z.string().optional().default(''),
-  correlation_id: z.string().optional().default(''),
-  created_at: z.string().optional(),
-}).passthrough();
+export const SHAEmergencyClaimSchema = z
+  .object({
+    id: z.number(),
+    patient: z.number().nullable().optional(),
+    facility: z.number().nullable().optional(),
+    kind: z.enum(['emergency', 'emt']),
+    status: z.enum(['open', 'submitted', 'authorized', 'cancelled']),
+    consent_token: z.string().optional().default(''),
+    reference_number: z.string().optional().default(''),
+    case_number: z.string().optional().default(''),
+    beneficiary_cr_id: z.string().optional().default(''),
+    brought_by: z.string().optional().default(''),
+    mode_of_arrival: z.string().optional().default(''),
+    interventions: z.unknown().optional(),
+    diagnoses: z.unknown().optional(),
+    dha_external_id: z.string().optional().default(''),
+    correlation_id: z.string().optional().default(''),
+    created_at: z.string().optional(),
+  })
+  .passthrough();
 export type SHAEmergencyClaim = z.infer<typeof SHAEmergencyClaimSchema>;
 
 export const SHAEmergencyClaimListSchema = z.object({ results: z.array(SHAEmergencyClaimSchema) });
@@ -1470,50 +1534,56 @@ export const IlmLifecycleResponseSchema = z.object({
 });
 export type IlmLifecycleResponse = z.infer<typeof IlmLifecycleResponseSchema>;
 
-export const SHAOtpRequestSchema = z.object({
-  id: z.number(),
-  patient: z.number().nullable().optional(),
-  facility: z.number().nullable().optional(),
-  kind: z.enum(['visit', 'discharge']),
-  status: z.enum(['sent', 'verified', 'failed']),
-  consent_token: z.string().optional().default(''),
-  patient_cr_id: z.string().optional().default(''),
-  intervention_codes: z.unknown().optional(),
-  correlation_id: z.string().optional().default(''),
-  sent_at: z.string().nullable().optional(),
-  verified_at: z.string().nullable().optional(),
-}).passthrough();
+export const SHAOtpRequestSchema = z
+  .object({
+    id: z.number(),
+    patient: z.number().nullable().optional(),
+    facility: z.number().nullable().optional(),
+    kind: z.enum(['visit', 'discharge']),
+    status: z.enum(['sent', 'verified', 'failed']),
+    consent_token: z.string().optional().default(''),
+    patient_cr_id: z.string().optional().default(''),
+    intervention_codes: z.unknown().optional(),
+    correlation_id: z.string().optional().default(''),
+    sent_at: z.string().nullable().optional(),
+    verified_at: z.string().nullable().optional(),
+  })
+  .passthrough();
 export type SHAOtpRequestRow = z.infer<typeof SHAOtpRequestSchema>;
 export const SHAOtpRequestListSchema = z.object({ results: z.array(SHAOtpRequestSchema) });
 
-export const SHAOtpWhitelistRowSchema = z.object({
-  id: z.number(),
-  patient: z.number().nullable().optional(),
-  facility: z.number().nullable().optional(),
-  status: z.enum(['requested', 'approved', 'rejected', 'failed']),
-  beneficiary_cr_id: z.string().optional().default(''),
-  reason_type: z.string().optional().default(''),
-  reason: z.string().optional().default(''),
-  biometric_attempts: z.number().nullable().optional(),
-  dha_guid: z.string().optional().default(''),
-  correlation_id: z.string().optional().default(''),
-  requested_at: z.string().nullable().optional(),
-}).passthrough();
+export const SHAOtpWhitelistRowSchema = z
+  .object({
+    id: z.number(),
+    patient: z.number().nullable().optional(),
+    facility: z.number().nullable().optional(),
+    status: z.enum(['requested', 'approved', 'rejected', 'failed']),
+    beneficiary_cr_id: z.string().optional().default(''),
+    reason_type: z.string().optional().default(''),
+    reason: z.string().optional().default(''),
+    biometric_attempts: z.number().nullable().optional(),
+    dha_guid: z.string().optional().default(''),
+    correlation_id: z.string().optional().default(''),
+    requested_at: z.string().nullable().optional(),
+  })
+  .passthrough();
 export type SHAOtpWhitelistRow = z.infer<typeof SHAOtpWhitelistRowSchema>;
 export const SHAOtpWhitelistListSchema = z.object({ results: z.array(SHAOtpWhitelistRowSchema) });
 
-export const SHAUploadSchema = z.object({
-  id: z.number(),
-  facility: z.number().nullable().optional(),
-  filename: z.string(),
-  content_type: z.string().optional().default(''),
-  size_bytes: z.number().nullable().optional(),
-  dha_file_id: z.string().optional().default(''),
-  dha_file_path: z.string().optional().default(''),
-  dha_download_url: z.string().optional().default(''),
-  correlation_id: z.string().optional().default(''),
-  uploaded_at: z.string().nullable().optional(),
-}).passthrough();
+export const SHAUploadSchema = z
+  .object({
+    id: z.number(),
+    facility: z.number().nullable().optional(),
+    filename: z.string(),
+    content_type: z.string().optional().default(''),
+    size_bytes: z.number().nullable().optional(),
+    dha_file_id: z.string().optional().default(''),
+    dha_file_path: z.string().optional().default(''),
+    dha_download_url: z.string().optional().default(''),
+    correlation_id: z.string().optional().default(''),
+    uploaded_at: z.string().nullable().optional(),
+  })
+  .passthrough();
 export type SHAUploadRow = z.infer<typeof SHAUploadSchema>;
 export const SHAUploadListSchema = z.object({ results: z.array(SHAUploadSchema) });
 
@@ -1594,24 +1664,26 @@ export const IlmPrescriptionResponseSchema = z.object({
 });
 export type IlmPrescriptionResponse = z.infer<typeof IlmPrescriptionResponseSchema>;
 
-export const SHADhaPrescriptionSchema = z.object({
-  id: z.number(),
-  patient: z.number().nullable().optional(),
-  encounter: z.number().nullable().optional(),
-  claim: z.number().nullable().optional(),
-  facility: z.number().nullable().optional(),
-  status: z.enum(['draft', 'created', 'dispensed', 'cancelled', 'failed']),
-  intervention_code: z.string().optional().default(''),
-  identification_number: z.string().optional().default(''),
-  identification_type: z.string().optional().default(''),
-  regulation_body: z.string().optional().default(''),
-  items: z.unknown().optional(),
-  dha_external_id: z.string().optional().default(''),
-  dha_guid: z.string().optional().default(''),
-  correlation_id: z.string().optional().default(''),
-  created_at: z.string().nullable().optional(),
-  dispensed_at: z.string().nullable().optional(),
-}).passthrough();
+export const SHADhaPrescriptionSchema = z
+  .object({
+    id: z.number(),
+    patient: z.number().nullable().optional(),
+    encounter: z.number().nullable().optional(),
+    claim: z.number().nullable().optional(),
+    facility: z.number().nullable().optional(),
+    status: z.enum(['draft', 'created', 'dispensed', 'cancelled', 'failed']),
+    intervention_code: z.string().optional().default(''),
+    identification_number: z.string().optional().default(''),
+    identification_type: z.string().optional().default(''),
+    regulation_body: z.string().optional().default(''),
+    items: z.unknown().optional(),
+    dha_external_id: z.string().optional().default(''),
+    dha_guid: z.string().optional().default(''),
+    correlation_id: z.string().optional().default(''),
+    created_at: z.string().nullable().optional(),
+    dispensed_at: z.string().nullable().optional(),
+  })
+  .passthrough();
 export type SHADhaPrescription = z.infer<typeof SHADhaPrescriptionSchema>;
 export const SHADhaPrescriptionListSchema = z.object({
   results: z.array(SHADhaPrescriptionSchema),

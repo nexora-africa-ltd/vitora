@@ -43,9 +43,7 @@ const sourceLabels = {
 } as const;
 
 function formatFieldName(name: string): string {
-  return name
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function formatDisplayValue(value: unknown): string {
@@ -70,13 +68,15 @@ interface SmartSuggestionBatchProps {
   onOpenChange: (open: boolean) => void;
   suggestions: SmartSuggestion[];
   /** Called with the list of accepted suggestions */
-  onApply: (accepted: Array<{
-    id: string;
-    field_name: string;
-    value: unknown;
-    source: string;
-    confidence: number;
-  }>) => void;
+  onApply: (
+    accepted: Array<{
+      id: string;
+      field_name: string;
+      value: unknown;
+      source: string;
+      confidence: number;
+    }>
+  ) => void;
   /** Optional title */
   title?: string;
 }
@@ -94,8 +94,8 @@ export function SmartSuggestionBatch({
   );
 
   // Track which suggestions are toggled on (default: all pending)
-  const [selected, setSelected] = useState<Set<string>>(() =>
-    new Set(pendingSuggestions.map((s) => s.id))
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(pendingSuggestions.map((s) => s.id))
   );
 
   // Reset selection when dialog opens with new suggestions
@@ -158,11 +158,11 @@ export function SmartSuggestionBatch({
         </DialogHeader>
 
         {/* Select All Toggle */}
-        <div className="flex items-center justify-between px-1 py-1 border-b">
+        <div className="flex items-center justify-between border-b px-1 py-1">
           <button
             type="button"
             onClick={handleSelectAll}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             {selectedCount === totalCount ? 'Deselect all' : 'Select all'}
           </button>
@@ -197,22 +197,19 @@ export function SmartSuggestionBatch({
                     className="mt-0.5"
                     aria-label={`Toggle ${suggestion.field_name}`}
                   />
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-medium">
                         {formatFieldName(suggestion.field_name)}
                       </span>
-                      <Badge
-                        variant="secondary"
-                        className="text-[10px] gap-1"
-                      >
+                      <Badge variant="secondary" className="gap-1 text-[10px]">
                         <SourceIcon className="h-2.5 w-2.5" />
                         {sourceLabel}
                       </Badge>
                       <Badge
                         variant="secondary"
                         className={cn(
-                          'text-[10px] font-mono',
+                          'font-mono text-[10px]',
                           suggestion.confidence >= 0.85
                             ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                             : suggestion.confidence >= 0.6
@@ -223,7 +220,7 @@ export function SmartSuggestionBatch({
                         {Math.round(suggestion.confidence * 100)}%
                       </Badge>
                     </div>
-                    <p className="text-xs text-foreground line-clamp-3">
+                    <p className="line-clamp-3 text-xs text-foreground">
                       {formatDisplayValue(suggestion.value)}
                     </p>
                     {suggestion.reason && (
@@ -242,13 +239,13 @@ export function SmartSuggestionBatch({
             onClick={() => onOpenChange(false)}
             className="w-full sm:w-auto"
           >
-            <X className="h-4 w-4 mr-1.5" />
+            <X className="mr-1.5 h-4 w-4" />
             Cancel
           </Button>
           <Button
             onClick={handleApply}
             disabled={selectedCount === 0}
-            className="w-full sm:w-auto gap-1.5"
+            className="w-full gap-1.5 sm:w-auto"
           >
             <CheckCircle className="h-4 w-4" />
             Apply {selectedCount} {selectedCount === 1 ? 'Suggestion' : 'Suggestions'}

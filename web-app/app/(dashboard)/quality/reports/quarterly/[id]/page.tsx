@@ -11,19 +11,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { qualityApi } from '@/lib/api/quality';
 import { formatDateTime } from '@/lib/utils/format';
 import { toast } from '@/lib/hooks/use-toast';
-import {
-  Users,
-  TrendingUp,
-  Baby,
-  Heart,
-  DollarSign,
-  Download,
-} from 'lucide-react';
+import { Users, TrendingUp, Baby, Heart, DollarSign, Download } from 'lucide-react';
 
 function StatBlock({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="text-center p-2">
-      <p className="text-lg sm:text-xl font-bold">{typeof value === 'number' ? value.toLocaleString() : value}</p>
+    <div className="p-2 text-center">
+      <p className="text-lg font-bold sm:text-xl">
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   );
@@ -34,7 +29,11 @@ export default function QuarterlyReportDetailPage() {
   const reportId = Number(params?.id);
   const [exportingSdmx, setExportingSdmx] = useState(false);
 
-  const { data: report, isLoading, error } = useQuery({
+  const {
+    data: report,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['quarterly-report', reportId],
     queryFn: () => qualityApi.getQuarterlyReport(reportId),
     enabled: Number.isFinite(reportId),
@@ -66,7 +65,9 @@ export default function QuarterlyReportDetailPage() {
         <PageHeader title="Quarterly Report" />
         <Skeleton className="h-20" />
         <div className="grid gap-4 lg:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40" />)}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-40" />
+          ))}
         </div>
       </div>
     );
@@ -91,8 +92,8 @@ export default function QuarterlyReportDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <p className="text-sm font-medium">{report.clinic_name}</p>
           <p className="text-xs text-muted-foreground">
             {report.quarter_display} • {report.monthly_report_ids.length} monthly reports aggregated
@@ -100,7 +101,7 @@ export default function QuarterlyReportDetailPage() {
         </div>
         <Badge
           variant={report.dhis2_submitted ? 'default' : 'secondary'}
-          className="shrink-0 w-fit self-start sm:self-auto"
+          className="w-fit shrink-0 self-start sm:self-auto"
         >
           DHIS2: {report.dhis2_submitted ? 'Submitted' : 'Pending'}
         </Badge>
@@ -109,7 +110,7 @@ export default function QuarterlyReportDetailPage() {
       {/* Visit Statistics */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Users className="h-5 w-5 text-muted-foreground" />
             Visit Statistics
           </CardTitle>
@@ -127,7 +128,7 @@ export default function QuarterlyReportDetailPage() {
         {/* Priority Breakdown */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <TrendingUp className="h-5 w-5 text-muted-foreground" />
               Triage Priority
             </CardTitle>
@@ -136,14 +137,18 @@ export default function QuarterlyReportDetailPage() {
             <div className="space-y-2">
               {[
                 { label: 'Red (Emergency)', value: report.priority_red, color: 'bg-red-500' },
-                { label: 'Orange (Very Urgent)', value: report.priority_orange, color: 'bg-orange-500' },
+                {
+                  label: 'Orange (Very Urgent)',
+                  value: report.priority_orange,
+                  color: 'bg-orange-500',
+                },
                 { label: 'Yellow (Urgent)', value: report.priority_yellow, color: 'bg-yellow-500' },
                 { label: 'Green (Standard)', value: report.priority_green, color: 'bg-green-500' },
                 { label: 'Blue (Non-Urgent)', value: report.priority_blue, color: 'bg-blue-500' },
               ].map((p) => (
                 <div key={p.label} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${p.color}`} />
+                    <div className={`h-3 w-3 rounded-full ${p.color}`} />
                     <span>{p.label}</span>
                   </div>
                   <span className="font-medium">{p.value.toLocaleString()}</span>
@@ -156,7 +161,7 @@ export default function QuarterlyReportDetailPage() {
         {/* Demographics */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Users className="h-5 w-5 text-muted-foreground" />
               Demographics
             </CardTitle>
@@ -176,7 +181,7 @@ export default function QuarterlyReportDetailPage() {
         {/* Chronic Care */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Heart className="h-5 w-5 text-muted-foreground" />
               Chronic Care
             </CardTitle>
@@ -193,7 +198,7 @@ export default function QuarterlyReportDetailPage() {
         {/* ANC */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Baby className="h-5 w-5 text-muted-foreground" />
               Maternal Health
             </CardTitle>
@@ -211,7 +216,7 @@ export default function QuarterlyReportDetailPage() {
       {/* Revenue */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <DollarSign className="h-5 w-5 text-muted-foreground" />
             Revenue
           </CardTitle>
@@ -226,23 +231,20 @@ export default function QuarterlyReportDetailPage() {
               label="SHA Claims"
               value={`KES ${Number(report.sha_claims_amount).toLocaleString()}`}
             />
-            <StatBlock
-              label="Cash"
-              value={`KES ${Number(report.cash_amount).toLocaleString()}`}
-            />
+            <StatBlock label="Cash" value={`KES ${Number(report.cash_amount).toLocaleString()}`} />
           </div>
         </CardContent>
       </Card>
 
       {/* DHIS2 & Metadata */}
       <Card>
-        <CardContent className="p-4 space-y-2">
+        <CardContent className="space-y-2 p-4">
           {report.dhis2_submitted && report.dhis2_submitted_at && (
             <p className="text-xs text-muted-foreground">
               DHIS2 submitted: {formatDateTime(report.dhis2_submitted_at)}
             </p>
           )}
-          <div className="flex flex-col sm:flex-row sm:justify-between text-xs text-muted-foreground gap-1">
+          <div className="flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:justify-between">
             <span>Created: {formatDateTime(report.created_at)}</span>
             <span>Updated: {formatDateTime(report.updated_at)}</span>
           </div>
@@ -252,7 +254,7 @@ export default function QuarterlyReportDetailPage() {
       {/* Actions */}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         <Button variant="outline" size="sm" onClick={handleExportSdmx} disabled={exportingSdmx}>
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="mr-2 h-4 w-4" />
           {exportingSdmx ? 'Exporting...' : 'Export SDMX'}
         </Button>
       </div>

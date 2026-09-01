@@ -40,21 +40,11 @@ export type WardTransactionType = 'CONSUME' | 'REPLENISH' | 'RETURN' | 'ADJUSTME
 
 export type StockCountType = 'FULL' | 'CYCLE' | 'SPOT';
 
-export type StockCountStatus =
-  | 'DRAFT'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'APPROVED'
-  | 'CANCELLED';
+export type StockCountStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'APPROVED' | 'CANCELLED';
 
 export type ETIMSEnvironment = 'SANDBOX' | 'PRODUCTION';
 
-export type ETIMSInvoiceStatus =
-  | 'PENDING'
-  | 'SUBMITTED'
-  | 'CONFIRMED'
-  | 'FAILED'
-  | 'CANCELLED';
+export type ETIMSInvoiceStatus = 'PENDING' | 'SUBMITTED' | 'CONFIRMED' | 'FAILED' | 'CANCELLED';
 
 export type ETIMSReceiptType = 'N' | 'C' | 'T' | 'P';
 

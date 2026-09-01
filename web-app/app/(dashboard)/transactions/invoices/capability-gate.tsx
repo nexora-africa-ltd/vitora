@@ -34,7 +34,7 @@ export function InvoicesCapabilityGate({ children }: { children: React.ReactNode
       <Card>
         <CardContent className="p-6">
           <p className="text-sm font-medium">Billing module unavailable</p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             Billing is currently disabled for this facility.
           </p>
         </CardContent>

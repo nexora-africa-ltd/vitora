@@ -19,7 +19,7 @@ import type {
 
 export const organizationsApi = {
   async list(
-    params?: Record<string, string | number | boolean | undefined>,
+    params?: Record<string, string | number | boolean | undefined>
   ): Promise<PaginatedResponse<OrganizationListItem>> {
     const response = await apiClient.get('/api/organizations/', { params });
     return parseResponse(PaginatedOrganizationListSchema, response.data, {
@@ -72,7 +72,7 @@ export const organizationsApi = {
 
   async listFacilities(
     orgId: number,
-    params?: Record<string, string | number | boolean | undefined>,
+    params?: Record<string, string | number | boolean | undefined>
   ): Promise<FacilityListItem[]> {
     const response = await apiClient.get(`/api/organizations/${orgId}/facilities/`, { params });
     return parseResponse(z.array(FacilityListItemSchema), response.data, {

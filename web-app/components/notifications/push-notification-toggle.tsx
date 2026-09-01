@@ -2,12 +2,7 @@
 
 import { Bell, BellOff, BellRing, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePushSubscription } from '@/lib/hooks/use-push-subscription';
 import { cn } from '@/lib/utils';
 
@@ -130,11 +125,7 @@ export function PushNotificationToggle({ className }: { className?: string }) {
         )}
         <span className="text-sm">Enable push</span>
       </Button>
-      {statusMessage && (
-        <span className="text-xs text-muted-foreground">
-          {statusMessage}
-        </span>
-      )}
+      {statusMessage && <span className="text-xs text-muted-foreground">{statusMessage}</span>}
       {!statusMessage && !canSubscribe && (
         <span className="text-xs text-muted-foreground">Push is not available right now.</span>
       )}

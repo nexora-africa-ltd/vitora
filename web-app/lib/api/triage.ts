@@ -154,10 +154,10 @@ export interface RouteToClinicResponse {
 // =============================================================================
 
 export interface CriticalPatient {
-  id: number;  // Triage assessment ID
-  queue_id: number;  // Queue entry ID
+  id: number; // Triage assessment ID
+  queue_id: number; // Queue entry ID
   encounter_id: number;
-  encounter_status: string;  // CREATED, IN_PROGRESS, CLOSED, CANCELLED
+  encounter_status: string; // CREATED, IN_PROGRESS, CLOSED, CANCELLED
   patient_name: string;
   mrn: string;
   chief_complaint: string;
@@ -165,7 +165,7 @@ export interface CriticalPatient {
   assigned_area_display: string;
   wait_minutes: number;
   arrival_time: string;
-  status: string;  // Queue status: WAITING, CALLED, etc.
+  status: string; // Queue status: WAITING, CALLED, etc.
 }
 
 export interface CriticalPatientsResponse {
@@ -298,10 +298,15 @@ export const triageApi = {
   async listAssessments(
     params?: TriageAssessmentListParams
   ): Promise<PaginatedResponse<TriageAssessment>> {
-    const response = await apiClient.get<PaginatedResponse<TriageAssessment>>('/api/triage/assessments/', {
-      params,
+    const response = await apiClient.get<PaginatedResponse<TriageAssessment>>(
+      '/api/triage/assessments/',
+      {
+        params,
+      }
+    );
+    return parseResponse(PaginatedTriageAssessmentSchema, response.data, {
+      context: 'triageApi.listAssessments',
     });
-    return parseResponse(PaginatedTriageAssessmentSchema, response.data, { context: 'triageApi.listAssessments' });
   },
 
   /**
@@ -309,7 +314,9 @@ export const triageApi = {
    */
   async getAssessment(id: number): Promise<TriageAssessment> {
     const response = await apiClient.get<TriageAssessment>(`/api/triage/assessments/${id}/`);
-    return parseResponse(TriageAssessmentSchema, response.data, { context: 'triageApi.getAssessment' });
+    return parseResponse(TriageAssessmentSchema, response.data, {
+      context: 'triageApi.getAssessment',
+    });
   },
 
   /**
@@ -319,7 +326,9 @@ export const triageApi = {
     console.log('Creating triage assessment with data:', JSON.stringify(data, null, 2));
     try {
       const response = await apiClient.post<TriageAssessment>('/api/triage/assessments/', data);
-      return parseResponse(TriageAssessmentSchema, response.data, { context: 'triageApi.createAssessment' });
+      return parseResponse(TriageAssessmentSchema, response.data, {
+        context: 'triageApi.createAssessment',
+      });
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { data?: unknown; status?: number } };
@@ -336,8 +345,13 @@ export const triageApi = {
    * Update an existing triage assessment.
    */
   async updateAssessment(id: number, data: TriageAssessmentUpdateData): Promise<TriageAssessment> {
-    const response = await apiClient.patch<TriageAssessment>(`/api/triage/assessments/${id}/`, data);
-    return parseResponse(TriageAssessmentSchema, response.data, { context: 'triageApi.updateAssessment' });
+    const response = await apiClient.patch<TriageAssessment>(
+      `/api/triage/assessments/${id}/`,
+      data
+    );
+    return parseResponse(TriageAssessmentSchema, response.data, {
+      context: 'triageApi.updateAssessment',
+    });
   },
 
   /**
@@ -354,7 +368,9 @@ export const triageApi = {
     const response = await apiClient.post<TriageAssessment>(
       `/api/triage/assessments/${id}/complete/`
     );
-    return parseResponse(TriageAssessmentSchema, response.data, { context: 'triageApi.completeAssessment' });
+    return parseResponse(TriageAssessmentSchema, response.data, {
+      context: 'triageApi.completeAssessment',
+    });
   },
 
   /**
@@ -369,7 +385,9 @@ export const triageApi = {
       `/api/triage/assessments/${assessmentId}/route-to-clinic/`,
       data
     );
-    return parseResponse(RouteToClinicResponseSchema, response.data, { context: 'triageApi.routeToClinic' });
+    return parseResponse(RouteToClinicResponseSchema, response.data, {
+      context: 'triageApi.routeToClinic',
+    });
   },
 
   /**
@@ -380,7 +398,9 @@ export const triageApi = {
       '/api/triage/assessments/calculate-category/',
       data
     );
-    return parseResponse(CalculateCategoryResponseSchema, response.data, { context: 'triageApi.calculateCategory' });
+    return parseResponse(CalculateCategoryResponseSchema, response.data, {
+      context: 'triageApi.calculateCategory',
+    });
   },
 
   // ============ Triage Queue ============
@@ -393,7 +413,9 @@ export const triageApi = {
       '/api/triage/queue/',
       { params }
     );
-    return parseResponse(PaginatedTriageQueueSchema, response.data, { context: 'triageApi.getQueue' });
+    return parseResponse(PaginatedTriageQueueSchema, response.data, {
+      context: 'triageApi.getQueue',
+    });
   },
 
   /**
@@ -403,7 +425,9 @@ export const triageApi = {
     const response = await apiClient.post<TriageQueueEntry>(
       `/api/triage/queue/${queueEntryId}/call/`
     );
-    return parseResponse(TriageQueueEntrySchema, response.data, { context: 'triageApi.callPatient' });
+    return parseResponse(TriageQueueEntrySchema, response.data, {
+      context: 'triageApi.callPatient',
+    });
   },
 
   /**
@@ -413,7 +437,9 @@ export const triageApi = {
     const response = await apiClient.post<TriageQueueEntry>(
       `/api/triage/queue/${queueEntryId}/with-clinician/`
     );
-    return parseResponse(TriageQueueEntrySchema, response.data, { context: 'triageApi.markWithClinician' });
+    return parseResponse(TriageQueueEntrySchema, response.data, {
+      context: 'triageApi.markWithClinician',
+    });
   },
 
   /**
@@ -423,7 +449,9 @@ export const triageApi = {
     const response = await apiClient.post<TriageQueueEntry>(
       `/api/triage/queue/${queueEntryId}/complete/`
     );
-    return parseResponse(TriageQueueEntrySchema, response.data, { context: 'triageApi.markComplete' });
+    return parseResponse(TriageQueueEntrySchema, response.data, {
+      context: 'triageApi.markComplete',
+    });
   },
 
   /**
@@ -444,9 +472,7 @@ export const triageApi = {
    * Used for emergency department critical alerts banner.
    */
   async getCriticalPatients(): Promise<CriticalPatientsResponse> {
-    const response = await apiClient.get<CriticalPatientsResponse>(
-      '/api/triage/queue/critical/'
-    );
+    const response = await apiClient.get<CriticalPatientsResponse>('/api/triage/queue/critical/');
     return parseResponse(CriticalPatientsResponseSchema, response.data, {
       context: 'triageApi.getCriticalPatients',
     }) as CriticalPatientsResponse;
@@ -457,9 +483,7 @@ export const triageApi = {
    * Used for emergency department dashboard cards.
    */
   async getZonesSummary(): Promise<ZonesSummaryResponse> {
-    const response = await apiClient.get<ZonesSummaryResponse>(
-      '/api/triage/queue/zones-summary/'
-    );
+    const response = await apiClient.get<ZonesSummaryResponse>('/api/triage/queue/zones-summary/');
     return parseResponse(ZonesSummaryResponseSchema, response.data, {
       context: 'triageApi.getZonesSummary',
     }) as ZonesSummaryResponse;
@@ -472,7 +496,9 @@ export const triageApi = {
    */
   async getVitalThresholds(): Promise<TriageVitalThreshold[]> {
     const response = await apiClient.get<TriageVitalThreshold[]>('/api/triage/vital-thresholds/');
-    return parseResponse(TriageVitalThresholdArraySchema, response.data, { context: 'triageApi.getVitalThresholds' });
+    return parseResponse(TriageVitalThresholdArraySchema, response.data, {
+      context: 'triageApi.getVitalThresholds',
+    });
   },
 
   /**
@@ -482,7 +508,9 @@ export const triageApi = {
     const response = await apiClient.get<TriageVitalThreshold>(
       `/api/triage/vital-thresholds/${id}/`
     );
-    return parseResponse(TriageVitalThresholdSchema, response.data, { context: 'triageApi.getVitalThreshold' });
+    return parseResponse(TriageVitalThresholdSchema, response.data, {
+      context: 'triageApi.getVitalThreshold',
+    });
   },
 
   /**
@@ -496,7 +524,9 @@ export const triageApi = {
       `/api/triage/vital-thresholds/${id}/`,
       data
     );
-    return parseResponse(TriageVitalThresholdSchema, response.data, { context: 'triageApi.updateVitalThreshold' });
+    return parseResponse(TriageVitalThresholdSchema, response.data, {
+      context: 'triageApi.updateVitalThreshold',
+    });
   },
 
   /**
@@ -507,7 +537,9 @@ export const triageApi = {
       `/api/triage/vital-thresholds/${id}/`,
       { is_active: isActive }
     );
-    return parseResponse(TriageVitalThresholdSchema, response.data, { context: 'triageApi.toggleThresholdActive' });
+    return parseResponse(TriageVitalThresholdSchema, response.data, {
+      context: 'triageApi.toggleThresholdActive',
+    });
   },
 
   /**
@@ -517,7 +549,9 @@ export const triageApi = {
     const response = await apiClient.post<TriageVitalThreshold>(
       `/api/triage/vital-thresholds/${id}/reset/`
     );
-    return parseResponse(TriageVitalThresholdSchema, response.data, { context: 'triageApi.resetThresholdToDefault' });
+    return parseResponse(TriageVitalThresholdSchema, response.data, {
+      context: 'triageApi.resetThresholdToDefault',
+    });
   },
 
   /**
@@ -527,7 +561,9 @@ export const triageApi = {
     const response = await apiClient.post<TriageVitalThreshold[]>(
       '/api/triage/vital-thresholds/reset-all/'
     );
-    return parseResponse(TriageVitalThresholdArraySchema, response.data, { context: 'triageApi.resetAllThresholdsToDefaults' });
+    return parseResponse(TriageVitalThresholdArraySchema, response.data, {
+      context: 'triageApi.resetAllThresholdsToDefaults',
+    });
   },
 
   /**
@@ -548,7 +584,9 @@ export const triageApi = {
       '/api/triage/vital-thresholds/import/',
       data
     );
-    return parseResponse(TriageVitalThresholdArraySchema, response.data, { context: 'triageApi.importThresholds' });
+    return parseResponse(TriageVitalThresholdArraySchema, response.data, {
+      context: 'triageApi.importThresholds',
+    });
   },
 
   // ============ Reports ============
@@ -557,11 +595,12 @@ export const triageApi = {
    * Get wait time statistics.
    */
   async getWaitTimeStats(dateRange: string): Promise<WaitTimeStatsResponse> {
-    const response = await apiClient.get<WaitTimeStatsResponse>(
-      '/api/triage/reports/wait-times/',
-      { params: { date_range: dateRange } }
-    );
-    return parseResponse(WaitTimeStatsResponseSchema, response.data, { context: 'triageApi.getWaitTimeStats' });
+    const response = await apiClient.get<WaitTimeStatsResponse>('/api/triage/reports/wait-times/', {
+      params: { date_range: dateRange },
+    });
+    return parseResponse(WaitTimeStatsResponseSchema, response.data, {
+      context: 'triageApi.getWaitTimeStats',
+    });
   },
 
   /**
@@ -573,16 +612,15 @@ export const triageApi = {
     total: number;
   }> {
     const response = await apiClient.get('/api/triage/reports/volume/', { params });
-    return parseResponse(VolumeReportResponseSchema, response.data, { context: 'triageApi.getVolumeReport' });
+    return parseResponse(VolumeReportResponseSchema, response.data, {
+      context: 'triageApi.getVolumeReport',
+    });
   },
 
   /**
    * Export triage report.
    */
-  async exportReport(
-    format: 'pdf' | 'csv' | 'excel',
-    params: TriageReportParams
-  ): Promise<Blob> {
+  async exportReport(format: 'pdf' | 'csv' | 'excel', params: TriageReportParams): Promise<Blob> {
     const response = await apiClient.get('/api/triage/reports/export/', {
       params: { format, ...params },
       responseType: 'blob',
@@ -595,12 +633,16 @@ export const triageApi = {
   /**
    * Get waiting queue (patients awaiting triage).
    */
-  async getWaitingQueue(params?: WaitingQueueListParams): Promise<PaginatedResponse<WaitingQueueEntry>> {
+  async getWaitingQueue(
+    params?: WaitingQueueListParams
+  ): Promise<PaginatedResponse<WaitingQueueEntry>> {
     const response = await apiClient.get<PaginatedResponse<WaitingQueueEntry>>(
       '/api/triage/waiting/',
       { params }
     );
-    return parseResponse(PaginatedWaitingQueueSchema, response.data, { context: 'triageApi.getWaitingQueue' });
+    return parseResponse(PaginatedWaitingQueueSchema, response.data, {
+      context: 'triageApi.getWaitingQueue',
+    });
   },
 
   /**
@@ -608,7 +650,9 @@ export const triageApi = {
    */
   async checkInPatient(data: WaitingQueueCreateData): Promise<WaitingQueueEntry> {
     const response = await apiClient.post<WaitingQueueEntry>('/api/triage/waiting/', data);
-    return parseResponse(WaitingQueueEntrySchema, response.data, { context: 'triageApi.checkInPatient' });
+    return parseResponse(WaitingQueueEntrySchema, response.data, {
+      context: 'triageApi.checkInPatient',
+    });
   },
 
   /**
@@ -618,7 +662,9 @@ export const triageApi = {
     const response = await apiClient.post<WaitingQueueEntry>(
       `/api/triage/waiting/${waitingQueueId}/start-triage/`
     );
-    return parseResponse(WaitingQueueEntrySchema, response.data, { context: 'triageApi.startTriage' });
+    return parseResponse(WaitingQueueEntrySchema, response.data, {
+      context: 'triageApi.startTriage',
+    });
   },
 
   /**
@@ -629,7 +675,9 @@ export const triageApi = {
       `/api/triage/waiting/${waitingQueueId}/cancel/`,
       { reason }
     );
-    return parseResponse(WaitingQueueEntrySchema, response.data, { context: 'triageApi.cancelWaitingEntry' });
+    return parseResponse(WaitingQueueEntrySchema, response.data, {
+      context: 'triageApi.cancelWaitingEntry',
+    });
   },
 
   // ===========================================================================
@@ -666,7 +714,9 @@ export const triageApi = {
   async getERBedBoard(zone?: string) {
     const params = zone ? { zone } : undefined;
     const response = await apiClient.get('/api/triage/er-beds/board/', { params });
-    return parseResponse(ERBedBoardResponseSchema, response.data, { context: 'triageApi.getERBedBoard' });
+    return parseResponse(ERBedBoardResponseSchema, response.data, {
+      context: 'triageApi.getERBedBoard',
+    });
   },
 
   /**
@@ -674,7 +724,9 @@ export const triageApi = {
    */
   async getERBedSummary() {
     const response = await apiClient.get('/api/triage/er-beds/summary/');
-    return parseResponse(ERBedSummaryResponseSchema, response.data, { context: 'triageApi.getERBedSummary' });
+    return parseResponse(ERBedSummaryResponseSchema, response.data, {
+      context: 'triageApi.getERBedSummary',
+    });
   },
 
   /**
@@ -698,7 +750,10 @@ export const triageApi = {
   /**
    * Update ER bed status (mark available or out of service).
    */
-  async updateERBedStatus(bedId: number, data: { status: 'AVAILABLE' | 'OUT_OF_SERVICE'; reason?: string }) {
+  async updateERBedStatus(
+    bedId: number,
+    data: { status: 'AVAILABLE' | 'OUT_OF_SERVICE'; reason?: string }
+  ) {
     const response = await apiClient.post(`/api/triage/er-beds/${bedId}/update-status/`, data);
     return parseResponse(ERBedSchema, response.data, { context: 'triageApi.updateERBedStatus' });
   },
@@ -733,7 +788,9 @@ export const triageApi = {
     assigned_area?: string;
   }) {
     const response = await apiClient.get('/api/triage/breaches/', { params });
-    return parseResponse(PaginatedWaitTimeBreachSchema, response.data, { context: 'triageApi.getBreaches' });
+    return parseResponse(PaginatedWaitTimeBreachSchema, response.data, {
+      context: 'triageApi.getBreaches',
+    });
   },
 
   /**
@@ -741,7 +798,9 @@ export const triageApi = {
    */
   async getBreachSummary() {
     const response = await apiClient.get('/api/triage/breaches/summary/');
-    return parseResponse(BreachSummarySchema, response.data, { context: 'triageApi.getBreachSummary' });
+    return parseResponse(BreachSummarySchema, response.data, {
+      context: 'triageApi.getBreachSummary',
+    });
   },
 
   /**
@@ -751,7 +810,9 @@ export const triageApi = {
     const response = await apiClient.post(`/api/triage/breaches/${breachId}/acknowledge/`, {
       notes: notes || '',
     });
-    return parseResponse(WaitTimeBreachSchema, response.data, { context: 'triageApi.acknowledgeBreach' });
+    return parseResponse(WaitTimeBreachSchema, response.data, {
+      context: 'triageApi.acknowledgeBreach',
+    });
   },
 
   /**
@@ -759,15 +820,22 @@ export const triageApi = {
    */
   async resolveBreach(breachId: number) {
     const response = await apiClient.post(`/api/triage/breaches/${breachId}/resolve/`);
-    return parseResponse(WaitTimeBreachSchema, response.data, { context: 'triageApi.resolveBreach' });
+    return parseResponse(WaitTimeBreachSchema, response.data, {
+      context: 'triageApi.resolveBreach',
+    });
   },
 
   /**
    * Escalate a queue entry (to charge nurse, additional staff, or supervisor).
    */
-  async escalateQueueEntry(queueEntryId: number, data: { escalation_type: string; reason: string }) {
+  async escalateQueueEntry(
+    queueEntryId: number,
+    data: { escalation_type: string; reason: string }
+  ) {
     const response = await apiClient.post(`/api/triage/queue/${queueEntryId}/escalate/`, data);
-    return parseResponse(EscalationSchema, response.data, { context: 'triageApi.escalateQueueEntry' });
+    return parseResponse(EscalationSchema, response.data, {
+      context: 'triageApi.escalateQueueEntry',
+    });
   },
 
   /**
@@ -782,7 +850,9 @@ export const triageApi = {
     assigned_area?: string;
   }) {
     const response = await apiClient.get('/api/triage/escalations/', { params });
-    return parseResponse(PaginatedEscalationSchema, response.data, { context: 'triageApi.getEscalations' });
+    return parseResponse(PaginatedEscalationSchema, response.data, {
+      context: 'triageApi.getEscalations',
+    });
   },
 
   /**
@@ -792,7 +862,9 @@ export const triageApi = {
     const response = await apiClient.post(`/api/triage/escalations/${escalationId}/resolve/`, {
       resolution_notes: notes || '',
     });
-    return parseResponse(EscalationSchema, response.data, { context: 'triageApi.resolveEscalation' });
+    return parseResponse(EscalationSchema, response.data, {
+      context: 'triageApi.resolveEscalation',
+    });
   },
 
   /**
@@ -802,7 +874,9 @@ export const triageApi = {
     const response = await apiClient.post(`/api/triage/escalations/${escalationId}/dismiss/`, {
       resolution_notes: notes || '',
     });
-    return parseResponse(EscalationSchema, response.data, { context: 'triageApi.dismissEscalation' });
+    return parseResponse(EscalationSchema, response.data, {
+      context: 'triageApi.dismissEscalation',
+    });
   },
 
   // ===========================================================================
@@ -812,12 +886,17 @@ export const triageApi = {
   /**
    * Assign or clear a triage room for a waiting patient.
    */
-  async assignTriageRoom(waitingQueueId: number, triageRoomId: number | null): Promise<WaitingQueueEntry> {
+  async assignTriageRoom(
+    waitingQueueId: number,
+    triageRoomId: number | null
+  ): Promise<WaitingQueueEntry> {
     const response = await apiClient.post<WaitingQueueEntry>(
       `/api/triage/waiting/${waitingQueueId}/assign-room/`,
       { triage_room_id: triageRoomId }
     );
-    return parseResponse(WaitingQueueEntrySchema, response.data, { context: 'triageApi.assignTriageRoom' });
+    return parseResponse(WaitingQueueEntrySchema, response.data, {
+      context: 'triageApi.assignTriageRoom',
+    });
   },
 
   /**
@@ -835,15 +914,22 @@ export const triageApi = {
    */
   async getTriageSettings(): Promise<TriageSettings> {
     const response = await apiClient.get('/api/triage/settings/current/');
-    return parseResponse(TriageSettingsSchema, response.data, { context: 'triageApi.getTriageSettings' });
+    return parseResponse(TriageSettingsSchema, response.data, {
+      context: 'triageApi.getTriageSettings',
+    });
   },
 
   /**
    * Update triage settings.
    */
-  async updateTriageSettings(id: number, data: Partial<TriageSettingsUpdate>): Promise<TriageSettings> {
+  async updateTriageSettings(
+    id: number,
+    data: Partial<TriageSettingsUpdate>
+  ): Promise<TriageSettings> {
     const response = await apiClient.patch(`/api/triage/settings/${id}/`, data);
-    return parseResponse(TriageSettingsSchema, response.data, { context: 'triageApi.updateTriageSettings' });
+    return parseResponse(TriageSettingsSchema, response.data, {
+      context: 'triageApi.updateTriageSettings',
+    });
   },
 };
 

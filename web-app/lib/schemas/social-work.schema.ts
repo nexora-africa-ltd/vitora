@@ -8,9 +8,7 @@
  */
 
 import { z } from 'zod';
-import {
-  createPaginatedSchema,
-} from './allied-health.schema';
+import { createPaginatedSchema } from './allied-health.schema';
 
 // =============================================================================
 // ENUMS
@@ -66,56 +64,57 @@ export const SWCaseStatusSchema = z.enum([
   'CLOSED_TRANSFERRED',
 ]);
 
-export const SWCaseTypeSchema = z.enum([
-  'CHILD_WELFARE',
-  'ADULT_PROTECTION',
-  'MENTAL_HEALTH',
-  'SUBSTANCE_ABUSE',
-  'DOMESTIC_VIOLENCE',
-  'HOUSING',
-  'FINANCIAL',
-  'FAMILY_SUPPORT',
-  'CHRONIC_ILLNESS',
-  'END_OF_LIFE',
-  'REFUGEE',
-  'OTHER',
-]).optional();
+export const SWCaseTypeSchema = z
+  .enum([
+    'CHILD_WELFARE',
+    'ADULT_PROTECTION',
+    'MENTAL_HEALTH',
+    'SUBSTANCE_ABUSE',
+    'DOMESTIC_VIOLENCE',
+    'HOUSING',
+    'FINANCIAL',
+    'FAMILY_SUPPORT',
+    'CHRONIC_ILLNESS',
+    'END_OF_LIFE',
+    'REFUGEE',
+    'OTHER',
+  ])
+  .optional();
 
 export const SWRiskLevelSchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional();
 
-export const SWContactMethodSchema = z.enum([
-  'PHONE',
-  'IN_PERSON',
-  'HOME_VISIT',
-  'VIDEO_CALL',
-  'EMAIL',
-  'OTHER',
-]).optional();
+export const SWContactMethodSchema = z
+  .enum(['PHONE', 'IN_PERSON', 'HOME_VISIT', 'VIDEO_CALL', 'EMAIL', 'OTHER'])
+  .optional();
 
-export const SWNoteTypeSchema = z.enum([
-  'PROGRESS',
-  'ASSESSMENT',
-  'INTERVENTION',
-  'FOLLOW_UP',
-  'CASE_CONFERENCE',
-  'SUPERVISION',
-  'OTHER',
-]).optional();
+export const SWNoteTypeSchema = z
+  .enum([
+    'PROGRESS',
+    'ASSESSMENT',
+    'INTERVENTION',
+    'FOLLOW_UP',
+    'CASE_CONFERENCE',
+    'SUPERVISION',
+    'OTHER',
+  ])
+  .optional();
 
-export const SWInterventionTypeSchema = z.enum([
-  'COUNSELLING',
-  'ADVOCACY',
-  'REFERRAL',
-  'CASE_MANAGEMENT',
-  'CRISIS_INTERVENTION',
-  'SUPPORT_GROUP',
-  'FINANCIAL_ASSISTANCE',
-  'HOUSING_SUPPORT',
-  'LEGAL_AID',
-  'EDUCATION',
-  'SKILLS_TRAINING',
-  'OTHER',
-]).optional();
+export const SWInterventionTypeSchema = z
+  .enum([
+    'COUNSELLING',
+    'ADVOCACY',
+    'REFERRAL',
+    'CASE_MANAGEMENT',
+    'CRISIS_INTERVENTION',
+    'SUPPORT_GROUP',
+    'FINANCIAL_ASSISTANCE',
+    'HOUSING_SUPPORT',
+    'LEGAL_AID',
+    'EDUCATION',
+    'SKILLS_TRAINING',
+    'OTHER',
+  ])
+  .optional();
 
 export const SWInterventionStatusSchema = z.enum([
   'PLANNED',
@@ -124,13 +123,9 @@ export const SWInterventionStatusSchema = z.enum([
   'CANCELLED',
 ]);
 
-export const SWOutcomeRatingSchema = z.enum([
-  'EXCELLENT',
-  'GOOD',
-  'SATISFACTORY',
-  'POOR',
-  'NOT_APPLICABLE',
-]).optional();
+export const SWOutcomeRatingSchema = z
+  .enum(['EXCELLENT', 'GOOD', 'SATISFACTORY', 'POOR', 'NOT_APPLICABLE'])
+  .optional();
 
 // =============================================================================
 // REFERRAL (matches SocialWorkReferralSerializer — flat IDs)

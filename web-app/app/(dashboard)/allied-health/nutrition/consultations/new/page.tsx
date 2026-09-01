@@ -26,10 +26,7 @@ export default function NewNutritionConsultationPage() {
         helpContent="Create a nutrition consultation to assess a patient's dietary needs. Include BMI, MUAC, dietary restrictions, and create a personalized diet plan."
       />
 
-      <NutritionConsultationForm
-        patientId={patientId}
-        encounterId={encounterId}
-      />
+      <NutritionConsultationForm patientId={patientId} encounterId={encounterId} />
     </div>
   );
 }

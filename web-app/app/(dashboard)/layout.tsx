@@ -65,67 +65,64 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <AIChatProvider>
           <IdleTimerProvider>
             <LicenseGuard>
-            <div className="min-h-screen bg-background">
-              {/* Sidebar */}
-              <Sidebar
-                collapsed={sidebarCollapsed}
-                onCollapse={setSidebarCollapsed}
-                mobileOpen={mobileSidebarOpen}
-                onMobileClose={closeMobileSidebar}
-              />
-
-              {/* Main content area */}
-              <div
-                className={cn(
-                  'transition-all duration-300',
-                  sidebarCollapsed ? 'xl:ml-20' : 'xl:ml-64'
-                )}
-              >
-                {/* Header */}
-                <Header
-                  onMenuClick={openMobileSidebar}
-                  sidebarCollapsed={sidebarCollapsed}
+              <div className="min-h-screen bg-background">
+                {/* Sidebar */}
+                <Sidebar
+                  collapsed={sidebarCollapsed}
+                  onCollapse={setSidebarCollapsed}
+                  mobileOpen={mobileSidebarOpen}
+                  onMobileClose={closeMobileSidebar}
                 />
 
-                {/* Page content */}
-                <main className="min-h-[calc(100vh-4rem)] p-4 pb-28 md:p-6 md:pb-28 xl:p-8 xl:pb-8">
-                  <OfflineBanner />
-                  <LicenseBanner />
-                  <MFAGraceBanner />
-                  <OnboardingBanner />
-                  <RouteGuard>{children}</RouteGuard>
-                </main>
+                {/* Main content area */}
+                <div
+                  className={cn(
+                    'transition-all duration-300',
+                    sidebarCollapsed ? 'xl:ml-20' : 'xl:ml-64'
+                  )}
+                >
+                  {/* Header */}
+                  <Header onMenuClick={openMobileSidebar} sidebarCollapsed={sidebarCollapsed} />
+
+                  {/* Page content */}
+                  <main className="min-h-[calc(100vh-4rem)] p-4 pb-28 md:p-6 md:pb-28 xl:p-8 xl:pb-8">
+                    <OfflineBanner />
+                    <LicenseBanner />
+                    <MFAGraceBanner />
+                    <OnboardingBanner />
+                    <RouteGuard>{children}</RouteGuard>
+                  </main>
+                </div>
+
+                {/* Mobile sidebar overlay */}
+                <div
+                  className={cn(
+                    'fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ease-out xl:hidden',
+                    mobileSidebarOpen
+                      ? 'pointer-events-auto opacity-100'
+                      : 'pointer-events-none opacity-0'
+                  )}
+                  onClick={closeMobileSidebar}
+                />
+
+                {/* Mobile bottom navigation (Telegram-style) */}
+                <MobileBottomNav hidden={mobileSidebarOpen} />
+
+                {/* Global peek panel (patient/encounter slide-over) */}
+                <GlobalPeekPanel />
+                {/* TibaBot AI floating widget */}
+                <AIChatWidget />
+                {/* Global command menu (⌘K / Ctrl+K) */}
+                <CommandMenu />
+                {/* Permission debug panel (dev only) */}
+                <PermissionDebugPanel />
+                {/* Sync current page route into AI chat context */}
+                <AIPageContextSync />
+                {/* Push notification prompt (shows once per session) */}
+                <PushNotificationPrompt />
+                {/* MFA enforcement overlay (blocks all access when grace period expired) */}
+                <MFAEnforcementOverlay />
               </div>
-
-              {/* Mobile sidebar overlay */}
-              <div
-                className={cn(
-                  'fixed inset-0 z-40 bg-black/50 xl:hidden transition-opacity duration-300 ease-out',
-                  mobileSidebarOpen
-                    ? 'opacity-100 pointer-events-auto'
-                    : 'opacity-0 pointer-events-none'
-                )}
-                onClick={closeMobileSidebar}
-              />
-
-              {/* Mobile bottom navigation (Telegram-style) */}
-              <MobileBottomNav hidden={mobileSidebarOpen} />
-
-              {/* Global peek panel (patient/encounter slide-over) */}
-              <GlobalPeekPanel />
-              {/* TibaBot AI floating widget */}
-              <AIChatWidget />
-              {/* Global command menu (⌘K / Ctrl+K) */}
-              <CommandMenu />
-              {/* Permission debug panel (dev only) */}
-              <PermissionDebugPanel />
-              {/* Sync current page route into AI chat context */}
-              <AIPageContextSync />
-              {/* Push notification prompt (shows once per session) */}
-              <PushNotificationPrompt />
-              {/* MFA enforcement overlay (blocks all access when grace period expired) */}
-              <MFAEnforcementOverlay />
-            </div>
             </LicenseGuard>
           </IdleTimerProvider>
         </AIChatProvider>

@@ -58,11 +58,7 @@ export function parseResponse<S extends ZodTypeAny>(
   data: unknown,
   options: ParseOptions = {}
 ): z.infer<S> {
-  const {
-    strict = true,
-    context = 'API response',
-    logData = true,
-  } = options;
+  const { strict = true, context = 'API response', logData = true } = options;
 
   const result = schema.safeParse(data);
 

@@ -15,9 +15,7 @@ import {
   KENHDDValidationRunDetailSchema,
   KENHDDValidationRunSchema,
 } from '@/lib/schemas/kenhdd.schema';
-import type {
-  KENHDDResourceType,
-} from '@/lib/types/kenhdd';
+import type { KENHDDResourceType } from '@/lib/types/kenhdd';
 import { z } from 'zod';
 
 export const kenhddApi = {
@@ -31,10 +29,7 @@ export const kenhddApi = {
   },
 
   /** Validate a single record against KENHDD elements. */
-  validateRecord: async (
-    resourceType: KENHDDResourceType,
-    recordId: number
-  ) => {
+  validateRecord: async (resourceType: KENHDDResourceType, recordId: number) => {
     const response = await apiClient.post('/api/kenhdd/compliance/validate-record/', {
       resource_type: resourceType,
       record_id: recordId,
@@ -45,10 +40,7 @@ export const kenhddApi = {
   },
 
   /** Generate a compliance report. */
-  generateReport: async (
-    resourceType?: KENHDDResourceType,
-    sampleSize: number = 100
-  ) => {
+  generateReport: async (resourceType?: KENHDDResourceType, sampleSize: number = 100) => {
     const payload: Record<string, unknown> = { sample_size: sampleSize };
     if (resourceType) payload.resource_type = resourceType;
     const response = await apiClient.post('/api/kenhdd/compliance/compliance-report/', payload);

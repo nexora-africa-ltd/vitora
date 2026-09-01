@@ -20,12 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -213,7 +208,7 @@ export function DHIS2SettingsTab() {
             <CardTitle className="text-base sm:text-lg">DHIS2 / KHIS Connections</CardTitle>
             <HelpPopover content="Configure DHIS2 (Kenya Health Information System) credentials for automated MOH report submission, IDSR surveillance, and AEFI reporting." />
           </div>
-          <Button size="sm" onClick={openCreate} className="w-full sm:w-auto gap-1.5">
+          <Button size="sm" onClick={openCreate} className="w-full gap-1.5 sm:w-auto">
             <Plus className="h-4 w-4" />
             Add Connection
           </Button>
@@ -224,8 +219,8 @@ export function DHIS2SettingsTab() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : configs.length === 0 ? (
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              <Server className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              <Server className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
               <p>No DHIS2 connections configured.</p>
               <p className="mt-1">Add a connection to enable automated health reporting.</p>
             </div>
@@ -234,11 +229,11 @@ export function DHIS2SettingsTab() {
               {configs.map((config) => (
                 <div
                   key={config.id}
-                  className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border"
+                  className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm truncate">{config.name}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-sm font-medium">{config.name}</span>
                       <Badge
                         variant={config.is_active ? 'default' : 'secondary'}
                         className="shrink-0"
@@ -249,11 +244,11 @@ export function DHIS2SettingsTab() {
                         {ENVIRONMENT_LABELS[config.environment]}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
                       {config.base_url} &middot; {config.username}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex shrink-0 items-center gap-1.5">
                     <Button
                       variant="outline"
                       size="sm"
@@ -352,9 +347,7 @@ export function DHIS2SettingsTab() {
                 <Label htmlFor="dhis2-env">Environment</Label>
                 <Select
                   value={form.environment}
-                  onValueChange={(v) =>
-                    setForm({ ...form, environment: v as DHIS2Environment })
-                  }
+                  onValueChange={(v) => setForm({ ...form, environment: v as DHIS2Environment })}
                 >
                   <SelectTrigger id="dhis2-env">
                     <SelectValue />
@@ -369,7 +362,7 @@ export function DHIS2SettingsTab() {
             ) : (
               <div className="space-y-1.5">
                 <Label>Environment</Label>
-                <div className="h-10 rounded-md border px-3 flex items-center text-sm text-muted-foreground">
+                <div className="flex h-10 items-center rounded-md border px-3 text-sm text-muted-foreground">
                   {ENVIRONMENT_LABELS[form.environment]}
                 </div>
               </div>
@@ -386,10 +379,19 @@ export function DHIS2SettingsTab() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving || !form.name || !form.base_url || !form.username || (!editing && !form.password)}>
+            <Button
+              onClick={handleSave}
+              disabled={
+                saving ||
+                !form.name ||
+                !form.base_url ||
+                !form.username ||
+                (!editing && !form.password)
+              }
+            >
               {saving ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                   Saving...
                 </>
               ) : editing ? (

@@ -117,8 +117,12 @@ export function PermissionGroupSelector({
                           className="mt-0.5"
                         />
                         <span className="min-w-0 text-sm">
-                          <span className="block font-medium text-foreground">{permission.name}</span>
-                          <span className="block text-xs text-muted-foreground">{permission.codename}</span>
+                          <span className="block font-medium text-foreground">
+                            {permission.name}
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            {permission.codename}
+                          </span>
                         </span>
                       </label>
                     );

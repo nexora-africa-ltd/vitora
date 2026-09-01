@@ -21,12 +21,10 @@ export function PharmacyCapabilityGate({ children }: { children: React.ReactNode
   });
   const hideCapabilityBadges =
     pathname.includes('/pharmacy/') &&
-    (
-      pathname.includes('/new') ||
+    (pathname.includes('/new') ||
       pathname.includes('/edit') ||
       pathname.includes('/receive') ||
-      pathname.includes('/walk-in')
-    );
+      pathname.includes('/walk-in'));
 
   if (isLoading && !bootstrap) {
     return (
@@ -41,7 +39,7 @@ export function PharmacyCapabilityGate({ children }: { children: React.ReactNode
       <Card>
         <CardContent className="p-6">
           <p className="text-sm font-medium">Pharmacy module unavailable</p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             Pharmacy is currently disabled for this facility.
           </p>
         </CardContent>
@@ -53,7 +51,9 @@ export function PharmacyCapabilityGate({ children }: { children: React.ReactNode
     <div className="space-y-3">
       {!hideCapabilityBadges ? (
         <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className="w-fit">Pharmacy: Enabled</Badge>
+          <Badge variant="outline" className="w-fit">
+            Pharmacy: Enabled
+          </Badge>
           <Badge variant="outline" className="w-fit">
             Catalog: {bootstrap.permissions.can_manage_catalog ? 'Manage' : 'Read-only'}
           </Badge>

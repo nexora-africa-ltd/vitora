@@ -89,10 +89,7 @@ export const socialWorkApi = {
     });
   },
 
-  updateReferral: async (
-    id: number,
-    data: Partial<SWReferralCreateData>
-  ): Promise<SWReferral> => {
+  updateReferral: async (id: number, data: Partial<SWReferralCreateData>): Promise<SWReferral> => {
     const response = await apiClient.patch(`${BASE_URL}/referrals/${id}/`, data);
     return parseResponse(SWReferralSchema, response.data, {
       context: 'socialWorkApi.updateReferral',
@@ -230,9 +227,7 @@ export const socialWorkApi = {
 
   // ============ Case Notes ============
 
-  listCaseNotes: async (
-    params?: CaseNoteListParams
-  ): Promise<PaginatedResponse<CaseNote>> => {
+  listCaseNotes: async (params?: CaseNoteListParams): Promise<PaginatedResponse<CaseNote>> => {
     const response = await apiClient.get(`${BASE_URL}/notes/`, { params });
     return parseResponse(PaginatedCaseNoteSchema, response.data, {
       context: 'socialWorkApi.listCaseNotes',
@@ -253,10 +248,7 @@ export const socialWorkApi = {
     });
   },
 
-  updateCaseNote: async (
-    id: number,
-    data: Partial<CaseNoteCreateData>
-  ): Promise<CaseNote> => {
+  updateCaseNote: async (id: number, data: Partial<CaseNoteCreateData>): Promise<CaseNote> => {
     const response = await apiClient.patch(`${BASE_URL}/notes/${id}/`, data);
     return parseResponse(CaseNoteSchema, response.data, {
       context: 'socialWorkApi.updateCaseNote',

@@ -95,20 +95,32 @@ export default function AppointmentDetailPage() {
 
   const confirmMutation = useMutation({
     mutationFn: () => appointmentsApi.confirm(id),
-    onSuccess: () => { invalidate(); toast({ title: 'Appointment Confirmed' }); },
-    onError: () => toast({ title: 'Error', description: 'Failed to confirm.', variant: 'destructive' }),
+    onSuccess: () => {
+      invalidate();
+      toast({ title: 'Appointment Confirmed' });
+    },
+    onError: () =>
+      toast({ title: 'Error', description: 'Failed to confirm.', variant: 'destructive' }),
   });
 
   const checkInMutation = useMutation({
     mutationFn: () => appointmentsApi.checkIn(id),
-    onSuccess: () => { invalidate(); toast({ title: 'Patient Checked In' }); },
-    onError: () => toast({ title: 'Error', description: 'Failed to check in.', variant: 'destructive' }),
+    onSuccess: () => {
+      invalidate();
+      toast({ title: 'Patient Checked In' });
+    },
+    onError: () =>
+      toast({ title: 'Error', description: 'Failed to check in.', variant: 'destructive' }),
   });
 
   const startMutation = useMutation({
     mutationFn: () => appointmentsApi.start(id),
-    onSuccess: () => { invalidate(); toast({ title: 'Appointment Started' }); },
-    onError: () => toast({ title: 'Error', description: 'Failed to start.', variant: 'destructive' }),
+    onSuccess: () => {
+      invalidate();
+      toast({ title: 'Appointment Started' });
+    },
+    onError: () =>
+      toast({ title: 'Error', description: 'Failed to start.', variant: 'destructive' }),
   });
 
   const completeMutation = useMutation({
@@ -119,7 +131,8 @@ export default function AppointmentDetailPage() {
       setShowCompleteDialog(false);
       setCompleteNotes('');
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to complete.', variant: 'destructive' }),
+    onError: () =>
+      toast({ title: 'Error', description: 'Failed to complete.', variant: 'destructive' }),
   });
 
   const cancelMutation = useMutation({
@@ -130,20 +143,27 @@ export default function AppointmentDetailPage() {
       setShowCancelDialog(false);
       setCancelReason('');
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to cancel.', variant: 'destructive' }),
+    onError: () =>
+      toast({ title: 'Error', description: 'Failed to cancel.', variant: 'destructive' }),
   });
 
   const noShowMutation = useMutation({
     mutationFn: () => appointmentsApi.noShow(id),
-    onSuccess: () => { invalidate(); toast({ title: 'Marked as No-Show' }); },
-    onError: () => toast({ title: 'Error', description: 'Failed to mark no-show.', variant: 'destructive' }),
+    onSuccess: () => {
+      invalidate();
+      toast({ title: 'Marked as No-Show' });
+    },
+    onError: () =>
+      toast({ title: 'Error', description: 'Failed to mark no-show.', variant: 'destructive' }),
   });
 
   if (isLoading || !appointment) {
     return (
       <div className="space-y-4">
         <PageHeader title="Appointment" />
-        <div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
+          Loading...
+        </div>
       </div>
     );
   }
@@ -165,18 +185,18 @@ export default function AppointmentDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {appointment.patient_name}
             <span className="text-muted-foreground"> &bull; {appointment.patient_mrn}</span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {appointment.resource_name} ({appointment.resource_code}) &bull;{' '}
             {appointment.appointment_type_display}
           </p>
         </div>
-        <div className="flex gap-2 items-center shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <Badge className={`${priorityColors[appointment.priority]} w-fit`}>
             {appointment.priority}
           </Badge>
@@ -190,39 +210,23 @@ export default function AppointmentDetailPage() {
       {canTransitionTo.length > 0 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           {canTransitionTo.includes('CONFIRMED') && (
-            <Button
-              size="sm"
-              onClick={() => confirmMutation.mutate()}
-              disabled={anyPending}
-            >
-              <CheckCircle className="h-4 w-4 mr-1" /> Confirm
+            <Button size="sm" onClick={() => confirmMutation.mutate()} disabled={anyPending}>
+              <CheckCircle className="mr-1 h-4 w-4" /> Confirm
             </Button>
           )}
           {canTransitionTo.includes('CHECKED_IN') && (
-            <Button
-              size="sm"
-              onClick={() => checkInMutation.mutate()}
-              disabled={anyPending}
-            >
-              <UserCheck className="h-4 w-4 mr-1" /> Check In
+            <Button size="sm" onClick={() => checkInMutation.mutate()} disabled={anyPending}>
+              <UserCheck className="mr-1 h-4 w-4" /> Check In
             </Button>
           )}
           {canTransitionTo.includes('IN_PROGRESS') && (
-            <Button
-              size="sm"
-              onClick={() => startMutation.mutate()}
-              disabled={anyPending}
-            >
-              <Play className="h-4 w-4 mr-1" /> Start
+            <Button size="sm" onClick={() => startMutation.mutate()} disabled={anyPending}>
+              <Play className="mr-1 h-4 w-4" /> Start
             </Button>
           )}
           {canTransitionTo.includes('COMPLETED') && (
-            <Button
-              size="sm"
-              onClick={() => setShowCompleteDialog(true)}
-              disabled={anyPending}
-            >
-              <CheckCircle className="h-4 w-4 mr-1" /> Complete
+            <Button size="sm" onClick={() => setShowCompleteDialog(true)} disabled={anyPending}>
+              <CheckCircle className="mr-1 h-4 w-4" /> Complete
             </Button>
           )}
           {canTransitionTo.includes('NO_SHOW') && (
@@ -232,7 +236,7 @@ export default function AppointmentDetailPage() {
               onClick={() => noShowMutation.mutate()}
               disabled={anyPending}
             >
-              <AlertTriangle className="h-4 w-4 mr-1" /> No-Show
+              <AlertTriangle className="mr-1 h-4 w-4" /> No-Show
             </Button>
           )}
           {canTransitionTo.includes('CANCELLED') && (
@@ -242,7 +246,7 @@ export default function AppointmentDetailPage() {
               onClick={() => setShowCancelDialog(true)}
               disabled={anyPending}
             >
-              <XCircle className="h-4 w-4 mr-1" /> Cancel
+              <XCircle className="mr-1 h-4 w-4" /> Cancel
             </Button>
           )}
         </div>
@@ -259,14 +263,30 @@ export default function AppointmentDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Detail icon={CalendarDays} label="Scheduled Start" value={formatDate(appointment.scheduled_start, 'MMM d, yyyy h:mm a')} />
-            <Detail icon={CalendarDays} label="Scheduled End" value={formatDate(appointment.scheduled_end, 'MMM d, yyyy h:mm a')} />
+            <Detail
+              icon={CalendarDays}
+              label="Scheduled Start"
+              value={formatDate(appointment.scheduled_start, 'MMM d, yyyy h:mm a')}
+            />
+            <Detail
+              icon={CalendarDays}
+              label="Scheduled End"
+              value={formatDate(appointment.scheduled_end, 'MMM d, yyyy h:mm a')}
+            />
             <Detail icon={Clock} label="Duration" value={`${appointment.duration_minutes} min`} />
             {appointment.actual_start && (
-              <Detail icon={Play} label="Actual Start" value={formatDate(appointment.actual_start, 'MMM d, yyyy h:mm a')} />
+              <Detail
+                icon={Play}
+                label="Actual Start"
+                value={formatDate(appointment.actual_start, 'MMM d, yyyy h:mm a')}
+              />
             )}
             {appointment.actual_end && (
-              <Detail icon={CheckCircle} label="Actual End" value={formatDate(appointment.actual_end, 'MMM d, yyyy h:mm a')} />
+              <Detail
+                icon={CheckCircle}
+                label="Actual End"
+                value={formatDate(appointment.actual_end, 'MMM d, yyyy h:mm a')}
+              />
             )}
           </CardContent>
         </Card>
@@ -285,10 +305,18 @@ export default function AppointmentDetailPage() {
               <Detail icon={Stethoscope} label="Notes" value={appointment.notes} />
             )}
             {appointment.completion_notes && (
-              <Detail icon={CheckCircle} label="Completion Notes" value={appointment.completion_notes} />
+              <Detail
+                icon={CheckCircle}
+                label="Completion Notes"
+                value={appointment.completion_notes}
+              />
             )}
             {appointment.cancellation_reason && (
-              <Detail icon={XCircle} label="Cancel Reason" value={appointment.cancellation_reason} />
+              <Detail
+                icon={XCircle}
+                label="Cancel Reason"
+                value={appointment.cancellation_reason}
+              />
             )}
           </CardContent>
         </Card>
@@ -318,22 +346,13 @@ export default function AppointmentDetailPage() {
                 />
               )}
               {appointment.checked_in_at && (
-                <TimelineEntry
-                  label="Checked In"
-                  at={appointment.checked_in_at}
-                />
+                <TimelineEntry label="Checked In" at={appointment.checked_in_at} />
               )}
               {appointment.actual_start && (
-                <TimelineEntry
-                  label="Started"
-                  at={appointment.actual_start}
-                />
+                <TimelineEntry label="Started" at={appointment.actual_start} />
               )}
               {appointment.actual_end && (
-                <TimelineEntry
-                  label="Completed"
-                  at={appointment.actual_end}
-                />
+                <TimelineEntry label="Completed" at={appointment.actual_end} />
               )}
               {appointment.cancelled_at && (
                 <TimelineEntry
@@ -394,10 +413,7 @@ export default function AppointmentDetailPage() {
             <Button variant="outline" onClick={() => setShowCompleteDialog(false)}>
               Back
             </Button>
-            <Button
-              onClick={() => completeMutation.mutate()}
-              disabled={completeMutation.isPending}
-            >
+            <Button onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
               Complete
             </Button>
           </DialogFooter>
@@ -418,7 +434,7 @@ function Detail({
 }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="text-sm">{value}</p>
@@ -427,23 +443,15 @@ function Detail({
   );
 }
 
-function TimelineEntry({
-  label,
-  by,
-  at,
-}: {
-  label: string;
-  by?: string | null;
-  at: string;
-}) {
+function TimelineEntry({ label, by, at }: { label: string; by?: string | null; at: string }) {
   return (
     <div className="flex items-center gap-3 py-1">
-      <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
-      <div className="flex-1 min-w-0">
+      <div className="h-2 w-2 shrink-0 rounded-full bg-primary" />
+      <div className="min-w-0 flex-1">
         <span className="font-medium">{label}</span>
         {by && <span className="text-muted-foreground"> by {by}</span>}
       </div>
-      <span className="text-xs text-muted-foreground shrink-0">
+      <span className="shrink-0 text-xs text-muted-foreground">
         {formatDate(at, 'MMM d, h:mm a')}
       </span>
     </div>

@@ -114,7 +114,16 @@ const PRIORITY_CONFIG = {
   },
 } as const;
 
-const IMAGING_CATEGORY_HINTS = ['imaging', 'radiology', 'xray', 'x-ray', 'ultrasound', 'ct', 'mri', 'scan'];
+const IMAGING_CATEGORY_HINTS = [
+  'imaging',
+  'radiology',
+  'xray',
+  'x-ray',
+  'ultrasound',
+  'ct',
+  'mri',
+  'scan',
+];
 const IMAGING_NAME_HINTS = [
   'xray',
   'x-ray',
@@ -170,11 +179,16 @@ export function InvestigationSuggestionsPanel({
   const { data: storedResults } = useStoredInvestigationSuggestions(encounterId);
   const [result, setResult] = React.useState<AIInvestigationSuggestResponse | null>(null);
   const [dismissedNames, setDismissedNames] = React.useState<Set<string>>(new Set());
-  const [acceptedSuggestions, setAcceptedSuggestions] = React.useState<Map<string, AIInvestigationSuggestion>>(new Map());
+  const [acceptedSuggestions, setAcceptedSuggestions] = React.useState<
+    Map<string, AIInvestigationSuggestion>
+  >(new Map());
   const [isCreatingOrder, setIsCreatingOrder] = React.useState(false);
   const autoTriggered = React.useRef(false);
 
-  const acceptedNames = React.useMemo(() => new Set(acceptedSuggestions.keys()), [acceptedSuggestions]);
+  const acceptedNames = React.useMemo(
+    () => new Set(acceptedSuggestions.keys()),
+    [acceptedSuggestions]
+  );
   const acceptedCount = acceptedSuggestions.size;
 
   // Load last stored result on mount
@@ -356,7 +370,9 @@ export function InvestigationSuggestionsPanel({
 
         for (const suggestion of imagingSuggestions) {
           const candidates = await imagingApi.searchProcedures(suggestion.name);
-          const exact = candidates.find((p) => p.name.toLowerCase() === suggestion.name.toLowerCase());
+          const exact = candidates.find(
+            (p) => p.name.toLowerCase() === suggestion.name.toLowerCase()
+          );
           const best = exact || candidates[0];
           if (best?.code) {
             resolvedImagingItems.push({ procedure_code: best.code });
@@ -403,10 +419,14 @@ export function InvestigationSuggestionsPanel({
 
       const createdParts: string[] = [];
       if (matchedLabCount > 0) {
-        createdParts.push(`lab order with ${matchedLabCount} test${matchedLabCount !== 1 ? 's' : ''}`);
+        createdParts.push(
+          `lab order with ${matchedLabCount} test${matchedLabCount !== 1 ? 's' : ''}`
+        );
       }
       if (matchedImagingCount > 0) {
-        createdParts.push(`imaging order with ${matchedImagingCount} study${matchedImagingCount !== 1 ? 'ies' : ''}`);
+        createdParts.push(
+          `imaging order with ${matchedImagingCount} study${matchedImagingCount !== 1 ? 'ies' : ''}`
+        );
       }
 
       const unmatchedParts: string[] = [];
@@ -452,27 +472,29 @@ export function InvestigationSuggestionsPanel({
           ) : (
             <Sparkles className="h-4 w-4" />
           )}
-          <span className="hidden sm:inline">
-            {result ? 'Refresh' : 'Suggest'}
-          </span>
+          <span className="hidden sm:inline">{result ? 'Refresh' : 'Suggest'}</span>
         </Button>
       </CardHeader>
 
       <CardContent className="space-y-4">
         {/* No result yet */}
         {!result && !mutation.isPending && (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Click &quot;Suggest&quot; to get AI-powered investigation recommendations
-            based on the current clinical context.
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            Click &quot;Suggest&quot; to get AI-powered investigation recommendations based on the
+            current clinical context.
           </p>
         )}
 
         {carePlanSuggestions.length > 0 && (
           <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-800/50 dark:bg-emerald-950/20">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">From Care Plan</Badge>
+              <Badge variant="outline" className="text-xs">
+                From Care Plan
+              </Badge>
               <span className="text-sm font-medium">Suggested investigations</span>
-              <Badge variant="secondary" className="text-xs">{carePlanSuggestions.length}</Badge>
+              <Badge variant="secondary" className="text-xs">
+                {carePlanSuggestions.length}
+              </Badge>
             </div>
             <div className="space-y-2 pl-1">
               {carePlanSuggestions.map((suggestion) => (
@@ -521,7 +543,9 @@ export function InvestigationSuggestionsPanel({
 
             {/* Priority groups */}
             {grouped.map(({ priority, items }) => {
-              const config = PRIORITY_CONFIG[priority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.routine;
+              const config =
+                PRIORITY_CONFIG[priority as keyof typeof PRIORITY_CONFIG] ??
+                PRIORITY_CONFIG.routine;
               const PriorityIcon = config.icon;
               return (
                 <div key={priority} className="space-y-2">
@@ -551,25 +575,28 @@ export function InvestigationSuggestionsPanel({
 
             {/* Empty after dismissals */}
             {activeSuggestionCount === 0 && result.suggestions.length > 0 && (
-              <p className="text-sm text-muted-foreground text-center py-2">
+              <p className="py-2 text-center text-sm text-muted-foreground">
                 All suggestions reviewed.
               </p>
             )}
 
             {/* No suggestions from TibaBot */}
             {result.suggestions.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-2">
+              <p className="py-2 text-center text-sm text-muted-foreground">
                 No additional investigations suggested for this clinical context.
               </p>
             )}
 
             {/* Disclaimer + feedback */}
-            <div className="space-y-2 pt-2 border-t">
-              <p className="text-xs text-muted-foreground italic">
+            <div className="space-y-2 border-t pt-2">
+              <p className="text-xs italic text-muted-foreground">
                 {result.disclaimer || 'Advisory only — clinical confirmation required.'}
               </p>
               {result.stored_id && (
-                <AIFeedbackButtons messageId={result.stored_id} serviceType="investigation_suggest" />
+                <AIFeedbackButtons
+                  messageId={result.stored_id}
+                  serviceType="investigation_suggest"
+                />
               )}
             </div>
           </>
@@ -616,17 +643,23 @@ interface SuggestionCardProps {
   onDismiss: () => void;
 }
 
-function SuggestionCard({ suggestion, isAccepted, onAccept, onUnaccept, onDismiss }: SuggestionCardProps) {
+function SuggestionCard({
+  suggestion,
+  isAccepted,
+  onAccept,
+  onUnaccept,
+  onDismiss,
+}: SuggestionCardProps) {
   return (
     <div
       className={cn(
-        'rounded-lg border p-3 space-y-2 transition-colors',
-        isAccepted && 'bg-green-500/5 border-green-500/30'
+        'space-y-2 rounded-lg border p-3 transition-colors',
+        isAccepted && 'border-green-500/30 bg-green-500/5'
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0 space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium">{suggestion.name}</span>
             <Badge variant="outline" className="text-xs capitalize">
               {suggestion.category}
@@ -635,7 +668,7 @@ function SuggestionCard({ suggestion, isAccepted, onAccept, onUnaccept, onDismis
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge variant="secondary" className="text-xs font-mono">
+                    <Badge variant="secondary" className="font-mono text-xs">
                       {suggestion.loinc_code}
                     </Badge>
                   </TooltipTrigger>
@@ -649,7 +682,7 @@ function SuggestionCard({ suggestion, isAccepted, onAccept, onUnaccept, onDismis
           <p className="text-xs text-muted-foreground">{suggestion.rationale}</p>
           {suggestion.timing && (
             <p className="text-xs text-muted-foreground">
-              <Clock className="inline h-3 w-3 mr-1" />
+              <Clock className="mr-1 inline h-3 w-3" />
               {suggestion.timing}
             </p>
           )}
@@ -660,7 +693,7 @@ function SuggestionCard({ suggestion, isAccepted, onAccept, onUnaccept, onDismis
           )}
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex shrink-0 items-center gap-1">
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>

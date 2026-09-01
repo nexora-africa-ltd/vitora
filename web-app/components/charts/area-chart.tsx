@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   Area,
   AreaChart as RechartsAreaChart,
@@ -8,8 +8,8 @@ import {
   XAxis,
   YAxis,
   ReferenceLine,
-} from "recharts";
-import type { ValueType, NameType } from "recharts/types/component/DefaultTooltipContent";
+} from 'recharts';
+import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import {
   ChartContainer,
   ChartTooltip,
@@ -17,8 +17,8 @@ import {
   ChartLegend,
   ChartLegendContent,
   type ChartConfig,
-} from "@/components/ui/chart";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/chart';
+import { cn } from '@/lib/utils';
 
 export interface AreaChartProps<T extends Record<string, unknown>> {
   /** Chart data array */
@@ -44,7 +44,7 @@ export interface AreaChartProps<T extends Record<string, unknown>> {
   /** Show legend */
   showLegend?: boolean;
   /** Area type (curve interpolation) */
-  areaType?: "linear" | "monotone" | "step" | "natural" | "basis";
+  areaType?: 'linear' | 'monotone' | 'step' | 'natural' | 'basis';
   /** Fill opacity for the area */
   fillOpacity?: number;
   /** Stroke width for the line */
@@ -70,7 +70,7 @@ export interface AreaChartProps<T extends Record<string, unknown>> {
     payload: unknown
   ) => React.ReactNode;
   /** Tooltip indicator style */
-  tooltipIndicator?: "line" | "dot" | "dashed";
+  tooltipIndicator?: 'line' | 'dot' | 'dashed';
   /** Reference lines (horizontal thresholds) */
   referenceLines?: Array<{
     y: number;
@@ -79,7 +79,7 @@ export interface AreaChartProps<T extends Record<string, unknown>> {
     strokeDasharray?: string;
   }>;
   /** Y-axis domain */
-  yAxisDomain?: [number | "auto", number | "auto"];
+  yAxisDomain?: [number | 'auto', number | 'auto'];
   /** Show dots on data points */
   showDots?: boolean;
   /** Connect nulls in data */
@@ -126,17 +126,17 @@ export function AreaChart<T extends Record<string, unknown>>({
   showYAxis = false,
   showTooltip = true,
   showLegend = false,
-  areaType = "monotone",
+  areaType = 'monotone',
   fillOpacity = 0.4,
   strokeWidth = 2,
   stacked = false,
   showGradient = true,
-  minHeight = "200px",
+  minHeight = '200px',
   className,
   xAxisFormatter,
   yAxisFormatter,
   tooltipFormatter,
-  tooltipIndicator = "line",
+  tooltipIndicator = 'line',
   referenceLines = [],
   yAxisDomain,
   showDots = false,
@@ -147,16 +147,14 @@ export function AreaChart<T extends Record<string, unknown>>({
   };
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn('w-full', className)}>
       {(title || description) && (
         <div className="mb-4">
           {title && <h3 className="text-lg font-semibold">{title}</h3>}
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
       )}
-      <ChartContainer config={config} className={cn(`min-h-[${minHeight}]`, "w-full")}>
+      <ChartContainer config={config} className={cn(`min-h-[${minHeight}]`, 'w-full')}>
         <RechartsAreaChart accessibilityLayer data={data}>
           {/* Define gradients for each data key */}
           {showGradient && (
@@ -170,26 +168,14 @@ export function AreaChart<T extends Record<string, unknown>>({
                   x2="0"
                   y2="1"
                 >
-                  <stop
-                    offset="5%"
-                    stopColor={`var(--color-${key})`}
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor={`var(--color-${key})`}
-                    stopOpacity={0.1}
-                  />
+                  <stop offset="5%" stopColor={`var(--color-${key})`} stopOpacity={0.8} />
+                  <stop offset="95%" stopColor={`var(--color-${key})`} stopOpacity={0.1} />
                 </linearGradient>
               ))}
             </defs>
           )}
           {showGrid && (
-            <CartesianGrid
-              vertical={false}
-              strokeDasharray="3 3"
-              className="stroke-muted"
-            />
+            <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-muted" />
           )}
           {showXAxis && (
             <XAxis
@@ -198,7 +184,7 @@ export function AreaChart<T extends Record<string, unknown>>({
               tickMargin={10}
               axisLine={false}
               tickFormatter={xAxisFormatter ?? defaultXFormatter}
-              className="text-xs fill-muted-foreground"
+              className="fill-muted-foreground text-xs"
             />
           )}
           {showYAxis && (
@@ -208,7 +194,7 @@ export function AreaChart<T extends Record<string, unknown>>({
               axisLine={false}
               tickFormatter={yAxisFormatter}
               domain={yAxisDomain}
-              className="text-xs fill-muted-foreground"
+              className="fill-muted-foreground text-xs"
               width={60}
             />
           )}
@@ -217,17 +203,14 @@ export function AreaChart<T extends Record<string, unknown>>({
               key={index}
               y={refLine.y}
               label={refLine.label}
-              stroke={refLine.color ?? "hsl(var(--muted-foreground))"}
-              strokeDasharray={refLine.strokeDasharray ?? "3 3"}
+              stroke={refLine.color ?? 'hsl(var(--muted-foreground))'}
+              strokeDasharray={refLine.strokeDasharray ?? '3 3'}
             />
           ))}
           {showTooltip && (
             <ChartTooltip
               content={
-                <ChartTooltipContent
-                  indicator={tooltipIndicator}
-                  formatter={tooltipFormatter}
-                />
+                <ChartTooltipContent indicator={tooltipIndicator} formatter={tooltipFormatter} />
               }
             />
           )}
@@ -241,7 +224,7 @@ export function AreaChart<T extends Record<string, unknown>>({
               fillOpacity={showGradient ? 1 : fillOpacity}
               stroke={`var(--color-${key})`}
               strokeWidth={strokeWidth}
-              stackId={stacked ? "stack" : undefined}
+              stackId={stacked ? 'stack' : undefined}
               dot={showDots ? { fill: `var(--color-${key})`, r: 4 } : false}
               activeDot={showDots ? { r: 6 } : false}
               connectNulls={connectNulls}
@@ -253,15 +236,15 @@ export function AreaChart<T extends Record<string, unknown>>({
   );
 }
 
-AreaChart.displayName = "AreaChart";
+AreaChart.displayName = 'AreaChart';
 
 /**
  * Stacked Area Chart convenience component
  */
 export function StackedAreaChart<T extends Record<string, unknown>>(
-  props: Omit<AreaChartProps<T>, "stacked">
+  props: Omit<AreaChartProps<T>, 'stacked'>
 ) {
   return <AreaChart stacked {...props} />;
 }
 
-StackedAreaChart.displayName = "StackedAreaChart";
+StackedAreaChart.displayName = 'StackedAreaChart';

@@ -34,10 +34,7 @@ import {
   XCircle,
   AlertCircle,
 } from 'lucide-react';
-import {
-  ProformaConvertDialog,
-  ProformaRenewDialog,
-} from '@/components/billing';
+import { ProformaConvertDialog, ProformaRenewDialog } from '@/components/billing';
 import {
   useProformas,
   useConvertProforma,
@@ -69,16 +66,12 @@ function StatsCard({ title, value, icon, description, variant = 'default' }: Sta
   return (
     <Card variant={variant}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         {icon}
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
+        {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
       </CardContent>
     </Card>
   );
@@ -93,8 +86,8 @@ function ExpiryBadge({ invoice }: { invoice: Invoice }) {
 
   if (invoice.is_converted) {
     return (
-      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-        <CheckCircle2 className="h-3 w-3 mr-1" />
+      <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
+        <CheckCircle2 className="mr-1 h-3 w-3" />
         Converted
       </Badge>
     );
@@ -102,8 +95,8 @@ function ExpiryBadge({ invoice }: { invoice: Invoice }) {
 
   if (!invoice.is_valid || days < 0) {
     return (
-      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-        <XCircle className="h-3 w-3 mr-1" />
+      <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">
+        <XCircle className="mr-1 h-3 w-3" />
         Expired
       </Badge>
     );
@@ -111,8 +104,8 @@ function ExpiryBadge({ invoice }: { invoice: Invoice }) {
 
   if (days === 0) {
     return (
-      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-        <AlertCircle className="h-3 w-3 mr-1" />
+      <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">
+        <AlertCircle className="mr-1 h-3 w-3" />
         Expires Today
       </Badge>
     );
@@ -120,16 +113,16 @@ function ExpiryBadge({ invoice }: { invoice: Invoice }) {
 
   if (days <= 7) {
     return (
-      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-        <Clock className="h-3 w-3 mr-1" />
+      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+        <Clock className="mr-1 h-3 w-3" />
         {days}d left
       </Badge>
     );
   }
 
   return (
-    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-      <Clock className="h-3 w-3 mr-1" />
+    <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700">
+      <Clock className="mr-1 h-3 w-3" />
       {days}d left
     </Badge>
   );
@@ -142,7 +135,7 @@ function ExpiryBadge({ invoice }: { invoice: Invoice }) {
 function ProformasPageSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-24" />
         ))}
@@ -214,7 +207,8 @@ export default function ProformasPage() {
     return {
       total: all.length,
       active: all.filter((p) => p.is_valid && !p.is_converted).length,
-      expiringSoon: all.filter((p) => p.is_valid && !p.is_converted && p.days_until_expiry <= 7).length,
+      expiringSoon: all.filter((p) => p.is_valid && !p.is_converted && p.days_until_expiry <= 7)
+        .length,
       expired: all.filter((p) => !p.is_valid && !p.is_converted).length,
       converted: all.filter((p) => p.is_converted).length,
     };
@@ -315,15 +309,18 @@ export default function ProformasPage() {
         title="Proforma Invoices"
         helpContent="Proformas are quotations that can be converted to invoices. Active proformas are valid and awaiting conversion. Expired proformas need renewal before conversion."
         actions={
-          <Button onClick={handleCreateNew} className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
+          <Button
+            onClick={handleCreateNew}
+            className="w-full bg-purple-600 hover:bg-purple-700 sm:w-auto"
+          >
+            <Plus className="mr-2 h-4 w-4" />
             New Proforma
           </Button>
         }
       />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Active Proformas"
           value={stats.active}
@@ -355,9 +352,9 @@ export default function ProformasPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col gap-4 sm:flex-row">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search proformas..."
             value={searchQuery}
@@ -424,7 +421,11 @@ export default function ProformasPage() {
                 {
                   key: 'total_amount',
                   header: 'Amount',
-                  cell: (p) => <span className="font-medium">{formatCurrency(parseFloat(p.total_amount))}</span>,
+                  cell: (p) => (
+                    <span className="font-medium">
+                      {formatCurrency(parseFloat(p.total_amount))}
+                    </span>
+                  ),
                 },
                 {
                   key: 'status',
@@ -470,18 +471,20 @@ export default function ProformasPage() {
               ]}
               mobileCard={(proforma) => (
                 <Card className="p-3">
-                  <div className="flex justify-between items-start gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="font-mono font-medium text-sm">{proforma.invoice_number}</p>
-                      <p className="font-medium truncate">{proforma.patient_name}</p>
+                      <p className="font-mono text-sm font-medium">{proforma.invoice_number}</p>
+                      <p className="truncate font-medium">{proforma.patient_name}</p>
                       {proforma.patient_mrn && (
                         <p className="text-sm text-muted-foreground">{proforma.patient_mrn}</p>
                       )}
                     </div>
                     <ExpiryBadge invoice={proforma} />
                   </div>
-                  <div className="flex justify-between items-center mt-3 pt-3 border-t">
-                    <span className="font-medium">{formatCurrency(parseFloat(proforma.total_amount))}</span>
+                  <div className="mt-3 flex items-center justify-between border-t pt-3">
+                    <span className="font-medium">
+                      {formatCurrency(parseFloat(proforma.total_amount))}
+                    </span>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       {proforma.can_convert && (
                         <Button

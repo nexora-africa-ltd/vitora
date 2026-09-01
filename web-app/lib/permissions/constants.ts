@@ -6,11 +6,7 @@ export const MODULE_PERMISSIONS = {
   dashboard: null, // Everyone
   checkin: 'checkin.view_checkin',
   patients: 'patients.view_patient',
-  triage: [
-    'triage.view_triage_queue',
-    'triage.perform_triage',
-    'triage.view_triageassessment',
-  ],
+  triage: ['triage.view_triage_queue', 'triage.perform_triage', 'triage.view_triageassessment'],
   emergency: 'encounters.view_encounter',
   surveillance: [
     'surveillance.view_notifiablecase',
@@ -29,10 +25,7 @@ export const MODULE_PERMISSIONS = {
     'clinics.manage_clinic_staff',
     'clinics.manage_clinic_schedule',
   ],
-  mch: [
-    'mch.view_mchregistration',
-    'mch.view_sensitive_mch_registration',
-  ],
+  mch: ['mch.view_mchregistration', 'mch.view_sensitive_mch_registration'],
   encounters: 'encounters.view_encounter',
   procedures: 'procedures.view_procedureorder',
   inpatient: [
@@ -71,11 +64,7 @@ export const MODULE_PERMISSIONS = {
     'scheduling.view_appointment',
     'scheduling.view_resource',
   ],
-  theatre: [
-    'scheduling.view_schedule',
-    'scheduling.view_appointment',
-    'scheduling.view_resource',
-  ],
+  theatre: ['scheduling.view_schedule', 'scheduling.view_appointment', 'scheduling.view_resource'],
   billing: [
     'billing.view_invoice',
     'billing.view_payment',

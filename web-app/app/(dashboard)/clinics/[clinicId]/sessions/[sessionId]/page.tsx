@@ -38,7 +38,11 @@ import { clinicsApi } from '@/lib/api/clinics';
 import { ClinicNavigation } from '@/components/clinics/clinic-navigation';
 import type { ClinicVisit, ClinicVisitStatus, ClinicSessionStatus } from '@/lib/types/clinic';
 import type { ProcedureOrderListItem } from '@/lib/types/procedure';
-import { PROCEDURE_STATUS_COLORS, PROCEDURE_STATUS_LABELS, PROCEDURE_PRIORITY_COLORS } from '@/lib/types/procedure';
+import {
+  PROCEDURE_STATUS_COLORS,
+  PROCEDURE_STATUS_LABELS,
+  PROCEDURE_PRIORITY_COLORS,
+} from '@/lib/types/procedure';
 import { cn } from '@/lib/utils/cn';
 import { buildEncounterHref } from '@/lib/utils/encounter-focus';
 
@@ -65,7 +69,10 @@ const VISIT_STATUS_COLORS: Record<ClinicVisitStatus, string> = {
   CLOSED: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
 };
 
-const VISIT_STATUS_BADGE_VARIANT: Record<ClinicVisitStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const VISIT_STATUS_BADGE_VARIANT: Record<
+  ClinicVisitStatus,
+  'default' | 'secondary' | 'destructive' | 'outline'
+> = {
   REGISTERED: 'secondary',
   WAITING: 'outline',
   CALLED: 'default',
@@ -175,8 +182,8 @@ export default function SessionDetailPage() {
   if (!clinic || !session) {
     return (
       <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-        <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
-        <h3 className="text-base font-semibold mb-2">Session not found</h3>
+        <AlertCircle className="mb-4 h-10 w-10 text-muted-foreground" />
+        <h3 className="mb-2 text-base font-semibold">Session not found</h3>
         <Button asChild size="sm">
           <Link href={`/clinics/${clinicId}/sessions`}>Back to Sessions</Link>
         </Button>
@@ -198,9 +205,9 @@ export default function SessionDetailPage() {
         <ClinicNavigation clinicId={clinicId} />
 
         {/* Session Summary Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-sm font-medium truncate">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="truncate text-sm font-medium">
               {clinic.name}
               <span className="text-muted-foreground"> — {sessionDate}</span>
             </p>
@@ -216,12 +223,15 @@ export default function SessionDetailPage() {
                   )}
                 </span>
               )}
-              {session.opened_by_name && (
-                <span>Opened by: {session.opened_by_name}</span>
-              )}
+              {session.opened_by_name && <span>Opened by: {session.opened_by_name}</span>}
             </div>
           </div>
-          <Badge className={cn('shrink-0 w-fit self-start sm:self-auto', SESSION_STATUS_COLORS[session.status])}>
+          <Badge
+            className={cn(
+              'w-fit shrink-0 self-start sm:self-auto',
+              SESSION_STATUS_COLORS[session.status]
+            )}
+          >
             {session.status_display}
           </Badge>
         </div>
@@ -229,42 +239,42 @@ export default function SessionDetailPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground hidden sm:block" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Total</CardTitle>
+              <Users className="hidden h-4 w-4 text-muted-foreground sm:block" />
             </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold sm:text-2xl">{stats.total}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Waiting</CardTitle>
-              <Clock className="h-4 w-4 text-amber-500 hidden sm:block" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Waiting</CardTitle>
+              <Clock className="hidden h-4 w-4 text-amber-500 sm:block" />
             </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-amber-600">{stats.waiting}</div>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-amber-600 sm:text-2xl">{stats.waiting}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Completed</CardTitle>
-              <Stethoscope className="h-4 w-4 text-green-500 hidden sm:block" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Completed</CardTitle>
+              <Stethoscope className="hidden h-4 w-4 text-green-500 sm:block" />
             </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.completed}</div>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-green-600 sm:text-2xl">{stats.completed}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Scheduled</CardTitle>
-              <Calendar className="h-4 w-4 text-blue-500 hidden sm:block" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Scheduled</CardTitle>
+              <Calendar className="hidden h-4 w-4 text-blue-500 sm:block" />
             </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.scheduled}</div>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-blue-600 sm:text-2xl">{stats.scheduled}</div>
             </CardContent>
           </Card>
         </div>
@@ -279,7 +289,7 @@ export default function SessionDetailPage() {
                 <Badge variant="secondary">{scheduledOrders.length}</Badge>
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0">
+            <CardContent className="p-4 pt-0 sm:p-6">
               {ordersLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -297,9 +307,7 @@ export default function SessionDetailPage() {
                     {
                       key: 'order_number',
                       header: 'Order',
-                      cell: (o) => (
-                        <span className="font-mono text-xs">{o.order_number}</span>
-                      ),
+                      cell: (o) => <span className="font-mono text-xs">{o.order_number}</span>,
                     },
                     {
                       key: 'patient_name',
@@ -321,7 +329,12 @@ export default function SessionDetailPage() {
                       key: 'status',
                       header: 'Status',
                       cell: (o) => (
-                        <Badge className={cn('font-normal text-xs w-fit', PROCEDURE_STATUS_COLORS[o.status])}>
+                        <Badge
+                          className={cn(
+                            'w-fit text-xs font-normal',
+                            PROCEDURE_STATUS_COLORS[o.status]
+                          )}
+                        >
                           {PROCEDURE_STATUS_LABELS[o.status]}
                         </Badge>
                       ),
@@ -330,7 +343,12 @@ export default function SessionDetailPage() {
                       key: 'priority',
                       header: 'Priority',
                       cell: (o) => (
-                        <Badge className={cn('font-normal text-xs w-fit', PROCEDURE_PRIORITY_COLORS[o.priority])}>
+                        <Badge
+                          className={cn(
+                            'w-fit text-xs font-normal',
+                            PROCEDURE_PRIORITY_COLORS[o.priority]
+                          )}
+                        >
                           {o.priority}
                         </Badge>
                       ),
@@ -338,10 +356,15 @@ export default function SessionDetailPage() {
                     },
                   ]}
                   mobileCard={(o) => (
-                    <div className="rounded-lg border p-3 space-y-2">
+                    <div className="space-y-2 rounded-lg border p-3">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm truncate">{o.patient_name}</span>
-                        <Badge className={cn('font-normal shrink-0 text-xs', PROCEDURE_STATUS_COLORS[o.status])}>
+                        <span className="truncate text-sm font-medium">{o.patient_name}</span>
+                        <Badge
+                          className={cn(
+                            'shrink-0 text-xs font-normal',
+                            PROCEDURE_STATUS_COLORS[o.status]
+                          )}
+                        >
                           {PROCEDURE_STATUS_LABELS[o.status]}
                         </Badge>
                       </div>
@@ -369,7 +392,7 @@ export default function SessionDetailPage() {
               <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
           </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
+          <CardContent className="p-4 pt-0 sm:p-6">
             {visitsLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -377,7 +400,7 @@ export default function SessionDetailPage() {
                 ))}
               </div>
             ) : visits.length === 0 ? (
-              <div className="text-center py-8 text-sm text-muted-foreground">
+              <div className="py-8 text-center text-sm text-muted-foreground">
                 No patients in this session yet.
               </div>
             ) : viewMode === 'grid' ? (
@@ -390,19 +413,49 @@ export default function SessionDetailPage() {
                     subtitle={visit.patient?.mrn || visit.patient_mrn || undefined}
                     initials={getPatientInitials(visit)}
                     gender={visit.patient?.gender as 'M' | 'F' | 'O' | undefined}
-                    href={visit.encounter ? buildEncounterHref(visit.encounter, 'soap') : `/clinics/visits/${visit.id}`}
+                    href={
+                      visit.encounter
+                        ? buildEncounterHref(visit.encounter, 'soap')
+                        : `/clinics/visits/${visit.id}`
+                    }
                     status={{
                       label: visit.status_display,
                       variant: VISIT_STATUS_BADGE_VARIANT[visit.status],
                     }}
                     badges={[
-                      ...(visit.priority_display ? [{ label: visit.priority_display, variant: 'outline' as const }] : []),
+                      ...(visit.priority_display
+                        ? [{ label: visit.priority_display, variant: 'outline' as const }]
+                        : []),
                     ]}
                     metadata={[
-                      { icon: <Calendar className="h-3 w-3" />, label: 'Queue', value: `#${visit.queue_number}` },
-                      { icon: <Clock className="h-3 w-3" />, label: 'Registered', value: formatTime(visit.registered_at) },
-                      ...(visit.wait_time_minutes ? [{ icon: <Clock className="h-3 w-3" />, label: 'Wait', value: `${visit.wait_time_minutes}m` }] : []),
-                      ...(visit.assigned_clinician_name ? [{ icon: <Stethoscope className="h-3 w-3" />, label: 'Clinician', value: visit.assigned_clinician_name }] : []),
+                      {
+                        icon: <Calendar className="h-3 w-3" />,
+                        label: 'Queue',
+                        value: `#${visit.queue_number}`,
+                      },
+                      {
+                        icon: <Clock className="h-3 w-3" />,
+                        label: 'Registered',
+                        value: formatTime(visit.registered_at),
+                      },
+                      ...(visit.wait_time_minutes
+                        ? [
+                            {
+                              icon: <Clock className="h-3 w-3" />,
+                              label: 'Wait',
+                              value: `${visit.wait_time_minutes}m`,
+                            },
+                          ]
+                        : []),
+                      ...(visit.assigned_clinician_name
+                        ? [
+                            {
+                              icon: <Stethoscope className="h-3 w-3" />,
+                              label: 'Clinician',
+                              value: visit.assigned_clinician_name,
+                            },
+                          ]
+                        : []),
                     ]}
                   />
                 ))}
@@ -442,7 +495,9 @@ export default function SessionDetailPage() {
                       <div>
                         <span className="font-medium">{getPatientName(visit)}</span>
                         {visit.patient?.mrn && (
-                          <span className="text-xs text-muted-foreground ml-2 font-mono">{visit.patient.mrn}</span>
+                          <span className="ml-2 font-mono text-xs text-muted-foreground">
+                            {visit.patient.mrn}
+                          </span>
                         )}
                       </div>
                     ),
@@ -452,7 +507,12 @@ export default function SessionDetailPage() {
                     header: 'Status',
                     sortable: true,
                     cell: (visit) => (
-                      <Badge className={cn('font-normal text-xs w-fit', VISIT_STATUS_COLORS[visit.status])}>
+                      <Badge
+                        className={cn(
+                          'w-fit text-xs font-normal',
+                          VISIT_STATUS_COLORS[visit.status]
+                        )}
+                      >
                         {visit.status_display}
                       </Badge>
                     ),
@@ -477,7 +537,8 @@ export default function SessionDetailPage() {
                     header: 'Wait',
                     sortable: true,
                     sortType: 'number',
-                    cell: (visit) => visit.wait_time_minutes ? `${visit.wait_time_minutes}m` : '--',
+                    cell: (visit) =>
+                      visit.wait_time_minutes ? `${visit.wait_time_minutes}m` : '--',
                     hideOnMobile: true,
                   },
                   {
@@ -489,13 +550,22 @@ export default function SessionDetailPage() {
                   },
                 ]}
                 mobileCard={(visit) => (
-                  <div className="rounded-lg border p-3 space-y-2">
+                  <div className="space-y-2 rounded-lg border p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-xs text-muted-foreground">#{visit.queue_number}</span>
-                        <span className="font-medium text-sm truncate">{getPatientName(visit)}</span>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="font-mono text-xs text-muted-foreground">
+                          #{visit.queue_number}
+                        </span>
+                        <span className="truncate text-sm font-medium">
+                          {getPatientName(visit)}
+                        </span>
                       </div>
-                      <Badge className={cn('font-normal shrink-0 text-xs', VISIT_STATUS_COLORS[visit.status])}>
+                      <Badge
+                        className={cn(
+                          'shrink-0 text-xs font-normal',
+                          VISIT_STATUS_COLORS[visit.status]
+                        )}
+                      >
                         {visit.status_display}
                       </Badge>
                     </div>
@@ -503,7 +573,9 @@ export default function SessionDetailPage() {
                       {visit.patient?.mrn && <span className="font-mono">{visit.patient.mrn}</span>}
                       <span>{formatTime(visit.registered_at)}</span>
                       {visit.wait_time_minutes && <span>Wait: {visit.wait_time_minutes}m</span>}
-                      {visit.assigned_clinician_name && <span>{visit.assigned_clinician_name}</span>}
+                      {visit.assigned_clinician_name && (
+                        <span>{visit.assigned_clinician_name}</span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -521,7 +593,7 @@ export default function SessionDetailPage() {
               onClick={() => setPage((p) => p - 1)}
               disabled={!hasPrev}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ChevronLeft className="mr-1 h-4 w-4" />
               Previous
             </Button>
             <span className="text-sm text-muted-foreground">
@@ -534,7 +606,7 @@ export default function SessionDetailPage() {
               disabled={!hasNext}
             >
               Next
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
         )}

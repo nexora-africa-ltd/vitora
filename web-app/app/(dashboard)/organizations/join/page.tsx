@@ -6,15 +6,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Building2,
-  Search,
-  Send,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  XCircle,
-} from 'lucide-react';
+import { Building2, Search, Send, CheckCircle2, Clock, AlertCircle, XCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,17 +67,13 @@ export default function JoinOrganizationPage() {
   });
 
   const memberships = user?.memberships ?? [];
-  const memberOrgIds = new Set(memberships.map(m => m.organization_id));
+  const memberOrgIds = new Set(memberships.map((m) => m.organization_id));
   const pendingRequestOrgIds = new Set(
-    (myRequests?.results ?? [])
-      .filter(r => r.status === 'PENDING')
-      .map(r => r.organization)
+    (myRequests?.results ?? []).filter((r) => r.status === 'PENDING').map((r) => r.organization)
   );
 
   // Filter out orgs user is already a member of
-  const organizations = (orgsData?.results ?? []).filter(
-    org => !memberOrgIds.has(org.id)
-  );
+  const organizations = (orgsData?.results ?? []).filter((org) => !memberOrgIds.has(org.id));
 
   const handleSubmit = async () => {
     if (!selectedOrg) return;
@@ -132,20 +120,31 @@ export default function JoinOrganizationPage() {
           <CardContent>
             <div className="space-y-2">
               {myRequests.results.map((req) => (
-                <div key={req.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
+                <div
+                  key={req.id}
+                  className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2"
+                >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{req.organization_name}</p>
+                    <p className="truncate text-sm font-medium">{req.organization_name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(req.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {new Date(req.created_at).toLocaleDateString('en-KE', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
                     </p>
                   </div>
                   <Badge
                     variant={
-                      req.status === 'PENDING' ? 'default' :
-                      req.status === 'APPROVED' ? 'secondary' :
-                      req.status === 'REJECTED' ? 'destructive' : 'outline'
+                      req.status === 'PENDING'
+                        ? 'default'
+                        : req.status === 'APPROVED'
+                          ? 'secondary'
+                          : req.status === 'REJECTED'
+                            ? 'destructive'
+                            : 'outline'
                     }
-                    className="gap-1 shrink-0"
+                    className="shrink-0 gap-1"
                   >
                     {req.status === 'PENDING' && <Clock className="h-3 w-3" />}
                     {req.status === 'APPROVED' && <CheckCircle2 className="h-3 w-3" />}
@@ -178,10 +177,12 @@ export default function JoinOrganizationPage() {
           </div>
 
           {isLoadingOrgs ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Loading organizations…</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Loading organizations…</p>
           ) : organizations.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              {search ? 'No organizations found matching your search.' : 'No organizations available to join.'}
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {search
+                ? 'No organizations found matching your search.'
+                : 'No organizations available to join.'}
             </p>
           ) : (
             <div className="space-y-2">
@@ -190,29 +191,23 @@ export default function JoinOrganizationPage() {
                 return (
                   <div
                     key={org.id}
-                    className="flex items-center justify-between py-3 px-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between rounded-lg border px-4 py-3 transition-colors hover:bg-muted/50"
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <Building2 className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <Building2 className="h-5 w-5 shrink-0 text-muted-foreground" />
                       <div className="min-w-0">
-                        <p className="font-medium truncate">{org.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {org.subscription_tier}
-                        </p>
+                        <p className="truncate font-medium">{org.name}</p>
+                        <p className="text-xs text-muted-foreground">{org.subscription_tier}</p>
                       </div>
                     </div>
                     {hasPendingRequest ? (
-                      <Badge variant="outline" className="gap-1 shrink-0">
+                      <Badge variant="outline" className="shrink-0 gap-1">
                         <Clock className="h-3 w-3" />
                         Pending
                       </Badge>
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedOrg(org)}
-                      >
-                        <Send className="h-3.5 w-3.5 mr-1" />
+                      <Button variant="outline" size="sm" onClick={() => setSelectedOrg(org)}>
+                        <Send className="mr-1 h-3.5 w-3.5" />
                         Request
                       </Button>
                     )}
@@ -225,12 +220,20 @@ export default function JoinOrganizationPage() {
       </Card>
 
       {/* Join request dialog */}
-      <Dialog open={!!selectedOrg} onOpenChange={() => { setSelectedOrg(null); setSelectedRole(''); setMessage(''); }}>
+      <Dialog
+        open={!!selectedOrg}
+        onOpenChange={() => {
+          setSelectedOrg(null);
+          setSelectedRole('');
+          setMessage('');
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Request to Join {selectedOrg?.name}</DialogTitle>
             <DialogDescription>
-              Submit a request to join this organization. An administrator will review your request and assign you a role.
+              Submit a request to join this organization. An administrator will review your request
+              and assign you a role.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -259,11 +262,18 @@ export default function JoinOrganizationPage() {
                 rows={3}
                 maxLength={1000}
               />
-              <p className="text-xs text-muted-foreground text-right">{message.length}/1000</p>
+              <p className="text-right text-xs text-muted-foreground">{message.length}/1000</p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setSelectedOrg(null); setSelectedRole(''); setMessage(''); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedOrg(null);
+                setSelectedRole('');
+                setMessage('');
+              }}
+            >
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>

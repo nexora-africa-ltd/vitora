@@ -26,12 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -86,9 +81,17 @@ function actionBadgeColor(action: string) {
 
 function operatorLabel(op: string) {
   const labels: Record<string, string> = {
-    GT: '>', LT: '<', GTE: '≥', LTE: '≤', EQ: '=', NEQ: '≠',
-    IN_RANGE: 'In Range', OUT_OF_RANGE: 'Out of Range',
-    CONTAINS: 'Contains', CRITICAL: 'Critical', ABNORMAL: 'Abnormal',
+    GT: '>',
+    LT: '<',
+    GTE: '≥',
+    LTE: '≤',
+    EQ: '=',
+    NEQ: '≠',
+    IN_RANGE: 'In Range',
+    OUT_OF_RANGE: 'Out of Range',
+    CONTAINS: 'Contains',
+    CRITICAL: 'Critical',
+    ABNORMAL: 'Abnormal',
   };
   return labels[op] || op;
 }
@@ -243,7 +246,9 @@ export default function ReflexTestingPage() {
                 size="sm"
               >
                 <Zap className="mr-1 h-4 w-4" />
-                <span className="hidden sm:inline">{seedMutation.isPending ? 'Seeding...' : 'Seed Defaults'}</span>
+                <span className="hidden sm:inline">
+                  {seedMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
+                </span>
                 <span className="sm:hidden">Seed</span>
               </Button>
               <Button size="sm" onClick={openCreate}>
@@ -258,7 +263,10 @@ export default function ReflexTestingPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <Repeat2 className="h-4 w-4 text-muted-foreground" />
@@ -268,7 +276,10 @@ export default function ReflexTestingPage() {
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -278,7 +289,10 @@ export default function ReflexTestingPage() {
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -288,7 +302,10 @@ export default function ReflexTestingPage() {
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-blue-500" />
@@ -342,7 +359,7 @@ export default function ReflexTestingPage() {
                   header: 'Action',
                   sortable: true,
                   cell: (item) => (
-                    <Badge className={`${actionBadgeColor(item.action)} shrink-0 w-fit`}>
+                    <Badge className={`${actionBadgeColor(item.action)} w-fit shrink-0`}>
                       {item.action === 'AUTO_ORDER' ? 'Auto' : 'Suggest'}
                     </Badge>
                   ),
@@ -353,7 +370,7 @@ export default function ReflexTestingPage() {
                   header: 'Status',
                   sortable: true,
                   cell: (item) => (
-                    <Badge className={`${executionStatusColor(item.status)} shrink-0 w-fit`}>
+                    <Badge className={`${executionStatusColor(item.status)} w-fit shrink-0`}>
                       {item.status}
                     </Badge>
                   ),
@@ -399,17 +416,17 @@ export default function ReflexTestingPage() {
                 },
               ]}
               mobileCard={(item) => (
-                <div className="p-3 space-y-2">
-                  <div className="flex justify-between items-start">
+                <div className="space-y-2 p-3">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">{item.trigger_test_name}</p>
                       <p className="text-xs text-muted-foreground">→ {item.reflex_test_name}</p>
                     </div>
-                    <Badge className={`${executionStatusColor(item.status)} shrink-0 w-fit`}>
+                    <Badge className={`${executionStatusColor(item.status)} w-fit shrink-0`}>
                       {item.status}
                     </Badge>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
                       Value: {item.trigger_value}
                     </span>
@@ -452,7 +469,8 @@ export default function ReflexTestingPage() {
                     <div>
                       <p className="font-medium">{item.trigger_test_code}</p>
                       <p className="text-xs text-muted-foreground">
-                        {operatorLabel(item.operator)} {item.threshold_value ?? item.text_value ?? ''}
+                        {operatorLabel(item.operator)}{' '}
+                        {item.threshold_value ?? item.text_value ?? ''}
                         {item.threshold_high != null ? `–${item.threshold_high}` : ''}
                       </p>
                     </div>
@@ -474,7 +492,7 @@ export default function ReflexTestingPage() {
                   header: 'Action',
                   sortable: true,
                   cell: (item) => (
-                    <Badge className={`${actionBadgeColor(item.action)} shrink-0 w-fit`}>
+                    <Badge className={`${actionBadgeColor(item.action)} w-fit shrink-0`}>
                       {item.action === 'AUTO_ORDER' ? 'Auto Order' : 'Suggest'}
                     </Badge>
                   ),
@@ -485,7 +503,7 @@ export default function ReflexTestingPage() {
                   header: 'Priority',
                   sortable: true,
                   cell: (item) => (
-                    <Badge variant="outline" className="shrink-0 w-fit">
+                    <Badge variant="outline" className="w-fit shrink-0">
                       {item.priority}
                     </Badge>
                   ),
@@ -516,7 +534,10 @@ export default function ReflexTestingPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => { e.stopPropagation(); openEdit(item); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEdit(item);
+                        }}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -535,7 +556,10 @@ export default function ReflexTestingPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete reflex rule?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will permanently delete the rule &quot;{item.description || item.trigger_test_code + ' → ' + item.reflex_test_code}&quot;.
+                              This will permanently delete the rule &quot;
+                              {item.description ||
+                                item.trigger_test_code + ' → ' + item.reflex_test_code}
+                              &quot;.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -554,23 +578,26 @@ export default function ReflexTestingPage() {
                 },
               ]}
               mobileCard={(item) => (
-                <div className="p-3 space-y-2">
-                  <div className="flex justify-between items-start">
+                <div className="space-y-2 p-3">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">
-                        {item.trigger_test_code} {operatorLabel(item.operator)} {item.threshold_value ?? item.text_value ?? ''} → {item.reflex_test_code}
+                        {item.trigger_test_code} {operatorLabel(item.operator)}{' '}
+                        {item.threshold_value ?? item.text_value ?? ''} → {item.reflex_test_code}
                       </p>
                       {item.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{item.description}</p>
                       )}
                     </div>
-                    <Badge className={`${actionBadgeColor(item.action)} shrink-0 w-fit`}>
+                    <Badge className={`${actionBadgeColor(item.action)} w-fit shrink-0`}>
                       {item.action === 'AUTO_ORDER' ? 'Auto' : 'Suggest'}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex gap-1.5">
-                      <Badge variant="outline" className="text-xs">{item.priority}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {item.priority}
+                      </Badge>
                       <Badge
                         className={`text-xs ${
                           item.is_active
@@ -582,7 +609,12 @@ export default function ReflexTestingPage() {
                       </Badge>
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" className="h-7" onClick={() => openEdit(item)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7"
+                        onClick={() => openEdit(item)}
+                      >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button
@@ -637,7 +669,14 @@ interface ReflexRuleDialogProps {
   isPending: boolean;
 }
 
-function ReflexRuleDialog({ open, onOpenChange, rule, tests, onSubmit, isPending }: ReflexRuleDialogProps) {
+function ReflexRuleDialog({
+  open,
+  onOpenChange,
+  rule,
+  tests,
+  onSubmit,
+  isPending,
+}: ReflexRuleDialogProps) {
   const [triggerTest, setTriggerTest] = useState<string>('');
   const [reflexTest, setReflexTest] = useState<string>('');
   const [operator, setOperator] = useState<string>('GT');
@@ -682,7 +721,8 @@ function ReflexRuleDialog({ open, onOpenChange, rule, tests, onSubmit, isPending
     onOpenChange(newOpen);
   };
 
-  const needsThreshold = !TEXT_OPERATORS.includes(operator) && !NO_THRESHOLD_OPERATORS.includes(operator);
+  const needsThreshold =
+    !TEXT_OPERATORS.includes(operator) && !NO_THRESHOLD_OPERATORS.includes(operator);
   const needsRange = RANGE_OPERATORS.includes(operator);
   const needsText = TEXT_OPERATORS.includes(operator);
 
@@ -711,7 +751,7 @@ function ReflexRuleDialog({ open, onOpenChange, rule, tests, onSubmit, isPending
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{rule ? 'Edit Reflex Rule' : 'Create Reflex Rule'}</DialogTitle>
         </DialogHeader>
@@ -862,10 +902,7 @@ function ReflexRuleDialog({ open, onOpenChange, rule, tests, onSubmit, isPending
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={!triggerTest || !reflexTest || isPending}
-            >
+            <Button type="submit" disabled={!triggerTest || !reflexTest || isPending}>
               {isPending ? 'Saving...' : rule ? 'Update Rule' : 'Create Rule'}
             </Button>
           </div>

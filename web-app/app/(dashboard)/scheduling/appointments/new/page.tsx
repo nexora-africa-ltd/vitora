@@ -23,7 +23,12 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { appointmentsApi, resourcesApi } from '@/lib/api/scheduling';
 import { patientsApi } from '@/lib/api/patients';
-import type { AppointmentType, AppointmentPriority, AppointmentCreateData, AvailabilitySlot } from '@/lib/types/scheduling';
+import type {
+  AppointmentType,
+  AppointmentPriority,
+  AppointmentCreateData,
+  AvailabilitySlot,
+} from '@/lib/types/scheduling';
 
 const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
   { value: 'CONSULTATION', label: 'Consultation' },
@@ -48,20 +53,7 @@ export default function NewAppointmentPage() {
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const canCreateAppointment = hasPermission('scheduling.add_appointment');
-
-  if (!canCreateAppointment) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Appointment" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create appointments.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  const hasAppointmentAccess = canCreateAppointment;
 
   // Patient search
   const [patientSearch, setPatientSearch] = useState('');
@@ -90,7 +82,8 @@ export default function NewAppointmentPage() {
   // Resources list
   const { data: resourceData, isLoading: resourcesLoading } = useQuery({
     queryKey: ['scheduling-resources-all'],
-    queryFn: () => resourcesApi.list({ is_active: true, page_size: 200, ordering: 'resource_type,name' }),
+    queryFn: () =>
+      resourcesApi.list({ is_active: true, page_size: 200, ordering: 'resource_type,name' }),
   });
 
   // Availability for selected resource + date
@@ -125,8 +118,19 @@ export default function NewAppointmentPage() {
   }
 
   function handleSubmit() {
-    if (!selectedPatientId || !selectedResourceId || !date || !startTime || !endTime || !reason.trim()) {
-      toast({ title: 'Validation', description: 'Please fill all required fields.', variant: 'destructive' });
+    if (
+      !selectedPatientId ||
+      !selectedResourceId ||
+      !date ||
+      !startTime ||
+      !endTime ||
+      !reason.trim()
+    ) {
+      toast({
+        title: 'Validation',
+        description: 'Please fill all required fields.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -146,7 +150,26 @@ export default function NewAppointmentPage() {
   }
 
   const canSubmit =
-    !!selectedPatientId && !!selectedResourceId && !!date && !!startTime && !!endTime && !!reason.trim();
+    !!selectedPatientId &&
+    !!selectedResourceId &&
+    !!date &&
+    !!startTime &&
+    !!endTime &&
+    !!reason.trim();
+
+  if (!hasAppointmentAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Appointment" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to create appointments.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -181,7 +204,7 @@ export default function NewAppointmentPage() {
               />
             </div>
             {selectedPatientId ? (
-              <div className="p-2 rounded-md bg-primary/10 flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-md bg-primary/10 p-2">
                 <span className="text-sm font-medium">{selectedPatientName}</span>
                 <Button
                   variant="ghost"
@@ -196,19 +219,21 @@ export default function NewAppointmentPage() {
                 </Button>
               </div>
             ) : patientResults?.results && patientResults.results.length > 0 ? (
-              <div className="max-h-48 overflow-y-auto space-y-1">
+              <div className="max-h-48 space-y-1 overflow-y-auto">
                 {patientResults.results.map((p) => (
                   <div
                     key={p.id}
-                    className="p-2 rounded-md hover:bg-muted cursor-pointer text-sm"
+                    className="cursor-pointer rounded-md p-2 text-sm hover:bg-muted"
                     onClick={() => {
                       setSelectedPatientId(p.id);
                       setSelectedPatientName(`${p.first_name} ${p.last_name} (${p.mrn})`);
                       setPatientSearch('');
                     }}
                   >
-                    <span className="font-medium">{p.first_name} {p.last_name}</span>
-                    <span className="text-muted-foreground ml-2">{p.mrn}</span>
+                    <span className="font-medium">
+                      {p.first_name} {p.last_name}
+                    </span>
+                    <span className="ml-2 text-muted-foreground">{p.mrn}</span>
                   </div>
                 ))}
               </div>
@@ -226,13 +251,18 @@ export default function NewAppointmentPage() {
           <CardContent className="space-y-3">
             <div>
               <Label>Appointment Type</Label>
-              <Select value={appointmentType} onValueChange={(v) => setAppointmentType(v as AppointmentType)}>
+              <Select
+                value={appointmentType}
+                onValueChange={(v) => setAppointmentType(v as AppointmentType)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {TYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -245,7 +275,9 @@ export default function NewAppointmentPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {PRIORITY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -293,15 +325,16 @@ export default function NewAppointmentPage() {
                   <SelectContent>
                     {resourcesLoading ? (
                       <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Loading resources...
                       </div>
                     ) : resources.length === 0 ? (
                       <div className="py-4 text-center text-sm text-muted-foreground">
                         No resources available. Create one in{' '}
-                        <a href="/scheduling/resources" className="underline text-primary">
+                        <a href="/scheduling/resources" className="text-primary underline">
                           Resources
-                        </a>.
+                        </a>
+                        .
                       </div>
                     ) : (
                       resources.map((r) => (
@@ -333,11 +366,7 @@ export default function NewAppointmentPage() {
                 </div>
                 <div className="flex-1">
                   <Label>End *</Label>
-                  <Input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
+                  <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -345,10 +374,13 @@ export default function NewAppointmentPage() {
             {/* Available Slots */}
             {selectedResourceId && date && (
               <div>
-                <p className="text-sm font-medium mb-2">
+                <p className="mb-2 text-sm font-medium">
                   Available Slots
                   {availability && (
-                    <span className="text-muted-foreground font-normal"> ({slots.length} available)</span>
+                    <span className="font-normal text-muted-foreground">
+                      {' '}
+                      ({slots.length} available)
+                    </span>
                   )}
                 </p>
                 {slots.length > 0 ? (
@@ -386,7 +418,7 @@ export default function NewAppointmentPage() {
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={!canSubmit || createMutation.isPending}>
-          {createMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+          {createMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
           Schedule Appointment
         </Button>
       </div>

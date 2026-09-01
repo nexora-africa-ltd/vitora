@@ -116,7 +116,11 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
       setEnrollDialogOpen(false);
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to create HEI follow-up.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to create HEI follow-up.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -175,7 +179,7 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">HEI Follow-up</h3>
           <HelpPopover content="HIV-Exposed Infant follow-up tracking. Monitor PCR tests at 6 weeks, 9 months, and 18 months. Track ARV prophylaxis and feeding status." />
@@ -204,7 +208,10 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
                 </div>
                 <div className="space-y-2">
                   <Label>Mother ART Status</Label>
-                  <Select value={motherArt} onValueChange={(v) => setMotherArt(v as MotherARTStatus)}>
+                  <Select
+                    value={motherArt}
+                    onValueChange={(v) => setMotherArt(v as MotherARTStatus)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -219,7 +226,10 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
                 </div>
                 <div className="space-y-2">
                   <Label>Infant ARV Prophylaxis</Label>
-                  <Select value={infantArv} onValueChange={(v) => setInfantArv(v as InfantARVProphylaxis)}>
+                  <Select
+                    value={infantArv}
+                    onValueChange={(v) => setInfantArv(v as InfantARVProphylaxis)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
@@ -234,7 +244,10 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
                 </div>
                 <div className="space-y-2">
                   <Label>Breastfeeding Status</Label>
-                  <Select value={feedingStatus} onValueChange={(v) => setFeedingStatus(v as HEIBreastfeedingStatus)}>
+                  <Select
+                    value={feedingStatus}
+                    onValueChange={(v) => setFeedingStatus(v as HEIBreastfeedingStatus)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
@@ -249,14 +262,14 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
                 </div>
                 <div className="space-y-2">
                   <Label>Notes</Label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={2}
-                  />
+                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setEnrollDialogOpen(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEnrollDialogOpen(false)}
+                  >
                     Cancel
                   </Button>
                   <Button type="submit" disabled={createMutation.isPending}>
@@ -281,8 +294,8 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
           {followups.map((hei) => (
             <Card key={hei.id}>
               <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-base flex items-center gap-2">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <Shield className="h-5 w-5" />
                     HEI {hei.hei_number}
                   </CardTitle>
@@ -295,7 +308,7 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
                 </p>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
                   <div>
                     <span className="text-muted-foreground">Mother ART:</span>{' '}
                     {hei.mother_art_status.replace(/_/g, ' ')}
@@ -368,7 +381,10 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
                           </div>
                           <div className="space-y-2">
                             <Label>Result</Label>
-                            <Select value={pcrResult} onValueChange={(v) => setPcrResult(v as PCRResult)}>
+                            <Select
+                              value={pcrResult}
+                              onValueChange={(v) => setPcrResult(v as PCRResult)}
+                            >
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
@@ -397,11 +413,17 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
                             />
                           </div>
                           <div className="flex justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => setPcrDialogOpen(false)}>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setPcrDialogOpen(false)}
+                            >
                               Cancel
                             </Button>
                             <Button type="submit" disabled={pcrMutation.isPending}>
-                              {pcrMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              {pcrMutation.isPending && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              )}
                               Record Test
                             </Button>
                           </div>

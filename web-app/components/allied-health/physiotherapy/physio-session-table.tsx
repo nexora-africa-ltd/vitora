@@ -114,9 +114,7 @@ export function PhysioSessionTable({ sessions, orderId }: PhysioSessionTableProp
           return (
             <TableRow key={session.id}>
               <TableCell className="font-mono text-sm">{session.session_number}</TableCell>
-              <TableCell>
-                {format(parseISO(session.scheduled_date), 'MMM d, yyyy')}
-              </TableCell>
+              <TableCell>{format(parseISO(session.scheduled_date), 'MMM d, yyyy')}</TableCell>
               <TableCell>{session.scheduled_time || '-'}</TableCell>
               <TableCell>{session.therapist_name || 'Unassigned'}</TableCell>
               <TableCell>
@@ -132,13 +130,13 @@ export function PhysioSessionTable({ sessions, orderId }: PhysioSessionTableProp
                   <DropdownMenuContent align="end">
                     {canStart && (
                       <DropdownMenuItem onClick={() => handleStart(session.id)}>
-                        <Play className="h-4 w-4 mr-2" />
+                        <Play className="mr-2 h-4 w-4" />
                         Start Session
                       </DropdownMenuItem>
                     )}
                     {canMarkNoShow && (
                       <DropdownMenuItem onClick={() => handleNoShow(session.id)}>
-                        <UserX className="h-4 w-4 mr-2" />
+                        <UserX className="mr-2 h-4 w-4" />
                         Mark No-Show
                       </DropdownMenuItem>
                     )}
@@ -147,13 +145,13 @@ export function PhysioSessionTable({ sessions, orderId }: PhysioSessionTableProp
                         onClick={() => handleCancel(session.id)}
                         className="text-destructive"
                       >
-                        <XCircle className="h-4 w-4 mr-2" />
+                        <XCircle className="mr-2 h-4 w-4" />
                         Cancel
                       </DropdownMenuItem>
                     )}
                     {session.status === 'IN_PROGRESS' && (
                       <DropdownMenuItem>
-                        <CheckCircle className="h-4 w-4 mr-2" />
+                        <CheckCircle className="mr-2 h-4 w-4" />
                         Complete Session
                       </DropdownMenuItem>
                     )}

@@ -28,11 +28,13 @@ import {
 
 const BASE = '/api/moh-reports';
 
-const DHIS2SubmitResponseSchema = z.object({
-  status: z.string().optional(),
-  message: z.string().optional(),
-  submitted: z.boolean().optional(),
-}).passthrough();
+const DHIS2SubmitResponseSchema = z
+  .object({
+    status: z.string().optional(),
+    message: z.string().optional(),
+    submitted: z.boolean().optional(),
+  })
+  .passthrough();
 
 export const mohReportsApi = {
   // -----------------------------------------------------------------------

@@ -209,7 +209,12 @@ export interface LeveyJenningsData {
 // EQA / Proficiency Testing
 // ============================================================================
 
-export type EQASurveyStatus = 'PENDING' | 'IN_PROGRESS' | 'SUBMITTED' | 'RESULTS_RECEIVED' | 'CLOSED';
+export type EQASurveyStatus =
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'SUBMITTED'
+  | 'RESULTS_RECEIVED'
+  | 'CLOSED';
 export type EQAPerformance = 'ACCEPTABLE' | 'WARNING' | 'UNACCEPTABLE' | 'PENDING';
 
 export interface EQASurvey {

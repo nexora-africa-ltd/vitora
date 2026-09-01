@@ -108,10 +108,12 @@ export default function NewMCHRegistrationPage() {
                     value={enrollmentId}
                     onChange={setEnrollmentId}
                   />
-                  <div className="flex items-start gap-2 p-3 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-xs">
-                    <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                  <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
                     <p>
-                      If you don&apos;t link an existing ANC enrollment, one will be <strong>automatically created</strong> when you submit this registration, so the mother appears in the ANC clinic queue.
+                      If you don&apos;t link an existing ANC enrollment, one will be{' '}
+                      <strong>automatically created</strong> when you submit this registration, so
+                      the mother appears in the ANC clinic queue.
                     </p>
                   </div>
                 </div>
@@ -137,13 +139,9 @@ export default function NewMCHRegistrationPage() {
 
               <div className="flex items-center justify-between">
                 <Label htmlFor="linda_jamii">Linda Jamii Beneficiary</Label>
-                <Switch
-                  id="linda_jamii"
-                  checked={lindaJamii}
-                  onCheckedChange={setLindaJamii}
-                />
+                <Switch id="linda_jamii" checked={lindaJamii} onCheckedChange={setLindaJamii} />
               </div>
-              <p className="text-xs text-muted-foreground -mt-2">
+              <p className="-mt-2 text-xs text-muted-foreground">
                 Linda Jamii beneficiaries receive free maternity services.
               </p>
             </CardContent>
@@ -157,11 +155,7 @@ export default function NewMCHRegistrationPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="high_risk">High Risk Pregnancy</Label>
-                <Switch
-                  id="high_risk"
-                  checked={isHighRisk}
-                  onCheckedChange={setIsHighRisk}
-                />
+                <Switch id="high_risk" checked={isHighRisk} onCheckedChange={setIsHighRisk} />
               </div>
 
               {isHighRisk && (
@@ -179,13 +173,9 @@ export default function NewMCHRegistrationPage() {
 
               <div className="flex items-center justify-between">
                 <Label htmlFor="gbv_related">GBV Related</Label>
-                <Switch
-                  id="gbv_related"
-                  checked={gbvRelated}
-                  onCheckedChange={setGbvRelated}
-                />
+                <Switch id="gbv_related" checked={gbvRelated} onCheckedChange={setGbvRelated} />
               </div>
-              <p className="text-xs text-muted-foreground -mt-2">
+              <p className="-mt-2 text-xs text-muted-foreground">
                 GBV cases are marked as sensitive and have restricted access.
               </p>
             </CardContent>
@@ -208,7 +198,7 @@ export default function NewMCHRegistrationPage() {
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end mt-6">
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="outline"

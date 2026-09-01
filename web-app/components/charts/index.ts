@@ -18,24 +18,24 @@
  */
 
 // Chart Components
-export { BarChart } from "./bar-chart";
-export type { BarChartProps } from "./bar-chart";
+export { BarChart } from './bar-chart';
+export type { BarChartProps } from './bar-chart';
 
-export { LineChart } from "./line-chart";
-export type { LineChartProps } from "./line-chart";
+export { LineChart } from './line-chart';
+export type { LineChartProps } from './line-chart';
 
-export { PieChart, DonutChart } from "./pie-chart";
-export type { PieChartProps, PieChartDataItem } from "./pie-chart";
+export { PieChart, DonutChart } from './pie-chart';
+export type { PieChartProps, PieChartDataItem } from './pie-chart';
 
-export { AreaChart, StackedAreaChart } from "./area-chart";
-export type { AreaChartProps } from "./area-chart";
+export { AreaChart, StackedAreaChart } from './area-chart';
+export type { AreaChartProps } from './area-chart';
 
-export { TrendIndicator, TrendBadge, calculateTrend } from "./trend-indicator";
-export type { TrendIndicatorProps, TrendBadgeProps, TrendDirection } from "./trend-indicator";
+export { TrendIndicator, TrendBadge, calculateTrend } from './trend-indicator';
+export type { TrendIndicatorProps, TrendBadgeProps, TrendDirection } from './trend-indicator';
 
 // Empty State Component
-export { ChartEmptyState, withChartEmptyState } from "./chart-empty-state";
-export type { ChartEmptyStateProps, ChartType } from "./chart-empty-state";
+export { ChartEmptyState, withChartEmptyState } from './chart-empty-state';
+export type { ChartEmptyStateProps, ChartType } from './chart-empty-state';
 
 // Chart Configurations
 export {
@@ -56,7 +56,7 @@ export {
   claimsStatusConfig,
   monthlyTrendConfig,
   queueStatusConfig,
-} from "./chart-config";
+} from './chart-config';
 
 // Re-export base chart primitives for custom usage
 export {
@@ -67,4 +67,4 @@ export {
   ChartLegendContent,
   ChartStyle,
   type ChartConfig,
-} from "@/components/ui/chart";
+} from '@/components/ui/chart';

@@ -96,7 +96,11 @@ const MODULE_GROUPS = [
 
 type WizardStep = 'facility' | 'modules' | 'clinic' | 'invite';
 
-const WIZARD_STEPS: { key: WizardStep; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+const WIZARD_STEPS: {
+  key: WizardStep;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
   { key: 'facility', label: 'Facility', icon: Building2 },
   { key: 'modules', label: 'Modules', icon: Settings2 },
   { key: 'clinic', label: 'Clinic', icon: Stethoscope },
@@ -196,7 +200,10 @@ export default function OnboardingPage() {
 
   // Clinic state
   const [isSeeding, setIsSeeding] = useState(false);
-  const [seedResult, setSeedResult] = useState<{ created: { code: string; name: string }[]; total: number } | null>(null);
+  const [seedResult, setSeedResult] = useState<{
+    created: { code: string; name: string }[];
+    total: number;
+  } | null>(null);
   const [manualClinicName, setManualClinicName] = useState('');
   const [manualClinicCode, setManualClinicCode] = useState('');
   const [isCreatingClinic, setIsCreatingClinic] = useState(false);
@@ -258,8 +265,10 @@ export default function OnboardingPage() {
 
       // Jump to first incomplete step
       if (newStatus.facility && !newStatus.modules) setCurrentStep('modules');
-      else if (newStatus.facility && newStatus.modules && !newStatus.clinic) setCurrentStep('clinic');
-      else if (newStatus.facility && newStatus.modules && newStatus.clinic) setCurrentStep('invite');
+      else if (newStatus.facility && newStatus.modules && !newStatus.clinic)
+        setCurrentStep('clinic');
+      else if (newStatus.facility && newStatus.modules && newStatus.clinic)
+        setCurrentStep('invite');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load onboarding status');
     } finally {
@@ -291,7 +300,8 @@ export default function OnboardingPage() {
   // Facility creation
   // ==========================================================================
 
-  const facilityValid = facilityName.trim() && mflCode.trim() && level && ownership && countyId && subCountyId;
+  const facilityValid =
+    facilityName.trim() && mflCode.trim() && level && ownership && countyId && subCountyId;
 
   const handleCreateFacility = async () => {
     if (!facilityValid) return;
@@ -364,7 +374,13 @@ export default function OnboardingPage() {
       }
     } catch (err: unknown) {
       const detail = getErrorDetail(err);
-      setError(typeof detail === 'string' ? detail : (err instanceof Error ? err.message : 'Failed to seed clinics'));
+      setError(
+        typeof detail === 'string'
+          ? detail
+          : err instanceof Error
+            ? err.message
+            : 'Failed to seed clinics'
+      );
     } finally {
       setIsSeeding(false);
     }
@@ -375,8 +391,13 @@ export default function OnboardingPage() {
     setIsCreatingClinic(true);
     setError(null);
     try {
-      const code = manualClinicCode.trim() || manualClinicName.trim().toUpperCase().replace(/\s+/g, '-').slice(0, 20);
-      const payload: Parameters<typeof clinicsApi.create>[0] & { facility: number; organization?: number } = {
+      const code =
+        manualClinicCode.trim() ||
+        manualClinicName.trim().toUpperCase().replace(/\s+/g, '-').slice(0, 20);
+      const payload: Parameters<typeof clinicsApi.create>[0] & {
+        facility: number;
+        organization?: number;
+      } = {
         name: manualClinicName.trim(),
         code,
         clinic_type: 'GENERAL_OPD',
@@ -423,7 +444,13 @@ export default function OnboardingPage() {
       setStepsStatus((prev) => ({ ...prev, invite: true }));
     } catch (err: unknown) {
       const detail = getErrorDetail(err);
-      setError(typeof detail === 'string' ? detail : err instanceof Error ? err.message : 'Failed to send invitation');
+      setError(
+        typeof detail === 'string'
+          ? detail
+          : err instanceof Error
+            ? err.message
+            : 'Failed to send invitation'
+      );
     } finally {
       setIsInviting(false);
     }
@@ -442,7 +469,9 @@ export default function OnboardingPage() {
         const stored = JSON.parse(localStorage.getItem('vitora_user') || '{}');
         stored.onboarding_complete = true;
         localStorage.setItem('vitora_user', JSON.stringify(stored));
-      } catch { /* best-effort */ }
+      } catch {
+        /* best-effort */
+      }
       sessionStorage.removeItem('vitora_onboarding_banner_dismissed');
       window.location.href = '/dashboard';
     } catch (err: unknown) {
@@ -483,15 +512,23 @@ export default function OnboardingPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center bg-background px-4 py-6 sm:py-10">
-      <AnimatedThemeToggle className="absolute top-4 right-4 z-50" />
+      <AnimatedThemeToggle className="absolute right-4 top-4 z-50" />
 
       {/* Header */}
       <div className="mb-6 text-center">
-        <VitoraLogo tone="dark" alt="Vitora HMIS" className="mx-auto mb-4 w-28 dark:hidden" priority />
-        <VitoraLogo tone="light" alt="Vitora HMIS" className="mx-auto mb-4 hidden w-28 dark:block" priority />
-        <h1 className="text-xl font-bold sm:text-2xl">
-          Set up your organization
-        </h1>
+        <VitoraLogo
+          tone="dark"
+          alt="Vitora HMIS"
+          className="mx-auto mb-4 w-28 dark:hidden"
+          priority
+        />
+        <VitoraLogo
+          tone="light"
+          alt="Vitora HMIS"
+          className="mx-auto mb-4 hidden w-28 dark:block"
+          priority
+        />
+        <h1 className="text-xl font-bold sm:text-2xl">Set up your organization</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Let&apos;s get {user?.first_name ? `${user.first_name}'s` : 'your'} facility ready.
         </p>
@@ -515,11 +552,7 @@ export default function OnboardingPage() {
                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
-              {isDone ? (
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              ) : (
-                <Icon className="h-3.5 w-3.5" />
-              )}
+              {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
               <span className="hidden sm:inline">{step.label}</span>
             </button>
           );
@@ -531,7 +564,12 @@ export default function OnboardingPage() {
         <div className="mb-4 flex w-full max-w-lg items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="ml-auto text-destructive/70 hover:text-destructive">×</button>
+          <button
+            onClick={() => setError(null)}
+            className="ml-auto text-destructive/70 hover:text-destructive"
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -546,7 +584,8 @@ export default function OnboardingPage() {
                 Create your facility
               </div>
               <p className="text-sm text-muted-foreground">
-                Enter your facility&apos;s details as registered with the Kenya Master Health Facility List (KMHFL).
+                Enter your facility&apos;s details as registered with the Kenya Master Health
+                Facility List (KMHFL).
               </p>
 
               {stepsStatus.facility && createdFacility ? (
@@ -593,7 +632,9 @@ export default function OnboardingPage() {
                       >
                         <option value="">Select level</option>
                         {KEPH_LEVELS.map((l) => (
-                          <option key={l.value} value={l.value}>{l.label}</option>
+                          <option key={l.value} value={l.value}>
+                            {l.label}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -607,7 +648,9 @@ export default function OnboardingPage() {
                       >
                         <option value="">Select ownership</option>
                         {OWNERSHIP_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -626,7 +669,9 @@ export default function OnboardingPage() {
                       >
                         <option value="">Select county</option>
                         {(counties || []).map((c: County) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -645,7 +690,9 @@ export default function OnboardingPage() {
                       >
                         <option value="">Select sub-county</option>
                         {(subCounties || []).map((sc: SubCounty) => (
-                          <option key={sc.id} value={sc.id}>{sc.name}</option>
+                          <option key={sc.id} value={sc.id}>
+                            {sc.name}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -655,12 +702,16 @@ export default function OnboardingPage() {
                         id="ob-ward"
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         value={wardId ?? ''}
-                        onChange={(e) => setWardId(e.target.value ? Number(e.target.value) : undefined)}
+                        onChange={(e) =>
+                          setWardId(e.target.value ? Number(e.target.value) : undefined)
+                        }
                         disabled={!subCountyId}
                       >
                         <option value="">Select ward (optional)</option>
                         {(wards || []).map((w: LocationWard) => (
-                          <option key={w.id} value={w.id}>{w.name}</option>
+                          <option key={w.id} value={w.id}>
+                            {w.name}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -670,7 +721,9 @@ export default function OnboardingPage() {
                         onCheckedChange={setShaContracted}
                         id="ob-sha"
                       />
-                      <Label htmlFor="ob-sha" className="cursor-pointer">SHA contracted facility</Label>
+                      <Label htmlFor="ob-sha" className="cursor-pointer">
+                        SHA contracted facility
+                      </Label>
                     </div>
                     {shaContracted && (
                       <div className="sm:col-span-2">
@@ -709,8 +762,8 @@ export default function OnboardingPage() {
               </div>
               <p className="text-sm text-muted-foreground">
                 Choose which modules to activate for{' '}
-                <span className="font-medium">{createdFacility?.name || 'your facility'}</span>.
-                You can change these later in Settings.
+                <span className="font-medium">{createdFacility?.name || 'your facility'}</span>. You
+                can change these later in Settings.
               </p>
 
               <div className="space-y-4">
@@ -737,11 +790,7 @@ export default function OnboardingPage() {
                 ))}
               </div>
 
-              <Button
-                className="w-full"
-                disabled={isSavingModules}
-                onClick={handleSaveModules}
-              >
+              <Button className="w-full" disabled={isSavingModules} onClick={handleSaveModules}>
                 {isSavingModules && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save & Continue
               </Button>
@@ -763,7 +812,7 @@ export default function OnboardingPage() {
               </p>
 
               {/* Show created clinics (seeded or manual) */}
-              {(seedResult && seedResult.created.length > 0 || createdClinics.length > 0) && (
+              {((seedResult && seedResult.created.length > 0) || createdClinics.length > 0) && (
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
@@ -776,7 +825,10 @@ export default function OnboardingPage() {
                       <li key={c.code}>&bull; {c.name}</li>
                     ))}
                     {(seedResult?.created.length ?? 0) + createdClinics.length > 5 && (
-                      <li>&hellip;and {(seedResult?.created.length ?? 0) + createdClinics.length - 5} more</li>
+                      <li>
+                        &hellip;and {(seedResult?.created.length ?? 0) + createdClinics.length - 5}{' '}
+                        more
+                      </li>
                     )}
                   </ul>
                 </div>
@@ -784,22 +836,20 @@ export default function OnboardingPage() {
 
               {/* Seed standard clinics button */}
               {!seedResult && (
-                <Button
-                  className="w-full"
-                  disabled={isSeeding}
-                  onClick={handleSeedClinics}
-                >
+                <Button className="w-full" disabled={isSeeding} onClick={handleSeedClinics}>
                   {isSeeding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Seed standard Kenya clinics
                 </Button>
               )}
 
               {/* Manual clinic creation */}
-              <div className="rounded-lg border p-4 space-y-3">
+              <div className="space-y-3 rounded-lg border p-4">
                 <p className="text-sm font-medium">Or add a clinic manually</p>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <div className="flex-1">
-                    <Label htmlFor="clinic-name" className="text-xs">Clinic name *</Label>
+                    <Label htmlFor="clinic-name" className="text-xs">
+                      Clinic name *
+                    </Label>
                     <Input
                       id="clinic-name"
                       placeholder="e.g. General OPD"
@@ -808,7 +858,9 @@ export default function OnboardingPage() {
                     />
                   </div>
                   <div className="w-full sm:w-36">
-                    <Label htmlFor="clinic-code" className="text-xs">Code (optional)</Label>
+                    <Label htmlFor="clinic-code" className="text-xs">
+                      Code (optional)
+                    </Label>
                     <Input
                       id="clinic-code"
                       placeholder="e.g. OPD-001"
@@ -830,11 +882,7 @@ export default function OnboardingPage() {
 
               {/* Navigation */}
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  className="flex-1"
-                  disabled={!stepsStatus.clinic}
-                  onClick={goForward}
-                >
+                <Button className="flex-1" disabled={!stepsStatus.clinic} onClick={goForward}>
                   Continue <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -851,7 +899,8 @@ export default function OnboardingPage() {
                 Invite your team
               </div>
               <p className="text-sm text-muted-foreground">
-                Send email invitations to staff members. They&apos;ll receive a link to create their account and join your organization.
+                Send email invitations to staff members. They&apos;ll receive a link to create their
+                account and join your organization.
               </p>
 
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -902,10 +951,7 @@ export default function OnboardingPage() {
 
         <div className="flex gap-2">
           {currentStep === 'invite' ? (
-            <Button
-              onClick={handleComplete}
-              disabled={isCompleting || !allDone}
-            >
+            <Button onClick={handleComplete} disabled={isCompleting || !allDone}>
               {isCompleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Finish Setup
             </Button>
@@ -920,12 +966,7 @@ export default function OnboardingPage() {
 
       {/* Footer */}
       <div className="mt-auto pt-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground"
-          onClick={logout}
-        >
+        <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={logout}>
           <LogOut className="mr-1.5 h-3.5 w-3.5" />
           Sign out
         </Button>

@@ -155,7 +155,7 @@ export default function HubSetupWizardPage() {
     config.encryptionKey.trim();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-slate-900 p-4">
       <div className="w-full max-w-2xl space-y-6">
         {/* Header */}
         <div className="text-center">
@@ -188,7 +188,9 @@ export default function HubSetupWizardPage() {
                 <span className="hidden sm:inline">{s.label}</span>
               </button>
               {i < steps.length - 1 && (
-                <div className={`mx-1 h-px w-6 ${i < stepIndex ? 'bg-cyan-500' : 'bg-slate-600'}`} />
+                <div
+                  className={`mx-1 h-px w-6 ${i < stepIndex ? 'bg-cyan-500' : 'bg-slate-600'}`}
+                />
               )}
             </div>
           ))}
@@ -249,10 +251,16 @@ export default function HubSetupWizardPage() {
                       { label: 'Python', detail: 'Python 3.11+ (auto-installed if missing)' },
                       { label: 'RAM', detail: '2GB minimum (4GB recommended)' },
                       { label: 'Storage', detail: '1GB free disk space' },
-                      { label: 'Network', detail: 'LAN connectivity (internet for initial setup and cloud sync)' },
+                      {
+                        label: 'Network',
+                        detail: 'LAN connectivity (internet for initial setup and cloud sync)',
+                      },
                       { label: 'Permissions', detail: 'Root/sudo access for installation' },
                     ].map((req) => (
-                      <div key={req.label} className="flex items-start gap-3 rounded-md border border-slate-600 p-3">
+                      <div
+                        key={req.label}
+                        className="flex items-start gap-3 rounded-md border border-slate-600 p-3"
+                      >
                         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
                         <div>
                           <span className="text-sm font-medium text-white">{req.label}</span>
@@ -264,22 +272,51 @@ export default function HubSetupWizardPage() {
                 )}
                 {platform === 'raspberry-pi' && (
                   <>
-                    <div className="rounded-md border border-cyan-700/50 bg-cyan-950/20 p-3 mb-3">
-                      <p className="text-xs text-cyan-300 font-medium mb-1">Recommended for small facilities</p>
+                    <div className="mb-3 rounded-md border border-cyan-700/50 bg-cyan-950/20 p-3">
+                      <p className="mb-1 text-xs font-medium text-cyan-300">
+                        Recommended for small facilities
+                      </p>
                       <p className="text-xs text-slate-400">
-                        A Raspberry Pi 4/5 makes an excellent always-on hub server. The installer auto-configures
-                        mDNS discovery so desktop clients find it as <code className="bg-slate-800 px-1 rounded text-cyan-300">vitora-hub.local</code>.
+                        A Raspberry Pi 4/5 makes an excellent always-on hub server. The installer
+                        auto-configures mDNS discovery so desktop clients find it as{' '}
+                        <code className="rounded bg-slate-800 px-1 text-cyan-300">
+                          vitora-hub.local
+                        </code>
+                        .
                       </p>
                     </div>
                     {[
-                      { label: 'Hardware', detail: 'Raspberry Pi 4 (2GB+) or Pi 5. Include a case with passive cooling.' },
-                      { label: 'OS', detail: 'Raspberry Pi OS (Bookworm/Debian 12) — use "Lite" for headless.' },
-                      { label: 'Storage', detail: '16GB+ micro SD card (32GB recommended). Consider USB SSD for longevity.' },
-                      { label: 'Network', detail: 'Ethernet (preferred) or WiFi. Static IP recommended.' },
-                      { label: 'Power', detail: 'Official USB-C power supply (5V 3A for Pi 4, 5V 5A for Pi 5).' },
-                      { label: 'SSH', detail: 'Enable SSH during OS imaging (Raspberry Pi Imager → gear icon).' },
+                      {
+                        label: 'Hardware',
+                        detail:
+                          'Raspberry Pi 4 (2GB+) or Pi 5. Include a case with passive cooling.',
+                      },
+                      {
+                        label: 'OS',
+                        detail: 'Raspberry Pi OS (Bookworm/Debian 12) — use "Lite" for headless.',
+                      },
+                      {
+                        label: 'Storage',
+                        detail:
+                          '16GB+ micro SD card (32GB recommended). Consider USB SSD for longevity.',
+                      },
+                      {
+                        label: 'Network',
+                        detail: 'Ethernet (preferred) or WiFi. Static IP recommended.',
+                      },
+                      {
+                        label: 'Power',
+                        detail: 'Official USB-C power supply (5V 3A for Pi 4, 5V 5A for Pi 5).',
+                      },
+                      {
+                        label: 'SSH',
+                        detail: 'Enable SSH during OS imaging (Raspberry Pi Imager → gear icon).',
+                      },
                     ].map((req) => (
-                      <div key={req.label} className="flex items-start gap-3 rounded-md border border-slate-600 p-3">
+                      <div
+                        key={req.label}
+                        className="flex items-start gap-3 rounded-md border border-slate-600 p-3"
+                      >
                         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
                         <div>
                           <span className="text-sm font-medium text-white">{req.label}</span>
@@ -287,14 +324,35 @@ export default function HubSetupWizardPage() {
                         </div>
                       </div>
                     ))}
-                    <div className="rounded-md border border-slate-600 bg-slate-900/50 p-3 mt-2">
-                      <p className="text-xs font-medium text-slate-300 mb-2">Quick Pi Setup (before running installer):</p>
-                      <ol className="text-xs text-slate-400 space-y-1 list-decimal list-inside">
-                        <li>Flash Pi OS Lite with <a href="https://www.raspberrypi.com/software/" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">Raspberry Pi Imager</a></li>
-                        <li>In Imager settings: enable SSH, set username/password, configure WiFi (if no ethernet)</li>
+                    <div className="mt-2 rounded-md border border-slate-600 bg-slate-900/50 p-3">
+                      <p className="mb-2 text-xs font-medium text-slate-300">
+                        Quick Pi Setup (before running installer):
+                      </p>
+                      <ol className="list-inside list-decimal space-y-1 text-xs text-slate-400">
+                        <li>
+                          Flash Pi OS Lite with{' '}
+                          <a
+                            href="https://www.raspberrypi.com/software/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-cyan-400 hover:underline"
+                          >
+                            Raspberry Pi Imager
+                          </a>
+                        </li>
+                        <li>
+                          In Imager settings: enable SSH, set username/password, configure WiFi (if
+                          no ethernet)
+                        </li>
                         <li>Insert SD card, connect ethernet (recommended), power on</li>
-                        <li>Find Pi IP: check router DHCP leases, or try <code className="bg-slate-800 px-1 rounded">ping raspberrypi.local</code></li>
-                        <li>SSH in: <code className="bg-slate-800 px-1 rounded">ssh pi@{'<ip-address>'}</code></li>
+                        <li>
+                          Find Pi IP: check router DHCP leases, or try{' '}
+                          <code className="rounded bg-slate-800 px-1">ping raspberrypi.local</code>
+                        </li>
+                        <li>
+                          SSH in:{' '}
+                          <code className="rounded bg-slate-800 px-1">ssh pi@{'<ip-address>'}</code>
+                        </li>
                         <li>Run the installer command (shown in step 3)</li>
                       </ol>
                     </div>
@@ -303,14 +361,26 @@ export default function HubSetupWizardPage() {
                 {platform === 'windows' && (
                   <>
                     {[
-                      { label: 'Operating System', detail: 'Windows 10/11 or Windows Server 2019+' },
-                      { label: 'Python', detail: 'Python 3.11+ installed and on PATH (python.org)' },
+                      {
+                        label: 'Operating System',
+                        detail: 'Windows 10/11 or Windows Server 2019+',
+                      },
+                      {
+                        label: 'Python',
+                        detail: 'Python 3.11+ installed and on PATH (python.org)',
+                      },
                       { label: 'RAM', detail: '4GB minimum (8GB recommended)' },
                       { label: 'Storage', detail: '2GB free disk space' },
-                      { label: 'Network', detail: 'LAN connectivity (internet for initial setup and cloud sync)' },
+                      {
+                        label: 'Network',
+                        detail: 'LAN connectivity (internet for initial setup and cloud sync)',
+                      },
                       { label: 'Permissions', detail: 'Administrator privileges (Run as Admin)' },
                     ].map((req) => (
-                      <div key={req.label} className="flex items-start gap-3 rounded-md border border-slate-600 p-3">
+                      <div
+                        key={req.label}
+                        className="flex items-start gap-3 rounded-md border border-slate-600 p-3"
+                      >
                         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
                         <div>
                           <span className="text-sm font-medium text-white">{req.label}</span>
@@ -324,7 +394,7 @@ export default function HubSetupWizardPage() {
 
               <button
                 onClick={() => setStep('configure')}
-                className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 transition-colors"
+                className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-500"
               >
                 Requirements Met — Continue
               </button>
@@ -338,9 +408,7 @@ export default function HubSetupWizardPage() {
               <p className="text-sm text-slate-400">
                 Enter the values from your Vitora cloud admin panel.
                 <br />
-                <span className="text-cyan-400">
-                  Found at: Settings → Facilities → Hub Setup
-                </span>
+                <span className="text-cyan-400">Found at: Settings → Facilities → Hub Setup</span>
               </p>
 
               <div className="space-y-3">
@@ -368,7 +436,9 @@ export default function HubSetupWizardPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-slate-300">Organization ID</label>
+                  <label className="block text-sm font-medium text-slate-300">
+                    Organization ID
+                  </label>
                   <input
                     type="text"
                     value={config.organizationId}
@@ -387,7 +457,9 @@ export default function HubSetupWizardPage() {
                     placeholder="Must match cloud key"
                     className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   />
-                  <p className="text-xs text-slate-500">The Fernet encryption key from your cloud deployment.</p>
+                  <p className="text-xs text-slate-500">
+                    The Fernet encryption key from your cloud deployment.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -417,7 +489,7 @@ export default function HubSetupWizardPage() {
               <button
                 onClick={() => setStep('install')}
                 disabled={!isConfigValid}
-                className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Continue to Installation
               </button>
@@ -439,37 +511,44 @@ export default function HubSetupWizardPage() {
               {/* Platform indicator */}
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 {platform === 'windows' ? (
-                  <><Monitor className="h-3.5 w-3.5" /> Windows (PowerShell)</>
+                  <>
+                    <Monitor className="h-3.5 w-3.5" /> Windows (PowerShell)
+                  </>
                 ) : platform === 'raspberry-pi' ? (
-                  <><Cpu className="h-3.5 w-3.5" /> Raspberry Pi (SSH)</>
+                  <>
+                    <Cpu className="h-3.5 w-3.5" /> Raspberry Pi (SSH)
+                  </>
                 ) : (
-                  <><Terminal className="h-3.5 w-3.5" /> Linux (Bash)</>
+                  <>
+                    <Terminal className="h-3.5 w-3.5" /> Linux (Bash)
+                  </>
                 )}
               </div>
 
               {/* Pi first-boot setup (optional) */}
               {platform === 'raspberry-pi' && (
-                <div className="rounded-md border border-slate-600 bg-slate-900/50 p-3 space-y-2">
+                <div className="space-y-2 rounded-md border border-slate-600 bg-slate-900/50 p-3">
                   <p className="text-xs font-medium text-slate-300">
                     Optional: Run first-boot setup (sets hostname, static IP, SD card optimization):
                   </p>
-                  <pre className="rounded bg-slate-900 border border-slate-700 p-2 text-xs text-green-300 overflow-x-auto whitespace-pre-wrap break-all">
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded border border-slate-700 bg-slate-900 p-2 text-xs text-green-300">
                     curl -sSL https://get.vitora.digital/pi-setup | sudo bash
                   </pre>
                   <p className="text-xs text-slate-500">
-                    Skip if your Pi is already configured. The main installer below handles everything else.
+                    Skip if your Pi is already configured. The main installer below handles
+                    everything else.
                   </p>
                 </div>
               )}
 
               {/* Install command */}
               <div className="relative">
-                <pre className="rounded-md bg-slate-900 border border-slate-600 p-4 text-xs text-green-300 overflow-x-auto whitespace-pre-wrap break-all">
+                <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-md border border-slate-600 bg-slate-900 p-4 text-xs text-green-300">
                   {generateInstallCommand()}
                 </pre>
                 <button
                   onClick={handleCopyCommand}
-                  className="absolute top-2 right-2 rounded-md bg-slate-700 p-1.5 text-slate-300 hover:bg-slate-600 hover:text-white transition-colors"
+                  className="absolute right-2 top-2 rounded-md bg-slate-700 p-1.5 text-slate-300 transition-colors hover:bg-slate-600 hover:text-white"
                   title="Copy to clipboard"
                 >
                   {copied ? (
@@ -480,30 +559,51 @@ export default function HubSetupWizardPage() {
                 </button>
               </div>
 
-              <div className="rounded-md bg-yellow-900/30 border border-yellow-700 p-3">
+              <div className="rounded-md border border-yellow-700 bg-yellow-900/30 p-3">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-yellow-400 mt-0.5" />
-                  <div className="text-xs text-yellow-200 space-y-1">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-400" />
+                  <div className="space-y-1 text-xs text-yellow-200">
                     <p className="font-medium">Important:</p>
-                    <ul className="list-disc list-inside space-y-0.5 text-yellow-300">
+                    <ul className="list-inside list-disc space-y-0.5 text-yellow-300">
                       {platform === 'windows' ? (
                         <>
-                          <li>Must be run in <code className="bg-slate-800 px-1 rounded">PowerShell as Administrator</code></li>
+                          <li>
+                            Must be run in{' '}
+                            <code className="rounded bg-slate-800 px-1">
+                              PowerShell as Administrator
+                            </code>
+                          </li>
                           <li>Python 3.11+ must be installed and on PATH</li>
                           <li>It will download ~50MB and install Python dependencies</li>
                           <li>A Windows service (VitoraHub) will be created and started</li>
                         </>
                       ) : platform === 'raspberry-pi' ? (
                         <>
-                          <li>SSH into the Pi first: <code className="bg-slate-800 px-1 rounded">ssh pi@raspberrypi.local</code></li>
-                          <li>Python 3.11+ will be auto-installed if needed (Pi OS Bookworm has it)</li>
-                          <li>Installation takes 5-10 minutes on Pi 4 (slower network + ARM compilation)</li>
-                          <li>mDNS will be configured — clients connect via <code className="bg-slate-800 px-1 rounded">vitora-hub.local</code></li>
+                          <li>
+                            SSH into the Pi first:{' '}
+                            <code className="rounded bg-slate-800 px-1">
+                              ssh pi@raspberrypi.local
+                            </code>
+                          </li>
+                          <li>
+                            Python 3.11+ will be auto-installed if needed (Pi OS Bookworm has it)
+                          </li>
+                          <li>
+                            Installation takes 5-10 minutes on Pi 4 (slower network + ARM
+                            compilation)
+                          </li>
+                          <li>
+                            mDNS will be configured — clients connect via{' '}
+                            <code className="rounded bg-slate-800 px-1">vitora-hub.local</code>
+                          </li>
                           <li>SD card write optimization applied automatically</li>
                         </>
                       ) : (
                         <>
-                          <li>The command requires <code className="bg-slate-800 px-1 rounded">sudo</code> (root access)</li>
+                          <li>
+                            The command requires{' '}
+                            <code className="rounded bg-slate-800 px-1">sudo</code> (root access)
+                          </li>
                           <li>It will download ~50MB and install Python dependencies</li>
                           <li>Installation takes 2-5 minutes depending on internet speed</li>
                           <li>A systemd service will be created and started automatically</li>
@@ -516,15 +616,17 @@ export default function HubSetupWizardPage() {
 
               {/* Raspberry Pi mDNS discovery note */}
               {platform === 'raspberry-pi' && (
-                <div className="rounded-md bg-cyan-900/20 border border-cyan-700/50 p-3">
+                <div className="rounded-md border border-cyan-700/50 bg-cyan-900/20 p-3">
                   <div className="flex items-start gap-2">
-                    <Search className="h-4 w-4 shrink-0 text-cyan-400 mt-0.5" />
-                    <div className="text-xs text-cyan-200 space-y-1">
+                    <Search className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
+                    <div className="space-y-1 text-xs text-cyan-200">
                       <p className="font-medium">Auto-Discovery</p>
                       <p className="text-cyan-300">
                         After installation, the Pi will advertise itself on the local network as{' '}
-                        <code className="bg-slate-800 px-1 rounded font-mono">vitora-hub.local:{config.port}</code>.
-                        Desktop apps on the same network will automatically detect it.
+                        <code className="rounded bg-slate-800 px-1 font-mono">
+                          vitora-hub.local:{config.port}
+                        </code>
+                        . Desktop apps on the same network will automatically detect it.
                       </p>
                     </div>
                   </div>
@@ -533,21 +635,24 @@ export default function HubSetupWizardPage() {
 
               {/* Log output (if install triggered via Tauri shell) */}
               {installLog.length > 0 && (
-                <div className="rounded-md bg-slate-900 border border-slate-600 p-3 max-h-48 overflow-y-auto">
+                <div className="max-h-48 overflow-y-auto rounded-md border border-slate-600 bg-slate-900 p-3">
                   {installLog.map((line, i) => (
-                    <p key={i} className="text-xs text-slate-300 font-mono">{line}</p>
+                    <p key={i} className="font-mono text-xs text-slate-300">
+                      {line}
+                    </p>
                   ))}
                 </div>
               )}
 
               {installError && (
-                <div className="rounded-md bg-red-900/50 border border-red-700 px-3 py-2 text-sm text-red-300">
+                <div className="rounded-md border border-red-700 bg-red-900/50 px-3 py-2 text-sm text-red-300">
                   {installError}
                 </div>
               )}
 
               <p className="text-sm text-slate-400">
-                Once the installation completes, click &quot;Verify&quot; below to confirm it&apos;s running.
+                Once the installation completes, click &quot;Verify&quot; below to confirm it&apos;s
+                running.
               </p>
 
               <button
@@ -555,7 +660,7 @@ export default function HubSetupWizardPage() {
                   setInstallError('');
                   setStep('verify');
                 }}
-                className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 transition-colors"
+                className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-500"
               >
                 Installation Done — Verify
               </button>
@@ -574,16 +679,18 @@ export default function HubSetupWizardPage() {
                 {verified ? (
                   <>
                     <CheckCircle2 className="h-12 w-12 text-green-400" />
-                    <p className="text-green-300 font-medium">Hub is running!</p>
+                    <p className="font-medium text-green-300">Hub is running!</p>
                     <p className="text-xs text-slate-400">
                       Listening on port {config.port}. Desktop app will connect to{' '}
-                      <code className="bg-slate-700 px-1 rounded">http://127.0.0.1:{config.port}</code>
+                      <code className="rounded bg-slate-700 px-1">
+                        http://127.0.0.1:{config.port}
+                      </code>
                     </p>
                   </>
                 ) : (
                   <>
                     <Server className="h-12 w-12 text-slate-500" />
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-sm text-slate-400">
                       Click below to check if the hub is responding.
                     </p>
                   </>
@@ -591,7 +698,7 @@ export default function HubSetupWizardPage() {
               </div>
 
               {installError && (
-                <div className="rounded-md bg-red-900/50 border border-red-700 px-3 py-2 text-sm text-red-300">
+                <div className="rounded-md border border-red-700 bg-red-900/50 px-3 py-2 text-sm text-red-300">
                   {installError}
                 </div>
               )}
@@ -600,7 +707,7 @@ export default function HubSetupWizardPage() {
                 <button
                   onClick={handleVerify}
                   disabled={installing}
-                  className="w-full rounded-md bg-slate-600 px-4 py-2 text-sm font-medium text-white hover:bg-slate-500 disabled:opacity-50 transition-colors"
+                  className="w-full rounded-md bg-slate-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-500 disabled:opacity-50"
                 >
                   {installing ? (
                     <span className="flex items-center justify-center gap-2">
@@ -615,7 +722,7 @@ export default function HubSetupWizardPage() {
               {verified && (
                 <button
                   onClick={handleFinish}
-                  className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 transition-colors"
+                  className="w-full rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-500"
                 >
                   Continue to License Activation →
                 </button>
@@ -627,7 +734,10 @@ export default function HubSetupWizardPage() {
         {/* Skip link */}
         <p className="text-center text-xs text-slate-500">
           Already have a hub running?{' '}
-          <button onClick={() => router.push('/desktop-setup')} className="text-cyan-400 hover:underline">
+          <button
+            onClick={() => router.push('/desktop-setup')}
+            className="text-cyan-400 hover:underline"
+          >
             Go back to server setup
           </button>
         </p>

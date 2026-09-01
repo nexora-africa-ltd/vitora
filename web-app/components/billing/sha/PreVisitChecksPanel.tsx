@@ -131,7 +131,9 @@ function normalizeRegulator(value: string | null | undefined): string {
 }
 
 function regulatorRequiredForIdType(idType: string): boolean {
-  const normalized = String(idType || '').trim().toLowerCase();
+  const normalized = String(idType || '')
+    .trim()
+    .toLowerCase();
   if (normalized === 'national id' || normalized === 'passport') return false;
   return normalized.includes('license');
 }
@@ -194,23 +196,25 @@ function CheckCard({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="rounded-lg border bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-lg border bg-card">
         <div className="flex items-center gap-1.5 px-2 py-2 sm:gap-2 sm:px-3 sm:py-2.5">
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex flex-1 items-center gap-1.5 sm:gap-2 text-left hover:opacity-80 min-w-0"
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-left hover:opacity-80 sm:gap-2"
             >
               {open ? (
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               ) : (
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               )}
               <span className="shrink-0">{icon}</span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs sm:text-sm font-medium">{title}</p>
+                <p className="truncate text-xs font-medium sm:text-sm">{title}</p>
                 {subtitle && (
-                  <p className="truncate text-[10px] sm:text-[11px] text-muted-foreground">{subtitle}</p>
+                  <p className="truncate text-[10px] text-muted-foreground sm:text-[11px]">
+                    {subtitle}
+                  </p>
                 )}
               </div>
             </button>
@@ -278,16 +282,20 @@ export function PreVisitChecksPanel({
   const memberNumber = shaMemberNumber || member?.sha_member_number || '';
   const dhaPatientId = defaultDhaPatientId || toCrId(memberNumber);
   // Prefer SHA facility FR code from facility settings over MFL code
-  const facilityCode = defaultFacilityCode
-    || facilityDetail?.sha_facility_code
-    || facilityDetail?.dha_fr_code
-    || '';
+  const facilityCode =
+    defaultFacilityCode || facilityDetail?.sha_facility_code || facilityDetail?.dha_fr_code || '';
   // Prefer encounter clinician over logged-in user for practitioner verification.
   // Preferred lookup key is National ID; license number is fallback only.
   const nationalId = encounterClinician?.national_id || user?.national_id || '';
   const licenseNumber = encounterClinician?.license_number || user?.license_number || '';
-  const regulator = normalizeRegulator(encounterClinician?.licensing_body || user?.licensing_body || '');
-  const practitionerIdType = nationalId ? 'National ID' : licenseNumber ? 'License Number' : 'National ID';
+  const regulator = normalizeRegulator(
+    encounterClinician?.licensing_body || user?.licensing_body || ''
+  );
+  const practitionerIdType = nationalId
+    ? 'National ID'
+    : licenseNumber
+      ? 'License Number'
+      : 'National ID';
   const practitionerIdNumber = nationalId || licenseNumber || '';
 
   // -------------------------------------------------------------------------
@@ -309,7 +317,7 @@ export function PreVisitChecksPanel({
 
   const parsedEligibility = useMemo(
     () => parseEligibility(eligibilityQuery.data),
-    [eligibilityQuery.data],
+    [eligibilityQuery.data]
   );
 
   // -------------------------------------------------------------------------
@@ -333,7 +341,8 @@ export function PreVisitChecksPanel({
   // 4. Practitioner licence
   // -------------------------------------------------------------------------
   const practitionerNeedsRegulator = regulatorRequiredForIdType(practitionerIdType);
-  const practitionerEnabled = !!practitionerIdNumber && (!practitionerNeedsRegulator || !!regulator);
+  const practitionerEnabled =
+    !!practitionerIdNumber && (!practitionerNeedsRegulator || !!regulator);
   const practitionerQuery = useQuery({
     queryKey: ['ilm-practitioner', practitionerIdNumber, practitionerIdType, regulator],
     queryFn: () =>
@@ -349,7 +358,7 @@ export function PreVisitChecksPanel({
 
   const parsedPractitioner = useMemo(
     () => parseProfessional(practitionerQuery.data),
-    [practitionerQuery.data],
+    [practitionerQuery.data]
   );
 
   // -------------------------------------------------------------------------
@@ -417,8 +426,8 @@ export function PreVisitChecksPanel({
     <Card className="overflow-hidden">
       <CardHeader className="px-3 pb-3 sm:px-6">
         <CardTitle className="flex items-center justify-between gap-2 text-sm sm:text-base">
-          <div className="flex items-center gap-2 min-w-0">
-            <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+          <div className="flex min-w-0 items-center gap-2">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
             <span className="truncate">Pre-visit DHA HIE Checks</span>
           </div>
           <StatusPill
@@ -795,7 +804,7 @@ function UtilizationLookup({
           Check utilisation for an intervention
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 px-2 pt-2 pb-3">
+      <CollapsibleContent className="space-y-3 px-2 pb-3 pt-2">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div>
             <Label htmlFor="util-cr">CR number</Label>
@@ -863,7 +872,7 @@ function AdHocFacilityLookup() {
           Look up a different facility
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 px-2 pt-2 pb-3">
+      <CollapsibleContent className="space-y-3 px-2 pb-3 pt-2">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div>
             <Label htmlFor="adhoc-fac-id">Identifier</Label>
@@ -949,7 +958,7 @@ function AdHocPractitionerLookup() {
           Look up a different practitioner
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 px-2 pt-2 pb-3">
+      <CollapsibleContent className="space-y-3 px-2 pb-3 pt-2">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <div>
             <Label htmlFor="adhoc-pro-id">ID number</Label>
@@ -1052,7 +1061,7 @@ function AdHocPatientLookup({
           Look up a different patient (DHA Client Registry)
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 px-2 pt-2 pb-3">
+      <CollapsibleContent className="space-y-3 px-2 pb-3 pt-2">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div>
             <Label htmlFor="adhoc-pat-id">Identification number</Label>
@@ -1102,7 +1111,10 @@ function AdHocPatientLookup({
 // ============================================================================
 
 function extractError(err: unknown): string {
-  const e = err as { response?: { data?: { error?: string; detail?: string; message?: string } }; message?: string };
+  const e = err as {
+    response?: { data?: { error?: string; detail?: string; message?: string } };
+    message?: string;
+  };
   return (
     e?.response?.data?.error ??
     e?.response?.data?.detail ??

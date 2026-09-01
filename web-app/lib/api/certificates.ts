@@ -166,7 +166,9 @@ export const signaturesApi = {
     });
   },
 
-  listDocumentShares: async (params?: Record<string, unknown>): Promise<PaginatedResponse<DocumentShare>> => {
+  listDocumentShares: async (
+    params?: Record<string, unknown>
+  ): Promise<PaginatedResponse<DocumentShare>> => {
     const response = await apiClient.get('/api/core/document-shares/', { params });
     return parseResponse(PaginatedDocumentShareSchema, response.data, {
       context: 'signaturesApi.listDocumentShares',

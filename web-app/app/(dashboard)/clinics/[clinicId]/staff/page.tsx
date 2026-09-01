@@ -76,12 +76,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  useClinic,
-  useClinicStaff,
-  useAssignStaff,
-  useRemoveStaff,
-} from '@/lib/hooks/use-clinics';
+import { useClinic, useClinicStaff, useAssignStaff, useRemoveStaff } from '@/lib/hooks/use-clinics';
 import { ClinicNavigation } from '@/components/clinics/clinic-navigation';
 import { StaffSearchCombobox } from '@/components/clinics/staff-search-combobox';
 import { toast } from '@/lib/hooks/use-toast';
@@ -140,12 +135,17 @@ const ROLE_CONFIG: Record<ClinicStaffRole, { label: string; color: string; icon:
 function mapRoleNameToClinicRole(roleName?: string | null): ClinicStaffRole {
   if (!roleName) return 'OTHER';
   const name = roleName.toUpperCase();
-  if (name.includes('LEAD') || name.includes('IN-CHARGE') || name.includes('IN CHARGE')) return 'LEAD';
-  if (name.includes('DOCTOR') || name.includes('CLINICAL OFFICER') || name.includes('PHYSICIAN')) return 'DOCTOR';
+  if (name.includes('LEAD') || name.includes('IN-CHARGE') || name.includes('IN CHARGE'))
+    return 'LEAD';
+  if (name.includes('DOCTOR') || name.includes('CLINICAL OFFICER') || name.includes('PHYSICIAN'))
+    return 'DOCTOR';
   if (name.includes('NURSE') || name.includes('NURSING')) return 'NURSE';
-  if (name.includes('COUNSELOR') || name.includes('COUNSELLOR') || name.includes('PSYCHOLOGIST')) return 'COUNSELOR';
-  if (name.includes('NUTRITIONIST') || name.includes('DIETITIAN') || name.includes('DIETICIAN')) return 'NUTRITIONIST';
-  if (name.includes('CLERK') || name.includes('RECEPTIONIST') || name.includes('ADMIN')) return 'CLERK';
+  if (name.includes('COUNSELOR') || name.includes('COUNSELLOR') || name.includes('PSYCHOLOGIST'))
+    return 'COUNSELOR';
+  if (name.includes('NUTRITIONIST') || name.includes('DIETITIAN') || name.includes('DIETICIAN'))
+    return 'NUTRITIONIST';
+  if (name.includes('CLERK') || name.includes('RECEPTIONIST') || name.includes('ADMIN'))
+    return 'CLERK';
   return 'OTHER';
 }
 
@@ -194,7 +194,14 @@ export default function ClinicStaffPage() {
     total: staff?.length ?? 0,
     clinicians: staff?.filter((s) => s.role === 'DOCTOR' || s.role === 'LEAD').length ?? 0,
     nurses: staff?.filter((s) => s.role === 'NURSE').length ?? 0,
-    support: staff?.filter((s) => s.role === 'CLERK' || s.role === 'OTHER' || s.role === 'COUNSELOR' || s.role === 'NUTRITIONIST').length ?? 0,
+    support:
+      staff?.filter(
+        (s) =>
+          s.role === 'CLERK' ||
+          s.role === 'OTHER' ||
+          s.role === 'COUNSELOR' ||
+          s.role === 'NUTRITIONIST'
+      ).length ?? 0,
   };
 
   const handleAssignStaff = useCallback(async () => {
@@ -265,8 +272,8 @@ export default function ClinicStaffPage() {
   if (!clinic) {
     return (
       <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-        <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
-        <h3 className="text-base sm:text-lg font-semibold mb-2">Clinic not found</h3>
+        <AlertCircle className="mb-4 h-10 w-10 text-muted-foreground sm:h-12 sm:w-12" />
+        <h3 className="mb-2 text-base font-semibold sm:text-lg">Clinic not found</h3>
         <Button asChild size="sm">
           <Link href="/clinics">Back to Clinics</Link>
         </Button>
@@ -275,369 +282,427 @@ export default function ClinicStaffPage() {
   }
 
   return (
-    <PullToRefresh onRefresh={async () => { await refetchStaff(); }} isRefreshing={false}>
-    <div className="space-y-4 sm:space-y-6">
-      <PageHeader
-        title={`${clinic.name} - Staff`}
-        helpContent="Manage staff assignments and roles for this clinic."
-        actions={
-          <Dialog open={addStaffOpen} onOpenChange={setAddStaffOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <UserPlus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Assign Staff</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-              <DialogHeader>
-                <div className="flex items-center gap-2">
-                  <DialogTitle>Assign Staff to Clinic</DialogTitle>
-                  <HelpPopover content={`Assign a staff member to work in ${clinic.name}. Select their role and set availability.`} />
-                </div>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Staff Member</Label>
-                  <StaffSearchCombobox
-                    value={newStaffData.user_id}
-                    onSelect={(userId, staffProfile) =>
-                      setNewStaffData((prev) => ({
-                        ...prev,
-                        user_id: userId,
-                        role: mapRoleNameToClinicRole(staffProfile.primary_role_name),
-                      }))
-                    }
-                    placeholder="Search and select a staff member..."
-                    excludeUserIds={(staff ?? []).map((s) => s.user)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Search by name, email, or employee ID
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role in this clinic</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Auto-filled from staff profile. Change if needed.
-                  </p>
-                  <Select
-                    value={newStaffData.role}
-                    onValueChange={(v) =>
-                      setNewStaffData((prev) => ({ ...prev, role: v as ClinicStaffRole }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="LEAD">Clinic Lead/In-Charge</SelectItem>
-                      <SelectItem value="DOCTOR">Doctor/Clinical Officer</SelectItem>
-                      <SelectItem value="NURSE">Nurse</SelectItem>
-                      <SelectItem value="COUNSELOR">Counselor</SelectItem>
-                      <SelectItem value="NUTRITIONIST">Nutritionist</SelectItem>
-                      <SelectItem value="CLERK">Clerk/Receptionist</SelectItem>
-                      <SelectItem value="OTHER">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="is_primary">Primary Staff</Label>
+    <PullToRefresh
+      onRefresh={async () => {
+        await refetchStaff();
+      }}
+      isRefreshing={false}
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title={`${clinic.name} - Staff`}
+          helpContent="Manage staff assignments and roles for this clinic."
+          actions={
+            <Dialog open={addStaffOpen} onOpenChange={setAddStaffOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <UserPlus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Assign Staff</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+                <DialogHeader>
+                  <div className="flex items-center gap-2">
+                    <DialogTitle>Assign Staff to Clinic</DialogTitle>
+                    <HelpPopover
+                      content={`Assign a staff member to work in ${clinic.name}. Select their role and set availability.`}
+                    />
+                  </div>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Staff Member</Label>
+                    <StaffSearchCombobox
+                      value={newStaffData.user_id}
+                      onSelect={(userId, staffProfile) =>
+                        setNewStaffData((prev) => ({
+                          ...prev,
+                          user_id: userId,
+                          role: mapRoleNameToClinicRole(staffProfile.primary_role_name),
+                        }))
+                      }
+                      placeholder="Search and select a staff member..."
+                      excludeUserIds={(staff ?? []).map((s) => s.user)}
+                    />
                     <p className="text-xs text-muted-foreground">
-                      Primary staff appear first in assignments
+                      Search by name, email, or employee ID
                     </p>
                   </div>
-                  <Switch
-                    id="is_primary"
-                    checked={newStaffData.is_primary}
-                    onCheckedChange={(checked) =>
-                      setNewStaffData((prev) => ({ ...prev, is_primary: checked }))
-                    }
-                  />
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Input
-                    id="notes"
-                    placeholder="Optional notes..."
-                    value={newStaffData.notes || ''}
-                    onChange={(e) =>
-                      setNewStaffData((prev) => ({ ...prev, notes: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-              <DialogFooter className="flex-col gap-2 sm:flex-row">
-                <Button variant="outline" onClick={() => setAddStaffOpen(false)} className="w-full sm:w-auto">
-                  Cancel
-                </Button>
-                <Button onClick={handleAssignStaff} disabled={assigningStaff} className="w-full sm:w-auto">
-                  {assigningStaff ? 'Assigning...' : 'Assign Staff'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        }
-      />
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role in this clinic</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Auto-filled from staff profile. Change if needed.
+                    </p>
+                    <Select
+                      value={newStaffData.role}
+                      onValueChange={(v) =>
+                        setNewStaffData((prev) => ({ ...prev, role: v as ClinicStaffRole }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="LEAD">Clinic Lead/In-Charge</SelectItem>
+                        <SelectItem value="DOCTOR">Doctor/Clinical Officer</SelectItem>
+                        <SelectItem value="NURSE">Nurse</SelectItem>
+                        <SelectItem value="COUNSELOR">Counselor</SelectItem>
+                        <SelectItem value="NUTRITIONIST">Nutritionist</SelectItem>
+                        <SelectItem value="CLERK">Clerk/Receptionist</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-      {/* Navigation */}
-      <ClinicNavigation clinicId={clinicId} />
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Total</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold">{staffCounts.total}</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Assigned</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Clinicians</CardTitle>
-            <Shield className="h-4 w-4 text-blue-500 hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold text-blue-600">{staffCounts.clinicians}</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Doctors & leads</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Nurses</CardTitle>
-            <User className="h-4 w-4 text-green-500 hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold text-green-600">{staffCounts.nurses}</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Nursing staff</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Support</CardTitle>
-            <User className="h-4 w-4 text-orange-500 hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold text-orange-600">{staffCounts.support}</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Admin staff</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search */}
-      <Card>
-        <CardContent className="p-3 sm:p-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search staff..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Staff Table */}
-      <Card>
-        <CardHeader className="p-3 sm:p-6">
-          <CardTitle className="text-base sm:text-lg">Assigned Staff</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 sm:p-6 sm:pt-0">
-          {staffLoading ? (
-            <Skeleton className="h-64 sm:h-96 mx-3 sm:mx-0" />
-          ) : filteredStaff.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-              <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
-              <h3 className="text-base sm:text-lg font-semibold mb-2">No staff assigned</h3>
-              <p className="text-sm text-muted-foreground text-center mb-4 px-4">
-                {searchQuery ? 'No staff match search.' : 'Assign staff to get started.'}
-              </p>
-              {!searchQuery && (
-                <Button size="sm" onClick={() => setAddStaffOpen(true)}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Assign Staff
-                </Button>
-              )}
-            </div>
-          ) : (
-            <>
-              {/* Mobile Cards */}
-              <div className="sm:hidden space-y-3 px-3 pb-3">
-                {filteredStaff.map((member) => {
-                  const roleConfig = ROLE_CONFIG[member.role] ?? DEFAULT_ROLE_CONFIG;
-                  return (
-                    <div key={member.id} className="rounded-lg border p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Avatar className="h-8 w-8 shrink-0">
-                            <AvatarFallback className="text-xs">
-                              {member.user_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1">
-                              <p className="font-medium text-sm truncate">{member.user_name}</p>
-                              {member.is_primary && <Crown className="h-3 w-3 text-yellow-500 shrink-0" />}
-                            </div>
-                            <p className="text-xs text-muted-foreground truncate">{member.user_email}</p>
-                          </div>
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600" onClick={() => setRemoveStaffId(member.user)}>
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Remove
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <Badge className={cn('text-xs font-normal', roleConfig.color)}>
-                          {roleConfig.label}
-                        </Badge>
-                        {member.is_active ? (
-                          <Badge variant="outline" className="text-xs text-green-600 border-green-600">Active</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs text-gray-500">Inactive</Badge>
-                        )}
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="is_primary">Primary Staff</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Primary staff appear first in assignments
+                      </p>
                     </div>
-                  );
-                })}
+                    <Switch
+                      id="is_primary"
+                      checked={newStaffData.is_primary}
+                      onCheckedChange={(checked) =>
+                        setNewStaffData((prev) => ({ ...prev, is_primary: checked }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes</Label>
+                    <Input
+                      id="notes"
+                      placeholder="Optional notes..."
+                      value={newStaffData.notes || ''}
+                      onChange={(e) =>
+                        setNewStaffData((prev) => ({ ...prev, notes: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+                <DialogFooter className="flex-col gap-2 sm:flex-row">
+                  <Button
+                    variant="outline"
+                    onClick={() => setAddStaffOpen(false)}
+                    className="w-full sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleAssignStaff}
+                    disabled={assigningStaff}
+                    className="w-full sm:w-auto"
+                  >
+                    {assigningStaff ? 'Assigning...' : 'Assign Staff'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          }
+        />
+
+        {/* Navigation */}
+        <ClinicNavigation clinicId={clinicId} />
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Total</CardTitle>
+              <Users className="hidden h-4 w-4 text-muted-foreground sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold sm:text-2xl">{staffCounts.total}</div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Assigned</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Clinicians</CardTitle>
+              <Shield className="hidden h-4 w-4 text-blue-500 sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-blue-600 sm:text-2xl">
+                {staffCounts.clinicians}
               </div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Doctors & leads</p>
+            </CardContent>
+          </Card>
 
-              {/* Desktop Table */}
-              <div className="hidden sm:block overflow-x-auto rounded-md border mx-3 sm:mx-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Staff Member</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Start Date</TableHead>
-                      <TableHead>Notes</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStaff.map((member) => {
-                      const roleConfig = ROLE_CONFIG[member.role] ?? DEFAULT_ROLE_CONFIG;
-                      const RoleIcon = roleConfig.icon;
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Nurses</CardTitle>
+              <User className="hidden h-4 w-4 text-green-500 sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-green-600 sm:text-2xl">
+                {staffCounts.nurses}
+              </div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Nursing staff</p>
+            </CardContent>
+          </Card>
 
-                      return (
-                        <TableRow key={member.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
-                                <AvatarFallback>
-                                  {member.user_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">{member.user_name}</p>
-                                  {member.is_primary && <Crown className="h-4 w-4 text-yellow-500" />}
-                                </div>
-                                <p className="text-sm text-muted-foreground">{member.user_email}</p>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Support</CardTitle>
+              <User className="hidden h-4 w-4 text-orange-500 sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-orange-600 sm:text-2xl">
+                {staffCounts.support}
+              </div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Admin staff</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Search */}
+        <Card>
+          <CardContent className="p-3 sm:p-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search staff..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Staff Table */}
+        <Card>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Assigned Staff</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 sm:p-6 sm:pt-0">
+            {staffLoading ? (
+              <Skeleton className="mx-3 h-64 sm:mx-0 sm:h-96" />
+            ) : filteredStaff.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+                <Users className="mb-4 h-10 w-10 text-muted-foreground sm:h-12 sm:w-12" />
+                <h3 className="mb-2 text-base font-semibold sm:text-lg">No staff assigned</h3>
+                <p className="mb-4 px-4 text-center text-sm text-muted-foreground">
+                  {searchQuery ? 'No staff match search.' : 'Assign staff to get started.'}
+                </p>
+                {!searchQuery && (
+                  <Button size="sm" onClick={() => setAddStaffOpen(true)}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Assign Staff
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Mobile Cards */}
+                <div className="space-y-3 px-3 pb-3 sm:hidden">
+                  {filteredStaff.map((member) => {
+                    const roleConfig = ROLE_CONFIG[member.role] ?? DEFAULT_ROLE_CONFIG;
+                    return (
+                      <div key={member.id} className="rounded-lg border p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Avatar className="h-8 w-8 shrink-0">
+                              <AvatarFallback className="text-xs">
+                                {member.user_name
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .toUpperCase()
+                                  .slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1">
+                                <p className="truncate text-sm font-medium">{member.user_name}</p>
+                                {member.is_primary && (
+                                  <Crown className="h-3 w-3 shrink-0 text-yellow-500" />
+                                )}
                               </div>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {member.user_email}
+                              </p>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={cn('font-normal', roleConfig.color)}>
-                              <RoleIcon className="h-3 w-3 mr-1" />
-                              {roleConfig.label}
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => setRemoveStaffId(member.user)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Remove
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Badge className={cn('text-xs font-normal', roleConfig.color)}>
+                            {roleConfig.label}
+                          </Badge>
+                          {member.is_active ? (
+                            <Badge
+                              variant="outline"
+                              className="border-green-600 text-xs text-green-600"
+                            >
+                              Active
                             </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {member.is_active ? (
-                              <Badge variant="outline" className="text-green-600 border-green-600">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Active
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-gray-500 border-gray-500">
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Inactive
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>{formatDate(member.start_date)}</TableCell>
-                          <TableCell>
-                            <span className="text-sm text-muted-foreground">{member.notes || '--'}</span>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit Assignment
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-red-600" onClick={() => setRemoveStaffId(member.user)}>
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Remove from Clinic
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-gray-500">
+                              Inactive
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
-      {/* Remove Staff Confirmation */}
-      <AlertDialog open={!!removeStaffId} onOpenChange={() => setRemoveStaffId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove Staff Member?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the staff member from this clinic. This can be undone by reassigning them.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRemoveStaff}
-              disabled={removingStaff}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {removingStaff ? 'Removing...' : 'Remove'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+                {/* Desktop Table */}
+                <div className="mx-3 hidden overflow-x-auto rounded-md border sm:mx-0 sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Staff Member</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Start Date</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredStaff.map((member) => {
+                        const roleConfig = ROLE_CONFIG[member.role] ?? DEFAULT_ROLE_CONFIG;
+                        const RoleIcon = roleConfig.icon;
+
+                        return (
+                          <TableRow key={member.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                  <AvatarFallback>
+                                    {member.user_name
+                                      .split(' ')
+                                      .map((n) => n[0])
+                                      .join('')
+                                      .toUpperCase()
+                                      .slice(0, 2)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium">{member.user_name}</p>
+                                    {member.is_primary && (
+                                      <Crown className="h-4 w-4 text-yellow-500" />
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {member.user_email}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={cn('font-normal', roleConfig.color)}>
+                                <RoleIcon className="mr-1 h-3 w-3" />
+                                {roleConfig.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {member.is_active ? (
+                                <Badge
+                                  variant="outline"
+                                  className="border-green-600 text-green-600"
+                                >
+                                  <CheckCircle className="mr-1 h-3 w-3" />
+                                  Active
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="border-gray-500 text-gray-500">
+                                  <XCircle className="mr-1 h-3 w-3" />
+                                  Inactive
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>{formatDate(member.start_date)}</TableCell>
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {member.notes || '--'}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit Assignment
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => setRemoveStaffId(member.user)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Remove from Clinic
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Remove Staff Confirmation */}
+        <AlertDialog open={!!removeStaffId} onOpenChange={() => setRemoveStaffId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Staff Member?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will remove the staff member from this clinic. This can be undone by
+                reassigning them.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleRemoveStaff}
+                disabled={removingStaff}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {removingStaff ? 'Removing...' : 'Remove'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </PullToRefresh>
   );
 }

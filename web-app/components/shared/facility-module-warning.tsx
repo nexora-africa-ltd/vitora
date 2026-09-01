@@ -27,10 +27,14 @@ export function FacilityModuleWarning({ module, label, message }: FacilityModule
   if (hasModule(module)) return null;
 
   return (
-    <Alert variant="default" className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+    <Alert
+      variant="default"
+      className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+    >
       <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
       <AlertDescription className="text-sm text-amber-800 dark:text-amber-300">
-        {message || `${label} is not enabled at this facility. Consider a referral if ${label.toLowerCase()} services are needed.`}
+        {message ||
+          `${label} is not enabled at this facility. Consider a referral if ${label.toLowerCase()} services are needed.`}
       </AlertDescription>
     </Alert>
   );

@@ -27,14 +27,18 @@ interface PublicTriageQueueResponse {
 
 // --- Status config ---
 
-const DEFAULT_STATUS: { label: string; border: string; bg: string; text: string; pulse?: boolean } = {
-  label: 'Waiting',
-  border: 'border-slate-600',
-  bg: 'bg-slate-800',
-  text: 'text-slate-300',
-};
+const DEFAULT_STATUS: { label: string; border: string; bg: string; text: string; pulse?: boolean } =
+  {
+    label: 'Waiting',
+    border: 'border-slate-600',
+    bg: 'bg-slate-800',
+    text: 'text-slate-300',
+  };
 
-const STATUS_CONFIG: Record<string, { label: string; border: string; bg: string; text: string; pulse?: boolean }> = {
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; border: string; bg: string; text: string; pulse?: boolean }
+> = {
   WAITING_TRIAGE: DEFAULT_STATUS,
   IN_TRIAGE: {
     label: 'Being Triaged',
@@ -200,9 +204,7 @@ export default function TriageQueueDisplayPage() {
       <footer className="mt-6 flex items-center justify-between border-t border-slate-800 pt-4 text-sm text-slate-600">
         <div className="flex items-center gap-2">
           <RefreshCw className="h-3.5 w-3.5" />
-          <span>
-            Updated {Math.round((Date.now() - lastRefresh.getTime()) / 1000)}s ago
-          </span>
+          <span>Updated {Math.round((Date.now() - lastRefresh.getTime()) / 1000)}s ago</span>
         </div>
         <span>Vitora HMIS</span>
       </footer>
@@ -223,7 +225,7 @@ function QueueCard({ item }: { item: PublicTriageQueueItem }) {
         'rounded-xl border-2 p-4 transition-all lg:p-5',
         config.border,
         config.bg,
-        config.pulse && 'animate-pulse',
+        config.pulse && 'animate-pulse'
       )}
     >
       {/* Position number */}
@@ -234,14 +236,24 @@ function QueueCard({ item }: { item: PublicTriageQueueItem }) {
       </div>
 
       {/* Status */}
-      <div className={cn('mt-2 text-center text-sm font-semibold uppercase tracking-wide sm:text-base', config.text)}>
+      <div
+        className={cn(
+          'mt-2 text-center text-sm font-semibold uppercase tracking-wide sm:text-base',
+          config.text
+        )}
+      >
         {config.label}
       </div>
 
       {/* Priority hint */}
       {priorityClass && (
         <div className="mt-2 flex items-center justify-center">
-          <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold uppercase', priorityClass)}>
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold uppercase',
+              priorityClass
+            )}
+          >
             <AlertTriangle className="h-3 w-3" />
             {item.priority_hint}
           </span>

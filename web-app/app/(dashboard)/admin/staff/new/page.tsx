@@ -14,7 +14,23 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, Check, X, Loader2, Sparkles, Send, Eye, EyeOff } from 'lucide-react';
+import {
+  Save,
+  User,
+  Building2,
+  Shield,
+  Briefcase,
+  Phone,
+  Mail,
+  IdCard,
+  Check,
+  X,
+  Loader2,
+  Sparkles,
+  Send,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -165,7 +181,9 @@ export default function NewStaffPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Username validation state
-  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>(
+    'idle'
+  );
   const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
 
   // Track if professional details were auto-populated
@@ -249,23 +267,28 @@ export default function NewStaffPage() {
   // Handle practitioner selection from DHA search
   const handlePractitionerSelect = (practitioner: DHAPractitioner) => {
     // Get the current/latest license
-    const currentLicense = practitioner.licenses?.find(l =>
-      l.license_end && l.license_end !== 'None' && new Date(l.license_end) >= new Date()
-    ) || practitioner.licenses?.[0];
+    const currentLicense =
+      practitioner.licenses?.find(
+        (l) => l.license_end && l.license_end !== 'None' && new Date(l.license_end) >= new Date()
+      ) || practitioner.licenses?.[0];
 
     // Calculate license expiry date from days if no license end date
-    const licenseExpiryDate = practitioner.membership.license_expires_in_days > 0
-      ? new Date(Date.now() + practitioner.membership.license_expires_in_days * 24 * 60 * 60 * 1000)
-      : undefined;
+    const licenseExpiryDate =
+      practitioner.membership.license_expires_in_days > 0
+        ? new Date(
+            Date.now() + practitioner.membership.license_expires_in_days * 24 * 60 * 60 * 1000
+          )
+        : undefined;
 
-    const licenseExpiry = currentLicense?.license_end && currentLicense.license_end !== 'None'
-      ? new Date(currentLicense.license_end)
-      : licenseExpiryDate;
+    const licenseExpiry =
+      currentLicense?.license_end && currentLicense.license_end !== 'None'
+        ? new Date(currentLicense.license_end)
+        : licenseExpiryDate;
 
     // Count how many fields will be populated
     let fieldsPopulated = 0;
 
-    setFormData(prev => {
+    setFormData((prev) => {
       const newData = { ...prev };
 
       // Names
@@ -322,7 +345,8 @@ export default function NewStaffPage() {
 
       // Specialization
       if (!prev.specialization) {
-        const specialty = practitioner.professional_details.professional_cadre ||
+        const specialty =
+          practitioner.professional_details.professional_cadre ||
           practitioner.professional_details.specialty ||
           practitioner.membership.specialty;
         if (specialty) {
@@ -345,7 +369,8 @@ export default function NewStaffPage() {
         fieldsPopulated++;
       }
       if (practitioner.professional_details.educational_qualifications) {
-        newData.educational_qualifications = practitioner.professional_details.educational_qualifications;
+        newData.educational_qualifications =
+          practitioner.professional_details.educational_qualifications;
         fieldsPopulated++;
       }
       if (practitioner.membership.status) {
@@ -392,7 +417,7 @@ export default function NewStaffPage() {
     } catch {
       // ignore parse or sessionStorage errors
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const validate = () => {
@@ -509,7 +534,8 @@ export default function NewStaffPage() {
     const newErrors: Record<string, string> = {};
 
     if (!inviteData.email.trim()) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteData.email)) newErrors.email = 'Invalid email';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteData.email))
+      newErrors.email = 'Invalid email';
     if (!inviteData.organization) newErrors.organization = 'Organization is required';
 
     setInviteErrors(newErrors);
@@ -575,7 +601,7 @@ export default function NewStaffPage() {
         {/* ================================================================ */}
         {/* INVITATION MODE                                                   */}
         {/* ================================================================ */}
-        <TabsContent value="invite" className="space-y-6 mt-6">
+        <TabsContent value="invite" className="mt-6 space-y-6">
           <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
             Send an invitation email. The staff member will set up their own username and password.
             You configure their role, department, and organizational assignment.
@@ -595,14 +621,14 @@ export default function NewStaffPage() {
                     Email Address <span className="text-destructive">*</span>
                   </Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       id="invite_email"
                       type="email"
                       value={inviteData.email}
                       onChange={(e) => {
-                        setInviteData(prev => ({ ...prev, email: e.target.value }));
-                        if (inviteErrors.email) setInviteErrors(prev => ({ ...prev, email: '' }));
+                        setInviteData((prev) => ({ ...prev, email: e.target.value }));
+                        if (inviteErrors.email) setInviteErrors((prev) => ({ ...prev, email: '' }));
                       }}
                       placeholder="staff@facility.com"
                       className={`pl-9 ${inviteErrors.email ? 'border-destructive' : ''}`}
@@ -622,18 +648,24 @@ export default function NewStaffPage() {
                       value={inviteData.organization}
                       onValueChange={(v) => {
                         setInviteData((prev) => {
-                          const nextFacility = prev.facility && (facilities?.results ?? []).some(
-                            (item) => item.id === Number(prev.facility) && item.organization === Number(v)
-                          )
-                            ? prev.facility
-                            : '';
+                          const nextFacility =
+                            prev.facility &&
+                            (facilities?.results ?? []).some(
+                              (item) =>
+                                item.id === Number(prev.facility) && item.organization === Number(v)
+                            )
+                              ? prev.facility
+                              : '';
                           return { ...prev, organization: v, facility: nextFacility };
                         });
-                        if (inviteErrors.organization) setInviteErrors(prev => ({ ...prev, organization: '' }));
+                        if (inviteErrors.organization)
+                          setInviteErrors((prev) => ({ ...prev, organization: '' }));
                       }}
                     >
-                      <SelectTrigger className={inviteErrors.organization ? 'border-destructive' : ''}>
-                        <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectTrigger
+                        className={inviteErrors.organization ? 'border-destructive' : ''}
+                      >
+                        <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
                         <SelectValue placeholder="Select organization" />
                       </SelectTrigger>
                       <SelectContent>
@@ -660,7 +692,7 @@ export default function NewStaffPage() {
                       onValueChange={(v) => setInviteData((prev) => ({ ...prev, facility: v }))}
                     >
                       <SelectTrigger>
-                        <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
                         <SelectValue placeholder="Select facility" />
                       </SelectTrigger>
                       <SelectContent>
@@ -676,7 +708,8 @@ export default function NewStaffPage() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Optional, but recommended when the staff member should land in a specific facility.
+                      Optional, but recommended when the staff member should land in a specific
+                      facility.
                     </p>
                   </div>
 
@@ -684,7 +717,9 @@ export default function NewStaffPage() {
                     <Label>Invitation Expiry</Label>
                     <Select
                       value={inviteData.expires_hours}
-                      onValueChange={(v) => setInviteData(prev => ({ ...prev, expires_hours: v }))}
+                      onValueChange={(v) =>
+                        setInviteData((prev) => ({ ...prev, expires_hours: v }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -718,10 +753,10 @@ export default function NewStaffPage() {
                     <Label>Role</Label>
                     <Select
                       value={inviteData.role}
-                      onValueChange={(v) => setInviteData(prev => ({ ...prev, role: v }))}
+                      onValueChange={(v) => setInviteData((prev) => ({ ...prev, role: v }))}
                     >
                       <SelectTrigger>
-                        <Shield className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <Shield className="mr-2 h-4 w-4 text-muted-foreground" />
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
@@ -742,10 +777,10 @@ export default function NewStaffPage() {
                     <Label>Department</Label>
                     <Select
                       value={inviteData.department}
-                      onValueChange={(v) => setInviteData(prev => ({ ...prev, department: v }))}
+                      onValueChange={(v) => setInviteData((prev) => ({ ...prev, department: v }))}
                     >
                       <SelectTrigger>
-                        <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
@@ -769,7 +804,9 @@ export default function NewStaffPage() {
                     <Input
                       id="invite_job_title"
                       value={inviteData.job_title}
-                      onChange={(e) => setInviteData(prev => ({ ...prev, job_title: e.target.value }))}
+                      onChange={(e) =>
+                        setInviteData((prev) => ({ ...prev, job_title: e.target.value }))
+                      }
                       placeholder="e.g., Senior Nurse"
                     />
                   </div>
@@ -778,7 +815,9 @@ export default function NewStaffPage() {
                     <Input
                       id="invite_employee_id"
                       value={inviteData.employee_id}
-                      onChange={(e) => setInviteData(prev => ({ ...prev, employee_id: e.target.value }))}
+                      onChange={(e) =>
+                        setInviteData((prev) => ({ ...prev, employee_id: e.target.value }))
+                      }
                       placeholder="Auto-generated if blank"
                     />
                   </div>
@@ -791,7 +830,7 @@ export default function NewStaffPage() {
                 <Link href="/admin/staff">Cancel</Link>
               </Button>
               <Button type="submit" disabled={isInviting}>
-                <Send className="h-4 w-4 mr-2" />
+                <Send className="mr-2 h-4 w-4" />
                 {isInviting ? 'Sending…' : 'Send Invitation'}
               </Button>
             </div>
@@ -801,539 +840,544 @@ export default function NewStaffPage() {
         {/* ================================================================ */}
         {/* DIRECT CREATION MODE                                              */}
         {/* ================================================================ */}
-        <TabsContent value="direct" className="space-y-6 mt-6">
+        <TabsContent value="direct" className="mt-6 space-y-6">
           <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
-            Create the account directly with a temporary password. Use this when email is unavailable
-            or the staff member needs immediate access. Start with DHA registry lookup when available
-            so licensing fields are populated consistently before assigning the user account.
+            Create the account directly with a temporary password. Use this when email is
+            unavailable or the staff member needs immediate access. Start with DHA registry lookup
+            when available so licensing fields are populated consistently before assigning the user
+            account.
           </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <IdCard className="h-5 w-5" />
-              Professional Details
-              {isProfessionalDataPopulated && (
-                <Badge variant="secondary" className="ml-2">
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  Auto-populated
-                </Badge>
-              )}
-            </CardTitle>
-            <CardDescription>
-              Search by National ID to auto-populate from DHA Health Worker Registry, or enter manually
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* DHA Practitioner Search */}
-            <DHAPractitionerSearch onSelect={handlePractitionerSelect} />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <IdCard className="h-5 w-5" />
+                  Professional Details
+                  {isProfessionalDataPopulated && (
+                    <Badge variant="secondary" className="ml-2">
+                      <Sparkles className="mr-1 h-3 w-3" />
+                      Auto-populated
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  Search by National ID to auto-populate from DHA Health Worker Registry, or enter
+                  manually
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* DHA Practitioner Search */}
+                <DHAPractitionerSearch onSelect={handlePractitionerSelect} />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="hwr_id">HWR ID (Registry Number)</Label>
-                <Input
-                  autoComplete="off"
-                  id="hwr_id"
-                  name="hwr_id"
-                  spellCheck={false}
-                  value={formData.hwr_id}
-                  onChange={(e) => handleChange('hwr_id', e.target.value)}
-                  placeholder="e.g., PUID-059839…"
-                  className={isProfessionalDataPopulated && formData.hwr_id ? 'bg-muted' : ''}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Health Worker Registry ID from DHA
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="license_number">License Number</Label>
-                <Input
-                  autoComplete="off"
-                  id="license_number"
-                  name="license_number"
-                  spellCheck={false}
-                  value={formData.license_number}
-                  onChange={(e) => handleChange('license_number', e.target.value)}
-                  placeholder="e.g., COC-Clinical Officer-2026-620095…"
-                  className={isProfessionalDataPopulated && formData.license_number ? 'bg-muted' : ''}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Current license ID from regulatory body
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="licensing_body">Licensing Body</Label>
-                <Input
-                  id="licensing_body"
-                  name="licensing_body"
-                  value={formData.licensing_body}
-                  onChange={(e) => handleChange('licensing_body', e.target.value)}
-                  placeholder="e.g., Clinical Officers Council…"
-                  className={isProfessionalDataPopulated && formData.licensing_body ? 'bg-muted' : ''}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="license_expiry">License Expiry</Label>
-                <DatePicker
-                  value={formData.license_expiry}
-                  onChange={() => {}} // Read-only - only set by registry lookup
-                  placeholder="Set by registry lookup"
-                  disabled={true}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Auto-populated from DHA registry (read-only)
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="specialization">Specialization</Label>
-                <Input
-                  id="specialization"
-                  name="specialization"
-                  value={formData.specialization}
-                  onChange={(e) => handleChange('specialization', e.target.value)}
-                  placeholder="e.g., Clinical Officer…"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone_number">Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    autoComplete="tel"
-                    id="phone_number"
-                    inputMode="tel"
-                    name="phone_number"
-                    type="tel"
-                    value={formData.phone_number}
-                    onChange={(e) => handleChange('phone_number', e.target.value)}
-                    placeholder="+254712345678…"
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              User Account
-            </CardTitle>
-            <CardDescription>
-              Basic account information for the staff member
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">
-                  First Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  autoComplete="given-name"
-                  id="first_name"
-                  name="first_name"
-                  value={formData.first_name}
-                  onChange={(e) => handleChange('first_name', e.target.value)}
-                  onBlur={suggestUsername}
-                  placeholder="James…"
-                  className={errors.first_name ? 'border-destructive' : ''}
-                />
-                {errors.first_name && (
-                  <p className="text-sm text-destructive">{errors.first_name}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="middle_name">Middle Name</Label>
-                <Input
-                  id="middle_name"
-                  name="middle_name"
-                  value={formData.middle_name}
-                  onChange={(e) => handleChange('middle_name', e.target.value)}
-                  placeholder="Kamau (optional)…"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="last_name">
-                  Last Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  autoComplete="family-name"
-                  id="last_name"
-                  name="last_name"
-                  value={formData.last_name}
-                  onChange={(e) => handleChange('last_name', e.target.value)}
-                  onBlur={suggestUsername}
-                  placeholder="Mwangi…"
-                  className={errors.last_name ? 'border-destructive' : ''}
-                />
-                {errors.last_name && (
-                  <p className="text-sm text-destructive">{errors.last_name}</p>
-                )}
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="username">
-                  Username <span className="text-destructive">*</span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="username"
-                    name="username"
-                    spellCheck={false}
-                    autoComplete="off"
-                    value={formData.username}
-                    onChange={(e) => handleChange('username', e.target.value.toLowerCase().replace(/\s/g, ''))}
-                    placeholder="e.g., james.mwangi…"
-                    className={`pr-10 ${errors.username ? 'border-destructive' : usernameStatus === 'available' ? 'border-green-500' : usernameStatus === 'taken' ? 'border-destructive' : ''}`}
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {usernameStatus === 'checking' && (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    )}
-                    {usernameStatus === 'available' && (
-                      <Check className="h-4 w-4 text-green-500" />
-                    )}
-                    {usernameStatus === 'taken' && (
-                      <X className="h-4 w-4 text-destructive" />
-                    )}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="hwr_id">HWR ID (Registry Number)</Label>
+                    <Input
+                      autoComplete="off"
+                      id="hwr_id"
+                      name="hwr_id"
+                      spellCheck={false}
+                      value={formData.hwr_id}
+                      onChange={(e) => handleChange('hwr_id', e.target.value)}
+                      placeholder="e.g., PUID-059839…"
+                      className={isProfessionalDataPopulated && formData.hwr_id ? 'bg-muted' : ''}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Health Worker Registry ID from DHA
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="license_number">License Number</Label>
+                    <Input
+                      autoComplete="off"
+                      id="license_number"
+                      name="license_number"
+                      spellCheck={false}
+                      value={formData.license_number}
+                      onChange={(e) => handleChange('license_number', e.target.value)}
+                      placeholder="e.g., COC-Clinical Officer-2026-620095…"
+                      className={
+                        isProfessionalDataPopulated && formData.license_number ? 'bg-muted' : ''
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Current license ID from regulatory body
+                    </p>
                   </div>
                 </div>
-                {errors.username && (
-                  <p className="text-sm text-destructive">{errors.username}</p>
-                )}
-                {usernameStatus === 'available' && formData.username && (
-                  <p className="text-sm text-green-600">Username is available</p>
-                )}
-                {usernameSuggestions.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">
-                      {usernameStatus === 'taken' ? 'Username taken. Try:' : 'Suggested usernames:'}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="licensing_body">Licensing Body</Label>
+                    <Input
+                      id="licensing_body"
+                      name="licensing_body"
+                      value={formData.licensing_body}
+                      onChange={(e) => handleChange('licensing_body', e.target.value)}
+                      placeholder="e.g., Clinical Officers Council…"
+                      className={
+                        isProfessionalDataPopulated && formData.licensing_body ? 'bg-muted' : ''
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="license_expiry">License Expiry</Label>
+                    <DatePicker
+                      value={formData.license_expiry}
+                      onChange={() => {}} // Read-only - only set by registry lookup
+                      placeholder="Set by registry lookup"
+                      disabled={true}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Auto-populated from DHA registry (read-only)
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {usernameSuggestions.slice(0, 5).map((suggestion) => (
-                        <Button
-                          key={suggestion}
-                          type="button"
-                          variant={formData.username === suggestion ? 'default' : 'outline'}
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => handleChange('username', suggestion)}
-                        >
-                          {suggestion}
-                        </Button>
-                      ))}
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="specialization">Specialization</Label>
+                    <Input
+                      id="specialization"
+                      name="specialization"
+                      value={formData.specialization}
+                      onChange={(e) => handleChange('specialization', e.target.value)}
+                      placeholder="e.g., Clinical Officer…"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone_number">Phone Number</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        autoComplete="tel"
+                        id="phone_number"
+                        inputMode="tel"
+                        name="phone_number"
+                        type="tel"
+                        value={formData.phone_number}
+                        onChange={(e) => handleChange('phone_number', e.target.value)}
+                        placeholder="+254712345678…"
+                        className="pl-9"
+                      />
                     </div>
                   </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">
-                  Email <span className="text-destructive">*</span>
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    autoComplete="email"
-                    id="email"
-                    name="email"
-                    spellCheck={false}
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleChange('email', e.target.value)}
-                    placeholder="email@facility.com…"
-                    className={`pl-9 ${errors.email ? 'border-destructive' : ''}`}
-                  />
                 </div>
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
-              Employment Details
-            </CardTitle>
-            <CardDescription>
-              Department, role, and employee information
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="employee_id">Employee ID</Label>
-                <div className="relative">
-                  <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    autoComplete="off"
-                    id="employee_id"
-                    name="employee_id"
-                    value={formData.employee_id}
-                    onChange={(e) => handleChange('employee_id', e.target.value)}
-                    placeholder="Auto-generated if blank"
-                    className={`pl-9 ${errors.employee_id ? 'border-destructive' : ''}`}
-                  />
-                </div>
-                {errors.employee_id && (
-                  <p className="text-sm text-destructive">{errors.employee_id}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Leave blank to auto-generate (e.g., VH-2026-XXXX).
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hire_date">Hire Date</Label>
-                <DatePicker
-                  value={formData.hire_date instanceof Date ? formData.hire_date : undefined}
-                  onChange={(date) => setFormData(prev => ({ ...prev, hire_date: date || new Date() }))}
-                  placeholder="Select hire date"
-                />
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="department">
-                  Department <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={(value) => handleChange('department', value)}
-                >
-                  <SelectTrigger className={errors.department ? 'border-destructive' : ''}>
-                    <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments?.results && departments.results.length > 0 ? (
-                      departments.results.map((dept: Department) => (
-                        <SelectItem key={dept.id} value={dept.id.toString()}>
-                          {dept.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectEmpty>No departments available</SelectEmpty>
-                    )}
-                  </SelectContent>
-                </Select>
-                {errors.department && (
-                  <p className="text-sm text-destructive">{errors.department}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">
-                  Role <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => handleChange('role', value)}
-                >
-                  <SelectTrigger className={errors.role ? 'border-destructive' : ''}>
-                    <Shield className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles?.results && roles.results.length > 0 ? (
-                      roles.results.map((role: Role) => (
-                        <SelectItem key={role.id} value={role.id.toString()}>
-                          {role.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectEmpty>No roles available</SelectEmpty>
-                    )}
-                  </SelectContent>
-                </Select>
-                {errors.role && (
-                  <p className="text-sm text-destructive">{errors.role}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="primary_facility">
-                  Primary Facility <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.primary_facility}
-                  onValueChange={(value) => handleChange('primary_facility', value)}
-                >
-                  <SelectTrigger className={errors.primary_facility ? 'border-destructive' : ''}>
-                    <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <SelectValue placeholder="Select facility" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {facilities?.results && facilities.results.length > 0 ? (
-                      facilities.results.map((item) => (
-                        <SelectItem key={item.id} value={item.id.toString()}>
-                          {item.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectEmpty>No facilities available</SelectEmpty>
-                    )}
-                  </SelectContent>
-                </Select>
-                {errors.primary_facility && (
-                  <p className="text-sm text-destructive">{errors.primary_facility}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  The selected facility becomes the staff member&apos;s primary assignment and drives organization resolution.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Password & Access
-            </CardTitle>
-            <CardDescription>
-              Set an initial password or let Vitora generate a secure one
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="password">Initial Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    autoComplete="new-password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={(e) => handleChange('password', e.target.value)}
-                    placeholder="Leave blank to auto-generate"
-                    className={`pr-10 ${errors.password ? 'border-destructive' : ''}`}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  {isManualPassword
-                    ? 'You chose a manual password. Share it securely with the staff member.'
-                    : 'Vitora will generate a 16-character temporary password.'}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirm_password">Confirm Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirm_password"
-                    name="confirm_password"
-                    autoComplete="new-password"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={formData.confirm_password}
-                    onChange={(e) => handleChange('confirm_password', e.target.value)}
-                    placeholder="Re-enter manual password"
-                    disabled={!isManualPassword}
-                    className={`pr-10 ${errors.confirm_password ? 'border-destructive' : ''}`}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                    onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    disabled={!isManualPassword}
-                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                </div>
-                {errors.confirm_password && (
-                  <p className="text-sm text-destructive">{errors.confirm_password}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-border/50 p-4 space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor="force_password_reset" className="text-sm font-medium">
-                    Force password reset on first login
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    The staff member must set a new password before using the app.
-                  </p>
-                </div>
-                <Switch
-                  id="force_password_reset"
-                  checked={formData.force_password_reset}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({ ...prev, force_password_reset: checked }))
-                  }
-                  disabled={!isManualPassword}
-                />
-              </div>
-
-              {!isManualPassword && (
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="send_email" className="text-sm font-medium">
-                      Send welcome email with credentials
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  User Account
+                </CardTitle>
+                <CardDescription>Basic account information for the staff member</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">
+                      First Name <span className="text-destructive">*</span>
                     </Label>
+                    <Input
+                      autoComplete="given-name"
+                      id="first_name"
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={(e) => handleChange('first_name', e.target.value)}
+                      onBlur={suggestUsername}
+                      placeholder="James…"
+                      className={errors.first_name ? 'border-destructive' : ''}
+                    />
+                    {errors.first_name && (
+                      <p className="text-sm text-destructive">{errors.first_name}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="middle_name">Middle Name</Label>
+                    <Input
+                      id="middle_name"
+                      name="middle_name"
+                      value={formData.middle_name}
+                      onChange={(e) => handleChange('middle_name', e.target.value)}
+                      placeholder="Kamau (optional)…"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">
+                      Last Name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      autoComplete="family-name"
+                      id="last_name"
+                      name="last_name"
+                      value={formData.last_name}
+                      onChange={(e) => handleChange('last_name', e.target.value)}
+                      onBlur={suggestUsername}
+                      placeholder="Mwangi…"
+                      className={errors.last_name ? 'border-destructive' : ''}
+                    />
+                    {errors.last_name && (
+                      <p className="text-sm text-destructive">{errors.last_name}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="username">
+                      Username <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="username"
+                        name="username"
+                        spellCheck={false}
+                        autoComplete="off"
+                        value={formData.username}
+                        onChange={(e) =>
+                          handleChange('username', e.target.value.toLowerCase().replace(/\s/g, ''))
+                        }
+                        placeholder="e.g., james.mwangi…"
+                        className={`pr-10 ${errors.username ? 'border-destructive' : usernameStatus === 'available' ? 'border-green-500' : usernameStatus === 'taken' ? 'border-destructive' : ''}`}
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {usernameStatus === 'checking' && (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                        {usernameStatus === 'available' && (
+                          <Check className="h-4 w-4 text-green-500" />
+                        )}
+                        {usernameStatus === 'taken' && <X className="h-4 w-4 text-destructive" />}
+                      </div>
+                    </div>
+                    {errors.username && (
+                      <p className="text-sm text-destructive">{errors.username}</p>
+                    )}
+                    {usernameStatus === 'available' && formData.username && (
+                      <p className="text-sm text-green-600">Username is available</p>
+                    )}
+                    {usernameSuggestions.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">
+                          {usernameStatus === 'taken'
+                            ? 'Username taken. Try:'
+                            : 'Suggested usernames:'}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {usernameSuggestions.slice(0, 5).map((suggestion) => (
+                            <Button
+                              key={suggestion}
+                              type="button"
+                              variant={formData.username === suggestion ? 'default' : 'outline'}
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => handleChange('username', suggestion)}
+                            >
+                              {suggestion}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">
+                      Email <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        autoComplete="email"
+                        id="email"
+                        name="email"
+                        spellCheck={false}
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleChange('email', e.target.value)}
+                        placeholder="email@facility.com…"
+                        className={`pl-9 ${errors.email ? 'border-destructive' : ''}`}
+                      />
+                    </div>
+                    {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5" />
+                  Employment Details
+                </CardTitle>
+                <CardDescription>Department, role, and employee information</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="employee_id">Employee ID</Label>
+                    <div className="relative">
+                      <IdCard className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        autoComplete="off"
+                        id="employee_id"
+                        name="employee_id"
+                        value={formData.employee_id}
+                        onChange={(e) => handleChange('employee_id', e.target.value)}
+                        placeholder="Auto-generated if blank"
+                        className={`pl-9 ${errors.employee_id ? 'border-destructive' : ''}`}
+                      />
+                    </div>
+                    {errors.employee_id && (
+                      <p className="text-sm text-destructive">{errors.employee_id}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">
-                      Email the temporary username and password to the staff member.
+                      Leave blank to auto-generate (e.g., VH-2026-XXXX).
                     </p>
                   </div>
-                  <Switch
-                    id="send_email"
-                    checked={formData.send_email}
-                    onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, send_email: checked }))
-                    }
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="hire_date">Hire Date</Label>
+                    <DatePicker
+                      value={formData.hire_date instanceof Date ? formData.hire_date : undefined}
+                      onChange={(date) =>
+                        setFormData((prev) => ({ ...prev, hire_date: date || new Date() }))
+                      }
+                      placeholder="Select hire date"
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="department">
+                      Department <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.department}
+                      onValueChange={(value) => handleChange('department', value)}
+                    >
+                      <SelectTrigger className={errors.department ? 'border-destructive' : ''}>
+                        <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments?.results && departments.results.length > 0 ? (
+                          departments.results.map((dept: Department) => (
+                            <SelectItem key={dept.id} value={dept.id.toString()}>
+                              {dept.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectEmpty>No departments available</SelectEmpty>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {errors.department && (
+                      <p className="text-sm text-destructive">{errors.department}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">
+                      Role <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.role}
+                      onValueChange={(value) => handleChange('role', value)}
+                    >
+                      <SelectTrigger className={errors.role ? 'border-destructive' : ''}>
+                        <Shield className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles?.results && roles.results.length > 0 ? (
+                          roles.results.map((role: Role) => (
+                            <SelectItem key={role.id} value={role.id.toString()}>
+                              {role.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectEmpty>No roles available</SelectEmpty>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {errors.role && <p className="text-sm text-destructive">{errors.role}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="primary_facility">
+                      Primary Facility <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.primary_facility}
+                      onValueChange={(value) => handleChange('primary_facility', value)}
+                    >
+                      <SelectTrigger
+                        className={errors.primary_facility ? 'border-destructive' : ''}
+                      >
+                        <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <SelectValue placeholder="Select facility" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {facilities?.results && facilities.results.length > 0 ? (
+                          facilities.results.map((item) => (
+                            <SelectItem key={item.id} value={item.id.toString()}>
+                              {item.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectEmpty>No facilities available</SelectEmpty>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {errors.primary_facility && (
+                      <p className="text-sm text-destructive">{errors.primary_facility}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      The selected facility becomes the staff member&apos;s primary assignment and
+                      drives organization resolution.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Button variant="outline" type="button" asChild>
-            <Link href="/admin/staff">Cancel</Link>
-          </Button>
-          <Button type="submit" disabled={createStaff.isPending || usernameStatus === 'taken'}>
-            <Save className="h-4 w-4 mr-2" />
-            {createStaff.isPending ? 'Creating…' : 'Create Staff Profile'}
-          </Button>
-        </div>
-      </form>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Password & Access
+                </CardTitle>
+                <CardDescription>
+                  Set an initial password or let Vitora generate a secure one
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Initial Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        name="password"
+                        autoComplete="new-password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => handleChange('password', e.target.value)}
+                        placeholder="Leave blank to auto-generate"
+                        className={`pr-10 ${errors.password ? 'border-destructive' : ''}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                    {errors.password && (
+                      <p className="text-sm text-destructive">{errors.password}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {isManualPassword
+                        ? 'You chose a manual password. Share it securely with the staff member.'
+                        : 'Vitora will generate a 16-character temporary password.'}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm_password">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirm_password"
+                        name="confirm_password"
+                        autoComplete="new-password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={formData.confirm_password}
+                        onChange={(e) => handleChange('confirm_password', e.target.value)}
+                        placeholder="Re-enter manual password"
+                        disabled={!isManualPassword}
+                        className={`pr-10 ${errors.confirm_password ? 'border-destructive' : ''}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        disabled={!isManualPassword}
+                        aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                    {errors.confirm_password && (
+                      <p className="text-sm text-destructive">{errors.confirm_password}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4 rounded-lg border border-border/50 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="force_password_reset" className="text-sm font-medium">
+                        Force password reset on first login
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        The staff member must set a new password before using the app.
+                      </p>
+                    </div>
+                    <Switch
+                      id="force_password_reset"
+                      checked={formData.force_password_reset}
+                      onCheckedChange={(checked) =>
+                        setFormData((prev) => ({ ...prev, force_password_reset: checked }))
+                      }
+                      disabled={!isManualPassword}
+                    />
+                  </div>
+
+                  {!isManualPassword && (
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="send_email" className="text-sm font-medium">
+                          Send welcome email with credentials
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Email the temporary username and password to the staff member.
+                        </p>
+                      </div>
+                      <Switch
+                        id="send_email"
+                        checked={formData.send_email}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({ ...prev, send_email: checked }))
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button variant="outline" type="button" asChild>
+                <Link href="/admin/staff">Cancel</Link>
+              </Button>
+              <Button type="submit" disabled={createStaff.isPending || usernameStatus === 'taken'}>
+                <Save className="mr-2 h-4 w-4" />
+                {createStaff.isPending ? 'Creating…' : 'Create Staff Profile'}
+              </Button>
+            </div>
+          </form>
         </TabsContent>
       </Tabs>
 
@@ -1341,7 +1385,7 @@ export default function NewStaffPage() {
       <CredentialDialog
         open={credentialDialog.open}
         onClose={() => {
-          setCredentialDialog(prev => ({ ...prev, open: false }));
+          setCredentialDialog((prev) => ({ ...prev, open: false }));
           router.push('/admin/staff');
         }}
         username={credentialDialog.username}

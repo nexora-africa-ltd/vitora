@@ -20,11 +20,7 @@ import { toast } from 'sonner';
 import type { SubscriptionPlanUpdateData } from '@/lib/types/subscription';
 import { FEATURE_LABELS } from '@/lib/types/subscription';
 
-export default function EditSubscriptionPlanPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function EditSubscriptionPlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const planId = parseInt(id, 10);
   const router = useRouter();
@@ -59,8 +55,7 @@ export default function EditSubscriptionPlanPage({
   }, [plan]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: SubscriptionPlanUpdateData) =>
-      subscriptionPlansApi.update(planId, data),
+    mutationFn: (data: SubscriptionPlanUpdateData) => subscriptionPlansApi.update(planId, data),
     onSuccess: () => {
       toast.success('Plan updated');
       queryClient.invalidateQueries({ queryKey: ['subscription-plan', planId] });
@@ -76,7 +71,11 @@ export default function EditSubscriptionPlanPage({
     return (
       <div className="space-y-4">
         <PageHeader title="Access Denied" />
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Only Nexora superusers can manage subscription plans.
+          </CardContent>
+        </Card>
       </div>
     );
   }

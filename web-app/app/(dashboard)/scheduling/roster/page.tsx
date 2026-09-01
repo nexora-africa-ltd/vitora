@@ -55,18 +55,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,15 +64,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from 'sonner';
-import { appointmentsApi, resourcesApi, shiftsApi, staffConstraintsApi, schedulingSettingsApi, shiftTypeConfigsApi } from '@/lib/api/scheduling';
+import {
+  appointmentsApi,
+  resourcesApi,
+  shiftsApi,
+  staffConstraintsApi,
+  schedulingSettingsApi,
+  shiftTypeConfigsApi,
+} from '@/lib/api/scheduling';
 import { QRCodeDisplay } from '@/components/scheduling/qr-clock-in';
 import type {
   ShiftType,
@@ -95,39 +88,175 @@ import type {
   AutofillGroupMinimumRule,
   AutofillGroupMaximumRule,
 } from '@/lib/types/scheduling';
-import {
-  printRoster,
-  SHIFT_PRINT_COLORS,
-  type RosterStaffRow,
-} from '@/lib/documents/print-roster';
+import { printRoster, SHIFT_PRINT_COLORS, type RosterStaffRow } from '@/lib/documents/print-roster';
 import { CommentThread } from '@/components/comments/comment-thread';
-
 
 // =============================================================================
 // Constants
 // =============================================================================
 
-const SHIFT_TYPES: { value: ShiftType; label: string; short: string; icon: React.ReactNode; color: string; start: string; end: string; isOff?: boolean }[] = [
+const SHIFT_TYPES: {
+  value: ShiftType;
+  label: string;
+  short: string;
+  icon: React.ReactNode;
+  color: string;
+  start: string;
+  end: string;
+  isOff?: boolean;
+}[] = [
   // Working shifts
-  { value: 'DAY',       label: 'Day',       short: 'D', icon: <Sun className="h-3 w-3" />,     color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-700',     start: '07:00', end: '19:00' },
-  { value: 'NIGHT',     label: 'Night',     short: 'N', icon: <Moon className="h-3 w-3" />,    color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700', start: '19:00', end: '07:00' },
-  { value: 'MORNING',   label: 'Morning',   short: 'M', icon: <Sunrise className="h-3 w-3" />, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border-orange-300 dark:border-orange-700', start: '06:00', end: '14:00' },
-  { value: 'AFTERNOON', label: 'Afternoon', short: 'A', icon: <Sunset className="h-3 w-3" />,  color: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300 dark:border-rose-700',           start: '14:00', end: '22:00' },
-  { value: 'ON_CALL',   label: 'On-Call',   short: 'C', icon: <Phone className="h-3 w-3" />,   color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700', start: '00:00', end: '23:59' },
-  { value: 'OVERTIME',  label: 'Overtime',  short: 'OT', icon: <Timer className="h-3 w-3" />,   color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-300 dark:border-purple-700', start: '08:00', end: '16:00' },
+  {
+    value: 'DAY',
+    label: 'Day',
+    short: 'D',
+    icon: <Sun className="h-3 w-3" />,
+    color:
+      'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-700',
+    start: '07:00',
+    end: '19:00',
+  },
+  {
+    value: 'NIGHT',
+    label: 'Night',
+    short: 'N',
+    icon: <Moon className="h-3 w-3" />,
+    color:
+      'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700',
+    start: '19:00',
+    end: '07:00',
+  },
+  {
+    value: 'MORNING',
+    label: 'Morning',
+    short: 'M',
+    icon: <Sunrise className="h-3 w-3" />,
+    color:
+      'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border-orange-300 dark:border-orange-700',
+    start: '06:00',
+    end: '14:00',
+  },
+  {
+    value: 'AFTERNOON',
+    label: 'Afternoon',
+    short: 'A',
+    icon: <Sunset className="h-3 w-3" />,
+    color:
+      'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300 dark:border-rose-700',
+    start: '14:00',
+    end: '22:00',
+  },
+  {
+    value: 'ON_CALL',
+    label: 'On-Call',
+    short: 'C',
+    icon: <Phone className="h-3 w-3" />,
+    color:
+      'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700',
+    start: '00:00',
+    end: '23:59',
+  },
+  {
+    value: 'OVERTIME',
+    label: 'Overtime',
+    short: 'OT',
+    icon: <Timer className="h-3 w-3" />,
+    color:
+      'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-300 dark:border-purple-700',
+    start: '08:00',
+    end: '16:00',
+  },
   // Off / Leave types
-  { value: 'DAY_OFF',       label: 'Day Off',       short: 'DO', icon: <SunMedium className="h-3 w-3" />,    color: 'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400 border-slate-300 dark:border-slate-600',   start: '07:00', end: '19:00', isOff: true },
-  { value: 'NIGHT_OFF',     label: 'Night Off',     short: 'NO', icon: <MoonStar className="h-3 w-3" />,     color: 'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400 border-slate-300 dark:border-slate-600',   start: '19:00', end: '07:00', isOff: true },
-  { value: 'OFF',           label: 'Off',           short: 'O',  icon: <CalendarOff className="h-3 w-3" />,   color: 'bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400 border-gray-300 dark:border-gray-600',         start: '00:00', end: '23:59', isOff: true },
-  { value: 'AFTERNOON_OFF', label: 'Afternoon Off', short: 'AO', icon: <Sunset className="h-3 w-3" />,       color: 'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400 border-slate-300 dark:border-slate-600',   start: '14:00', end: '22:00', isOff: true },
-  { value: 'LEAVE',         label: 'Leave',         short: 'L',  icon: <Palmtree className="h-3 w-3" />,      color: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700', start: '00:00', end: '23:59', isOff: true },
-  { value: 'SICK_LEAVE',    label: 'Sick Leave',    short: 'SL', icon: <Thermometer className="h-3 w-3" />,   color: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 border-red-300 dark:border-red-700',                 start: '00:00', end: '23:59', isOff: true },
-  { value: 'REST',          label: 'Rest Day',      short: 'R',  icon: <Coffee className="h-3 w-3" />,        color: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-700',     start: '00:00', end: '23:59', isOff: true },
+  {
+    value: 'DAY_OFF',
+    label: 'Day Off',
+    short: 'DO',
+    icon: <SunMedium className="h-3 w-3" />,
+    color:
+      'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400 border-slate-300 dark:border-slate-600',
+    start: '07:00',
+    end: '19:00',
+    isOff: true,
+  },
+  {
+    value: 'NIGHT_OFF',
+    label: 'Night Off',
+    short: 'NO',
+    icon: <MoonStar className="h-3 w-3" />,
+    color:
+      'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400 border-slate-300 dark:border-slate-600',
+    start: '19:00',
+    end: '07:00',
+    isOff: true,
+  },
+  {
+    value: 'OFF',
+    label: 'Off',
+    short: 'O',
+    icon: <CalendarOff className="h-3 w-3" />,
+    color:
+      'bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400 border-gray-300 dark:border-gray-600',
+    start: '00:00',
+    end: '23:59',
+    isOff: true,
+  },
+  {
+    value: 'AFTERNOON_OFF',
+    label: 'Afternoon Off',
+    short: 'AO',
+    icon: <Sunset className="h-3 w-3" />,
+    color:
+      'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400 border-slate-300 dark:border-slate-600',
+    start: '14:00',
+    end: '22:00',
+    isOff: true,
+  },
+  {
+    value: 'LEAVE',
+    label: 'Leave',
+    short: 'L',
+    icon: <Palmtree className="h-3 w-3" />,
+    color:
+      'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700',
+    start: '00:00',
+    end: '23:59',
+    isOff: true,
+  },
+  {
+    value: 'SICK_LEAVE',
+    label: 'Sick Leave',
+    short: 'SL',
+    icon: <Thermometer className="h-3 w-3" />,
+    color:
+      'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 border-red-300 dark:border-red-700',
+    start: '00:00',
+    end: '23:59',
+    isOff: true,
+  },
+  {
+    value: 'REST',
+    label: 'Rest Day',
+    short: 'R',
+    icon: <Coffee className="h-3 w-3" />,
+    color:
+      'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-700',
+    start: '00:00',
+    end: '23:59',
+    isOff: true,
+  },
 ];
 
 const SHIFT_MAP = Object.fromEntries(SHIFT_TYPES.map((s) => [s.value, s]));
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const DAY_LABELS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_LABELS_FULL = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
 
 const REJECT_REASON_LABELS: Record<AutoFillRejectReason, string> = {
   max_days_reached: 'Max days reached',
@@ -285,8 +414,9 @@ export default function WeeklyRosterPage() {
   });
   const allStaff = useMemo(() => resourcesData?.results ?? [], [resourcesData?.results]);
   const staffList = useMemo(
-    () => departmentFilter ? allStaff.filter((r) => r.department_name === departmentFilter) : allStaff,
-    [allStaff, departmentFilter],
+    () =>
+      departmentFilter ? allStaff.filter((r) => r.department_name === departmentFilter) : allStaff,
+    [allStaff, departmentFilter]
   );
 
   // Fetch existing shifts for the week
@@ -305,7 +435,8 @@ export default function WeeklyRosterPage() {
   // Check for cross-facility scheduling conflicts
   const { data: conflicts } = useQuery({
     queryKey: ['roster-conflicts', weekDates[0], weekDates[6]],
-    queryFn: () => shiftsApi.crossFacilityConflicts({ from_date: weekDates[0]!, to_date: weekDates[6]! }),
+    queryFn: () =>
+      shiftsApi.crossFacilityConflicts({ from_date: weekDates[0]!, to_date: weekDates[6]! }),
     enabled: weekDates.length === 7,
   });
 
@@ -332,7 +463,8 @@ export default function WeeklyRosterPage() {
     queryFn: () => schedulingSettingsApi.listAutofillRuns(),
   });
   const saveAutofillRunMutation = useMutation({
-    mutationFn: (payload: Record<string, unknown>) => schedulingSettingsApi.createAutofillRun(payload),
+    mutationFn: (payload: Record<string, unknown>) =>
+      schedulingSettingsApi.createAutofillRun(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roster-autofill-runs'] });
     },
@@ -423,9 +555,7 @@ export default function WeeklyRosterPage() {
     if (!shiftTypeDefaults || Object.keys(shiftTypeDefaults).length === 0) {
       return SHIFT_TYPES; // No configs yet — show all
     }
-    return SHIFT_TYPES.filter(
-      (st) => st.isOff || st.value in shiftTypeDefaults
-    );
+    return SHIFT_TYPES.filter((st) => st.isOff || st.value in shiftTypeDefaults);
   }, [shiftTypeDefaults]);
 
   // Build a map of shift_type → custom hex color for cell rendering
@@ -476,7 +606,7 @@ export default function WeeklyRosterPage() {
         const next = new Map(prev);
         const existing = existingShifts.get(key);
         const draftValue = prev.get(key);
-        const currentType = prev.has(key) ? draftValue : existing?.shift_type ?? null;
+        const currentType = prev.has(key) ? draftValue : (existing?.shift_type ?? null);
 
         // Toggle off: if cell already has a shift (saved or drafted), remove it
         if (currentType !== null) {
@@ -499,12 +629,15 @@ export default function WeeklyRosterPage() {
         return next;
       });
     },
-    [paintType, existingShifts, canManageSchedules, today],
+    [paintType, existingShifts, canManageSchedules, today]
   );
 
   // Determine what's displayed in a cell
   const getCellState = useCallback(
-    (resourceId: number, date: string): { type: ShiftType | null; isDraft: boolean; isRemoval: boolean } => {
+    (
+      resourceId: number,
+      date: string
+    ): { type: ShiftType | null; isDraft: boolean; isRemoval: boolean } => {
       const key = cellKey(resourceId, date);
       const draftValue = draft.get(key);
       const existing = existingShifts.get(key);
@@ -522,7 +655,7 @@ export default function WeeklyRosterPage() {
 
       return { type: null, isDraft: false, isRemoval: false };
     },
-    [draft, existingShifts],
+    [draft, existingShifts]
   );
 
   // ==========================================================================
@@ -576,9 +709,7 @@ export default function WeeklyRosterPage() {
       const BATCH_SIZE = 6;
       for (let i = 0; i < deleteIds.length; i += BATCH_SIZE) {
         const batch = deleteIds.slice(i, i + BATCH_SIZE);
-        const results = await Promise.allSettled(
-          batch.map((id) => shiftsApi.delete(id)),
-        );
+        const results = await Promise.allSettled(batch.map((id) => shiftsApi.delete(id)));
         deleted += results.filter((r) => r.status === 'fulfilled').length;
         deleteFailed += results.filter((r) => r.status === 'rejected').length;
       }
@@ -613,7 +744,9 @@ export default function WeeklyRosterPage() {
         toast.error(`${result.errors} shift(s) had errors`);
       }
       if (result.deleteFailed > 0) {
-        toast.error(`${result.deleteFailed} shift(s) could not be removed (may be active/completed)`);
+        toast.error(
+          `${result.deleteFailed} shift(s) could not be removed (may be active/completed)`
+        );
       }
     },
     onError: () => toast.error('Failed to save roster'),
@@ -722,7 +855,13 @@ export default function WeeklyRosterPage() {
   const predictiveDemandByWeekday = useMemo(() => {
     const buckets = new Map<number, number[]>();
     const perDate = new Map<string, number>();
-    const activeStatuses = new Set(['CREATED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS', 'COMPLETED']);
+    const activeStatuses = new Set([
+      'CREATED',
+      'CONFIRMED',
+      'CHECKED_IN',
+      'IN_PROGRESS',
+      'COMPLETED',
+    ]);
     for (const appt of historicalAppointmentsData?.results ?? []) {
       if (!activeStatuses.has(appt.status)) continue;
       const day = appt.scheduled_start.slice(0, 10);
@@ -743,19 +882,27 @@ export default function WeeklyRosterPage() {
   }, [historicalAppointmentsData]);
 
   const handleAutoFill = useCallback(() => {
-    const availableWorking = new Set(availableShiftTypes.filter((st) => !st.isOff).map((st) => st.value));
-    const configuredActive = (schedulingSettings?.active_shift_types as ShiftType[] | undefined) ?? [];
-    const configuredDefault = (schedulingSettings?.default_shift_pattern as ShiftType[] | undefined) ?? [];
-    const activeTypes: ShiftType[] =
-      configuredActive.length
-        ? configuredActive.filter((t) => availableWorking.has(t))
-        : configuredDefault.length
-          ? configuredDefault.filter((t) => availableWorking.has(t))
-          : [];
+    const availableWorking = new Set(
+      availableShiftTypes.filter((st) => !st.isOff).map((st) => st.value)
+    );
+    const configuredActive =
+      (schedulingSettings?.active_shift_types as ShiftType[] | undefined) ?? [];
+    const configuredDefault =
+      (schedulingSettings?.default_shift_pattern as ShiftType[] | undefined) ?? [];
+    const activeTypes: ShiftType[] = configuredActive.length
+      ? configuredActive.filter((t) => availableWorking.has(t))
+      : configuredDefault.length
+        ? configuredDefault.filter((t) => availableWorking.has(t))
+        : [];
     const useMultiType = activeTypes.length > 1;
     const autofillMode = schedulingSettings?.autofill_mode ?? 'BALANCED_UTILIZATION';
-    const targetDaysPerStaff = Math.max(1, Math.min(7, schedulingSettings?.autofill_target_days_per_staff ?? 4));
-    const groupMinRules = ((schedulingSettings?.autofill_group_minimums as AutofillGroupMinimumRule[] | undefined) ?? [])
+    const targetDaysPerStaff = Math.max(
+      1,
+      Math.min(7, schedulingSettings?.autofill_target_days_per_staff ?? 4)
+    );
+    const groupMinRules = (
+      (schedulingSettings?.autofill_group_minimums as AutofillGroupMinimumRule[] | undefined) ?? []
+    )
       .map((rule): NormalizedGroupRule | null => {
         const scope = rule.scope === 'ROLE' ? 'ROLE' : 'DEPARTMENT';
         const value = String(rule.value ?? '').trim();
@@ -767,7 +914,9 @@ export default function WeeklyRosterPage() {
         return { scope, value, min_staff: minStaff, shift_types: shiftTypes };
       })
       .filter((rule): rule is NormalizedGroupRule => !!rule);
-    const groupMaxRules = ((schedulingSettings?.autofill_group_maximums as AutofillGroupMaximumRule[] | undefined) ?? [])
+    const groupMaxRules = (
+      (schedulingSettings?.autofill_group_maximums as AutofillGroupMaximumRule[] | undefined) ?? []
+    )
       .map((rule): NormalizedGroupMaxRule | null => {
         const scope = rule.scope === 'ROLE' ? 'ROLE' : 'DEPARTMENT';
         const value = String(rule.value ?? '').trim();
@@ -782,12 +931,16 @@ export default function WeeklyRosterPage() {
     const groupMinimumByShift = new Map<ShiftType, number>();
     for (const rule of groupMinRules) {
       for (const shiftType of rule.shift_types) {
-        groupMinimumByShift.set(shiftType, (groupMinimumByShift.get(shiftType) ?? 0) + rule.min_staff);
+        groupMinimumByShift.set(
+          shiftType,
+          (groupMinimumByShift.get(shiftType) ?? 0) + rule.min_staff
+        );
       }
     }
     if (activeTypes.length === 0) {
       toast.error('Auto-fill is unavailable', {
-        description: 'Configure Active Shift Types or Default Shift Pattern in roster settings first.',
+        description:
+          'Configure Active Shift Types or Default Shift Pattern in roster settings first.',
       });
       return;
     }
@@ -800,12 +953,34 @@ export default function WeeklyRosterPage() {
     };
 
     const shiftEndHour: Record<string, number> = {
-      DAY: 19, NIGHT: 7, MORNING: 14, AFTERNOON: 22, ON_CALL: 24, OVERTIME: 16,
-      DAY_OFF: 19, NIGHT_OFF: 7, OFF: 0, AFTERNOON_OFF: 22, LEAVE: 0, SICK_LEAVE: 0, REST: 0,
+      DAY: 19,
+      NIGHT: 7,
+      MORNING: 14,
+      AFTERNOON: 22,
+      ON_CALL: 24,
+      OVERTIME: 16,
+      DAY_OFF: 19,
+      NIGHT_OFF: 7,
+      OFF: 0,
+      AFTERNOON_OFF: 22,
+      LEAVE: 0,
+      SICK_LEAVE: 0,
+      REST: 0,
     };
     const shiftStartHour: Record<string, number> = {
-      DAY: 7, NIGHT: 19, MORNING: 6, AFTERNOON: 14, ON_CALL: 0, OVERTIME: 8,
-      DAY_OFF: 7, NIGHT_OFF: 19, OFF: 0, AFTERNOON_OFF: 14, LEAVE: 0, SICK_LEAVE: 0, REST: 0,
+      DAY: 7,
+      NIGHT: 19,
+      MORNING: 6,
+      AFTERNOON: 14,
+      ON_CALL: 0,
+      OVERTIME: 8,
+      DAY_OFF: 7,
+      NIGHT_OFF: 19,
+      OFF: 0,
+      AFTERNOON_OFF: 14,
+      LEAVE: 0,
+      SICK_LEAVE: 0,
+      REST: 0,
     };
 
     const violatesRest = (prevType: ShiftType | null | undefined, nextType: ShiftType): boolean => {
@@ -813,9 +988,9 @@ export default function WeeklyRosterPage() {
       const prevEnd = shiftEndHour[prevType] ?? 0;
       const nextStart = shiftStartHour[nextType] ?? 0;
       if (prevType === 'NIGHT') {
-        return (nextStart - 7) < minRestHours;
+        return nextStart - 7 < minRestHours;
       }
-      return ((24 - prevEnd) + nextStart) < minRestHours;
+      return 24 - prevEnd + nextStart < minRestHours;
     };
 
     let reportDraft: AutoFillReport | null = null;
@@ -884,7 +1059,8 @@ export default function WeeklyRosterPage() {
 
       const wouldViolateRest = (staffId: number, dayIdx: number, shiftType: ShiftType): boolean => {
         const prevType = dayIdx > 0 ? getAssignedType(staffId, dayIdx - 1) : null;
-        const nextType = dayIdx < weekDates.length - 1 ? getAssignedType(staffId, dayIdx + 1) : null;
+        const nextType =
+          dayIdx < weekDates.length - 1 ? getAssignedType(staffId, dayIdx + 1) : null;
         if (prevType && violatesRest(prevType, shiftType)) return true;
         if (nextType && violatesRest(shiftType, nextType)) return true;
         return false;
@@ -921,8 +1097,12 @@ export default function WeeklyRosterPage() {
         staffAssignedDays.set(staff.id, assigned);
       }
 
-      const exceedsConsecutive = (staffId: number, dayIdx: number, shiftType: ShiftType): boolean => {
-        if ((SHIFT_MAP[shiftType]?.isOff ?? false)) return false;
+      const exceedsConsecutive = (
+        staffId: number,
+        dayIdx: number,
+        shiftType: ShiftType
+      ): boolean => {
+        if (SHIFT_MAP[shiftType]?.isOff ?? false) return false;
         const arr = [...(staffDayType.get(staffId) ?? [])];
         arr[dayIdx] = shiftType;
         let run = 0;
@@ -938,7 +1118,11 @@ export default function WeeklyRosterPage() {
         return false;
       };
 
-      const hasNoSharedShiftConflict = (staffId: number, dayIdx: number, shiftType: ShiftType): boolean => {
+      const hasNoSharedShiftConflict = (
+        staffId: number,
+        dayIdx: number,
+        shiftType: ShiftType
+      ): boolean => {
         for (const other of staffList) {
           if (other.id === staffId) continue;
           if (getAssignedType(other.id, dayIdx) !== shiftType) continue;
@@ -949,7 +1133,11 @@ export default function WeeklyRosterPage() {
         return false;
       };
 
-      const checkHardConstraints = (staff: ResourceListItem, dayIdx: number, shiftType: ShiftType): AutoFillRejectReason | null => {
+      const checkHardConstraints = (
+        staff: ResourceListItem,
+        dayIdx: number,
+        shiftType: ShiftType
+      ): AutoFillRejectReason | null => {
         const id = staff.id;
         if ((staffShiftCount.get(id) ?? 0) >= maxDaysPerStaff) return 'max_days_reached';
         if (staffAssignedDays.get(id)?.has(dayIdx)) return 'already_assigned';
@@ -957,17 +1145,27 @@ export default function WeeklyRosterPage() {
 
         const date = weekDates[dayIdx]!;
         const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
-        if (noWeekendStaff.has(id) && (dayOfWeek === 0 || dayOfWeek === 6)) return 'weekend_restricted';
-        if (shiftType === 'NIGHT' && (staffNightCount.get(id) ?? 0) >= maxNights) return 'night_limit_reached';
+        if (noWeekendStaff.has(id) && (dayOfWeek === 0 || dayOfWeek === 6))
+          return 'weekend_restricted';
+        if (shiftType === 'NIGHT' && (staffNightCount.get(id) ?? 0) >= maxNights)
+          return 'night_limit_reached';
         if (wouldViolateRest(id, dayIdx, shiftType)) return 'rest_violation';
         if (exceedsConsecutive(id, dayIdx, shiftType)) return 'max_consecutive_days';
         if (hasNoSharedShiftConflict(id, dayIdx, shiftType)) return 'no_shared_shift_with';
         return null;
       };
 
-      const scoreCandidate = (staff: ResourceListItem, dayIdx: number, shiftType: ShiftType): { score: number; rationale: string[] } => {
+      const scoreCandidate = (
+        staff: ResourceListItem,
+        dayIdx: number,
+        shiftType: ShiftType
+      ): { score: number; rationale: string[] } => {
         const id = staff.id;
-        const burden = historicalBurdenByStaff.get(id) ?? { hours: 0, nightCount: 0, weekendCount: 0 };
+        const burden = historicalBurdenByStaff.get(id) ?? {
+          hours: 0,
+          nightCount: 0,
+          weekendCount: 0,
+        };
         const preferred = preferredShiftTypes.get(id);
         const dayOfWeek = new Date(`${weekDates[dayIdx]}T00:00:00`).getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
@@ -976,16 +1174,14 @@ export default function WeeklyRosterPage() {
 
         let score = currentLoad * weights.weekly_load;
         score += (burden.hours / 8) * weights.history_hours;
-        if (shiftType === 'NIGHT') score += currentNights * weights.night_penalty + burden.nightCount * 3;
+        if (shiftType === 'NIGHT')
+          score += currentNights * weights.night_penalty + burden.nightCount * 3;
         if (isWeekend) score += burden.weekendCount * weights.weekend_penalty;
 
         const prev = dayIdx > 0 ? getAssignedType(id, dayIdx - 1) : null;
         if (prev === shiftType) score -= weights.continuity_bonus;
 
-        const rationale: string[] = [
-          `load:${currentLoad}`,
-          `history:${Math.round(burden.hours)}h`,
-        ];
+        const rationale: string[] = [`load:${currentLoad}`, `history:${Math.round(burden.hours)}h`];
         if (preferred && preferred.size > 0) {
           if (preferred.has(shiftType)) {
             score -= weights.preferred_match_bonus;
@@ -1003,18 +1199,19 @@ export default function WeeklyRosterPage() {
       const getGroupValue = (staff: ResourceListItem, scope: 'DEPARTMENT' | 'ROLE'): string => {
         if (scope === 'DEPARTMENT') return (staff.department_name ?? '').trim();
         const role =
-          (staff.metadata?.role as string | undefined)
-          ?? (staff.metadata?.staff_role as string | undefined)
-          ?? (staff.metadata?.job_title as string | undefined)
-          ?? '';
+          (staff.metadata?.role as string | undefined) ??
+          (staff.metadata?.staff_role as string | undefined) ??
+          (staff.metadata?.job_title as string | undefined) ??
+          '';
         return String(role).trim();
       };
 
       const groupCoverage = new Map<string, number>();
-      const allGroupRules: Array<{ scope: 'DEPARTMENT' | 'ROLE'; value: string; shift_types: ShiftType[] }> = [
-        ...groupMinRules,
-        ...groupMaxRules,
-      ];
+      const allGroupRules: Array<{
+        scope: 'DEPARTMENT' | 'ROLE';
+        value: string;
+        shift_types: ShiftType[];
+      }> = [...groupMinRules, ...groupMaxRules];
       for (let dayIdx = 0; dayIdx < weekDates.length; dayIdx++) {
         for (const type of activeTypes) {
           for (const rule of allGroupRules) {
@@ -1030,7 +1227,11 @@ export default function WeeklyRosterPage() {
         }
       }
 
-      const wouldExceedGroupMaximum = (staff: ResourceListItem, dayIdx: number, shiftType: ShiftType): boolean => {
+      const wouldExceedGroupMaximum = (
+        staff: ResourceListItem,
+        dayIdx: number,
+        shiftType: ShiftType
+      ): boolean => {
         for (const rule of groupMaxRules) {
           if (!rule.shift_types.includes(shiftType)) continue;
           const groupValue = getGroupValue(staff, rule.scope);
@@ -1048,7 +1249,7 @@ export default function WeeklyRosterPage() {
         shiftType: ShiftType,
         score: number,
         rationale: string[],
-        requiredRule?: NormalizedGroupRule,
+        requiredRule?: NormalizedGroupRule
       ) => {
         const key = cellKey(staff.id, weekDates[dayIdx]!);
         next.set(key, shiftType);
@@ -1124,7 +1325,7 @@ export default function WeeklyRosterPage() {
           let bestScore = -1;
           for (const dayIdx of futureDayIndices) {
             const dow = new Date(`${weekDates[dayIdx]}T00:00:00`).getDay();
-              const dayWeight = (predictiveDemandByWeekday.get(dow) ?? 0) + 1;
+            const dayWeight = (predictiveDemandByWeekday.get(dow) ?? 0) + 1;
             for (const shiftType of activeTypes) {
               const shiftWeight = Math.max(1, groupMinimumByShift.get(shiftType) ?? 1);
               const key = `${dayIdx}|${shiftType}`;
@@ -1145,8 +1346,14 @@ export default function WeeklyRosterPage() {
       }
 
       slots.sort((a, b) => {
-        const aCov = Array.from(dayCoverage[a.dayIdx]!.values()).reduce((sum, value) => sum + value, 0);
-        const bCov = Array.from(dayCoverage[b.dayIdx]!.values()).reduce((sum, value) => sum + value, 0);
+        const aCov = Array.from(dayCoverage[a.dayIdx]!.values()).reduce(
+          (sum, value) => sum + value,
+          0
+        );
+        const bCov = Array.from(dayCoverage[b.dayIdx]!.values()).reduce(
+          (sum, value) => sum + value,
+          0
+        );
         if (aCov !== bCov) return aCov - bCov;
         if (a.shiftType === 'NIGHT' && b.shiftType !== 'NIGHT') return -1;
         if (b.shiftType === 'NIGHT' && a.shiftType !== 'NIGHT') return 1;
@@ -1168,7 +1375,10 @@ export default function WeeklyRosterPage() {
             continue;
           }
           if (wouldExceedGroupMaximum(staff, slot.dayIdx, slot.shiftType)) {
-            rejectCounts.set('group_maximum_reached', (rejectCounts.get('group_maximum_reached') ?? 0) + 1);
+            rejectCounts.set(
+              'group_maximum_reached',
+              (rejectCounts.get('group_maximum_reached') ?? 0) + 1
+            );
             continue;
           }
           const scored = scoreCandidate(staff, slot.dayIdx, slot.shiftType);
@@ -1183,7 +1393,7 @@ export default function WeeklyRosterPage() {
             slot.shiftType,
             best.score,
             [...best.rationale, slot.requiredRule ? 'group-minimum' : 'coverage'],
-            slot.requiredRule,
+            slot.requiredRule
           );
         } else if (slot.requiredRule) {
           for (const staff of staffList) {
@@ -1191,7 +1401,11 @@ export default function WeeklyRosterPage() {
             if (rejectReason) continue;
             if (wouldExceedGroupMaximum(staff, slot.dayIdx, slot.shiftType)) continue;
             const scored = scoreCandidate(staff, slot.dayIdx, slot.shiftType);
-            best = { staff, score: scored.score + 1000, rationale: [...scored.rationale, 'group-fallback'] };
+            best = {
+              staff,
+              score: scored.score + 1000,
+              rationale: [...scored.rationale, 'group-fallback'],
+            };
             break;
           }
           if (best) {
@@ -1243,7 +1457,9 @@ export default function WeeklyRosterPage() {
         finalCoverageSlots,
         fairnessSpread: Number(spread.toFixed(2)),
         strategy: useMultiType
-          ? (autofillMode === 'BALANCED_UTILIZATION' ? 'coverage-utilization-fairness' : 'coverage-and-fairness')
+          ? autofillMode === 'BALANCED_UTILIZATION'
+            ? 'coverage-utilization-fairness'
+            : 'coverage-and-fairness'
           : 'single-pattern',
         weights,
         topRejectReasons: Array.from(rejectCounts.entries())
@@ -1324,11 +1540,14 @@ export default function WeeklyRosterPage() {
   const isLoading = resourcesLoading || shiftsLoading;
   const selectedRunA = autofillRuns.find((run) => run.id === compareRunA) ?? null;
   const selectedRunB = autofillRuns.find((run) => run.id === compareRunB) ?? null;
-  const configuredActiveTypes = (schedulingSettings?.active_shift_types as string[] | undefined) ?? [];
-  const configuredDefaultPattern = (schedulingSettings?.default_shift_pattern as string[] | undefined) ?? [];
+  const configuredActiveTypes =
+    (schedulingSettings?.active_shift_types as string[] | undefined) ?? [];
+  const configuredDefaultPattern =
+    (schedulingSettings?.default_shift_pattern as string[] | undefined) ?? [];
   const configuredAutofillMode = schedulingSettings?.autofill_mode ?? 'BALANCED_UTILIZATION';
   const configuredTargetDays = schedulingSettings?.autofill_target_days_per_staff ?? 4;
-  const isAutofillConfigured = configuredActiveTypes.length > 0 || configuredDefaultPattern.length > 0;
+  const isAutofillConfigured =
+    configuredActiveTypes.length > 0 || configuredDefaultPattern.length > 0;
   const autofillDisabledReason = !isAutofillConfigured
     ? 'Auto-fill disabled: no Active Shift Types or Default Shift Pattern configured in roster settings.'
     : staffList.length === 0
@@ -1344,7 +1563,7 @@ export default function WeeklyRosterPage() {
           actions={
             <div className="flex items-center gap-1 sm:gap-2">
               {/* === Desktop: full button row (hidden on mobile) === */}
-              <div className="hidden md:flex items-center gap-2">
+              <div className="hidden items-center gap-2 md:flex">
                 {canManageSchedules && (
                   <>
                     <QRCodeDisplay />
@@ -1358,7 +1577,7 @@ export default function WeeklyRosterPage() {
                               onClick={handleAutoFill}
                               disabled={!!autofillDisabledReason}
                             >
-                              <Wand2 className="h-4 w-4 mr-1" />
+                              <Wand2 className="mr-1 h-4 w-4" />
                               Auto-Fill
                             </Button>
                           </span>
@@ -1369,8 +1588,7 @@ export default function WeeklyRosterPage() {
                               ? autofillDisabledReason
                               : configuredActiveTypes.length > 0
                                 ? `Fill active shift types (${configuredActiveTypes.join(', ')}), max ${maxDaysPerStaff} days/staff, mode ${configuredAutofillMode === 'BALANCED_UTILIZATION' ? `Balanced Utilization (${configuredTargetDays} target days)` : 'Minimum Coverage'}`
-                                : `Fallback using default shift pattern (${configuredDefaultPattern.join(', ')}), mode ${configuredAutofillMode === 'BALANCED_UTILIZATION' ? `Balanced Utilization (${configuredTargetDays} target days)` : 'Minimum Coverage'}`
-                            }
+                                : `Fallback using default shift pattern (${configuredDefaultPattern.join(', ')}), mode ${configuredAutofillMode === 'BALANCED_UTILIZATION' ? `Balanced Utilization (${configuredTargetDays} target days)` : 'Minimum Coverage'}`}
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -1383,7 +1601,7 @@ export default function WeeklyRosterPage() {
                   onClick={handlePrint}
                   disabled={staffList.length === 0}
                 >
-                  <Printer className="h-4 w-4 mr-1" />
+                  <Printer className="mr-1 h-4 w-4" />
                   Print
                 </Button>
                 {canManageSchedules && (
@@ -1396,9 +1614,9 @@ export default function WeeklyRosterPage() {
                         className="text-destructive hover:text-destructive"
                       >
                         {clearRosterMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                         ) : (
-                          <Trash2 className="h-4 w-4 mr-1" />
+                          <Trash2 className="mr-1 h-4 w-4" />
                         )}
                         Clear Week
                       </Button>
@@ -1408,8 +1626,8 @@ export default function WeeklyRosterPage() {
                         <AlertDialogTitle>Clear this week&apos;s roster?</AlertDialogTitle>
                         <AlertDialogDescription>
                           This will delete all <strong>scheduled</strong> shifts for {weekLabel}.
-                          Active, completed, and cancelled shifts will not be affected.
-                          This action cannot be undone.
+                          Active, completed, and cancelled shifts will not be affected. This action
+                          cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -1434,17 +1652,15 @@ export default function WeeklyRosterPage() {
                           </Link>
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent><p>Roster Settings & Staff Constraints</p></TooltipContent>
+                      <TooltipContent>
+                        <p>Roster Settings & Staff Constraints</p>
+                      </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 )}
                 {canManageSchedules && hasDraftChanges && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setDraft(new Map())}
-                  >
-                    <Eraser className="h-4 w-4 mr-1" />
+                  <Button size="sm" variant="outline" onClick={() => setDraft(new Map())}>
+                    <Eraser className="mr-1 h-4 w-4" />
                     Discard
                   </Button>
                 )}
@@ -1455,9 +1671,9 @@ export default function WeeklyRosterPage() {
                     disabled={!hasDraftChanges || saveMutation.isPending}
                   >
                     {saveMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                     ) : (
-                      <Save className="h-4 w-4 mr-1" />
+                      <Save className="mr-1 h-4 w-4" />
                     )}
                     Save Roster{hasDraftChanges ? ` (${draft.size})` : ''}
                   </Button>
@@ -1465,7 +1681,7 @@ export default function WeeklyRosterPage() {
               </div>
 
               {/* === Mobile: Save + Settings + overflow menu (shown below md) === */}
-              <div className="flex md:hidden items-center gap-1.5">
+              <div className="flex items-center gap-1.5 md:hidden">
                 {canManageSchedules && (
                   <Button
                     size="sm"
@@ -1473,9 +1689,9 @@ export default function WeeklyRosterPage() {
                     disabled={!hasDraftChanges || saveMutation.isPending}
                   >
                     {saveMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                     ) : (
-                      <Save className="h-4 w-4 mr-1" />
+                      <Save className="mr-1 h-4 w-4" />
                     )}
                     Save{hasDraftChanges ? ` (${draft.size})` : ''}
                   </Button>
@@ -1495,13 +1711,16 @@ export default function WeeklyRosterPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {canManageSchedules && (
-                      <DropdownMenuItem onClick={handleAutoFill} disabled={!!autofillDisabledReason}>
-                        <Wand2 className="h-4 w-4 mr-2" />
+                      <DropdownMenuItem
+                        onClick={handleAutoFill}
+                        disabled={!!autofillDisabledReason}
+                      >
+                        <Wand2 className="mr-2 h-4 w-4" />
                         Auto-Fill
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={handlePrint} disabled={staffList.length === 0}>
-                      <Printer className="h-4 w-4 mr-2" />
+                      <Printer className="mr-2 h-4 w-4" />
                       Print
                     </DropdownMenuItem>
                     {canManageSchedules && (
@@ -1509,16 +1728,18 @@ export default function WeeklyRosterPage() {
                         <DropdownMenuSeparator />
                         {hasDraftChanges && (
                           <DropdownMenuItem onClick={() => setDraft(new Map())}>
-                            <Eraser className="h-4 w-4 mr-2" />
+                            <Eraser className="mr-2 h-4 w-4" />
                             Discard Changes
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
-                          onClick={() => { if (existingShifts.size > 0) clearRosterMutation.mutate(); }}
+                          onClick={() => {
+                            if (existingShifts.size > 0) clearRosterMutation.mutate();
+                          }}
                           disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
                           className="text-destructive focus:text-destructive"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
+                          <Trash2 className="mr-2 h-4 w-4" />
                           Clear Week
                         </DropdownMenuItem>
                       </>
@@ -1538,7 +1759,7 @@ export default function WeeklyRosterPage() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <button
-              className="text-sm font-medium px-3 py-1 rounded-md hover:bg-muted transition-colors min-w-[200px] text-center"
+              className="min-w-[200px] rounded-md px-3 py-1 text-center text-sm font-medium transition-colors hover:bg-muted"
               onClick={goToThisWeek}
             >
               {weekLabel}
@@ -1549,12 +1770,12 @@ export default function WeeklyRosterPage() {
           </div>
 
           {/* Paint Brush Selector + Department (desktop) */}
-          <div className="hidden md:flex items-center gap-2 flex-wrap">
+          <div className="hidden flex-wrap items-center gap-2 md:flex">
             {canManageSchedules && (
               <>
-                <span className="text-xs text-muted-foreground shrink-0">Paint:</span>
+                <span className="shrink-0 text-xs text-muted-foreground">Paint:</span>
                 <Select value={paintType} onValueChange={(v) => setPaintType(v as ShiftType)}>
-                  <SelectTrigger className="w-[160px] h-8 text-xs">
+                  <SelectTrigger className="h-8 w-[160px] text-xs">
                     <SelectValue>
                       {(() => {
                         const st = SHIFT_MAP[paintType];
@@ -1563,43 +1784,61 @@ export default function WeeklyRosterPage() {
                             {st.icon}
                             <span>{st.label}</span>
                           </span>
-                        ) : paintType;
+                        ) : (
+                          paintType
+                        );
                       })()}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Working</div>
-                    {availableShiftTypes.filter((st) => !st.isOff).map((st) => (
-                      <SelectItem key={st.value} value={st.value}>
-                        <span className="flex items-center gap-2">
-                          {st.icon}
-                          <span>{shiftTypeDefaults?.[st.value]?.label || st.label}</span>
-                          <span className="text-muted-foreground ml-auto">({shiftTypeDefaults?.[st.value]?.start_time ?? st.start}–{shiftTypeDefaults?.[st.value]?.end_time ?? st.end})</span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                    <div className="px-2 py-1 mt-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-t">Off / Leave</div>
-                    {availableShiftTypes.filter((st) => st.isOff).map((st) => (
-                      <SelectItem key={st.value} value={st.value}>
-                        <span className="flex items-center gap-2">
-                          {st.icon}
-                          <span>{st.label}</span>
-                        </span>
-                      </SelectItem>
-                    ))}
+                    <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Working
+                    </div>
+                    {availableShiftTypes
+                      .filter((st) => !st.isOff)
+                      .map((st) => (
+                        <SelectItem key={st.value} value={st.value}>
+                          <span className="flex items-center gap-2">
+                            {st.icon}
+                            <span>{shiftTypeDefaults?.[st.value]?.label || st.label}</span>
+                            <span className="ml-auto text-muted-foreground">
+                              ({shiftTypeDefaults?.[st.value]?.start_time ?? st.start}–
+                              {shiftTypeDefaults?.[st.value]?.end_time ?? st.end})
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    <div className="mt-1 border-t px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Off / Leave
+                    </div>
+                    {availableShiftTypes
+                      .filter((st) => st.isOff)
+                      .map((st) => (
+                        <SelectItem key={st.value} value={st.value}>
+                          <span className="flex items-center gap-2">
+                            {st.icon}
+                            <span>{st.label}</span>
+                          </span>
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </>
             )}
 
-            <Select value={departmentFilter || '_none'} onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
+            <Select
+              value={departmentFilter || '_none'}
+              onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}
+            >
+              <SelectTrigger className="h-8 w-[130px] text-xs">
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">All Depts</SelectItem>
                 {departments.map((d) => (
-                  <SelectItem key={d.name} value={d.name}>{d.name}</SelectItem>
+                  <SelectItem key={d.name} value={d.name}>
+                    {d.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1608,44 +1847,61 @@ export default function WeeklyRosterPage() {
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Select value={String(maxDaysPerStaff)} onValueChange={(v) => setMaxDaysPerStaff(Number(v))}>
-                      <SelectTrigger className="w-[80px] h-8 text-xs">
+                    <Select
+                      value={String(maxDaysPerStaff)}
+                      onValueChange={(v) => setMaxDaysPerStaff(Number(v))}
+                    >
+                      <SelectTrigger className="h-8 w-[80px] text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {[3, 4, 5, 6, 7].map((n) => (
-                          <SelectItem key={n} value={String(n)}>{n} days</SelectItem>
+                          <SelectItem key={n} value={String(n)}>
+                            {n} days
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </TooltipTrigger>
-                  <TooltipContent><p>Max days per staff for Auto-Fill</p></TooltipContent>
+                  <TooltipContent>
+                    <p>Max days per staff for Auto-Fill</p>
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}
           </div>
 
           {/* Filters (mobile only) — stacked vertically */}
-          <div className="flex md:hidden items-center gap-2">
-            <Select value={departmentFilter || '_none'} onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}>
-              <SelectTrigger className="w-[110px] h-8 text-xs">
+          <div className="flex items-center gap-2 md:hidden">
+            <Select
+              value={departmentFilter || '_none'}
+              onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}
+            >
+              <SelectTrigger className="h-8 w-[110px] text-xs">
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">All Depts</SelectItem>
                 {departments.map((d) => (
-                  <SelectItem key={d.name} value={d.name}>{d.name}</SelectItem>
+                  <SelectItem key={d.name} value={d.name}>
+                    {d.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {canManageSchedules && (
-              <Select value={String(maxDaysPerStaff)} onValueChange={(v) => setMaxDaysPerStaff(Number(v))}>
-                <SelectTrigger className="w-[75px] h-8 text-xs">
+              <Select
+                value={String(maxDaysPerStaff)}
+                onValueChange={(v) => setMaxDaysPerStaff(Number(v))}
+              >
+                <SelectTrigger className="h-8 w-[75px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {[3, 4, 5, 6, 7].map((n) => (
-                    <SelectItem key={n} value={String(n)}>{n} days</SelectItem>
+                    <SelectItem key={n} value={String(n)}>
+                      {n} days
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1654,36 +1910,47 @@ export default function WeeklyRosterPage() {
         </div>
 
         {/* Legend — collapsible on mobile, inline on desktop */}
-        <div className="hidden md:flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+        <div className="hidden flex-wrap items-center gap-3 text-xs text-muted-foreground md:flex">
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="flex items-center gap-1 cursor-default">
-                  <span className="inline-block w-3 h-3 rounded border-2 border-dashed border-primary/50 bg-primary/5" />
+                <span className="flex cursor-default items-center gap-1">
+                  <span className="inline-block h-3 w-3 rounded border-2 border-dashed border-primary/50 bg-primary/5" />
                   Unsaved
                 </span>
               </TooltipTrigger>
-              <TooltipContent><p>Draft changes not yet saved to the server</p></TooltipContent>
+              <TooltipContent>
+                <p>Draft changes not yet saved to the server</p>
+              </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="flex items-center gap-1 cursor-default">
-                  <span className="inline-block w-3 h-3 rounded bg-muted border border-border" />
+                <span className="flex cursor-default items-center gap-1">
+                  <span className="inline-block h-3 w-3 rounded border border-border bg-muted" />
                   Saved
                 </span>
               </TooltipTrigger>
-              <TooltipContent><p>Shift already saved on the server</p></TooltipContent>
+              <TooltipContent>
+                <p>Shift already saved on the server</p>
+              </TooltipContent>
             </Tooltip>
             {SHIFT_TYPES.map((st) => (
               <Tooltip key={st.value}>
                 <TooltipTrigger asChild>
-                  <span className="flex items-center gap-1 cursor-default">
+                  <span className="flex cursor-default items-center gap-1">
                     {st.icon} {st.label}
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p className="font-medium">{st.label}{st.isOff ? '' : ' Shift'}</p>
-                  {!st.isOff && <p className="text-muted-foreground">{st.start} – {st.end}</p>}
+                  <p className="font-medium">
+                    {st.label}
+                    {st.isOff ? '' : ' Shift'}
+                  </p>
+                  {!st.isOff && (
+                    <p className="text-muted-foreground">
+                      {st.start} – {st.end}
+                    </p>
+                  )}
                   {st.isOff && <p className="text-muted-foreground">Non-working</p>}
                 </TooltipContent>
               </Tooltip>
@@ -1693,19 +1960,21 @@ export default function WeeklyRosterPage() {
         <div className="md:hidden">
           <Collapsible open={legendOpen} onOpenChange={setLegendOpen}>
             <CollapsibleTrigger asChild>
-              <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
-                <ChevronDown className={`h-3 w-3 transition-transform ${legendOpen ? 'rotate-180' : ''}`} />
+              <button className="flex items-center gap-1.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+                <ChevronDown
+                  className={`h-3 w-3 transition-transform ${legendOpen ? 'rotate-180' : ''}`}
+                />
                 Shift legend
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="flex items-center gap-2.5 flex-wrap text-xs text-muted-foreground pt-1 pb-2">
+              <div className="flex flex-wrap items-center gap-2.5 pb-2 pt-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <span className="inline-block w-3 h-3 rounded border-2 border-dashed border-primary/50 bg-primary/5" />
+                  <span className="inline-block h-3 w-3 rounded border-2 border-dashed border-primary/50 bg-primary/5" />
                   Unsaved
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="inline-block w-3 h-3 rounded bg-muted border border-border" />
+                  <span className="inline-block h-3 w-3 rounded border border-border bg-muted" />
                   Saved
                 </span>
                 {SHIFT_TYPES.map((st) => (
@@ -1720,15 +1989,17 @@ export default function WeeklyRosterPage() {
 
         {/* Cross-facility conflicts banner */}
         {conflicts && conflicts.length > 0 && (
-          <div className="flex items-start gap-2 rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 p-3">
-            <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
+          <div className="flex items-start gap-2 rounded-lg border border-orange-300 bg-orange-50 p-3 dark:border-orange-700 dark:bg-orange-950/30">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
             <div className="text-sm">
               <p className="font-medium text-orange-800 dark:text-orange-300">
-                {conflicts.length} cross-facility conflict{conflicts.length !== 1 ? 's' : ''} detected
+                {conflicts.length} cross-facility conflict{conflicts.length !== 1 ? 's' : ''}{' '}
+                detected
               </p>
-              <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">
+              <p className="mt-0.5 text-xs text-orange-700 dark:text-orange-400">
                 {Array.from(new Set(conflicts.map((c) => c.staff_resource_name))).join(', ')}
-                {' — '}also scheduled at other facilities on overlapping dates. Check orange indicators on the grid.
+                {' — '}also scheduled at other facilities on overlapping dates. Check orange
+                indicators on the grid.
               </p>
             </div>
           </div>
@@ -1736,7 +2007,7 @@ export default function WeeklyRosterPage() {
 
         {autoFillReport && (
           <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="p-3 space-y-2">
+            <CardContent className="space-y-2 p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium">Auto-fill report ({autoFillReport.strategy})</p>
                 <Badge variant="outline" className="text-xs">
@@ -1745,7 +2016,9 @@ export default function WeeklyRosterPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <Badge variant="secondary">{autoFillReport.filled} filled</Badge>
-                <Badge variant="secondary">{autoFillReport.finalCoverageSlots}/{autoFillReport.targetCoverageSlots} coverage</Badge>
+                <Badge variant="secondary">
+                  {autoFillReport.finalCoverageSlots}/{autoFillReport.targetCoverageSlots} coverage
+                </Badge>
               </div>
               {autoFillReport.topRejectReasons.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -1765,28 +2038,35 @@ export default function WeeklyRosterPage() {
             <Card>
               <CardContent className="p-0">
                 <CollapsibleTrigger asChild>
-                  <button className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors">
+                  <button className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted/40">
                     <span className="text-sm font-medium">Auto-fill Decision Log</span>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${decisionLogOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${decisionLogOpen ? 'rotate-180' : ''}`}
+                    />
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-3 pb-3 space-y-2">
+                  <div className="space-y-2 px-3 pb-3">
                     {autoFillReport.decisions.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No decisions captured for this run.</p>
+                      <p className="text-xs text-muted-foreground">
+                        No decisions captured for this run.
+                      </p>
                     ) : (
                       autoFillReport.decisions.map((decision, index) => (
-                        <div key={`${decision.staffId}-${decision.date}-${index}`} className="rounded-md border p-2">
+                        <div
+                          key={`${decision.staffId}-${decision.date}-${index}`}
+                          className="rounded-md border p-2"
+                        >
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-sm font-medium">{decision.staffName}</p>
                             <Badge variant="outline" className="text-xs">
                               {decision.shiftType} · {decision.date}
                             </Badge>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="mt-1 text-xs text-muted-foreground">
                             score: {decision.score.toFixed(2)}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
+                          <p className="mt-0.5 text-xs text-muted-foreground">
                             {decision.rationale.join(', ')}
                           </p>
                         </div>
@@ -1800,18 +2080,25 @@ export default function WeeklyRosterPage() {
         )}
 
         <Card>
-          <CardContent className="p-3 space-y-3">
+          <CardContent className="space-y-3 p-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-medium">Autofill Run History</p>
-              <Badge variant="secondary" className="text-xs">{autofillRuns.length}</Badge>
+              <Badge variant="secondary" className="text-xs">
+                {autofillRuns.length}
+              </Badge>
             </div>
             {autofillRuns.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No historical auto-fill runs recorded yet.</p>
+              <p className="text-xs text-muted-foreground">
+                No historical auto-fill runs recorded yet.
+              </p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Compare Run A</Label>
-                  <Select value={compareRunA || '_none'} onValueChange={(v) => setCompareRunA(v === '_none' ? '' : v)}>
+                  <Select
+                    value={compareRunA || '_none'}
+                    onValueChange={(v) => setCompareRunA(v === '_none' ? '' : v)}
+                  >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="Select run A" />
                     </SelectTrigger>
@@ -1827,7 +2114,10 @@ export default function WeeklyRosterPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Compare Run B</Label>
-                  <Select value={compareRunB || '_none'} onValueChange={(v) => setCompareRunB(v === '_none' ? '' : v)}>
+                  <Select
+                    value={compareRunB || '_none'}
+                    onValueChange={(v) => setCompareRunB(v === '_none' ? '' : v)}
+                  >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="Select run B" />
                     </SelectTrigger>
@@ -1845,16 +2135,23 @@ export default function WeeklyRosterPage() {
             )}
 
             {selectedRunA && selectedRunB && (
-              <div className="rounded-md border p-3 text-xs space-y-1.5">
-                <p className="font-medium text-sm">Compare Summary</p>
-                <p>A filled: {Number((selectedRunA.report as Record<string, unknown>).filled || 0)}</p>
-                <p>B filled: {Number((selectedRunB.report as Record<string, unknown>).filled || 0)}</p>
+              <div className="space-y-1.5 rounded-md border p-3 text-xs">
+                <p className="text-sm font-medium">Compare Summary</p>
                 <p>
-                  Coverage A/B: {Number((selectedRunA.report as Record<string, unknown>).finalCoverageSlots || 0)} /
+                  A filled: {Number((selectedRunA.report as Record<string, unknown>).filled || 0)}
+                </p>
+                <p>
+                  B filled: {Number((selectedRunB.report as Record<string, unknown>).filled || 0)}
+                </p>
+                <p>
+                  Coverage A/B:{' '}
+                  {Number((selectedRunA.report as Record<string, unknown>).finalCoverageSlots || 0)}{' '}
+                  /
                   {Number((selectedRunB.report as Record<string, unknown>).finalCoverageSlots || 0)}
                 </p>
                 <p>
-                  Fairness spread A/B: {Number((selectedRunA.report as Record<string, unknown>).fairnessSpread || 0)} /
+                  Fairness spread A/B:{' '}
+                  {Number((selectedRunA.report as Record<string, unknown>).fairnessSpread || 0)} /
                   {Number((selectedRunB.report as Record<string, unknown>).fairnessSpread || 0)}
                 </p>
               </div>
@@ -1866,22 +2163,22 @@ export default function WeeklyRosterPage() {
         <Card className="hidden md:block">
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+              <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading roster...
               </div>
             ) : staffList.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <div className="py-12 text-center text-muted-foreground">
+                <AlertCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
                 <p className="text-sm font-medium">No staff resources found</p>
-                <p className="text-xs mt-1">Sync staff profiles on the Resources page first.</p>
+                <p className="mt-1 text-xs">Sync staff profiles on the Resources page first.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse min-w-[700px]">
+                <table className="w-full min-w-[700px] border-collapse">
                   <thead>
                     <tr className="border-b">
-                      <th className="sticky left-0 z-10 bg-card px-3 py-2 text-left text-xs font-medium text-muted-foreground w-[180px] min-w-[140px]">
+                      <th className="sticky left-0 z-10 w-[180px] min-w-[140px] bg-card px-3 py-2 text-left text-xs font-medium text-muted-foreground">
                         Staff
                       </th>
                       {weekDates.map((date, i) => {
@@ -1890,14 +2187,18 @@ export default function WeeklyRosterPage() {
                         return (
                           <th
                             key={date}
-                            className={`px-1 py-2 text-center text-xs font-medium min-w-[80px] ${
+                            className={`min-w-[80px] px-1 py-2 text-center text-xs font-medium ${
                               isToday ? 'bg-primary/5' : ''
                             } ${isPast ? 'opacity-50' : ''}`}
                           >
-                            <div className={`${isToday ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+                            <div
+                              className={`${isToday ? 'font-semibold text-primary' : 'text-muted-foreground'}`}
+                            >
                               {DAY_LABELS[i]}
                             </div>
-                            <div className={`text-[11px] ${isToday ? 'text-primary' : 'text-muted-foreground/70'}`}>
+                            <div
+                              className={`text-[11px] ${isToday ? 'text-primary' : 'text-muted-foreground/70'}`}
+                            >
                               {formatDateShort(date)}
                             </div>
                           </th>
@@ -1909,11 +2210,15 @@ export default function WeeklyRosterPage() {
                     {staffList.map((staff) => (
                       <tr key={staff.id} className="border-b last:border-b-0 hover:bg-muted/30">
                         <td className="sticky left-0 z-10 bg-card px-3 py-1.5">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
-                              {staff.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                              {staff.name
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .slice(0, 2)}
                             </div>
-                            <span className="text-xs font-medium truncate">{staff.name}</span>
+                            <span className="truncate text-xs font-medium">{staff.name}</span>
                           </div>
                         </td>
                         {weekDates.map((date) => {
@@ -1932,34 +2237,47 @@ export default function WeeklyRosterPage() {
                                 isToday ? 'bg-primary/5' : ''
                               } ${isPast ? 'opacity-50' : ''} ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50`}
                               onClick={() => handleCellClick(staff.id, date)}
-                              onContextMenu={hasSavedShift ? (e) => {
-                                e.preventDefault();
-                                setCommentShift(savedShift);
-                              } : undefined}
+                              onContextMenu={
+                                hasSavedShift
+                                  ? (e) => {
+                                      e.preventDefault();
+                                      setCommentShift(savedShift);
+                                    }
+                                  : undefined
+                              }
                             >
                               <div className="relative inline-block">
                                 {cell.type && shiftInfo ? (
                                   <div
-                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${
-                                      customShiftColors.has(cell.type) ? 'text-foreground' : shiftInfo.color
-                                    } ${cell.isDraft ? 'border-dashed border-2 border-primary/50' : ''}`}
-                                    style={customShiftColors.has(cell.type) ? {
-                                      backgroundColor: `${customShiftColors.get(cell.type)}20`,
-                                      borderColor: `${customShiftColors.get(cell.type)}80`,
-                                    } : undefined}
+                                    className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-medium ${
+                                      customShiftColors.has(cell.type)
+                                        ? 'text-foreground'
+                                        : shiftInfo.color
+                                    } ${cell.isDraft ? 'border-2 border-dashed border-primary/50' : ''}`}
+                                    style={
+                                      customShiftColors.has(cell.type)
+                                        ? {
+                                            backgroundColor: `${customShiftColors.get(cell.type)}20`,
+                                            borderColor: `${customShiftColors.get(cell.type)}80`,
+                                          }
+                                        : undefined
+                                    }
                                   >
                                     {shiftInfo.icon}
                                     <span>{shiftInfo.short}</span>
                                   </div>
                                 ) : cell.isRemoval ? (
-                                  <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] text-destructive/60 border border-dashed border-destructive/30">
+                                  <div className="inline-flex items-center rounded border border-dashed border-destructive/30 px-1.5 py-0.5 text-[11px] text-destructive/60">
                                     —
                                   </div>
                                 ) : (
-                                  <div className="h-6 w-full rounded hover:bg-muted/60 transition-colors" />
+                                  <div className="h-6 w-full rounded transition-colors hover:bg-muted/60" />
                                 )}
                                 {savedShift && (savedShift.comments_count ?? 0) > 0 && (
-                                  <span className="absolute -bottom-0.5 -left-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-blue-500 text-white text-[7px] font-bold" title={`${savedShift.comments_count} note(s)`}>
+                                  <span
+                                    className="absolute -bottom-0.5 -left-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-blue-500 text-[7px] font-bold text-white"
+                                    title={`${savedShift.comments_count} note(s)`}
+                                  >
                                     {savedShift.comments_count}
                                   </span>
                                 )}
@@ -1967,15 +2285,22 @@ export default function WeeklyRosterPage() {
                                   <TooltipProvider delayDuration={200}>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
-                                          <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500 text-white text-[7px] font-bold items-center justify-center">!</span>
+                                        <span className="absolute -right-1 -top-1 flex h-3 w-3">
+                                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
+                                          <span className="relative inline-flex h-3 w-3 items-center justify-center rounded-full bg-orange-500 text-[7px] font-bold text-white">
+                                            !
+                                          </span>
                                         </span>
                                       </TooltipTrigger>
                                       <TooltipContent side="top" className="max-w-[220px]">
-                                        <p className="text-xs font-medium">Cross-facility conflict</p>
+                                        <p className="text-xs font-medium">
+                                          Cross-facility conflict
+                                        </p>
                                         <p className="text-xs text-muted-foreground">
-                                          Also scheduled at {conflict.other_facility.name} ({conflict.other_shift.shift_type} {conflict.other_shift.start_time}–{conflict.other_shift.end_time})
+                                          Also scheduled at {conflict.other_facility.name} (
+                                          {conflict.other_shift.shift_type}{' '}
+                                          {conflict.other_shift.start_time}–
+                                          {conflict.other_shift.end_time})
                                         </p>
                                       </TooltipContent>
                                     </Tooltip>
@@ -1997,20 +2322,20 @@ export default function WeeklyRosterPage() {
         {/* Roster — Mobile day-by-day card layout (< md) */}
         <div className="md:hidden">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+            <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading roster...
             </div>
           ) : staffList.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <div className="py-12 text-center text-muted-foreground">
+              <AlertCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
               <p className="text-sm font-medium">No staff resources found</p>
-              <p className="text-xs mt-1">Sync staff profiles on the Resources page first.</p>
+              <p className="mt-1 text-xs">Sync staff profiles on the Resources page first.</p>
             </div>
           ) : (
             <>
               {/* Mobile day navigation */}
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-3 flex items-center justify-between">
                 <Button
                   size="icon"
                   variant="outline"
@@ -2020,16 +2345,22 @@ export default function WeeklyRosterPage() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <div className="text-center">
-                  <div className={`text-sm font-semibold ${weekDates[mobileDayIndex] === today ? 'text-primary' : ''}`}>
+                  <div
+                    className={`text-sm font-semibold ${weekDates[mobileDayIndex] === today ? 'text-primary' : ''}`}
+                  >
                     {DAY_LABELS_FULL[mobileDayIndex]}
                   </div>
-                  <div className={`text-xs ${weekDates[mobileDayIndex] === today ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div
+                    className={`text-xs ${weekDates[mobileDayIndex] === today ? 'text-primary' : 'text-muted-foreground'}`}
+                  >
                     {(() => {
                       const d = new Date(weekDates[mobileDayIndex]! + 'T00:00:00');
                       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     })()}
                     {weekDates[mobileDayIndex] === today && (
-                      <span className="ml-1.5 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Today</span>
+                      <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                        Today
+                      </span>
                     )}
                   </div>
                 </div>
@@ -2044,12 +2375,12 @@ export default function WeeklyRosterPage() {
               </div>
 
               {/* Day dots navigation */}
-              <div className="flex items-center justify-center gap-2 mb-3">
+              <div className="mb-3 flex items-center justify-center gap-2">
                 {weekDates.map((date, i) => (
                   <button
                     key={date}
                     onClick={() => setMobileDayIndex(i)}
-                    className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${
+                    className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-1 transition-colors ${
                       i === mobileDayIndex
                         ? 'bg-primary text-primary-foreground'
                         : date === today
@@ -2077,19 +2408,23 @@ export default function WeeklyRosterPage() {
                   return (
                     <div
                       key={staff.id}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
+                      className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
                         canManageSchedules && !isPast ? 'cursor-pointer active:bg-muted/80' : ''
-                      } ${isPast ? 'opacity-50' : ''} ${conflict ? 'border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-950/10' : 'bg-card'}`}
+                      } ${isPast ? 'opacity-50' : ''} ${conflict ? 'border-orange-300 bg-orange-50/50 dark:border-orange-700 dark:bg-orange-950/10' : 'bg-card'}`}
                       onClick={() => handleCellClick(staff.id, date)}
                     >
                       {/* Avatar */}
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold">
-                        {staff.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
+                        {staff.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)}
                       </div>
 
                       {/* Name */}
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium truncate block">{staff.name}</span>
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{staff.name}</span>
                         {conflict && (
                           <span className="text-[10px] text-orange-600 dark:text-orange-400">
                             Conflict: {conflict.other_facility.name}
@@ -2098,26 +2433,30 @@ export default function WeeklyRosterPage() {
                       </div>
 
                       {/* Shift badge + actions */}
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex shrink-0 items-center gap-1.5">
                         {cell.type && shiftInfo ? (
                           <div
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border ${
+                            className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-medium ${
                               customShiftColors.has(cell.type) ? 'text-foreground' : shiftInfo.color
-                            } ${cell.isDraft ? 'border-dashed border-2 border-primary/50' : ''}`}
-                            style={customShiftColors.has(cell.type) ? {
-                              backgroundColor: `${customShiftColors.get(cell.type)}20`,
-                              borderColor: `${customShiftColors.get(cell.type)}80`,
-                            } : undefined}
+                            } ${cell.isDraft ? 'border-2 border-dashed border-primary/50' : ''}`}
+                            style={
+                              customShiftColors.has(cell.type)
+                                ? {
+                                    backgroundColor: `${customShiftColors.get(cell.type)}20`,
+                                    borderColor: `${customShiftColors.get(cell.type)}80`,
+                                  }
+                                : undefined
+                            }
                           >
                             {shiftInfo.icon}
                             <span>{shiftInfo.label}</span>
                           </div>
                         ) : cell.isRemoval ? (
-                          <div className="inline-flex items-center px-2.5 py-1 rounded text-xs text-destructive/60 border border-dashed border-destructive/30">
+                          <div className="inline-flex items-center rounded border border-dashed border-destructive/30 px-2.5 py-1 text-xs text-destructive/60">
                             Removed
                           </div>
                         ) : (
-                          <div className="text-xs text-muted-foreground/50 px-2.5 py-1">—</div>
+                          <div className="px-2.5 py-1 text-xs text-muted-foreground/50">—</div>
                         )}
 
                         {/* Note icon — explicit button for mobile */}
@@ -2127,11 +2466,11 @@ export default function WeeklyRosterPage() {
                               e.stopPropagation();
                               setCommentShift(savedShift);
                             }}
-                            className="flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors relative"
+                            className="relative flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-muted"
                           >
                             <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
                             {(savedShift.comments_count ?? 0) > 0 && (
-                              <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-white text-[8px] font-bold">
+                              <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-[8px] font-bold text-white">
                                 {savedShift.comments_count}
                               </span>
                             )}
@@ -2145,38 +2484,46 @@ export default function WeeklyRosterPage() {
 
               {/* Mobile sticky paint bar */}
               {canManageSchedules && (
-                <div className="sticky bottom-0 z-10 -mx-4 px-4 py-2 bg-background/95 backdrop-blur-sm border-t mt-3">
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                    <span className="text-[10px] text-muted-foreground shrink-0 mr-1">Paint:</span>
-                    {availableShiftTypes.filter((st) => !st.isOff).map((st) => (
-                      <button
-                        key={st.value}
-                        onClick={() => setPaintType(st.value)}
-                        className={`shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-medium border transition-all ${
-                          customShiftColors.has(st.value) ? 'text-foreground' : st.color
-                        } ${paintType === st.value ? 'ring-2 ring-primary ring-offset-1 scale-105' : 'opacity-70'}`}
-                        style={customShiftColors.has(st.value) ? {
-                          backgroundColor: `${customShiftColors.get(st.value)}20`,
-                          borderColor: `${customShiftColors.get(st.value)}80`,
-                        } : undefined}
-                      >
-                        {st.icon}
-                        <span>{st.short}</span>
-                      </button>
-                    ))}
-                    <div className="w-px h-5 bg-border shrink-0 mx-0.5" />
-                    {availableShiftTypes.filter((st) => st.isOff).map((st) => (
-                      <button
-                        key={st.value}
-                        onClick={() => setPaintType(st.value)}
-                        className={`shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-medium border transition-all ${
-                          st.color
-                        } ${paintType === st.value ? 'ring-2 ring-primary ring-offset-1 scale-105' : 'opacity-70'}`}
-                      >
-                        {st.icon}
-                        <span>{st.short}</span>
-                      </button>
-                    ))}
+                <div className="sticky bottom-0 z-10 -mx-4 mt-3 border-t bg-background/95 px-4 py-2 backdrop-blur-sm">
+                  <div className="scrollbar-none flex items-center gap-1.5 overflow-x-auto pb-1">
+                    <span className="mr-1 shrink-0 text-[10px] text-muted-foreground">Paint:</span>
+                    {availableShiftTypes
+                      .filter((st) => !st.isOff)
+                      .map((st) => (
+                        <button
+                          key={st.value}
+                          onClick={() => setPaintType(st.value)}
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1.5 text-[11px] font-medium transition-all ${
+                            customShiftColors.has(st.value) ? 'text-foreground' : st.color
+                          } ${paintType === st.value ? 'scale-105 ring-2 ring-primary ring-offset-1' : 'opacity-70'}`}
+                          style={
+                            customShiftColors.has(st.value)
+                              ? {
+                                  backgroundColor: `${customShiftColors.get(st.value)}20`,
+                                  borderColor: `${customShiftColors.get(st.value)}80`,
+                                }
+                              : undefined
+                          }
+                        >
+                          {st.icon}
+                          <span>{st.short}</span>
+                        </button>
+                      ))}
+                    <div className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+                    {availableShiftTypes
+                      .filter((st) => st.isOff)
+                      .map((st) => (
+                        <button
+                          key={st.value}
+                          onClick={() => setPaintType(st.value)}
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1.5 text-[11px] font-medium transition-all ${
+                            st.color
+                          } ${paintType === st.value ? 'scale-105 ring-2 ring-primary ring-offset-1' : 'opacity-70'}`}
+                        >
+                          {st.icon}
+                          <span>{st.short}</span>
+                        </button>
+                      ))}
                   </div>
                 </div>
               )}
@@ -2186,9 +2533,9 @@ export default function WeeklyRosterPage() {
 
         {/* Summary bar */}
         {canManageSchedules && hasDraftChanges && (
-          <div className="sticky bottom-14 md:bottom-4 z-20">
+          <div className="sticky bottom-14 z-20 md:bottom-4">
             <Card className="border-primary/20 shadow-lg">
-              <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+              <CardContent className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="flex items-center gap-2 text-sm">
                   <AlertCircle className="h-4 w-4 text-primary" />
                   <span className="font-medium">
@@ -2205,9 +2552,9 @@ export default function WeeklyRosterPage() {
                     disabled={saveMutation.isPending}
                   >
                     {saveMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                     ) : (
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                      <CheckCircle2 className="mr-1 h-4 w-4" />
                     )}
                     Save
                   </Button>
@@ -2219,17 +2566,21 @@ export default function WeeklyRosterPage() {
       </div>
 
       {/* Shift Comments Dialog */}
-      <Dialog open={!!commentShift} onOpenChange={(open) => { if (!open) setCommentShift(null); }}>
-        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+      <Dialog
+        open={!!commentShift}
+        onOpenChange={(open) => {
+          if (!open) setCommentShift(null);
+        }}
+      >
+        <DialogContent className="flex max-h-[80vh] max-w-lg flex-col">
           <DialogHeader>
             <DialogTitle className="text-base">
-              Shift Notes — {commentShift?.staff_resource_name} ({commentShift?.shift_type}, {commentShift?.shift_date})
+              Shift Notes — {commentShift?.staff_resource_name} ({commentShift?.shift_type},{' '}
+              {commentShift?.shift_date})
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto min-h-0">
-            {commentShift && (
-              <CommentThread entityType="shift" entityId={commentShift.id} />
-            )}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {commentShift && <CommentThread entityType="shift" entityId={commentShift.id} />}
           </div>
         </DialogContent>
       </Dialog>

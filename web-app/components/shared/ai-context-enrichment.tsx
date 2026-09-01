@@ -11,15 +11,7 @@
 'use client';
 
 import React, { useCallback, useState } from 'react';
-import {
-  ChevronDown,
-  ChevronUp,
-  Thermometer,
-  Heart,
-  Wind,
-  Activity,
-  Droplets,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, Thermometer, Heart, Wind, Activity, Droplets } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 import type { AIContextEnrichment } from '@/lib/utils/ai-context-sufficiency';
@@ -69,7 +61,7 @@ function CompactInput({
 }: CompactInputProps) {
   return (
     <div className="flex items-center gap-1.5">
-      <div className="flex items-center gap-1 text-muted-foreground shrink-0 w-7" title={label}>
+      <div className="flex w-7 shrink-0 items-center gap-1 text-muted-foreground" title={label}>
         {icon}
       </div>
       <input
@@ -81,13 +73,13 @@ function CompactInput({
         max={max}
         step={step}
         className={cn(
-          'flex-1 min-w-0 rounded border bg-background px-2 py-1',
+          'min-w-0 flex-1 rounded border bg-background px-2 py-1',
           'text-xs placeholder:text-muted-foreground/60',
           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
           'w-full'
         )}
       />
-      {unit && <span className="text-[10px] text-muted-foreground shrink-0">{unit}</span>}
+      {unit && <span className="shrink-0 text-[10px] text-muted-foreground">{unit}</span>}
     </div>
   );
 }
@@ -108,7 +100,9 @@ export function AIContextEnrichmentForm({
   const [temperature, setTemperature] = useState(currentEnrichment?.temperature?.toString() ?? '');
   const [heartRate, setHeartRate] = useState(currentEnrichment?.heart_rate?.toString() ?? '');
   const [spo2, setSpo2] = useState(currentEnrichment?.spo2?.toString() ?? '');
-  const [respiratoryRate, setRespiratoryRate] = useState(currentEnrichment?.respiratory_rate?.toString() ?? '');
+  const [respiratoryRate, setRespiratoryRate] = useState(
+    currentEnrichment?.respiratory_rate?.toString() ?? ''
+  );
   const [systolicBp, setSystolicBp] = useState(currentEnrichment?.systolic_bp?.toString() ?? '');
   const [diastolicBp, setDiastolicBp] = useState(currentEnrichment?.diastolic_bp?.toString() ?? '');
 
@@ -117,9 +111,7 @@ export function AIContextEnrichmentForm({
   const missingAnyVitals = sufficiency.missingFields.some((f) => f.includes('vital'));
 
   // Check which specific vitals are missing
-  const missingVitalsList = sufficiency.missingFields
-    .filter((f) => f.includes('vital'))
-    .join(' ');
+  const missingVitalsList = sufficiency.missingFields.filter((f) => f.includes('vital')).join(' ');
   const missingHR = missingVitalsList.includes('heart rate') || sufficiency.vitalCount === 0;
   const missingSpo2 = missingVitalsList.includes('SpO2') || sufficiency.vitalCount === 0;
   const missingTemp = missingVitalsList.includes('temperature') || sufficiency.vitalCount === 0;
@@ -147,13 +139,28 @@ export function AIContextEnrichmentForm({
       onEnrich(enrichment);
       setIsExpanded(false);
     }
-  }, [chiefComplaint, temperature, heartRate, spo2, respiratoryRate, systolicBp, diastolicBp, onEnrich]);
+  }, [
+    chiefComplaint,
+    temperature,
+    heartRate,
+    spo2,
+    respiratoryRate,
+    systolicBp,
+    diastolicBp,
+    onEnrich,
+  ]);
 
   // Don't render if context is already sufficient with all vitals
   if (!hasAnyMissingField) return null;
 
-  const filledCount = [chiefComplaint, temperature, heartRate, spo2, respiratoryRate, systolicBp || diastolicBp]
-    .filter(Boolean).length;
+  const filledCount = [
+    chiefComplaint,
+    temperature,
+    heartRate,
+    spo2,
+    respiratoryRate,
+    systolicBp || diastolicBp,
+  ].filter(Boolean).length;
 
   return (
     <div className="border-t">
@@ -161,31 +168,25 @@ export function AIContextEnrichmentForm({
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center justify-between w-full px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
+        className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50"
       >
         <span className="flex items-center gap-1.5">
           <Activity className="h-3 w-3" />
           {isExpanded ? 'Hide quick-fill' : 'Quick-fill missing data'}
           {filledCount > 0 && !isExpanded && (
-            <span className="text-[10px] font-medium text-primary">
-              ({filledCount} added)
-            </span>
+            <span className="text-[10px] font-medium text-primary">({filledCount} added)</span>
           )}
         </span>
-        {isExpanded ? (
-          <ChevronUp className="h-3 w-3" />
-        ) : (
-          <ChevronDown className="h-3 w-3" />
-        )}
+        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
 
       {/* Expandable form */}
       {isExpanded && (
-        <div className="px-3 pb-2 space-y-2">
+        <div className="space-y-2 px-3 pb-2">
           {/* Chief complaint */}
           {missingChiefComplaint && (
             <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 Chief Complaint
               </label>
               <textarea
@@ -193,10 +194,10 @@ export function AIContextEnrichmentForm({
                 onChange={(e) => setChiefComplaint(e.target.value)}
                 placeholder="e.g., chest pain radiating to left arm"
                 className={cn(
-                  'w-full mt-0.5 rounded border bg-background px-2 py-1.5',
-                  'text-xs placeholder:text-muted-foreground/60 resize-none',
+                  'mt-0.5 w-full rounded border bg-background px-2 py-1.5',
+                  'resize-none text-xs placeholder:text-muted-foreground/60',
                   'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                  'min-h-[32px] max-h-[60px]'
+                  'max-h-[60px] min-h-[32px]'
                 )}
                 rows={1}
               />
@@ -206,10 +207,10 @@ export function AIContextEnrichmentForm({
           {/* Vital signs grid */}
           {missingAnyVitals && (
             <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 Vital Signs
               </label>
-              <div className="grid grid-cols-2 gap-1.5 mt-0.5">
+              <div className="mt-0.5 grid grid-cols-2 gap-1.5">
                 {missingTemp && (
                   <CompactInput
                     label="Temperature"
@@ -288,16 +289,11 @@ export function AIContextEnrichmentForm({
           )}
 
           {/* Apply button */}
-          <Button
-            type="button"
-            size="sm"
-            className="w-full h-7 text-xs"
-            onClick={handleApply}
-          >
+          <Button type="button" size="sm" className="h-7 w-full text-xs" onClick={handleApply}>
             Update context
           </Button>
 
-          <p className="text-[10px] text-muted-foreground text-center">
+          <p className="text-center text-[10px] text-muted-foreground">
             This adds context for AI only — does not save to the patient record
           </p>
         </div>

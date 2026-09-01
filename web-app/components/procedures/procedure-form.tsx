@@ -211,7 +211,8 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
     // Normalize __none__ sentinel back to empty string for the API
     const payload = {
       ...data,
-      tibabot_procedure_key: data.tibabot_procedure_key === '__none__' ? '' : (data.tibabot_procedure_key || ''),
+      tibabot_procedure_key:
+        data.tibabot_procedure_key === '__none__' ? '' : data.tibabot_procedure_key || '',
     };
     try {
       if (isEdit && procedure) {
@@ -277,11 +278,15 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
                   <FormLabel>Category *</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {CATEGORIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -297,11 +302,15 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
                   <FormLabel>Body System *</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {BODY_SYSTEMS.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        <SelectItem key={s.value} value={s.value}>
+                          {s.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -317,11 +326,15 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
                   <FormLabel>Risk Level *</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {RISK_LEVELS.map((r) => (
-                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -369,7 +382,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>ICHI Code</FormLabel>
-                  <FormControl><Input placeholder="e.g., PZX.DB.AC" {...field} /></FormControl>
+                  <FormControl>
+                    <Input placeholder="e.g., PZX.DB.AC" {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -379,7 +394,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>CPT Code</FormLabel>
-                  <FormControl><Input placeholder="e.g., 12001" {...field} /></FormControl>
+                  <FormControl>
+                    <Input placeholder="e.g., 12001" {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -389,7 +406,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>ICD-10-PCS</FormLabel>
-                  <FormControl><Input placeholder="e.g., 0W9F0ZZ" {...field} /></FormControl>
+                  <FormControl>
+                    <Input placeholder="e.g., 0W9F0ZZ" {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -404,11 +423,15 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value || ''}>
                     <FormControl>
-                      <SelectTrigger><SelectValue placeholder="None (auto-detect on save)" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="None (auto-detect on save)" />
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {TIBABOT_PROCEDURE_KEYS.map((k) => (
-                        <SelectItem key={k.value || '__none__'} value={k.value || '__none__'}>{k.label}</SelectItem>
+                        <SelectItem key={k.value || '__none__'} value={k.value || '__none__'}>
+                          {k.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -430,7 +453,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Duration (minutes) *</FormLabel>
-                  <FormControl><Input type="number" min={1} {...field} /></FormControl>
+                  <FormControl>
+                    <Input type="number" min={1} {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -441,7 +466,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Minimum Staff</FormLabel>
-                  <FormControl><Input type="number" min={1} {...field} /></FormControl>
+                  <FormControl>
+                    <Input type="number" min={1} {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -463,7 +490,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Anesthesia Type</FormLabel>
-                  <FormControl><Input placeholder="e.g., local, general" {...field} /></FormControl>
+                  <FormControl>
+                    <Input placeholder="e.g., local, general" {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -485,7 +514,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Required Qualifications</FormLabel>
-                  <FormControl><Input placeholder="e.g., Surgeon, Nurse" {...field} /></FormControl>
+                  <FormControl>
+                    <Input placeholder="e.g., Surgeon, Nurse" {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -495,7 +526,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Pre-Procedure Instructions</FormLabel>
-                  <FormControl><Textarea rows={2} {...field} /></FormControl>
+                  <FormControl>
+                    <Textarea rows={2} {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -505,7 +538,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Post-Procedure Instructions</FormLabel>
-                  <FormControl><Textarea rows={2} {...field} /></FormControl>
+                  <FormControl>
+                    <Textarea rows={2} {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -560,7 +595,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem className="sm:col-span-3">
                   <FormLabel>Consent Template Text</FormLabel>
-                  <FormControl><Textarea rows={3} placeholder="Default consent form text..." {...field} /></FormControl>
+                  <FormControl>
+                    <Textarea rows={3} placeholder="Default consent form text..." {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -598,7 +635,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>SHA Tariff Code</FormLabel>
-                  <FormControl><Input placeholder="SHA tariff code" {...field} /></FormControl>
+                  <FormControl>
+                    <Input placeholder="SHA tariff code" {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -608,7 +647,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>SHA Package Code</FormLabel>
-                  <FormControl><Input placeholder="SHA package code" {...field} /></FormControl>
+                  <FormControl>
+                    <Input placeholder="SHA package code" {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -639,7 +680,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Follow-up Days</FormLabel>
-                  <FormControl><Input type="number" min={1} {...field} /></FormControl>
+                  <FormControl>
+                    <Input type="number" min={1} {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -660,7 +703,7 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEdit ? 'Save Changes' : 'Create Procedure'}
           </Button>
         </div>
@@ -712,7 +755,8 @@ function ClinicAssignmentCard({
       <CardHeader>
         <CardTitle className="text-base">Procedure Rooms</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Clinics where this procedure can be performed. When assigned, scheduling will auto-list available slots from these clinics.
+          Clinics where this procedure can be performed. When assigned, scheduling will auto-list
+          available slots from these clinics.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -725,7 +769,7 @@ function ClinicAssignmentCard({
                 <button
                   type="button"
                   onClick={() => removeClinic(clinic.id)}
-                  className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+                  className="ml-1 rounded-full p-0.5 transition-colors hover:bg-muted-foreground/20"
                   aria-label={`Remove ${clinic.name}`}
                 >
                   <X className="h-3 w-3" />
@@ -753,13 +797,15 @@ function ClinicAssignmentCard({
 
         {procedureClinics.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            No procedure-type clinics have been created. Create a clinic with type Procedure Room, Dressing, Injection Room, Surgical, or OT first.
+            No procedure-type clinics have been created. Create a clinic with type Procedure Room,
+            Dressing, Injection Room, Surgical, or OT first.
           </p>
         )}
 
         {selectedIds.length === 0 && procedureClinics.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            No clinics assigned — scheduling for this procedure will be manual (date, time, and location entered by hand).
+            No clinics assigned — scheduling for this procedure will be manual (date, time, and
+            location entered by hand).
           </p>
         )}
       </CardContent>

@@ -93,39 +93,39 @@ export default function NewEncounterDiagnosisPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-        {/* Diagnosis Card */}
-        <Card>
-          <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-              <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
-              Diagnoses
-            </CardTitle>
-            <CardDescription>
-              Add ICD-10/ICD-11 diagnoses. This step is optional - diagnoses can be added
-              after further clinical assessment.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6">
-            <DiagnosisFormContent
-              diagnoses={diagnoses}
-              onAdd={handleAddDiagnosis}
-              onRemove={handleRemoveDiagnosis}
-              onUpdate={handleUpdateDiagnosis}
-            />
-          </CardContent>
-        </Card>
+      {/* Diagnosis Card */}
+      <Card>
+        <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
+            Diagnoses
+          </CardTitle>
+          <CardDescription>
+            Add ICD-10/ICD-11 diagnoses. This step is optional - diagnoses can be added after
+            further clinical assessment.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6">
+          <DiagnosisFormContent
+            diagnoses={diagnoses}
+            onAdd={handleAddDiagnosis}
+            onRemove={handleRemoveDiagnosis}
+            onUpdate={handleUpdateDiagnosis}
+          />
+        </CardContent>
+      </Card>
 
-        {/* Navigation */}
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={handlePrevious}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <Button onClick={handleNext}>
-            {isIPD ? 'Next: Admission' : 'Next: Review'}
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </div>
+      {/* Navigation */}
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={handlePrevious}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <Button onClick={handleNext}>
+          {isIPD ? 'Next: Admission' : 'Next: Review'}
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }

@@ -27,7 +27,10 @@ import { useAddToQueue, useInfiniteClinics } from '@/lib/hooks/use-clinics';
 import { useRouteToClinic } from '@/lib/hooks/use-triage';
 import { toast } from '@/lib/hooks/use-toast';
 import { getApiErrorMessage } from '@/lib/api/client';
-import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
+import {
+  CheckinSuccessModal,
+  type CheckinSuccessData,
+} from '@/components/patients/checkin-success-modal';
 import type { TriageAssessment } from '@/lib/types/triage';
 import type { ClinicListItem, ClinicVisitSource, ClinicEligibilityRules } from '@/lib/types/clinic';
 import type { Patient } from '@/lib/types/patient';
@@ -40,7 +43,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce';
  */
 function checkClinicEligibility(
   rules: ClinicEligibilityRules | null | undefined,
-  patient: { gender?: string; age?: number; date_of_birth?: string } | null | undefined,
+  patient: { gender?: string; age?: number; date_of_birth?: string } | null | undefined
 ): string[] {
   if (!rules || !patient) return [];
 
@@ -56,9 +59,13 @@ function checkClinicEligibility(
   }
 
   // Age check
-  const patientAge = patient.age ?? (patient.date_of_birth
-    ? Math.floor((Date.now() - new Date(patient.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-    : undefined);
+  const patientAge =
+    patient.age ??
+    (patient.date_of_birth
+      ? Math.floor(
+          (Date.now() - new Date(patient.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+        )
+      : undefined);
 
   if (patientAge !== undefined) {
     if (rules.min_age !== undefined && patientAge < rules.min_age) {
@@ -81,9 +88,14 @@ interface RouteToClinicDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assessment?: TriageAssessment | null;
-  patient?: Pick<Patient, 'id' | 'first_name' | 'last_name' | 'mrn'> & Partial<Pick<Patient, 'gender' | 'age' | 'date_of_birth'>> | null;
+  patient?:
+    | (Pick<Patient, 'id' | 'first_name' | 'last_name' | 'mrn'> &
+        Partial<Pick<Patient, 'gender' | 'age' | 'date_of_birth'>>)
+    | null;
   onSuccess?: () => void;
-  onDirectRoute?: (payload: DirectRouteToClinicPayload) => Promise<CheckinSuccessData | null | void>;
+  onDirectRoute?: (
+    payload: DirectRouteToClinicPayload
+  ) => Promise<CheckinSuccessData | null | void>;
 }
 
 export function RouteToClinicDialog({
@@ -121,7 +133,9 @@ export function RouteToClinicDialog({
   );
 
   useEffect(() => {
-    const viewport = clinicScrollAreaRef.current?.querySelector('[data-slot="scroll-area-viewport"]');
+    const viewport = clinicScrollAreaRef.current?.querySelector(
+      '[data-slot="scroll-area-viewport"]'
+    );
     const sentinel = loadMoreRef.current;
 
     if (!viewport || !sentinel || !hasNextPage) {
@@ -226,10 +240,11 @@ export function RouteToClinicDialog({
       } else if (patient) {
         if (onDirectRoute) {
           setIsDirectRoutingCustom(true);
-          nextSuccessData = (await onDirectRoute({
-            clinic: selectedClinic,
-            notes: notes.trim() || undefined,
-          })) ?? null;
+          nextSuccessData =
+            (await onDirectRoute({
+              clinic: selectedClinic,
+              notes: notes.trim() || undefined,
+            })) ?? null;
           setIsDirectRoutingCustom(false);
         } else {
           const directPatientName = `${patient.first_name} ${patient.last_name}`.trim();
@@ -297,45 +312,46 @@ export function RouteToClinicDialog({
   if (!assessment && !patient) return null;
 
   return (
-  <>
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          handleClose();
-        }
-      }}
-    >
-      <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-[600px] flex-col overflow-hidden p-0 gap-0">
-        <DialogHeader className="px-4 pt-5 pb-3 sm:px-6">
-          <DialogTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Route to Clinic
-          </DialogTitle>
-          <DialogDescription className="text-sm">
-            {isDirectRoute ? (
-              <>
-                Route <strong>{patientName}</strong> directly to an open clinic queue and skip triage.
-              </>
-            ) : (
-              <>
-                Route <strong>{patientName}</strong> to a clinic queue after triage assessment.
-              </>
-            )}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            handleClose();
+          }
+        }}
+      >
+        <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-[600px] flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="px-4 pb-3 pt-5 sm:px-6">
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Route to Clinic
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              {isDirectRoute ? (
+                <>
+                  Route <strong>{patientName}</strong> directly to an open clinic queue and skip
+                  triage.
+                </>
+              ) : (
+                <>
+                  Route <strong>{patientName}</strong> to a clinic queue after triage assessment.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-3 px-4 pb-3 sm:px-6 sm:pb-4">
+          <div className="space-y-3 px-4 pb-3 sm:px-6 sm:pb-4">
             {/* Patient Context */}
             <div className="rounded-lg border bg-muted/50 p-3">
               <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                 <div>
                   <span className="text-muted-foreground">Patient:</span>{' '}
-                  <span className="font-medium break-words">{patientName}</span>
+                  <span className="break-words font-medium">{patientName}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">MRN:</span>{' '}
-                  <span className="font-medium break-words">{patientMrn}</span>
+                  <span className="break-words font-medium">{patientMrn}</span>
                 </div>
                 {assessment ? (
                   <>
@@ -345,11 +361,16 @@ export function RouteToClinicDialog({
                         variant="outline"
                         className={cn(
                           'ml-1',
-                          assessment.triage_category === 'RED' && 'bg-red-100 text-red-800 border-red-300',
-                          assessment.triage_category === 'ORANGE' && 'bg-orange-100 text-orange-800 border-orange-300',
-                          assessment.triage_category === 'YELLOW' && 'bg-yellow-100 text-yellow-800 border-yellow-300',
-                          assessment.triage_category === 'GREEN' && 'bg-green-100 text-green-800 border-green-300',
-                          assessment.triage_category === 'BLUE' && 'bg-blue-100 text-blue-800 border-blue-300'
+                          assessment.triage_category === 'RED' &&
+                            'border-red-300 bg-red-100 text-red-800',
+                          assessment.triage_category === 'ORANGE' &&
+                            'border-orange-300 bg-orange-100 text-orange-800',
+                          assessment.triage_category === 'YELLOW' &&
+                            'border-yellow-300 bg-yellow-100 text-yellow-800',
+                          assessment.triage_category === 'GREEN' &&
+                            'border-green-300 bg-green-100 text-green-800',
+                          assessment.triage_category === 'BLUE' &&
+                            'border-blue-300 bg-blue-100 text-blue-800'
                         )}
                       >
                         {assessment.triage_category}
@@ -357,14 +378,18 @@ export function RouteToClinicDialog({
                     </div>
                     <div>
                       <span className="text-muted-foreground">Chief Complaint:</span>{' '}
-                      <span className="font-medium break-words">{assessment.chief_complaint_category}</span>
+                      <span className="break-words font-medium">
+                        {assessment.chief_complaint_category}
+                      </span>
                     </div>
                   </>
                 ) : (
                   <>
                     <div>
                       <span className="text-muted-foreground">Flow:</span>{' '}
-                      <Badge variant="outline" className="ml-1">Direct Registration</Badge>
+                      <Badge variant="outline" className="ml-1">
+                        Direct Registration
+                      </Badge>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Triage:</span>{' '}
@@ -389,7 +414,10 @@ export function RouteToClinicDialog({
             {/* Clinic Selection */}
             <div className="space-y-2">
               <Label className="text-sm">Select Clinic</Label>
-              <ScrollArea ref={clinicScrollAreaRef} className="h-[180px] sm:h-[200px] rounded-md border">
+              <ScrollArea
+                ref={clinicScrollAreaRef}
+                className="h-[180px] rounded-md border sm:h-[200px]"
+              >
                 {clinicsLoading ? (
                   <div className="space-y-2 p-3">
                     {[1, 2, 3, 4].map((i) => (
@@ -398,62 +426,70 @@ export function RouteToClinicDialog({
                   </div>
                 ) : clinics.length === 0 ? (
                   <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">
-                    {debouncedSearch ? 'No clinics match your search' : 'No active clinics available'}
+                    {debouncedSearch
+                      ? 'No clinics match your search'
+                      : 'No active clinics available'}
                   </div>
                 ) : (
-                  <div className="p-2 space-y-3">
+                  <div className="space-y-3 p-2">
                     {Object.entries(clinicsByType).map(([type, typeClinic]) => (
                       <div key={type}>
-                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 px-2">
+                        <div className="mb-1 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                           {type}
                         </div>
                         <div className="space-y-1">
                           {typeClinic.map((clinic) => {
                             const ineligibleReasons = checkClinicEligibility(
                               clinic.eligibility_rules,
-                              patientInfo,
+                              patientInfo
                             );
                             const isIneligible = ineligibleReasons.length > 0;
 
                             return (
-                            <button
-                              key={clinic.id}
-                              onClick={() => setSelectedClinic(clinic)}
-                              className={cn(
-                                'w-full flex items-center justify-between rounded-md p-2 text-sm transition-colors',
-                                'hover:bg-accent hover:text-accent-foreground',
-                                selectedClinic?.id === clinic.id && 'bg-primary text-primary-foreground',
-                                isIneligible && 'opacity-60'
-                              )}
-                            >
-                              <div className="flex min-w-0 items-center gap-2">
-                                <Building2 className="h-4 w-4 shrink-0" />
-                                <div className="text-left min-w-0">
-                                  <div className="font-medium break-words">{clinic.name}</div>
-                                  {clinic.location && (
-                                    <div className="text-xs opacity-70 break-words">{clinic.location}</div>
-                                  )}
+                              <button
+                                key={clinic.id}
+                                onClick={() => setSelectedClinic(clinic)}
+                                className={cn(
+                                  'flex w-full items-center justify-between rounded-md p-2 text-sm transition-colors',
+                                  'hover:bg-accent hover:text-accent-foreground',
+                                  selectedClinic?.id === clinic.id &&
+                                    'bg-primary text-primary-foreground',
+                                  isIneligible && 'opacity-60'
+                                )}
+                              >
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <Building2 className="h-4 w-4 shrink-0" />
+                                  <div className="min-w-0 text-left">
+                                    <div className="break-words font-medium">{clinic.name}</div>
+                                    {clinic.location && (
+                                      <div className="break-words text-xs opacity-70">
+                                        {clinic.location}
+                                      </div>
+                                    )}
+                                    {isIneligible && (
+                                      <div className="mt-0.5 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                                        <span>{ineligibleReasons[0]}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="ml-2 flex shrink-0 items-center gap-1.5">
                                   {isIneligible && (
-                                    <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                                      <AlertTriangle className="h-3 w-3 shrink-0" />
-                                      <span>{ineligibleReasons[0]}</span>
-                                    </div>
+                                    <Badge
+                                      variant="outline"
+                                      className="border-amber-300 text-xs text-amber-700 dark:text-amber-400"
+                                    >
+                                      Restricted
+                                    </Badge>
+                                  )}
+                                  {clinic.is_open_today && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Open
+                                    </Badge>
                                   )}
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 ml-2 shrink-0">
-                                {isIneligible && (
-                                  <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 dark:text-amber-400">
-                                    Restricted
-                                  </Badge>
-                                )}
-                                {clinic.is_open_today && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    Open
-                                  </Badge>
-                                )}
-                              </div>
-                            </button>
+                              </button>
                             );
                           })}
                         </div>
@@ -478,12 +514,16 @@ export function RouteToClinicDialog({
 
             {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="route-notes" className="text-sm">Notes (optional)</Label>
+              <Label htmlFor="route-notes" className="text-sm">
+                Notes (optional)
+              </Label>
               <Textarea
                 id="route-notes"
-                placeholder={isDirectRoute
-                  ? 'Add routing notes or direct registration instructions...'
-                  : 'Add any routing notes or special instructions...'}
+                placeholder={
+                  isDirectRoute
+                    ? 'Add routing notes or direct registration instructions...'
+                    : 'Add any routing notes or special instructions...'
+                }
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
@@ -493,53 +533,68 @@ export function RouteToClinicDialog({
 
             {/* Eligibility Warning */}
             {selectedClinicIneligibility.length > 0 && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3">
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:bg-amber-950/20">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <div className="text-sm">
-                    <p className="font-medium text-amber-800 dark:text-amber-300">Patient may not meet clinic eligibility criteria</p>
-                    <ul className="mt-1 list-disc list-inside text-amber-700 dark:text-amber-400 text-xs space-y-0.5">
+                    <p className="font-medium text-amber-800 dark:text-amber-300">
+                      Patient may not meet clinic eligibility criteria
+                    </p>
+                    <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs text-amber-700 dark:text-amber-400">
                       {selectedClinicIneligibility.map((reason, i) => (
                         <li key={i}>{reason}</li>
                       ))}
                     </ul>
-                    <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-500">You can still route the patient if clinically appropriate.</p>
+                    <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-500">
+                      You can still route the patient if clinically appropriate.
+                    </p>
                   </div>
                 </div>
               </div>
             )}
-        </div>
+          </div>
 
-        <div className="border-t px-4 py-3 sm:px-6">
-          <DialogFooter className="gap-2 sm:justify-end">
-            <Button variant="outline" size="sm" onClick={handleClose} disabled={isRouting} className="w-full sm:w-auto">
-              Cancel
-            </Button>
-            <Button size="sm" onClick={handleRoute} disabled={!selectedClinic || isRouting} className="w-full sm:w-auto">
-              {isRouting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Routing...
-                </>
-              ) : (
-                <>
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  Route to {selectedClinic?.name ?? 'Clinic'}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="border-t px-4 py-3 sm:px-6">
+            <DialogFooter className="gap-2 sm:justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClose}
+                disabled={isRouting}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleRoute}
+                disabled={!selectedClinic || isRouting}
+                className="w-full sm:w-auto"
+              >
+                {isRouting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Routing...
+                  </>
+                ) : (
+                  <>
+                    <ArrowRight className="mr-2 h-4 w-4" />
+                    Route to {selectedClinic?.name ?? 'Clinic'}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-    {/* Success Modal with navigation options */}
-    <CheckinSuccessModal
-      open={showSuccessModal}
-      onOpenChange={setShowSuccessModal}
-      checkInResult={successData}
-      onDismiss={handleSuccessModalDismiss}
-    />
-  </>
+      {/* Success Modal with navigation options */}
+      <CheckinSuccessModal
+        open={showSuccessModal}
+        onOpenChange={setShowSuccessModal}
+        checkInResult={successData}
+        onDismiss={handleSuccessModalDismiss}
+      />
+    </>
   );
 }

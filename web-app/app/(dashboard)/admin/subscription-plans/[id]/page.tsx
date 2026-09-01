@@ -79,7 +79,11 @@ export default function SubscriptionPlanDetailPage({
     return (
       <div className="space-y-4">
         <PageHeader title="Access Denied" />
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Only Nexora superusers can manage subscription plans.
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -108,14 +112,14 @@ export default function SubscriptionPlanDetailPage({
           <div className="flex gap-2">
             <Button asChild size="sm" variant="outline">
               <Link href={`/admin/subscription-plans/${planId}/edit`}>
-                <Pencil className="h-4 w-4 mr-1" />
+                <Pencil className="mr-1 h-4 w-4" />
                 Edit
               </Link>
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="destructive">
-                  <Trash2 className="h-4 w-4 mr-1" />
+                  <Trash2 className="mr-1 h-4 w-4" />
                   Delete
                 </Button>
               </AlertDialogTrigger>
@@ -123,8 +127,8 @@ export default function SubscriptionPlanDetailPage({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete plan?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently delete the &quot;{plan.name}&quot; plan.
-                    Organizations linked to this plan will lose their subscription reference.
+                    This will permanently delete the &quot;{plan.name}&quot; plan. Organizations
+                    linked to this plan will lose their subscription reference.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -143,7 +147,7 @@ export default function SubscriptionPlanDetailPage({
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <div className="flex items-center gap-3">
           <CreditCard className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -178,9 +182,7 @@ export default function SubscriptionPlanDetailPage({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Annual Savings</span>
-              <span className="font-medium text-green-600">
-                {formatPrice(plan.annual_savings)}
-              </span>
+              <span className="font-medium text-green-600">{formatPrice(plan.annual_savings)}</span>
             </div>
             {plan.has_trial && (
               <div className="flex justify-between">
@@ -223,16 +225,16 @@ export default function SubscriptionPlanDetailPage({
               <CardTitle className="text-base">Feature Flags</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {featureEntries.map(([key, enabled]) => (
                   <div
                     key={key}
-                    className="flex items-center gap-2 text-sm p-2 rounded-md bg-muted/30"
+                    className="flex items-center gap-2 rounded-md bg-muted/30 p-2 text-sm"
                   >
                     {enabled ? (
-                      <Check className="h-4 w-4 text-green-600 shrink-0" />
+                      <Check className="h-4 w-4 shrink-0 text-green-600" />
                     ) : (
-                      <X className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <X className="h-4 w-4 shrink-0 text-muted-foreground" />
                     )}
                     <span className={enabled ? '' : 'text-muted-foreground'}>
                       {FEATURE_LABELS[key] || key.replace(/_/g, ' ')}

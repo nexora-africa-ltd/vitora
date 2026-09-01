@@ -18,12 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import {
-  AlertCircle,
-  FileWarning,
-  ClipboardList,
-  RefreshCw,
-} from 'lucide-react';
+import { AlertCircle, FileWarning, ClipboardList, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils/format';
 import { useUnbilledServices, useBillingDiscrepancies } from '@/lib/hooks/billing';
@@ -32,7 +27,7 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-4">
       <Skeleton className="h-8 w-48" />
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-24" />
         ))}
@@ -43,8 +38,16 @@ function LoadingSkeleton() {
 }
 
 export default function ReconciliationPage() {
-  const { data: unbilledServices = [], isLoading: unbilledLoading, refetch: refetchUnbilled } = useUnbilledServices();
-  const { data: discrepancies = [], isLoading: discrepanciesLoading, refetch: refetchDiscrepancies } = useBillingDiscrepancies();
+  const {
+    data: unbilledServices = [],
+    isLoading: unbilledLoading,
+    refetch: refetchUnbilled,
+  } = useUnbilledServices();
+  const {
+    data: discrepancies = [],
+    isLoading: discrepanciesLoading,
+    refetch: refetchDiscrepancies,
+  } = useBillingDiscrepancies();
 
   const isLoading = unbilledLoading || discrepanciesLoading;
 
@@ -65,10 +68,7 @@ export default function ReconciliationPage() {
     (sum, d) => sum + parseFloat(d.discrepancy || '0'),
     0
   );
-  const totalServicesCount = unbilledServices.reduce(
-    (sum, s) => sum + (s.services_count || 0),
-    0
-  );
+  const totalServicesCount = unbilledServices.reduce((sum, s) => sum + (s.services_count || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -81,13 +81,13 @@ export default function ReconciliationPage() {
           </p>
         </div>
         <Button variant="outline" onClick={handleRefresh}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -95,9 +95,7 @@ export default function ReconciliationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {totalServicesCount}
-            </div>
+            <div className="text-2xl font-bold">{totalServicesCount}</div>
             <p className="text-xs text-muted-foreground">
               {formatCurrency(totalUnbilled)} total value
             </p>
@@ -111,9 +109,7 @@ export default function ReconciliationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">
-              {discrepancies.length}
-            </div>
+            <div className="text-2xl font-bold text-destructive">{discrepancies.length}</div>
             <p className="text-xs text-muted-foreground">
               {formatCurrency(totalDiscrepancy)} difference
             </p>
@@ -127,12 +123,8 @@ export default function ReconciliationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {unbilledServices.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              with unbilled services
-            </p>
+            <div className="text-2xl font-bold">{unbilledServices.length}</div>
+            <p className="text-xs text-muted-foreground">with unbilled services</p>
           </CardContent>
         </Card>
 
@@ -146,9 +138,7 @@ export default function ReconciliationPage() {
             <div className="text-2xl font-bold text-warning">
               {totalServicesCount + discrepancies.length}
             </div>
-            <p className="text-xs text-muted-foreground">
-              items need attention
-            </p>
+            <p className="text-xs text-muted-foreground">items need attention</p>
           </CardContent>
         </Card>
       </div>
@@ -157,11 +147,11 @@ export default function ReconciliationPage() {
       <Tabs defaultValue="unbilled">
         <TabsList>
           <TabsTrigger value="unbilled">
-            <ClipboardList className="h-4 w-4 mr-2" />
+            <ClipboardList className="mr-2 h-4 w-4" />
             Unbilled Services
           </TabsTrigger>
           <TabsTrigger value="discrepancies">
-            <FileWarning className="h-4 w-4 mr-2" />
+            <FileWarning className="mr-2 h-4 w-4" />
             Discrepancies
           </TabsTrigger>
         </TabsList>
@@ -173,8 +163,8 @@ export default function ReconciliationPage() {
             </CardHeader>
             <CardContent>
               {unbilledServices.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                <div className="py-8 text-center text-muted-foreground">
+                  <AlertCircle className="mx-auto mb-2 h-8 w-8" />
                   No unbilled services found
                 </div>
               ) : (
@@ -190,9 +180,7 @@ export default function ReconciliationPage() {
                   <TableBody>
                     {unbilledServices.map((item, idx) => (
                       <TableRow key={idx}>
-                        <TableCell className="font-medium">
-                          {item.department}
-                        </TableCell>
+                        <TableCell className="font-medium">{item.department}</TableCell>
                         <TableCell className="text-right">
                           <Badge variant="secondary">{item.services_count}</Badge>
                         </TableCell>
@@ -227,8 +215,8 @@ export default function ReconciliationPage() {
             </CardHeader>
             <CardContent>
               {discrepancies.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                <div className="py-8 text-center text-muted-foreground">
+                  <AlertCircle className="mx-auto mb-2 h-8 w-8" />
                   No discrepancies found
                 </div>
               ) : (
@@ -246,9 +234,7 @@ export default function ReconciliationPage() {
                   <TableBody>
                     {discrepancies.map((item, idx) => (
                       <TableRow key={idx}>
-                        <TableCell className="font-medium">
-                          {item.patient_name}
-                        </TableCell>
+                        <TableCell className="font-medium">{item.patient_name}</TableCell>
                         <TableCell>{item.service_name}</TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(parseFloat(item.expected_amount))}

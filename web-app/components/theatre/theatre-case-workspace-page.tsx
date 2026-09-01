@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { AlertCircle, ClipboardCheck, ExternalLink, Loader2, MonitorPlay, TimerReset } from 'lucide-react';
+import {
+  AlertCircle,
+  ClipboardCheck,
+  ExternalLink,
+  Loader2,
+  MonitorPlay,
+  TimerReset,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -12,7 +19,10 @@ import type { SurgeryCaseDetail } from '@/lib/types/theatre';
 import { PreOpWorkspace } from '@/components/theatre/pre-op-workspace';
 import { IntraOpWorkspace } from '@/components/theatre/intra-op-workspace';
 import { PostOpWorkspace } from '@/components/theatre/post-op-workspace';
-import { TheatreCasePriorityBadge, TheatreCaseStatusBadge } from '@/components/theatre/theatre-display';
+import {
+  TheatreCasePriorityBadge,
+  TheatreCaseStatusBadge,
+} from '@/components/theatre/theatre-display';
 
 type TheatreWorkspaceRoute = 'pre-op' | 'intra-op' | 'post-op';
 
@@ -27,13 +37,15 @@ const WORKSPACE_CONFIG: Record<
 > = {
   'pre-op': {
     label: 'Pre-Op Workspace',
-    helpContent: 'Capture surgical readiness, WHO Sign-In, consent, labs, and anesthesia assessment for this case.',
+    helpContent:
+      'Capture surgical readiness, WHO Sign-In, consent, labs, and anesthesia assessment for this case.',
     icon: ClipboardCheck,
     expectedStatuses: ['SCHEDULED', 'PRE_OP'],
   },
   'intra-op': {
     label: 'Intra-Op Workspace',
-    helpContent: 'Document WHO pauses, intra-operative anesthesia events, operative findings, and consumables for this case.',
+    helpContent:
+      'Document WHO pauses, intra-operative anesthesia events, operative findings, and consumables for this case.',
     icon: MonitorPlay,
     expectedStatuses: ['IN_THEATRE', 'IN_SURGERY'],
   },
@@ -65,18 +77,21 @@ export function TheatreCaseWorkspacePage({ workspace }: { workspace: TheatreWork
   const [loading, setLoading] = useState(true);
   const config = WORKSPACE_CONFIG[workspace];
 
-  const fetchCase = useCallback(async (showLoading = false) => {
-    if (!caseNumber) return;
-    try {
-      if (showLoading) setLoading(true);
-      const detail = await theatreApi.getCase(caseNumber);
-      setSurgeryCase(detail);
-    } catch {
-      setSurgeryCase(null);
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }, [caseNumber]);
+  const fetchCase = useCallback(
+    async (showLoading = false) => {
+      if (!caseNumber) return;
+      try {
+        if (showLoading) setLoading(true);
+        const detail = await theatreApi.getCase(caseNumber);
+        setSurgeryCase(detail);
+      } catch {
+        setSurgeryCase(null);
+      } finally {
+        if (showLoading) setLoading(false);
+      }
+    },
+    [caseNumber]
+  );
 
   useEffect(() => {
     void fetchCase(true);
@@ -123,7 +138,8 @@ export function TheatreCaseWorkspacePage({ workspace }: { workspace: TheatreWork
           </p>
           <p className="truncate text-sm">{surgeryCase.primary_procedure_name}</p>
           <p className="text-xs text-muted-foreground">
-            {surgeryCase.theatre_name} · {surgeryCase.scheduled_date} {surgeryCase.scheduled_start_time?.slice(0, 5)}
+            {surgeryCase.theatre_name} · {surgeryCase.scheduled_date}{' '}
+            {surgeryCase.scheduled_start_time?.slice(0, 5)}
             {surgeryCase.encounter != null ? (
               <>
                 {' · '}
@@ -140,7 +156,7 @@ export function TheatreCaseWorkspacePage({ workspace }: { workspace: TheatreWork
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <TheatreCasePriorityBadge priority={surgeryCase.priority} hideElective />
           <TheatreCaseStatusBadge status={surgeryCase.status} />
         </div>
@@ -151,7 +167,8 @@ export function TheatreCaseWorkspacePage({ workspace }: { workspace: TheatreWork
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{config.label} opened outside its usual workflow stage</AlertTitle>
           <AlertDescription>
-            This case is currently in {surgeryCase.status.replace(/_/g, ' ')}. You can still review or complete documentation here.
+            This case is currently in {surgeryCase.status.replace(/_/g, ' ')}. You can still review
+            or complete documentation here.
           </AlertDescription>
         </Alert>
       ) : null}

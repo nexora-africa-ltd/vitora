@@ -54,7 +54,7 @@ export function buildListQuery(
 
   // LIKE search across multiple columns
   if (searchTerm && searchColumns && searchColumns.length > 0) {
-    const likeClauses = searchColumns.map(col => `${col} LIKE ?`);
+    const likeClauses = searchColumns.map((col) => `${col} LIKE ?`);
     conditions.push(`(${likeClauses.join(' OR ')})`);
     const pattern = `%${searchTerm}%`;
     for (let i = 0; i < searchColumns.length; i++) {

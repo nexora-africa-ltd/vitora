@@ -26,10 +26,7 @@ interface VersionDiffProps {
 /**
  * Format a value based on its field configuration
  */
-function formatValue(
-  value: string | number | boolean | null,
-  config?: FieldDisplayConfig
-): string {
+function formatValue(value: string | number | boolean | null, config?: FieldDisplayConfig): string {
   if (value === null || value === undefined) {
     return '—';
   }
@@ -67,15 +64,11 @@ export function VersionDiff({ changes, fieldConfig = {}, className }: VersionDif
   const changeEntries = Object.entries(changes);
 
   if (changeEntries.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground italic">No field changes recorded</p>
-    );
+    return <p className="text-sm italic text-muted-foreground">No field changes recorded</p>;
   }
 
   // Check if any sensitive fields are present
-  const hasSensitiveFields = changeEntries.some(
-    ([fieldName]) => fieldConfig[fieldName]?.sensitive
-  );
+  const hasSensitiveFields = changeEntries.some(([fieldName]) => fieldConfig[fieldName]?.sensitive);
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -83,7 +76,7 @@ export function VersionDiff({ changes, fieldConfig = {}, className }: VersionDif
         <button
           type="button"
           onClick={() => setShowSensitive(!showSensitive)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           {showSensitive ? (
             <>
@@ -105,27 +98,29 @@ export function VersionDiff({ changes, fieldConfig = {}, className }: VersionDif
           const label = config?.label || fieldName.replace(/_/g, ' ');
           const isSensitive = config?.sensitive && !showSensitive;
 
-          const oldValue = isSensitive && change.old
-            ? maskValue(formatValue(change.old, config))
-            : formatValue(change.old, config);
+          const oldValue =
+            isSensitive && change.old
+              ? maskValue(formatValue(change.old, config))
+              : formatValue(change.old, config);
 
-          const newValue = isSensitive && change.new
-            ? maskValue(formatValue(change.new, config))
-            : formatValue(change.new, config);
+          const newValue =
+            isSensitive && change.new
+              ? maskValue(formatValue(change.new, config))
+              : formatValue(change.new, config);
 
           return (
             <div
               key={fieldName}
               className="flex flex-col gap-1 rounded-md border p-2 text-sm sm:flex-row sm:items-center sm:gap-3"
             >
-              <span className="font-medium text-muted-foreground min-w-[140px] capitalize">
+              <span className="min-w-[140px] font-medium capitalize text-muted-foreground">
                 {label}
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 {change.old !== null && (
                   <Badge
                     variant="outline"
-                    className="bg-destructive/10 text-destructive line-through font-normal"
+                    className="bg-destructive/10 font-normal text-destructive line-through"
                   >
                     {oldValue}
                   </Badge>
@@ -133,7 +128,7 @@ export function VersionDiff({ changes, fieldConfig = {}, className }: VersionDif
                 <span className="text-muted-foreground">→</span>
                 <Badge
                   variant="outline"
-                  className="bg-green-500/10 text-green-700 dark:text-green-400 font-normal"
+                  className="bg-green-500/10 font-normal text-green-700 dark:text-green-400"
                 >
                   {newValue}
                 </Badge>

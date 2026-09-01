@@ -13,11 +13,20 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useCreateBloodRequest } from '@/lib/hooks/use-blood-bank';
 import { getApiErrorMessage } from '@/lib/api/client';
-import type { BloodRequestCreateData, BloodGroup, BloodComponent, RequestUrgency } from '@/lib/types/blood-bank';
+import type {
+  BloodRequestCreateData,
+  BloodGroup,
+  BloodComponent,
+  RequestUrgency,
+} from '@/lib/types/blood-bank';
 
 const BLOOD_GROUPS: BloodGroup[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const COMPONENTS: { value: BloodComponent; label: string }[] = [
@@ -79,10 +88,22 @@ export default function NewBloodRequestPage() {
     } catch (err) {
       setError(getApiErrorMessage(err));
     }
-  }, [patientId, bloodGroup, component, unitsRequested, urgency, clinicalIndication, encounterParam, patientHemoglobin, notes, createMutation, router]);
+  }, [
+    patientId,
+    bloodGroup,
+    component,
+    unitsRequested,
+    urgency,
+    clinicalIndication,
+    encounterParam,
+    patientHemoglobin,
+    notes,
+    createMutation,
+    router,
+  ]);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title="New Blood Request"
         helpContent="Request blood products for a patient. Specify urgency to prioritize processing. Emergency requests are flagged immediately."
@@ -119,7 +140,9 @@ export default function NewBloodRequestPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {BLOOD_GROUPS.map((bg) => (
-                      <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                      <SelectItem key={bg} value={bg}>
+                        {bg}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -132,7 +155,9 @@ export default function NewBloodRequestPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {COMPONENTS.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -213,11 +238,11 @@ export default function NewBloodRequestPage() {
 
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => router.back()}>
-          <X className="h-4 w-4 mr-2" />
+          <X className="mr-2 h-4 w-4" />
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={createMutation.isPending}>
-          <Save className="h-4 w-4 mr-2" />
+          <Save className="mr-2 h-4 w-4" />
           {createMutation.isPending ? 'Submitting...' : 'Submit Request'}
         </Button>
       </div>

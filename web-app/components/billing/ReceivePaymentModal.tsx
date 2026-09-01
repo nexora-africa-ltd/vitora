@@ -96,11 +96,7 @@ const statusColors: Record<string, string> = {
 };
 
 function InvoiceStatusBadge({ status }: { status: string }) {
-  return (
-    <Badge className={statusColors[status] || 'bg-gray-100 text-gray-700'}>
-      {status}
-    </Badge>
-  );
+  return <Badge className={statusColors[status] || 'bg-gray-100 text-gray-700'}>{status}</Badge>;
 }
 
 // ============================================================================
@@ -127,7 +123,7 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
   // Fetch outstanding invoices
   const { data, isLoading, error } = useInvoices({
     search: debouncedSearch || undefined,
-    'status__in': 'PENDING,PARTIAL,OVERDUE',
+    status__in: 'PENDING,PARTIAL,OVERDUE',
     page_size: 50,
     ordering: '-invoice_date',
   });
@@ -156,7 +152,7 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
         <div className="space-y-2">
           <Label htmlFor="invoice-search">Search Patient or Invoice</Label>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="invoice-search"
               placeholder="Search by patient name, MRN, or invoice..."
@@ -169,19 +165,14 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
         </div>
 
         <div className="py-8 text-center text-muted-foreground">
-          <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <FileText className="mx-auto mb-2 h-8 w-8 opacity-50" />
           <p>No outstanding invoices found</p>
           {searchTerm ? (
-            <p className="text-sm mt-1">Try a different search term</p>
+            <p className="mt-1 text-sm">Try a different search term</p>
           ) : (
-            <p className="text-sm mt-1">Create an invoice first to receive payment</p>
+            <p className="mt-1 text-sm">Create an invoice first to receive payment</p>
           )}
-          <Button
-            variant="default"
-            size="sm"
-            className="mt-4 gap-2"
-            onClick={onCreateInvoice}
-          >
+          <Button variant="default" size="sm" className="mt-4 gap-2" onClick={onCreateInvoice}>
             <Plus className="h-4 w-4" />
             Create Invoice
           </Button>
@@ -196,7 +187,7 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
       <div className="space-y-2">
         <Label htmlFor="invoice-search">Search Patient or Invoice</Label>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="invoice-search"
             placeholder="Search by patient name, MRN, or invoice..."
@@ -214,7 +205,7 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
       </div>
 
       {/* Invoice List */}
-      <ScrollArea className="h-[300px] border rounded-lg">
+      <ScrollArea className="h-[300px] rounded-lg border">
         <div className="p-2">
           <ResponsiveTable
             data={payableInvoices}
@@ -237,7 +228,7 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
                 sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
                 cell: (invoice) => (
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{invoice.patient_name}</p>
+                    <p className="truncate font-medium">{invoice.patient_name}</p>
                     <p className="text-xs text-muted-foreground">{invoice.patient_mrn}</p>
                   </div>
                 ),
@@ -267,14 +258,14 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
               <Card className="p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-sm truncate">{invoice.invoice_number}</span>
+                    <div className="mb-1 flex items-center gap-2">
+                      <span className="truncate font-mono text-sm">{invoice.invoice_number}</span>
                       <InvoiceStatusBadge status={invoice.status} />
                     </div>
-                    <p className="text-sm font-medium truncate">{invoice.patient_name}</p>
+                    <p className="truncate text-sm font-medium">{invoice.patient_name}</p>
                     <p className="text-xs text-muted-foreground">{invoice.patient_mrn}</p>
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="shrink-0 text-right">
                     <p className="font-semibold text-red-600">
                       {formatCurrency(getInvoicePayableBalance(invoice))}
                     </p>
@@ -325,21 +316,19 @@ function PaymentStep({ invoice, onBack, onSuccess }: PaymentStepProps) {
   return (
     <div className="space-y-4">
       {/* Invoice Summary */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 p-3 rounded-lg bg-muted/50">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-sm">{invoice.invoice_number}</span>
             <InvoiceStatusBadge status={invoice.status} />
           </div>
-          <p className="text-sm text-muted-foreground truncate">
+          <p className="truncate text-sm text-muted-foreground">
             {invoice.patient_name} • {invoice.patient_mrn}
           </p>
         </div>
-        <div className="text-left sm:text-right shrink-0">
-          <p className="text-xs sm:text-sm text-muted-foreground">Payable Balance</p>
-          <p className="text-lg font-bold text-red-600">
-            {formatCurrency(payableBalance)}
-          </p>
+        <div className="shrink-0 text-left sm:text-right">
+          <p className="text-xs text-muted-foreground sm:text-sm">Payable Balance</p>
+          <p className="text-lg font-bold text-red-600">{formatCurrency(payableBalance)}</p>
         </div>
       </div>
 
@@ -371,7 +360,7 @@ function SuccessStep({ paymentId, onDone, onNewPayment }: SuccessStepProps) {
   if (isLoading) {
     return (
       <div className="py-8 text-center">
-        <Loader2 className="h-8 w-8 mx-auto animate-spin text-muted-foreground" />
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
         <p className="mt-2 text-muted-foreground">Loading receipt...</p>
       </div>
     );
@@ -380,38 +369,38 @@ function SuccessStep({ paymentId, onDone, onNewPayment }: SuccessStepProps) {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Success Icon */}
-      <div className="text-center py-3 sm:py-4">
-        <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-green-100 mb-3 sm:mb-4">
-          <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8 text-green-600" />
+      <div className="py-3 text-center sm:py-4">
+        <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-green-100 sm:mb-4 sm:h-16 sm:w-16">
+          <CheckCircle2 className="h-7 w-7 text-green-600 sm:h-8 sm:w-8" />
         </div>
-        <h3 className="text-lg sm:text-xl font-semibold">Payment Received</h3>
+        <h3 className="text-lg font-semibold sm:text-xl">Payment Received</h3>
         <p className="text-sm text-muted-foreground">Receipt generated successfully</p>
       </div>
 
       {/* Receipt Summary */}
       {receipt && (
         <Card>
-          <CardContent className="pt-4 space-y-2 sm:space-y-3">
+          <CardContent className="space-y-2 pt-4 sm:space-y-3">
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground text-sm">Receipt #</span>
-              <span className="font-mono text-sm truncate">{receipt.receipt_number}</span>
+              <span className="text-sm text-muted-foreground">Receipt #</span>
+              <span className="truncate font-mono text-sm">{receipt.receipt_number}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground text-sm">Patient</span>
-              <span className="text-sm truncate text-right">{receipt.patient_name}</span>
+              <span className="text-sm text-muted-foreground">Patient</span>
+              <span className="truncate text-right text-sm">{receipt.patient_name}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground text-sm">Amount</span>
+              <span className="text-sm text-muted-foreground">Amount</span>
               <span className="font-bold text-green-600">
                 {formatCurrency(parseFloat(receipt.amount))}
               </span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground text-sm">Method</span>
+              <span className="text-sm text-muted-foreground">Method</span>
               <span className="text-sm">{receipt.payment_method}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground text-sm">Date</span>
+              <span className="text-sm text-muted-foreground">Date</span>
               <span className="text-sm">{formatDate(receipt.receipt_date)}</span>
             </div>
           </CardContent>
@@ -420,11 +409,7 @@ function SuccessStep({ paymentId, onDone, onNewPayment }: SuccessStepProps) {
 
       {/* Actions */}
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button
-          variant="outline"
-          className="flex-1 gap-2"
-          onClick={() => window.print()}
-        >
+        <Button variant="outline" className="flex-1 gap-2" onClick={() => window.print()}>
           <Printer className="h-4 w-4" />
           Print
         </Button>
@@ -438,7 +423,7 @@ function SuccessStep({ paymentId, onDone, onNewPayment }: SuccessStepProps) {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row pt-2 border-t">
+      <div className="flex flex-col gap-2 border-t pt-2 sm:flex-row">
         <Button variant="secondary" className="flex-1 gap-2" onClick={onNewPayment}>
           <Banknote className="h-4 w-4" />
           New Payment
@@ -473,17 +458,20 @@ export function ReceivePaymentModal({
   const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
 
   // Reset state when modal closes
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    setIsOpen(newOpen);
-    if (!newOpen) {
-      // Delay reset to allow close animation
-      setTimeout(() => {
-        setStep('search');
-        setSelectedInvoice(null);
-        setCompletedPaymentId(null);
-      }, 200);
-    }
-  }, [setIsOpen]);
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      setIsOpen(newOpen);
+      if (!newOpen) {
+        // Delay reset to allow close animation
+        setTimeout(() => {
+          setStep('search');
+          setSelectedInvoice(null);
+          setCompletedPaymentId(null);
+        }, 200);
+      }
+    },
+    [setIsOpen]
+  );
 
   const handleSelectInvoice = useCallback((invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -546,7 +534,7 @@ export function ReceivePaymentModal({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Receipt className="h-5 w-5 shrink-0" />

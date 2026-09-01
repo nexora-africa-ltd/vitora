@@ -209,7 +209,8 @@ const mockDischarge = (overrides: Record<string, unknown> = {}) => ({
   discharge_type: 'ROUTINE',
   discharge_type_display: 'Routine',
   discharge_diagnosis: 'J18.9 - Pneumonia, unspecified (Resolved)',
-  discharge_summary: 'Patient recovered well from community-acquired pneumonia after 7 days of IV antibiotics.',
+  discharge_summary:
+    'Patient recovered well from community-acquired pneumonia after 7 days of IV antibiotics.',
   discharge_medications: [
     { drug: 'Amoxicillin 500mg', dosage: 'TDS for 5 days' },
     { drug: 'Paracetamol 500mg', dosage: 'PRN for fever' },
@@ -268,8 +269,22 @@ const mockBedOccupancy = {
   ],
   wards: [
     mockWard({ id: 1, name: 'Medical Ward A', occupancy_rate: 50.0 }),
-    mockWard({ id: 2, name: 'ICU', ward_type: 'ICU', total_beds: 10, available_beds: 2, occupancy_rate: 80.0 }),
-    mockWard({ id: 3, name: 'Surgical Ward', ward_type: 'SURGICAL', total_beds: 20, available_beds: 10, occupancy_rate: 50.0 }),
+    mockWard({
+      id: 2,
+      name: 'ICU',
+      ward_type: 'ICU',
+      total_beds: 10,
+      available_beds: 2,
+      occupancy_rate: 80.0,
+    }),
+    mockWard({
+      id: 3,
+      name: 'Surgical Ward',
+      ward_type: 'SURGICAL',
+      total_beds: 20,
+      available_beds: 10,
+      occupancy_rate: 50.0,
+    }),
   ],
 };
 
@@ -395,7 +410,12 @@ async function setupInpatientMocks(page: Page) {
             count: 3,
             results: [
               mockBed(),
-              mockBed({ id: 2, bed_number: 'MED-A-002', status: 'OCCUPIED', current_patient_name: 'Jane Doe' }),
+              mockBed({
+                id: 2,
+                bed_number: 'MED-A-002',
+                status: 'OCCUPIED',
+                current_patient_name: 'Jane Doe',
+              }),
               mockBed({ id: 3, bed_number: 'MED-A-003', status: 'MAINTENANCE' }),
             ],
           }),
@@ -444,8 +464,20 @@ async function setupInpatientMocks(page: Page) {
           body: JSON.stringify({
             count: 2,
             results: [
-              mockBed({ id: 10, bed_number: 'ICU-001', ward: 2, ward_name: 'ICU', status: 'AVAILABLE' }),
-              mockBed({ id: 11, bed_number: 'ICU-002', ward: 2, ward_name: 'ICU', status: 'AVAILABLE' }),
+              mockBed({
+                id: 10,
+                bed_number: 'ICU-001',
+                ward: 2,
+                ward_name: 'ICU',
+                status: 'AVAILABLE',
+              }),
+              mockBed({
+                id: 11,
+                bed_number: 'ICU-002',
+                ward: 2,
+                ward_name: 'ICU',
+                status: 'AVAILABLE',
+              }),
             ],
           }),
         });
@@ -457,8 +489,20 @@ async function setupInpatientMocks(page: Page) {
           body: JSON.stringify({
             count: 2,
             results: [
-              mockBed({ id: 1, bed_number: 'MED-A-001', ward: 1, ward_name: 'Medical Ward A', status: 'AVAILABLE' }),
-              mockBed({ id: 4, bed_number: 'MED-A-004', ward: 1, ward_name: 'Medical Ward A', status: 'AVAILABLE' }),
+              mockBed({
+                id: 1,
+                bed_number: 'MED-A-001',
+                ward: 1,
+                ward_name: 'Medical Ward A',
+                status: 'AVAILABLE',
+              }),
+              mockBed({
+                id: 4,
+                bed_number: 'MED-A-004',
+                ward: 1,
+                ward_name: 'Medical Ward A',
+                status: 'AVAILABLE',
+              }),
             ],
           }),
         });
@@ -500,7 +544,11 @@ async function setupInpatientMocks(page: Page) {
             count: 2,
             results: [
               mockAdmission(),
-              mockAdmission({ id: 2, admission_number: 'ADM-20260103-0002', patient_name: 'John Smith' }),
+              mockAdmission({
+                id: 2,
+                admission_number: 'ADM-20260103-0002',
+                patient_name: 'John Smith',
+              }),
             ],
           }),
         });
@@ -684,7 +732,9 @@ async function setupInpatientMocks(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(mockShiftHandover({ is_acknowledged: true, acknowledged_at: new Date().toISOString() })),
+        body: JSON.stringify(
+          mockShiftHandover({ is_acknowledged: true, acknowledged_at: new Date().toISOString() })
+        ),
       });
     } else {
       await route.fulfill({
@@ -694,7 +744,12 @@ async function setupInpatientMocks(page: Page) {
           count: 2,
           results: [
             mockShiftHandover(),
-            mockShiftHandover({ id: 2, shift_ending: 'NIGHT', shift_ending_display: 'Night Shift', is_acknowledged: true }),
+            mockShiftHandover({
+              id: 2,
+              shift_ending: 'NIGHT',
+              shift_ending_display: 'Night Shift',
+              is_acknowledged: true,
+            }),
           ],
         }),
       });
@@ -976,7 +1031,9 @@ test.describe('Admission Workflow', () => {
     await expect(page.getByRole('heading', { name: /decline admission/i })).toBeVisible();
 
     // Enter decline reason
-    await page.getByLabel(/reason for declining/i).fill('Patient condition improved, no longer requires admission');
+    await page
+      .getByLabel(/reason for declining/i)
+      .fill('Patient condition improved, no longer requires admission');
 
     // Confirm decline
     await page.getByRole('button', { name: /confirm decline/i }).click();
@@ -1040,7 +1097,7 @@ test.describe('Admission Workflow', () => {
             icd10_code: 'J18.9',
             icd10_display: 'J18.9 - Pneumonia, unspecified organism',
             free_text_diagnosis: 'Community-acquired pneumonia',
-          }
+          },
         ]),
       });
     });
@@ -1089,7 +1146,9 @@ test.describe('Admission Workflow', () => {
     await expect(page.getByText(/select a patient before creating/i)).toBeVisible();
   });
 
-  test('should dismiss dialog and show form when clicking continue without patient', async ({ page }) => {
+  test('should dismiss dialog and show form when clicking continue without patient', async ({
+    page,
+  }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/admissions/new');
 
@@ -1267,7 +1326,9 @@ test.describe('Nursing Kardex', () => {
     // Wait for dialog to be visible
     await expect(page.getByRole('dialog', { name: /add shift note/i })).toBeVisible();
     // The shift select already defaults to DAY, so just fill in the notes
-    await page.getByRole('textbox', { name: /notes/i }).fill('Patient resting comfortably. Vitals stable.');
+    await page
+      .getByRole('textbox', { name: /notes/i })
+      .fill('Patient resting comfortably. Vitals stable.');
 
     // Save
     await page.getByRole('button', { name: /save/i }).click();
@@ -1315,7 +1376,9 @@ test.describe('Patient Transfer', () => {
     await page.getByText(/ICU-001/i).click();
 
     // Enter clinical justification
-    await page.getByLabel(/clinical justification/i).fill('Respiratory deterioration requiring ICU monitoring');
+    await page
+      .getByLabel(/clinical justification/i)
+      .fill('Respiratory deterioration requiring ICU monitoring');
 
     // Confirm transfer
     await page.getByRole('button', { name: /confirm.*transfer/i }).click();
@@ -1334,7 +1397,6 @@ test.describe('Patient Transfer', () => {
     await expect(page.getByText('ICU', { exact: true }).first()).toBeVisible();
     await expect(page.getByText(/respiratory deterioration/i).first()).toBeVisible();
   });
-
 });
 
 // =============================================================================
@@ -1365,7 +1427,9 @@ test.describe('Discharge Workflow', () => {
     // The discharge type defaults to NORMAL - no need to change for now
     // Fill form fields
     await page.getByLabel(/discharge diagnosis/i).fill('J18.9 - Pneumonia (Resolved)');
-    await page.getByLabel(/^discharge summary/i).fill('Patient recovered well after 7 days of IV antibiotics.');
+    await page
+      .getByLabel(/^discharge summary/i)
+      .fill('Patient recovered well after 7 days of IV antibiotics.');
     await page.getByLabel(/follow-up instructions/i).fill('OPD in 2 weeks');
 
     // Check all clearances first
@@ -1374,7 +1438,9 @@ test.describe('Discharge Workflow', () => {
     await page.getByLabel(/nursing.*clearance/i).click();
 
     // Fill patient instructions (required)
-    await page.getByLabel(/patient instructions/i).fill('Rest and continue medications as prescribed.');
+    await page
+      .getByLabel(/patient instructions/i)
+      .fill('Rest and continue medications as prescribed.');
 
     // Confirm discharge
     await page.getByRole('button', { name: /confirm.*discharge/i }).click();
@@ -1541,11 +1607,27 @@ test.describe('Ward Compatibility', () => {
               patient_name: 'Jane Doe',
               patient_mrn: 'MRN-20260101-0001',
               compatible_wards: [
-                { ward_id: 1, ward_name: 'Medical Ward A', ward_type: 'MEDICAL', available_beds: 8 },
-                { ward_id: 3, ward_name: 'Surgical Ward', ward_type: 'SURGICAL', available_beds: 10 },
+                {
+                  ward_id: 1,
+                  ward_name: 'Medical Ward A',
+                  ward_type: 'MEDICAL',
+                  available_beds: 8,
+                },
+                {
+                  ward_id: 3,
+                  ward_name: 'Surgical Ward',
+                  ward_type: 'SURGICAL',
+                  available_beds: 10,
+                },
               ],
               incompatible_wards: [
-                { ward_id: 2, ward_name: 'Maternity Ward', ward_type: 'MATERNITY', violations: ['GENDER_MISMATCH'], has_critical: false },
+                {
+                  ward_id: 2,
+                  ward_name: 'Maternity Ward',
+                  ward_type: 'MATERNITY',
+                  violations: ['GENDER_MISMATCH'],
+                  has_critical: false,
+                },
               ],
             },
           ],
@@ -1605,7 +1687,9 @@ test.describe('Ward Compatibility', () => {
     await expect(page.getByRole('dialog')).toBeVisible();
 
     // Enter override reason
-    await page.getByLabel(/override reason/i).fill('Clinical necessity overrides gender restriction');
+    await page
+      .getByLabel(/override reason/i)
+      .fill('Clinical necessity overrides gender restriction');
 
     // Click override button
     await page.getByRole('button', { name: /override.*admit/i }).click();
@@ -1643,10 +1727,14 @@ test.describe('Critical-Care Workflow Visibility', () => {
     await setupInpatientMocks(page);
   });
 
-  test('HDU and NBU workflow options appear when facility modules are enabled', async ({ page }) => {
+  test('HDU and NBU workflow options appear when facility modules are enabled', async ({
+    page,
+  }) => {
     await login(page, TEST_USER.username, TEST_USER.password);
 
-    await page.goto('/admissions/recommendations/new?encounter=1&patient_name=Jane%20Doe&patient_mrn=MRN-20260101-0001');
+    await page.goto(
+      '/admissions/recommendations/new?encounter=1&patient_name=Jane%20Doe&patient_mrn=MRN-20260101-0001'
+    );
     await expect(page.getByRole('heading', { name: /recommend for admission/i })).toBeVisible();
 
     await page.getByText('Preferred Ward Type').locator('..').getByRole('combobox').click();
@@ -1675,7 +1763,12 @@ test.describe('Bulk Bed Assignment', () => {
               patient_name: 'Jane Doe',
               patient_mrn: 'MRN-20260101-0001',
               compatible_wards: [
-                { ward_id: 1, ward_name: 'Medical Ward A', ward_type: 'MEDICAL', available_beds: 8 },
+                {
+                  ward_id: 1,
+                  ward_name: 'Medical Ward A',
+                  ward_type: 'MEDICAL',
+                  available_beds: 8,
+                },
               ],
               incompatible_wards: [],
             },

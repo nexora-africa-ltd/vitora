@@ -50,13 +50,13 @@ function resolveAllowedTarget(src: string, apiHostFromClient?: string | null): U
   }
 
   if (
-    !sameApiHost
-    && !azureMediaHost
-    && !localMediaHost
-    && !explicitAllowHost
-    && !explicitAllowName
-    && !desktopClientApiHostMatch
-    && !webClientApiHostMatch
+    !sameApiHost &&
+    !azureMediaHost &&
+    !localMediaHost &&
+    !explicitAllowHost &&
+    !explicitAllowName &&
+    !desktopClientApiHostMatch &&
+    !webClientApiHostMatch
   ) {
     return null;
   }

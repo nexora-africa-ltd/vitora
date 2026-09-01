@@ -78,8 +78,14 @@ export default function DrugCatalogPage() {
           totalPages={totalPages}
           totalCount={totalCount}
           onPageChange={setPage}
-          onSearch={(q) => { setSearch(q); setPage(1); }}
-          onFiltersChange={(f) => { setFilters(f); setPage(1); }}
+          onSearch={(q) => {
+            setSearch(q);
+            setPage(1);
+          }}
+          onFiltersChange={(f) => {
+            setFilters(f);
+            setPage(1);
+          }}
         />
       </div>
     </PullToRefresh>

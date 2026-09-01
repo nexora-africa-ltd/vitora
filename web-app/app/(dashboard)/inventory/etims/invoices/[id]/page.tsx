@@ -69,21 +69,21 @@ const STATUS_CONFIG: Record<ETIMSInvoiceStatus, { label: string; color: string }
 
 function StatusBadge({ status }: { status: ETIMSInvoiceStatus }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
-  return <Badge className={`${cfg.color} shrink-0 w-fit`}>{cfg.label}</Badge>;
+  return <Badge className={`${cfg.color} w-fit shrink-0`}>{cfg.label}</Badge>;
 }
 
-export default function ETIMSInvoiceDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function ETIMSInvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: rawId } = use(params);
   const id = Number(rawId);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showRawData, setShowRawData] = useState(false);
 
-  const { data: invoice, isLoading, error } = useQuery({
+  const {
+    data: invoice,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['etims-invoice', id],
     queryFn: () => inventoryApi.getETIMSInvoice(id),
     enabled: !isNaN(id),
@@ -143,7 +143,11 @@ export default function ETIMSInvoiceDetailPage({
     mutationFn: () => inventoryApi.createCreditNote(id, { reason: 'Credit note issued' }),
     onSuccess: () => {
       invalidate();
-      toast({ variant: 'success', title: 'Credit note created', description: 'Credit note has been queued for KRA submission.' });
+      toast({
+        variant: 'success',
+        title: 'Credit note created',
+        description: 'Credit note has been queued for KRA submission.',
+      });
     },
     onError: (err) => {
       toast({
@@ -172,7 +176,11 @@ export default function ETIMSInvoiceDetailPage({
     );
   }
 
-  const anyPending = submitMutation.isPending || retryMutation.isPending || cancelMutation.isPending || creditNoteMutation.isPending;
+  const anyPending =
+    submitMutation.isPending ||
+    retryMutation.isPending ||
+    cancelMutation.isPending ||
+    creditNoteMutation.isPending;
   const canSubmit = invoice.status === 'PENDING';
   const canRetry = invoice.status === 'FAILED';
   const canCancel = invoice.status === 'FAILED' || invoice.status === 'PENDING';
@@ -201,7 +209,8 @@ export default function ETIMSInvoiceDetailPage({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Submit to KRA?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will queue invoice {invoice.invoice_number} for submission to the KRA eTIMS system.
+                      This will queue invoice {invoice.invoice_number} for submission to the KRA
+                      eTIMS system.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -229,8 +238,8 @@ export default function ETIMSInvoiceDetailPage({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Retry submission?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will re-queue invoice {invoice.invoice_number} for submission.
-                      Retry count: {invoice.retry_count}.
+                      This will re-queue invoice {invoice.invoice_number} for submission. Retry
+                      count: {invoice.retry_count}.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -258,7 +267,8 @@ export default function ETIMSInvoiceDetailPage({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Cancel eTIMS submission?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will cancel the eTIMS submission for invoice {invoice.invoice_number}. This cannot be undone.
+                      This will cancel the eTIMS submission for invoice {invoice.invoice_number}.
+                      This cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -289,7 +299,8 @@ export default function ETIMSInvoiceDetailPage({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Issue Credit Note?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will create a credit note (NC) for invoice {invoice.invoice_number} and submit it to KRA. This reverses the original transaction.
+                      This will create a credit note (NC) for invoice {invoice.invoice_number} and
+                      submit it to KRA. This reverses the original transaction.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -306,16 +317,18 @@ export default function ETIMSInvoiceDetailPage({
       />
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {invoice.patient_name || 'No patient'}
             <span className="text-muted-foreground"> &bull; {invoice.invoice_number}</span>
           </p>
           <p className="text-xs text-muted-foreground">
             Created {new Date(invoice.created_at).toLocaleDateString()}
-            {invoice.submitted_at && ` • Submitted ${new Date(invoice.submitted_at).toLocaleDateString()}`}
-            {invoice.confirmed_at && ` • Confirmed ${new Date(invoice.confirmed_at).toLocaleDateString()}`}
+            {invoice.submitted_at &&
+              ` • Submitted ${new Date(invoice.submitted_at).toLocaleDateString()}`}
+            {invoice.confirmed_at &&
+              ` • Confirmed ${new Date(invoice.confirmed_at).toLocaleDateString()}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -380,7 +393,10 @@ export default function ETIMSInvoiceDetailPage({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Receipt Type</span>
-              <span>{invoice.receipt_label} ({invoice.transaction_type === 'NC' ? 'Credit Note' : 'Sale'})</span>
+              <span>
+                {invoice.receipt_label} (
+                {invoice.transaction_type === 'NC' ? 'Credit Note' : 'Sale'})
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Status</span>
@@ -400,11 +416,15 @@ export default function ETIMSInvoiceDetailPage({
             )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Submitted At</span>
-              <span>{invoice.submitted_at ? new Date(invoice.submitted_at).toLocaleString() : '—'}</span>
+              <span>
+                {invoice.submitted_at ? new Date(invoice.submitted_at).toLocaleString() : '—'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Confirmed At</span>
-              <span>{invoice.confirmed_at ? new Date(invoice.confirmed_at).toLocaleString() : '—'}</span>
+              <span>
+                {invoice.confirmed_at ? new Date(invoice.confirmed_at).toLocaleString() : '—'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">EJ Data Sent</span>
@@ -426,50 +446,52 @@ export default function ETIMSInvoiceDetailPage({
           <CardContent className="space-y-3 text-sm">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <p className="text-muted-foreground text-xs">CU Invoice Number</p>
+                <p className="text-xs text-muted-foreground">CU Invoice Number</p>
                 <p className="font-mono text-sm">{invoice.cu_invoice_number || '—'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">SCU ID</p>
+                <p className="text-xs text-muted-foreground">SCU ID</p>
                 <p className="font-mono text-sm">{invoice.scu_id}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">SCU Date/Time</p>
-                <p className="text-sm">{invoice.scu_datetime ? new Date(invoice.scu_datetime).toLocaleString() : '—'}</p>
+                <p className="text-xs text-muted-foreground">SCU Date/Time</p>
+                <p className="text-sm">
+                  {invoice.scu_datetime ? new Date(invoice.scu_datetime).toLocaleString() : '—'}
+                </p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">Receipt Counter (Type)</p>
+                <p className="text-xs text-muted-foreground">Receipt Counter (Type)</p>
                 <p className="font-mono text-sm">{invoice.scu_receipt_counter || '—'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">Total Receipt Counter</p>
+                <p className="text-xs text-muted-foreground">Total Receipt Counter</p>
                 <p className="font-mono text-sm">{invoice.scu_total_counter || '—'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">Receipt Type Counter</p>
+                <p className="text-xs text-muted-foreground">Receipt Type Counter</p>
                 <p className="font-mono text-sm">{invoice.receipt_type_counter || '—'}</p>
               </div>
             </div>
             {invoice.formatted_internal_data && (
               <div>
-                <p className="text-muted-foreground text-xs mb-1">Internal Data</p>
-                <p className="font-mono text-xs bg-muted/50 p-2 rounded break-all">
+                <p className="mb-1 text-xs text-muted-foreground">Internal Data</p>
+                <p className="break-all rounded bg-muted/50 p-2 font-mono text-xs">
                   {invoice.formatted_internal_data}
                 </p>
               </div>
             )}
             {invoice.formatted_receipt_signature && (
               <div>
-                <p className="text-muted-foreground text-xs mb-1">Receipt Signature</p>
-                <p className="font-mono text-xs bg-muted/50 p-2 rounded break-all">
+                <p className="mb-1 text-xs text-muted-foreground">Receipt Signature</p>
+                <p className="break-all rounded bg-muted/50 p-2 font-mono text-xs">
                   {invoice.formatted_receipt_signature}
                 </p>
               </div>
             )}
             {invoice.qr_code_data && (
               <div>
-                <p className="text-muted-foreground text-xs mb-1">QR Code Data</p>
-                <p className="font-mono text-xs bg-muted/50 p-2 rounded break-all">
+                <p className="mb-1 text-xs text-muted-foreground">QR Code Data</p>
+                <p className="break-all rounded bg-muted/50 p-2 font-mono text-xs">
                   {invoice.qr_code_data}
                 </p>
               </div>
@@ -539,7 +561,7 @@ export default function ETIMSInvoiceDetailPage({
           </CardHeader>
           {showRawData && (
             <CardContent>
-              <pre className="text-xs bg-muted/50 p-3 rounded overflow-x-auto max-h-64">
+              <pre className="max-h-64 overflow-x-auto rounded bg-muted/50 p-3 text-xs">
                 {JSON.stringify(invoice.etims_internal_data, null, 2)}
               </pre>
             </CardContent>

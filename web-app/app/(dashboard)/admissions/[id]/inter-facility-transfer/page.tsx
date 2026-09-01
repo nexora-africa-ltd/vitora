@@ -75,7 +75,9 @@ export default function CreateInterFacilityTransferPage() {
   });
   const organizationId =
     organization?.id ??
-    (typeof currentFacilityDetail?.organization === 'number' ? currentFacilityDetail.organization : undefined) ??
+    (typeof currentFacilityDetail?.organization === 'number'
+      ? currentFacilityDetail.organization
+      : undefined) ??
     user?.memberships?.find((membership) => membership.is_primary)?.organization_id ??
     user?.memberships?.[0]?.organization_id;
   const { data: organizationFacilities = [] } = useQuery({
@@ -111,7 +113,9 @@ export default function CreateInterFacilityTransferPage() {
   const [reasonDetails, setReasonDetails] = useState('');
   const [clinicalSummary, setClinicalSummary] = useState('');
   const [handoverNotes, setHandoverNotes] = useState('');
-  const [transportMode, setTransportMode] = useState<'AMBULANCE' | 'PRIVATE' | 'OTHER'>('AMBULANCE');
+  const [transportMode, setTransportMode] = useState<'AMBULANCE' | 'PRIVATE' | 'OTHER'>(
+    'AMBULANCE'
+  );
   const [escortRequired, setEscortRequired] = useState(false);
   const [escortName, setEscortName] = useState('');
   const [submitImmediately, setSubmitImmediately] = useState(true);
@@ -166,7 +170,9 @@ export default function CreateInterFacilityTransferPage() {
     });
     return [...map.values()];
   })();
-  const selectableFacilities = destinationFacilityOptions.filter((item) => item.id !== facility?.id);
+  const selectableFacilities = destinationFacilityOptions.filter(
+    (item) => item.id !== facility?.id
+  );
   const selectedDestinationFacilityId =
     selectedDestinationFacility !== 'OTHER' && selectedDestinationFacility
       ? Number(selectedDestinationFacility)
@@ -241,7 +247,7 @@ export default function CreateInterFacilityTransferPage() {
 
   return (
     <PermissionGate action="inpatient.submit_interfacility_transfer">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Inter-Facility Transfer"
           helpContent="Create and optionally submit an inter-facility transfer request for this admission."
@@ -258,25 +264,30 @@ export default function CreateInterFacilityTransferPage() {
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">{activeTransfer.transfer_number}</Badge>
-                <Badge variant="outline">{activeTransfer.status_display ?? activeTransfer.status}</Badge>
+                <Badge variant="outline">
+                  {activeTransfer.status_display ?? activeTransfer.status}
+                </Badge>
               </div>
               <p>
                 <span className="text-muted-foreground">Destination:</span>{' '}
-                {activeTransfer.destination_facility_label ?? activeTransfer.destination_facility_name}
+                {activeTransfer.destination_facility_label ??
+                  activeTransfer.destination_facility_name}
               </p>
               <p>
                 <span className="text-muted-foreground">Reason:</span>{' '}
                 {activeTransfer.reason_code_display ?? activeTransfer.reason_code}
               </p>
               <p>
-                <span className="text-muted-foreground">Clinical summary:</span> {activeTransfer.clinical_summary}
+                <span className="text-muted-foreground">Clinical summary:</span>{' '}
+                {activeTransfer.clinical_summary}
               </p>
               <p>
-                <span className="text-muted-foreground">Handover notes:</span> {activeTransfer.handover_notes}
+                <span className="text-muted-foreground">Handover notes:</span>{' '}
+                {activeTransfer.handover_notes}
               </p>
               <p className="text-muted-foreground">
-                An open transfer already exists for this admission. This page is now in management mode
-                for destination requests and source sharing.
+                An open transfer already exists for this admission. This page is now in management
+                mode for destination requests and source sharing.
               </p>
             </CardContent>
           </Card>
@@ -318,7 +329,10 @@ export default function CreateInterFacilityTransferPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Reason</Label>
-                  <Select value={reasonCode} onValueChange={(v) => setReasonCode(v as InterFacilityTransferReason)}>
+                  <Select
+                    value={reasonCode}
+                    onValueChange={(v) => setReasonCode(v as InterFacilityTransferReason)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -336,7 +350,10 @@ export default function CreateInterFacilityTransferPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Priority</Label>
-                  <Select value={priority} onValueChange={(v) => setPriority(v as InterFacilityTransferPriority)}>
+                  <Select
+                    value={priority}
+                    onValueChange={(v) => setPriority(v as InterFacilityTransferPriority)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -351,7 +368,10 @@ export default function CreateInterFacilityTransferPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Transport</Label>
-                  <Select value={transportMode} onValueChange={(v) => setTransportMode(v as 'AMBULANCE' | 'PRIVATE' | 'OTHER')}>
+                  <Select
+                    value={transportMode}
+                    onValueChange={(v) => setTransportMode(v as 'AMBULANCE' | 'PRIVATE' | 'OTHER')}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -366,19 +386,34 @@ export default function CreateInterFacilityTransferPage() {
 
               <div className="space-y-2">
                 <Label>Reason Details</Label>
-                <Textarea value={reasonDetails} onChange={(e) => setReasonDetails(e.target.value)} rows={2} />
+                <Textarea
+                  value={reasonDetails}
+                  onChange={(e) => setReasonDetails(e.target.value)}
+                  rows={2}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Clinical Summary *</Label>
-                <Textarea value={clinicalSummary} onChange={(e) => setClinicalSummary(e.target.value)} rows={4} />
+                <Textarea
+                  value={clinicalSummary}
+                  onChange={(e) => setClinicalSummary(e.target.value)}
+                  rows={4}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Handover Notes *</Label>
-                <Textarea value={handoverNotes} onChange={(e) => setHandoverNotes(e.target.value)} rows={4} />
+                <Textarea
+                  value={handoverNotes}
+                  onChange={(e) => setHandoverNotes(e.target.value)}
+                  rows={4}
+                />
               </div>
 
               <div className="flex items-center gap-2">
-                <Checkbox checked={escortRequired} onCheckedChange={(v) => setEscortRequired(Boolean(v))} />
+                <Checkbox
+                  checked={escortRequired}
+                  onCheckedChange={(v) => setEscortRequired(Boolean(v))}
+                />
                 <Label>Escort required</Label>
               </div>
               {escortRequired && (
@@ -389,16 +424,19 @@ export default function CreateInterFacilityTransferPage() {
               )}
 
               <div className="flex items-center gap-2">
-                <Checkbox checked={submitImmediately} onCheckedChange={(v) => setSubmitImmediately(Boolean(v))} />
+                <Checkbox
+                  checked={submitImmediately}
+                  onCheckedChange={(v) => setSubmitImmediately(Boolean(v))}
+                />
                 <Label>Submit immediately after save</Label>
               </div>
 
-              <div className="flex gap-2 justify-end">
+              <div className="flex justify-end gap-2">
                 <Button variant="outline" asChild>
                   <Link href={`/admissions/${admissionId}`}>Cancel</Link>
                 </Button>
                 <Button onClick={handleCreate} disabled={isPending}>
-                  {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   {submitImmediately ? 'Create & Submit' : 'Create Draft'}
                 </Button>
               </div>
@@ -415,12 +453,13 @@ export default function CreateInterFacilityTransferPage() {
               {pendingSummaryRequests.map((transfer) => (
                 <div
                   key={transfer.id}
-                  className="rounded-md border p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+                  className="flex flex-col gap-3 rounded-md border p-3 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="space-y-1 text-sm">
                     <p className="font-medium">{transfer.transfer_number}</p>
                     <p>
-                      <span className="text-muted-foreground">Patient:</span> {transfer.patient_name}
+                      <span className="text-muted-foreground">Patient:</span>{' '}
+                      {transfer.patient_name}
                     </p>
                     <p>
                       <span className="text-muted-foreground">Destination:</span>{' '}

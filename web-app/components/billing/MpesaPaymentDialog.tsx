@@ -115,14 +115,12 @@ export function MpesaPaymentDialog({
             <Smartphone className="h-5 w-5 text-green-600" />
             M-Pesa Payment
           </DialogTitle>
-          <DialogDescription>
-            Pay for invoice {invoiceNumber}
-          </DialogDescription>
+          <DialogDescription>Pay for invoice {invoiceNumber}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Amount Display */}
-          <div className="text-center py-4 bg-muted rounded-lg">
+          <div className="rounded-lg bg-muted py-4 text-center">
             <div className="text-sm text-muted-foreground">Amount to Pay</div>
             <div className="text-3xl font-bold" data-testid="mpesa-amount">
               {formatCurrency(amount)}
@@ -148,11 +146,7 @@ export function MpesaPaymentDialog({
               </div>
 
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handleClose}
-                >
+                <Button variant="outline" className="flex-1" onClick={handleClose}>
                   Cancel
                 </Button>
                 <Button
@@ -167,8 +161,8 @@ export function MpesaPaymentDialog({
           )}
 
           {status === 'initiating' && (
-            <div className="text-center space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin mx-auto text-green-600" />
+            <div className="space-y-4 text-center">
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-green-600" />
               <div>
                 <p className="font-medium">Initiating...</p>
                 <p className="text-sm text-muted-foreground">
@@ -189,42 +183,29 @@ export function MpesaPaymentDialog({
                 </AlertDescription>
               </Alert>
 
-              <div className="text-center space-y-2">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber-500" />
-                <p className="text-sm text-muted-foreground">
-                  Waiting for payment confirmation...
-                </p>
+              <div className="space-y-2 text-center">
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-amber-500" />
+                <p className="text-sm text-muted-foreground">Waiting for payment confirmation...</p>
                 <Progress value={undefined} className="w-full" />
               </div>
 
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={onCancel}
-              >
+              <Button variant="outline" className="w-full" onClick={onCancel}>
                 Cancel Payment
               </Button>
             </div>
           )}
 
           {status === 'success' && (
-            <div className="text-center space-y-4">
-              <CheckCircle className="h-16 w-16 mx-auto text-green-600" />
+            <div className="space-y-4 text-center">
+              <CheckCircle className="mx-auto h-16 w-16 text-green-600" />
               <div>
-                <p className="text-lg font-medium text-green-600">
-                  Payment Successful!
-                </p>
+                <p className="text-lg font-medium text-green-600">Payment Successful!</p>
                 <p className="text-sm text-muted-foreground">QJH3XXXXXX</p>
                 {receiptNumber && (
-                  <p className="text-xs text-muted-foreground">
-                    Receipt: {receiptNumber}
-                  </p>
+                  <p className="text-xs text-muted-foreground">Receipt: {receiptNumber}</p>
                 )}
               </div>
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700"
-                onClick={handleClose}
-              >
+              <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleClose}>
                 Done
               </Button>
             </div>
@@ -235,24 +216,20 @@ export function MpesaPaymentDialog({
               <Alert variant="destructive">
                 <XCircle className="h-4 w-4" />
                 <AlertTitle>Payment Failed</AlertTitle>
-                <AlertDescription>
-                  {errorMessage || statusMessages.failed}
-                </AlertDescription>
+                <AlertDescription>{errorMessage || statusMessages.failed}</AlertDescription>
               </Alert>
 
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handleClose}
-                >
+                <Button variant="outline" className="flex-1" onClick={handleClose}>
                   Cancel
                 </Button>
                 <Button
                   className="flex-1"
                   onClick={() => {
                     // Retry initiation using the last entered phone (or placeholder)
-                    onInitiate(displayPhone.startsWith('0') ? `254${displayPhone.slice(1)}` : displayPhone);
+                    onInitiate(
+                      displayPhone.startsWith('0') ? `254${displayPhone.slice(1)}` : displayPhone
+                    );
                   }}
                 >
                   Retry
@@ -266,8 +243,8 @@ export function MpesaPaymentDialog({
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                You will receive a prompt on your phone to enter your M-Pesa PIN.
-                Please ensure you have sufficient balance.
+                You will receive a prompt on your phone to enter your M-Pesa PIN. Please ensure you
+                have sufficient balance.
               </AlertDescription>
             </Alert>
           )}

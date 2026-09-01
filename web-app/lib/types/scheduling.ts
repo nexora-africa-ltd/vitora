@@ -250,8 +250,27 @@ export type PaginatedResources = PaginatedResponse<ResourceListItem>;
 // Shifts / Duty Roster
 // =============================================================================
 
-export type ShiftType = 'DAY' | 'NIGHT' | 'MORNING' | 'AFTERNOON' | 'ON_CALL' | 'OVERTIME' | 'DAY_OFF' | 'NIGHT_OFF' | 'OFF' | 'AFTERNOON_OFF' | 'LEAVE' | 'SICK_LEAVE' | 'REST';
-export type ShiftStatus = 'SCHEDULED' | 'ACTIVE' | 'ON_BREAK' | 'COMPLETED' | 'CANCELLED' | 'ABSENT';
+export type ShiftType =
+  | 'DAY'
+  | 'NIGHT'
+  | 'MORNING'
+  | 'AFTERNOON'
+  | 'ON_CALL'
+  | 'OVERTIME'
+  | 'DAY_OFF'
+  | 'NIGHT_OFF'
+  | 'OFF'
+  | 'AFTERNOON_OFF'
+  | 'LEAVE'
+  | 'SICK_LEAVE'
+  | 'REST';
+export type ShiftStatus =
+  | 'SCHEDULED'
+  | 'ACTIVE'
+  | 'ON_BREAK'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'ABSENT';
 
 export interface ShiftListItem {
   id: number;
@@ -381,7 +400,13 @@ export interface CrossFacilityConflict {
 // Attendance / Clock-In
 // =============================================================================
 
-export type AttendanceStatus = 'NO_SHIFT' | 'UPCOMING' | 'SHOULD_CLOCK_IN' | 'CLOCKED_IN' | 'ON_BREAK' | 'COMPLETED';
+export type AttendanceStatus =
+  | 'NO_SHIFT'
+  | 'UPCOMING'
+  | 'SHOULD_CLOCK_IN'
+  | 'CLOCKED_IN'
+  | 'ON_BREAK'
+  | 'COMPLETED';
 
 // =============================================================================
 // On-Duty Overview (Manager Widget)
@@ -613,7 +638,12 @@ export interface ShiftTypeConfigDefaults {
 export interface ShiftTypeConfigBulkUpsertResult {
   created_or_updated: number;
   results: ShiftTypeConfig[];
-  errors?: Array<{ index: number; shift_type?: string; error?: string; errors?: Record<string, string[]> }>;
+  errors?: Array<{
+    index: number;
+    shift_type?: string;
+    error?: string;
+    errors?: Record<string, string[]>;
+  }>;
 }
 
 export type ConstraintType =

@@ -69,7 +69,7 @@ function DocumentsSkeleton() {
     <div className="space-y-3">
       {Array.from({ length: 3 }).map((_, i) => (
         <Card key={i}>
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="flex items-center gap-3 p-4">
             <Skeleton className="h-8 w-8 rounded" />
             <div className="flex-1 space-y-1.5">
               <Skeleton className="h-4 w-48" />
@@ -96,18 +96,18 @@ function SearchResult({
     <Card>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <FileText className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+          <FileText className="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="font-medium text-sm truncate">{result.filename}</h4>
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="truncate text-sm font-medium">{result.filename}</h4>
               {result.score != null && result.score > 0 && (
-                <Badge variant="secondary" className="text-[10px] shrink-0">
+                <Badge variant="secondary" className="shrink-0 text-[10px]">
                   {(result.score * 100).toFixed(0)}%
                 </Badge>
               )}
             </div>
             {result.snippet && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{result.snippet}</p>
+              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{result.snippet}</p>
             )}
           </div>
         </div>
@@ -125,7 +125,13 @@ function DocumentItem({
   onDelete,
   isDeleting,
 }: {
-  document: { id: string; filename: string; size_bytes?: number; uploaded_at?: string; status?: string };
+  document: {
+    id: string;
+    filename: string;
+    size_bytes?: number;
+    uploaded_at?: string;
+    status?: string;
+  };
   onDelete: (id: string) => void;
   isDeleting: boolean;
 }) {
@@ -133,16 +139,16 @@ function DocumentItem({
     <Card>
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
-          <FileText className="h-8 w-8 text-blue-500 shrink-0" />
+          <FileText className="h-8 w-8 shrink-0 text-blue-500" />
           <div className="min-w-0 flex-1">
-            <h4 className="font-medium text-sm truncate">{doc.filename}</h4>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+            <h4 className="truncate text-sm font-medium">{doc.filename}</h4>
+            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>{formatBytes(doc.size_bytes)}</span>
               {doc.uploaded_at && <span>· {formatDate(doc.uploaded_at)}</span>}
               {doc.status && (
                 <Badge
                   variant="outline"
-                  className={`text-[10px] h-5 px-1.5 ${
+                  className={`h-5 px-1.5 text-[10px] ${
                     doc.status === 'processed'
                       ? 'border-green-300 text-green-700 dark:border-green-700 dark:text-green-400'
                       : doc.status === 'processing'
@@ -158,7 +164,7 @@ function DocumentItem({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
             onClick={() => onDelete(doc.id)}
             disabled={isDeleting}
           >
@@ -184,10 +190,7 @@ export default function KnowledgeBasePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const debouncedSearch = useDebounce(search, 300);
   const { data: kbData, isLoading: kbLoading, error: kbError } = useFacilityKB();
-  const { data: searchData, isLoading: searchLoading } = useFacilityKBSearch(
-    debouncedSearch,
-    20,
-  );
+  const { data: searchData, isLoading: searchLoading } = useFacilityKBSearch(debouncedSearch, 20);
   const uploadMutation = useUploadToFacilityKB();
   const deleteMutation = useDeleteFacilityKBDocument();
   const { refresh, isRefreshing } = usePageRefresh();
@@ -224,20 +227,22 @@ export default function KnowledgeBasePage() {
         />
 
         {/* Stats bar */}
-        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground sm:text-sm">
           <Library className="h-4 w-4 shrink-0" />
           <span>
             {docCount} document{docCount !== 1 ? 's' : ''}
           </span>
           {kbData?.total_size_bytes != null && (
-            <span className="text-muted-foreground/60">· {formatBytes(kbData.total_size_bytes)} total</span>
+            <span className="text-muted-foreground/60">
+              · {formatBytes(kbData.total_size_bytes)} total
+            </span>
           )}
         </div>
 
         {/* Upload + Search bar */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search facility documents..."
               value={search}
@@ -290,15 +295,16 @@ export default function KnowledgeBasePage() {
           ) : searchData?.results && searchData.results.length > 0 ? (
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                {searchData.total ?? searchData.results.length} result{(searchData.total ?? 0) !== 1 ? 's' : ''} for &ldquo;{debouncedSearch}&rdquo;
+                {searchData.total ?? searchData.results.length} result
+                {(searchData.total ?? 0) !== 1 ? 's' : ''} for &ldquo;{debouncedSearch}&rdquo;
               </p>
               {searchData.results.map((result) => (
                 <SearchResult key={result.id} result={result} />
               ))}
             </div>
           ) : (
-            <div className="text-center py-8">
-              <Search className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+            <div className="py-8 text-center">
+              <Search className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
                 No results for &ldquo;{debouncedSearch}&rdquo;
               </p>
@@ -327,9 +333,9 @@ export default function KnowledgeBasePage() {
         ) : (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Library className="h-10 w-10 text-muted-foreground/40 mb-3" />
-              <h3 className="text-sm font-medium mb-1">No documents uploaded</h3>
-              <p className="text-xs text-muted-foreground max-w-sm">
+              <Library className="mb-3 h-10 w-10 text-muted-foreground/40" />
+              <h3 className="mb-1 text-sm font-medium">No documents uploaded</h3>
+              <p className="max-w-sm text-xs text-muted-foreground">
                 Upload facility protocols, clinical guidelines, and SOPs to help TibaBot provide
                 tailored, context-aware clinical assistance for your facility.
               </p>

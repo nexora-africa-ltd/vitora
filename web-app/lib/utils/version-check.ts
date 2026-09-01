@@ -22,12 +22,12 @@ const EFFECTIVE_CHECK_INTERVAL = isDevelopment ? 300_000 : VERSION_CHECK_INTERVA
 
 // Prefixes for user data that must be preserved
 const PRESERVED_PREFIXES = [
-  'vitora_draft_',        // Draft form data
+  'vitora_draft_', // Draft form data
   'vitora_autosave_queue_', // Offline queue
-  'vitora_access_token',  // Auth
+  'vitora_access_token', // Auth
   'vitora_refresh_token', // Auth
-  'vitora_user',          // User profile
-  'vitora_events_',       // Event logs
+  'vitora_user', // User profile
+  'vitora_events_', // Event logs
 ];
 
 export interface VersionState {
@@ -199,18 +199,14 @@ export async function clearAllCaches(): Promise<void> {
     // 1. Clear Service Worker caches (these are separate from localStorage)
     if ('caches' in window) {
       const cacheNames = await caches.keys();
-      await Promise.all(
-        cacheNames.map((cacheName) => caches.delete(cacheName))
-      );
+      await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
       console.info('[VersionCheck] Cleared', cacheNames.length, 'cache(s)');
     }
 
     // 2. Unregister service workers
     if ('serviceWorker' in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(
-        registrations.map((registration) => registration.unregister())
-      );
+      await Promise.all(registrations.map((registration) => registration.unregister()));
       console.info('[VersionCheck] Unregistered', registrations.length, 'service worker(s)');
     }
 
@@ -221,10 +217,7 @@ export async function clearAllCaches(): Promise<void> {
     // - Offline queue (vitora_autosave_queue_*)
     // NOTE: We intentionally DO NOT clear 'vitora_chunk_error_reload' here!
     // That marker is managed by chunk-error-handler to prevent infinite reload loops.
-    const sessionKeysToRemove = [
-      VERSION_KEY,
-      VERSION_LAST_CHECK_KEY,
-    ];
+    const sessionKeysToRemove = [VERSION_KEY, VERSION_LAST_CHECK_KEY];
     sessionKeysToRemove.forEach((key) => {
       sessionStorage.removeItem(key);
     });
@@ -309,9 +302,7 @@ export async function checkForNewVersion(): Promise<VersionState> {
  * Start periodic version checking
  * Returns a cleanup function to stop checking
  */
-export function startVersionChecking(
-  onNewVersion: (newVersion: string) => void
-): () => void {
+export function startVersionChecking(onNewVersion: (newVersion: string) => void): () => void {
   if (typeof window === 'undefined') return () => {};
 
   let intervalId: NodeJS.Timeout | null = null;

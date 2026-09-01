@@ -83,7 +83,9 @@ export function useVitalThresholds(options: UseVitalThresholdsOptions = {}) {
   const query = useQuery({
     queryKey: ['vital-thresholds'],
     queryFn: async () => {
-      const response = await apiClient.get<TriageVitalThreshold[] | { results: TriageVitalThreshold[] }>('/api/triage/vital-thresholds/');
+      const response = await apiClient.get<
+        TriageVitalThreshold[] | { results: TriageVitalThreshold[] }
+      >('/api/triage/vital-thresholds/');
       // Handle both array and paginated response formats
       const data = response.data;
       if (Array.isArray(data)) {

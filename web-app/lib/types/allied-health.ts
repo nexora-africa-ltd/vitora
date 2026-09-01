@@ -54,7 +54,11 @@ export type SessionOutcome =
  */
 export const ORDER_STATUS_CONFIG: Record<
   AlliedHealthOrderStatus,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    className?: string;
+  }
 > = {
   PENDING: { label: 'Pending', variant: 'secondary' },
   APPROVED: { label: 'Approved', variant: 'default', className: 'bg-blue-500' },
@@ -70,14 +74,22 @@ export const ORDER_STATUS_CONFIG: Record<
  */
 export const SESSION_STATUS_CONFIG: Record<
   AlliedHealthSessionStatus,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    className?: string;
+  }
 > = {
   SCHEDULED: { label: 'Scheduled', variant: 'secondary' },
   IN_PROGRESS: { label: 'In Progress', variant: 'default', className: 'bg-green-500' },
   COMPLETED: { label: 'Completed', variant: 'outline' },
   CANCELLED: { label: 'Cancelled', variant: 'destructive' },
   NO_SHOW: { label: 'No Show', variant: 'destructive', className: 'bg-orange-500' },
-  RESCHEDULED: { label: 'Rescheduled', variant: 'secondary', className: 'bg-blue-100 text-blue-800' },
+  RESCHEDULED: {
+    label: 'Rescheduled',
+    variant: 'secondary',
+    className: 'bg-blue-100 text-blue-800',
+  },
 };
 
 /**
@@ -85,7 +97,11 @@ export const SESSION_STATUS_CONFIG: Record<
  */
 export const PRIORITY_CONFIG: Record<
   AlliedHealthPriority,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    className?: string;
+  }
 > = {
   EMERGENCY: { label: 'Emergency', variant: 'destructive' },
   URGENT: { label: 'Urgent', variant: 'default', className: 'bg-orange-500' },

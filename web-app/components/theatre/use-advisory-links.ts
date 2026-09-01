@@ -17,7 +17,7 @@ import type {
  */
 export function useAdvisoryLinks(
   aiResultId: string | undefined,
-  aiResultType: AIAdvisoryResultType,
+  aiResultType: AIAdvisoryResultType
 ) {
   const [links, setLinks] = useState<AIAdvisoryOrderLink[]>([]);
   const [hasOrders, setHasOrders] = useState(false);
@@ -64,7 +64,9 @@ export function useAdvisoryLinks(
     };
 
     void init();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [aiResultId, aiResultType]);
 
   /** Action a single link (ORDERED / DECLINED / NOT_APPLICABLE). */
@@ -72,9 +74,7 @@ export function useAdvisoryLinks(
     async (linkId: number, data: AIAdvisoryOrderLinkActionRequest) => {
       try {
         const updated = await aiApi.actionAdvisoryLink(linkId, data);
-        setLinks((prev) =>
-          prev.map((l) => (l.id === updated.id ? updated : l)),
-        );
+        setLinks((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
         // Re-check has-orders after action
         if (aiResultId) {
           const ordersRes = await aiApi.advisoryHasOrders(aiResultId);
@@ -85,7 +85,7 @@ export function useAdvisoryLinks(
         return null;
       }
     },
-    [aiResultId],
+    [aiResultId]
   );
 
   /** Refresh links from server. */
@@ -106,16 +106,14 @@ export function useAdvisoryLinks(
   /** Find a link for a specific category + index. */
   const getLink = useCallback(
     (category: string, index: number) =>
-      links.find(
-        (l) => l.suggestion_category === category && l.suggestion_index === index,
-      ),
-    [links],
+      links.find((l) => l.suggestion_category === category && l.suggestion_index === index),
+    [links]
   );
 
   /** Get all links for a category. */
   const getLinksByCategory = useCallback(
     (category: string) => links.filter((l) => l.suggestion_category === category),
-    [links],
+    [links]
   );
 
   return {

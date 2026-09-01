@@ -64,9 +64,9 @@ export function PatientSearchInput({
 
   if (value && selectedPatient) {
     return (
-      <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
-        <div className="flex-1 min-w-0">
-          <p className="font-medium truncate">
+      <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium">
             {selectedPatient.first_name} {selectedPatient.last_name}
           </p>
           <p className="text-xs text-muted-foreground">{selectedPatient.mrn}</p>
@@ -97,26 +97,27 @@ export function PatientSearchInput({
 
       {showDropdown && debouncedSearch.length >= 2 && (
         <div
-          className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-60 overflow-y-auto"
+          className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border bg-popover shadow-md"
           onMouseDown={(e) => e.preventDefault()}
         >
           {isLoading ? (
-            <div className="p-3 text-sm text-muted-foreground text-center">Searching...</div>
+            <div className="p-3 text-center text-sm text-muted-foreground">Searching...</div>
           ) : searchResults?.results?.length === 0 ? (
-            <div className="p-3 text-sm text-muted-foreground text-center">No patients found</div>
+            <div className="p-3 text-center text-sm text-muted-foreground">No patients found</div>
           ) : (
             searchResults?.results?.map((patient) => (
               <button
                 key={patient.id}
                 type="button"
-                className="w-full text-left px-3 py-2 hover:bg-accent cursor-pointer text-sm"
+                className="w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent"
                 onClick={() => handleSelect(patient.id)}
               >
                 <p className="font-medium">
                   {patient.first_name} {patient.last_name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {patient.mrn} • {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}
+                  {patient.mrn} •{' '}
+                  {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}
                 </p>
               </button>
             ))

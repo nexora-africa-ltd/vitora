@@ -182,7 +182,12 @@ export const VISIT_TYPE_OPTIONS: { value: VisitType; label: string }[] = [
 /**
  * Visit reason options for UI dropdowns
  */
-export const VISIT_REASON_OPTIONS: { value: VisitReason; label: string; skipTriage?: boolean; emergency?: boolean }[] = [
+export const VISIT_REASON_OPTIONS: {
+  value: VisitReason;
+  label: string;
+  skipTriage?: boolean;
+  emergency?: boolean;
+}[] = [
   { value: 'NEW_COMPLAINT', label: 'New Complaint' },
   { value: 'FOLLOW_UP', label: 'Follow-up' },
   { value: 'EMERGENCY', label: 'Emergency', emergency: true },

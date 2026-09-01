@@ -71,7 +71,9 @@ export default function StockAdjustmentsPage() {
       <div className="space-y-4">
         <Skeleton className="h-10 w-48" />
         <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-16 rounded-lg" />
+          ))}
         </div>
       </div>
     );
@@ -83,7 +85,11 @@ export default function StockAdjustmentsPage() {
         <PageHeader
           title="Stock Adjustments"
           helpContent="Track and record stock adjustments including damage, expiry, corrections, returns, and transfers. All adjustments are audit-logged."
-          actions={<Badge variant="outline" className="w-fit">Adjust Stock: {canAdjustStock ? 'Enabled' : 'Read-only'}</Badge>}
+          actions={
+            <Badge variant="outline" className="w-fit">
+              Adjust Stock: {canAdjustStock ? 'Enabled' : 'Read-only'}
+            </Badge>
+          }
         />
 
         <ResponsiveTable
@@ -95,10 +101,11 @@ export default function StockAdjustmentsPage() {
               key: 'drug',
               header: 'Drug / Batch',
               sortable: true,
-              sortFn: (a: StockAdjustment, b: StockAdjustment) => (a.drug_name || '').localeCompare(b.drug_name || ''),
+              sortFn: (a: StockAdjustment, b: StockAdjustment) =>
+                (a.drug_name || '').localeCompare(b.drug_name || ''),
               cell: (item: StockAdjustment) => (
                 <div>
-                  <p className="font-medium truncate">{item.drug_name || '—'}</p>
+                  <p className="truncate font-medium">{item.drug_name || '—'}</p>
                   <p className="text-xs text-muted-foreground">{item.batch_number || '—'}</p>
                 </div>
               ),
@@ -108,7 +115,11 @@ export default function StockAdjustmentsPage() {
               header: 'Type',
               sortable: true,
               cell: (item: StockAdjustment) => (
-                <Badge className={ADJUSTMENT_TYPE_COLORS[item.adjustment_type] || 'bg-muted text-muted-foreground'}>
+                <Badge
+                  className={
+                    ADJUSTMENT_TYPE_COLORS[item.adjustment_type] || 'bg-muted text-muted-foreground'
+                  }
+                >
                   {ADJUSTMENT_TYPE_LABELS[item.adjustment_type] || item.adjustment_type}
                 </Badge>
               ),
@@ -120,8 +131,15 @@ export default function StockAdjustmentsPage() {
               sortType: 'number',
               sortFn: (a: StockAdjustment, b: StockAdjustment) => a.quantity - b.quantity,
               cell: (item: StockAdjustment) => (
-                <span className={item.quantity < 0 ? 'text-destructive font-medium' : 'text-green-600 dark:text-green-400 font-medium'}>
-                  {item.quantity > 0 ? '+' : ''}{item.quantity}
+                <span
+                  className={
+                    item.quantity < 0
+                      ? 'font-medium text-destructive'
+                      : 'font-medium text-green-600 dark:text-green-400'
+                  }
+                >
+                  {item.quantity > 0 ? '+' : ''}
+                  {item.quantity}
                 </span>
               ),
             },
@@ -130,14 +148,17 @@ export default function StockAdjustmentsPage() {
               header: 'Reason',
               sortable: true,
               cell: (item: StockAdjustment) => (
-                <p className="text-sm text-muted-foreground truncate max-w-[200px]">{item.reason}</p>
+                <p className="max-w-[200px] truncate text-sm text-muted-foreground">
+                  {item.reason}
+                </p>
               ),
             },
             {
               key: 'adjusted_by',
               header: 'Adjusted By',
               sortable: true,
-              sortFn: (a: StockAdjustment, b: StockAdjustment) => (a.adjusted_by_name || '').localeCompare(b.adjusted_by_name || ''),
+              sortFn: (a: StockAdjustment, b: StockAdjustment) =>
+                (a.adjusted_by_name || '').localeCompare(b.adjusted_by_name || ''),
               cell: (item: StockAdjustment) => item.adjusted_by_name || '—',
             },
             {
@@ -145,29 +166,43 @@ export default function StockAdjustmentsPage() {
               header: 'Date',
               sortable: true,
               sortType: 'date',
-              sortFn: (a: StockAdjustment, b: StockAdjustment) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+              sortFn: (a: StockAdjustment, b: StockAdjustment) =>
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
               cell: (item: StockAdjustment) => format(new Date(item.created_at), 'dd MMM yyyy'),
             },
           ]}
           mobileCard={(item: StockAdjustment) => (
             <Card className="p-3">
-              <div className="flex justify-between items-start gap-2">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{item.drug_name || '—'}</p>
+                  <p className="truncate font-medium">{item.drug_name || '—'}</p>
                   <p className="text-xs text-muted-foreground">{item.batch_number}</p>
                 </div>
-                <Badge className={ADJUSTMENT_TYPE_COLORS[item.adjustment_type] || 'bg-muted text-muted-foreground'}>
+                <Badge
+                  className={
+                    ADJUSTMENT_TYPE_COLORS[item.adjustment_type] || 'bg-muted text-muted-foreground'
+                  }
+                >
                   {ADJUSTMENT_TYPE_LABELS[item.adjustment_type] || item.adjustment_type}
                 </Badge>
               </div>
-              <div className="flex justify-between items-center mt-2 text-sm">
-                <span className={item.quantity < 0 ? 'text-destructive font-medium' : 'text-green-600 dark:text-green-400 font-medium'}>
-                  {item.quantity > 0 ? '+' : ''}{item.quantity} units
+              <div className="mt-2 flex items-center justify-between text-sm">
+                <span
+                  className={
+                    item.quantity < 0
+                      ? 'font-medium text-destructive'
+                      : 'font-medium text-green-600 dark:text-green-400'
+                  }
+                >
+                  {item.quantity > 0 ? '+' : ''}
+                  {item.quantity} units
                 </span>
-                <span className="text-muted-foreground">{format(new Date(item.created_at), 'dd MMM yyyy')}</span>
+                <span className="text-muted-foreground">
+                  {format(new Date(item.created_at), 'dd MMM yyyy')}
+                </span>
               </div>
               {item.reason && (
-                <p className="text-xs text-muted-foreground mt-1 truncate">{item.reason}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{item.reason}</p>
               )}
             </Card>
           )}
@@ -180,11 +215,23 @@ export default function StockAdjustmentsPage() {
               {totalCount} adjustment{totalCount !== 1 ? 's' : ''}
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-sm">{page} / {totalPages}</span>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+              <span className="text-sm">
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

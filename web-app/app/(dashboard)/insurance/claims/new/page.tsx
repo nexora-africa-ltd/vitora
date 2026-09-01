@@ -9,7 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
   DiagnosisCodeInput,
@@ -22,27 +28,33 @@ import { useEncounters, useEncounterDiagnoses } from '@/lib/hooks/use-encounters
 import { useInvoices } from '@/lib/hooks/billing';
 import { useToast } from '@/lib/hooks/use-toast';
 
-const normalizeToken = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+const normalizeToken = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
 
 const isDiagnosisCodeValueEmpty = (value: DiagnosisCodeValue) =>
-  !value.icd10Code
-  && !value.icd10Display
-  && !value.icd11Code
-  && !value.icd11Display
-  && !value.snomedCode
-  && !value.snomedDisplay;
+  !value.icd10Code &&
+  !value.icd10Display &&
+  !value.icd11Code &&
+  !value.icd11Display &&
+  !value.snomedCode &&
+  !value.snomedDisplay;
 
 const areDiagnosisCodeListsEqual = (a: DiagnosisCodeValue[], b: DiagnosisCodeValue[]) => {
   if (a.length !== b.length) return false;
   return a.every((item, index) => {
     const other = b[index];
     if (!other) return false;
-    return item.icd10Code === other.icd10Code
-      && item.icd10Display === other.icd10Display
-      && item.icd11Code === other.icd11Code
-      && item.icd11Display === other.icd11Display
-      && item.snomedCode === other.snomedCode
-      && item.snomedDisplay === other.snomedDisplay;
+    return (
+      item.icd10Code === other.icd10Code &&
+      item.icd10Display === other.icd10Display &&
+      item.icd11Code === other.icd11Code &&
+      item.icd11Display === other.icd11Display &&
+      item.snomedCode === other.snomedCode &&
+      item.snomedDisplay === other.snomedDisplay
+    );
   });
 };
 
@@ -57,14 +69,7 @@ const claimTypeMatchesCopay = (claimType: 'outpatient' | 'inpatient', appliesTo:
     'ambulatory',
     'generalconsultation',
   ];
-  const inpatientKeywords = [
-    'inpatient',
-    'admission',
-    'ward',
-    'ipd',
-    'hospitalization',
-    'surgery',
-  ];
+  const inpatientKeywords = ['inpatient', 'admission', 'ward', 'ipd', 'hospitalization', 'surgery'];
 
   const normalized = appliesTo.map(normalizeToken).filter(Boolean);
   const bucket = claimType === 'outpatient' ? outpatientKeywords : inpatientKeywords;
@@ -116,7 +121,9 @@ export default function NewInsuranceClaimPage() {
   const [encounterId, setEncounterId] = useState<string>(encounterFromQuery);
   const [totalAmount, setTotalAmount] = useState<string>('');
   const [copayAmount, setCopayAmount] = useState<string>('0.00');
-  const [diagnosisCodes, setDiagnosisCodes] = useState<DiagnosisCodeValue[]>([emptyDiagnosisCodeValue()]);
+  const [diagnosisCodes, setDiagnosisCodes] = useState<DiagnosisCodeValue[]>([
+    emptyDiagnosisCodeValue(),
+  ]);
   const [notes, setNotes] = useState<string>('');
 
   const selectedEnrollment = enrollments.find((e) => String(e.id) === patientInsuranceId);
@@ -132,7 +139,9 @@ export default function NewInsuranceClaimPage() {
       : undefined
   );
   const encounterOptions = useMemo(() => encountersData?.results ?? [], [encountersData?.results]);
-  const selectedEncounter = encounterOptions.find((encounter) => String(encounter.id) === encounterId);
+  const selectedEncounter = encounterOptions.find(
+    (encounter) => String(encounter.id) === encounterId
+  );
   const encounterNumericId = Number(encounterId);
   const hasEncounterSelected = Number.isFinite(encounterNumericId) && encounterNumericId > 0;
   const { data: invoicesData, isLoading: invoicesLoading } = useInvoices(
@@ -148,12 +157,14 @@ export default function NewInsuranceClaimPage() {
   );
   const encounterInvoice = useMemo(() => {
     if (!hasEncounterSelected) return null;
-    return (invoicesData?.results ?? []).find(
-      (invoice) =>
-        invoice.encounter === encounterNumericId &&
-        invoice.status !== 'CANCELLED' &&
-        invoice.status !== 'PROFORMA'
-    ) || null;
+    return (
+      (invoicesData?.results ?? []).find(
+        (invoice) =>
+          invoice.encounter === encounterNumericId &&
+          invoice.status !== 'CANCELLED' &&
+          invoice.status !== 'PROFORMA'
+      ) || null
+    );
   }, [encounterNumericId, hasEncounterSelected, invoicesData?.results]);
   const { data: selectedEncounterDiagnosesData } = useEncounterDiagnoses(encounterId || 0);
   const selectedEncounterDiagnoses = useMemo(
@@ -216,24 +227,24 @@ export default function NewInsuranceClaimPage() {
     const mapped: DiagnosisCodeValue[] = [];
 
     selectedEncounterDiagnoses.forEach((diagnosis) => {
-        const icd10Code = diagnosis.icd10_code_display || diagnosis.icd10_display || '';
-        const icd10Description = diagnosis.icd10_description || '';
-        const icd10Display = icd10Code
-          ? `${icd10Code}${icd10Description ? ` - ${icd10Description}` : ''}`
-          : '';
+      const icd10Code = diagnosis.icd10_code_display || diagnosis.icd10_display || '';
+      const icd10Description = diagnosis.icd10_description || '';
+      const icd10Display = icd10Code
+        ? `${icd10Code}${icd10Description ? ` - ${icd10Description}` : ''}`
+        : '';
 
-        if (!icd10Display && !diagnosis.icd11_code && !diagnosis.snomed_code) {
-          return;
-        }
+      if (!icd10Display && !diagnosis.icd11_code && !diagnosis.snomed_code) {
+        return;
+      }
 
-        mapped.push({
-          icd10Code: diagnosis.icd10_code,
-          icd10Display,
-          icd11Code: diagnosis.icd11_code || '',
-          icd11Display: diagnosis.icd11_display || '',
-          snomedCode: diagnosis.snomed_code || undefined,
-          snomedDisplay: diagnosis.snomed_display || undefined,
-        });
+      mapped.push({
+        icd10Code: diagnosis.icd10_code,
+        icd10Display,
+        icd11Code: diagnosis.icd11_code || '',
+        icd11Display: diagnosis.icd11_display || '',
+        snomedCode: diagnosis.snomed_code || undefined,
+        snomedDisplay: diagnosis.snomed_display || undefined,
+      });
     });
 
     if (mapped.length === 0) {
@@ -266,7 +277,12 @@ export default function NewInsuranceClaimPage() {
   const recommendedCopay = useMemo(() => {
     if (!eligibilityView) return null;
 
-    const candidates: Array<{ amount: number; source: string; appliesTo: string[]; strictMatch: boolean }> = [];
+    const candidates: Array<{
+      amount: number;
+      source: string;
+      appliesTo: string[];
+      strictMatch: boolean;
+    }> = [];
 
     eligibilityView.benefits.forEach((benefit) => {
       if (typeof benefit.copayValue !== 'number' || benefit.copayValue < 0) return;
@@ -346,11 +362,19 @@ export default function NewInsuranceClaimPage() {
 
   const handleCreate = async () => {
     if (!selectedEnrollment) {
-      toast({ title: 'Missing enrollment', description: 'Select an active patient insurance first.', variant: 'destructive' });
+      toast({
+        title: 'Missing enrollment',
+        description: 'Select an active patient insurance first.',
+        variant: 'destructive',
+      });
       return;
     }
     if (!totalAmount) {
-      toast({ title: 'Missing amount', description: 'Enter total claim amount.', variant: 'destructive' });
+      toast({
+        title: 'Missing amount',
+        description: 'Enter total claim amount.',
+        variant: 'destructive',
+      });
       return;
     }
     if (!encounterId) {
@@ -386,7 +410,10 @@ export default function NewInsuranceClaimPage() {
         notes: notes || undefined,
       });
 
-      toast({ title: 'Claim created', description: `Claim ${created.claim_number} created successfully.` });
+      toast({
+        title: 'Claim created',
+        description: `Claim ${created.claim_number} created successfully.`,
+      });
       router.push(`/insurance/claims/${created.id}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create claim.';
@@ -396,7 +423,10 @@ export default function NewInsuranceClaimPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <PageHeader title="New Insurance Claim" helpContent="Create a private insurance claim from an active enrollment." />
+      <PageHeader
+        title="New Insurance Claim"
+        helpContent="Create a private insurance claim from an active enrollment."
+      />
 
       <Card>
         <CardHeader>
@@ -405,20 +435,26 @@ export default function NewInsuranceClaimPage() {
         <CardContent className="space-y-4">
           {authorizationFromQuery && (
             <p className="text-xs text-muted-foreground">
-              Opened from authorization session #{authorizationFromQuery}. Complete claim details below.
+              Opened from authorization session #{authorizationFromQuery}. Complete claim details
+              below.
             </p>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <Label>Patient Insurance</Label>
               <Select value={patientInsuranceId} onValueChange={setPatientInsuranceId}>
                 <SelectTrigger>
-                  <SelectValue placeholder={enrollmentsLoading ? 'Loading enrollments...' : 'Select active enrollment'} />
+                  <SelectValue
+                    placeholder={
+                      enrollmentsLoading ? 'Loading enrollments...' : 'Select active enrollment'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {enrollments.map((enrollment) => (
                     <SelectItem key={enrollment.id} value={String(enrollment.id)}>
-                      {enrollment.patient_name} - {enrollment.member_number} ({enrollment.provider_name})
+                      {enrollment.patient_name} - {enrollment.member_number} (
+                      {enrollment.provider_name})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -427,7 +463,10 @@ export default function NewInsuranceClaimPage() {
 
             <div>
               <Label>Claim Type</Label>
-              <Select value={claimType} onValueChange={(v) => setClaimType(v as 'outpatient' | 'inpatient')}>
+              <Select
+                value={claimType}
+                onValueChange={(v) => setClaimType(v as 'outpatient' | 'inpatient')}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -456,22 +495,24 @@ export default function NewInsuranceClaimPage() {
                       !selectedEnrollment
                         ? 'Select enrollment first'
                         : encountersLoading
-                        ? 'Loading encounters...'
-                        : 'Select encounter'
+                          ? 'Loading encounters...'
+                          : 'Select encounter'
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
                   {encounterOptions.map((encounter) => (
                     <SelectItem key={encounter.id} value={String(encounter.id)}>
-                      #{encounter.id} - {encounter.encounter_type} - {new Date(encounter.encounter_date).toLocaleDateString()}
+                      #{encounter.id} - {encounter.encounter_type} -{' '}
+                      {new Date(encounter.encounter_date).toLocaleDateString()}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {!encountersLoading && selectedEnrollment && encounterOptions.length === 0 && (
                 <p className="mt-1 text-xs text-red-700">
-                  No encounters found for this patient. Create or select an encounter before submitting a claim.
+                  No encounters found for this patient. Create or select an encounter before
+                  submitting a claim.
                 </p>
               )}
               {selectedEncounter && (
@@ -483,7 +524,11 @@ export default function NewInsuranceClaimPage() {
 
             <div>
               <Label>Service Date</Label>
-              <Input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
+              <Input
+                type="date"
+                value={serviceDate}
+                onChange={(e) => setServiceDate(e.target.value)}
+              />
             </div>
 
             <div>
@@ -500,13 +545,19 @@ export default function NewInsuranceClaimPage() {
                   No billable invoice found for this encounter.
                 </p>
               ) : (
-                <p className="mt-1 text-xs text-muted-foreground">Select an encounter to load invoice total.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Select an encounter to load invoice total.
+                </p>
               )}
             </div>
 
             <div>
               <Label>Co-pay Amount</Label>
-              <Input value={copayAmount} onChange={(e) => setCopayAmount(e.target.value)} placeholder="0.00" />
+              <Input
+                value={copayAmount}
+                onChange={(e) => setCopayAmount(e.target.value)}
+                placeholder="0.00"
+              />
               {copayMatchBadge && (
                 <div className="mt-1">
                   <Badge className={copayMatchBadge.className}>{copayMatchBadge.label}</Badge>
@@ -526,7 +577,7 @@ export default function NewInsuranceClaimPage() {
               )}
             </div>
 
-            <div className="md:col-span-2 space-y-3">
+            <div className="space-y-3 md:col-span-2">
               <div className="flex items-center justify-between gap-2">
                 <Label>Diagnoses</Label>
                 <Button type="button" variant="outline" size="sm" onClick={handleAddDiagnosis}>
@@ -562,10 +613,14 @@ export default function NewInsuranceClaimPage() {
 
           <div>
             <Label>Notes</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional notes"
+            />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => router.push('/insurance/claims')}>
               Cancel
             </Button>

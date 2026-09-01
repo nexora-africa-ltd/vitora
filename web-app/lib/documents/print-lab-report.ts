@@ -15,11 +15,7 @@ import {
   formatDateTime,
   openPrintWindow,
 } from './renderer';
-import {
-  getLabResultQRContent,
-  generateQRDataUri,
-  type QRContent,
-} from '@/lib/utils/qr';
+import { getLabResultQRContent, generateQRDataUri, type QRContent } from '@/lib/utils/qr';
 import {
   labReportDefaults,
   labReportStatusClasses,
@@ -358,7 +354,9 @@ function computeReportStatus(order: LabOrder): { label: string; cssClass: string
       };
 }
 
-function mapDiagnosticReportStatus(status: string | undefined): { label: string; cssClass: string } | null {
+function mapDiagnosticReportStatus(
+  status: string | undefined
+): { label: string; cssClass: string } | null {
   if (!status) return null;
   const normalized = status.toUpperCase();
   if (normalized === 'FINAL' || normalized === 'AMENDED') {
@@ -414,14 +412,11 @@ function buildResultsRows(order: LabOrder): { rowsHtml: string; hasCritical: boo
 
 function buildTemplateData(data: PrintLabReportData): Record<string, unknown> {
   const { order } = data;
-  const reportStatus = mapDiagnosticReportStatus(data.diagnosticReport?.status) || computeReportStatus(order);
+  const reportStatus =
+    mapDiagnosticReportStatus(data.diagnosticReport?.status) || computeReportStatus(order);
   const { rowsHtml, hasCritical } = buildResultsRows(order);
 
-  const patientName =
-    data.patient?.full_name ||
-    data.patient?.name ||
-    order.patient_name ||
-    '';
+  const patientName = data.patient?.full_name || data.patient?.name || order.patient_name || '';
 
   const patientMrn = data.patient?.mrn || order.patient_mrn || '';
 
@@ -431,7 +426,9 @@ function buildTemplateData(data: PrintLabReportData): Record<string, unknown> {
   const notes = order.clinical_notes || '';
   const reportConclusion = data.diagnosticReport?.conclusion || '';
   const reportClinicalInfo = data.diagnosticReport?.clinical_info || '';
-  const reportIssuedAt = data.diagnosticReport?.issued_at ? formatDateTime(data.diagnosticReport.issued_at) : '';
+  const reportIssuedAt = data.diagnosticReport?.issued_at
+    ? formatDateTime(data.diagnosticReport.issued_at)
+    : '';
   const reportIssuedBy = data.diagnosticReport?.issued_by_name || '';
 
   return {
@@ -485,7 +482,9 @@ function buildTemplateData(data: PrintLabReportData): Record<string, unknown> {
       credentials: labReportDefaults.signature_credentials,
       datetime: data.signature?.signed_at ? formatDateTime(data.signature.signed_at) : '',
       status: data.signature
-        ? (data.signature.is_valid !== false ? '✓ Digitally Signed' : '⚠ Signature Invalid')
+        ? data.signature.is_valid !== false
+          ? '✓ Digitally Signed'
+          : '⚠ Signature Invalid'
         : '⚠ Not digitally signed',
     },
     system: {
@@ -515,7 +514,13 @@ export async function printLabReport(data: PrintLabReportData): Promise<void> {
   html = html.replace(/>QR<\/div>/g, `><img src="${qrDataUri}" alt="QR Code" /></div>`);
 
   const title = `Laboratory Report - ${data.order.order_number}`;
-  const fullHtml = buildPrintDocument(html, title, data.layout || 'a4', data.theme || 'default', LAB_REPORT_CSS);
+  const fullHtml = buildPrintDocument(
+    html,
+    title,
+    data.layout || 'a4',
+    data.theme || 'default',
+    LAB_REPORT_CSS
+  );
 
   openPrintWindow(fullHtml);
 }

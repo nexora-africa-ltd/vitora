@@ -50,9 +50,7 @@ export function useIsDesktopOfflineMode(): boolean {
  * Query local SQLite database (desktop mode only).
  * Returns { data: [], count: 0 } in web mode or when disabled.
  */
-export function useLocalQuery<T = Record<string, unknown>>(
-  options: LocalQueryOptions
-) {
+export function useLocalQuery<T = Record<string, unknown>>(options: LocalQueryOptions) {
   const { table, where, orderBy, limit, offset, search, searchColumns, enabled = true } = options;
   const desktop = isDesktop();
 

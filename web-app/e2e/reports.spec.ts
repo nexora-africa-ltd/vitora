@@ -5,12 +5,15 @@ test.describe('Reports Dashboard', () => {
     // Mock authentication
     await page.addInitScript(() => {
       localStorage.setItem('auth_token', 'test-token');
-      localStorage.setItem('user', JSON.stringify({
-        id: 1,
-        username: 'testuser',
-        first_name: 'Test',
-        last_name: 'User',
-      }));
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          id: 1,
+          username: 'testuser',
+          first_name: 'Test',
+          last_name: 'User',
+        })
+      );
     });
   });
 

@@ -580,7 +580,10 @@ export default function KardexPage() {
   // Initialize edit form when kardex loads
   const initEditForm = () => {
     if (kardex) {
-      const decodedMobility = decodeStructuredStatus(kardex.mobility_status, normalizeMobilityStatus);
+      const decodedMobility = decodeStructuredStatus(
+        kardex.mobility_status,
+        normalizeMobilityStatus
+      );
       const decodedOralTolerance = decodeStructuredStatus(
         kardex.dietary_requirements,
         normalizeOralTolerance
@@ -712,7 +715,11 @@ export default function KardexPage() {
         data: { status: 'COMPLETED' },
       });
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to update schedule item', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to update schedule item',
+        variant: 'destructive',
+      });
       console.error(error);
     }
   };
@@ -722,7 +729,11 @@ export default function KardexPage() {
     try {
       await deleteScheduleItem.mutateAsync({ kardexId: kardex.id, itemId });
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to delete schedule item', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to delete schedule item',
+        variant: 'destructive',
+      });
       console.error(error);
     }
   };
@@ -992,9 +1003,7 @@ export default function KardexPage() {
 
   const reviewDueCarePlanEntryIds = useMemo(() => {
     return new Set(
-      activeCarePlanEntries
-        .filter((entry) => entry.is_review_due)
-        .map((entry) => entry.id)
+      activeCarePlanEntries.filter((entry) => entry.is_review_due).map((entry) => entry.id)
     );
   }, [activeCarePlanEntries]);
 
@@ -1062,11 +1071,27 @@ export default function KardexPage() {
           <CardTitle className="text-sm">Basic Details</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          <p><span className="text-muted-foreground">Patient:</span> {kardex.patient_name || 'Unknown'}</p>
-          <p><span className="text-muted-foreground">Age:</span> {admission.patient_age ?? 'Unknown'}</p>
-          <p><span className="text-muted-foreground">Room/Bed:</span> {kardex.ward_name || 'N/A'} / {kardex.bed_number || 'N/A'}</p>
-          <p className="lg:col-span-2"><span className="text-muted-foreground">Diagnosis:</span> {admission.admitting_diagnosis_text || admission.admitting_diagnosis || 'Not documented'}</p>
-          <p><span className="text-muted-foreground">Code status:</span> {kardex.code_status_display || 'Unknown'}</p>
+          <p>
+            <span className="text-muted-foreground">Patient:</span>{' '}
+            {kardex.patient_name || 'Unknown'}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Age:</span> {admission.patient_age ?? 'Unknown'}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Room/Bed:</span> {kardex.ward_name || 'N/A'} /{' '}
+            {kardex.bed_number || 'N/A'}
+          </p>
+          <p className="lg:col-span-2">
+            <span className="text-muted-foreground">Diagnosis:</span>{' '}
+            {admission.admitting_diagnosis_text ||
+              admission.admitting_diagnosis ||
+              'Not documented'}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Code status:</span>{' '}
+            {kardex.code_status_display || 'Unknown'}
+          </p>
         </CardContent>
       </Card>
 
@@ -1126,7 +1151,7 @@ export default function KardexPage() {
             <CardTitle className="text-sm">IV Fluids</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-medium text-sm">{kardex.iv_fluids || 'Not specified'}</p>
+            <p className="text-sm font-medium">{kardex.iv_fluids || 'Not specified'}</p>
           </CardContent>
         </Card>
 
@@ -1135,7 +1160,7 @@ export default function KardexPage() {
             <CardTitle className="text-sm">Medications</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-medium text-sm">{kardex.current_medications || 'Not specified'}</p>
+            <p className="text-sm font-medium">{kardex.current_medications || 'Not specified'}</p>
           </CardContent>
         </Card>
       </div>
@@ -1298,7 +1323,10 @@ export default function KardexPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Code Status</Label>
-                <Select value={codeStatus} onValueChange={(v) => setCodeStatus(v as KardexCodeStatus)}>
+                <Select
+                  value={codeStatus}
+                  onValueChange={(v) => setCodeStatus(v as KardexCodeStatus)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -1866,43 +1894,45 @@ export default function KardexPage() {
                             by {historyItem.changed_by_username || 'System'}
                           </span>
                         </div>
-                        {historyItem.changed_fields && historyItem.changed_fields.length > 0 && (() => {
-                          const diffFields = historyItem.changed_fields.filter((field) => {
-                            const beforeRaw = historyItem.before_data?.[field];
-                            const afterRaw = historyItem.after_data?.[field];
-                            return !areHistoryValuesEqual(beforeRaw, afterRaw);
-                          });
+                        {historyItem.changed_fields &&
+                          historyItem.changed_fields.length > 0 &&
+                          (() => {
+                            const diffFields = historyItem.changed_fields.filter((field) => {
+                              const beforeRaw = historyItem.before_data?.[field];
+                              const afterRaw = historyItem.after_data?.[field];
+                              return !areHistoryValuesEqual(beforeRaw, afterRaw);
+                            });
 
-                          if (diffFields.length === 0) return null;
+                            if (diffFields.length === 0) return null;
 
-                          return (
-                            <div className="space-y-1">
-                              {diffFields.map((field) => {
-                                const beforeRaw = historyItem.before_data?.[field];
-                                const afterRaw = historyItem.after_data?.[field];
-                                const beforeValue = formatHistoryValue(beforeRaw);
-                                const afterValue = formatHistoryValue(afterRaw);
+                            return (
+                              <div className="space-y-1">
+                                {diffFields.map((field) => {
+                                  const beforeRaw = historyItem.before_data?.[field];
+                                  const afterRaw = historyItem.after_data?.[field];
+                                  const beforeValue = formatHistoryValue(beforeRaw);
+                                  const afterValue = formatHistoryValue(afterRaw);
 
-                                return (
-                                  <div
-                                    key={`${historyItem.id}-${field}`}
-                                    className="rounded-md border border-border/70 bg-muted/30 p-2"
-                                  >
-                                    <p className="text-xs font-medium text-foreground">
-                                      {CARE_PLAN_FIELD_LABELS[field] || field}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      <span className="font-medium">From:</span> {beforeValue}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      <span className="font-medium">To:</span> {afterValue}
-                                    </p>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
+                                  return (
+                                    <div
+                                      key={`${historyItem.id}-${field}`}
+                                      className="rounded-md border border-border/70 bg-muted/30 p-2"
+                                    >
+                                      <p className="text-xs font-medium text-foreground">
+                                        {CARE_PLAN_FIELD_LABELS[field] || field}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        <span className="font-medium">From:</span> {beforeValue}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        <span className="font-medium">To:</span> {afterValue}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
                         {historyItem.notes && (
                           <p className="whitespace-pre-wrap break-words text-sm">
                             {historyItem.notes}
@@ -2149,19 +2179,21 @@ export default function KardexPage() {
                         {formatDateTime(change.changed_at)}
                       </span>
                     </div>
-                    <CardDescription>
-                      By {change.changed_by_username || 'System'}
-                    </CardDescription>
+                    <CardDescription>By {change.changed_by_username || 'System'}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-1.5">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Before
                     </p>
-                    <p className="text-sm">{formatFieldChangeValue(change.field_name, change.old_value)}</p>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground pt-1">
+                    <p className="text-sm">
+                      {formatFieldChangeValue(change.field_name, change.old_value)}
+                    </p>
+                    <p className="pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       After
                     </p>
-                    <p className="text-sm">{formatFieldChangeValue(change.field_name, change.new_value)}</p>
+                    <p className="text-sm">
+                      {formatFieldChangeValue(change.field_name, change.new_value)}
+                    </p>
                   </CardContent>
                 </Card>
               ))}
@@ -2188,39 +2220,63 @@ export default function KardexPage() {
                     <Label>Item Type</Label>
                     <Select
                       value={scheduleItemType}
-                      onValueChange={(value) => setScheduleItemType(value as KardexScheduleItemType)}
+                      onValueChange={(value) =>
+                        setScheduleItemType(value as KardexScheduleItemType)
+                      }
                     >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         {SCHEDULE_ITEM_TYPE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Title</Label>
-                    <Input value={scheduleTitle} onChange={(e) => setScheduleTitle(e.target.value)} placeholder="e.g., Vitals q4h" />
+                    <Input
+                      value={scheduleTitle}
+                      onChange={(e) => setScheduleTitle(e.target.value)}
+                      placeholder="e.g., Vitals q4h"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Scheduled Time</Label>
-                    <Input type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} />
+                    <Input
+                      type="datetime-local"
+                      value={scheduleAt}
+                      onChange={(e) => setScheduleAt(e.target.value)}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label>Frequency</Label>
-                      <Input value={scheduleFrequency} onChange={(e) => setScheduleFrequency(e.target.value)} placeholder="Q4H" />
+                      <Input
+                        value={scheduleFrequency}
+                        onChange={(e) => setScheduleFrequency(e.target.value)}
+                        placeholder="Q4H"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Status</Label>
                       <Select
                         value={scheduleStatus}
-                        onValueChange={(value) => setScheduleStatus(value as KardexScheduleItemStatus)}
+                        onValueChange={(value) =>
+                          setScheduleStatus(value as KardexScheduleItemStatus)
+                        }
                       >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
                           {SCHEDULE_ITEM_STATUS_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -2228,12 +2284,21 @@ export default function KardexPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Notes</Label>
-                    <Textarea value={scheduleNotes} onChange={(e) => setScheduleNotes(e.target.value)} rows={3} />
+                    <Textarea
+                      value={scheduleNotes}
+                      onChange={(e) => setScheduleNotes(e.target.value)}
+                      rows={3}
+                    />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddScheduleItem} disabled={addScheduleItem.isPending || !scheduleTitle.trim() || !scheduleAt}>
+                  <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleAddScheduleItem}
+                    disabled={addScheduleItem.isPending || !scheduleTitle.trim() || !scheduleAt}
+                  >
                     {addScheduleItem.isPending ? 'Saving...' : 'Save'}
                   </Button>
                 </DialogFooter>
@@ -2254,10 +2319,25 @@ export default function KardexPage() {
                   <CardHeader className="pb-2">
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">{item.item_type_display || item.item_type}</Badge>
-                        <Badge variant={item.status === 'COMPLETED' ? 'success' : item.status === 'CANCELLED' ? 'destructive' : 'secondary'} className="text-xs">{item.status_display || item.status}</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {item.item_type_display || item.item_type}
+                        </Badge>
+                        <Badge
+                          variant={
+                            item.status === 'COMPLETED'
+                              ? 'success'
+                              : item.status === 'CANCELLED'
+                                ? 'destructive'
+                                : 'secondary'
+                          }
+                          className="text-xs"
+                        >
+                          {item.status_display || item.status}
+                        </Badge>
                       </div>
-                      <span className="text-xs text-muted-foreground">{formatDateTime(item.scheduled_for)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(item.scheduled_for)}
+                      </span>
                     </div>
                     <CardTitle className="text-base">{item.title}</CardTitle>
                     <CardDescription>
@@ -2268,11 +2348,21 @@ export default function KardexPage() {
                     {item.notes && <p className="text-sm text-muted-foreground">{item.notes}</p>}
                     <div className="flex gap-2">
                       {item.status !== 'COMPLETED' && (
-                        <Button size="sm" variant="outline" onClick={() => handleMarkScheduleCompleted(item.id)} disabled={updateScheduleItem.isPending}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleMarkScheduleCompleted(item.id)}
+                          disabled={updateScheduleItem.isPending}
+                        >
                           Mark Completed
                         </Button>
                       )}
-                      <Button size="sm" variant="ghost" onClick={() => handleDeleteScheduleItem(item.id)} disabled={deleteScheduleItem.isPending}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteScheduleItem(item.id)}
+                        disabled={deleteScheduleItem.isPending}
+                      >
                         Delete
                       </Button>
                     </div>

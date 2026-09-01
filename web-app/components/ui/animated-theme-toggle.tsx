@@ -1,16 +1,12 @@
-"use client";
+'use client';
 
-import { cn } from "@/lib/utils";
-import { motion, useMotionValue, useTransform } from "motion/react";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
-import { Button } from "./button";
+import { cn } from '@/lib/utils';
+import { motion, useMotionValue, useTransform } from 'motion/react';
+import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
+import { Button } from './button';
 
-export const AnimatedThemeToggle = ({
-  className,
-}: {
-  className?: string;
-}) => {
+export const AnimatedThemeToggle = ({ className }: { className?: string }) => {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -19,16 +15,16 @@ export const AnimatedThemeToggle = ({
     setMounted(true);
   }, []);
 
-  const isDark = mounted ? resolvedTheme === "dark" : false;
+  const isDark = mounted ? resolvedTheme === 'dark' : false;
 
   const toggleTheme = () => {
-    setTheme(isDark ? "light" : "dark");
+    setTheme(isDark ? 'light' : 'dark');
   };
 
   // Show a placeholder during SSR to avoid hydration mismatch
   if (!mounted) {
     return (
-      <Button className={cn("px-2.5", className)} variant="ghost" disabled>
+      <Button className={cn('px-2.5', className)} variant="ghost" disabled>
         <div className="h-5 w-5" />
       </Button>
     );
@@ -37,9 +33,9 @@ export const AnimatedThemeToggle = ({
   return (
     <Button
       onClick={toggleTheme}
-      className={cn("px-2.5", className)}
+      className={cn('px-2.5', className)}
       variant="ghost"
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       <SolarSwitch isDark={isDark} />
     </Button>
@@ -72,7 +68,7 @@ const SolarSwitch = ({ isDark }: { isDark: boolean }) => {
   const pathLengthSun = useTransform(scaleSun, [0.6, 1], [0, 1]);
 
   return (
-    <motion.div animate={isDark ? "checked" : "unchecked"}>
+    <motion.div animate={isDark ? 'checked' : 'unchecked'}>
       <motion.svg
         width="20"
         height="20"

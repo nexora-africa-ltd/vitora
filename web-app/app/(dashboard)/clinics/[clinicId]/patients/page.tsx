@@ -101,7 +101,11 @@ export default function ClinicPatientsPage() {
 
   // Fetch clinic data
   const { data: clinic, isLoading: clinicLoading } = useClinic(clinicId);
-  const { data: enrollmentsData, isLoading: enrollmentsLoading, refetch: refetchEnrollments } = useClinicEnrollments({
+  const {
+    data: enrollmentsData,
+    isLoading: enrollmentsLoading,
+    refetch: refetchEnrollments,
+  } = useClinicEnrollments({
     clinic: clinicId,
     status: statusFilter !== 'ALL' ? statusFilter : undefined,
     search: searchQuery || undefined,
@@ -147,8 +151,8 @@ export default function ClinicPatientsPage() {
   if (!clinic) {
     return (
       <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-        <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
-        <h3 className="text-base sm:text-lg font-semibold mb-2">Clinic not found</h3>
+        <AlertCircle className="mb-4 h-10 w-10 text-muted-foreground sm:h-12 sm:w-12" />
+        <h3 className="mb-2 text-base font-semibold sm:text-lg">Clinic not found</h3>
         <Button asChild size="sm">
           <Link href="/clinics">Back to Clinics</Link>
         </Button>
@@ -157,218 +161,237 @@ export default function ClinicPatientsPage() {
   }
 
   // Check if this is a chronic care clinic (supports enrollments)
-  const isChronicCareClinic = ['CCC', 'TB', 'DIABETIC', 'HYPERTENSION', 'ONCOLOGY', 'DIALYSIS'].includes(
-    clinic.clinic_type
-  );
+  const isChronicCareClinic = [
+    'CCC',
+    'TB',
+    'DIABETIC',
+    'HYPERTENSION',
+    'ONCOLOGY',
+    'DIALYSIS',
+  ].includes(clinic.clinic_type);
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
-    <div className="space-y-4 sm:space-y-6">
-      <PageHeader
-        title={`${clinic.name} - ${isChronicCareClinic ? 'Enrolled' : 'Patients'}`}
-        helpContent={isChronicCareClinic
-          ? 'Manage patient enrollments, track appointments, and identify defaulters for chronic care.'
-          : 'View patients who have visited this clinic recently.'}
-        actions={
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            {isChronicCareClinic && (
-              <Button asChild size="sm">
-                <Link href={`/clinics/enrollments/new?clinic=${clinicId}`}>
-                  <UserPlus className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Enroll</span>
-                </Link>
-              </Button>
-            )}
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
-          </div>
-        }
-      />
-
-      {/* Navigation */}
-      <ClinicNavigation clinicId={clinicId} />
-
-      {/* Stats Cards */}
-      {isChronicCareClinic && (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Enrolled</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground hidden sm:block" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold">{totalCount}</div>
-              <p className="text-xs text-muted-foreground hidden sm:block">Active</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Overdue</CardTitle>
-              <Clock className="h-4 w-4 text-orange-500 hidden sm:block" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-orange-600">{overduePatients.length}</div>
-              <p className="text-xs text-muted-foreground hidden sm:block">Missed appt</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Defaulters</CardTitle>
-              <AlertCircle className="h-4 w-4 text-red-500 hidden sm:block" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-red-600">{defaulters.length}</div>
-              <p className="text-xs text-muted-foreground hidden sm:block">Lost</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">This Month</CardTitle>
-              <Calendar className="h-4 w-4 text-green-500 hidden sm:block" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-green-600">
-                {enrollments.filter((e) => {
-                  const nextAppt = e.next_appointment_date;
-                  if (!nextAppt) return false;
-                  const date = new Date(nextAppt);
-                  const now = new Date();
-                  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-                }).length}
-              </div>
-              <p className="text-xs text-muted-foreground hidden sm:block">Due</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Filters and Search */}
-      <Card>
-        <CardContent className="p-3 sm:p-6">
-          <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, MRN..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            <div className="flex gap-2 sm:gap-4">
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title={`${clinic.name} - ${isChronicCareClinic ? 'Enrolled' : 'Patients'}`}
+          helpContent={
+            isChronicCareClinic
+              ? 'Manage patient enrollments, track appointments, and identify defaulters for chronic care.'
+              : 'View patients who have visited this clinic recently.'
+          }
+          actions={
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               {isChronicCareClinic && (
-                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-                  <SelectTrigger className="w-full sm:w-[160px]">
-                    <Filter className="h-4 w-4 mr-2 hidden sm:block" />
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All</SelectItem>
-                    <SelectItem value="ACTIVE">Active</SelectItem>
-                    <SelectItem value="INACTIVE">Inactive</SelectItem>
-                    <SelectItem value="TRANSFERRED">Transferred</SelectItem>
-                    <SelectItem value="LOST_TO_FOLLOW_UP">Lost</SelectItem>
-                    <SelectItem value="COMPLETED">Completed</SelectItem>
-                    <SelectItem value="DECEASED">Deceased</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-
-              {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  Clear
+                <Button asChild size="sm">
+                  <Link href={`/clinics/enrollments/new?clinic=${clinicId}`}>
+                    <UserPlus className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Enroll</span>
+                  </Link>
                 </Button>
               )}
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          }
+        />
 
-      {/* Tabs for chronic care clinics */}
-      {isChronicCareClinic ? (
-        <Tabs defaultValue="all" className="space-y-4">
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="all" className="gap-1">
-              <span className="sm:hidden">All</span>
-              <span className="hidden sm:inline">All Patients</span>
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {totalCount}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="overdue" className="gap-1">
-              Overdue
-              {overduePatients.length > 0 && (
-                <Badge variant="destructive" className="ml-1 text-xs">
+        {/* Navigation */}
+        <ClinicNavigation clinicId={clinicId} />
+
+        {/* Stats Cards */}
+        {isChronicCareClinic && (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+                <CardTitle className="text-xs font-medium sm:text-sm">Enrolled</CardTitle>
+                <Users className="hidden h-4 w-4 text-muted-foreground sm:block" />
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6">
+                <div className="text-xl font-bold sm:text-2xl">{totalCount}</div>
+                <p className="hidden text-xs text-muted-foreground sm:block">Active</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+                <CardTitle className="text-xs font-medium sm:text-sm">Overdue</CardTitle>
+                <Clock className="hidden h-4 w-4 text-orange-500 sm:block" />
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6">
+                <div className="text-xl font-bold text-orange-600 sm:text-2xl">
                   {overduePatients.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="defaulters" className="gap-1">
-              <span className="sm:hidden">Lost</span>
-              <span className="hidden sm:inline">Defaulters</span>
-              {defaulters.length > 0 && (
-                <Badge variant="destructive" className="ml-1 text-xs">
+                </div>
+                <p className="hidden text-xs text-muted-foreground sm:block">Missed appt</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+                <CardTitle className="text-xs font-medium sm:text-sm">Defaulters</CardTitle>
+                <AlertCircle className="hidden h-4 w-4 text-red-500 sm:block" />
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6">
+                <div className="text-xl font-bold text-red-600 sm:text-2xl">
                   {defaulters.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+                </div>
+                <p className="hidden text-xs text-muted-foreground sm:block">Lost</p>
+              </CardContent>
+            </Card>
 
-          <TabsContent value="all">
-            <EnrollmentsTable
-              enrollments={enrollments}
-              isLoading={enrollmentsLoading}
-              clinicId={clinicId}
-            />
-          </TabsContent>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+                <CardTitle className="text-xs font-medium sm:text-sm">This Month</CardTitle>
+                <Calendar className="hidden h-4 w-4 text-green-500 sm:block" />
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6">
+                <div className="text-xl font-bold text-green-600 sm:text-2xl">
+                  {
+                    enrollments.filter((e) => {
+                      const nextAppt = e.next_appointment_date;
+                      if (!nextAppt) return false;
+                      const date = new Date(nextAppt);
+                      const now = new Date();
+                      return (
+                        date.getMonth() === now.getMonth() &&
+                        date.getFullYear() === now.getFullYear()
+                      );
+                    }).length
+                  }
+                </div>
+                <p className="hidden text-xs text-muted-foreground sm:block">Due</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-          <TabsContent value="overdue">
-            <EnrollmentsTable
-              enrollments={overduePatients}
-              isLoading={false}
-              clinicId={clinicId}
-              emptyMessage="No overdue patients"
-              emptyDescription="All enrolled patients are up to date."
-            />
-          </TabsContent>
-
-          <TabsContent value="defaulters">
-            <EnrollmentsTable
-              enrollments={defaulters}
-              isLoading={false}
-              clinicId={clinicId}
-              emptyMessage="No defaulters"
-              emptyDescription="No patients lost to follow-up."
-            />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        // For non-chronic care clinics, show a simpler view
+        {/* Filters and Search */}
         <Card>
-          <CardHeader className="p-4 sm:p-6">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-base sm:text-lg">Recent Patients</CardTitle>
-              <HelpPopover content={`Patients who have visited ${clinic.name} recently.`} />
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, MRN..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              <div className="flex gap-2 sm:gap-4">
+                {isChronicCareClinic && (
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+                  >
+                    <SelectTrigger className="w-full sm:w-[160px]">
+                      <Filter className="mr-2 hidden h-4 w-4 sm:block" />
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All</SelectItem>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="INACTIVE">Inactive</SelectItem>
+                      <SelectItem value="TRANSFERRED">Transferred</SelectItem>
+                      <SelectItem value="LOST_TO_FOLLOW_UP">Lost</SelectItem>
+                      <SelectItem value="COMPLETED">Completed</SelectItem>
+                      <SelectItem value="DECEASED">Deceased</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Clear
+                  </Button>
+                )}
+              </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
-            <EnrollmentsTable
-              enrollments={enrollments}
-              isLoading={enrollmentsLoading}
-              clinicId={clinicId}
-              emptyMessage="No patients found"
-              emptyDescription="No patient records found for this clinic."
-            />
           </CardContent>
         </Card>
-      )}
-    </div>
+
+        {/* Tabs for chronic care clinics */}
+        {isChronicCareClinic ? (
+          <Tabs defaultValue="all" className="space-y-4">
+            <TabsList className="flex-wrap">
+              <TabsTrigger value="all" className="gap-1">
+                <span className="sm:hidden">All</span>
+                <span className="hidden sm:inline">All Patients</span>
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {totalCount}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="overdue" className="gap-1">
+                Overdue
+                {overduePatients.length > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs">
+                    {overduePatients.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="defaulters" className="gap-1">
+                <span className="sm:hidden">Lost</span>
+                <span className="hidden sm:inline">Defaulters</span>
+                {defaulters.length > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs">
+                    {defaulters.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all">
+              <EnrollmentsTable
+                enrollments={enrollments}
+                isLoading={enrollmentsLoading}
+                clinicId={clinicId}
+              />
+            </TabsContent>
+
+            <TabsContent value="overdue">
+              <EnrollmentsTable
+                enrollments={overduePatients}
+                isLoading={false}
+                clinicId={clinicId}
+                emptyMessage="No overdue patients"
+                emptyDescription="All enrolled patients are up to date."
+              />
+            </TabsContent>
+
+            <TabsContent value="defaulters">
+              <EnrollmentsTable
+                enrollments={defaulters}
+                isLoading={false}
+                clinicId={clinicId}
+                emptyMessage="No defaulters"
+                emptyDescription="No patients lost to follow-up."
+              />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          // For non-chronic care clinics, show a simpler view
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Recent Patients</CardTitle>
+                <HelpPopover content={`Patients who have visited ${clinic.name} recently.`} />
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 sm:p-6">
+              <EnrollmentsTable
+                enrollments={enrollments}
+                isLoading={enrollmentsLoading}
+                clinicId={clinicId}
+                emptyMessage="No patients found"
+                emptyDescription="No patient records found for this clinic."
+              />
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </PullToRefresh>
   );
 }
@@ -420,7 +443,7 @@ function EnrollmentsTable({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="font-medium truncate">{enrollment.patient_name}</p>
+                <p className="truncate font-medium">{enrollment.patient_name}</p>
                 <p className="text-xs text-muted-foreground">{enrollment.patient_mrn}</p>
               </div>
             </div>
@@ -440,7 +463,9 @@ function EnrollmentsTable({
           header: 'Status',
           sortable: true,
           cell: (enrollment) => (
-            <Badge className={cn('font-normal shrink-0 w-fit text-xs', STATUS_COLORS[enrollment.status])}>
+            <Badge
+              className={cn('w-fit shrink-0 text-xs font-normal', STATUS_COLORS[enrollment.status])}
+            >
               {enrollment.status_display || enrollment.status}
             </Badge>
           ),
@@ -468,14 +493,18 @@ function EnrollmentsTable({
           sortType: 'date',
           cell: (enrollment) => (
             <div className="flex items-center gap-1">
-              <span className={cn(
-                'text-xs sm:text-sm',
-                isOverdue(enrollment.next_appointment_date) && 'text-red-600 font-medium'
-              )}>
+              <span
+                className={cn(
+                  'text-xs sm:text-sm',
+                  isOverdue(enrollment.next_appointment_date) && 'font-medium text-red-600'
+                )}
+              >
                 {formatDate(enrollment.next_appointment_date)}
               </span>
               {isOverdue(enrollment.next_appointment_date) && (
-                <Badge variant="destructive" className="text-xs px-1">!</Badge>
+                <Badge variant="destructive" className="px-1 text-xs">
+                  !
+                </Badge>
               )}
             </div>
           ),
@@ -485,7 +514,8 @@ function EnrollmentsTable({
           header: 'Visits',
           sortable: true,
           sortType: 'number',
-          sortFn: (a, b) => (a.visit_count ?? a.total_visits ?? 0) - (b.visit_count ?? b.total_visits ?? 0),
+          sortFn: (a, b) =>
+            (a.visit_count ?? a.total_visits ?? 0) - (b.visit_count ?? b.total_visits ?? 0),
           cell: (enrollment) => enrollment.visit_count ?? enrollment.total_visits ?? 0,
           className: 'text-right',
           hideOnMobile: true,
@@ -496,27 +526,32 @@ function EnrollmentsTable({
           cell: (enrollment) => (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
                   <Link href={`/patients/${enrollment.patient}`}>
-                    <ExternalLink className="h-4 w-4 mr-2" />
+                    <ExternalLink className="mr-2 h-4 w-4" />
                     View Patient
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href={`/clinics/enrollments/${enrollment.id}`}>
-                    <FileText className="h-4 w-4 mr-2" />
+                    <FileText className="mr-2 h-4 w-4" />
                     View Enrollment
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href={`/clinics/${clinicId}/queue?patient=${enrollment.patient}`}>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     Add to Queue
                   </Link>
                 </DropdownMenuItem>
@@ -527,9 +562,9 @@ function EnrollmentsTable({
         },
       ]}
       mobileCard={(enrollment) => (
-        <div className="rounded-lg border p-3 space-y-2 active:bg-muted/50">
+        <div className="space-y-2 rounded-lg border p-3 active:bg-muted/50">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarFallback className="text-xs">
                   {enrollment.patient_name
@@ -541,19 +576,21 @@ function EnrollmentsTable({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="font-medium text-sm truncate">{enrollment.patient_name}</p>
+                <p className="truncate text-sm font-medium">{enrollment.patient_name}</p>
                 <p className="text-xs text-muted-foreground">{enrollment.patient_mrn}</p>
               </div>
             </div>
-            <Badge className={cn('font-normal shrink-0 text-xs', STATUS_COLORS[enrollment.status])}>
+            <Badge className={cn('shrink-0 text-xs font-normal', STATUS_COLORS[enrollment.status])}>
               {enrollment.status_display || enrollment.status}
             </Badge>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Next:</span>
-            <span className={cn(
-              isOverdue(enrollment.next_appointment_date) && 'text-red-600 font-medium'
-            )}>
+            <span
+              className={cn(
+                isOverdue(enrollment.next_appointment_date) && 'font-medium text-red-600'
+              )}
+            >
               {formatDate(enrollment.next_appointment_date)}
               {isOverdue(enrollment.next_appointment_date) && ' (Overdue)'}
             </span>

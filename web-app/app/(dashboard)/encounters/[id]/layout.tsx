@@ -48,7 +48,7 @@ function EncounterLayoutError({ message }: { message: string }) {
       <div className="mt-4">
         <Button variant="outline" className="w-full sm:w-auto" asChild>
           <Link href="/encounters">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Encounters
           </Link>
         </Button>
@@ -63,10 +63,10 @@ function EncounterLayoutError({ message }: { message: string }) {
 
 function EncounterLayoutLoading() {
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="bg-card border-b px-3 py-2 sm:px-4 sm:py-3">
+    <div className="flex min-h-screen flex-col">
+      <header className="border-b bg-card px-3 py-2 sm:px-4 sm:py-3">
         <div className="flex items-center gap-3 sm:gap-4">
-          <Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full" />
+          <Skeleton className="h-8 w-8 rounded-full sm:h-10 sm:w-10" />
           <div className="space-y-1.5 sm:space-y-2">
             <Skeleton className="h-4 w-24 sm:w-32" />
             <Skeleton className="h-3 w-36 sm:w-48" />
@@ -74,8 +74,8 @@ function EncounterLayoutLoading() {
         </div>
       </header>
       <main className="flex-1 p-4 sm:p-6">
-        <Skeleton className="h-6 w-48 sm:h-8 sm:w-64 mb-4" />
-        <Skeleton className="h-48 sm:h-64 w-full" />
+        <Skeleton className="mb-4 h-6 w-48 sm:h-8 sm:w-64" />
+        <Skeleton className="h-48 w-full sm:h-64" />
       </main>
     </div>
   );
@@ -99,18 +99,21 @@ function EncounterLayoutContent({ children }: { children: React.ReactNode }) {
     if (!setEncounterAwareContext) return;
 
     if (patient && encounter) {
-      const allergies = encounter.allergies
-        ?.split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean) ?? [];
-      const comorbidities = encounter.chronic_conditions
-        ?.split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean) ?? [];
-      const currentMeds = encounter.current_medications
-        ?.split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean) ?? [];
+      const allergies =
+        encounter.allergies
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [];
+      const comorbidities =
+        encounter.chronic_conditions
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [];
+      const currentMeds =
+        encounter.current_medications
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [];
 
       setEncounterAwareContext(
         {
@@ -144,11 +147,9 @@ function EncounterLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col min-h-full -m-4 md:-m-6 lg:-m-8">
+    <div className="-m-4 flex min-h-full flex-col md:-m-6 lg:-m-8">
       <PatientShellHeader />
-      <main className="flex-1 p-4 md:p-6 lg:p-8">
-        {children}
-      </main>
+      <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
     </div>
   );
 }
@@ -157,11 +158,7 @@ function EncounterLayoutContent({ children }: { children: React.ReactNode }) {
 // Main Layout
 // =============================================================================
 
-export default function EncounterLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function EncounterLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const encounterId = typeof params.id === 'string' ? params.id : null;
   const isValidId = !!encounterId;
@@ -180,7 +177,9 @@ export default function EncounterLayout({
 
   // Invalid ID
   if (!isValidId) {
-    return <EncounterLayoutError message="Invalid encounter ID. Please select a valid encounter." />;
+    return (
+      <EncounterLayoutError message="Invalid encounter ID. Please select a valid encounter." />
+    );
   }
 
   // Loading state
@@ -203,9 +202,7 @@ export default function EncounterLayout({
   return (
     <PatientProvider patientId={patientId}>
       <EncounterProvider encounterId={encounterId}>
-        <EncounterLayoutContent>
-          {children}
-        </EncounterLayoutContent>
+        <EncounterLayoutContent>{children}</EncounterLayoutContent>
       </EncounterProvider>
     </PatientProvider>
   );

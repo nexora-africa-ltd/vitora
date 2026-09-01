@@ -11,7 +11,15 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from 'react';
 import { PowerSyncDatabase } from '@powersync/web';
 import { powersyncSchema } from '@/lib/powersync/schema';
 import { VitoraPowerSyncConnector, onSyncUploadEvent } from '@/lib/powersync/connector';
@@ -125,10 +133,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       try {
         await database.init();
       } catch (initError) {
-        console.error('[PowerSync] Database init failed — falling back to API-only mode:', initError);
+        console.error(
+          '[PowerSync] Database init failed — falling back to API-only mode:',
+          initError
+        );
         if (!disposed) {
-          setPsHealth(prev => ({ ...prev, connected: false }));
-          setStatus(prev => ({
+          setPsHealth((prev) => ({ ...prev, connected: false }));
+          setStatus((prev) => ({
             ...prev,
             lastError: initError instanceof Error ? initError.message : 'DB init failed',
           }));
@@ -160,7 +171,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         connectedRef.current = true;
 
         if (!disposed) {
-          setStatus(prev => ({
+          setStatus((prev) => ({
             ...prev,
             isSyncing: false,
             lastSyncTime: new Date(),
@@ -170,8 +181,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('[PowerSync] Connection error:', error);
         if (!disposed) {
-          setPsHealth(prev => ({ ...prev, connected: false }));
-          setStatus(prev => ({
+          setPsHealth((prev) => ({ ...prev, connected: false }));
+          setStatus((prev) => ({
             ...prev,
             isSyncing: false,
             lastError: error instanceof Error ? error.message : 'Connection failed',
@@ -204,13 +215,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           await db.disconnect();
           connectedRef.current = false;
           setHasSynced(false);
-          setPsHealth(prev => ({ ...prev, connected: false, hasSynced: false }));
+          setPsHealth((prev) => ({ ...prev, connected: false, hasSynced: false }));
           await db.connect(new VitoraPowerSyncConnector());
           connectedRef.current = true;
         } catch (error) {
           console.error('[PowerSync] Reconnect on facility switch failed:', error);
-          setPsHealth(prev => ({ ...prev, connected: false }));
-          setStatus(prev => ({
+          setPsHealth((prev) => ({ ...prev, connected: false }));
+          setStatus((prev) => ({
             ...prev,
             isSyncing: false,
             lastError: error instanceof Error ? error.message : 'Reconnect failed',
@@ -243,10 +254,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           console.error('[PowerSync] Download/connection error:', downloadError);
         }
 
-        setStatus(prev => ({
+        setStatus((prev) => ({
           ...prev,
-          isSyncing: newStatus.dataFlowStatus?.downloading === true ||
-                     newStatus.dataFlowStatus?.uploading === true,
+          isSyncing:
+            newStatus.dataFlowStatus?.downloading === true ||
+            newStatus.dataFlowStatus?.uploading === true,
           lastSyncTime: syncedAt ?? prev.lastSyncTime,
           // Only overwrite lastError if there's a new error, or clear it on successful connection
           lastError: errorMsg ?? (connected ? null : prev.lastError),
@@ -254,7 +266,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
         if (synced) setHasSynced(true);
 
-        setPsHealth(prev => ({
+        setPsHealth((prev) => ({
           ...prev,
           connected,
           hasSynced: synced || prev.hasSynced,
@@ -277,15 +289,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
     async function pollCrudCount() {
       try {
-        const result = await db!.getAll<{ cnt: number }>(
-          'SELECT COUNT(*) as cnt FROM ps_crud'
-        );
+        const result = await db!.getAll<{ cnt: number }>('SELECT COUNT(*) as cnt FROM ps_crud');
         const count = result[0]?.cnt ?? 0;
         if (!disposed) {
-          setStatus(prev =>
-            prev.pendingChanges !== count
-              ? { ...prev, pendingChanges: count }
-              : prev
+          setStatus((prev) =>
+            prev.pendingChanges !== count ? { ...prev, pendingChanges: count } : prev
           );
         }
       } catch {
@@ -299,8 +307,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     // Re-poll when any local table changes (covers inserts, uploads completing)
     const abortController = new AbortController();
     db.onChange(
-      { onChange: () => { if (!disposed) pollCrudCount(); } },
-      { signal: abortController.signal },
+      {
+        onChange: () => {
+          if (!disposed) pollCrudCount();
+        },
+      },
+      { signal: abortController.signal }
     );
 
     return () => {
@@ -313,15 +325,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onSyncUploadEvent((event) => {
       if (event.type === 'upload_error') {
-        setStatus(prev => ({
+        setStatus((prev) => ({
           ...prev,
           lastError: `Sync error (${event.table}): ${event.message}`,
         }));
       } else if (event.type === 'upload_success') {
         // Clear error on next successful upload
-        setStatus(prev =>
-          prev.lastError ? { ...prev, lastError: null } : prev
-        );
+        setStatus((prev) => (prev.lastError ? { ...prev, lastError: null } : prev));
       }
     });
     return unsubscribe;
@@ -330,12 +340,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const triggerSync = useCallback(async () => {
     if (!db || status.isSyncing) return;
     try {
-      setStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
+      setStatus((prev) => ({ ...prev, isSyncing: true, lastError: null }));
       // Trigger an immediate sync cycle
       await db.connect(new VitoraPowerSyncConnector());
-      setStatus(prev => ({ ...prev, isSyncing: false, lastSyncTime: new Date() }));
+      setStatus((prev) => ({ ...prev, isSyncing: false, lastSyncTime: new Date() }));
     } catch (error) {
-      setStatus(prev => ({
+      setStatus((prev) => ({
         ...prev,
         isSyncing: false,
         lastError: error instanceof Error ? error.message : 'Sync failed',
@@ -345,54 +355,67 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
   // Legacy callbacks — kept for backward compatibility with useAutoSave etc.
   const reportSync = useCallback(() => {
-    setStatus(prev => ({ ...prev, lastSyncTime: new Date(), isSyncing: false, lastError: null }));
+    setStatus((prev) => ({ ...prev, lastSyncTime: new Date(), isSyncing: false, lastError: null }));
   }, []);
 
   const reportSyncStart = useCallback(() => {
-    setStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
+    setStatus((prev) => ({ ...prev, isSyncing: true, lastError: null }));
   }, []);
 
   const reportSyncError = useCallback((error: string) => {
-    setStatus(prev => ({ ...prev, isSyncing: false, lastError: error }));
+    setStatus((prev) => ({ ...prev, isSyncing: false, lastError: error }));
   }, []);
 
   const incrementPending = useCallback(() => {
-    setStatus(prev => ({ ...prev, pendingChanges: prev.pendingChanges + 1 }));
+    setStatus((prev) => ({ ...prev, pendingChanges: prev.pendingChanges + 1 }));
   }, []);
 
   const decrementPending = useCallback(() => {
-    setStatus(prev => ({ ...prev, pendingChanges: Math.max(0, prev.pendingChanges - 1) }));
+    setStatus((prev) => ({ ...prev, pendingChanges: Math.max(0, prev.pendingChanges - 1) }));
   }, []);
 
   const setPendingCount = useCallback((count: number) => {
-    setStatus(prev => ({ ...prev, pendingChanges: count }));
+    setStatus((prev) => ({ ...prev, pendingChanges: count }));
   }, []);
 
   const setTriggerSync = useCallback((_fn: () => Promise<void>) => {
     // No-op with PowerSync — sync is handled by the SDK
   }, []);
 
-  const value = useMemo<SyncContextValue>(() => ({
-    ...status,
-    db,
-    isReady,
-    hasSynced,
-    powerSyncHealth: psHealth,
-    reportSync,
-    reportSyncStart,
-    reportSyncError,
-    incrementPending,
-    decrementPending,
-    setPendingCount,
-    triggerSync,
-    setTriggerSync,
-  }), [status, db, isReady, hasSynced, psHealth, reportSync, reportSyncStart, reportSyncError, incrementPending, decrementPending, setPendingCount, triggerSync, setTriggerSync]);
-
-  return (
-    <SyncContext.Provider value={value}>
-      {children}
-    </SyncContext.Provider>
+  const value = useMemo<SyncContextValue>(
+    () => ({
+      ...status,
+      db,
+      isReady,
+      hasSynced,
+      powerSyncHealth: psHealth,
+      reportSync,
+      reportSyncStart,
+      reportSyncError,
+      incrementPending,
+      decrementPending,
+      setPendingCount,
+      triggerSync,
+      setTriggerSync,
+    }),
+    [
+      status,
+      db,
+      isReady,
+      hasSynced,
+      psHealth,
+      reportSync,
+      reportSyncStart,
+      reportSyncError,
+      incrementPending,
+      decrementPending,
+      setPendingCount,
+      triggerSync,
+      setTriggerSync,
+    ]
   );
+
+  return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
 }
 
 export function useSyncStatus(): SyncContextValue {
@@ -403,7 +426,12 @@ export function useSyncStatus(): SyncContextValue {
       db: null,
       isReady: false,
       hasSynced: false,
-      powerSyncHealth: { configured: false, connected: false, hasSynced: false, lastSyncedAt: null },
+      powerSyncHealth: {
+        configured: false,
+        connected: false,
+        hasSynced: false,
+        lastSyncedAt: null,
+      },
       lastSyncTime: null,
       isSyncing: false,
       pendingChanges: 0,

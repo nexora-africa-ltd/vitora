@@ -11,7 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Scale, Ruler, Activity } from 'lucide-react';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { BMIIndicator } from './bmi-indicator';
-import type { Anthropometrics, NutritionalCalculations, MalnutritionStatus } from '@/lib/types/nutrition';
+import type {
+  Anthropometrics,
+  NutritionalCalculations,
+  MalnutritionStatus,
+} from '@/lib/types/nutrition';
 import { MALNUTRITION_STATUS_CONFIG } from '@/lib/types/nutrition';
 
 interface AnthropometricsDisplayProps {
@@ -47,7 +51,7 @@ function MeasurementItem({
 
   return (
     <div className="flex items-start gap-2">
-      {Icon && <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />}
+      {Icon && <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="font-medium tabular-nums">
@@ -94,9 +98,7 @@ export function AnthropometricsDisplay({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No anthropometric measurements recorded
-          </p>
+          <p className="text-sm text-muted-foreground">No anthropometric measurements recorded</p>
         </CardContent>
       </Card>
     );
@@ -120,63 +122,34 @@ export function AnthropometricsDisplay({
       <CardContent className="space-y-4">
         {/* BMI Indicator */}
         {bmiNum !== null && (
-          <BMIIndicator
-            bmi={bmiNum}
-            classification={bmi_classification}
-            showBar={showBmiBar}
-          />
+          <BMIIndicator bmi={bmiNum} classification={bmi_classification} showBar={showBmiBar} />
         )}
 
         {/* Core measurements grid */}
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
-          <MeasurementItem
-            label="Weight"
-            value={weight}
-            unit="kg"
-            icon={Scale}
-          />
-          <MeasurementItem
-            label="Height"
-            value={height}
-            unit="cm"
-            icon={Ruler}
-          />
-          <MeasurementItem
-            label="Waist"
-            value={waist_circumference}
-            unit="cm"
-          />
-          <MeasurementItem
-            label="Hip"
-            value={hip_circumference}
-            unit="cm"
-          />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <MeasurementItem label="Weight" value={weight} unit="kg" icon={Scale} />
+          <MeasurementItem label="Height" value={height} unit="cm" icon={Ruler} />
+          <MeasurementItem label="Waist" value={waist_circumference} unit="cm" />
+          <MeasurementItem label="Hip" value={hip_circumference} unit="cm" />
           {whrNum !== null && (
             <div>
               <p className="text-xs text-muted-foreground">Waist-Hip Ratio</p>
-              <p className="font-medium tabular-nums">
-                {whrNum.toFixed(2)}
-              </p>
+              <p className="font-medium tabular-nums">{whrNum.toFixed(2)}</p>
             </div>
           )}
         </div>
 
         {/* MUAC with malnutrition status */}
         {muacNum !== null && (
-          <div className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+          <div className="flex items-center justify-between rounded-md bg-muted/50 p-2">
             <div>
               <p className="text-xs text-muted-foreground">MUAC</p>
               <p className="font-medium tabular-nums">{muacNum} cm</p>
             </div>
             {isMalnutritionStatus(muacClassification) && (
-              <Badge
-                variant={
-                  MALNUTRITION_STATUS_CONFIG[muacClassification]?.variant ||
-                  'outline'
-                }
-              >
+              <Badge variant={MALNUTRITION_STATUS_CONFIG[muacClassification]?.variant || 'outline'}>
                 {MALNUTRITION_STATUS_CONFIG[muacClassification]?.label}
-                <span className="hidden sm:inline ml-1 text-[10px]">
+                <span className="ml-1 hidden text-[10px] sm:inline">
                   ({MALNUTRITION_STATUS_CONFIG[muacClassification]?.description})
                 </span>
               </Badge>
@@ -185,51 +158,53 @@ export function AnthropometricsDisplay({
         )}
 
         {/* Calculated nutritional values */}
-        {showCalculations && calculations && (calculations.basal_metabolic_rate || calculations.total_daily_energy_expenditure) && (
-          <div className="border-t pt-3 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-              <Activity className="h-3.5 w-3.5" />
-              Calculated Values
-            </p>
-            <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
-              {parseNumber(calculations.basal_metabolic_rate) !== null && (
-                <div>
-                  <p className="text-xs text-muted-foreground">BMR</p>
-                  <p className="font-medium tabular-nums">
-                    {Math.round(parseNumber(calculations.basal_metabolic_rate)!)}{' '}
-                    <span className="text-sm text-muted-foreground">kcal</span>
-                  </p>
-                </div>
-              )}
-              {parseNumber(calculations.total_daily_energy_expenditure) !== null && (
-                <div>
-                  <p className="text-xs text-muted-foreground">TDEE</p>
-                  <p className="font-medium tabular-nums">
-                    {Math.round(parseNumber(calculations.total_daily_energy_expenditure)!)}{' '}
-                    <span className="text-sm text-muted-foreground">kcal</span>
-                  </p>
-                </div>
-              )}
-              {parseNumber(calculations.ideal_body_weight) !== null && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Ideal Weight</p>
-                  <p className="font-medium tabular-nums">
-                    {parseNumber(calculations.ideal_body_weight)!.toFixed(1)}{' '}
-                    <span className="text-sm text-muted-foreground">kg</span>
-                  </p>
-                </div>
-              )}
-              {calculations.activity_level && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Activity</p>
-                  <Badge variant="outline" className="capitalize text-xs">
-                    {calculations.activity_level.toLowerCase().replace(/_/g, ' ')}
-                  </Badge>
-                </div>
-              )}
+        {showCalculations &&
+          calculations &&
+          (calculations.basal_metabolic_rate || calculations.total_daily_energy_expenditure) && (
+            <div className="space-y-2 border-t pt-3">
+              <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                <Activity className="h-3.5 w-3.5" />
+                Calculated Values
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {parseNumber(calculations.basal_metabolic_rate) !== null && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">BMR</p>
+                    <p className="font-medium tabular-nums">
+                      {Math.round(parseNumber(calculations.basal_metabolic_rate)!)}{' '}
+                      <span className="text-sm text-muted-foreground">kcal</span>
+                    </p>
+                  </div>
+                )}
+                {parseNumber(calculations.total_daily_energy_expenditure) !== null && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">TDEE</p>
+                    <p className="font-medium tabular-nums">
+                      {Math.round(parseNumber(calculations.total_daily_energy_expenditure)!)}{' '}
+                      <span className="text-sm text-muted-foreground">kcal</span>
+                    </p>
+                  </div>
+                )}
+                {parseNumber(calculations.ideal_body_weight) !== null && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Ideal Weight</p>
+                    <p className="font-medium tabular-nums">
+                      {parseNumber(calculations.ideal_body_weight)!.toFixed(1)}{' '}
+                      <span className="text-sm text-muted-foreground">kg</span>
+                    </p>
+                  </div>
+                )}
+                {calculations.activity_level && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Activity</p>
+                    <Badge variant="outline" className="text-xs capitalize">
+                      {calculations.activity_level.toLowerCase().replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </CardContent>
     </Card>
   );

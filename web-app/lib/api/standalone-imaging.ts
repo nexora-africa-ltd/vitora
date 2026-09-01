@@ -46,9 +46,7 @@ export const standaloneImagingApi = {
     });
   },
 
-  async createWalkInPatient(
-    data: WalkInImagingPatientCreateData
-  ): Promise<WalkInImagingPatient> {
+  async createWalkInPatient(data: WalkInImagingPatientCreateData): Promise<WalkInImagingPatient> {
     const response = await apiClient.post(`${BASE}/walkin-patients/`, data);
     return parseResponse(WalkInImagingPatientSchema, response.data, {
       context: 'standaloneImagingApi.createWalkInPatient',
@@ -65,14 +63,10 @@ export const standaloneImagingApi = {
     });
   },
 
-  async linkWalkInToPatient(
-    walkInId: number,
-    patientId: number
-  ): Promise<WalkInImagingPatient> {
-    const response = await apiClient.post(
-      `${BASE}/walkin-patients/${walkInId}/link-patient/`,
-      { patient_id: patientId }
-    );
+  async linkWalkInToPatient(walkInId: number, patientId: number): Promise<WalkInImagingPatient> {
+    const response = await apiClient.post(`${BASE}/walkin-patients/${walkInId}/link-patient/`, {
+      patient_id: patientId,
+    });
     return parseResponse(WalkInImagingPatientSchema, response.data, {
       context: 'standaloneImagingApi.linkWalkInToPatient',
     });

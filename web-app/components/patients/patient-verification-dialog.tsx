@@ -27,22 +27,13 @@ import {
   ArrowRight,
   CheckCircle2,
 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { cn } from '@/lib/utils';
@@ -98,40 +89,39 @@ function PrincipalCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        'w-full text-left p-3 sm:p-4 rounded-lg border-2 transition-all',
+        'w-full rounded-lg border-2 p-3 text-left transition-all sm:p-4',
         isSelected
           ? 'border-success bg-success/10 ring-2 ring-success/20'
           : 'border-border bg-card hover:border-success/50 hover:bg-success/5'
       )}
     >
       <div className="flex items-start gap-3">
-        <div className={cn(
-          'h-10 w-10 rounded-full flex items-center justify-center shrink-0',
-          isSelected ? 'bg-success/20' : 'bg-muted'
-        )}>
-          <UserCheck className={cn(
-            'h-5 w-5',
-            isSelected ? 'text-success' : 'text-muted-foreground'
-          )} />
+        <div
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+            isSelected ? 'bg-success/20' : 'bg-muted'
+          )}
+        >
+          <UserCheck
+            className={cn('h-5 w-5', isSelected ? 'text-success' : 'text-muted-foreground')}
+          />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">{shaDetails.full_name || 'Principal Member'}</span>
             <Badge variant="outline" className="text-xs">
               Principal
             </Badge>
-            {isSelected && (
-              <CheckCircle2 className="h-4 w-4 text-success ml-auto shrink-0" />
-            )}
+            {isSelected && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-success" />}
           </div>
-          <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
-            {shaDetails.sha_number && (
-              <p className="font-mono text-xs">{shaDetails.sha_number}</p>
-            )}
-            <p className={cn(
-              'text-xs',
-              shaDetails.is_eligible ? 'text-success' : 'text-muted-foreground'
-            )}>
+          <div className="mt-1 space-y-0.5 text-sm text-muted-foreground">
+            {shaDetails.sha_number && <p className="font-mono text-xs">{shaDetails.sha_number}</p>}
+            <p
+              className={cn(
+                'text-xs',
+                shaDetails.is_eligible ? 'text-success' : 'text-muted-foreground'
+              )}
+            >
               {shaDetails.is_eligible ? '✓ Active coverage' : '✗ Coverage inactive'}
             </p>
           </div>
@@ -156,30 +146,34 @@ function DependentCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        'w-full text-left p-3 rounded-lg border-2 transition-all',
+        'w-full rounded-lg border-2 p-3 text-left transition-all',
         isSelected
           ? 'border-warning bg-warning/10 ring-2 ring-warning/20'
           : 'border-border bg-card hover:border-warning/50 hover:bg-warning/5'
       )}
     >
       <div className="flex items-start gap-3">
-        <div className={cn(
-          'h-8 w-8 rounded-full flex items-center justify-center shrink-0',
-          isSelected ? 'bg-warning/20' : 'bg-muted'
-        )}>
-          <Users className={cn(
-            'h-4 w-4',
-            isSelected ? 'text-warning-foreground' : 'text-muted-foreground'
-          )} />
+        <div
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+            isSelected ? 'bg-warning/20' : 'bg-muted'
+          )}
+        >
+          <Users
+            className={cn(
+              'h-4 w-4',
+              isSelected ? 'text-warning-foreground' : 'text-muted-foreground'
+            )}
+          />
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{dependent.name}</span>
+            <span className="truncate font-medium">{dependent.name}</span>
             {isSelected && (
-              <CheckCircle2 className="h-4 w-4 text-warning-foreground ml-auto shrink-0" />
+              <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-warning-foreground" />
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {dependent.relationship && `${dependent.relationship}`}
             {dependent.date_of_birth && ` • DOB: ${dependent.date_of_birth}`}
             {dependent.age !== undefined && ` (${dependent.age} yrs)`}
@@ -200,46 +194,45 @@ function PatientMatchCard({
   isPrimary: boolean;
   onSelect: () => void;
 }) {
-  const confidenceColor = match.match_confidence >= 95
-    ? 'text-destructive'
-    : match.match_confidence >= 80
-      ? 'text-warning-foreground'
-      : 'text-muted-foreground';
+  const confidenceColor =
+    match.match_confidence >= 95
+      ? 'text-destructive'
+      : match.match_confidence >= 80
+        ? 'text-warning-foreground'
+        : 'text-muted-foreground';
 
   return (
-    <Card className={cn(
-      'transition-all',
-      isPrimary && 'border-destructive/50 shadow-sm'
-    )}>
+    <Card className={cn('transition-all', isPrimary && 'border-destructive/50 shadow-sm')}>
       <CardContent className="p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className={cn(
-              'h-9 w-9 rounded-full flex items-center justify-center shrink-0',
-              isPrimary ? 'bg-destructive/10' : 'bg-muted'
-            )}>
-              <User className={cn(
-                'h-4 w-4',
-                isPrimary ? 'text-destructive' : 'text-muted-foreground'
-              )} />
+          <div className="flex min-w-0 items-start gap-3">
+            <div
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+                isPrimary ? 'bg-destructive/10' : 'bg-muted'
+              )}
+            >
+              <User
+                className={cn('h-4 w-4', isPrimary ? 'text-destructive' : 'text-muted-foreground')}
+              />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-sm truncate">{match.full_name}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate text-sm font-medium">{match.full_name}</span>
                 <Badge variant="outline" className={cn('text-xs', confidenceColor)}>
                   {match.match_confidence}%
                 </Badge>
               </div>
-              <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
-                <span className="font-mono bg-muted px-1 py-0.5 rounded">{match.mrn}</span>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                <span className="rounded bg-muted px-1 py-0.5 font-mono">{match.mrn}</span>
                 <span>{format(new Date(match.date_of_birth), 'MMM d, yyyy')}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex gap-2 mt-2 sm:mt-0">
+          <div className="mt-2 flex gap-2 sm:mt-0">
             <Button size="sm" variant="default" onClick={onSelect} className="flex-1 sm:flex-none">
-              <UserCheck className="h-3.5 w-3.5 mr-1" />
+              <UserCheck className="mr-1 h-3.5 w-3.5" />
               <span className="sm:hidden">Select</span>
               <span className="hidden sm:inline">Check-in</span>
             </Button>
@@ -271,7 +264,9 @@ export function PatientVerificationDialog({
   crRecordFound,
 }: PatientVerificationDialogProps) {
   // Selection state
-  const [selectedPerson, setSelectedPerson] = useState<'principal' | 'dependent' | 'manual' | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<'principal' | 'dependent' | 'manual' | null>(
+    null
+  );
   const [selectedDependent, setSelectedDependent] = useState<SHADependent | null>(null);
   const [showAllMatches, setShowAllMatches] = useState(false);
 
@@ -314,9 +309,12 @@ export function PatientVerificationDialog({
     setSelectedDependent(null);
   }, []);
 
-  const handleSelectExisting = useCallback((mrn: string) => {
-    onDecision({ type: 'select_existing', mrn });
-  }, [onDecision]);
+  const handleSelectExisting = useCallback(
+    (mrn: string) => {
+      onDecision({ type: 'select_existing', mrn });
+    },
+    [onDecision]
+  );
 
   const handleProceed = useCallback(() => {
     if (selectedPerson === 'principal') {
@@ -341,21 +339,18 @@ export function PatientVerificationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-lg p-0 gap-0 max-h-[90vh] flex flex-col">
+      <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-lg flex-col gap-0 p-0">
         {/* Header */}
-        <DialogHeader className="px-4 pt-4 pb-3 sm:px-6 shrink-0 border-b">
+        <DialogHeader className="shrink-0 border-b px-4 pb-3 pt-4 sm:px-6">
           <div className="flex items-center gap-2">
-            <DialogTitle className="text-base sm:text-lg">
-              Patient Verification
-            </DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Patient Verification</DialogTitle>
             <HelpPopover content="Select the person you're registering, then check for existing records." />
           </div>
         </DialogHeader>
 
         {/* Content */}
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="px-4 py-4 sm:px-6 space-y-4">
-
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="space-y-4 px-4 py-4 sm:px-6">
             {/* ─────────────────────────────────────────────────────
                 STEP 1: SHA MEMBER SELECTION
             ───────────────────────────────────────────────────── */}
@@ -363,12 +358,12 @@ export function PatientVerificationDialog({
               <section className="space-y-3">
                 <div className="flex items-center gap-2">
                   <SHALogo size="sm" />
-                  <h3 className="font-semibold text-sm">Who are you registering?</h3>
+                  <h3 className="text-sm font-semibold">Who are you registering?</h3>
                 </div>
 
                 {isCheckingSha && !hasShaDetails ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     <span className="text-sm">Checking SHA membership...</span>
                   </div>
                 ) : hasShaDetails && shaDetails ? (
@@ -383,15 +378,15 @@ export function PatientVerificationDialog({
                     {/* Dependents */}
                     {hasDependents && (
                       <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground px-1">
-                          Or select a dependent:
-                        </p>
+                        <p className="px-1 text-xs text-muted-foreground">Or select a dependent:</p>
                         <div className="grid gap-2">
                           {shaDetails.dependents?.map((dep, idx) => (
                             <DependentCard
                               key={idx}
                               dependent={dep}
-                              isSelected={selectedPerson === 'dependent' && selectedDependent === dep}
+                              isSelected={
+                                selectedPerson === 'dependent' && selectedDependent === dep
+                              }
                               onSelect={() => handleSelectDependent(dep)}
                             />
                           ))}
@@ -404,7 +399,7 @@ export function PatientVerificationDialog({
                       type="button"
                       onClick={handleSelectManual}
                       className={cn(
-                        'w-full text-left p-3 rounded-lg border-2 transition-all text-sm',
+                        'w-full rounded-lg border-2 p-3 text-left text-sm transition-all',
                         selectedPerson === 'manual'
                           ? 'border-primary bg-primary/10'
                           : 'border-dashed border-muted-foreground/30 hover:border-muted-foreground/50'
@@ -414,7 +409,7 @@ export function PatientVerificationDialog({
                         <UserPlus className="h-4 w-4 text-muted-foreground" />
                         <span className="text-muted-foreground">Enter details manually</span>
                         {selectedPerson === 'manual' && (
-                          <CheckCircle2 className="h-4 w-4 text-primary ml-auto" />
+                          <CheckCircle2 className="ml-auto h-4 w-4 text-primary" />
                         )}
                       </div>
                     </button>
@@ -429,18 +424,20 @@ export function PatientVerificationDialog({
             {(hasDuplicates || isCheckingDuplicates) && (
               <section className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className={cn(
-                    'h-4 w-4',
-                    isExactIdMatch ? 'text-destructive' : 'text-warning-foreground'
-                  )} />
-                  <h3 className="font-semibold text-sm">
+                  <AlertTriangle
+                    className={cn(
+                      'h-4 w-4',
+                      isExactIdMatch ? 'text-destructive' : 'text-warning-foreground'
+                    )}
+                  />
+                  <h3 className="text-sm font-semibold">
                     {isExactIdMatch ? 'Patient Already Exists' : 'Similar Patients Found'}
                   </h3>
                 </div>
 
                 {isCheckingDuplicates ? (
                   <div className="flex items-center justify-center py-6 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     <span className="text-sm">Checking for existing records...</span>
                   </div>
                 ) : hasDuplicates && primaryMatch ? (
@@ -448,7 +445,8 @@ export function PatientVerificationDialog({
                     {isExactIdMatch && (
                       <Alert variant="destructive" className="py-2">
                         <AlertDescription className="text-xs">
-                          A patient with this ID already exists. Select the existing record or use a different ID.
+                          A patient with this ID already exists. Select the existing record or use a
+                          different ID.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -465,13 +463,19 @@ export function PatientVerificationDialog({
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" size="sm" className="w-full text-xs">
                             {showAllMatches ? (
-                              <><ChevronUp className="h-3 w-3 mr-1" /> Hide {additionalMatches.length} more</>
+                              <>
+                                <ChevronUp className="mr-1 h-3 w-3" /> Hide{' '}
+                                {additionalMatches.length} more
+                              </>
                             ) : (
-                              <><ChevronDown className="h-3 w-3 mr-1" /> Show {additionalMatches.length} more</>
+                              <>
+                                <ChevronDown className="mr-1 h-3 w-3" /> Show{' '}
+                                {additionalMatches.length} more
+                              </>
                             )}
                           </Button>
                         </CollapsibleTrigger>
-                        <CollapsibleContent className="space-y-2 mt-2">
+                        <CollapsibleContent className="mt-2 space-y-2">
                           {additionalMatches.map((match) => (
                             <PatientMatchCard
                               key={match.id}
@@ -486,7 +490,7 @@ export function PatientVerificationDialog({
 
                     {/* Continue as new option (non-exact matches only) */}
                     {!isExactIdMatch && (
-                      <p className="text-xs text-muted-foreground text-center pt-2">
+                      <p className="pt-2 text-center text-xs text-muted-foreground">
                         If this is a different person, proceed with registration below.
                       </p>
                     )}
@@ -505,13 +509,9 @@ export function PatientVerificationDialog({
         </ScrollArea>
 
         {/* Footer */}
-        <div className="px-4 py-3 sm:px-6 border-t bg-muted/30 shrink-0">
+        <div className="shrink-0 border-t bg-muted/30 px-4 py-3 sm:px-6">
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCancel}
-            >
+            <Button variant="ghost" size="sm" onClick={handleCancel}>
               Cancel
             </Button>
 
@@ -522,33 +522,36 @@ export function PatientVerificationDialog({
                 disabled={!canProceed && hasShaDetails}
                 className={cn(
                   selectedPerson === 'principal' && 'bg-success hover:bg-success/90',
-                  selectedPerson === 'dependent' && 'bg-warning text-warning-foreground hover:bg-warning/90'
+                  selectedPerson === 'dependent' &&
+                    'bg-warning text-warning-foreground hover:bg-warning/90'
                 )}
               >
                 {selectedPerson === 'principal' && (
                   <>
-                    <UserCheck className="h-4 w-4 mr-1.5" />
+                    <UserCheck className="mr-1.5 h-4 w-4" />
                     <span className="hidden sm:inline">Register Principal</span>
                     <span className="sm:hidden">Continue</span>
                   </>
                 )}
                 {selectedPerson === 'dependent' && selectedDependent && (
                   <>
-                    <Users className="h-4 w-4 mr-1.5" />
-                    <span className="hidden sm:inline">Register {selectedDependent.name.split(' ')[0]}</span>
+                    <Users className="mr-1.5 h-4 w-4" />
+                    <span className="hidden sm:inline">
+                      Register {selectedDependent.name.split(' ')[0]}
+                    </span>
                     <span className="sm:hidden">Continue</span>
                   </>
                 )}
                 {selectedPerson === 'manual' && (
                   <>
-                    <UserPlus className="h-4 w-4 mr-1.5" />
+                    <UserPlus className="mr-1.5 h-4 w-4" />
                     <span className="hidden sm:inline">Enter Manually</span>
                     <span className="sm:hidden">Continue</span>
                   </>
                 )}
                 {!selectedPerson && !hasShaDetails && (
                   <>
-                    <ArrowRight className="h-4 w-4 mr-1.5" />
+                    <ArrowRight className="mr-1.5 h-4 w-4" />
                     <span>Continue Registration</span>
                   </>
                 )}

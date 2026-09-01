@@ -205,13 +205,11 @@ export const surveillanceApi = {
   /** Seed default national outbreak thresholds (admin only, empty DB only). */
   async seedThresholds(): Promise<{ created: number; total: number }> {
     const response = await apiClient.post<{ created: number; total: number }>(
-      '/api/surveillance/thresholds/seed/',
+      '/api/surveillance/thresholds/seed/'
     );
-    return parseResponse(
-      z.object({ created: z.number(), total: z.number() }),
-      response.data,
-      { context: 'surveillanceApi.seedThresholds' }
-    );
+    return parseResponse(z.object({ created: z.number(), total: z.number() }), response.data, {
+      context: 'surveillanceApi.seedThresholds',
+    });
   },
 
   async createThreshold(data: {
@@ -221,10 +219,7 @@ export const surveillanceApi = {
     period_days: number;
     is_active?: boolean;
   }): Promise<OutbreakThreshold> {
-    const response = await apiClient.post<OutbreakThreshold>(
-      '/api/surveillance/thresholds/',
-      data,
-    );
+    const response = await apiClient.post<OutbreakThreshold>('/api/surveillance/thresholds/', data);
     return parseResponse(OutbreakThresholdSchema, response.data, {
       context: 'surveillanceApi.createThreshold',
     });
@@ -238,11 +233,11 @@ export const surveillanceApi = {
       case_threshold?: number;
       period_days?: number;
       is_active?: boolean;
-    },
+    }
   ): Promise<OutbreakThreshold> {
     const response = await apiClient.patch<OutbreakThreshold>(
       `/api/surveillance/thresholds/${id}/`,
-      data,
+      data
     );
     return parseResponse(OutbreakThresholdSchema, response.data, {
       context: 'surveillanceApi.updateThreshold',
@@ -291,7 +286,10 @@ export const surveillanceApi = {
     });
   },
 
-  async generateIDSRReport(data?: { epi_year?: number; epi_week?: number }): Promise<IDSRWeeklyReport> {
+  async generateIDSRReport(data?: {
+    epi_year?: number;
+    epi_week?: number;
+  }): Promise<IDSRWeeklyReport> {
     const response = await apiClient.post<IDSRWeeklyReport>(
       '/api/surveillance/idsr/generate/',
       data ?? {}
@@ -340,16 +338,13 @@ export const surveillanceApi = {
   // IHR Notifications
   // ─────────────────────────────────────────────────────────────────────────
   async listIHRNotifiableDiseases(): Promise<NotifiableDiseaseListItem[]> {
-    const response = await apiClient.get(
-      '/api/surveillance/diseases/',
-      { params: { is_ihr_notifiable: true, is_active: true, page_size: 200 } }
-    );
+    const response = await apiClient.get('/api/surveillance/diseases/', {
+      params: { is_ihr_notifiable: true, is_active: true, page_size: 200 },
+    });
     const results = response.data?.results ?? response.data;
-    return parseResponse(
-      z.array(NotifiableDiseaseListItemSchema),
-      results,
-      { context: 'surveillanceApi.listIHRNotifiableDiseases' }
-    );
+    return parseResponse(z.array(NotifiableDiseaseListItemSchema), results, {
+      context: 'surveillanceApi.listIHRNotifiableDiseases',
+    });
   },
 
   async listIHRNotifications(
@@ -365,9 +360,7 @@ export const surveillanceApi = {
   },
 
   async getIHRNotification(id: number): Promise<IHRNotificationDetail> {
-    const response = await apiClient.get<IHRNotificationDetail>(
-      `/api/surveillance/ihr/${id}/`
-    );
+    const response = await apiClient.get<IHRNotificationDetail>(`/api/surveillance/ihr/${id}/`);
     return parseResponse(IHRNotificationDetailSchema, response.data, {
       context: 'surveillanceApi.getIHRNotification',
     });
@@ -376,19 +369,13 @@ export const surveillanceApi = {
   async createIHRNotification(
     data: Partial<IHRNotificationDetail>
   ): Promise<IHRNotificationDetail> {
-    const response = await apiClient.post<IHRNotificationDetail>(
-      '/api/surveillance/ihr/',
-      data
-    );
+    const response = await apiClient.post<IHRNotificationDetail>('/api/surveillance/ihr/', data);
     return parseResponse(IHRNotificationDetailSchema, response.data, {
       context: 'surveillanceApi.createIHRNotification',
     });
   },
 
-  async submitIHRToCounty(
-    id: number,
-    notes?: string
-  ): Promise<IHRNotificationDetail> {
+  async submitIHRToCounty(id: number, notes?: string): Promise<IHRNotificationDetail> {
     const response = await apiClient.post<IHRNotificationDetail>(
       `/api/surveillance/ihr/${id}/submit_to_county/`,
       { notes: notes ?? '' }
@@ -398,10 +385,7 @@ export const surveillanceApi = {
     });
   },
 
-  async escalateIHRToNational(
-    id: number,
-    notes?: string
-  ): Promise<IHRNotificationDetail> {
+  async escalateIHRToNational(id: number, notes?: string): Promise<IHRNotificationDetail> {
     const response = await apiClient.post<IHRNotificationDetail>(
       `/api/surveillance/ihr/${id}/escalate_to_national/`,
       { notes: notes ?? '' }
@@ -411,10 +395,7 @@ export const surveillanceApi = {
     });
   },
 
-  async notifyIHRToWHO(
-    id: number,
-    referenceNumber?: string
-  ): Promise<IHRNotificationDetail> {
+  async notifyIHRToWHO(id: number, referenceNumber?: string): Promise<IHRNotificationDetail> {
     const response = await apiClient.post<IHRNotificationDetail>(
       `/api/surveillance/ihr/${id}/notify_who/`,
       { reference_number: referenceNumber ?? '' }
@@ -434,10 +415,7 @@ export const surveillanceApi = {
     });
   },
 
-  async closeIHRNotification(
-    id: number,
-    notes?: string
-  ): Promise<IHRNotificationDetail> {
+  async closeIHRNotification(id: number, notes?: string): Promise<IHRNotificationDetail> {
     const response = await apiClient.post<IHRNotificationDetail>(
       `/api/surveillance/ihr/${id}/close/`,
       { notes: notes ?? '' }
@@ -447,10 +425,7 @@ export const surveillanceApi = {
     });
   },
 
-  async rejectIHRNotification(
-    id: number,
-    notes?: string
-  ): Promise<IHRNotificationDetail> {
+  async rejectIHRNotification(id: number, notes?: string): Promise<IHRNotificationDetail> {
     const response = await apiClient.post<IHRNotificationDetail>(
       `/api/surveillance/ihr/${id}/reject/`,
       { notes: notes ?? '' }
@@ -464,17 +439,13 @@ export const surveillanceApi = {
     const response = await apiClient.get<IHRNotificationListItem[]>(
       '/api/surveillance/ihr/overdue/'
     );
-    return parseResponse(
-      z.array(IHRNotificationListSchema),
-      response.data,
-      { context: 'surveillanceApi.listOverdueIHRNotifications' }
-    );
+    return parseResponse(z.array(IHRNotificationListSchema), response.data, {
+      context: 'surveillanceApi.listOverdueIHRNotifications',
+    });
   },
 
   async getIHRDashboard(): Promise<IHRDashboard> {
-    const response = await apiClient.get<IHRDashboard>(
-      '/api/surveillance/ihr/dashboard/'
-    );
+    const response = await apiClient.get<IHRDashboard>('/api/surveillance/ihr/dashboard/');
     return parseResponse(IHRDashboardSchema, response.data, {
       context: 'surveillanceApi.getIHRDashboard',
     });
@@ -514,28 +485,23 @@ export const surveillanceApi = {
 
   /** List all notifiable diseases. */
   async listDiseases(): Promise<NotifiableDiseaseListItem[]> {
-    const response = await apiClient.get(
-      '/api/surveillance/diseases/',
-      { params: { page_size: 200 } },
-    );
+    const response = await apiClient.get('/api/surveillance/diseases/', {
+      params: { page_size: 200 },
+    });
     // Endpoint returns paginated response; extract results array
     const results = response.data?.results ?? response.data;
-    return parseResponse(
-      z.array(NotifiableDiseaseListItemSchema),
-      results,
-      { context: 'surveillanceApi.listDiseases' }
-    );
+    return parseResponse(z.array(NotifiableDiseaseListItemSchema), results, {
+      context: 'surveillanceApi.listDiseases',
+    });
   },
 
   /** Seed MOH 502 notifiable diseases (admin only, empty DB only). */
   async seedDiseases(): Promise<{ created: number; total: number }> {
     const response = await apiClient.post<{ created: number; total: number }>(
-      '/api/surveillance/diseases/seed/',
+      '/api/surveillance/diseases/seed/'
     );
-    return parseResponse(
-      z.object({ created: z.number(), total: z.number() }),
-      response.data,
-      { context: 'surveillanceApi.seedDiseases' }
-    );
+    return parseResponse(z.object({ created: z.number(), total: z.number() }), response.data, {
+      context: 'surveillanceApi.seedDiseases',
+    });
   },
 };

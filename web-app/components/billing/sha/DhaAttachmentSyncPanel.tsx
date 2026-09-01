@@ -50,13 +50,17 @@ export function DhaAttachmentSyncPanel({
     onSuccess: async (result) => {
       if (result.failed > 0) {
         toast.warning(
-          `Uploaded ${result.uploaded} attachment(s); ${result.failed} failed. Check panel details.`,
+          `Uploaded ${result.uploaded} attachment(s); ${result.failed} failed. Check panel details.`
         );
       } else {
         toast.success(`Uploaded ${result.uploaded} attachment(s) to DHA.`);
       }
-      queryClient.invalidateQueries({ queryKey: ['sha-claim-dha-attachment-sync-status', claimId] });
-      queryClient.invalidateQueries({ queryKey: ['sha-claim-dha-attachment-sync-status-checklist', claimId] });
+      queryClient.invalidateQueries({
+        queryKey: ['sha-claim-dha-attachment-sync-status', claimId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['sha-claim-dha-attachment-sync-status-checklist', claimId],
+      });
       queryClient.invalidateQueries({ queryKey: ['discharge-local-attachments', claimId] });
       await refreshSyncAndDischargePanel();
     },
@@ -91,9 +95,9 @@ export function DhaAttachmentSyncPanel({
             disabled={isFetching || pushMutation.isPending}
           >
             {isFetching ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
             ) : (
-              <RefreshCw className="h-4 w-4 mr-1" />
+              <RefreshCw className="mr-1 h-4 w-4" />
             )}
             Check
           </Button>
@@ -130,16 +134,16 @@ export function DhaAttachmentSyncPanel({
             disabled={pushMutation.isPending || isFetching}
           >
             {pushMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <UploadCloud className="h-4 w-4 mr-2" />
+              <UploadCloud className="mr-2 h-4 w-4" />
             )}
             4. Upload local attachments to DHA
           </Button>
         )}
 
         {Array.isArray(syncStatus?.missing) && syncStatus.missing.length > 0 && (
-          <div className="rounded-md border border-amber-300 bg-amber-50/60 p-2 text-xs space-y-1 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="space-y-1 rounded-md border border-amber-300 bg-amber-50/60 p-2 text-xs text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
             {syncStatus.missing.slice(0, 8).map((item) => (
               <p key={`${item.attachment_id}`}>
                 Missing on DHA: {item.attachment_name} ({item.attachment_type})
@@ -149,7 +153,7 @@ export function DhaAttachmentSyncPanel({
         )}
 
         {pushMutation.data?.errors && pushMutation.data.errors.length > 0 && (
-          <div className="rounded-md border border-amber-300 bg-amber-50/60 p-2 text-xs space-y-1 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="space-y-1 rounded-md border border-amber-300 bg-amber-50/60 p-2 text-xs text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
             {pushMutation.data.errors.map((err, idx) => (
               <p key={`${err.attachment_id}-${idx}`}>
                 {err.attachment_name}: {err.error}

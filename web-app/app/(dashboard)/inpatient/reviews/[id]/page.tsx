@@ -69,7 +69,7 @@ export default function ReviewRequestDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -78,7 +78,7 @@ export default function ReviewRequestDetailPage() {
 
   if (error || !review) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader title="Review Request" />
         <Card>
           <CardContent className="pt-6">
@@ -90,7 +90,7 @@ export default function ReviewRequestDetailPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title={`Review #${review.id}`}
         helpContent="View review request details, acknowledge pending reviews, and mark them as complete."
@@ -102,13 +102,13 @@ export default function ReviewRequestDetailPage() {
                 onClick={handleAcknowledge}
                 disabled={acknowledgeReview.isPending}
               >
-                <Clock className="h-4 w-4 mr-2" />
+                <Clock className="mr-2 h-4 w-4" />
                 {acknowledgeReview.isPending ? 'Acknowledging...' : 'Acknowledge'}
               </Button>
             )}
             {review.status === 'IN_PROGRESS' && (
               <Button onClick={handleComplete} disabled={completeReview.isPending}>
-                <CheckCircle className="h-4 w-4 mr-2" />
+                <CheckCircle className="mr-2 h-4 w-4" />
                 {completeReview.isPending ? 'Completing...' : 'Complete'}
               </Button>
             )}
@@ -117,17 +117,17 @@ export default function ReviewRequestDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {review.patient_name || 'Unknown Patient'}
             <span className="text-muted-foreground"> • {review.admission_number}</span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Requested {formatDateTime(review.requested_at)}
           </p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex shrink-0 gap-2">
           <Badge className={urgencyColors[review.urgency]}>
             {review.urgency_display || review.urgency}
           </Badge>
@@ -168,20 +168,20 @@ export default function ReviewRequestDetailPage() {
             </div>
 
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Reason</p>
+              <p className="mb-1 text-sm text-muted-foreground">Reason</p>
               <p className="text-sm">{review.reason}</p>
             </div>
 
             {review.clinical_context && (
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Clinical Context</p>
-                <p className="text-sm whitespace-pre-wrap">{review.clinical_context}</p>
+                <p className="mb-1 text-sm text-muted-foreground">Clinical Context</p>
+                <p className="whitespace-pre-wrap text-sm">{review.clinical_context}</p>
               </div>
             )}
 
             {review.cancellation_reason && (
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Cancellation Reason</p>
+                <p className="mb-1 text-sm text-muted-foreground">Cancellation Reason</p>
                 <p className="text-sm text-destructive">{review.cancellation_reason}</p>
               </div>
             )}
@@ -195,7 +195,7 @@ export default function ReviewRequestDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
+              <div className="rounded-lg bg-muted p-2">
                 <User className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
@@ -206,7 +206,7 @@ export default function ReviewRequestDetailPage() {
 
             {(review.ward_name || review.bed_number) && (
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-muted">
+                <div className="rounded-lg bg-muted p-2">
                   <BedDouble className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
@@ -218,9 +218,9 @@ export default function ReviewRequestDetailPage() {
               </div>
             )}
 
-            <Button variant="outline" asChild className="w-full mt-2">
+            <Button variant="outline" asChild className="mt-2 w-full">
               <Link href={`/admissions/${review.admission}`}>
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="mr-2 h-4 w-4" />
                 View Admission
               </Link>
             </Button>
@@ -236,13 +236,14 @@ export default function ReviewRequestDetailPage() {
             <div className="space-y-4">
               {/* Requested */}
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 p-1.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30">
+                <div className="mt-0.5 rounded-full bg-yellow-100 p-1.5 dark:bg-yellow-900/30">
                   <FileText className="h-3.5 w-3.5 text-yellow-700 dark:text-yellow-400" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">Requested</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDateTime(review.requested_at)} by {review.requested_by_username || 'Unknown'}
+                    {formatDateTime(review.requested_at)} by{' '}
+                    {review.requested_by_username || 'Unknown'}
                   </p>
                 </div>
               </div>
@@ -250,13 +251,14 @@ export default function ReviewRequestDetailPage() {
               {/* Acknowledged */}
               {review.acknowledged_at && (
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 p-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                  <div className="mt-0.5 rounded-full bg-blue-100 p-1.5 dark:bg-blue-900/30">
                     <Clock className="h-3.5 w-3.5 text-blue-700 dark:text-blue-400" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">Acknowledged</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDateTime(review.acknowledged_at)} by {review.acknowledged_by_username || 'Unknown'}
+                      {formatDateTime(review.acknowledged_at)} by{' '}
+                      {review.acknowledged_by_username || 'Unknown'}
                     </p>
                   </div>
                 </div>
@@ -265,7 +267,7 @@ export default function ReviewRequestDetailPage() {
               {/* Completed */}
               {review.completed_at && (
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 p-1.5 rounded-full bg-green-100 dark:bg-green-900/30">
+                  <div className="mt-0.5 rounded-full bg-green-100 p-1.5 dark:bg-green-900/30">
                     <CheckCircle className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
                   </div>
                   <div>
@@ -280,7 +282,7 @@ export default function ReviewRequestDetailPage() {
               {/* Pending indicator */}
               {review.status === 'PENDING' && !review.acknowledged_at && (
                 <div className="flex items-start gap-3 opacity-50">
-                  <div className="mt-0.5 p-1.5 rounded-full bg-muted">
+                  <div className="mt-0.5 rounded-full bg-muted p-1.5">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                   </div>
                   <p className="text-sm text-muted-foreground">Waiting for acknowledgement...</p>
@@ -289,7 +291,7 @@ export default function ReviewRequestDetailPage() {
 
               {review.status === 'IN_PROGRESS' && !review.completed_at && (
                 <div className="flex items-start gap-3 opacity-50">
-                  <div className="mt-0.5 p-1.5 rounded-full bg-muted">
+                  <div className="mt-0.5 rounded-full bg-muted p-1.5">
                     <Stethoscope className="h-3.5 w-3.5 text-muted-foreground" />
                   </div>
                   <p className="text-sm text-muted-foreground">Review in progress...</p>

@@ -327,11 +327,11 @@ test.describe('Allied Health Dashboard', () => {
     await expect(page.locator('text=Counselling')).toBeVisible();
   });
 
-  test('should display today\'s sessions list', async ({ page }) => {
+  test("should display today's sessions list", async ({ page }) => {
     await page.goto('/allied-health');
 
     // Today's sessions section
-    await expect(page.locator('text=Today\'s Sessions')).toBeVisible();
+    await expect(page.locator("text=Today's Sessions")).toBeVisible();
     await expect(page.locator('text=John Doe')).toBeVisible();
     await expect(page.locator('text=Jane Smith')).toBeVisible();
     await expect(page.locator('text=Mary Johnson')).toBeVisible();
@@ -525,7 +525,9 @@ test.describe('Social Work Sensitive Case Handling', () => {
 
     // Sensitive case indicator (could be a badge, icon, or banner)
     // The exact selector depends on component implementation
-    const sensitiveIndicator = page.locator('[data-sensitive="true"], .sensitive-indicator, text=Restricted');
+    const sensitiveIndicator = page.locator(
+      '[data-sensitive="true"], .sensitive-indicator, text=Restricted'
+    );
     await expect(sensitiveIndicator.first()).toBeVisible();
   });
 
@@ -660,7 +662,7 @@ test.describe('Allied Health Responsive Design', () => {
 
     // Module cards should stack vertically
     const cards = page.locator('[data-testid="module-card"], .module-card');
-    if (await cards.count() > 0) {
+    if ((await cards.count()) > 0) {
       const firstCard = cards.first();
       const secondCard = cards.nth(1);
 

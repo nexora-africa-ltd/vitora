@@ -114,7 +114,7 @@ export default function TreatmentTypesPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="h-4 w-4" />
               Filters
             </CardTitle>
@@ -260,22 +260,20 @@ export default function TreatmentTypesPage() {
               {treatmentTypes.map((type) => (
                 <Card
                   key={type.id}
-                  className="cursor-pointer hover:border-primary transition-colors"
+                  className="cursor-pointer transition-colors hover:border-primary"
                   onClick={() => setSelectedType(type)}
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <CardTitle className="text-base">{type.name}</CardTitle>
-                        <span className="text-xs font-mono text-muted-foreground">
-                          {type.code}
-                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">{type.code}</span>
                       </div>
                       {getCategoryBadge(type.category)}
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                    <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
                       {type.description || 'No description available'}
                     </p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -288,12 +286,15 @@ export default function TreatmentTypesPage() {
                         {type.recommended_sessions} sessions
                       </div>
                     </div>
-                    <div className="flex items-center justify-between mt-3">
+                    <div className="mt-3 flex items-center justify-between">
                       <span className="font-semibold">
                         KES {parseFloat(type.cost_per_session).toLocaleString()}
                       </span>
                       <div className="flex gap-1">
-                        <Badge variant={type.is_active ? 'default' : 'secondary'} className="text-xs">
+                        <Badge
+                          variant={type.is_active ? 'default' : 'secondary'}
+                          className="text-xs"
+                        >
                           {type.is_active ? 'Active' : 'Inactive'}
                         </Badge>
                       </div>
@@ -365,7 +366,9 @@ export default function TreatmentTypesPage() {
                       <Clock className="h-4 w-4" />
                       Duration
                     </div>
-                    <div className="text-lg font-semibold">{selectedType.typical_duration_minutes} min</div>
+                    <div className="text-lg font-semibold">
+                      {selectedType.typical_duration_minutes} min
+                    </div>
                   </div>
                   <div className="rounded-lg border p-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -373,7 +376,9 @@ export default function TreatmentTypesPage() {
                       Sessions
                     </div>
                     <div className="text-lg font-semibold">{selectedType.recommended_sessions}</div>
-                    <div className="text-xs text-muted-foreground">{selectedType.recommended_frequency}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {selectedType.recommended_frequency}
+                    </div>
                   </div>
                 </div>
 
@@ -387,7 +392,9 @@ export default function TreatmentTypesPage() {
                       </div>
                     </div>
                     {selectedType.sha_intervention_code && (
-                      <Badge variant="outline">SHA Code: {selectedType.sha_intervention_code}</Badge>
+                      <Badge variant="outline">
+                        SHA Code: {selectedType.sha_intervention_code}
+                      </Badge>
                     )}
                   </div>
                 </div>
@@ -395,7 +402,7 @@ export default function TreatmentTypesPage() {
                 {/* Equipment */}
                 {selectedType.requires_equipment && selectedType.equipment_needed && (
                   <div>
-                    <label className="text-sm font-medium flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
                       <Wrench className="h-4 w-4" />
                       Equipment Needed
                     </label>
@@ -406,11 +413,11 @@ export default function TreatmentTypesPage() {
                 {/* Contraindications */}
                 {selectedType.contraindications && (
                   <div className="rounded-lg border border-orange-200 bg-orange-50 p-3">
-                    <label className="text-sm font-medium flex items-center gap-2 text-orange-800">
+                    <label className="flex items-center gap-2 text-sm font-medium text-orange-800">
                       <AlertTriangle className="h-4 w-4" />
                       Contraindications
                     </label>
-                    <p className="text-sm text-orange-700 mt-1">{selectedType.contraindications}</p>
+                    <p className="mt-1 text-sm text-orange-700">{selectedType.contraindications}</p>
                   </div>
                 )}
 

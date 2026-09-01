@@ -156,7 +156,7 @@ export function CommentInput({
 
   return (
     <div className="relative">
-      <div className="flex gap-2 items-end">
+      <div className="flex items-end gap-2">
         <Textarea
           ref={textareaRef}
           value={body}
@@ -165,7 +165,7 @@ export function CommentInput({
           placeholder={placeholder}
           autoFocus={autoFocus}
           disabled={disabled || isSubmitting}
-          className="min-h-[60px] max-h-[120px] resize-none text-sm"
+          className="max-h-[120px] min-h-[60px] resize-none text-sm"
           rows={2}
         />
         <Button
@@ -179,25 +179,25 @@ export function CommentInput({
       </div>
 
       {/* @mention autocomplete dropdown (portaled to avoid overflow clipping in dialogs) */}
-      {mentionQuery !== null && suggestions.length > 0 && dropdownPos &&
+      {mentionQuery !== null &&
+        suggestions.length > 0 &&
+        dropdownPos &&
         createPortal(
           <div
             ref={dropdownRef}
             style={{ top: dropdownPos.top, left: dropdownPos.left }}
-            className="fixed w-64 max-h-48 overflow-y-auto bg-popover border border-border rounded-md shadow-md z-[100] -translate-y-full"
+            className="fixed z-[100] max-h-48 w-64 -translate-y-full overflow-y-auto rounded-md border border-border bg-popover shadow-md"
           >
             {suggestions.map((user, index) => (
               <button
                 key={user.id}
                 onClick={() => insertMention(user)}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-accent transition-colors ${
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
                   index === mentionIndex ? 'bg-accent' : ''
                 }`}
               >
                 <span className="font-medium">@{user.username}</span>
-                <span className="text-muted-foreground text-xs truncate">
-                  {user.full_name}
-                </span>
+                <span className="truncate text-xs text-muted-foreground">{user.full_name}</span>
               </button>
             ))}
           </div>,

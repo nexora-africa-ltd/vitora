@@ -22,15 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  User,
-  Clock,
-  FileText,
-  Stethoscope,
-  Loader2,
-  Play,
-  AlertCircle,
-} from 'lucide-react';
+import { User, Clock, FileText, Stethoscope, Loader2, Play, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ConsultationQueueItem, TriageBypassReason } from '@/lib/types/encounter';
 import { TRIAGE_BYPASS_REASON_DISPLAY } from '@/lib/types/encounter';
@@ -126,7 +118,7 @@ export function StartConsultationDialog({
         <AlertDialogHeader>
           <div className="flex items-center gap-2">
             <AlertDialogTitle className="flex items-center gap-2">
-              <Stethoscope className="h-5 w-5 text-green-600 shrink-0" />
+              <Stethoscope className="h-5 w-5 shrink-0 text-green-600" />
               <span className="truncate">Start Consultation</span>
             </AlertDialogTitle>
             <HelpPopover content="This will update the patient's status to 'In Consultation' and record the start time. You'll be navigated to document the encounter." />
@@ -134,14 +126,14 @@ export function StartConsultationDialog({
           <AlertDialogDescription asChild>
             <div className="space-y-3 sm:space-y-4">
               {/* Patient Info Card - Responsive */}
-              <div className="rounded-md border p-3 sm:p-4 bg-muted/50 space-y-3">
+              <div className="space-y-3 rounded-md border bg-muted/50 p-3 sm:p-4">
                 {/* Name and Demographics - Stack on mobile */}
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <h4 className="font-semibold text-foreground truncate">
+                    <h4 className="truncate font-semibold text-foreground">
                       {queueItem.patient_name}
                     </h4>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                       <span className="font-mono text-xs sm:text-sm">{queueItem.patient_mrn}</span>
                       <span className="flex items-center gap-1">
                         <User className="h-3 w-3" />
@@ -153,11 +145,14 @@ export function StartConsultationDialog({
                   {/* Triage Badge - Fit width, don't stretch */}
                   <div className="shrink-0 self-start">
                     {isBypassed ? (
-                      <Badge variant="secondary" className="bg-gray-200 text-gray-700 w-fit text-xs sm:text-sm">
+                      <Badge
+                        variant="secondary"
+                        className="w-fit bg-gray-200 text-xs text-gray-700 sm:text-sm"
+                      >
                         Bypassed: {getBypassReasonDisplay(queueItem.triage_bypass_reason)}
                       </Badge>
                     ) : isDirect ? (
-                      <Badge variant="secondary" className="bg-gray-200 text-gray-700 w-fit">
+                      <Badge variant="secondary" className="w-fit bg-gray-200 text-gray-700">
                         Direct
                       </Badge>
                     ) : queueItem.triage_category ? (
@@ -170,19 +165,21 @@ export function StartConsultationDialog({
 
                 {/* Chief Complaint */}
                 <div className="text-sm">
-                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                  <div className="mb-1 flex items-center gap-1 text-muted-foreground">
                     <FileText className="h-3 w-3 shrink-0" />
                     <span className="text-xs sm:text-sm">Chief Complaint</span>
                   </div>
-                  <p className="text-foreground text-sm line-clamp-2 sm:line-clamp-none">{queueItem.chief_complaint}</p>
+                  <p className="line-clamp-2 text-sm text-foreground sm:line-clamp-none">
+                    {queueItem.chief_complaint}
+                  </p>
                 </div>
 
                 {/* Encounter Type & Wait Time - responsive */}
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-sm">
-                  <span className="text-muted-foreground text-xs sm:text-sm">
+                <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-xs text-muted-foreground sm:text-sm">
                     {queueItem.encounter_type_display}
                   </span>
-                  <span className="flex items-center gap-1 text-muted-foreground text-xs sm:text-sm">
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
                     <Clock className="h-3 w-3 shrink-0" />
                     Waiting: {formatWaitTime(queueItem.wait_time_minutes)}
                   </span>
@@ -191,7 +188,7 @@ export function StartConsultationDialog({
 
               {/* Error message */}
               {error && (
-                <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/10 text-destructive text-sm">
+                <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <p>{error}</p>
                 </div>
@@ -213,18 +210,18 @@ export function StartConsultationDialog({
             onClick={handleStartConsultation}
             disabled={isLoading}
             className={cn(
-              'bg-green-600 hover:bg-green-700 w-full sm:w-auto',
+              'w-full bg-green-600 hover:bg-green-700 sm:w-auto',
               isLoading && 'cursor-not-allowed opacity-50'
             )}
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Starting...
               </>
             ) : (
               <>
-                <Play className="h-4 w-4 mr-2" />
+                <Play className="mr-2 h-4 w-4" />
                 Start Consultation
               </>
             )}

@@ -117,14 +117,14 @@ function RiskFactorItem({ factor }: { factor: AIConditionRiskFactor }) {
     <div className="flex items-start gap-2 text-sm">
       <Badge
         variant="secondary"
-        className={cn('shrink-0 text-xs px-1.5 py-0', SEVERITY_BADGE_STYLES[factor.severity])}
+        className={cn('shrink-0 px-1.5 py-0 text-xs', SEVERITY_BADGE_STYLES[factor.severity])}
       >
         {factor.severity}
       </Badge>
       <div className="min-w-0">
         <span className="font-medium">{factor.factor}</span>
         {factor.description && (
-          <p className="text-xs text-muted-foreground mt-0.5">{factor.description}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{factor.description}</p>
         )}
       </div>
     </div>
@@ -134,17 +134,17 @@ function RiskFactorItem({ factor }: { factor: AIConditionRiskFactor }) {
 function DifferentialItem({ condition }: { condition: AIDifferentialCondition }) {
   const confidencePercent = Math.round(condition.confidence * 100);
   return (
-    <div className="flex items-center justify-between text-sm py-1">
-      <div className="flex items-center gap-2 min-w-0">
+    <div className="flex items-center justify-between py-1 text-sm">
+      <div className="flex min-w-0 items-center gap-2">
         <span className="truncate">{condition.condition}</span>
         {condition.icd10_code && (
-          <Badge variant="outline" className="shrink-0 text-xs font-mono">
+          <Badge variant="outline" className="shrink-0 font-mono text-xs">
             {condition.icd10_code}
           </Badge>
         )}
       </div>
-      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+      <div className="ml-2 flex shrink-0 items-center gap-1.5">
+        <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
           <div
             className={cn(
               'h-full rounded-full',
@@ -159,9 +159,7 @@ function DifferentialItem({ condition }: { condition: AIDifferentialCondition })
             style={{ width: `${confidencePercent}%` }}
           />
         </div>
-        <span className="text-xs text-muted-foreground w-8 text-right">
-          {confidencePercent}%
-        </span>
+        <span className="w-8 text-right text-xs text-muted-foreground">{confidencePercent}%</span>
       </div>
     </div>
   );
@@ -202,9 +200,7 @@ export function AIRiskAssessmentPanel({
     vitals?.temperature != null;
 
   const hasQsofaInputs =
-    vitals?.respiratory_rate != null &&
-    vitals?.systolic_bp != null &&
-    gcsTotal != null;
+    vitals?.respiratory_rate != null && vitals?.systolic_bp != null && gcsTotal != null;
 
   const missingQsofaFields = React.useMemo(() => {
     const missing: string[] = [];
@@ -283,10 +279,10 @@ export function AIRiskAssessmentPanel({
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Brain className="h-4 w-4 text-purple-500" />
             AI Risk Assessment
-            <Badge variant="outline" className="text-xs font-normal gap-1">
+            <Badge variant="outline" className="gap-1 text-xs font-normal">
               <BrainCircuit className="h-3 w-3" />
               Advisory
             </Badge>
@@ -298,7 +294,7 @@ export function AIRiskAssessmentPanel({
         {/* Run Assessment Button */}
         {!hasPrediction && (
           <div className="flex flex-col items-center gap-3 py-2">
-            <p className="text-sm text-muted-foreground text-center">
+            <p className="text-center text-sm text-muted-foreground">
               {hasEnoughData
                 ? 'Run AI analysis on current patient data to identify potential risk conditions.'
                 : 'Enter chief complaint and vitals to enable AI risk assessment.'}
@@ -331,42 +327,33 @@ export function AIRiskAssessmentPanel({
           <div className="space-y-4">
             {/* Primary Condition Banner */}
             <div
-              className={cn(
-                'rounded-lg p-3 border',
-                riskConfig.bgColor,
-                riskConfig.borderColor
-              )}
+              className={cn('rounded-lg border p-3', riskConfig.bgColor, riskConfig.borderColor)}
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex items-start gap-2 min-w-0">
-                  <ShieldAlert className={cn('h-5 w-5 mt-0.5 shrink-0', riskConfig.color)} />
+                <div className="flex min-w-0 items-start gap-2">
+                  <ShieldAlert className={cn('mt-0.5 h-5 w-5 shrink-0', riskConfig.color)} />
                   <div className="min-w-0">
                     <p className={cn('font-semibold', riskConfig.color)}>
                       {prediction.primary_condition}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       Confidence: {Math.round(prediction.confidence * 100)}% &bull;{' '}
                       {riskConfig.label}
                     </p>
                   </div>
                 </div>
-                <Badge
-                  className={cn(
-                    'shrink-0',
-                    SEVERITY_BADGE_STYLES[prediction.risk_level]
-                  )}
-                >
+                <Badge className={cn('shrink-0', SEVERITY_BADGE_STYLES[prediction.risk_level])}>
                   {riskConfig.label}
                 </Badge>
               </div>
             </div>
 
             {/* Advisory Disclaimer */}
-            <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
-              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-2 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
-                AI-generated assessment. Use clinical judgment to validate.
-                This does not replace clinical decision-making.
+                AI-generated assessment. Use clinical judgment to validate. This does not replace
+                clinical decision-making.
               </span>
             </div>
 
@@ -399,7 +386,7 @@ export function AIRiskAssessmentPanel({
                 {/* Risk Factors */}
                 {prediction.risk_factors && prediction.risk_factors.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium flex items-center gap-1.5">
+                    <h4 className="flex items-center gap-1.5 text-sm font-medium">
                       <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
                       Risk Factors
                     </h4>
@@ -428,7 +415,7 @@ export function AIRiskAssessmentPanel({
                 {prediction.recommendations && prediction.recommendations.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Recommendations</h4>
-                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 pl-1">
+                    <ul className="list-inside list-disc space-y-1 pl-1 text-sm text-muted-foreground">
                       {prediction.recommendations.map((rec, i) => (
                         <li key={i}>{rec}</li>
                       ))}
@@ -464,8 +451,8 @@ export function AIRiskAssessmentPanel({
 
         {/* Error State (TibaBot unavailable but returned gracefully) */}
         {prediction && !hasPrediction && prediction.error && (
-          <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-yellow-500" />
+          <div className="flex items-start gap-2 rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-500" />
             <div>
               <p>{prediction.error}</p>
               <Button
@@ -487,21 +474,21 @@ export function AIRiskAssessmentPanel({
           </div>
         )}
 
-        <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+        <div className="space-y-2 rounded-md border bg-muted/30 p-3">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium">qSOFA Lite</p>
-            {isQsofaLitePending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            {isQsofaLitePending && (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            )}
           </div>
 
           {!hasQsofaInputs && (
-            <div className="text-xs text-muted-foreground space-y-1">
+            <div className="space-y-1 text-xs text-muted-foreground">
               <p>Assessment runs automatically when these fields are present:</p>
               <p className="font-medium text-foreground">
                 Respiratory rate, Systolic BP, and GCS total.
               </p>
-              {missingQsofaFields.length > 0 && (
-                <p>Missing: {missingQsofaFields.join(', ')}</p>
-              )}
+              {missingQsofaFields.length > 0 && <p>Missing: {missingQsofaFields.join(', ')}</p>}
             </div>
           )}
 
@@ -511,7 +498,7 @@ export function AIRiskAssessmentPanel({
                 Score: <span className="font-semibold">{qsofaLite.qsofa_score}/3</span>
               </p>
               {qsofaLite.qsofa_criteria && qsofaLite.qsofa_criteria.length > 0 && (
-                <ul className="list-disc list-inside text-xs text-muted-foreground space-y-0.5">
+                <ul className="list-inside list-disc space-y-0.5 text-xs text-muted-foreground">
                   {qsofaLite.qsofa_criteria.map((criterion, index) => (
                     <li key={`${criterion}-${index}`}>{criterion}</li>
                   ))}

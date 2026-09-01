@@ -19,13 +19,8 @@ import type { EncounterFormData } from '@/lib/types/encounter-form';
 
 export default function NewEncounterHistoryPage() {
   const router = useRouter();
-  const {
-    getHistory,
-    setHistory,
-    markSectionComplete,
-    getPatient,
-    getDetails,
-  } = useNewEncounterStore();
+  const { getHistory, setHistory, markSectionComplete, getPatient, getDetails } =
+    useNewEncounterStore();
 
   const history = getHistory();
   const { data: patientData } = getPatient();
@@ -125,36 +120,33 @@ export default function NewEncounterHistoryPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-        {/* History Card */}
-        <Card>
-          <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-              <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
-              Medical History
-            </CardTitle>
-            <CardDescription>
-              Document the patient&apos;s relevant medical background. This step is optional.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6">
-            <MedicalHistoryFormContent
-              data={formData}
-              onChange={handleFieldChange}
-            />
-          </CardContent>
-        </Card>
+      {/* History Card */}
+      <Card>
+        <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+            Medical History
+          </CardTitle>
+          <CardDescription>
+            Document the patient&apos;s relevant medical background. This step is optional.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6">
+          <MedicalHistoryFormContent data={formData} onChange={handleFieldChange} />
+        </CardContent>
+      </Card>
 
-        {/* Navigation */}
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={handlePrevious}>
-            <ArrowLeft className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Back</span>
-          </Button>
-          <Button onClick={handleNext}>
-            <span className="hidden sm:inline">Next: Notes</span>
-            <ArrowRight className="h-4 w-4 sm:ml-2" />
-          </Button>
-        </div>
+      {/* Navigation */}
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={handlePrevious}>
+          <ArrowLeft className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Back</span>
+        </Button>
+        <Button onClick={handleNext}>
+          <span className="hidden sm:inline">Next: Notes</span>
+          <ArrowRight className="h-4 w-4 sm:ml-2" />
+        </Button>
+      </div>
     </div>
   );
 }

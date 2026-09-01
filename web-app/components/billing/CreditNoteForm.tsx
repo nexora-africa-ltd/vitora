@@ -64,12 +64,7 @@ type CreditNoteFormValues = z.infer<typeof creditNoteFormSchema>;
 // Main Component
 // ============================================================================
 
-export function CreditNoteForm({
-  invoice,
-  isLoading,
-  onSubmit,
-  onCancel,
-}: CreditNoteFormProps) {
+export function CreditNoteForm({ invoice, isLoading, onSubmit, onCancel }: CreditNoteFormProps) {
   const maxAmount = parseFloat(invoice.amount_paid || '0');
 
   const form = useForm<CreditNoteFormValues>({
@@ -110,9 +105,7 @@ export function CreditNoteForm({
               </div>
               <div>
                 <span className="text-muted-foreground">Total Paid:</span>
-                <span className="ml-2 font-medium text-green-600">
-                  {formatCurrency(maxAmount)}
-                </span>
+                <span className="ml-2 font-medium text-green-600">{formatCurrency(maxAmount)}</span>
               </div>
             </div>
           </CardContent>
@@ -160,9 +153,7 @@ export function CreditNoteForm({
                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                 />
               </FormControl>
-              <FormDescription>
-                Maximum: {formatCurrency(maxAmount)} (total paid)
-              </FormDescription>
+              <FormDescription>Maximum: {formatCurrency(maxAmount)} (total paid)</FormDescription>
               <FormMessage />
             </FormItem>
           )}

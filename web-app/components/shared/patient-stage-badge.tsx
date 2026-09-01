@@ -71,31 +71,50 @@ const stageIcons: Record<PatientStage, React.ReactNode> = {
 const stageColors: Record<PatientStage, string> = {
   REGISTERED: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300',
   CHECKED_IN: 'bg-cyan-100 text-cyan-700 border-cyan-300 dark:bg-cyan-900/30 dark:text-cyan-300',
-  AWAITING_TRIAGE: 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300',
+  AWAITING_TRIAGE:
+    'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300',
   IN_TRIAGE: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300',
-  AWAITING_CONSULTATION: 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300',
-  IN_CONSULTATION: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300',
-  AWAITING_LAB: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300 dark:bg-fuchsia-900/30 dark:text-fuchsia-300',
-  LAB_IN_PROGRESS: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300 dark:bg-fuchsia-900/30 dark:text-fuchsia-300',
-  LAB_RESULTS_READY: 'bg-lime-100 text-lime-700 border-lime-300 dark:bg-lime-900/30 dark:text-lime-300',
+  AWAITING_CONSULTATION:
+    'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300',
+  IN_CONSULTATION:
+    'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300',
+  AWAITING_LAB:
+    'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300 dark:bg-fuchsia-900/30 dark:text-fuchsia-300',
+  LAB_IN_PROGRESS:
+    'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300 dark:bg-fuchsia-900/30 dark:text-fuchsia-300',
+  LAB_RESULTS_READY:
+    'bg-lime-100 text-lime-700 border-lime-300 dark:bg-lime-900/30 dark:text-lime-300',
   AWAITING_IMAGING: 'bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-900/30 dark:text-sky-300',
-  IMAGING_IN_PROGRESS: 'bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-900/30 dark:text-sky-300',
-  IMAGING_RESULTS_READY: 'bg-teal-100 text-teal-700 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300',
-  AWAITING_PHARMACY: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300',
-  PHARMACY_DISPENSING: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300',
-  PHARMACY_READY: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300',
-  AWAITING_BILLING: 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900/30 dark:text-rose-300',
-  BILLING_IN_PROGRESS: 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900/30 dark:text-rose-300',
-  BILLING_COMPLETE: 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300',
-  ADMISSION_RECOMMENDED: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300',
+  IMAGING_IN_PROGRESS:
+    'bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-900/30 dark:text-sky-300',
+  IMAGING_RESULTS_READY:
+    'bg-teal-100 text-teal-700 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300',
+  AWAITING_PHARMACY:
+    'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300',
+  PHARMACY_DISPENSING:
+    'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300',
+  PHARMACY_READY:
+    'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300',
+  AWAITING_BILLING:
+    'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900/30 dark:text-rose-300',
+  BILLING_IN_PROGRESS:
+    'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900/30 dark:text-rose-300',
+  BILLING_COMPLETE:
+    'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300',
+  ADMISSION_RECOMMENDED:
+    'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300',
   AWAITING_BED: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300',
   ADMITTED: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300',
   INPATIENT_CARE: 'bg-red-100 text-red-800 border-red-400 dark:bg-red-900/40 dark:text-red-300',
-  AWAITING_DISCHARGE: 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300',
-  DISCHARGE_PLANNING: 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300',
+  AWAITING_DISCHARGE:
+    'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300',
+  DISCHARGE_PLANNING:
+    'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300',
   DISCHARGED: 'bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-400',
-  REFERRED_OUT: 'bg-indigo-100 text-indigo-700 border-indigo-300 dark:bg-indigo-900/30 dark:text-indigo-300',
-  LEFT_WITHOUT_BEING_SEEN: 'bg-gray-100 text-gray-500 border-gray-300 dark:bg-gray-800 dark:text-gray-400',
+  REFERRED_OUT:
+    'bg-indigo-100 text-indigo-700 border-indigo-300 dark:bg-indigo-900/30 dark:text-indigo-300',
+  LEFT_WITHOUT_BEING_SEEN:
+    'bg-gray-100 text-gray-500 border-gray-300 dark:bg-gray-800 dark:text-gray-400',
   DECEASED: 'bg-gray-200 text-gray-700 border-gray-400 dark:bg-gray-800 dark:text-gray-300',
 };
 
@@ -113,16 +132,14 @@ export function PatientStageBadge({
     <Badge
       variant="outline"
       className={cn(
-        'font-medium border',
+        'border font-medium',
         colorClass,
-        size === 'sm' && 'text-xs px-1.5 py-0',
-        size === 'lg' && 'text-sm px-3 py-1',
+        size === 'sm' && 'px-1.5 py-0 text-xs',
+        size === 'lg' && 'px-3 py-1 text-sm',
         className
       )}
     >
-      {showIcon && (
-        <span className="mr-1">{icon}</span>
-      )}
+      {showIcon && <span className="mr-1">{icon}</span>}
       {config.label}
     </Badge>
   );
@@ -133,7 +150,7 @@ export function PatientStageBadge({
  */
 export function getPatientStageFromQueueStatus(
   waitingQueueStatus?: string,
-  triageQueueStatus?: string,
+  triageQueueStatus?: string
 ): PatientStage {
   if (triageQueueStatus === 'COMPLETED' || triageQueueStatus === 'LEFT_WITHOUT_BEING_SEEN') {
     return 'DISCHARGED';

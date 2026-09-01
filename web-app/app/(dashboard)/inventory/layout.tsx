@@ -6,10 +6,6 @@
  */
 import { InventoryCapabilityGate } from './capability-gate';
 
-export default function InventoryLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function InventoryLayout({ children }: { children: React.ReactNode }) {
   return <InventoryCapabilityGate>{children}</InventoryCapabilityGate>;
 }

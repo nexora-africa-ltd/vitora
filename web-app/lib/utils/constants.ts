@@ -31,8 +31,7 @@ export const ENABLE_THEATRE =
  */
 export const ENABLE_AI =
   process.env.NEXT_PUBLIC_ENABLE_AI === 'true' ||
-  (process.env.NEXT_PUBLIC_ENV !== 'production' &&
-    process.env.NEXT_PUBLIC_ENABLE_AI !== 'false');
+  (process.env.NEXT_PUBLIC_ENV !== 'production' && process.env.NEXT_PUBLIC_ENABLE_AI !== 'false');
 
 /**
  * SMS feature flag.
@@ -42,8 +41,7 @@ export const ENABLE_AI =
  */
 export const ENABLE_SMS =
   process.env.NEXT_PUBLIC_ENABLE_SMS === 'true' ||
-  (process.env.NEXT_PUBLIC_ENV !== 'production' &&
-    process.env.NEXT_PUBLIC_ENABLE_SMS !== 'false');
+  (process.env.NEXT_PUBLIC_ENV !== 'production' && process.env.NEXT_PUBLIC_ENABLE_SMS !== 'false');
 
 // Gender options
 export const GENDER_OPTIONS = [
@@ -100,16 +98,19 @@ export const ENCOUNTER_TYPES = [
 // Group labels for encounter types
 export const ENCOUNTER_TYPE_GROUPS = {
   'walk-in': { label: 'Walk-in (Triage Required)', description: 'Patients need to be triaged' },
-  'scheduled': { label: 'Scheduled (Triage Optional)', description: 'Pre-booked appointments' },
+  scheduled: { label: 'Scheduled (Triage Optional)', description: 'Pre-booked appointments' },
   'pre-assessed': { label: 'Pre-assessed (No Triage)', description: 'Already assessed patients' },
 } as const;
 
 // Helper to get encounter types by group
 export const getEncounterTypesByGroup = (group: keyof typeof ENCOUNTER_TYPE_GROUPS) =>
-  ENCOUNTER_TYPES.filter(t => t.group === group);
+  ENCOUNTER_TYPES.filter((t) => t.group === group);
 
 // Triage requirement mapping
-export const ENCOUNTER_TRIAGE_REQUIREMENT: Record<string, 'MANDATORY' | 'OPTIONAL' | 'NOT_REQUIRED'> = {
+export const ENCOUNTER_TRIAGE_REQUIREMENT: Record<
+  string,
+  'MANDATORY' | 'OPTIONAL' | 'NOT_REQUIRED'
+> = {
   // Mandatory
   OPD: 'MANDATORY',
   EMERGENCY: 'MANDATORY',

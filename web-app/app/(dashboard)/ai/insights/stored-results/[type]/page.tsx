@@ -19,20 +19,29 @@ import type { StoredAIResultBase } from '@/lib/types/ai';
  * - columns: extra fields to show
  * - getLink: optional link to context (encounter/admission)
  */
-const RESULT_TYPE_CONFIG: Record<string, {
-  label: string;
-  fetchFn: () => Promise<StoredAIResultBase[]>;
-  renderRow: (item: Record<string, unknown>) => React.ReactNode;
-}> = {
+const RESULT_TYPE_CONFIG: Record<
+  string,
+  {
+    label: string;
+    fetchFn: () => Promise<StoredAIResultBase[]>;
+    renderRow: (item: Record<string, unknown>) => React.ReactNode;
+  }
+> = {
   'care-plans': {
     label: 'Care Plans',
     fetchFn: () => aiApi.getStoredCarePlans(),
     renderRow: (item) => (
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium">{(item as { primary_diagnosis?: string }).primary_diagnosis || 'N/A'}</span>
+        <span className="text-sm font-medium">
+          {(item as { primary_diagnosis?: string }).primary_diagnosis || 'N/A'}
+        </span>
         <span className="text-xs text-muted-foreground">
-          {(item as { encounter_id?: number }).encounter_id ? `Encounter #${(item as { encounter_id?: number }).encounter_id}` : ''}
-          {(item as { admission_id?: number }).admission_id ? `Admission #${(item as { admission_id?: number }).admission_id}` : ''}
+          {(item as { encounter_id?: number }).encounter_id
+            ? `Encounter #${(item as { encounter_id?: number }).encounter_id}`
+            : ''}
+          {(item as { admission_id?: number }).admission_id
+            ? `Admission #${(item as { admission_id?: number }).admission_id}`
+            : ''}
         </span>
       </div>
     ),
@@ -42,8 +51,12 @@ const RESULT_TYPE_CONFIG: Record<string, {
     fetchFn: () => aiApi.getStoredCDSResults(),
     renderRow: (item) => (
       <div className="flex items-center gap-2">
-        <Badge variant="secondary">{(item as { rules_fired?: number }).rules_fired ?? 0} rules fired</Badge>
-        <Badge variant="outline">{(item as { alert_count?: number }).alert_count ?? 0} alerts</Badge>
+        <Badge variant="secondary">
+          {(item as { rules_fired?: number }).rules_fired ?? 0} rules fired
+        </Badge>
+        <Badge variant="outline">
+          {(item as { alert_count?: number }).alert_count ?? 0} alerts
+        </Badge>
       </div>
     ),
   },
@@ -68,7 +81,8 @@ const RESULT_TYPE_CONFIG: Record<string, {
     renderRow: (item) => {
       const level = (item as { readiness_level?: string }).readiness_level ?? 'unknown';
       const score = (item as { readiness_score?: number | null }).readiness_score;
-      const variant = level === 'READY' ? 'success' : level === 'NOT_READY' ? 'destructive' : 'warning';
+      const variant =
+        level === 'READY' ? 'success' : level === 'NOT_READY' ? 'destructive' : 'warning';
       return (
         <div className="flex items-center gap-2">
           <Badge variant={variant as 'success' | 'destructive' | 'warning'}>{level}</Badge>
@@ -83,7 +97,12 @@ const RESULT_TYPE_CONFIG: Record<string, {
     renderRow: (item) => {
       const risk = (item as { risk_level?: string }).risk_level ?? 'unknown';
       const score = (item as { risk_score?: number | null }).risk_score;
-      const variant = risk === 'HIGH' || risk === 'CRITICAL' ? 'destructive' : risk === 'MEDIUM' ? 'warning' : 'secondary';
+      const variant =
+        risk === 'HIGH' || risk === 'CRITICAL'
+          ? 'destructive'
+          : risk === 'MEDIUM'
+            ? 'warning'
+            : 'secondary';
       return (
         <div className="flex items-center gap-2">
           <Badge variant={variant as 'destructive' | 'warning' | 'secondary'}>{risk}</Badge>
@@ -97,7 +116,9 @@ const RESULT_TYPE_CONFIG: Record<string, {
     fetchFn: () => aiApi.getStoredInvestigationSuggestions(),
     renderRow: (item) => (
       <span className="text-xs text-muted-foreground">
-        {(item as { encounter_id?: number }).encounter_id ? `Encounter #${(item as { encounter_id?: number }).encounter_id}` : 'No encounter'}
+        {(item as { encounter_id?: number }).encounter_id
+          ? `Encounter #${(item as { encounter_id?: number }).encounter_id}`
+          : 'No encounter'}
       </span>
     ),
   },
@@ -137,18 +158,20 @@ export default function StoredResultsListPage() {
         </div>
       ) : !results || results.length === 0 ? (
         <Card className="p-6 text-center">
-          <BrainCircuit className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">No stored {config.label.toLowerCase()} yet.</p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <BrainCircuit className="mx-auto mb-2 h-10 w-10 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            No stored {config.label.toLowerCase()} yet.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
             Results appear here after TibaBot generates them during clinical encounters.
           </p>
         </Card>
       ) : (
         <div className="space-y-2">
           {results.map((result) => (
-            <Card key={result.id} className="p-3 sm:p-4 hover:bg-muted/30 transition-colors">
+            <Card key={result.id} className="p-3 transition-colors hover:bg-muted/30 sm:p-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-col gap-1.5 min-w-0">
+                <div className="flex min-w-0 flex-col gap-1.5">
                   {config.renderRow(result as unknown as Record<string, unknown>)}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -159,7 +182,9 @@ export default function StoredResultsListPage() {
                       <User className="h-3 w-3" />
                       {result.created_by}
                     </span>
-                    <Badge variant="outline" className="text-[10px]">{result.service_mode}</Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {result.service_mode}
+                    </Badge>
                   </div>
                 </div>
               </div>

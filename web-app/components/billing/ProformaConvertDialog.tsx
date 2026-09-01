@@ -21,14 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Loader2,
-  ArrowRightCircle,
-  FileText,
-  Package,
-  AlertCircle,
-  Check,
-} from 'lucide-react';
+import { Loader2, ArrowRightCircle, FileText, Package, AlertCircle, Check } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 import type { Invoice, InvoiceItem } from '@/lib/types/billing';
 
@@ -74,12 +67,12 @@ function ItemRow({ item, isSelected, onToggle, disabled }: ItemRowProps) {
 
   return (
     <div
-      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+      className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
         isConverted
-          ? 'bg-muted/50 border-border opacity-60'
+          ? 'border-border bg-muted/50 opacity-60'
           : isSelected
-          ? 'bg-primary/10 border-primary/30'
-          : 'bg-card border-border hover:border-primary/20'
+            ? 'border-primary/30 bg-primary/10'
+            : 'border-border bg-card hover:border-primary/20'
       }`}
     >
       <Checkbox
@@ -88,22 +81,22 @@ function ItemRow({ item, isSelected, onToggle, disabled }: ItemRowProps) {
         onCheckedChange={() => onToggle(item.id)}
         disabled={disabled || isConverted}
       />
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Label
             htmlFor={`item-${item.id}`}
-            className={`font-medium cursor-pointer ${isConverted ? 'line-through text-muted-foreground' : ''}`}
+            className={`cursor-pointer font-medium ${isConverted ? 'text-muted-foreground line-through' : ''}`}
           >
             {item.service_name || item.description}
           </Label>
           {isConverted && (
-            <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
+            <Badge variant="outline" className="bg-muted text-xs text-muted-foreground">
               Already Converted
             </Badge>
           )}
         </div>
         {item.description && item.description !== item.service_name && (
-          <p className="text-sm text-muted-foreground truncate">{item.description}</p>
+          <p className="truncate text-sm text-muted-foreground">{item.description}</p>
         )}
       </div>
       <div className="text-right">
@@ -198,23 +191,21 @@ export function ProformaConvertDialog({
   };
 
   // Validation
-  const canSubmit =
-    mode === 'full'
-      ? convertibleItems.length > 0
-      : selectedItemIds.size > 0;
+  const canSubmit = mode === 'full' ? convertibleItems.length > 0 : selectedItemIds.size > 0;
 
   if (!invoice) return null;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightCircle className="h-5 w-5 text-purple-600" />
             Convert Proforma to Invoice
           </DialogTitle>
           <DialogDescription>
-            Convert proforma <span className="font-mono font-medium">{invoice.invoice_number}</span> to a regular invoice.
+            Convert proforma <span className="font-mono font-medium">{invoice.invoice_number}</span>{' '}
+            to a regular invoice.
           </DialogDescription>
         </DialogHeader>
 
@@ -226,7 +217,7 @@ export function ProformaConvertDialog({
             className={mode === 'full' ? 'bg-purple-600 hover:bg-purple-700' : ''}
             onClick={() => setMode('full')}
           >
-            <FileText className="h-4 w-4 mr-2" />
+            <FileText className="mr-2 h-4 w-4" />
             Full Conversion
           </Button>
           <Button
@@ -235,7 +226,7 @@ export function ProformaConvertDialog({
             className={mode === 'partial' ? 'bg-purple-600 hover:bg-purple-700' : ''}
             onClick={() => setMode('partial')}
           >
-            <Package className="h-4 w-4 mr-2" />
+            <Package className="mr-2 h-4 w-4" />
             Partial Conversion
           </Button>
         </div>
@@ -244,12 +235,12 @@ export function ProformaConvertDialog({
 
         {/* Info Alert */}
         {mode === 'full' ? (
-          <Alert className="bg-primary/10 border-primary/30">
+          <Alert className="border-primary/30 bg-primary/10">
             <Check className="h-4 w-4 text-primary" />
             <AlertDescription>
               All {convertibleItems.length} item(s) will be converted to a new invoice.
               {convertedItems.length > 0 && (
-                <span className="block mt-1 text-muted-foreground">
+                <span className="mt-1 block text-muted-foreground">
                   {convertedItems.length} item(s) were already converted and will be skipped.
                 </span>
               )}
@@ -293,7 +284,7 @@ export function ProformaConvertDialog({
               </div>
             </div>
 
-            <ScrollArea className="flex-1 max-h-64 pr-4">
+            <ScrollArea className="max-h-64 flex-1 pr-4">
               <div className="space-y-2">
                 {allItems.map((item) => (
                   <ItemRow
@@ -309,7 +300,7 @@ export function ProformaConvertDialog({
         )}
 
         {/* Summary */}
-        <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+        <div className="space-y-2 rounded-lg bg-muted/50 p-4">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Items to convert:</span>
             <span className="font-medium">{selectedItems.length}</span>
@@ -321,19 +312,14 @@ export function ProformaConvertDialog({
           <Separator className="my-2" />
           <div className="flex justify-between">
             <span className="font-medium">New Invoice Total:</span>
-            <span className="font-bold text-lg text-primary">
+            <span className="text-lg font-bold text-primary">
               {formatKES(mode === 'full' ? fullTotal : selectedTotal)}
             </span>
           </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isLoading}
-          >
+          <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
           <Button
@@ -344,12 +330,12 @@ export function ProformaConvertDialog({
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Converting...
               </>
             ) : (
               <>
-                <ArrowRightCircle className="h-4 w-4 mr-2" />
+                <ArrowRightCircle className="mr-2 h-4 w-4" />
                 Convert {mode === 'full' ? 'All Items' : `${selectedItemIds.size} Item(s)`}
               </>
             )}

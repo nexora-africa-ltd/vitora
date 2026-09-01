@@ -80,7 +80,7 @@ export function RelatedEncounters({ encounterId, patientId }: RelatedEncountersP
             href={`/patients/${patientId}/encounters/${encounter.id}`}
             className="block"
           >
-            <div className="flex items-center justify-between rounded-md border p-3 hover:bg-accent transition-colors">
+            <div className="flex items-center justify-between rounded-md border p-3 transition-colors hover:bg-accent">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-[10px]">
@@ -88,7 +88,7 @@ export function RelatedEncounters({ encounterId, patientId }: RelatedEncountersP
                   </Badge>
                   <EncounterStatusBadge status={encounter.status} size="sm" />
                 </div>
-                <p className="text-sm text-muted-foreground truncate max-w-[250px]">
+                <p className="max-w-[250px] truncate text-sm text-muted-foreground">
                   {encounter.chief_complaint}
                 </p>
               </div>

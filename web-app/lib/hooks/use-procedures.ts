@@ -11,8 +11,7 @@ export const procedureKeys = {
     [...procedureKeys.orders(), 'encounter', encounterId] as const,
   encounterExternalRequests: (encounterId: number) =>
     [...procedureKeys.externalRequests(), 'encounter', encounterId] as const,
-  patientOrders: (patientId: number) =>
-    [...procedureKeys.orders(), 'patient', patientId] as const,
+  patientOrders: (patientId: number) => [...procedureKeys.orders(), 'patient', patientId] as const,
 };
 
 /**
@@ -23,8 +22,7 @@ export function useEncounterProcedureOrders(
 ): UseQueryResult<PaginatedResponse<ProcedureOrderListItem>, Error> {
   return useQuery<PaginatedResponse<ProcedureOrderListItem>>({
     queryKey: procedureKeys.encounterOrders(encounterId),
-    queryFn: () =>
-      proceduresApi.listOrders({ encounter: String(encounterId) }),
+    queryFn: () => proceduresApi.listOrders({ encounter: String(encounterId) }),
     enabled: !!encounterId,
   });
 }

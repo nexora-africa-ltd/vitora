@@ -29,13 +29,7 @@ export type CDSAlertStatus =
   | 'DISMISSED'
   | 'AUTO_RESOLVED';
 
-export type CDSActionType =
-  | 'ALERT'
-  | 'CONTRAINDICATE'
-  | 'WARN'
-  | 'SUGGEST'
-  | 'REQUIRE'
-  | 'INFORM';
+export type CDSActionType = 'ALERT' | 'CONTRAINDICATE' | 'WARN' | 'SUGGEST' | 'REQUIRE' | 'INFORM';
 
 // ──────────────────────────── Rule Types ────────────────────────────
 

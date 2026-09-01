@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, Save } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
-import { DiagnosisCodeInput, emptyDiagnosisCodeValue, type DiagnosisCodeValue } from '@/components/shared';
+import {
+  DiagnosisCodeInput,
+  emptyDiagnosisCodeValue,
+  type DiagnosisCodeValue,
+} from '@/components/shared';
 import { PatientSearchInput } from '@/components/patients/patient-search-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,18 +43,28 @@ const RECOMMENDATION_ELIGIBLE_ENCOUNTER_TYPES = new Set([
 function parseRecommendationError(error: unknown): string {
   const rawMessage = getApiErrorMessage(error);
 
-  if (rawMessage.toLowerCase().includes('encounter') &&
-      (rawMessage.toLowerCase().includes('unique') ||
-       rawMessage.toLowerCase().includes('already exists') ||
-       rawMessage.toLowerCase().includes('admission recommendation with this encounter already exists'))) {
+  if (
+    rawMessage.toLowerCase().includes('encounter') &&
+    (rawMessage.toLowerCase().includes('unique') ||
+      rawMessage.toLowerCase().includes('already exists') ||
+      rawMessage
+        .toLowerCase()
+        .includes('admission recommendation with this encounter already exists'))
+  ) {
     return 'An admission recommendation already exists for this encounter. Please view the existing recommendation or create a new encounter.';
   }
 
-  if (rawMessage.toLowerCase().includes('encounter') && rawMessage.toLowerCase().includes('invalid')) {
+  if (
+    rawMessage.toLowerCase().includes('encounter') &&
+    rawMessage.toLowerCase().includes('invalid')
+  ) {
     return 'The encounter is no longer valid. It may have been finalized or deleted.';
   }
 
-  if (rawMessage.toLowerCase().includes('permission') || rawMessage.toLowerCase().includes('forbidden')) {
+  if (
+    rawMessage.toLowerCase().includes('permission') ||
+    rawMessage.toLowerCase().includes('forbidden')
+  ) {
     return 'You do not have permission to create admission recommendations.';
   }
 
@@ -70,7 +84,8 @@ export default function NewAdmissionRecommendationPage() {
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(initialPatientId);
   const [selectedEncounterId, setSelectedEncounterId] = useState<number | null>(initialEncounterId);
   const [reason, setReason] = useState('');
-  const [provisionalDiagnosis, setProvisionalDiagnosis] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
+  const [provisionalDiagnosis, setProvisionalDiagnosis] =
+    useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
   const [urgency, setUrgency] = useState<'ROUTINE' | 'URGENT' | 'EMERGENCY'>('URGENT');
   const [preferredWardType, setPreferredWardType] = useState<
     'MEDICAL' | 'SURGICAL' | 'PEDIATRIC' | 'MATERNITY' | 'HDU' | 'ICU' | 'NBU' | 'ISOLATION'
@@ -80,11 +95,16 @@ export default function NewAdmissionRecommendationPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { data: patient } = usePatient(selectedPatientId || 0);
-  const { data: patientEncounters, isLoading: encountersLoading } = usePatientEncounters(selectedPatientId || 0);
+  const { data: patientEncounters, isLoading: encountersLoading } = usePatientEncounters(
+    selectedPatientId || 0
+  );
   const createRecommendation = useCreateAdmissionRecommendation();
 
   const eligibleEncounters = useMemo(
-    () => (patientEncounters ?? []).filter((encounter) => RECOMMENDATION_ELIGIBLE_ENCOUNTER_TYPES.has(encounter.encounter_type)),
+    () =>
+      (patientEncounters ?? []).filter((encounter) =>
+        RECOMMENDATION_ELIGIBLE_ENCOUNTER_TYPES.has(encounter.encounter_type)
+      ),
     [patientEncounters]
   );
   const selectedEncounter = useMemo(
@@ -96,7 +116,9 @@ export default function NewAdmissionRecommendationPage() {
     if (selectedEncounterId == null || eligibleEncounters.length === 0) {
       return;
     }
-    const stillAvailable = eligibleEncounters.some((encounter) => encounter.id === selectedEncounterId);
+    const stillAvailable = eligibleEncounters.some(
+      (encounter) => encounter.id === selectedEncounterId
+    );
     if (!stillAvailable) {
       setSelectedEncounterId(null);
     }
@@ -130,7 +152,10 @@ export default function NewAdmissionRecommendationPage() {
     return options;
   }, [hasModule]);
 
-  const preferredWardValues = useMemo(() => new Set(preferredWardOptions.map((option) => option.value)), [preferredWardOptions]);
+  const preferredWardValues = useMemo(
+    () => new Set(preferredWardOptions.map((option) => option.value)),
+    [preferredWardOptions]
+  );
 
   useEffect(() => {
     if (!preferredWardValues.has(preferredWardType)) {
@@ -151,8 +176,14 @@ export default function NewAdmissionRecommendationPage() {
         encounter: selectedEncounterId,
         recommended_by: user.id,
         reason,
-        provisional_diagnosis: provisionalDiagnosis.icd11Code || provisionalDiagnosis.icd10Display?.split(' - ')[0] || '',
-        provisional_diagnosis_text: provisionalDiagnosis.icd11Display?.split(' - ').slice(1).join(' - ') || provisionalDiagnosis.icd10Display?.split(' - ').slice(1).join(' - ') || '',
+        provisional_diagnosis:
+          provisionalDiagnosis.icd11Code ||
+          provisionalDiagnosis.icd10Display?.split(' - ')[0] ||
+          '',
+        provisional_diagnosis_text:
+          provisionalDiagnosis.icd11Display?.split(' - ').slice(1).join(' - ') ||
+          provisionalDiagnosis.icd10Display?.split(' - ').slice(1).join(' - ') ||
+          '',
         urgency,
         preferred_ward_type: preferredWardType,
       });
@@ -176,7 +207,7 @@ export default function NewAdmissionRecommendationPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="Recommend for Admission"
         helpContent="Create an admission recommendation linked to a specific OPD or Emergency encounter."
@@ -220,7 +251,8 @@ export default function NewAdmissionRecommendationPage() {
               <SelectContent>
                 {eligibleEncounters.map((encounter) => (
                   <SelectItem key={encounter.id} value={String(encounter.id)}>
-                    #{encounter.id} • {encounter.encounter_date} • {encounter.chief_complaint || 'No chief complaint'}
+                    #{encounter.id} • {encounter.encounter_date} •{' '}
+                    {encounter.chief_complaint || 'No chief complaint'}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -251,7 +283,10 @@ export default function NewAdmissionRecommendationPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Urgency</Label>
-              <Select value={urgency} onValueChange={(v) => setUrgency(v as 'ROUTINE' | 'URGENT' | 'EMERGENCY')}>
+              <Select
+                value={urgency}
+                onValueChange={(v) => setUrgency(v as 'ROUTINE' | 'URGENT' | 'EMERGENCY')}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -267,7 +302,19 @@ export default function NewAdmissionRecommendationPage() {
               <Label>Preferred Ward Type</Label>
               <Select
                 value={preferredWardType}
-                onValueChange={(v) => setPreferredWardType(v as 'MEDICAL' | 'SURGICAL' | 'PEDIATRIC' | 'MATERNITY' | 'HDU' | 'ICU' | 'NBU' | 'ISOLATION')}
+                onValueChange={(v) =>
+                  setPreferredWardType(
+                    v as
+                      | 'MEDICAL'
+                      | 'SURGICAL'
+                      | 'PEDIATRIC'
+                      | 'MATERNITY'
+                      | 'HDU'
+                      | 'ICU'
+                      | 'NBU'
+                      | 'ISOLATION'
+                  )
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -292,11 +339,8 @@ export default function NewAdmissionRecommendationPage() {
           )}
 
           <div className="flex items-center gap-2">
-            <Button
-              disabled={!canSubmit || createRecommendation.isPending}
-              onClick={handleSubmit}
-            >
-              <Save className="h-4 w-4 mr-2" />
+            <Button disabled={!canSubmit || createRecommendation.isPending} onClick={handleSubmit}>
+              <Save className="mr-2 h-4 w-4" />
               {createRecommendation.isPending ? 'Submitting...' : 'Submit Recommendation'}
             </Button>
           </div>

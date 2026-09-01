@@ -2,11 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Loader2,
-  BarChart3,
-  FileDown,
-} from 'lucide-react';
+import { Loader2, BarChart3, FileDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,8 +34,7 @@ export default function ETIMSDailyReportsPage() {
   });
 
   const generateMutation = useMutation({
-    mutationFn: () =>
-      inventoryApi.generateETIMSDailyReport({ report_type: generateType }),
+    mutationFn: () => inventoryApi.generateETIMSDailyReport({ report_type: generateType }),
     onSuccess: (report) => {
       queryClient.invalidateQueries({ queryKey: ['etims-daily-reports'] });
       toast({
@@ -96,9 +91,7 @@ export default function ETIMSDailyReportsPage() {
       sortable: true,
       sortType: 'number' as const,
       cell: (r: ETIMSDailyReport) => (
-        <span className="font-mono">
-          KES {Number(r.total_ns_amount).toLocaleString()}
-        </span>
+        <span className="font-mono">KES {Number(r.total_ns_amount).toLocaleString()}</span>
       ),
     },
     {
@@ -139,10 +132,7 @@ export default function ETIMSDailyReportsPage() {
           helpContent="Generate KRA-compliant X (interim) and Z (end-of-day) daily reports. Z reports summarize the full day's transactions. X reports summarize since the last Z report."
           actions={
             <div className="flex items-center gap-2">
-              <Select
-                value={generateType}
-                onValueChange={(v) => setGenerateType(v as 'X' | 'Z')}
-              >
+              <Select value={generateType} onValueChange={(v) => setGenerateType(v as 'X' | 'Z')}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -169,9 +159,12 @@ export default function ETIMSDailyReportsPage() {
 
         {/* Summary Stats */}
         {reports.length > 0 && (
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
               <CardContent className="relative p-3 sm:p-4">
                 <p className="text-xs text-muted-foreground">Total Z Reports</p>
                 <p className="text-lg font-bold">
@@ -180,7 +173,10 @@ export default function ETIMSDailyReportsPage() {
               </CardContent>
             </Card>
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
               <CardContent className="relative p-3 sm:p-4">
                 <p className="text-xs text-muted-foreground">Total X Reports</p>
                 <p className="text-lg font-bold">
@@ -189,23 +185,25 @@ export default function ETIMSDailyReportsPage() {
               </CardContent>
             </Card>
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
               <CardContent className="relative p-3 sm:p-4">
                 <p className="text-xs text-muted-foreground">Latest Sales</p>
-                <p className="text-lg font-bold font-mono">
-                  {reports[0]
-                    ? `KES ${Number(reports[0].total_ns_amount).toLocaleString()}`
-                    : '—'}
+                <p className="font-mono text-lg font-bold">
+                  {reports[0] ? `KES ${Number(reports[0].total_ns_amount).toLocaleString()}` : '—'}
                 </p>
               </CardContent>
             </Card>
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
               <CardContent className="relative p-3 sm:p-4">
                 <p className="text-xs text-muted-foreground">Incomplete</p>
-                <p className="text-lg font-bold">
-                  {reports[0]?.incomplete_sales_count ?? 0}
-                </p>
+                <p className="text-lg font-bold">{reports[0]?.incomplete_sales_count ?? 0}</p>
               </CardContent>
             </Card>
           </div>

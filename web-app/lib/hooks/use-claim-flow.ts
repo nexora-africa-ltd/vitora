@@ -56,7 +56,14 @@ export interface ClaimFlowInfo {
 
 type BaseFlowRules = Omit<
   ClaimFlowInfo,
-  'flow' | 'isFlowResolved' | 'paymentMechanism' | 'isPerDiem' | 'isFFS' | 'isElectivePreauth' | 'preauthType' | 'interventionRequiresPreauth'
+  | 'flow'
+  | 'isFlowResolved'
+  | 'paymentMechanism'
+  | 'isPerDiem'
+  | 'isFFS'
+  | 'isElectivePreauth'
+  | 'preauthType'
+  | 'interventionRequiresPreauth'
 >;
 
 const FLOW_RULES: Record<ClaimFlow, BaseFlowRules> = {
@@ -117,9 +124,10 @@ function derivePreauthType(intervention: {
  * Parse the claim's `claim_flow` field, defaulting to 'shif' when missing
  * (the safest default — full consent + preauth UX).
  */
-export function resolveClaimFlow(
-  claim: Pick<Claim, 'claim_flow'> | null | undefined,
-): { flow: ClaimFlow; isFlowResolved: boolean } {
+export function resolveClaimFlow(claim: Pick<Claim, 'claim_flow'> | null | undefined): {
+  flow: ClaimFlow;
+  isFlowResolved: boolean;
+} {
   const raw = claim?.claim_flow;
   if (raw === 'shif' || raw === 'phc' || raw === 'eccif') {
     return { flow: raw, isFlowResolved: true };
@@ -128,16 +136,15 @@ export function resolveClaimFlow(
 }
 
 export function useClaimFlow(
-  claim: Pick<Claim, 'claim_flow' | 'claim_interventions'> | null | undefined,
+  claim: Pick<Claim, 'claim_flow' | 'claim_interventions'> | null | undefined
 ): ClaimFlowInfo {
   return useMemo(() => {
     const { flow, isFlowResolved } = resolveClaimFlow(claim);
     const rules = FLOW_RULES[flow];
 
     // Derive per-intervention routing from the primary active intervention
-    const activeInterventions = claim?.claim_interventions?.filter(
-      (i) => i.status === 'active'
-    ) ?? [];
+    const activeInterventions =
+      claim?.claim_interventions?.filter((i) => i.status === 'active') ?? [];
     const primary = activeInterventions[0];
 
     const paymentMechanism = (primary?.payment_mechanism as PaymentMechanism) || null;
@@ -152,9 +159,8 @@ export function useClaimFlow(
       isFlowResolved,
       ...rules,
       // Override requiresPreauth based on actual intervention flags when available
-      requiresPreauth: activeInterventions.length > 0
-        ? interventionRequiresPreauth
-        : rules.requiresPreauth,
+      requiresPreauth:
+        activeInterventions.length > 0 ? interventionRequiresPreauth : rules.requiresPreauth,
       paymentMechanism,
       isPerDiem,
       isFFS,

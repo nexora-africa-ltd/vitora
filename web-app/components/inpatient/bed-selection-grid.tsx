@@ -9,7 +9,12 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { cn } from '@/lib/utils/cn';
 import type { Bed, CompatibilityCheckResult } from '@/lib/types/inpatient';
 
-export type BedCompatibilityStatus = 'compatible' | 'warning' | 'incompatible' | 'unavailable' | 'unknown';
+export type BedCompatibilityStatus =
+  | 'compatible'
+  | 'warning'
+  | 'incompatible'
+  | 'unavailable'
+  | 'unknown';
 
 export interface BedWithCompatibility extends Bed {
   compatibilityStatus?: BedCompatibilityStatus;
@@ -31,33 +36,34 @@ interface BedSelectionGridProps {
   isGeneratingBeds?: boolean;
 }
 
-const STATUS_STYLES: Record<BedCompatibilityStatus, { bg: string; border: string; icon: string }> = {
-  compatible: {
-    bg: 'bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-900/30',
-    border: 'border-green-300 dark:border-green-700',
-    icon: 'text-green-600 dark:text-green-400',
-  },
-  warning: {
-    bg: 'bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/30 dark:hover:bg-yellow-900/30',
-    border: 'border-yellow-300 dark:border-yellow-700',
-    icon: 'text-yellow-600 dark:text-yellow-400',
-  },
-  incompatible: {
-    bg: 'bg-red-50 dark:bg-red-950/30',
-    border: 'border-red-300 dark:border-red-700',
-    icon: 'text-red-600 dark:text-red-400',
-  },
-  unavailable: {
-    bg: 'bg-muted',
-    border: 'border-muted-foreground/20',
-    icon: 'text-muted-foreground',
-  },
-  unknown: {
-    bg: 'hover:bg-accent',
-    border: 'border-border',
-    icon: 'text-muted-foreground',
-  },
-};
+const STATUS_STYLES: Record<BedCompatibilityStatus, { bg: string; border: string; icon: string }> =
+  {
+    compatible: {
+      bg: 'bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-900/30',
+      border: 'border-green-300 dark:border-green-700',
+      icon: 'text-green-600 dark:text-green-400',
+    },
+    warning: {
+      bg: 'bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/30 dark:hover:bg-yellow-900/30',
+      border: 'border-yellow-300 dark:border-yellow-700',
+      icon: 'text-yellow-600 dark:text-yellow-400',
+    },
+    incompatible: {
+      bg: 'bg-red-50 dark:bg-red-950/30',
+      border: 'border-red-300 dark:border-red-700',
+      icon: 'text-red-600 dark:text-red-400',
+    },
+    unavailable: {
+      bg: 'bg-muted',
+      border: 'border-muted-foreground/20',
+      icon: 'text-muted-foreground',
+    },
+    unknown: {
+      bg: 'hover:bg-accent',
+      border: 'border-border',
+      icon: 'text-muted-foreground',
+    },
+  };
 
 function BedCard({
   bed,
@@ -71,7 +77,7 @@ function BedCard({
   disabled?: boolean;
 }) {
   const isAvailable = bed.status === 'AVAILABLE';
-  const compatStatus = !isAvailable ? 'unavailable' : (bed.compatibilityStatus || 'unknown');
+  const compatStatus = !isAvailable ? 'unavailable' : bed.compatibilityStatus || 'unknown';
   const styles = STATUS_STYLES[compatStatus];
   const canSelect = isAvailable && compatStatus !== 'incompatible' && !disabled;
 
@@ -81,7 +87,7 @@ function BedCard({
       onClick={canSelect ? onSelect : undefined}
       disabled={!canSelect}
       className={cn(
-        'relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all',
+        'relative flex flex-col items-center justify-center rounded-lg border-2 p-3 transition-all',
         'min-h-[80px] sm:min-h-[90px]',
         styles.bg,
         styles.border,
@@ -92,40 +98,35 @@ function BedCard({
       aria-label={`Bed ${bed.bed_number} - ${bed.status_display || bed.status}${bed.compatibilityMessage ? ` - ${bed.compatibilityMessage}` : ''}`}
     >
       {/* Compatibility indicator */}
-      <div className="absolute top-1 right-1">
-        {compatStatus === 'compatible' && (
-          <Check className={cn('h-3.5 w-3.5', styles.icon)} />
-        )}
-        {compatStatus === 'warning' && (
-          <AlertTriangle className={cn('h-3.5 w-3.5', styles.icon)} />
-        )}
-        {compatStatus === 'incompatible' && (
-          <Ban className={cn('h-3.5 w-3.5', styles.icon)} />
-        )}
+      <div className="absolute right-1 top-1">
+        {compatStatus === 'compatible' && <Check className={cn('h-3.5 w-3.5', styles.icon)} />}
+        {compatStatus === 'warning' && <AlertTriangle className={cn('h-3.5 w-3.5', styles.icon)} />}
+        {compatStatus === 'incompatible' && <Ban className={cn('h-3.5 w-3.5', styles.icon)} />}
       </div>
 
-      <BedIcon className={cn('h-5 w-5 mb-1', styles.icon)} />
+      <BedIcon className={cn('mb-1 h-5 w-5', styles.icon)} />
       <span className="text-sm font-medium">{bed.bed_number}</span>
       <Badge
         variant={bed.status === 'AVAILABLE' ? 'secondary' : 'outline'}
-        className="text-xs mt-1 shrink-0 w-fit"
+        className="mt-1 w-fit shrink-0 text-xs"
       >
         {bed.status_display || bed.status}
       </Badge>
 
       {/* Show tooltip on hover for warning/incompatible */}
-      {bed.compatibilityMessage && (compatStatus === 'warning' || compatStatus === 'incompatible') && (
-        <span className="sr-only">{bed.compatibilityMessage}</span>
-      )}
+      {bed.compatibilityMessage &&
+        (compatStatus === 'warning' || compatStatus === 'incompatible') && (
+          <span className="sr-only">{bed.compatibilityMessage}</span>
+        )}
     </button>
   );
 }
 
 function BedCardSkeleton() {
   return (
-    <div className="flex flex-col items-center justify-center p-3 rounded-lg border min-h-[80px] sm:min-h-[90px]">
-      <Skeleton className="h-5 w-5 mb-1" />
-      <Skeleton className="h-4 w-12 mb-1" />
+    <div className="flex min-h-[80px] flex-col items-center justify-center rounded-lg border p-3 sm:min-h-[90px]">
+      <Skeleton className="mb-1 h-5 w-5" />
+      <Skeleton className="mb-1 h-4 w-12" />
       <Skeleton className="h-5 w-16" />
     </div>
   );
@@ -158,9 +159,7 @@ export function BedSelectionGrid({
         return {
           ...bed,
           compatibilityStatus: hasCritical ? 'incompatible' : 'warning',
-          compatibilityMessage: compatibilityResult.violations
-            .map((v) => v.message)
-            .join('; '),
+          compatibilityMessage: compatibilityResult.violations.map((v) => v.message).join('; '),
         } as BedWithCompatibility;
       }
 
@@ -175,7 +174,7 @@ export function BedSelectionGrid({
           <span className="text-sm font-medium">Select Bed</span>
           <HelpPopover content="Select an available bed for admission. Beds are color-coded by compatibility with the patient." />
         </div>
-        <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-6">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
           {[...Array(6)].map((_, i) => (
             <BedCardSkeleton key={i} />
           ))}
@@ -190,11 +189,11 @@ export function BedSelectionGrid({
 
     return (
       <div className="py-6 text-center text-muted-foreground">
-        <BedIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <BedIcon className="mx-auto mb-2 h-8 w-8 opacity-50" />
         <p className="text-sm">No beds configured for this ward</p>
         {canGenerateBeds ? (
           <>
-            <p className="text-xs text-muted-foreground/60 mt-1 mb-3">
+            <p className="mb-3 mt-1 text-xs text-muted-foreground/60">
               Ward has capacity for {wardCapacity} beds. Generate bed records to continue.
             </p>
             <Button
@@ -203,12 +202,12 @@ export function BedSelectionGrid({
               onClick={onGenerateBeds}
               disabled={isGeneratingBeds}
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               {isGeneratingBeds ? 'Generating...' : `Generate ${wardCapacity} Beds`}
             </Button>
           </>
         ) : (
-          <p className="text-xs text-muted-foreground/60 mt-1">
+          <p className="mt-1 text-xs text-muted-foreground/60">
             Contact admin to add beds to this ward
           </p>
         )}
@@ -239,25 +238,25 @@ export function BedSelectionGrid({
       {/* Legend */}
       <div className="flex flex-wrap gap-2 text-xs">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border-2 border-green-300 bg-green-50" />
+          <div className="h-3 w-3 rounded border-2 border-green-300 bg-green-50" />
           <span>Compatible</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border-2 border-yellow-300 bg-yellow-50" />
+          <div className="h-3 w-3 rounded border-2 border-yellow-300 bg-yellow-50" />
           <span>Warning</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border-2 border-red-300 bg-red-50" />
+          <div className="h-3 w-3 rounded border-2 border-red-300 bg-red-50" />
           <span>Incompatible</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border-2 border-muted bg-muted" />
+          <div className="h-3 w-3 rounded border-2 border-muted bg-muted" />
           <span>Unavailable</span>
         </div>
       </div>
 
       {/* Bed Grid */}
-      <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-6">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
         {enrichedBeds.map((bed) => (
           <BedCard
             key={bed.id}

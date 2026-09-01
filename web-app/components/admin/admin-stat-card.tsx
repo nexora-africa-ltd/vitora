@@ -60,11 +60,7 @@ export function AdminStatCard({
                 {meta}
               </Badge>
             ) : null}
-            {icon ? (
-              <div className={cn('rounded-xl p-2', iconClassName[tone])}>
-                {icon}
-              </div>
-            ) : null}
+            {icon ? <div className={cn('rounded-xl p-2', iconClassName[tone])}>{icon}</div> : null}
           </div>
         </div>
       </CardHeader>

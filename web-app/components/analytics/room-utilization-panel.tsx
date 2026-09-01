@@ -51,7 +51,7 @@ export function RoomUtilizationPanel({ date }: RoomUtilizationPanelProps) {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatsCard
           title="Average Utilization"
           value={summaryLoading ? '—' : `${summary?.avg_utilization_rate ?? 0}%`}
@@ -63,7 +63,7 @@ export function RoomUtilizationPanel({ date }: RoomUtilizationPanelProps) {
         />
         <StatsCard
           title="Active Rooms"
-          value={summaryLoading ? '—' : summary?.active_rooms ?? 0}
+          value={summaryLoading ? '—' : (summary?.active_rooms ?? 0)}
           meta={summaryLoading ? undefined : `${summary?.staffed_rooms ?? 0} staffed today`}
           description="Rooms with an active clinician right now"
           icon={DoorOpen}
@@ -82,7 +82,7 @@ export function RoomUtilizationPanel({ date }: RoomUtilizationPanelProps) {
         />
         <StatsCard
           title="Completed Visits"
-          value={summaryLoading ? '—' : summary?.total_visits_completed ?? 0}
+          value={summaryLoading ? '—' : (summary?.total_visits_completed ?? 0)}
           meta={summaryLoading ? undefined : `${summary?.idle_rooms ?? 0} idle rooms`}
           description="Visits completed across tracked rooms"
           icon={UsersRound}
@@ -110,8 +110,12 @@ export function RoomUtilizationPanel({ date }: RoomUtilizationPanelProps) {
                   sortable: true,
                   cell: (room) => (
                     <div className="min-w-0">
-                      <div className="truncate font-medium">{room.room_name ?? `Room ${room.room_id}`}</div>
-                      <div className="truncate text-xs text-muted-foreground">{room.clinic_name ?? 'Unassigned clinic'}</div>
+                      <div className="truncate font-medium">
+                        {room.room_name ?? `Room ${room.room_id}`}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {room.clinic_name ?? 'Unassigned clinic'}
+                      </div>
                     </div>
                   ),
                 },
@@ -169,8 +173,12 @@ export function RoomUtilizationPanel({ date }: RoomUtilizationPanelProps) {
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="truncate font-medium">{room.room_name ?? `Room ${room.room_id}`}</div>
-                          <div className="truncate text-xs text-muted-foreground">{room.clinic_name ?? 'Unassigned clinic'}</div>
+                          <div className="truncate font-medium">
+                            {room.room_name ?? `Room ${room.room_id}`}
+                          </div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {room.clinic_name ?? 'Unassigned clinic'}
+                          </div>
                         </div>
                         <span className={`text-xs font-medium ${status.tone}`}>{status.label}</span>
                       </div>
@@ -186,7 +194,9 @@ export function RoomUtilizationPanel({ date }: RoomUtilizationPanelProps) {
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground">Avg Wait</div>
-                          <div className="font-medium">{formatMinutes(room.avg_wait_to_room_minutes)}</div>
+                          <div className="font-medium">
+                            {formatMinutes(room.avg_wait_to_room_minutes)}
+                          </div>
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground">Clinicians</div>
@@ -221,12 +231,18 @@ export function RoomUtilizationPanel({ date }: RoomUtilizationPanelProps) {
                 <div key={`${room.room_id}-${room.stat_date}`} className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="truncate font-medium">{room.room_name ?? `Room ${room.room_id}`}</div>
-                      <div className="truncate text-xs text-muted-foreground">{room.clinic_name ?? 'Unassigned clinic'}</div>
+                      <div className="truncate font-medium">
+                        {room.room_name ?? `Room ${room.room_id}`}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {room.clinic_name ?? 'Unassigned clinic'}
+                      </div>
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="font-semibold">{room.utilization_rate}%</div>
-                      <div className="text-xs text-muted-foreground">{room.visits_completed} visits</div>
+                      <div className="text-xs text-muted-foreground">
+                        {room.visits_completed} visits
+                      </div>
                     </div>
                   </div>
                   <Progress value={room.utilization_rate} className="h-2.5" />

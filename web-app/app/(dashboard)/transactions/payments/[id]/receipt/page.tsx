@@ -33,7 +33,7 @@ import { PageHeader } from '@/components/shared/page-header';
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto px-1">
+    <div className="mx-auto max-w-2xl space-y-4 px-1 sm:space-y-6">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-[400px] w-full" />
     </div>
@@ -56,7 +56,7 @@ export default function ReceiptPage() {
 
   if (error || !receipt) {
     return (
-      <div className="max-w-2xl mx-auto px-1">
+      <div className="mx-auto max-w-2xl px-1">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -74,13 +74,19 @@ export default function ReceiptPage() {
     { label: 'Amount', value: formatCurrency(parseFloat(receipt.amount)) },
     { label: 'Payment Method', value: receipt.payment_method },
     { label: 'Date', value: format(new Date(receipt.receipt_date), 'PPP p') },
-    { label: 'Served By', value: receipt.received_by_username || receipt.issued_by_username || 'N/A' },
-    { label: 'Till/Point', value: receipt.payment_point_name || receipt.payment_point_code || 'N/A' },
+    {
+      label: 'Served By',
+      value: receipt.received_by_username || receipt.issued_by_username || 'N/A',
+    },
+    {
+      label: 'Till/Point',
+      value: receipt.payment_point_name || receipt.payment_point_code || 'N/A',
+    },
   ];
 
   return (
     <ScrollArea className="h-[calc(100vh-4rem)]">
-      <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto print:max-w-full p-1">
+      <div className="mx-auto max-w-2xl space-y-4 p-1 sm:space-y-6 print:max-w-full">
         {/* Header - Hidden when printing */}
         <div className="print:hidden">
           <PageHeader
@@ -102,136 +108,128 @@ export default function ReceiptPage() {
           />
         </div>
 
-      {/* Receipt Card */}
-      <Card className="print:shadow-none print:border-none">
-        <CardContent className="p-4 sm:p-8">
-          {/* Voided Banner */}
-          {receipt.is_voided && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                This receipt has been voided
-                {receipt.void_reason && `: ${receipt.void_reason}`}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Facility Header */}
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Building2 className="h-6 w-6 text-primary" />
-              <h2 className="text-xl font-bold">{receipt.facility_name}</h2>
-            </div>
-            {receipt.facility_address && (
-              <p className="text-sm text-muted-foreground">
-                {receipt.facility_address}
-              </p>
+        {/* Receipt Card */}
+        <Card className="print:border-none print:shadow-none">
+          <CardContent className="p-4 sm:p-8">
+            {/* Voided Banner */}
+            {receipt.is_voided && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This receipt has been voided
+                  {receipt.void_reason && `: ${receipt.void_reason}`}
+                </AlertDescription>
+              </Alert>
             )}
-            {receipt.facility_phone && (
-              <p className="text-sm text-muted-foreground">
-                Tel: {receipt.facility_phone}
-              </p>
-            )}
-          </div>
 
-          <Separator className="my-6" />
-
-          {/* Receipt Title */}
-          <div className="text-center mb-6">
-            <h3 className="text-lg font-semibold uppercase tracking-wider">
-              Official Receipt
-            </h3>
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <span className="font-mono text-lg">{receipt.receipt_number}</span>
-            </div>
-          </div>
-
-          {/* Receipt Details */}
-          <div className="space-y-4 mb-8">
-            {/* Date */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-muted-foreground">Date:</span>
-              <span className="font-medium">
-                {format(new Date(receipt.receipt_date), 'PPP p')}
-              </span>
-            </div>
-
-            {/* Patient */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <User className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-muted-foreground">Received from:</span>
-              <span className="font-medium">{receipt.patient_name}</span>
-              {receipt.patient_mrn && (
-                <Badge variant="outline" className="shrink-0">
-                  {receipt.patient_mrn}
-                </Badge>
+            {/* Facility Header */}
+            <div className="mb-8 text-center">
+              <div className="mb-2 flex items-center justify-center gap-2">
+                <Building2 className="h-6 w-6 text-primary" />
+                <h2 className="text-xl font-bold">{receipt.facility_name}</h2>
+              </div>
+              {receipt.facility_address && (
+                <p className="text-sm text-muted-foreground">{receipt.facility_address}</p>
+              )}
+              {receipt.facility_phone && (
+                <p className="text-sm text-muted-foreground">Tel: {receipt.facility_phone}</p>
               )}
             </div>
 
-            {/* Payment Method */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-muted-foreground">Payment Method:</span>
-              <Badge className="shrink-0">{receipt.payment_method}</Badge>
+            <Separator className="my-6" />
+
+            {/* Receipt Title */}
+            <div className="mb-6 text-center">
+              <h3 className="text-lg font-semibold uppercase tracking-wider">Official Receipt</h3>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="font-mono text-lg">{receipt.receipt_number}</span>
+              </div>
             </div>
 
-            {/* Served By */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-muted-foreground">Served By:</span>
-              <span className="font-medium">
-                {receipt.received_by_username || receipt.issued_by_username || 'N/A'}
-              </span>
-            </div>
-
-            {/* Till/Payment Point */}
-            {(receipt.payment_point_name || receipt.payment_point_code) && (
+            {/* Receipt Details */}
+            <div className="mb-8 space-y-4">
+              {/* Date */}
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <Hash className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-muted-foreground">Till/Point:</span>
+                <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Date:</span>
                 <span className="font-medium">
-                  {receipt.payment_point_name || receipt.payment_point_code}
+                  {format(new Date(receipt.receipt_date), 'PPP p')}
                 </span>
               </div>
-            )}
-          </div>
 
-          <Separator className="my-4 sm:my-6" />
+              {/* Patient */}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Received from:</span>
+                <span className="font-medium">{receipt.patient_name}</span>
+                {receipt.patient_mrn && (
+                  <Badge variant="outline" className="shrink-0">
+                    {receipt.patient_mrn}
+                  </Badge>
+                )}
+              </div>
 
-          {/* Amount Section */}
-          <div className="bg-muted/50 rounded-lg p-4 sm:p-6 text-center">
-            <div className="text-sm text-muted-foreground mb-2">Amount Received</div>
-            <div className="text-2xl sm:text-3xl font-bold text-primary">
-              {formatCurrency(parseFloat(receipt.amount))}
+              {/* Payment Method */}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Payment Method:</span>
+                <Badge className="shrink-0">{receipt.payment_method}</Badge>
+              </div>
+
+              {/* Served By */}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <UserCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">Served By:</span>
+                <span className="font-medium">
+                  {receipt.received_by_username || receipt.issued_by_username || 'N/A'}
+                </span>
+              </div>
+
+              {/* Till/Payment Point */}
+              {(receipt.payment_point_name || receipt.payment_point_code) && (
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <Hash className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="text-muted-foreground">Till/Point:</span>
+                  <span className="font-medium">
+                    {receipt.payment_point_name || receipt.payment_point_code}
+                  </span>
+                </div>
+              )}
             </div>
-            <div className="text-sm text-muted-foreground mt-2 italic">
-              {receipt.amount_in_words}
+
+            <Separator className="my-4 sm:my-6" />
+
+            {/* Amount Section */}
+            <div className="rounded-lg bg-muted/50 p-4 text-center sm:p-6">
+              <div className="mb-2 text-sm text-muted-foreground">Amount Received</div>
+              <div className="text-2xl font-bold text-primary sm:text-3xl">
+                {formatCurrency(parseFloat(receipt.amount))}
+              </div>
+              <div className="mt-2 text-sm italic text-muted-foreground">
+                {receipt.amount_in_words}
+              </div>
             </div>
-          </div>
 
-          <Separator className="my-4 sm:my-6" />
+            <Separator className="my-4 sm:my-6" />
 
-          {/* Confirmation */}
-          <div className="flex items-center justify-center gap-2 text-green-600">
-            <CheckCircle2 className="h-5 w-5" />
-            <span className="font-medium">Payment Confirmed</span>
-          </div>
+            {/* Confirmation */}
+            <div className="flex items-center justify-center gap-2 text-green-600">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="font-medium">Payment Confirmed</span>
+            </div>
 
-          {/* Footer */}
-          <div className="mt-6 sm:mt-8 pt-4 border-t text-center text-xs text-muted-foreground">
-            <p>Thank you for your payment.</p>
-            <p className="mt-1">This is a computer-generated receipt.</p>
-            {receipt.created_at && (
-              <p className="mt-1">
-                Generated: {format(new Date(receipt.created_at), 'PPP p')}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            {/* Footer */}
+            <div className="mt-6 border-t pt-4 text-center text-xs text-muted-foreground sm:mt-8">
+              <p>Thank you for your payment.</p>
+              <p className="mt-1">This is a computer-generated receipt.</p>
+              {receipt.created_at && (
+                <p className="mt-1">Generated: {format(new Date(receipt.created_at), 'PPP p')}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </ScrollArea>
   );
 }

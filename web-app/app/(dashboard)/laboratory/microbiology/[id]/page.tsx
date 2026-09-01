@@ -2,15 +2,36 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, FlaskConical, Clock, Bug, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Plus,
+  FlaskConical,
+  Clock,
+  Bug,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { PageHeader } from '@/components/shared/page-header';
 import {
   useCulture,
@@ -70,7 +91,10 @@ export default function CultureDetailPage() {
 
   const handleIncubate = async () => {
     try {
-      await incubate.mutateAsync({ id: cultureId, data: { temperature: 37, atmosphere: 'AEROBIC', hours: 48 } });
+      await incubate.mutateAsync({
+        id: cultureId,
+        data: { temperature: 37, atmosphere: 'AEROBIC', hours: 48 },
+      });
       toast.success('Culture moved to incubation');
     } catch {
       toast.error('Failed to incubate');
@@ -119,11 +143,19 @@ export default function CultureDetailPage() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading culture...</div>;
+    return (
+      <div className="flex h-64 items-center justify-center text-muted-foreground">
+        Loading culture...
+      </div>
+    );
   }
 
   if (!culture) {
-    return <div className="flex items-center justify-center h-64 text-muted-foreground">Culture not found</div>;
+    return (
+      <div className="flex h-64 items-center justify-center text-muted-foreground">
+        Culture not found
+      </div>
+    );
   }
 
   const canIncubate = culture.status === 'INOCULATED';
@@ -141,19 +173,22 @@ export default function CultureDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {culture.patient_name || 'Unknown Patient'}
             {culture.lab_order_number && (
               <span className="text-muted-foreground"> &bull; {culture.lab_order_number}</span>
             )}
           </p>
           <p className="text-xs text-muted-foreground">
-            {culture.organism_name || 'Organism pending'} &bull; {culture.culture_medium || 'No medium specified'}
+            {culture.organism_name || 'Organism pending'} &bull;{' '}
+            {culture.culture_medium || 'No medium specified'}
           </p>
         </div>
-        <Badge className={`${STATUS_COLORS[culture.status]} shrink-0 w-fit self-start sm:self-auto`}>
+        <Badge
+          className={`${STATUS_COLORS[culture.status]} w-fit shrink-0 self-start sm:self-auto`}
+        >
           {culture.status_display}
         </Badge>
       </div>
@@ -162,34 +197,45 @@ export default function CultureDetailPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         {canIncubate && (
           <Button onClick={handleIncubate} disabled={incubate.isPending} size="sm">
-            <Clock className="h-4 w-4 mr-1" />
+            <Clock className="mr-1 h-4 w-4" />
             Start Incubation
           </Button>
         )}
         {canNoGrowth && (
-          <Button variant="outline" onClick={handleNoGrowth} disabled={markNoGrowth.isPending} size="sm">
-            <XCircle className="h-4 w-4 mr-1" />
+          <Button
+            variant="outline"
+            onClick={handleNoGrowth}
+            disabled={markNoGrowth.isPending}
+            size="sm"
+          >
+            <XCircle className="mr-1 h-4 w-4" />
             No Growth
           </Button>
         )}
         {canAddSensitivity && (
           <Button variant="outline" onClick={() => setShowSensitivityDialog(true)} size="sm">
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="mr-1 h-4 w-4" />
             Add Sensitivity
           </Button>
         )}
         {canCancel && (
-          <Button variant="ghost" onClick={handleCancel} disabled={cancelCulture.isPending} size="sm" className="text-destructive">
+          <Button
+            variant="ghost"
+            onClick={handleCancel}
+            disabled={cancelCulture.isPending}
+            size="sm"
+            className="text-destructive"
+          >
             Cancel Culture
           </Button>
         )}
       </div>
 
       {/* Culture Details */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <FlaskConical className="h-4 w-4" />
               Culture Details
             </CardTitle>
@@ -228,7 +274,7 @@ export default function CultureDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Bug className="h-4 w-4" />
               Identification
             </CardTitle>
@@ -271,18 +317,26 @@ export default function CultureDetailPage() {
           <CardContent className="space-y-3 text-sm">
             {culture.preliminary_report && (
               <div>
-                <p className="text-muted-foreground flex items-center gap-1">
+                <p className="flex items-center gap-1 text-muted-foreground">
                   <AlertCircle className="h-3 w-3" />
-                  Preliminary ({culture.preliminary_reported_at ? new Date(culture.preliminary_reported_at).toLocaleString() : ''})
+                  Preliminary (
+                  {culture.preliminary_reported_at
+                    ? new Date(culture.preliminary_reported_at).toLocaleString()
+                    : ''}
+                  )
                 </p>
                 <p className="mt-1">{culture.preliminary_report}</p>
               </div>
             )}
             {culture.final_report && (
               <div>
-                <p className="text-muted-foreground flex items-center gap-1">
+                <p className="flex items-center gap-1 text-muted-foreground">
                   <CheckCircle2 className="h-3 w-3" />
-                  Final ({culture.final_reported_at ? new Date(culture.final_reported_at).toLocaleString() : ''})
+                  Final (
+                  {culture.final_reported_at
+                    ? new Date(culture.final_reported_at).toLocaleString()
+                    : ''}
+                  )
                 </p>
                 <p className="mt-1">{culture.final_report}</p>
               </div>
@@ -297,32 +351,34 @@ export default function CultureDetailPage() {
           <CardTitle className="text-base">Antibiotic Sensitivities</CardTitle>
           {canAddSensitivity && (
             <Button variant="outline" size="sm" onClick={() => setShowSensitivityDialog(true)}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               Add
             </Button>
           )}
         </CardHeader>
         <CardContent className="px-0 sm:px-6">
           {culture.sensitivities.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
+            <p className="py-4 text-center text-sm text-muted-foreground">
               No sensitivities recorded yet.
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-[400px] w-full text-sm">
+              <table className="w-full min-w-[400px] text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left p-2 font-medium">Antibiotic</th>
-                    <th className="text-center p-2 font-medium">Zone (mm)</th>
-                    <th className="text-center p-2 font-medium">MIC</th>
-                    <th className="text-center p-2 font-medium">Result</th>
-                    <th className="text-left p-2 font-medium">Method</th>
+                    <th className="p-2 text-left font-medium">Antibiotic</th>
+                    <th className="p-2 text-center font-medium">Zone (mm)</th>
+                    <th className="p-2 text-center font-medium">MIC</th>
+                    <th className="p-2 text-center font-medium">Result</th>
+                    <th className="p-2 text-left font-medium">Method</th>
                   </tr>
                 </thead>
                 <tbody>
                   {culture.sensitivities.map((s) => (
                     <tr key={s.id} className="border-b last:border-0">
-                      <td className="p-2">{s.antibiotic_name} ({s.antibiotic_code})</td>
+                      <td className="p-2">
+                        {s.antibiotic_name} ({s.antibiotic_code})
+                      </td>
                       <td className="p-2 text-center">{s.zone_diameter ?? '—'}</td>
                       <td className="p-2 text-center">{s.mic ?? '—'}</td>
                       <td className="p-2 text-center">
@@ -386,7 +442,10 @@ export default function CultureDetailPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Interpretation</Label>
-                <Select value={interpretation} onValueChange={(v) => setInterpretation(v as SensitivityInterpretation)}>
+                <Select
+                  value={interpretation}
+                  onValueChange={(v) => setInterpretation(v as SensitivityInterpretation)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -415,8 +474,13 @@ export default function CultureDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSensitivityDialog(false)}>Cancel</Button>
-            <Button onClick={handleAddSensitivity} disabled={!selectedAntibiotic || addSensitivity.isPending}>
+            <Button variant="outline" onClick={() => setShowSensitivityDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddSensitivity}
+              disabled={!selectedAntibiotic || addSensitivity.isPending}
+            >
               Add
             </Button>
           </DialogFooter>

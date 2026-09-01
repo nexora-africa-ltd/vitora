@@ -33,17 +33,28 @@ export default function InsuranceAuthorizationsPage() {
       toast({ title: 'Authorization validated' });
       refetch();
     } catch {
-      toast({ title: 'Error', description: 'Failed to validate authorization.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to validate authorization.',
+        variant: 'destructive',
+      });
     }
   };
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <PageHeader title="Visit Authorizations" helpContent="Review and validate HealthCloud visit authorizations." />
+      <PageHeader
+        title="Visit Authorizations"
+        helpContent="Review and validate HealthCloud visit authorizations."
+      />
       <Card>
-        <CardContent className="p-3 flex items-center gap-2">
+        <CardContent className="flex items-center gap-2 p-3">
           <Label className="whitespace-nowrap">Token override</Label>
-          <Input value={authToken} onChange={(e) => setAuthToken(e.target.value)} placeholder="Optional auth token to use on validate" />
+          <Input
+            value={authToken}
+            onChange={(e) => setAuthToken(e.target.value)}
+            placeholder="Optional auth token to use on validate"
+          />
         </CardContent>
       </Card>
       <ResponsiveTable<InsuranceVisitAuthorization>
@@ -54,13 +65,18 @@ export default function InsuranceAuthorizationsPage() {
         columns={[
           { key: 'patient_name', header: 'Patient', cell: (item) => item.patient_name },
           { key: 'member_number', header: 'Member #', cell: (item) => item.member_number },
-          { key: 'authorization_guid', header: 'Authorization GUID', cell: (item) => item.authorization_guid || '-' },
+          {
+            key: 'authorization_guid',
+            header: 'Authorization GUID',
+            cell: (item) => item.authorization_guid || '-',
+          },
           { key: 'status', header: 'Status', cell: (item) => item.status.replace('_', ' ') },
           {
             key: 'actions',
             header: 'Actions',
             cell: (item) => {
-              const canValidate = item.status !== 'validated' && item.workflow_step !== 'authorization_validated';
+              const canValidate =
+                item.status !== 'validated' && item.workflow_step !== 'authorization_validated';
 
               if (!canValidate) {
                 return <span className="text-xs text-muted-foreground">Already validated</span>;

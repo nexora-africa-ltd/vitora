@@ -6,7 +6,14 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { departmentsApi, rolesApi, permissionsApi, staffApi, orgMembershipsApi, auditLogsApi } from '@/lib/api/rbac';
+import {
+  departmentsApi,
+  rolesApi,
+  permissionsApi,
+  staffApi,
+  orgMembershipsApi,
+  auditLogsApi,
+} from '@/lib/api/rbac';
 import type {
   DepartmentCreateData,
   DepartmentUpdateData,
@@ -119,8 +126,7 @@ export function useCreateRole() {
 export function useUpdateRole() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: RoleUpdateData }) =>
-      rolesApi.update(id, data),
+    mutationFn: ({ id, data }: { id: number; data: RoleUpdateData }) => rolesApi.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
       queryClient.invalidateQueries({ queryKey: ['role', id] });

@@ -6,11 +6,7 @@ import { Filter, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -43,7 +39,7 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
 
   const handleEventTypeToggle = (type: TimelineEventType) => {
     const newTypes = filters.eventTypes.includes(type)
-      ? filters.eventTypes.filter(t => t !== type)
+      ? filters.eventTypes.filter((t) => t !== type)
       : [...filters.eventTypes, type];
     onChange({ ...filters, eventTypes: newTypes });
   };
@@ -56,7 +52,7 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
   const handleClearFilters = () => {
     setLocalSearch('');
     onChange({
-      eventTypes: eventTypeOptions.map(o => o.value),
+      eventTypes: eventTypeOptions.map((o) => o.value),
       startDate: undefined,
       endDate: undefined,
       searchQuery: undefined,
@@ -64,9 +60,9 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3">
+    <div className="flex flex-col gap-3 sm:flex-row">
       {/* Search */}
-      <form onSubmit={handleSearchSubmit} className="flex-1 flex gap-2">
+      <form onSubmit={handleSearchSubmit} className="flex flex-1 gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -114,10 +110,10 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
             <div className="space-y-2">
               <Label className="text-sm font-medium">Event Types</Label>
               <div className="grid grid-cols-2 gap-2">
-                {eventTypeOptions.map(option => (
+                {eventTypeOptions.map((option) => (
                   <label
                     key={option.value}
-                    className="flex items-center gap-2 text-sm cursor-pointer"
+                    className="flex cursor-pointer items-center gap-2 text-sm"
                   >
                     <Checkbox
                       checked={filters.eventTypes.includes(option.value)}
@@ -138,7 +134,10 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
                   <DatePicker
                     value={filters.startDate ? parseISO(filters.startDate) : undefined}
                     onChange={(date) =>
-                      onChange({ ...filters, startDate: date ? format(date, 'yyyy-MM-dd') : undefined })
+                      onChange({
+                        ...filters,
+                        startDate: date ? format(date, 'yyyy-MM-dd') : undefined,
+                      })
                     }
                     className="h-8 text-sm"
                     placeholder="Start"
@@ -149,7 +148,10 @@ export function TimelineFilters({ filters, onChange }: TimelineFiltersProps) {
                   <DatePicker
                     value={filters.endDate ? parseISO(filters.endDate) : undefined}
                     onChange={(date) =>
-                      onChange({ ...filters, endDate: date ? format(date, 'yyyy-MM-dd') : undefined })
+                      onChange({
+                        ...filters,
+                        endDate: date ? format(date, 'yyyy-MM-dd') : undefined,
+                      })
                     }
                     className="h-8 text-sm"
                     placeholder="End"

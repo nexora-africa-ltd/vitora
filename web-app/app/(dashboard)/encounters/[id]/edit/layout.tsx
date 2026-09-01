@@ -34,7 +34,10 @@ import type { DiagnosisFormData } from '@/lib/types/encounter-form';
 // Helper: Parse blood pressure string
 // =============================================================================
 
-function parseBP(bp: string | null | undefined): { systolic: number | null; diastolic: number | null } {
+function parseBP(bp: string | null | undefined): {
+  systolic: number | null;
+  diastolic: number | null;
+} {
   if (!bp) return { systolic: null, diastolic: null };
   const parts = bp.split('/');
   if (parts.length !== 2) return { systolic: null, diastolic: null };
@@ -62,7 +65,7 @@ function EditLayoutError({ message }: { message: string }) {
       <div className="mt-4">
         <Button variant="outline" className="w-full sm:w-auto" asChild>
           <Link href={`/encounters/${encounterId}`}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Encounter
           </Link>
         </Button>
@@ -77,18 +80,18 @@ function EditLayoutError({ message }: { message: string }) {
 
 function EditLayoutLoading() {
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex min-h-full flex-col">
       {/* Tab skeleton */}
       <div className="border-b px-4 py-2">
         <div className="flex gap-2 overflow-x-auto">
           {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <Skeleton key={i} className="h-8 w-16 sm:w-20 shrink-0" />
+            <Skeleton key={i} className="h-8 w-16 shrink-0 sm:w-20" />
           ))}
         </div>
       </div>
       <main className="flex-1 p-4 sm:p-6">
-        <Skeleton className="h-6 w-48 sm:h-8 sm:w-64 mb-4" />
-        <Skeleton className="h-48 sm:h-64 w-full" />
+        <Skeleton className="mb-4 h-6 w-48 sm:h-8 sm:w-64" />
+        <Skeleton className="h-48 w-full sm:h-64" />
       </main>
     </div>
   );
@@ -114,11 +117,8 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
     const existingSession = getSession(encounterStoreId);
     if (existingSession) {
       // Sync clinical_template_data if session is stale (was created before template was saved)
-      if (
-        !existingSession.notes.clinical_template_data &&
-        encounter.clinical_template_data
-      ) {
-          setNotes(encounterStoreId, {
+      if (!existingSession.notes.clinical_template_data && encounter.clinical_template_data) {
+        setNotes(encounterStoreId, {
           clinical_template: encounter.clinical_template || null,
           clinical_template_data: encounter.clinical_template_data,
         });
@@ -146,12 +146,20 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
       }
 
       const icd11Display = d.icd11_display
-        ? (d.icd11_code ? `${d.icd11_display} (ICD-11: ${d.icd11_code})` : d.icd11_display)
-        : (d.icd11_code ? `ICD-11: ${d.icd11_code}` : null);
+        ? d.icd11_code
+          ? `${d.icd11_display} (ICD-11: ${d.icd11_code})`
+          : d.icd11_display
+        : d.icd11_code
+          ? `ICD-11: ${d.icd11_code}`
+          : null;
 
       const snomedDisplay = d.snomed_display
-        ? (d.snomed_code ? `${d.snomed_display} (SNOMED: ${d.snomed_code})` : d.snomed_display)
-        : (d.snomed_code ? `SNOMED: ${d.snomed_code}` : null);
+        ? d.snomed_code
+          ? `${d.snomed_display} (SNOMED: ${d.snomed_code})`
+          : d.snomed_display
+        : d.snomed_code
+          ? `SNOMED: ${d.snomed_code}`
+          : null;
 
       return {
         icd10_code: d.icd10_code,
@@ -169,36 +177,49 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
     });
 
     // Initialize session with encounter data
-    initSession(encounterStoreId, encounter.patient, {
-      encounter_type: encounter.encounter_type,
-      encounter_date: encounter.encounter_date,
-      chief_complaint: encounter.chief_complaint || '',
-      status: encounter.status === 'CANCELLED' ? 'CREATED' : encounter.status,
-      // Vitals
-      temperature: encounter.temperature,
-      pulse: encounter.pulse,
-      blood_pressure_systolic: bp.systolic,
-      blood_pressure_diastolic: bp.diastolic,
-      respiratory_rate: encounter.respiratory_rate,
-      spo2: encounter.spo2,
-      weight: encounter.weight,
-      height: encounter.height,
-      // History
-      allergies: encounter.allergies || '',
-      chronic_conditions: encounter.chronic_conditions || '',
-      current_medications: encounter.current_medications || '',
-      past_surgeries: encounter.past_surgeries || '',
-      family_history: encounter.family_history || '',
-      social_history: encounter.social_history || '',
-      // Notes
-      history_of_present_illness: encounter.history_of_present_illness || '',
-      physical_examination: encounter.physical_examination || '',
-      assessment: encounter.assessment || '',
-      notes: encounter.notes || '',
-      clinical_template: encounter.clinical_template || null,
-      clinical_template_data: encounter.clinical_template_data || null,
-    }, diagnoses);
-  }, [encounter, isLoading, encounterStoreId, existingDiagnoses, initSession, getSession, setNotes]);
+    initSession(
+      encounterStoreId,
+      encounter.patient,
+      {
+        encounter_type: encounter.encounter_type,
+        encounter_date: encounter.encounter_date,
+        chief_complaint: encounter.chief_complaint || '',
+        status: encounter.status === 'CANCELLED' ? 'CREATED' : encounter.status,
+        // Vitals
+        temperature: encounter.temperature,
+        pulse: encounter.pulse,
+        blood_pressure_systolic: bp.systolic,
+        blood_pressure_diastolic: bp.diastolic,
+        respiratory_rate: encounter.respiratory_rate,
+        spo2: encounter.spo2,
+        weight: encounter.weight,
+        height: encounter.height,
+        // History
+        allergies: encounter.allergies || '',
+        chronic_conditions: encounter.chronic_conditions || '',
+        current_medications: encounter.current_medications || '',
+        past_surgeries: encounter.past_surgeries || '',
+        family_history: encounter.family_history || '',
+        social_history: encounter.social_history || '',
+        // Notes
+        history_of_present_illness: encounter.history_of_present_illness || '',
+        physical_examination: encounter.physical_examination || '',
+        assessment: encounter.assessment || '',
+        notes: encounter.notes || '',
+        clinical_template: encounter.clinical_template || null,
+        clinical_template_data: encounter.clinical_template_data || null,
+      },
+      diagnoses
+    );
+  }, [
+    encounter,
+    isLoading,
+    encounterStoreId,
+    existingDiagnoses,
+    initSession,
+    getSession,
+    setNotes,
+  ]);
 
   if (isLoading) {
     return <EditLayoutLoading />;
@@ -213,7 +234,7 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col min-h-full -m-4 md:-m-6 lg:-m-8">
+    <div className="-m-4 flex min-h-full flex-col md:-m-6 lg:-m-8">
       <EncounterEditTabs />
       <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
     </div>
@@ -224,10 +245,6 @@ function EditLayoutContent({ children }: { children: React.ReactNode }) {
 // Main Layout
 // =============================================================================
 
-export default function EncounterEditLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function EncounterEditLayout({ children }: { children: React.ReactNode }) {
   return <EditLayoutContent>{children}</EditLayoutContent>;
 }

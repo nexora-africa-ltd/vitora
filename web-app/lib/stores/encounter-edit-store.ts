@@ -119,7 +119,10 @@ interface EncounterEditState {
   updateDiagnosis: (encounterId: number, index: number, diagnosis: DiagnosisFormData) => void;
 
   // Actions - Section Completion
-  markSectionComplete: (encounterId: number, section: keyof EncounterEditSession['completedSections']) => void;
+  markSectionComplete: (
+    encounterId: number,
+    section: keyof EncounterEditSession['completedSections']
+  ) => void;
   getSectionCompletion: (encounterId: number) => EncounterEditSession['completedSections'] | null;
 
   // Actions - Dirty State
@@ -185,7 +188,8 @@ export const useEncounterEditStore = create<EncounterEditState>()((set, get) => 
           encounterId,
           patientId,
           encounter_type: initialData.encounter_type || 'OPD',
-          encounter_date: initialData.encounter_date || new Date().toISOString().split('T')[0] || '',
+          encounter_date:
+            initialData.encounter_date || new Date().toISOString().split('T')[0] || '',
           chief_complaint: initialData.chief_complaint || '',
           status: initialData.status || 'CREATED',
           vitals: {
@@ -241,8 +245,7 @@ export const useEncounterEditStore = create<EncounterEditState>()((set, get) => 
       const { [encounterId]: _, ...rest } = state.sessions;
       return {
         sessions: rest,
-        activeEncounterId:
-          state.activeEncounterId === encounterId ? null : state.activeEncounterId,
+        activeEncounterId: state.activeEncounterId === encounterId ? null : state.activeEncounterId,
       };
     });
   },

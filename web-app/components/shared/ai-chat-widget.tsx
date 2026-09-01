@@ -68,7 +68,9 @@ function readStoredPosition(): Position {
       const parsed = JSON.parse(raw) as Position;
       if (typeof parsed.x === 'number' && typeof parsed.y === 'number') return parsed;
     }
-  } catch { /* ignore corrupt data */ }
+  } catch {
+    /* ignore corrupt data */
+  }
   return { x: 0, y: 0 };
 }
 
@@ -85,7 +87,11 @@ function useDraggable() {
 
   // Persist position to localStorage after each drag ends
   const persistPosition = useCallback((pos: Position) => {
-    try { localStorage.setItem(DRAG_STORAGE_KEY, JSON.stringify(pos)); } catch { /* quota */ }
+    try {
+      localStorage.setItem(DRAG_STORAGE_KEY, JSON.stringify(pos));
+    } catch {
+      /* quota */
+    }
   }, []);
 
   const handlePointerDown = useCallback(
@@ -130,17 +136,23 @@ function useDraggable() {
     });
   }, []);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
-    const ds = dragState.current;
-    const wasDrag = ds?.hasMoved ?? false;
-    dragState.current = null;
-    e.currentTarget.releasePointerCapture(e.pointerId);
-    // Persist the final position if it was a real drag
-    if (wasDrag) {
-      setPosition((cur) => { persistPosition(cur); return cur; });
-    }
-    return wasDrag;
-  }, [persistPosition]);
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      const ds = dragState.current;
+      const wasDrag = ds?.hasMoved ?? false;
+      dragState.current = null;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      // Persist the final position if it was a real drag
+      if (wasDrag) {
+        setPosition((cur) => {
+          persistPosition(cur);
+          return cur;
+        });
+      }
+      return wasDrag;
+    },
+    [persistPosition]
+  );
 
   return {
     position,
@@ -194,10 +206,7 @@ export function AIChatWidget() {
   const assistMutation = useAIClinicalAssist();
 
   // Permission check — only show for users with clinical chat permission
-  const canUseChat = useMemo(
-    () => canPerformAction('ai.use_chat'),
-    [canPerformAction]
-  );
+  const canUseChat = useMemo(() => canPerformAction('ai.use_chat'), [canPerformAction]);
 
   // Handle sending a message
   const handleSendMessage = useCallback(
@@ -264,29 +273,32 @@ export function AIChatWidget() {
       };
 
       try {
-        const response = await aiApi.clinicalChatStream({
-          message,
-          session_id: activeSessionId ?? undefined,
-          patient_context: mergedPatient ?? undefined,
-          encounter_context: mergedEncounter ?? undefined,
-          page_context: pageContext ?? undefined,
-          verbosity,
-        }, {
-          onSession: (sessionId) => {
-            if (!activeSessionId && sessionId) {
-              setActiveSessionId(sessionId);
-            }
+        const response = await aiApi.clinicalChatStream(
+          {
+            message,
+            session_id: activeSessionId ?? undefined,
+            patient_context: mergedPatient ?? undefined,
+            encounter_context: mergedEncounter ?? undefined,
+            page_context: pageContext ?? undefined,
+            verbosity,
           },
-          onChunk: (chunk) => {
-            pendingChunkBuffer += chunk;
-            startStreamPump();
-          },
-          onError: (errorMessage) => {
-            if (!streamedContent) {
-              updateStreamingMessage(assistantMsgId, `⚠️ ${errorMessage}`, false);
-            }
-          },
-        });
+          {
+            onSession: (sessionId) => {
+              if (!activeSessionId && sessionId) {
+                setActiveSessionId(sessionId);
+              }
+            },
+            onChunk: (chunk) => {
+              pendingChunkBuffer += chunk;
+              startStreamPump();
+            },
+            onError: (errorMessage) => {
+              if (!streamedContent) {
+                updateStreamingMessage(assistantMsgId, `⚠️ ${errorMessage}`, false);
+              }
+            },
+          }
+        );
 
         await waitForBufferDrain();
         stopStreamPump();
@@ -303,15 +315,24 @@ export function AIChatWidget() {
         // Update placeholder with backend error message (permission, rate-limit, etc.)
         updateStreamingMessage(
           assistantMsgId,
-          formatChatError(error, 'Sorry, I couldn\'t process your request. Please try again.'),
-          true,
+          formatChatError(error, "Sorry, I couldn't process your request. Please try again."),
+          true
         );
       } finally {
         stopStreamPump();
         setIsChatStreaming(false);
       }
     },
-    [activeSessionId, addMessage, updateStreamingMessage, setActiveSessionId, mergedPatient, mergedEncounter, pageContext, verbosity]
+    [
+      activeSessionId,
+      addMessage,
+      updateStreamingMessage,
+      setActiveSessionId,
+      mergedPatient,
+      mergedEncounter,
+      pageContext,
+      verbosity,
+    ]
   );
 
   // Handle "Ask about this patient"
@@ -370,100 +391,121 @@ export function AIChatWidget() {
     } catch (error) {
       updateStreamingMessage(
         assistantMsgId,
-        formatChatError(error, 'Sorry, I couldn\'t analyze this patient\'s data. Please try again.'),
-        true,
+        formatChatError(error, "Sorry, I couldn't analyze this patient's data. Please try again."),
+        true
       );
     }
-  }, [addMessage, updateStreamingMessage, assistMutation, mergedPatient, mergedEncounter, pageContext, verbosity]);
+  }, [
+    addMessage,
+    updateStreamingMessage,
+    assistMutation,
+    mergedPatient,
+    mergedEncounter,
+    pageContext,
+    verbosity,
+  ]);
 
   // Handle quick action click
-  const handleQuickAction = useCallback(async (action: AIQuickAction) => {
-    // Panel actions: trigger the dedicated Phase 5 panel instead of chat
-    if (action.panelAction) {
-      addMessage({
+  const handleQuickAction = useCallback(
+    async (action: AIQuickAction) => {
+      // Panel actions: trigger the dedicated Phase 5 panel instead of chat
+      if (action.panelAction) {
+        addMessage({
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: action.userMessage || action.label,
+          timestamp: new Date().toISOString(),
+        });
+        addMessage({
+          id: `system-${Date.now()}`,
+          role: 'assistant',
+          content: `✨ Opening **${action.label}** panel in the form. Minimize the widget and scroll down to see the detailed assessment.`,
+          timestamp: new Date().toISOString(),
+        });
+        triggerPanelAction(action.panelAction);
+        minimizeWidget();
+        return;
+      }
+
+      // Check context sufficiency using merged context (base + enrichment)
+      // Skip for educational/reference actions that don't need patient context
+      const contextRequired = action.contextRequired !== false;
+      const sufficiency = assessContextSufficiency(mergedPatient, mergedEncounter);
+
+      if (contextRequired && !sufficiency.canProceed) {
+        // Insufficient context — show guidance instead of a hollow API call
+        addMessage({
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: action.userMessage || action.label,
+          timestamp: new Date().toISOString(),
+        });
+        addMessage({
+          id: `system-${Date.now()}`,
+          role: 'assistant',
+          content: buildContextGuidanceMessage(sufficiency),
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const userMsg: AIChatMessage = {
         id: `user-${Date.now()}`,
         role: 'user',
         content: action.userMessage || action.label,
         timestamp: new Date().toISOString(),
-      });
+      };
+      addMessage(userMsg);
+
+      // If partial context, prepend a brief note so the clinician knows
+      if (sufficiency.level === 'partial') {
+        addMessage({
+          id: `system-ctx-${Date.now()}`,
+          role: 'assistant',
+          content: buildContextGuidanceMessage(sufficiency),
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const assistantMsgId = `assistant-${Date.now()}`;
       addMessage({
-        id: `system-${Date.now()}`,
+        id: assistantMsgId,
         role: 'assistant',
-        content: `✨ Opening **${action.label}** panel in the form. Minimize the widget and scroll down to see the detailed assessment.`,
+        content: '',
         timestamp: new Date().toISOString(),
-      });
-      triggerPanelAction(action.panelAction);
-      minimizeWidget();
-      return;
-    }
-
-    // Check context sufficiency using merged context (base + enrichment)
-    // Skip for educational/reference actions that don't need patient context
-    const contextRequired = action.contextRequired !== false;
-    const sufficiency = assessContextSufficiency(mergedPatient, mergedEncounter);
-
-    if (contextRequired && !sufficiency.canProceed) {
-      // Insufficient context — show guidance instead of a hollow API call
-      addMessage({
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: action.userMessage || action.label,
-        timestamp: new Date().toISOString(),
-      });
-      addMessage({
-        id: `system-${Date.now()}`,
-        role: 'assistant',
-        content: buildContextGuidanceMessage(sufficiency),
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const userMsg: AIChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: action.userMessage || action.label,
-      timestamp: new Date().toISOString(),
-    };
-    addMessage(userMsg);
-
-    // If partial context, prepend a brief note so the clinician knows
-    if (sufficiency.level === 'partial') {
-      addMessage({
-        id: `system-ctx-${Date.now()}`,
-        role: 'assistant',
-        content: buildContextGuidanceMessage(sufficiency),
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    const assistantMsgId = `assistant-${Date.now()}`;
-    addMessage({
-      id: assistantMsgId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date().toISOString(),
-      isStreaming: true,
-    });
-
-    try {
-      const response = await assistMutation.mutateAsync({
-        query: action.query,
-        patient_context: mergedPatient ?? undefined,
-        encounter_context: mergedEncounter ?? undefined,
-        page_context: pageContext ?? undefined,
-        verbosity,
+        isStreaming: true,
       });
 
-      updateStreamingMessage(assistantMsgId, response.response, true);
-    } catch (error) {
-      updateStreamingMessage(
-        assistantMsgId,
-        formatChatError(error, 'Sorry, I couldn\'t process that request. Please try again.'),
-        true,
-      );
-    }
-  }, [addMessage, updateStreamingMessage, assistMutation, mergedPatient, mergedEncounter, pageContext, verbosity, triggerPanelAction, minimizeWidget]);
+      try {
+        const response = await assistMutation.mutateAsync({
+          query: action.query,
+          patient_context: mergedPatient ?? undefined,
+          encounter_context: mergedEncounter ?? undefined,
+          page_context: pageContext ?? undefined,
+          verbosity,
+        });
+
+        updateStreamingMessage(assistantMsgId, response.response, true);
+      } catch (error) {
+        updateStreamingMessage(
+          assistantMsgId,
+          formatChatError(error, "Sorry, I couldn't process that request. Please try again."),
+          true
+        );
+      }
+    },
+    [
+      addMessage,
+      updateStreamingMessage,
+      assistMutation,
+      mergedPatient,
+      mergedEncounter,
+      pageContext,
+      verbosity,
+      triggerPanelAction,
+      minimizeWidget,
+    ]
+  );
 
   // Open full view — store current URL so user can pop back to widget later
   const handleOpenFullView = useCallback(() => {
@@ -512,26 +554,29 @@ export function AIChatWidget() {
     }
   }, []);
 
-  const handleHeaderPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    const ps = pullState.current;
-    if (!ps?.active) return;
+  const handleHeaderPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const ps = pullState.current;
+      if (!ps?.active) return;
 
-    e.currentTarget.releasePointerCapture(ps.pointerId);
-    const dy = e.clientY - ps.startY;
-    pullState.current = null;
+      e.currentTarget.releasePointerCapture(ps.pointerId);
+      const dy = e.clientY - ps.startY;
+      pullState.current = null;
 
-    if (dy >= DISMISS_THRESHOLD) {
-      // Dismiss — animate out then minimize
-      setPullOffset(window.innerHeight);
-      setTimeout(() => {
-        minimizeWidget();
+      if (dy >= DISMISS_THRESHOLD) {
+        // Dismiss — animate out then minimize
+        setPullOffset(window.innerHeight);
+        setTimeout(() => {
+          minimizeWidget();
+          setPullOffset(0);
+        }, 200);
+      } else {
+        // Snap back
         setPullOffset(0);
-      }, 200);
-    } else {
-      // Snap back
-      setPullOffset(0);
-    }
-  }, [minimizeWidget]);
+      }
+    },
+    [minimizeWidget]
+  );
 
   const handleHeaderPointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (pullState.current) {
@@ -573,7 +618,14 @@ export function AIChatWidget() {
   // Don't render if AI is disabled, user lacks permission, or plan doesn't include AI
   // Also hide the widget entirely when already on the full-page /ai view
   const isOnAIPage = pathname?.startsWith('/ai');
-  if (!aiEnabled || !canUseChat || !hasFeature('ai_assistant') || !hasModule('ai_assistant') || isOnAIPage) return null;
+  if (
+    !aiEnabled ||
+    !canUseChat ||
+    !hasFeature('ai_assistant') ||
+    !hasModule('ai_assistant') ||
+    isOnAIPage
+  )
+    return null;
 
   const isExpanded = widgetState === 'expanded';
 
@@ -595,30 +647,34 @@ export function AIChatWidget() {
           {/* Chat panel */}
           <div
             ref={panelRef}
-            style={pullOffset > 0 ? {
-              transform: `translateY(${pullOffset}px)`,
-              transition: pullState.current?.active ? 'none' : 'transform 0.2s ease-out',
-            } : undefined}
+            style={
+              pullOffset > 0
+                ? {
+                    transform: `translateY(${pullOffset}px)`,
+                    transition: pullState.current?.active ? 'none' : 'transform 0.2s ease-out',
+                  }
+                : undefined
+            }
             className={cn(
-              'fixed z-[60] bg-background border rounded-2xl shadow-2xl',
+              'fixed z-[60] rounded-2xl border bg-background shadow-2xl',
               'flex flex-col overflow-hidden',
               // Mobile: nearly full screen
               'inset-x-3 bottom-3 top-16',
               // Desktop: fixed width bottom-right
-              'md:inset-auto md:bottom-6 md:right-6 md:w-[400px] md:h-[600px] md:max-h-[80vh]'
+              'md:inset-auto md:bottom-6 md:right-6 md:h-[600px] md:max-h-[80vh] md:w-[400px]'
             )}
             role="dialog"
             aria-label="TibaBot Clinical Assistant"
           >
             {/* Pull-down handle — visible on small screens only */}
             <div
-              className="md:hidden flex flex-col items-center pt-2 pb-0 cursor-grab active:cursor-grabbing touch-none select-none"
+              className="flex cursor-grab touch-none select-none flex-col items-center pb-0 pt-2 active:cursor-grabbing md:hidden"
               onPointerDown={handleHeaderPointerDown}
               onPointerMove={handleHeaderPointerMove}
               onPointerUp={handleHeaderPointerUp}
               onPointerCancel={handleHeaderPointerCancel}
             >
-              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+              <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
             </div>
             <AIChatPanel
               showHeader
@@ -654,20 +710,18 @@ export function AIChatWidget() {
           className={cn(
             'fixed z-[58]',
             'h-14 w-14 rounded-full',
-            'bg-background border-2',
+            'border-2 bg-background',
             'flex items-center justify-center',
-            'shadow-lg hover:shadow-xl transition-shadow',
-            'touch-none select-none cursor-grab active:cursor-grabbing',
+            'shadow-lg transition-shadow hover:shadow-xl',
+            'cursor-grab touch-none select-none active:cursor-grabbing',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            availability === 'available' ? 'border-green-500/30'
-              : availability === 'degraded' ? 'border-amber-500/30'
-              : 'border-red-500/30'
+            availability === 'available'
+              ? 'border-green-500/30'
+              : availability === 'degraded'
+                ? 'border-amber-500/30'
+                : 'border-red-500/30'
           )}
-          aria-label={
-            unreadCount > 0
-              ? `Open TibaBot, ${unreadCount} unread`
-              : 'Open TibaBot'
-          }
+          aria-label={unreadCount > 0 ? `Open TibaBot, ${unreadCount} unread` : 'Open TibaBot'}
         >
           <TibaBotStatusIndicator
             availability={availability}

@@ -28,7 +28,9 @@ function isStandaloneMode() {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
     window.matchMedia('(display-mode: fullscreen)').matches ||
-    (typeof navigator !== 'undefined' && 'standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
+    (typeof navigator !== 'undefined' &&
+      'standalone' in navigator &&
+      Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
   );
 }
 
@@ -171,19 +173,23 @@ export function InstallPromptBanner() {
     }
   };
 
-  if (!isVisible || (bannerMode === 'prompt' && !deferredPrompt) || HIDDEN_PATHS.some((p) => pathname.startsWith(p))) {
+  if (
+    !isVisible ||
+    (bannerMode === 'prompt' && !deferredPrompt) ||
+    HIDDEN_PATHS.some((p) => pathname.startsWith(p))
+  ) {
     return null;
   }
 
   return (
     <div className="fixed inset-x-2 bottom-20 z-[95] sm:inset-x-4 sm:bottom-24 md:bottom-6 xl:left-auto xl:right-6 xl:w-full xl:max-w-md">
-      <div className="relative overflow-hidden rounded-xl border border-brand-burgundy-200/70 bg-background/95 p-3 shadow-2xl backdrop-blur sm:rounded-2xl sm:p-4 dark:border-brand-burgundy-900/60">
+      <div className="relative overflow-hidden rounded-xl border border-brand-burgundy-200/70 bg-background/95 p-3 shadow-2xl backdrop-blur dark:border-brand-burgundy-900/60 sm:rounded-2xl sm:p-4">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(21,96,115,0.12),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(78,11,24,0.12),transparent_38%)]"
           aria-hidden="true"
         />
         <div className="relative flex items-start gap-2.5 sm:gap-3">
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-teal-50 text-brand-teal-700 sm:h-10 sm:w-10 sm:rounded-xl dark:bg-brand-teal-950/40 dark:text-brand-teal-300">
+          <div className="dark:bg-brand-teal-950/40 mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-teal-50 text-brand-teal-700 dark:text-brand-teal-300 sm:h-10 sm:w-10 sm:rounded-xl">
             <Download className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div className="min-w-0 flex-1">
@@ -195,11 +201,21 @@ export function InstallPromptBanner() {
             </p>
             <div className="mt-3 flex flex-col gap-1.5 sm:mt-4 sm:flex-row sm:gap-2">
               {bannerMode === 'prompt' ? (
-                <Button size="sm" onClick={handleInstall} disabled={isInstalling} className="text-xs sm:w-auto sm:text-sm">
+                <Button
+                  size="sm"
+                  onClick={handleInstall}
+                  disabled={isInstalling}
+                  className="text-xs sm:w-auto sm:text-sm"
+                >
                   {isInstalling ? 'Opening install prompt...' : 'Install Vitora'}
                 </Button>
               ) : null}
-              <Button size="sm" variant="outline" onClick={handleDismiss} className="text-xs sm:w-auto sm:text-sm">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDismiss}
+                className="text-xs sm:w-auto sm:text-sm"
+              >
                 {bannerMode === 'prompt' ? 'Not now' : 'Got it'}
               </Button>
             </div>

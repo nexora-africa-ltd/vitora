@@ -91,7 +91,10 @@ export function ConsentConfirmationDialog({
                   <AlertTitle className="text-success">Client Registry Record Found</AlertTitle>
                   <AlertDescription>
                     {patientName ? (
-                      <span>Found existing record for <strong>{patientName}</strong>. Patient information will be auto-populated.</span>
+                      <span>
+                        Found existing record for <strong>{patientName}</strong>. Patient
+                        information will be auto-populated.
+                      </span>
                     ) : (
                       'Patient record found in the national Client Registry.'
                     )}
@@ -100,9 +103,12 @@ export function ConsentConfirmationDialog({
               ) : isNewCRRecord ? (
                 <Alert className="border-warning bg-warning/10">
                   <Info className="h-4 w-4 text-warning-foreground" />
-                  <AlertTitle className="text-warning-foreground">New Client Registry Record</AlertTitle>
+                  <AlertTitle className="text-warning-foreground">
+                    New Client Registry Record
+                  </AlertTitle>
                   <AlertDescription>
-                    No existing record found. Registering this patient will create a new record in Kenya&apos;s national Client Registry.
+                    No existing record found. Registering this patient will create a new record in
+                    Kenya&apos;s national Client Registry.
                   </AlertDescription>
                 </Alert>
               ) : null}
@@ -110,10 +116,11 @@ export function ConsentConfirmationDialog({
               {/* Consent Requirements */}
               <div className="text-sm text-muted-foreground">
                 <p className="mb-3">
-                  Under the Kenya Data Protection Act 2019, patient consent is required before collecting and processing personal health information.
+                  Under the Kenya Data Protection Act 2019, patient consent is required before
+                  collecting and processing personal health information.
                 </p>
 
-                <p className="font-medium text-foreground mb-2">
+                <p className="mb-2 font-medium text-foreground">
                   Please confirm that you have obtained verbal consent from the patient for:
                 </p>
               </div>
@@ -156,7 +163,7 @@ export function ConsentConfirmationDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
           <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
 
           <Button
@@ -164,24 +171,25 @@ export function ConsentConfirmationDialog({
             onClick={handleDefer}
             className="border-warning text-warning-foreground hover:bg-warning/10"
           >
-            <AlertTriangle className="h-4 w-4 mr-2" />
+            <AlertTriangle className="mr-2 h-4 w-4" />
             Defer Consent
           </Button>
 
           <AlertDialogAction
             onClick={handleGrant}
             disabled={!canGrant}
-            className={cn(!canGrant && 'opacity-50 cursor-not-allowed')}
+            className={cn(!canGrant && 'cursor-not-allowed opacity-50')}
           >
-            <CheckCircle2 className="h-4 w-4 mr-2" />
+            <CheckCircle2 className="mr-2 h-4 w-4" />
             Confirm Consent
           </AlertDialogAction>
         </AlertDialogFooter>
 
         {/* Deferred Consent Warning */}
-        <div className="mt-2 text-xs text-muted-foreground text-center">
-          <AlertTriangle className="h-3 w-3 inline mr-1" />
-          If consent is deferred, it must be obtained before discharge, claim submission, or encounter completion.
+        <div className="mt-2 text-center text-xs text-muted-foreground">
+          <AlertTriangle className="mr-1 inline h-3 w-3" />
+          If consent is deferred, it must be obtained before discharge, claim submission, or
+          encounter completion.
         </div>
       </AlertDialogContent>
     </AlertDialog>

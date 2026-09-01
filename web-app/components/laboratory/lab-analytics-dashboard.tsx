@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { RefreshCw, Download, Printer, Calendar, Clock, Activity, AlertTriangle, XCircle } from 'lucide-react';
+import {
+  RefreshCw,
+  Download,
+  Printer,
+  Calendar,
+  Clock,
+  Activity,
+  AlertTriangle,
+  XCircle,
+} from 'lucide-react';
 import { subDays, format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -170,7 +179,7 @@ export function LabAnalyticsDashboard() {
   return (
     <div className="space-y-6">
       {/* Header with filters and actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <Select value={preset} onValueChange={(v) => setPreset(v as DatePreset)}>
@@ -189,22 +198,22 @@ export function LabAnalyticsDashboard() {
 
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
           <Button variant="outline" size="sm" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
+            <Printer className="mr-2 h-4 w-4" />
             Print
           </Button>
         </div>
       </div>
 
       {/* KPI Summary Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatsCard
           title="Avg TAT"
           value={
@@ -228,7 +237,11 @@ export function LabAnalyticsDashboard() {
           value={criticalData?.total_critical ?? 0}
           description="Requires immediate attention"
           icon={AlertTriangle}
-          variant={criticalData?.total_critical && criticalData.total_critical > 0 ? 'destructive' : 'default'}
+          variant={
+            criticalData?.total_critical && criticalData.total_critical > 0
+              ? 'destructive'
+              : 'default'
+          }
         />
         <StatsCard
           title="Rejection Rate"
@@ -270,9 +283,7 @@ export function LabAnalyticsDashboard() {
 
       {/* Charts Row 2: Critical Values and Rejections */}
       <div className="grid gap-6 md:grid-cols-2">
-        {criticalData && (
-          <LabCriticalValuesCard data={criticalData} isLoading={criticalLoading} />
-        )}
+        {criticalData && <LabCriticalValuesCard data={criticalData} isLoading={criticalLoading} />}
 
         <ChartCard
           title="Sample Rejections"
@@ -292,7 +303,7 @@ function LabAnalyticsSkeleton() {
   return (
     <div className="space-y-6">
       {/* Header skeleton */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Skeleton className="h-10 w-[180px]" />
         <div className="flex items-center gap-2">
           <Skeleton className="h-9 w-24" />
@@ -302,7 +313,7 @@ function LabAnalyticsSkeleton() {
       </div>
 
       {/* KPI Cards skeleton */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Skeleton key={i} className="h-32" />
         ))}

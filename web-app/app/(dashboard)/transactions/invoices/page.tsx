@@ -23,7 +23,12 @@ import {
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { InvoiceList } from '@/components/billing/InvoiceList';
-import { useDhaInvoices, useInvoices, useFinalizeInvoice, useCancelInvoice } from '@/lib/hooks/billing';
+import {
+  useDhaInvoices,
+  useInvoices,
+  useFinalizeInvoice,
+  useCancelInvoice,
+} from '@/lib/hooks/billing';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
@@ -85,7 +90,10 @@ export default function TransactionsInvoicesPage() {
   const handleFinalize = async (invoice: Invoice) => {
     try {
       await finalizeInvoice.mutateAsync(invoice.id);
-      toast({ title: 'Invoice finalized', description: `${invoice.invoice_number} has been finalized.` });
+      toast({
+        title: 'Invoice finalized',
+        description: `${invoice.invoice_number} has been finalized.`,
+      });
       refetch();
     } catch {
       toast({ title: 'Error', description: 'Failed to finalize invoice.', variant: 'destructive' });
@@ -95,7 +103,10 @@ export default function TransactionsInvoicesPage() {
   const handleCancel = async (invoice: Invoice) => {
     try {
       await cancelInvoice.mutateAsync({ invoiceId: invoice.id, reason: 'Cancelled from list' });
-      toast({ title: 'Invoice cancelled', description: `${invoice.invoice_number} has been cancelled.` });
+      toast({
+        title: 'Invoice cancelled',
+        description: `${invoice.invoice_number} has been cancelled.`,
+      });
       refetch();
     } catch {
       toast({ title: 'Error', description: 'Failed to cancel invoice.', variant: 'destructive' });
@@ -121,7 +132,10 @@ export default function TransactionsInvoicesPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   return (
-    <PullToRefresh onRefresh={handleRefresh} isRefreshing={invoiceSource === 'dha' ? isDhaFetching : isFetching}>
+    <PullToRefresh
+      onRefresh={handleRefresh}
+      isRefreshing={invoiceSource === 'dha' ? isDhaFetching : isFetching}
+    >
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Invoices"
@@ -130,7 +144,7 @@ export default function TransactionsInvoicesPage() {
             <Button
               onClick={handleCreateInvoice}
               disabled={!canCreateRoute('/transactions/invoices/new') || !canCreateByCapabilities}
-              className="gap-2 w-full sm:w-auto"
+              className="w-full gap-2 sm:w-auto"
             >
               <Plus className="h-4 w-4" />
               New Invoice
@@ -210,8 +224,10 @@ export default function TransactionsInvoicesPage() {
                     header: 'DHA Invoice',
                     cell: (row) => (
                       <div className="space-y-0.5">
-                        <p className="font-medium font-mono text-sm">{row.invoice_number}</p>
-                        <Badge variant="outline" className="text-[10px] uppercase">DHA</Badge>
+                        <p className="font-mono text-sm font-medium">{row.invoice_number}</p>
+                        <Badge variant="outline" className="text-[10px] uppercase">
+                          DHA
+                        </Badge>
                       </div>
                     ),
                   },
@@ -230,7 +246,9 @@ export default function TransactionsInvoicesPage() {
                     header: 'SHA Claim',
                     cell: (row) => (
                       <div className="space-y-0.5">
-                        <p className="font-mono text-sm">{row.claim_number || `#${row.claim_id}`}</p>
+                        <p className="font-mono text-sm">
+                          {row.claim_number || `#${row.claim_id}`}
+                        </p>
                         <p className="text-xs text-muted-foreground">{row.claim_status}</p>
                       </div>
                     ),

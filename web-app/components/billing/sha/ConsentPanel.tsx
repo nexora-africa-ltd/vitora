@@ -92,7 +92,7 @@ interface ConsentPanelProps {
     consentId: number,
     consentToken: string,
     credential: ConsentCredential,
-    interventionCode?: string,
+    interventionCode?: string
   ) => void;
   /**
    * Routed DHA HIE flow. ECCIF skips initial consent; PHC uses simplified
@@ -115,7 +115,10 @@ function getStatusBadge(status: ConsentStatus) {
   switch (status) {
     case 'VALIDATED':
       return (
-        <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+        <Badge
+          variant="default"
+          className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+        >
           <CheckCircle2 className="mr-1 h-3 w-3" />
           Validated
         </Badge>
@@ -161,9 +164,7 @@ export function ConsentPanel({
   disableAutoDetect = false,
   className,
 }: ConsentPanelProps) {
-  const [step, setStep] = useState<ConsentStep>(
-    initialConsentId ? 'validated' : 'idle'
-  );
+  const [step, setStep] = useState<ConsentStep>(initialConsentId ? 'validated' : 'idle');
   const [method, setMethod] = useState<ConsentMethod>('otp');
   const [otpCode, setOtpCode] = useState('');
   const [consentId, setConsentId] = useState<number | undefined>(initialConsentId);
@@ -185,7 +186,10 @@ export function ConsentPanel({
     enabled: !patientCrId && !!shaMemberId,
     staleTime: 5 * 60 * 1000,
   });
-  const resolvedCrId = patientCrId || (fallbackSHAMember && toCrId(fallbackSHAMember.sha_member_number || fallbackSHAMember.sha_number));
+  const resolvedCrId =
+    patientCrId ||
+    (fallbackSHAMember &&
+      toCrId(fallbackSHAMember.sha_member_number || fallbackSHAMember.sha_number));
 
   const {
     benefitPackageOptions,
@@ -202,9 +206,10 @@ export function ConsentPanel({
   });
 
   const preselectedInterventionCode = interventionCodes?.[0] || '';
-  const selectedInterventionCode = preselectedInterventionCode
-    || (hasAllowedInterventions ? allowedInterventionCode : selectedIntervention?.code)
-    || '';
+  const selectedInterventionCode =
+    preselectedInterventionCode ||
+    (hasAllowedInterventions ? allowedInterventionCode : selectedIntervention?.code) ||
+    '';
 
   const allowedInterventionOptions = useMemo(
     () => allowedInterventions || [],
@@ -233,7 +238,9 @@ export function ConsentPanel({
       return;
     }
 
-    const hasSelected = allowedInterventionOptions.some((item) => item.code === allowedInterventionCode);
+    const hasSelected = allowedInterventionOptions.some(
+      (item) => item.code === allowedInterventionCode
+    );
     if (hasSelected) return;
     setAllowedInterventionCode(allowedInterventionOptions[0]?.code || '');
   }, [hasAllowedInterventions, allowedInterventionCode, allowedInterventionOptions]);
@@ -259,29 +266,33 @@ export function ConsentPanel({
   // skip ahead to the "Enter OTP" step instead of showing "Send OTP".
   const hasCheckedExisting = useRef(false);
   useEffect(() => {
-    if (disableAutoDetect || hasCheckedExisting.current || initialConsentId || step !== 'idle') return;
+    if (disableAutoDetect || hasCheckedExisting.current || initialConsentId || step !== 'idle')
+      return;
     hasCheckedExisting.current = true;
 
-    shaApi.getLatestConsent(shaMemberId, {
-      encounterId,
-      claimPk,
-      interventionCode: selectedInterventionCode || undefined,
-    }).then((data) => {
-      if (data?.exists && data?.id) {
-        setConsentId(data.id);
-        if (data.status === 'VALIDATED') {
-          setStep('validated');
-          if (data.consent_token) {
-            onConsentObtained?.(data.id, data.consent_token, {}, selectedInterventionCode);
+    shaApi
+      .getLatestConsent(shaMemberId, {
+        encounterId,
+        claimPk,
+        interventionCode: selectedInterventionCode || undefined,
+      })
+      .then((data) => {
+        if (data?.exists && data?.id) {
+          setConsentId(data.id);
+          if (data.status === 'VALIDATED') {
+            setStep('validated');
+            if (data.consent_token) {
+              onConsentObtained?.(data.id, data.consent_token, {}, selectedInterventionCode);
+            }
+          } else if (data.status === 'PENDING') {
+            // OTP already sent — jump to entry step
+            setStep('otp_sent');
           }
-        } else if (data.status === 'PENDING') {
-          // OTP already sent — jump to entry step
-          setStep('otp_sent');
         }
-      }
-    }).catch(() => {
-      // 404 or error — no existing consent, stay in idle (normal flow)
-    });
+      })
+      .catch(() => {
+        // 404 or error — no existing consent, stay in idle (normal flow)
+      });
   }, [
     shaMemberId,
     encounterId,
@@ -304,7 +315,9 @@ export function ConsentPanel({
         : undefined;
     const codes = interventionCodes?.length
       ? interventionCodes
-      : selectedInterventionCode ? [selectedInterventionCode] : [];
+      : selectedInterventionCode
+        ? [selectedInterventionCode]
+        : [];
     if (codes.length === 0) {
       setError('Select an intervention before sending OTP.');
       return;
@@ -341,7 +354,7 @@ export function ConsentPanel({
                     detail.id,
                     detail.consent_token,
                     {},
-                    selectedInterventionCode,
+                    selectedInterventionCode
                   );
                 }
               })
@@ -372,7 +385,9 @@ export function ConsentPanel({
     const submittedOtp = otpCode.trim();
     const codes = interventionCodes?.length
       ? interventionCodes
-      : selectedInterventionCode ? [selectedInterventionCode] : [];
+      : selectedInterventionCode
+        ? [selectedInterventionCode]
+        : [];
     startVisit.mutate(
       {
         consent_id: consentId,
@@ -384,12 +399,12 @@ export function ConsentPanel({
         onSuccess: (response) => {
           setStep('validated');
           setOtpCode('');
-            onConsentObtained?.(
-              response.id,
-              response.consent_token,
-              { otp: submittedOtp },
-              selectedInterventionCode,
-            );
+          onConsentObtained?.(
+            response.id,
+            response.consent_token,
+            { otp: submittedOtp },
+            selectedInterventionCode
+          );
         },
         onError: (err: unknown) => {
           setError(getApiErrorMessage(err) || 'Invalid OTP code');
@@ -419,7 +434,7 @@ export function ConsentPanel({
           result.consent_id!,
           sandboxToken,
           { authGuid: result.auth_guid },
-          selectedInterventionCode,
+          selectedInterventionCode
         );
         return;
       }
@@ -451,7 +466,7 @@ export function ConsentPanel({
             consentId!,
             status.consent_token,
             { authGuid: biometricAuthGuid },
-            selectedInterventionCode,
+            selectedInterventionCode
           );
         } else if (status.status === 'FAILED' || status.status === 'EXPIRED') {
           stopPolling();
@@ -466,13 +481,22 @@ export function ConsentPanel({
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
-  }, [biometricPolling, biometricAuthGuid, consentId, onConsentObtained, stopPolling, selectedInterventionCode]);
+  }, [
+    biometricPolling,
+    biometricAuthGuid,
+    consentId,
+    onConsentObtained,
+    stopPolling,
+    selectedInterventionCode,
+  ]);
 
   const handleCancelBiometric = async () => {
     if (biometricAuthGuid) {
       try {
         await shaApi.cancelBiometricAuth(biometricAuthGuid);
-      } catch { /* best effort */ }
+      } catch {
+        /* best effort */
+      }
     }
     stopPolling();
     setBiometricAuthGuid(null);
@@ -493,8 +517,8 @@ export function ConsentPanel({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            ECCIF flow allows the claim to be opened without an initial consent token.
-            Capture identity and consent post-stabilisation if/when the patient is identified.
+            ECCIF flow allows the claim to be opened without an initial consent token. Capture
+            identity and consent post-stabilisation if/when the patient is identified.
           </p>
         </CardContent>
       </Card>
@@ -554,7 +578,13 @@ export function ConsentPanel({
                         disabled={benefitPackagesLoading || benefitPackageOptions.length === 0}
                       >
                         <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder={benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'} />
+                          <SelectValue
+                            placeholder={
+                              benefitPackagesLoading
+                                ? 'Loading packages...'
+                                : 'Select benefit package'
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {benefitPackageOptions.map((pkg) => (
@@ -572,7 +602,9 @@ export function ConsentPanel({
                         onValueChange={(value) => setSelectedInterventionCode(value)}
                         disabled={interventionsLoading || interventionOptions.length === 0}
                         className="h-8 text-xs"
-                        placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'}
+                        placeholder={
+                          interventionsLoading ? 'Loading interventions...' : 'Select intervention'
+                        }
                         searchPlaceholder="Search interventions..."
                         emptyMessage="No interventions found."
                         options={interventionOptions.map((opt) => ({
@@ -592,13 +624,15 @@ export function ConsentPanel({
                 selectedContactId={selectedContactId}
               />
             )}
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
-            <div className="flex flex-col sm:flex-row gap-2">
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 onClick={handleSendOTP}
-                disabled={sendOTP.isPending || (hasAllowedInterventions && !selectedInterventionCode) || (!!resolvedCrId && !selectedContactId)}
+                disabled={
+                  sendOTP.isPending ||
+                  (hasAllowedInterventions && !selectedInterventionCode) ||
+                  (!!resolvedCrId && !selectedContactId)
+                }
                 size="sm"
               >
                 {sendOTP.isPending ? (
@@ -611,7 +645,10 @@ export function ConsentPanel({
               <Button
                 variant="outline"
                 onClick={handleStartBiometric}
-                disabled={(hasAllowedInterventions && !selectedInterventionCode) || (!!resolvedCrId && !selectedContactId)}
+                disabled={
+                  (hasAllowedInterventions && !selectedInterventionCode) ||
+                  (!!resolvedCrId && !selectedContactId)
+                }
                 size="sm"
               >
                 <Fingerprint className="mr-2 h-4 w-4" />
@@ -657,7 +694,13 @@ export function ConsentPanel({
                         disabled={benefitPackagesLoading || benefitPackageOptions.length === 0}
                       >
                         <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder={benefitPackagesLoading ? 'Loading packages...' : 'Select benefit package'} />
+                          <SelectValue
+                            placeholder={
+                              benefitPackagesLoading
+                                ? 'Loading packages...'
+                                : 'Select benefit package'
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {benefitPackageOptions.map((pkg) => (
@@ -675,7 +718,9 @@ export function ConsentPanel({
                         onValueChange={(value) => setSelectedInterventionCode(value)}
                         disabled={interventionsLoading || interventionOptions.length === 0}
                         className="h-8 text-xs"
-                        placeholder={interventionsLoading ? 'Loading interventions...' : 'Select intervention'}
+                        placeholder={
+                          interventionsLoading ? 'Loading interventions...' : 'Select intervention'
+                        }
                         searchPlaceholder="Search interventions..."
                         emptyMessage="No interventions found."
                         options={interventionOptions.map((opt) => ({
@@ -696,15 +741,13 @@ export function ConsentPanel({
               />
             )}
             {sandboxOtp && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                 <Zap className="h-3 w-3" />
                 Sandbox OTP auto-filled from DHA UAT — click Verify to proceed
               </p>
             )}
             {otpServerMessage && (
-              <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                {otpServerMessage}
-              </p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">{otpServerMessage}</p>
             )}
             <div className="space-y-2">
               <Label htmlFor="otp-code">OTP Code</Label>
@@ -718,11 +761,7 @@ export function ConsentPanel({
                   className="max-w-[180px] font-mono"
                 />
                 {otpCode.length >= 4 ? (
-                  <Button
-                    onClick={handleValidateOTP}
-                    disabled={startVisit.isPending}
-                    size="sm"
-                  >
+                  <Button onClick={handleValidateOTP} disabled={startVisit.isPending} size="sm">
                     {startVisit.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
@@ -762,16 +801,12 @@ export function ConsentPanel({
 
                   return (
                     <>
-                      {!hasKnownGuidance && (
-                        <p className="text-sm text-destructive">{error}</p>
-                      )}
+                      {!hasKnownGuidance && <p className="text-sm text-destructive">{error}</p>}
                       {isBiometricRestricted && (
-                        <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
+                        <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
                           <div className="flex gap-2">
                             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
-                            <p className="text-sm text-amber-900 dark:text-amber-200">
-                              {error}
-                            </p>
+                            <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             <Button
@@ -802,12 +837,10 @@ export function ConsentPanel({
                         </div>
                       )}
                       {!isBiometricRestricted && isWhitelist && (
-                        <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3 space-y-3">
+                        <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
                           <div className="flex gap-2">
                             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
-                            <p className="text-sm text-amber-900 dark:text-amber-200">
-                              {error}
-                            </p>
+                            <p className="text-sm text-amber-900 dark:text-amber-200">{error}</p>
                           </div>
                           <Button
                             size="sm"
@@ -838,11 +871,11 @@ export function ConsentPanel({
               <span>Waiting for fingerprint capture…</span>
             </div>
             {biometricIframeUrl && (
-              <div className="rounded-md border overflow-hidden">
+              <div className="overflow-hidden rounded-md border">
                 <iframe
                   src={biometricIframeUrl}
                   title="Biometric Fingerprint Capture"
-                  className="w-full h-[280px]"
+                  className="h-[280px] w-full"
                   sandbox="allow-scripts allow-same-origin allow-forms"
                 />
               </div>
@@ -852,14 +885,8 @@ export function ConsentPanel({
                 Biometric device should be active. The system is polling for authorization…
               </p>
             )}
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCancelBiometric}
-            >
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button variant="ghost" size="sm" onClick={handleCancelBiometric}>
               Cancel
             </Button>
           </div>
@@ -868,7 +895,7 @@ export function ConsentPanel({
         {/* Step 3: Consent validated */}
         {step === 'validated' && (
           <div className="space-y-2">
-            <div className="rounded-md bg-green-50 dark:bg-green-900/10 p-3 space-y-1">
+            <div className="space-y-1 rounded-md bg-green-50 p-3 dark:bg-green-900/10">
               <p className="text-sm font-medium text-green-800 dark:text-green-400">
                 Consent obtained successfully
                 {method === 'biometric' && ' (biometric)'}
@@ -883,7 +910,9 @@ export function ConsentPanel({
               )}
               {consentDetail && !consentDetail.is_valid && (
                 <div className="mt-2">
-                  <Badge variant="destructive" className="text-xs">Expired — re-consent required</Badge>
+                  <Badge variant="destructive" className="text-xs">
+                    Expired — re-consent required
+                  </Badge>
                   <Button
                     variant="outline"
                     size="sm"

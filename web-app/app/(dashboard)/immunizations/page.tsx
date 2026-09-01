@@ -26,12 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,7 +36,11 @@ import { useFacility } from '@/lib/context/facility-context';
 import { useImmunizationSocket } from '@/lib/hooks/use-websocket';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
-import { immunizationRecordsApi, vaccineDefinitionsApi, vaccineStockApi } from '@/lib/api/immunizations';
+import {
+  immunizationRecordsApi,
+  vaccineDefinitionsApi,
+  vaccineStockApi,
+} from '@/lib/api/immunizations';
 import { PatientSearchInput } from '@/components/patients/patient-search-input';
 import type {
   ImmunizationStatus,
@@ -110,7 +109,6 @@ export default function ImmunizationsPage() {
   const [statusFilter, setStatusFilter] = useState<ImmunizationStatus | ''>('');
   const [programFilter, setProgramFilter] = useState<VaccineProgram | ''>('');
 
-
   // Administer dialog state
   const [administerDialogOpen, setAdministerDialogOpen] = useState(false);
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
@@ -166,7 +164,11 @@ export default function ImmunizationsPage() {
       toast({ title: 'Schedule Generated', description: 'KEPI immunization schedule created.' });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to generate KEPI schedule.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to generate KEPI schedule.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -184,7 +186,11 @@ export default function ImmunizationsPage() {
       setAdultScheduleDialogOpen(false);
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to generate adult schedule.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to generate adult schedule.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -194,11 +200,11 @@ export default function ImmunizationsPage() {
       immunizationRecordsApi.administer(selectedRecordId!, {
         administered_date: adminDate,
         stock_batch: selectedStockBatchId || undefined,
-        batch_number: selectedStockBatchId ? undefined : (batchNumber || undefined),
+        batch_number: selectedStockBatchId ? undefined : batchNumber || undefined,
         lot_number: lotNumber || undefined,
-        expiry_date: selectedStockBatchId ? undefined : (expiryDate || undefined),
+        expiry_date: selectedStockBatchId ? undefined : expiryDate || undefined,
         site: site || undefined,
-        vaccine_manufacturer: selectedStockBatchId ? undefined : (vaccineManufacturer || undefined),
+        vaccine_manufacturer: selectedStockBatchId ? undefined : vaccineManufacturer || undefined,
         diluent_batch_number: diluentBatchNumber || undefined,
         diluent_manufacturer: diluentManufacturer || undefined,
         diluent_expiry_date: diluentExpiryDate || undefined,
@@ -211,7 +217,11 @@ export default function ImmunizationsPage() {
       resetAdminForm();
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to administer vaccine.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to administer vaccine.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -228,9 +238,8 @@ export default function ImmunizationsPage() {
     enabled: !!selectedVaccineForAdmin && administerDialogOpen,
   });
 
-  const usableBatches: VaccineStockListItem[] = availableBatches?.results?.filter(
-    (b) => b.quantity_on_hand > 0 && !b.is_expired,
-  ) || [];
+  const usableBatches: VaccineStockListItem[] =
+    availableBatches?.results?.filter((b) => b.quantity_on_hand > 0 && !b.is_expired) || [];
 
   function handleBatchSelect(stockId: string) {
     if (stockId === '_manual') {
@@ -293,7 +302,7 @@ export default function ImmunizationsPage() {
         acc[key]!.push(record);
         return acc;
       },
-      {} as Record<string, ImmunizationRecordListItem[]>,
+      {} as Record<string, ImmunizationRecordListItem[]>
     );
   }, [records]);
 
@@ -312,8 +321,8 @@ export default function ImmunizationsPage() {
 
         {/* Patient selection */}
         <Card>
-          <CardContent className="pt-4 pb-4">
-            <Label className="text-sm text-muted-foreground mb-1 block">Select Patient</Label>
+          <CardContent className="pb-4 pt-4">
+            <Label className="mb-1 block text-sm text-muted-foreground">Select Patient</Label>
             <PatientSearchInput
               value={selectedPatientId}
               onChange={(patientId) => {
@@ -333,7 +342,7 @@ export default function ImmunizationsPage() {
             <Skeleton className="h-64 w-full" />
           </div>
         ) : error ? (
-          <div className="text-center py-12">
+          <div className="py-12 text-center">
             <p className="text-destructive">Failed to load immunization records.</p>
           </div>
         ) : (
@@ -346,7 +355,7 @@ export default function ImmunizationsPage() {
                   {administeredCount}/{records.length} administered
                 </Badge>
                 {scheduledCount > 0 && (
-                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 gap-1">
+                  <Badge className="gap-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                     <CalendarCheck className="h-3 w-3" />
                     {scheduledCount} scheduled
                   </Badge>
@@ -404,8 +413,10 @@ export default function ImmunizationsPage() {
                   onClick={() => generateKepiMutation.mutate()}
                   disabled={generateKepiMutation.isPending}
                 >
-                  {generateKepiMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                  <Syringe className="h-4 w-4 mr-1" />
+                  {generateKepiMutation.isPending && (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  )}
+                  <Syringe className="mr-1 h-4 w-4" />
                   <span className="hidden sm:inline">Generate KEPI Schedule</span>
                   <span className="sm:hidden">KEPI</span>
                 </Button>
@@ -415,7 +426,7 @@ export default function ImmunizationsPage() {
                   className="w-full sm:w-auto"
                   onClick={() => setAdultScheduleDialogOpen(true)}
                 >
-                  <Users className="h-4 w-4 mr-1" />
+                  <Users className="mr-1 h-4 w-4" />
                   <span className="hidden sm:inline">Adult Vaccine Schedule</span>
                   <span className="sm:hidden">Adult</span>
                 </Button>
@@ -431,30 +442,27 @@ export default function ImmunizationsPage() {
               <div className="space-y-3">
                 {Object.entries(grouped).map(([name, groupRecords]) => {
                   const isExpanded = expandedGroups.has(name);
-                  const groupAdministered = groupRecords.filter((r) => r.status === 'ADMINISTERED').length;
+                  const groupAdministered = groupRecords.filter(
+                    (r) => r.status === 'ADMINISTERED'
+                  ).length;
                   const groupOverdue = groupRecords.filter((r) => r.is_overdue).length;
                   const program = groupRecords[0]?.vaccine_program || '';
 
                   return (
                     <Card key={name}>
-                      <button
-                        className="w-full text-left"
-                        onClick={() => toggleGroup(name)}
-                      >
-                        <CardHeader className="py-3 px-4">
+                      <button className="w-full text-left" onClick={() => toggleGroup(name)}>
+                        <CardHeader className="px-4 py-3">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <CardTitle className="text-sm font-medium truncate">
-                                {name}
-                              </CardTitle>
-                              <Badge variant="outline" className="text-xs shrink-0">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <CardTitle className="truncate text-sm font-medium">{name}</CardTitle>
+                              <Badge variant="outline" className="shrink-0 text-xs">
                                 {program}
                               </Badge>
-                              <span className="text-xs text-muted-foreground shrink-0">
+                              <span className="shrink-0 text-xs text-muted-foreground">
                                 {groupAdministered}/{groupRecords.length}
                               </span>
                               {groupOverdue > 0 && (
-                                <Badge variant="destructive" className="text-xs shrink-0">
+                                <Badge variant="destructive" className="shrink-0 text-xs">
                                   {groupOverdue} overdue
                                 </Badge>
                               )}
@@ -468,15 +476,17 @@ export default function ImmunizationsPage() {
                         </CardHeader>
                       </button>
                       {isExpanded && (
-                        <CardContent className="pt-0 pb-3 px-4">
+                        <CardContent className="px-4 pb-3 pt-0">
                           <div className="space-y-2">
                             {groupRecords.map((record) => (
                               <div
                                 key={record.id}
-                                className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between p-2 rounded-md bg-muted/30"
+                                className="flex flex-col gap-1 rounded-md bg-muted/30 p-2 sm:flex-row sm:items-center sm:justify-between"
                               >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <Badge className={`${statusColors[record.status]} text-xs shrink-0 w-fit`}>
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <Badge
+                                    className={`${statusColors[record.status]} w-fit shrink-0 text-xs`}
+                                  >
                                     {record.status}
                                   </Badge>
                                   <span className="text-sm">Dose {record.dose_number}</span>
@@ -484,7 +494,7 @@ export default function ImmunizationsPage() {
                                     {formatDate(record.scheduled_date)}
                                   </span>
                                   {record.is_overdue && (
-                                    <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" />
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -502,7 +512,7 @@ export default function ImmunizationsPage() {
                                         openAdministerDialog(
                                           record.id,
                                           record.vaccine,
-                                          `${record.vaccine_name} — Dose ${record.dose_number}`,
+                                          `${record.vaccine_name} — Dose ${record.dose_number}`
                                         );
                                       }}
                                     >
@@ -525,7 +535,7 @@ export default function ImmunizationsPage() {
 
         {/* Administer Dialog */}
         <Dialog open={administerDialogOpen} onOpenChange={setAdministerDialogOpen}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
             <DialogHeader>
               <div className="flex items-center gap-2">
                 <DialogTitle>Administer Vaccine</DialogTitle>
@@ -540,9 +550,11 @@ export default function ImmunizationsPage() {
             )}
             <div className="space-y-3 sm:space-y-4">
               {/* Date & Site */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 <div>
-                  <Label>Date Administered <span className="text-destructive">*</span></Label>
+                  <Label>
+                    Date Administered <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     type="date"
                     value={adminDate}
@@ -580,7 +592,10 @@ export default function ImmunizationsPage() {
                     {usableBatches.map((b) => (
                       <SelectItem key={b.id} value={b.id.toString()} textValue={b.batch_number}>
                         <div className="flex flex-col">
-                          <span>{b.batch_number}{b.is_near_expiry ? ' ⚠️' : ''}</span>
+                          <span>
+                            {b.batch_number}
+                            {b.is_near_expiry ? ' ⚠️' : ''}
+                          </span>
                           <span className="text-xs text-muted-foreground">
                             {b.quantity_on_hand} doses • exp {formatDate(b.expiry_date)}
                           </span>
@@ -590,22 +605,31 @@ export default function ImmunizationsPage() {
                   </SelectContent>
                 </Select>
                 {usableBatches.length === 0 && selectedVaccineForAdmin && (
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     No stock batches available. Enter details manually below.
                   </p>
                 )}
               </div>
               {/* Auto-filled or manual batch/lot/expiry */}
               {selectedStockBatchId ? (
-                <div className="rounded-md bg-muted/30 p-3 text-sm space-y-1">
-                  <p><span className="text-muted-foreground">Batch:</span> {batchNumber}</p>
-                  <p><span className="text-muted-foreground">Manufacturer:</span> {vaccineManufacturer}</p>
-                  <p><span className="text-muted-foreground">Expiry:</span> {formatDate(expiryDate)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">1 dose will be deducted from this batch on submission.</p>
+                <div className="space-y-1 rounded-md bg-muted/30 p-3 text-sm">
+                  <p>
+                    <span className="text-muted-foreground">Batch:</span> {batchNumber}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Manufacturer:</span>{' '}
+                    {vaccineManufacturer}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Expiry:</span> {formatDate(expiryDate)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    1 dose will be deducted from this batch on submission.
+                  </p>
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
                     <div>
                       <Label>Batch Number</Label>
                       <Input
@@ -643,10 +667,11 @@ export default function ImmunizationsPage() {
               )}
               {/* Diluent (collapsible for reconstituted vaccines) */}
               <details className="group rounded-md border border-border">
-                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                  Diluent Details <span className="text-xs font-normal">(for reconstituted vaccines)</span>
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                  Diluent Details{' '}
+                  <span className="text-xs font-normal">(for reconstituted vaccines)</span>
                 </summary>
-                <div className="px-3 pb-3 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 px-3 pb-3 pt-1 sm:grid-cols-2">
                   <div>
                     <Label>Batch No.</Label>
                     <Input
@@ -685,7 +710,7 @@ export default function ImmunizationsPage() {
                 />
               </div>
               {/* Actions */}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" onClick={() => setAdministerDialogOpen(false)}>
                   Cancel
                 </Button>
@@ -693,7 +718,9 @@ export default function ImmunizationsPage() {
                   onClick={() => administerMutation.mutate()}
                   disabled={administerMutation.isPending}
                 >
-                  {administerMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {administerMutation.isPending && (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  )}
                   Administer
                 </Button>
               </div>
@@ -710,7 +737,7 @@ export default function ImmunizationsPage() {
                 <HelpPopover content="Create a multi-dose schedule for an adult vaccine (e.g., Hep B 3-dose series). Doses will be spaced per the vaccine's configured interval." />
               </div>
             </DialogHeader>
-            <div className="space-y-3 sm:space-y-4 pt-2">
+            <div className="space-y-3 pt-2 sm:space-y-4">
               <div>
                 <Label>Vaccine</Label>
                 <Select
@@ -737,7 +764,7 @@ export default function ImmunizationsPage() {
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" onClick={() => setAdultScheduleDialogOpen(false)}>
                   Cancel
                 </Button>
@@ -745,7 +772,9 @@ export default function ImmunizationsPage() {
                   onClick={() => generateAdultMutation.mutate()}
                   disabled={!selectedVaccineId || generateAdultMutation.isPending}
                 >
-                  {generateAdultMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {generateAdultMutation.isPending && (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  )}
                   Generate Schedule
                 </Button>
               </div>

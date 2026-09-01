@@ -61,7 +61,11 @@ function formatCurrency(amount: number | string | null | undefined): string {
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(dateStr).toLocaleDateString('en-KE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -74,7 +78,11 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
-  const { data: po, isLoading, error } = useQuery({
+  const {
+    data: po,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['inventory-purchase-order', poId],
     queryFn: () => inventoryApi.getPurchaseOrder(poId),
   });
@@ -87,7 +95,11 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
       toast({ variant: 'success', title: 'Purchase order submitted for approval' });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Failed to submit', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to submit',
+        description: getApiErrorMessage(err),
+      });
     },
   });
 
@@ -99,7 +111,11 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
       toast({ variant: 'success', title: 'Purchase order approved' });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Failed to approve', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to approve',
+        description: getApiErrorMessage(err),
+      });
     },
   });
 
@@ -113,7 +129,11 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
       toast({ variant: 'success', title: 'Purchase order cancelled' });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Failed to cancel', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to cancel',
+        description: getApiErrorMessage(err),
+      });
     },
   });
 
@@ -130,7 +150,9 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
   if (error || !po) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>{error instanceof Error ? error.message : 'Purchase order not found'}</AlertDescription>
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Purchase order not found'}
+        </AlertDescription>
       </Alert>
     );
   }
@@ -149,7 +171,11 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
           <div className="flex flex-col gap-2 sm:flex-row">
             {canSubmit && (
               <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending}>
-                {submitMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                {submitMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
                 Submit
               </Button>
             )}
@@ -165,13 +191,16 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
                   <AlertDialogHeader>
                     <AlertDialogTitle>Approve Purchase Order?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will approve PO {po.po_number} for {formatCurrency(po.total_amount)}.
-                      The supplier can then be notified to fulfill the order.
+                      This will approve PO {po.po_number} for {formatCurrency(po.total_amount)}. The
+                      supplier can then be notified to fulfill the order.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => approveMutation.mutate()} disabled={approveMutation.isPending}>
+                    <AlertDialogAction
+                      onClick={() => approveMutation.mutate()}
+                      disabled={approveMutation.isPending}
+                    >
                       Approve
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -179,13 +208,20 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
               </AlertDialog>
             )}
             {canCreateGRN && (
-              <Button variant="outline" onClick={() => router.push(`/inventory/goods-receipt/new?po=${po.id}`)}>
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/inventory/goods-receipt/new?po=${po.id}`)}
+              >
                 <FileText className="mr-2 h-4 w-4" />
                 Create GRN
               </Button>
             )}
             {canCancel && (
-              <Button variant="outline" className="text-destructive" onClick={() => setCancelDialogOpen(true)}>
+              <Button
+                variant="outline"
+                className="text-destructive"
+                onClick={() => setCancelDialogOpen(true)}
+              >
                 <XCircle className="mr-2 h-4 w-4" />
                 Cancel
               </Button>
@@ -195,9 +231,9 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
       />
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {po.supplier_name}
             <span className="text-muted-foreground"> · {formatDate(po.order_date)}</span>
           </p>
@@ -206,9 +242,9 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
             {po.expected_delivery_date && <> · Expected {formatDate(po.expected_delivery_date)}</>}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="text-sm font-bold">{formatCurrency(po.total_amount)}</span>
-          <Badge className={`${statusColors[po.status]} shrink-0 w-fit`}>
+          <Badge className={`${statusColors[po.status]} w-fit shrink-0`}>
             {statusLabels[po.status]}
           </Badge>
         </div>
@@ -227,9 +263,9 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="pb-2 pr-4 font-medium">Drug</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Qty</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Unit Price</th>
-                      <th className="pb-2 font-medium text-right">Total</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Qty</th>
+                      <th className="pb-2 pr-4 text-right font-medium">Unit Price</th>
+                      <th className="pb-2 text-right font-medium">Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -238,20 +274,26 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
                         <td className="py-2.5 pr-4">{item.drug_name}</td>
                         <td className="py-2.5 pr-4 text-right">{item.quantity_ordered}</td>
                         <td className="py-2.5 pr-4 text-right">{formatCurrency(item.unit_cost)}</td>
-                        <td className="py-2.5 text-right font-medium">{formatCurrency(item.line_total)}</td>
+                        <td className="py-2.5 text-right font-medium">
+                          {formatCurrency(item.line_total)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="border-t">
-                      <td colSpan={3} className="py-2.5 text-right font-medium">Total</td>
-                      <td className="py-2.5 text-right font-bold">{formatCurrency(po.total_amount)}</td>
+                      <td colSpan={3} className="py-2.5 text-right font-medium">
+                        Total
+                      </td>
+                      <td className="py-2.5 text-right font-bold">
+                        {formatCurrency(po.total_amount)}
+                      </td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">No items yet</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">No items yet</p>
             )}
           </CardContent>
         </Card>
@@ -259,7 +301,9 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
         {/* Details sidebar */}
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Order Details</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Order Details</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
                 <p className="font-medium">Supplier</p>
@@ -280,7 +324,9 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
               {po.approved_by_name && (
                 <div>
                   <p className="font-medium">Approved By</p>
-                  <p className="text-muted-foreground">{po.approved_by_name} · {formatDate(po.approved_at)}</p>
+                  <p className="text-muted-foreground">
+                    {po.approved_by_name} · {formatDate(po.approved_at)}
+                  </p>
                 </div>
               )}
               {po.cancellation_reason && (
@@ -292,7 +338,7 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
               {po.notes && (
                 <div>
                   <p className="font-medium">Notes</p>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{po.notes}</p>
+                  <p className="whitespace-pre-wrap text-muted-foreground">{po.notes}</p>
                 </div>
               )}
             </CardContent>
@@ -317,7 +363,9 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Back</Button>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+              Back
+            </Button>
             <Button
               variant="destructive"
               disabled={!cancelReason.trim() || cancelMutation.isPending}

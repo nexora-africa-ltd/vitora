@@ -62,11 +62,7 @@ export default function MCHRegistrationsPage() {
 
   const debouncedSearch = useDebounce(search, 300);
 
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['mch-registrations', page, statusFilter, debouncedSearch, riskFilter],
     queryFn: () =>
       mchRegistrationsApi.list({
@@ -100,7 +96,11 @@ export default function MCHRegistrationsPage() {
           title="MCH Registrations"
           helpContent="Manage maternal and child health registrations. Track pregnancies from ANC through delivery and postnatal care."
           actions={
-            <Button onClick={() => router.push('/mch/new')} disabled={!canCreateRoute('/mch/new')} className="gap-2 w-full sm:w-auto">
+            <Button
+              onClick={() => router.push('/mch/new')}
+              disabled={!canCreateRoute('/mch/new')}
+              className="w-full gap-2 sm:w-auto"
+            >
               <Plus className="h-4 w-4" />
               New Registration
             </Button>
@@ -140,7 +140,7 @@ export default function MCHRegistrationsPage() {
 
         {/* Filters */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative max-w-sm flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by name or MRN..."
@@ -195,13 +195,11 @@ export default function MCHRegistrationsPage() {
             ))}
           </div>
         ) : error ? (
-          <div className="text-center py-8 text-destructive">
+          <div className="py-8 text-center text-destructive">
             Failed to load registrations. Please try again.
           </div>
         ) : registrations.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No MCH registrations found.
-          </div>
+          <div className="py-8 text-center text-muted-foreground">No MCH registrations found.</div>
         ) : (
           <>
             <ResponsiveTable
@@ -212,9 +210,7 @@ export default function MCHRegistrationsPage() {
                 {
                   key: 'mch_number',
                   header: 'MCH No.',
-                  cell: (r) => (
-                    <span className="font-mono text-sm">{r.mch_number}</span>
-                  ),
+                  cell: (r) => <span className="font-mono text-sm">{r.mch_number}</span>,
                 },
                 {
                   key: 'mother',
@@ -229,27 +225,19 @@ export default function MCHRegistrationsPage() {
                 {
                   key: 'gestation',
                   header: 'Gestation',
-                  cell: (r) => (
-                    <span className="text-sm">{r.gestation_display || 'N/A'}</span>
-                  ),
+                  cell: (r) => <span className="text-sm">{r.gestation_display || 'N/A'}</span>,
                   hideOnMobile: true,
                 },
                 {
                   key: 'edd',
                   header: 'EDD',
-                  cell: (r) => (
-                    <span className="text-sm">
-                      {r.edd ? formatDate(r.edd) : 'N/A'}
-                    </span>
-                  ),
+                  cell: (r) => <span className="text-sm">{r.edd ? formatDate(r.edd) : 'N/A'}</span>,
                   hideOnMobile: true,
                 },
                 {
                   key: 'anc_visits',
                   header: 'ANC Visits',
-                  cell: (r) => (
-                    <span className="text-sm">{r.anc_visit_count}</span>
-                  ),
+                  cell: (r) => <span className="text-sm">{r.anc_visit_count}</span>,
                   hideOnMobile: true,
                 },
                 {
@@ -271,11 +259,11 @@ export default function MCHRegistrationsPage() {
                 },
               ]}
               mobileCard={(r) => (
-                <div className="flex justify-between items-start gap-3">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate">{r.mother_name}</p>
+                    <p className="truncate font-medium">{r.mother_name}</p>
                     <p className="text-xs text-muted-foreground">{r.mch_number}</p>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {r.gestation_display || 'N/A'} • EDD: {r.edd ? formatDate(r.edd) : 'N/A'}
                     </p>
                   </div>
@@ -284,7 +272,7 @@ export default function MCHRegistrationsPage() {
                       {r.status.replace(/_/g, ' ')}
                     </Badge>
                     {r.is_high_risk && (
-                      <Badge variant="destructive" className="gap-1 shrink-0">
+                      <Badge variant="destructive" className="shrink-0 gap-1">
                         <AlertTriangle className="h-3 w-3" />
                         HR
                       </Badge>
@@ -296,7 +284,7 @@ export default function MCHRegistrationsPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-4">
+              <div className="mt-4 flex justify-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -305,7 +293,7 @@ export default function MCHRegistrationsPage() {
                 >
                   Previous
                 </Button>
-                <span className="py-2 px-4 text-sm text-muted-foreground">
+                <span className="px-4 py-2 text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
                 <Button

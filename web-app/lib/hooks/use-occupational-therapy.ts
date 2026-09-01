@@ -28,8 +28,7 @@ export const otKeys = {
   orders: () => [...otKeys.all, 'orders'] as const,
   orderList: (params?: OTOrderListParams) => [...otKeys.orders(), 'list', params] as const,
   order: (id: number) => [...otKeys.orders(), 'detail', id] as const,
-  orderByNumber: (orderNumber: string) =>
-    [...otKeys.orders(), 'by-number', orderNumber] as const,
+  orderByNumber: (orderNumber: string) => [...otKeys.orders(), 'by-number', orderNumber] as const,
   // Sessions
   sessions: () => [...otKeys.all, 'sessions'] as const,
   sessionList: (params?: OTSessionListParams) => [...otKeys.sessions(), 'list', params] as const,

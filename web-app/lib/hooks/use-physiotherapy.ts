@@ -36,8 +36,7 @@ export const physiotherapyKeys = {
   sessionList: (params?: PhysiotherapySessionListParams) =>
     [...physiotherapyKeys.sessions(), 'list', params] as const,
   session: (id: number) => [...physiotherapyKeys.sessions(), 'detail', id] as const,
-  orderSessions: (orderId: number) =>
-    [...physiotherapyKeys.sessions(), 'order', orderId] as const,
+  orderSessions: (orderId: number) => [...physiotherapyKeys.sessions(), 'order', orderId] as const,
 };
 
 // ============ Treatment Type Hooks ============

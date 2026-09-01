@@ -29,7 +29,7 @@ export function TreatmentPlanView({ treatmentPlan }: TreatmentPlanViewProps) {
             <CardTitle className="text-lg">Treatment Plan</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{treatmentPlan.clinical_notes}</p>
+            <p className="whitespace-pre-wrap text-sm">{treatmentPlan.clinical_notes}</p>
           </CardContent>
         </Card>
       )}
@@ -38,7 +38,7 @@ export function TreatmentPlanView({ treatmentPlan }: TreatmentPlanViewProps) {
       {treatmentPlan.medications && treatmentPlan.medications.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <Pill className="h-5 w-5" />
               Medications ({treatmentPlan.medications.length})
             </CardTitle>
@@ -46,10 +46,7 @@ export function TreatmentPlanView({ treatmentPlan }: TreatmentPlanViewProps) {
           <CardContent>
             <div className="space-y-4">
               {treatmentPlan.medications.map((med) => (
-                <div
-                  key={med.id}
-                  className="flex flex-col gap-2 p-3 rounded-lg border bg-muted/30"
-                >
+                <div key={med.id} className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
                   <div className="flex items-center justify-between">
                     <h4 className="font-medium">{med.name}</h4>
                     <Badge variant="outline">{med.route}</Badge>
@@ -84,17 +81,15 @@ export function TreatmentPlanView({ treatmentPlan }: TreatmentPlanViewProps) {
       {treatmentPlan.follow_up_date && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <Calendar className="h-5 w-5" />
               Follow-up
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-medium">
-              {formatDate(treatmentPlan.follow_up_date)}
-            </p>
+            <p className="font-medium">{formatDate(treatmentPlan.follow_up_date)}</p>
             {treatmentPlan.follow_up_instructions && (
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="mt-2 text-sm text-muted-foreground">
                 {treatmentPlan.follow_up_instructions}
               </p>
             )}

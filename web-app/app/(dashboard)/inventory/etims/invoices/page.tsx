@@ -3,14 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import {
-  FileText,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  SendHorizonal,
-  Receipt,
-} from 'lucide-react';
+import { FileText, Clock, CheckCircle2, XCircle, SendHorizonal, Receipt } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -54,7 +47,9 @@ const STATUS_CONFIG: Record<ETIMSInvoiceStatus, { label: string; color: string }
 
 function StatusBadge({ status }: { status: ETIMSInvoiceStatus }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
-  return <Badge className={`${cfg.color} shrink-0 w-fit self-start sm:self-auto`}>{cfg.label}</Badge>;
+  return (
+    <Badge className={`${cfg.color} w-fit shrink-0 self-start sm:self-auto`}>{cfg.label}</Badge>
+  );
 }
 
 export default function ETIMSInvoicesPage() {
@@ -103,7 +98,7 @@ export default function ETIMSInvoicesPage() {
                 <Receipt className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Total</p>
               </div>
-              <p className="text-xl font-bold mt-1">{isLoading ? '...' : totalCount}</p>
+              <p className="mt-1 text-xl font-bold">{isLoading ? '...' : totalCount}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
@@ -116,7 +111,9 @@ export default function ETIMSInvoicesPage() {
                 <Clock className="h-4 w-4 text-amber-500" />
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
-              <p className="text-xl font-bold mt-1 text-amber-600">{isLoading ? '...' : pendingCount}</p>
+              <p className="mt-1 text-xl font-bold text-amber-600">
+                {isLoading ? '...' : pendingCount}
+              </p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
@@ -129,7 +126,9 @@ export default function ETIMSInvoicesPage() {
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
                 <p className="text-xs text-muted-foreground">Confirmed</p>
               </div>
-              <p className="text-xl font-bold mt-1 text-green-600">{isLoading ? '...' : confirmedCount}</p>
+              <p className="mt-1 text-xl font-bold text-green-600">
+                {isLoading ? '...' : confirmedCount}
+              </p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
@@ -142,14 +141,22 @@ export default function ETIMSInvoicesPage() {
                 <XCircle className="h-4 w-4 text-red-500" />
                 <p className="text-xs text-muted-foreground">Failed</p>
               </div>
-              <p className="text-xl font-bold mt-1 text-red-600">{isLoading ? '...' : failedCount}</p>
+              <p className="mt-1 text-xl font-bold text-red-600">
+                {isLoading ? '...' : failedCount}
+              </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Filter */}
         <div className="flex items-center gap-3">
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setStatusFilter(v);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -187,9 +194,7 @@ export default function ETIMSInvoicesPage() {
                   key: 'invoice_number',
                   header: 'Invoice #',
                   sortable: true,
-                  cell: (inv) => (
-                    <span className="font-medium">{inv.invoice_number}</span>
-                  ),
+                  cell: (inv) => <span className="font-medium">{inv.invoice_number}</span>,
                 },
                 {
                   key: 'patient_name',
@@ -228,9 +233,7 @@ export default function ETIMSInvoicesPage() {
                   sortable: true,
                   sortType: 'date' as const,
                   cell: (inv) =>
-                    inv.submitted_at
-                      ? new Date(inv.submitted_at).toLocaleDateString()
-                      : '—',
+                    inv.submitted_at ? new Date(inv.submitted_at).toLocaleDateString() : '—',
                   hideOnMobile: true,
                 },
               ]}
@@ -238,14 +241,14 @@ export default function ETIMSInvoicesPage() {
                 <Card className="p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{inv.invoice_number}</p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="truncate font-medium">{inv.invoice_number}</p>
+                      <p className="truncate text-xs text-muted-foreground">
                         {inv.patient_name || 'No patient'}
                       </p>
                     </div>
                     <StatusBadge status={inv.status} />
                   </div>
-                  <div className="flex items-center justify-between mt-2 text-sm">
+                  <div className="mt-2 flex items-center justify-between text-sm">
                     <span className="font-mono">
                       KES {Number(inv.invoice_total).toLocaleString()}
                     </span>
@@ -267,14 +270,14 @@ export default function ETIMSInvoicesPage() {
                 </p>
                 <div className="flex gap-2">
                   <button
-                    className="px-3 py-1 rounded border disabled:opacity-50"
+                    className="rounded border px-3 py-1 disabled:opacity-50"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
                     Previous
                   </button>
                   <button
-                    className="px-3 py-1 rounded border disabled:opacity-50"
+                    className="rounded border px-3 py-1 disabled:opacity-50"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >

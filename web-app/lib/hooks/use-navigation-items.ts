@@ -48,7 +48,7 @@ export function useNavigationItems(): NavigationResult {
   // Derive the set of active clinic types from fetched clinics
   const activeClinicTypes = useMemo(() => {
     if (!clinicsData?.results) return undefined;
-    return new Set(clinicsData.results.map(c => c.clinic_type));
+    return new Set(clinicsData.results.map((c) => c.clinic_type));
   }, [clinicsData]);
 
   return useMemo(() => {
@@ -59,7 +59,15 @@ export function useNavigationItems(): NavigationResult {
       isSuperuser,
     };
 
-    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string; planFeature?: string; featureFlag?: string | boolean; requiresInternet?: boolean; visibleWhen?: (ctx: NavItemVisibilityContext) => boolean }): boolean => {
+    const isAllowed = (item: {
+      moduleKey?: string;
+      facilityModule?: string;
+      actionKey?: string;
+      planFeature?: string;
+      featureFlag?: string | boolean;
+      requiresInternet?: boolean;
+      visibleWhen?: (ctx: NavItemVisibilityContext) => boolean;
+    }): boolean => {
       if (item.featureFlag === 'interfacility_transfers' && !interfacilityTransfersEnabled) {
         return false;
       }
@@ -77,7 +85,9 @@ export function useNavigationItems(): NavigationResult {
       if (!isAllowed(item)) return null;
 
       if (hasChildren(item)) {
-        const filteredChildren = item.children.filter((child): child is NavItem => isAllowed(child));
+        const filteredChildren = item.children.filter((child): child is NavItem =>
+          isAllowed(child)
+        );
         if (filteredChildren.length === 0) return null;
         return { ...item, children: filteredChildren };
       }

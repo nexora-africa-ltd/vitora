@@ -45,8 +45,16 @@ import { licensingApi } from '@/lib/api/licensing';
 import { useToast } from '@/lib/hooks/use-toast';
 
 const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; description: string }> = [
-  { value: 'standalone', label: 'Standalone', description: 'Single user, syncs to cloud when online' },
-  { value: 'lan_client', label: 'LAN Client', description: 'Multi-user facility, connects to local hub' },
+  {
+    value: 'standalone',
+    label: 'Standalone',
+    description: 'Single user, syncs to cloud when online',
+  },
+  {
+    value: 'lan_client',
+    label: 'LAN Client',
+    description: 'Multi-user facility, connects to local hub',
+  },
   { value: 'lan_hub', label: 'LAN Hub', description: 'This machine runs the server locally' },
   { value: 'web_only', label: 'Web Only', description: 'Connects directly to cloud (PowerSync)' },
 ];
@@ -134,10 +142,7 @@ export function DesktopSettingsTab() {
   const loadConfig = useCallback(async () => {
     setLoading(true);
     try {
-      const [appConfig, instId] = await Promise.all([
-        getAppConfig(),
-        getInstallationId(),
-      ]);
+      const [appConfig, instId] = await Promise.all([getAppConfig(), getInstallationId()]);
       if (appConfig) {
         setConfig(appConfig);
         setApiUrlState(appConfig.api_url);
@@ -201,10 +206,17 @@ export function DesktopSettingsTab() {
       if (deploymentMode === 'lan_client') {
         await setHubUrl(hubUrl);
       }
-      toast({ title: 'Settings saved', description: 'Desktop configuration updated. Restart the app for changes to take effect.' });
+      toast({
+        title: 'Settings saved',
+        description: 'Desktop configuration updated. Restart the app for changes to take effect.',
+      });
       await loadConfig();
     } catch {
-      toast({ title: 'Save failed', description: 'Failed to update desktop settings.', variant: 'destructive' });
+      toast({
+        title: 'Save failed',
+        description: 'Failed to update desktop settings.',
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
@@ -222,7 +234,10 @@ export function DesktopSettingsTab() {
 
   const handleClearCredentials = async () => {
     await clearCredentials();
-    toast({ title: 'Credentials cleared', description: 'Saved login credentials have been removed.' });
+    toast({
+      title: 'Credentials cleared',
+      description: 'Saved login credentials have been removed.',
+    });
   };
 
   const handleSyncNow = async () => {
@@ -249,7 +264,8 @@ export function DesktopSettingsTab() {
   const handleManualCheckIn = async () => {
     setManualCheckIning(true);
     try {
-      const resolvedInstallationId = installationId || (await licensingApi.getInstallationIdAsync());
+      const resolvedInstallationId =
+        installationId || (await licensingApi.getInstallationIdAsync());
       await licensingApi.checkIn({
         installation_id: resolvedInstallationId,
         app_version: process.env.NEXT_PUBLIC_APP_VERSION || '0.0.0',
@@ -313,14 +329,15 @@ export function DesktopSettingsTab() {
               onChange={(e) => setApiUrlState(e.target.value)}
               placeholder="https://cloud-api.example.com"
             />
-            <p className="text-xs text-muted-foreground">
-              The base URL of the Vitora backend API.
-            </p>
+            <p className="text-xs text-muted-foreground">The base URL of the Vitora backend API.</p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="deployment-mode">Deployment Mode</Label>
-            <Select value={deploymentMode} onValueChange={(v) => setDeploymentModeState(v as DeploymentMode)}>
+            <Select
+              value={deploymentMode}
+              onValueChange={(v) => setDeploymentModeState(v as DeploymentMode)}
+            >
               <SelectTrigger id="deployment-mode">
                 <SelectValue />
               </SelectTrigger>
@@ -364,12 +381,25 @@ export function DesktopSettingsTab() {
                 <HelpPopover content="Monitor the local hub queue and run an immediate hub-to-cloud sync cycle." />
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button variant="outline" size="sm" onClick={loadHubHealth} disabled={healthLoading || syncingNow}>
-                  {healthLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadHubHealth}
+                  disabled={healthLoading || syncingNow}
+                >
+                  {healthLoading ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-1.5 h-4 w-4" />
+                  )}
                   Refresh
                 </Button>
                 <Button size="sm" onClick={handleSyncNow} disabled={syncingNow || healthLoading}>
-                  {syncingNow ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Activity className="h-4 w-4 mr-1.5" />}
+                  {syncingNow ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Activity className="mr-1.5 h-4 w-4" />
+                  )}
                   Sync Now
                 </Button>
               </div>
@@ -391,7 +421,10 @@ export function DesktopSettingsTab() {
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       Status
                     </div>
-                    <Badge variant={healthBadgeVariant(hubHealth.status)} className="mt-2 w-fit capitalize">
+                    <Badge
+                      variant={healthBadgeVariant(hubHealth.status)}
+                      className="mt-2 w-fit capitalize"
+                    >
                       {hubHealth.status}
                     </Badge>
                   </div>
@@ -403,21 +436,28 @@ export function DesktopSettingsTab() {
                     <p className="mt-2 text-sm font-medium">
                       {hubHealth.sync?.pending ?? 0} pending
                     </p>
-                    <p className="text-xs text-muted-foreground">{hubHealth.sync?.failed ?? 0} failed</p>
+                    <p className="text-xs text-muted-foreground">
+                      {hubHealth.sync?.failed ?? 0} failed
+                    </p>
                   </div>
                   <div className="rounded-md border p-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Clock className="h-3.5 w-3.5" />
                       Last Sync
                     </div>
-                    <p className="mt-2 text-sm font-medium">{formatDateTime(hubHealth.sync?.last_synced_at)}</p>
+                    <p className="mt-2 text-sm font-medium">
+                      {formatDateTime(hubHealth.sync?.last_synced_at)}
+                    </p>
                   </div>
                   <div className="rounded-md border p-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Server className="h-3.5 w-3.5" />
                       License
                     </div>
-                    <Badge variant={hubHealth.license?.present ? 'default' : 'destructive'} className="mt-2 w-fit">
+                    <Badge
+                      variant={hubHealth.license?.present ? 'default' : 'destructive'}
+                      className="mt-2 w-fit"
+                    >
                       {hubHealth.license?.present ? 'Present' : 'Missing'}
                     </Badge>
                   </div>
@@ -451,7 +491,7 @@ export function DesktopSettingsTab() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="sync-interval">Sync Interval (seconds)</Label>
               <Input
@@ -461,9 +501,7 @@ export function DesktopSettingsTab() {
                 value={syncInterval}
                 onChange={(e) => setSyncIntervalState(Number(e.target.value))}
               />
-              <p className="text-xs text-muted-foreground">
-                How often to sync data. 0 = disabled.
-              </p>
+              <p className="text-xs text-muted-foreground">How often to sync data. 0 = disabled.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="backup-interval">Backup Interval (minutes)</Label>
@@ -513,11 +551,23 @@ export function DesktopSettingsTab() {
               <div className="space-y-1">
                 <p className="text-sm font-medium">License Check-in</p>
                 <p className="text-xs text-muted-foreground">
-                  Last check-in: {lastLicenseCheckInAt ? formatDateTime(new Date(lastLicenseCheckInAt).toISOString()) : 'Never'}
+                  Last check-in:{' '}
+                  {lastLicenseCheckInAt
+                    ? formatDateTime(new Date(lastLicenseCheckInAt).toISOString())
+                    : 'Never'}
                 </p>
               </div>
-              <Button size="sm" variant="outline" onClick={handleManualCheckIn} disabled={manualCheckIning}>
-                {manualCheckIning ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Activity className="h-4 w-4 mr-1.5" />}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleManualCheckIn}
+                disabled={manualCheckIning}
+              >
+                {manualCheckIning ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Activity className="mr-1.5 h-4 w-4" />
+                )}
                 Check In Now
               </Button>
             </div>
@@ -551,11 +601,15 @@ export function DesktopSettingsTab() {
       {/* Save / Reset */}
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={handleReset} disabled={!hasChanges || saving}>
-          <RotateCcw className="h-4 w-4 mr-1.5" />
+          <RotateCcw className="mr-1.5 h-4 w-4" />
           Reset
         </Button>
         <Button onClick={handleSave} disabled={!hasChanges || saving}>
-          {saving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
+          {saving ? (
+            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-1.5 h-4 w-4" />
+          )}
           Save Changes
         </Button>
       </div>

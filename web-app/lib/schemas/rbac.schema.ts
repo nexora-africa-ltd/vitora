@@ -10,7 +10,15 @@ import { z } from 'zod';
 // ENUMS
 // =============================================================================
 
-export const DepartmentTypeSchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'SUPPORT', 'LABORATORY', 'PHARMACY', 'RADIOLOGY', 'RECORDS']);
+export const DepartmentTypeSchema = z.enum([
+  'CLINICAL',
+  'ADMINISTRATIVE',
+  'SUPPORT',
+  'LABORATORY',
+  'PHARMACY',
+  'RADIOLOGY',
+  'RECORDS',
+]);
 
 export const RoleCategorySchema = z.enum([
   'CLINICAL',
@@ -54,13 +62,25 @@ export const DepartmentSchema = z.object({
   department_type: DepartmentTypeSchema,
   department_type_display: z.string(),
   parent: z.number().nullable(),
-  parent_name: z.string().nullable().optional().transform((value) => value ?? null),
+  parent_name: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
   head: z.number().nullable(),
   head_name: z.string().nullable(),
   facility: z.number().nullable(),
-  facility_name: z.string().nullable().optional().transform((value) => value ?? null),
+  facility_name: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
   organization: z.number().nullable(),
-  organization_name: z.string().nullable().optional().transform((value) => value ?? null),
+  organization_name: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
   is_active: z.boolean(),
   staff_count: z.number(),
   created_at: z.string(),

@@ -63,7 +63,8 @@ const AVPU_CARD_CONFIG: AVPUConfig[] = [
     severity: 'normal',
     colors: {
       base: 'bg-card hover:bg-muted/50',
-      selected: 'bg-green-50 dark:bg-green-950/50 ring-2 ring-green-500 scale-[1.03] shadow-lg shadow-green-500/20',
+      selected:
+        'bg-green-50 dark:bg-green-950/50 ring-2 ring-green-500 scale-[1.03] shadow-lg shadow-green-500/20',
       border: 'border-border',
       icon: 'text-green-600 dark:text-green-400',
       text: 'text-green-700 dark:text-green-300',
@@ -77,7 +78,8 @@ const AVPU_CARD_CONFIG: AVPUConfig[] = [
     severity: 'warning',
     colors: {
       base: 'bg-card hover:bg-muted/50',
-      selected: 'bg-yellow-50 dark:bg-yellow-950/50 ring-2 ring-yellow-500 scale-[1.03] shadow-lg shadow-yellow-500/20',
+      selected:
+        'bg-yellow-50 dark:bg-yellow-950/50 ring-2 ring-yellow-500 scale-[1.03] shadow-lg shadow-yellow-500/20',
       border: 'border-border',
       icon: 'text-yellow-600 dark:text-yellow-400',
       text: 'text-yellow-700 dark:text-yellow-300',
@@ -91,7 +93,8 @@ const AVPU_CARD_CONFIG: AVPUConfig[] = [
     severity: 'warning',
     colors: {
       base: 'bg-card hover:bg-muted/50',
-      selected: 'bg-orange-50 dark:bg-orange-950/50 ring-2 ring-orange-500 scale-[1.03] shadow-lg shadow-orange-500/20',
+      selected:
+        'bg-orange-50 dark:bg-orange-950/50 ring-2 ring-orange-500 scale-[1.03] shadow-lg shadow-orange-500/20',
       border: 'border-border',
       icon: 'text-orange-600 dark:text-orange-400',
       text: 'text-orange-700 dark:text-orange-300',
@@ -105,7 +108,8 @@ const AVPU_CARD_CONFIG: AVPUConfig[] = [
     severity: 'critical',
     colors: {
       base: 'bg-card hover:bg-muted/50',
-      selected: 'bg-red-50 dark:bg-red-950/50 ring-2 ring-red-500 scale-[1.03] shadow-lg shadow-red-500/20',
+      selected:
+        'bg-red-50 dark:bg-red-950/50 ring-2 ring-red-500 scale-[1.03] shadow-lg shadow-red-500/20',
       border: 'border-border',
       icon: 'text-red-600 dark:text-red-400',
       text: 'text-red-700 dark:text-red-300',
@@ -146,7 +150,7 @@ export function AVPUCardGroup({
   return (
     <div className={cn('space-y-3', className)} data-testid="avpu-card-group">
       {/* Header */}
-      <Label className="text-sm font-medium flex items-center gap-2">
+      <Label className="flex items-center gap-2 text-sm font-medium">
         <BrainCog className="h-4 w-4 text-muted-foreground" />
         Mental Status (AVPU) <span className="text-destructive">*</span>
       </Label>
@@ -156,7 +160,7 @@ export function AVPUCardGroup({
         value={value ?? ''}
         onValueChange={(val) => onChange(val as AVPUStatus)}
         disabled={disabled}
-        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-4"
         aria-label="Mental status AVPU scale"
       >
         {AVPU_CARD_CONFIG.map((config) => {
@@ -173,17 +177,17 @@ export function AVPUCardGroup({
               <Label
                 htmlFor={`avpu-${config.code}`}
                 className={cn(
-                  'flex flex-col items-center justify-center rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 min-h-[140px] sm:min-h-[160px]',
+                  'flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 p-4 transition-all duration-200 sm:min-h-[160px]',
                   isSelected
                     ? config.colors.selected
                     : cn(config.colors.base, config.colors.border, 'hover:border-primary/30'),
-                  disabled && 'opacity-50 cursor-not-allowed'
+                  disabled && 'cursor-not-allowed opacity-50'
                 )}
               >
                 {/* Icon */}
                 <Icon
                   className={cn(
-                    'h-8 w-8 mb-2 transition-colors',
+                    'mb-2 h-8 w-8 transition-colors',
                     isSelected ? config.colors.icon : 'text-muted-foreground'
                   )}
                 />
@@ -191,7 +195,7 @@ export function AVPUCardGroup({
                 {/* Code Badge */}
                 <span
                   className={cn(
-                    'text-2xl font-bold mb-1 transition-colors',
+                    'mb-1 text-2xl font-bold transition-colors',
                     isSelected ? config.colors.text : 'text-foreground'
                   )}
                 >
@@ -232,7 +236,10 @@ export function AVPUCardGroup({
 
       {/* Inline Critical Alerts */}
       {showInlineAlert && value === 'U' && (
-        <Alert variant="destructive" className="bg-red-50 dark:bg-red-950/50 border-red-300 dark:border-red-800">
+        <Alert
+          variant="destructive"
+          className="border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/50"
+        >
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="font-medium">
             CRITICAL: Unresponsive patient — Immediate intervention required.
@@ -241,9 +248,9 @@ export function AVPUCardGroup({
       )}
 
       {showInlineAlert && value === 'P' && (
-        <Alert className="bg-orange-50 dark:bg-orange-950/50 border-orange-300 dark:border-orange-700">
+        <Alert className="border-orange-300 bg-orange-50 dark:border-orange-700 dark:bg-orange-950/50">
           <AlertTriangle className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-orange-800 dark:text-orange-200 font-medium">
+          <AlertDescription className="font-medium text-orange-800 dark:text-orange-200">
             Responds only to pain — Urgent assessment required. High risk of deterioration.
           </AlertDescription>
         </Alert>

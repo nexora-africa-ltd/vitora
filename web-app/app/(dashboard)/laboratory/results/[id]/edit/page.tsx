@@ -20,6 +20,12 @@ type ComponentRow = {
   flag?: string | null;
 };
 
+type LabResultEditPayload = {
+  components?: ComponentRow[];
+  comments?: string;
+  comment?: string;
+};
+
 export default function LabResultEditPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -42,7 +48,7 @@ export default function LabResultEditPage() {
       if (!resultId) return;
       setIsLoading(true);
       try {
-        const data: any = await laboratoryApi.getResult(resultId);
+        const data = (await laboratoryApi.getResult(resultId)) as LabResultEditPayload;
 
         const incomingComponents: ComponentRow[] = Array.isArray(data?.components)
           ? data.components
@@ -73,7 +79,9 @@ export default function LabResultEditPage() {
   }, [resultId]);
 
   const setComponentValue = (name: string, value: string) => {
-    setComponents((prev) => prev.map((c) => (c.name.toLowerCase() === name.toLowerCase() ? { ...c, value } : c)));
+    setComponents((prev) =>
+      prev.map((c) => (c.name.toLowerCase() === name.toLowerCase() ? { ...c, value } : c))
+    );
   };
 
   const handleSave = async () => {
@@ -84,7 +92,7 @@ export default function LabResultEditPage() {
     // and our E2E mocks include a 'components' array.
     await laboratoryApi.updateResult(resultId, {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...( { components, comments: comment } as any ),
+      ...({ components, comments: comment } as any),
     });
 
     // Lightweight client-side flagging to support UX and E2E.
@@ -105,7 +113,7 @@ export default function LabResultEditPage() {
         title={`Edit Result ${resultId || ''}`}
         helpContent="Edit component values and comments for a lab result."
         actions={
-          <Button onClick={handleSave} disabled={isLoading} className="gap-2 w-full sm:w-auto">
+          <Button onClick={handleSave} disabled={isLoading} className="w-full gap-2 sm:w-auto">
             <Save className="h-4 w-4" />
             Save
           </Button>
@@ -126,7 +134,7 @@ export default function LabResultEditPage() {
               </div>
             )}
             {components.map((c) => (
-              <div key={c.name} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <div key={c.name} className="grid grid-cols-1 items-end gap-3 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor={`component-${c.name}`}>{c.name}</Label>
                   <Input

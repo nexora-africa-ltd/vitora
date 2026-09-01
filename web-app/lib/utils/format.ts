@@ -11,7 +11,10 @@ import { format, formatDistanceToNow, parseISO, differenceInYears } from 'date-f
  * formatDate('2025-12-25') // 'Dec 25, 2025'
  * formatDate('2025-12-25', 'yyyy-MM-dd') // '2025-12-25'
  */
-export function formatDate(date: string | Date | null | undefined, pattern = 'MMM d, yyyy'): string {
+export function formatDate(
+  date: string | Date | null | undefined,
+  pattern = 'MMM d, yyyy'
+): string {
   if (!date) return '-';
   try {
     const dateObj = typeof date === 'string' ? parseISO(date) : date;
@@ -32,7 +35,10 @@ export function formatDate(date: string | Date | null | undefined, pattern = 'MM
  * @example
  * formatDateTime('2025-12-25T14:30:00') // 'Dec 25, 2025 2:30 PM'
  */
-export function formatDateTime(date: string | Date | null | undefined, pattern = 'MMM d, yyyy h:mm a'): string {
+export function formatDateTime(
+  date: string | Date | null | undefined,
+  pattern = 'MMM d, yyyy h:mm a'
+): string {
   if (!date) return '-';
   try {
     const dateObj = typeof date === 'string' ? parseISO(date) : date;

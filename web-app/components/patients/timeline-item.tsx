@@ -23,12 +23,15 @@ interface TimelineItemProps {
   isLast?: boolean;
 }
 
-const eventConfig: Record<TimelineEventType, {
-  icon: LucideIcon;
-  color: string;
-  bgColor: string;
-  label: string;
-}> = {
+const eventConfig: Record<
+  TimelineEventType,
+  {
+    icon: LucideIcon;
+    color: string;
+    bgColor: string;
+    label: string;
+  }
+> = {
   encounter: {
     icon: Stethoscope,
     color: 'text-blue-600',
@@ -107,7 +110,8 @@ export function TimelineItem({ event, isLast = false }: TimelineItemProps) {
     <div
       className={cn(
         'relative flex gap-4 pb-6',
-        !isLast && 'before:absolute before:left-[17px] before:top-10 before:h-full before:w-0.5 before:bg-border'
+        !isLast &&
+          'before:absolute before:left-[17px] before:top-10 before:h-full before:w-0.5 before:bg-border'
       )}
     >
       {/* Icon */}
@@ -124,9 +128,9 @@ export function TimelineItem({ event, isLast = false }: TimelineItemProps) {
 
       {/* Content */}
       <div className="flex-1 pt-0.5">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="font-medium text-sm">{event.title}</h4>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-sm font-medium">{event.title}</h4>
             <Badge variant="secondary" className="text-xs">
               {config.label}
             </Badge>
@@ -135,7 +139,8 @@ export function TimelineItem({ event, isLast = false }: TimelineItemProps) {
                 variant="outline"
                 className={cn(
                   'text-xs',
-                  event.metadata.encounterType === 'EMERGENCY' && 'border-destructive text-destructive'
+                  event.metadata.encounterType === 'EMERGENCY' &&
+                    'border-destructive text-destructive'
                 )}
               >
                 {event.metadata.encounterType}
@@ -155,28 +160,25 @@ export function TimelineItem({ event, isLast = false }: TimelineItemProps) {
         </div>
 
         {event.description && (
-          <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-            {event.description}
-          </p>
+          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{event.description}</p>
         )}
 
         {/* Metadata display */}
         {event.metadata?.provider && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Provider: {event.metadata.provider}
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Provider: {event.metadata.provider}</p>
         )}
 
-        {event.type === 'surgery' && (event.metadata?.caseNumber || event.metadata?.theatreName) && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            {event.metadata?.caseNumber ? `Case ${event.metadata.caseNumber}` : ''}
-            {event.metadata?.caseNumber && event.metadata?.theatreName ? ' • ' : ''}
-            {event.metadata?.theatreName || ''}
-          </p>
-        )}
+        {event.type === 'surgery' &&
+          (event.metadata?.caseNumber || event.metadata?.theatreName) && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {event.metadata?.caseNumber ? `Case ${event.metadata.caseNumber}` : ''}
+              {event.metadata?.caseNumber && event.metadata?.theatreName ? ' • ' : ''}
+              {event.metadata?.theatreName || ''}
+            </p>
+          )}
 
         {event.metadata?.icd10Code && (
-          <p className="mt-1 text-xs font-mono text-muted-foreground">
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
             ICD-10: {event.metadata.icd10Code}
           </p>
         )}
@@ -194,7 +196,7 @@ export function TimelineItem({ event, isLast = false }: TimelineItemProps) {
     return (
       <Link
         href={link}
-        className="block transition-colors hover:bg-accent/50 rounded-lg -mx-2 px-2"
+        className="-mx-2 block rounded-lg px-2 transition-colors hover:bg-accent/50"
       >
         {content}
       </Link>

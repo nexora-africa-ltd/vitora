@@ -25,10 +25,7 @@ interface RecentActivityProps {
   maxHeight?: string;
 }
 
-const activityConfig: Record<
-  ActivityType,
-  { icon: LucideIcon; color: string; bgColor: string }
-> = {
+const activityConfig: Record<ActivityType, { icon: LucideIcon; color: string; bgColor: string }> = {
   patient: {
     icon: User,
     color: 'text-blue-600',
@@ -113,9 +110,7 @@ export function RecentActivity({ activities, maxHeight = '300px' }: RecentActivi
           <CardTitle className="text-base font-medium">Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            No recent activity
-          </div>
+          <div className="py-8 text-center text-muted-foreground">No recent activity</div>
         </CardContent>
       </Card>
     );
@@ -139,30 +134,23 @@ export function RecentActivity({ activities, maxHeight = '300px' }: RecentActivi
                 <>
                   <div
                     className={cn(
-                      'h-8 w-8 rounded-full flex items-center justify-center shrink-0',
+                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
                       config.bgColor
                     )}
                   >
                     <Icon className={cn('h-4 w-4', config.color)} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{activity.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {activity.description}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <time
-                        dateTime={activity.timestamp}
-                        className="text-xs text-muted-foreground"
-                      >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{activity.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{activity.description}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <time dateTime={activity.timestamp} className="text-xs text-muted-foreground">
                         {formatRelativeTime(activity.timestamp)}
                       </time>
                       {userName && (
                         <>
                           <span className="text-xs text-muted-foreground">•</span>
-                          <span className="text-xs text-muted-foreground">
-                            {userName}
-                          </span>
+                          <span className="text-xs text-muted-foreground">{userName}</span>
                         </>
                       )}
                     </div>
@@ -175,7 +163,7 @@ export function RecentActivity({ activities, maxHeight = '300px' }: RecentActivi
                   <Link
                     key={activity.id}
                     href={href}
-                    className="flex gap-3 rounded-lg p-2 -mx-2 hover:bg-accent/50 cursor-pointer transition-colors"
+                    className="-mx-2 flex cursor-pointer gap-3 rounded-lg p-2 transition-colors hover:bg-accent/50"
                   >
                     {content}
                   </Link>
@@ -183,10 +171,7 @@ export function RecentActivity({ activities, maxHeight = '300px' }: RecentActivi
               }
 
               return (
-                <div
-                  key={activity.id}
-                  className="flex gap-3 rounded-lg p-2 -mx-2"
-                >
+                <div key={activity.id} className="-mx-2 flex gap-3 rounded-lg p-2">
                   {content}
                 </div>
               );

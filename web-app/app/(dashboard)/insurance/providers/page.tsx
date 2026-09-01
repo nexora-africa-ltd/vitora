@@ -50,7 +50,11 @@ export default function InsuranceProvidersPage() {
       });
       await refetch();
     } catch {
-      toast({ title: 'Error', description: 'Failed to seed Slade defaults.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to seed Slade defaults.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -59,7 +63,12 @@ export default function InsuranceProvidersPage() {
   };
 
   return (
-    <PullToRefresh onRefresh={async () => { await refetch(); }} isRefreshing={isFetching}>
+    <PullToRefresh
+      onRefresh={async () => {
+        await refetch();
+      }}
+      isRefreshing={isFetching}
+    >
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Insurance Providers"
@@ -67,12 +76,15 @@ export default function InsuranceProvidersPage() {
         />
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search providers..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="pl-9"
             />
           </div>
@@ -97,7 +109,7 @@ export default function InsuranceProvidersPage() {
               sortable: true,
               cell: (item) => (
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div>
                     <p className="font-medium">{item.name}</p>
                     <p className="text-xs text-muted-foreground">{item.code}</p>
@@ -133,7 +145,7 @@ export default function InsuranceProvidersPage() {
               header: 'Status',
               sortable: true,
               cell: (item) => (
-                <Badge className={`${STATUS_COLORS[item.status]} shrink-0 w-fit`}>
+                <Badge className={`${STATUS_COLORS[item.status]} w-fit shrink-0`}>
                   {item.status}
                 </Badge>
               ),
@@ -144,17 +156,23 @@ export default function InsuranceProvidersPage() {
           isLoading={isLoading}
           emptyMessage="No insurance providers found."
           mobileCard={(item) => (
-            <Card key={item.id} className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => handleRowClick(item)}>
+            <Card
+              key={item.id}
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => handleRowClick(item)}
+            >
               <CardContent className="p-3">
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.code} • {PROVIDER_TYPE_LABELS[item.provider_type]}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{item.plans_count} plans • {item.active_enrollments_count} enrollments</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.code} • {PROVIDER_TYPE_LABELS[item.provider_type]}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {item.plans_count} plans • {item.active_enrollments_count} enrollments
+                    </p>
                   </div>
-                  <Badge className={`${STATUS_COLORS[item.status]} shrink-0`}>
-                    {item.status}
-                  </Badge>
+                  <Badge className={`${STATUS_COLORS[item.status]} shrink-0`}>{item.status}</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -164,10 +182,26 @@ export default function InsuranceProvidersPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-2">
-            <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Previous</Button>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Next</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
             </div>
           </div>
         )}

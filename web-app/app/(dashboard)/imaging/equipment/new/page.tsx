@@ -67,8 +67,7 @@ export default function NewEquipmentPage() {
   const [form, setForm] = useState<EquipmentForm>(INITIAL_FORM);
 
   const createMutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) =>
-      imagingApi.createEquipment(data),
+    mutationFn: (data: Record<string, unknown>) => imagingApi.createEquipment(data),
     onSuccess: (result) => {
       toast({ title: 'Equipment created' });
       queryClient.invalidateQueries({ queryKey: ['imaging-equipment'] });
@@ -82,7 +81,11 @@ export default function NewEquipmentPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.modality) {
-      toast({ title: 'Validation', description: 'Name and modality are required.', variant: 'destructive' });
+      toast({
+        title: 'Validation',
+        description: 'Name and modality are required.',
+        variant: 'destructive',
+      });
       return;
     }
     // Build payload, omitting empty strings
@@ -97,7 +100,7 @@ export default function NewEquipmentPage() {
 
   if (!canManage) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
+      <div className="py-12 text-center text-muted-foreground">
         You do not have permission to create equipment.
       </div>
     );
@@ -137,7 +140,9 @@ export default function NewEquipmentPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(MODALITY_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -245,12 +250,8 @@ export default function NewEquipmentPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2 mt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push('/imaging/equipment')}
-          >
+        <div className="mt-4 flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => router.push('/imaging/equipment')}>
             Cancel
           </Button>
           <Button type="submit" disabled={createMutation.isPending}>

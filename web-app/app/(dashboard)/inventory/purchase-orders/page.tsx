@@ -8,7 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -43,7 +49,11 @@ function formatCurrency(amount: number | string | null | undefined): string {
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(dateStr).toLocaleDateString('en-KE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 export default function PurchaseOrdersPage() {
@@ -79,9 +89,9 @@ export default function PurchaseOrdersPage() {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   // Stats from current page data
-  const draftCount = orders.filter(o => o.status === 'DRAFT').length;
-  const pendingCount = orders.filter(o => o.status === 'SUBMITTED').length;
-  const approvedCount = orders.filter(o => o.status === 'APPROVED').length;
+  const draftCount = orders.filter((o) => o.status === 'DRAFT').length;
+  const pendingCount = orders.filter((o) => o.status === 'SUBMITTED').length;
+  const approvedCount = orders.filter((o) => o.status === 'APPROVED').length;
   const totalValue = orders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
 
   return (
@@ -92,7 +102,10 @@ export default function PurchaseOrdersPage() {
           helpContent="Create and manage purchase orders for your facility. Submit orders for approval, track delivery status, and manage supplier procurement."
           actions={
             canCreatePurchaseOrder ? (
-              <Button onClick={() => router.push('/inventory/purchase-orders/new')} className="gap-2 w-full sm:w-auto">
+              <Button
+                onClick={() => router.push('/inventory/purchase-orders/new')}
+                className="w-full gap-2 sm:w-auto"
+              >
                 <Plus className="h-4 w-4" />
                 New PO
               </Button>
@@ -103,31 +116,43 @@ export default function PurchaseOrdersPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <p className="text-xs text-muted-foreground">Drafts</p>
               <p className="text-xl font-bold">{draftCount}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <p className="text-xs text-muted-foreground">Pending Approval</p>
               <p className="text-xl font-bold text-amber-600">{pendingCount}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <p className="text-xs text-muted-foreground">Approved</p>
               <p className="text-xl font-bold text-blue-600">{approvedCount}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <p className="text-xs text-muted-foreground">Page Total</p>
-              <p className="text-lg font-bold truncate">{formatCurrency(totalValue)}</p>
+              <p className="truncate text-lg font-bold">{formatCurrency(totalValue)}</p>
             </CardContent>
           </Card>
         </div>
@@ -137,17 +162,28 @@ export default function PurchaseOrdersPage() {
           <Input
             placeholder="Search PO number, supplier..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="w-full sm:w-64"
           />
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setStatusFilter(v);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-full sm:w-44">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               {Object.entries(statusLabels).map(([val, label]) => (
-                <SelectItem key={val} value={val}>{label}</SelectItem>
+                <SelectItem key={val} value={val}>
+                  {label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -203,24 +239,26 @@ export default function PurchaseOrdersPage() {
               header: 'Status',
               sortable: true,
               cell: (o) => (
-                <Badge className={`${statusColors[o.status]} shrink-0 w-fit`}>
+                <Badge className={`${statusColors[o.status]} w-fit shrink-0`}>
                   {statusLabels[o.status]}
                 </Badge>
               ),
             },
           ]}
           mobileCard={(o) => (
-            <div className="p-3 space-y-1">
+            <div className="space-y-1 p-3">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-sm font-medium">{o.po_number}</span>
-                <Badge className={`${statusColors[o.status]} shrink-0 w-fit`}>
+                <Badge className={`${statusColors[o.status]} w-fit shrink-0`}>
                   {statusLabels[o.status]}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">{o.supplier_name}</p>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{formatDate(o.order_date)}</span>
-                <span className="font-medium text-foreground">{formatCurrency(o.total_amount)}</span>
+                <span className="font-medium text-foreground">
+                  {formatCurrency(o.total_amount)}
+                </span>
               </div>
             </div>
           )}
@@ -229,10 +267,26 @@ export default function PurchaseOrdersPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Page {page} of {totalPages} ({totalCount} total)</span>
+            <span>
+              Page {page} of {totalPages} ({totalCount} total)
+            </span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </Button>
             </div>
           </div>
         )}

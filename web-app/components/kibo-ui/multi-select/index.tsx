@@ -1,16 +1,9 @@
-"use client";
+'use client';
 
-import { useControllableState } from "@radix-ui/react-use-controllable-state";
-import { CheckIcon, ChevronsUpDownIcon, XIcon } from "lucide-react";
-import {
-  type ComponentProps,
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { Button } from "@/components/ui/button";
+import { useControllableState } from '@radix-ui/react-use-controllable-state';
+import { CheckIcon, ChevronsUpDownIcon, XIcon } from 'lucide-react';
+import { type ComponentProps, createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -19,14 +12,10 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils/index";
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils/index';
 
 type MultiSelectData = {
   label: string;
@@ -48,14 +37,14 @@ type MultiSelectContextType = {
 
 const MultiSelectContext = createContext<MultiSelectContextType>({
   data: [],
-  type: "item",
+  type: 'item',
   values: [],
   onValuesChange: () => {},
   open: false,
   onOpenChange: () => {},
   width: 200,
   setWidth: () => {},
-  inputValue: "",
+  inputValue: '',
   setInputValue: () => {},
 });
 
@@ -91,7 +80,7 @@ export const MultiSelect = ({
     onChange: controlledOnOpenChange,
   });
   const [width, setWidth] = useState(200);
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState('');
 
   return (
     <MultiSelectContext.Provider
@@ -153,25 +142,17 @@ export const MultiSelectTrigger = ({
 
   return (
     <PopoverTrigger asChild>
-      <Button
-        variant="outline"
-        className={cn("justify-between", className)}
-        {...props}
-        ref={ref}
-      >
+      <Button variant="outline" className={cn('justify-between', className)} {...props} ref={ref}>
         {children ?? (
           <span className="flex w-full items-center justify-between gap-2">
             <span className="truncate">
               {values.length === 0
-                ? placeholder ?? `Select ${type}...`
+                ? (placeholder ?? `Select ${type}...`)
                 : selectedLabels.length <= maxDisplayItems
-                  ? selectedLabels.join(", ")
-                  : `${selectedLabels.slice(0, maxDisplayItems).join(", ")} +${values.length - maxDisplayItems}`}
+                  ? selectedLabels.join(', ')
+                  : `${selectedLabels.slice(0, maxDisplayItems).join(', ')} +${values.length - maxDisplayItems}`}
             </span>
-            <ChevronsUpDownIcon
-              className="shrink-0 text-muted-foreground"
-              size={16}
-            />
+            <ChevronsUpDownIcon className="shrink-0 text-muted-foreground" size={16} />
           </span>
         )}
       </Button>
@@ -191,11 +172,7 @@ export const MultiSelectContent = ({
   const { width } = useContext(MultiSelectContext);
 
   return (
-    <PopoverContent
-      className={cn("p-0", className)}
-      style={{ width }}
-      {...popoverOptions}
-    >
+    <PopoverContent className={cn('p-0', className)} style={{ width }} {...popoverOptions}>
       <Command {...props} />
     </PopoverContent>
   );
@@ -236,39 +213,25 @@ export const MultiSelectInput = ({
 
 export type MultiSelectListProps = ComponentProps<typeof CommandList>;
 
-export const MultiSelectList = (props: MultiSelectListProps) => (
-  <CommandList {...props} />
-);
+export const MultiSelectList = (props: MultiSelectListProps) => <CommandList {...props} />;
 
 export type MultiSelectEmptyProps = ComponentProps<typeof CommandEmpty>;
 
-export const MultiSelectEmpty = ({
-  children,
-  ...props
-}: MultiSelectEmptyProps) => {
+export const MultiSelectEmpty = ({ children, ...props }: MultiSelectEmptyProps) => {
   const { type } = useContext(MultiSelectContext);
 
-  return (
-    <CommandEmpty {...props}>{children ?? `No ${type} found.`}</CommandEmpty>
-  );
+  return <CommandEmpty {...props}>{children ?? `No ${type} found.`}</CommandEmpty>;
 };
 
 export type MultiSelectGroupProps = ComponentProps<typeof CommandGroup>;
 
-export const MultiSelectGroup = (props: MultiSelectGroupProps) => (
-  <CommandGroup {...props} />
-);
+export const MultiSelectGroup = (props: MultiSelectGroupProps) => <CommandGroup {...props} />;
 
 export type MultiSelectItemProps = ComponentProps<typeof CommandItem> & {
   value: string;
 };
 
-export const MultiSelectItem = ({
-  value,
-  children,
-  className,
-  ...props
-}: MultiSelectItemProps) => {
+export const MultiSelectItem = ({ value, children, className, ...props }: MultiSelectItemProps) => {
   const { values, onValuesChange } = useContext(MultiSelectContext);
   const isSelected = values.includes(value);
 
@@ -281,16 +244,14 @@ export const MultiSelectItem = ({
           onValuesChange([...values, value]);
         }
       }}
-      className={cn("cursor-pointer", className)}
+      className={cn('cursor-pointer', className)}
       {...props}
     >
-      <span className="flex items-center gap-2 w-full">
+      <span className="flex w-full items-center gap-2">
         <span
           className={cn(
-            "flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-            isSelected
-              ? "bg-primary text-primary-foreground"
-              : "opacity-50 [&_svg]:invisible"
+            'flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+            isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
           )}
         >
           <CheckIcon className="h-3 w-3" />
@@ -333,20 +294,16 @@ export const MultiSelectBadges = ({
   };
 
   return (
-    <div className={cn("flex flex-wrap gap-1.5 mt-2", className)}>
+    <div className={cn('mt-2 flex flex-wrap gap-1.5', className)}>
       {values.map((value) => {
         const item = data.find((d) => d.value === value);
         return (
-          <Badge
-            key={value}
-            variant="secondary"
-            className={cn("gap-1 pr-1", badgeClassName)}
-          >
+          <Badge key={value} variant="secondary" className={cn('gap-1 pr-1', badgeClassName)}>
             {item?.label ?? value}
             <button
               type="button"
               onClick={() => handleRemove(value)}
-              className="ml-0.5 rounded-full hover:bg-secondary-foreground/20 p-0.5"
+              className="ml-0.5 rounded-full p-0.5 hover:bg-secondary-foreground/20"
               aria-label={`Remove ${item?.label ?? value}`}
             >
               <XIcon className="h-3 w-3" />
@@ -366,10 +323,7 @@ export type MultiSelectClearProps = {
   className?: string;
 };
 
-export const MultiSelectClear = ({
-  children,
-  className,
-}: MultiSelectClearProps) => {
+export const MultiSelectClear = ({ children, className }: MultiSelectClearProps) => {
   const { values, onValuesChange } = useContext(MultiSelectContext);
 
   if (values.length === 0) {
@@ -381,11 +335,11 @@ export const MultiSelectClear = ({
       type="button"
       onClick={() => onValuesChange([])}
       className={cn(
-        "text-xs text-muted-foreground hover:text-foreground transition-colors",
+        'text-xs text-muted-foreground transition-colors hover:text-foreground',
         className
       )}
     >
-      {children ?? "Clear all"}
+      {children ?? 'Clear all'}
     </button>
   );
 };

@@ -144,9 +144,24 @@ async function setupRBACMocks(page: Page) {
             count: 4,
             results: [
               mockDepartment(),
-              mockDepartment({ id: 2, name: 'Laboratory', code: 'LAB', department_type: 'ANCILLARY' }),
-              mockDepartment({ id: 3, name: 'Pharmacy', code: 'PHARM', department_type: 'ANCILLARY' }),
-              mockDepartment({ id: 4, name: 'Administration', code: 'ADMIN', department_type: 'ADMINISTRATIVE' }),
+              mockDepartment({
+                id: 2,
+                name: 'Laboratory',
+                code: 'LAB',
+                department_type: 'ANCILLARY',
+              }),
+              mockDepartment({
+                id: 3,
+                name: 'Pharmacy',
+                code: 'PHARM',
+                department_type: 'ANCILLARY',
+              }),
+              mockDepartment({
+                id: 4,
+                name: 'Administration',
+                code: 'ADMIN',
+                department_type: 'ADMINISTRATIVE',
+              }),
             ],
           }),
         });
@@ -192,7 +207,12 @@ async function setupRBACMocks(page: Page) {
               mockRole({ id: 2, name: 'Nurse', code: 'NURSE' }),
               mockRole({ id: 3, name: 'Lab Technician', code: 'LAB_TECH', role_type: 'ANCILLARY' }),
               mockRole({ id: 4, name: 'Pharmacist', code: 'PHARMACIST', role_type: 'ANCILLARY' }),
-              mockRole({ id: 5, name: 'Receptionist', code: 'RECEPTIONIST', role_type: 'ADMINISTRATIVE' }),
+              mockRole({
+                id: 5,
+                name: 'Receptionist',
+                code: 'RECEPTIONIST',
+                role_type: 'ADMINISTRATIVE',
+              }),
             ],
           }),
         });
@@ -235,8 +255,20 @@ async function setupRBACMocks(page: Page) {
             count: 3,
             results: [
               mockStaffProfile(),
-              mockStaffProfile({ id: 2, username: 'nurse.mary', first_name: 'Mary', role: 2, role_name: 'Nurse' }),
-              mockStaffProfile({ id: 3, username: 'lab.john', first_name: 'John', role: 3, role_name: 'Lab Technician' }),
+              mockStaffProfile({
+                id: 2,
+                username: 'nurse.mary',
+                first_name: 'Mary',
+                role: 2,
+                role_name: 'Nurse',
+              }),
+              mockStaffProfile({
+                id: 3,
+                username: 'lab.john',
+                first_name: 'John',
+                role: 3,
+                role_name: 'Lab Technician',
+              }),
             ],
           }),
         });
@@ -446,7 +478,7 @@ test.describe('Role Management', () => {
 
     // Select role type (if select exists)
     const roleTypeSelect = page.locator('#role_type, #type');
-    if (await roleTypeSelect.count() > 0) {
+    if ((await roleTypeSelect.count()) > 0) {
       await roleTypeSelect.click();
       await page.getByRole('option', { name: /clinical/i }).click();
     }
@@ -467,13 +499,13 @@ test.describe('Role Management', () => {
 
     // Look for a permission checkbox and toggle it (if exists)
     const permissionCheckbox = page.locator('input[type="checkbox"]').first();
-    if (await permissionCheckbox.count() > 0) {
+    if ((await permissionCheckbox.count()) > 0) {
       await permissionCheckbox.check();
     }
 
     // Save (if button exists)
     const saveButton = page.getByRole('button', { name: /save|update/i });
-    if (await saveButton.count() > 0) {
+    if ((await saveButton.count()) > 0) {
       await saveButton.click();
       await expect(page.getByText(/updated|success/i)).toBeVisible();
     }
@@ -503,7 +535,7 @@ test.describe('Role Management', () => {
 
     // System role should have delete button disabled or show warning
     const deleteButton = page.getByRole('button', { name: /delete/i });
-    if (await deleteButton.count() > 0) {
+    if ((await deleteButton.count()) > 0) {
       await expect(deleteButton).toBeDisabled();
     } else {
       // Or system role message should be visible
@@ -547,7 +579,7 @@ test.describe('Staff Profile Management', () => {
     await page.locator('#email').fill('sarah.otieno@vitora.health');
 
     const phoneField = page.locator('#phone_number, #phone');
-    if (await phoneField.count() > 0) {
+    if ((await phoneField.count()) > 0) {
       await phoneField.fill('+254712345679');
     }
 
@@ -567,14 +599,14 @@ test.describe('Staff Profile Management', () => {
 
     // Change role using select (if exists)
     const roleSelect = page.locator('#role');
-    if (await roleSelect.count() > 0) {
+    if ((await roleSelect.count()) > 0) {
       await roleSelect.click();
       await page.getByRole('option', { name: /doctor/i }).click();
     }
 
     // Save
     const saveButton = page.getByRole('button', { name: /save|update/i });
-    if (await saveButton.count() > 0) {
+    if ((await saveButton.count()) > 0) {
       await saveButton.click();
       await expect(page.getByText(/updated|success/i)).toBeVisible();
     }
@@ -585,8 +617,11 @@ test.describe('Staff Profile Management', () => {
     await page.goto('/admin/staff');
 
     // Filter by department (look for filter in page)
-    const deptFilter = page.locator('select, [role="combobox"]').filter({ hasText: /department/i }).first();
-    if (await deptFilter.count() > 0) {
+    const deptFilter = page
+      .locator('select, [role="combobox"]')
+      .filter({ hasText: /department/i })
+      .first();
+    if ((await deptFilter.count()) > 0) {
       await deptFilter.click();
       await page.getByRole('option', { name: /laboratory/i }).click();
     }
@@ -600,8 +635,11 @@ test.describe('Staff Profile Management', () => {
     await page.goto('/admin/staff');
 
     // Filter by role
-    const roleFilter = page.locator('select, [role="combobox"]').filter({ hasText: /role/i }).first();
-    if (await roleFilter.count() > 0) {
+    const roleFilter = page
+      .locator('select, [role="combobox"]')
+      .filter({ hasText: /role/i })
+      .first();
+    if ((await roleFilter.count()) > 0) {
       await roleFilter.click();
       await page.getByRole('option', { name: /doctor/i }).click();
     }
@@ -618,8 +656,10 @@ test.describe('Staff Profile Management', () => {
     await page.waitForLoadState('networkidle');
 
     // Search by name - use the search input specifically for staff
-    const searchInput = page.locator('input[placeholder*="staff" i], input[aria-label*="search" i]').first();
-    if (await searchInput.count() > 0) {
+    const searchInput = page
+      .locator('input[placeholder*="staff" i], input[aria-label*="search" i]')
+      .first();
+    if ((await searchInput.count()) > 0) {
       await searchInput.fill('James');
     }
 
@@ -642,12 +682,12 @@ test.describe('Staff Profile Management', () => {
 
     // Click deactivate (if button exists)
     const deactivateButton = page.getByRole('button', { name: /deactivate/i });
-    if (await deactivateButton.count() > 0) {
+    if ((await deactivateButton.count()) > 0) {
       await deactivateButton.click();
 
       // Confirm (if dialog appears)
       const confirmButton = page.getByRole('button', { name: /confirm/i });
-      if (await confirmButton.count() > 0) {
+      if ((await confirmButton.count()) > 0) {
         await confirmButton.click();
       }
 
@@ -656,7 +696,7 @@ test.describe('Staff Profile Management', () => {
     } else {
       // Toggle is_active switch
       const activeSwitch = page.locator('input[name="is_active"], [role="switch"]').first();
-      if (await activeSwitch.count() > 0) {
+      if ((await activeSwitch.count()) > 0) {
         await activeSwitch.click();
         await page.getByRole('button', { name: /save|update/i }).click();
         await expect(page.getByText(/updated|success/i)).toBeVisible();
@@ -702,7 +742,7 @@ test.describe('Role-Based Permission Enforcement', () => {
 
     // Should redirect or show access denied message, or page should still load (soft enforcement)
     const accessDenied = page.getByText(/access.*denied|unauthorized|forbidden/i);
-    const isDenied = await accessDenied.count() > 0;
+    const isDenied = (await accessDenied.count()) > 0;
 
     if (!isDenied) {
       // Check if redirected away from admin
@@ -739,9 +779,9 @@ test.describe('Role-Based Permission Enforcement', () => {
     const addLink = page.getByRole('link', { name: /new.*patient|add.*patient|register/i });
     const registerLink = page.locator('a[href*="patients/new"], a[href*="register"]');
 
-    const hasButton = await addButton.count() > 0;
-    const hasLink = await addLink.count() > 0;
-    const hasRegisterLink = await registerLink.count() > 0;
+    const hasButton = (await addButton.count()) > 0;
+    const hasLink = (await addLink.count()) > 0;
+    const hasRegisterLink = (await registerLink.count()) > 0;
 
     // Test passes if ANY way to add patient exists
     expect(hasButton || hasLink || hasRegisterLink).toBe(true);
@@ -824,10 +864,10 @@ test.describe('Role Change Audit Log', () => {
 
     // Filter by action using select
     const actionFilter = page.locator('select, [role="combobox"]').first();
-    if (await actionFilter.count() > 0) {
+    if ((await actionFilter.count()) > 0) {
       await actionFilter.click();
       const roleOption = page.getByRole('option', { name: /role.*change/i });
-      if (await roleOption.count() > 0) {
+      if ((await roleOption.count()) > 0) {
         await roleOption.click();
       }
     }

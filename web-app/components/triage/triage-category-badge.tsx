@@ -83,7 +83,8 @@ const triageBadgeVariants = cva(
 type BadgeCategory = TriageCategory | 'UNKNOWN' | 'NOT_TRIAGED';
 
 export interface TriageCategoryBadgeProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick'>,
+  extends
+    Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick'>,
     Omit<VariantProps<typeof triageBadgeVariants>, 'category'> {
   /** KETA triage category */
   category?: TriageCategory | null;
@@ -106,8 +107,7 @@ export interface TriageCategoryBadgeProps
  */
 function isValidCategory(category: unknown): category is TriageCategory {
   return (
-    typeof category === 'string' &&
-    ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'].includes(category)
+    typeof category === 'string' && ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'].includes(category)
   );
 }
 

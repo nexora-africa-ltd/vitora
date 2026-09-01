@@ -52,12 +52,14 @@ export default function TheatrePage() {
     }
   }, [today]);
 
-  useEffect(() => { fetchToday(); }, [fetchToday]);
+  useEffect(() => {
+    fetchToday();
+  }, [fetchToday]);
 
-  const inProgress = todayCases.filter(c => ['IN_THEATRE', 'IN_SURGERY'].includes(c.status));
-  const inPACU = todayCases.filter(c => c.status === 'IN_PACU');
-  const completed = todayCases.filter(c => c.status === 'DISCHARGED');
-  const scheduled = todayCases.filter(c => ['SCHEDULED', 'PRE_OP'].includes(c.status));
+  const inProgress = todayCases.filter((c) => ['IN_THEATRE', 'IN_SURGERY'].includes(c.status));
+  const inPACU = todayCases.filter((c) => c.status === 'IN_PACU');
+  const completed = todayCases.filter((c) => c.status === 'DISCHARGED');
+  const scheduled = todayCases.filter((c) => ['SCHEDULED', 'PRE_OP'].includes(c.status));
 
   const stats = [
     { label: 'Scheduled', value: scheduled.length, icon: Clock, color: 'text-blue-600' },
@@ -67,7 +69,14 @@ export default function TheatrePage() {
   ];
 
   return (
-    <PullToRefresh onRefresh={() => { refresh(); return fetchToday(); }} isRefreshing={isRefreshing} className="min-h-full">
+    <PullToRefresh
+      onRefresh={() => {
+        refresh();
+        return fetchToday();
+      }}
+      isRefreshing={isRefreshing}
+      className="min-h-full"
+    >
       <div className="space-y-6">
         <PageHeader
           title="Theatre"
@@ -77,20 +86,20 @@ export default function TheatrePage() {
               <PermissionGate action="theatre.manage_settings">
                 <Button variant="outline" asChild>
                   <Link href="/theatre/settings">
-                    <Settings className="h-4 w-4 mr-2" />
+                    <Settings className="mr-2 h-4 w-4" />
                     <span className="hidden sm:inline">Setup</span>
                   </Link>
                 </Button>
               </PermissionGate>
               <Button variant="outline" asChild>
                 <Link href="/theatre/schedule">
-                  <Calendar className="h-4 w-4 mr-2" />
+                  <Calendar className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Schedule</span>
                 </Link>
               </Button>
               <Button asChild>
                 <CreateRouteLink href="/theatre/cases/new">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">New Case</span>
                 </CreateRouteLink>
               </Button>
@@ -100,18 +109,20 @@ export default function TheatrePage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          {stats.map(s => (
+          {stats.map((s) => (
             <div key={s.label} className="relative">
               <TheatreMetricCard label={s.label} value={s.value} />
-              <s.icon className={`pointer-events-none absolute right-4 top-4 h-8 w-8 ${s.color} opacity-80`} />
+              <s.icon
+                className={`pointer-events-none absolute right-4 top-4 h-8 w-8 ${s.color} opacity-80`}
+              />
             </div>
           ))}
         </div>
 
         {/* Live Theatre Board */}
         <Card>
-          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-3">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+          <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Scissors className="h-5 w-5" />
               Today&apos;s Theatre List
               <HelpPopover content="Live board of today's scheduled surgeries. Shows case status progression from scheduling through recovery. Click a case row to open its workspace." />
@@ -122,10 +133,12 @@ export default function TheatrePage() {
           </CardHeader>
           <CardContent className="px-0 sm:px-6">
             {loading ? (
-              <div className="text-center py-12 text-muted-foreground">Loading today&apos;s cases...</div>
+              <div className="py-12 text-center text-muted-foreground">
+                Loading today&apos;s cases...
+              </div>
             ) : todayCases.length === 0 ? (
-              <div className="text-center py-12">
-                <ClipboardList className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+              <div className="py-12 text-center">
+                <ClipboardList className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
                 <p className="text-muted-foreground">No surgeries scheduled for today.</p>
                 <Button variant="outline" size="sm" className="mt-4" asChild>
                   <CreateRouteLink href="/theatre/cases/new">Book a Surgery</CreateRouteLink>
@@ -133,7 +146,7 @@ export default function TheatrePage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[600px] w-full text-sm">
+                <table className="w-full min-w-[600px] text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="px-4 py-2 font-medium">Time</th>
@@ -146,13 +159,15 @@ export default function TheatrePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {todayCases.map(c => (
+                    {todayCases.map((c) => (
                       <tr
                         key={c.id}
-                        className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
+                        className="cursor-pointer border-b transition-colors hover:bg-muted/50"
                         onClick={() => router.push(`/theatre/cases/${c.case_number}`)}
                       >
-                        <td className="px-4 py-3 font-mono text-xs">{c.scheduled_start_time?.slice(0, 5)}</td>
+                        <td className="px-4 py-3 font-mono text-xs">
+                          {c.scheduled_start_time?.slice(0, 5)}
+                        </td>
                         <td className="px-4 py-3 font-medium">{c.case_number}</td>
                         <td className="px-4 py-3">
                           <div>{c.patient_name}</div>
@@ -177,27 +192,27 @@ export default function TheatrePage() {
 
         {/* Quick Links */}
         <div className="grid gap-3 sm:grid-cols-3">
-          <Button variant="outline" className="h-auto py-3 justify-start" asChild>
+          <Button variant="outline" className="h-auto justify-start py-3" asChild>
             <Link href="/theatre/cases">
-              <ClipboardList className="h-5 w-5 mr-3 text-muted-foreground" />
+              <ClipboardList className="mr-3 h-5 w-5 text-muted-foreground" />
               <div className="text-left">
                 <div className="font-medium">All Cases</div>
                 <div className="text-xs text-muted-foreground">Browse surgery cases</div>
               </div>
             </Link>
           </Button>
-          <Button variant="outline" className="h-auto py-3 justify-start" asChild>
+          <Button variant="outline" className="h-auto justify-start py-3" asChild>
             <Link href="/theatre/checklists">
-              <CheckCircle2 className="h-5 w-5 mr-3 text-muted-foreground" />
+              <CheckCircle2 className="mr-3 h-5 w-5 text-muted-foreground" />
               <div className="text-left">
                 <div className="font-medium">WHO Checklists</div>
                 <div className="text-xs text-muted-foreground">Safety checklists</div>
               </div>
             </Link>
           </Button>
-          <Button variant="outline" className="h-auto py-3 justify-start" asChild>
+          <Button variant="outline" className="h-auto justify-start py-3" asChild>
             <Link href="/theatre/reports">
-              <BarChart3 className="h-5 w-5 mr-3 text-muted-foreground" />
+              <BarChart3 className="mr-3 h-5 w-5 text-muted-foreground" />
               <div className="text-left">
                 <div className="font-medium">Reports</div>
                 <div className="text-xs text-muted-foreground">Utilization analytics</div>
@@ -205,12 +220,14 @@ export default function TheatrePage() {
             </Link>
           </Button>
           <PermissionGate action="theatre.manage_settings">
-            <Button variant="outline" className="h-auto py-3 justify-start" asChild>
+            <Button variant="outline" className="h-auto justify-start py-3" asChild>
               <Link href="/theatre/settings">
-                <Settings className="h-5 w-5 mr-3 text-muted-foreground" />
+                <Settings className="mr-3 h-5 w-5 text-muted-foreground" />
                 <div className="text-left">
                   <div className="font-medium">Theatre Setup</div>
-                  <div className="text-xs text-muted-foreground">Configure ORs, hours, and capabilities</div>
+                  <div className="text-xs text-muted-foreground">
+                    Configure ORs, hours, and capabilities
+                  </div>
                 </div>
               </Link>
             </Button>

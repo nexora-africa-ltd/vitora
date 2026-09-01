@@ -180,10 +180,7 @@ export function VitoraLogo({
 
   return (
     <div
-      className={cn(
-        'relative overflow-hidden',
-        className
-      )}
+      className={cn('relative overflow-hidden', className)}
       style={{ aspectRatio: `${asset.cropWidth} / ${asset.cropHeight}` }}
     >
       <Image
@@ -193,10 +190,7 @@ export function VitoraLogo({
         height={asset.sourceHeight}
         priority={priority}
         unoptimized
-        className={cn(
-          'absolute max-w-none',
-          imageClassName
-        )}
+        className={cn('absolute max-w-none', imageClassName)}
         style={{
           width: `${widthPercent}%`,
           height: `${heightPercent}%`,

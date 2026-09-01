@@ -88,7 +88,10 @@ interface ValidationError {
 // CONSTANTS
 // =============================================================================
 
-const VITAL_TYPE_CONFIG: Record<VitalType, { label: string; unit: string; min: number; max: number }> = {
+const VITAL_TYPE_CONFIG: Record<
+  VitalType,
+  { label: string; unit: string; min: number; max: number }
+> = {
   SPO2: { label: 'SpO2', unit: '%', min: 0, max: 100 },
   SYSTOLIC_BP: { label: 'Systolic BP', unit: 'mmHg', min: 40, max: 300 },
   DIASTOLIC_BP: { label: 'Diastolic BP', unit: 'mmHg', min: 20, max: 200 },
@@ -117,7 +120,13 @@ const DEFAULT_THRESHOLDS: Record<VitalType, EditFormData> = {
 };
 
 // Configurable vital types (subset that appears in threshold records)
-type ConfigurableVitalType = 'SPO2' | 'SYSTOLIC_BP' | 'DIASTOLIC_BP' | 'HEART_RATE' | 'TEMPERATURE' | 'RESPIRATORY_RATE';
+type ConfigurableVitalType =
+  | 'SPO2'
+  | 'SYSTOLIC_BP'
+  | 'DIASTOLIC_BP'
+  | 'HEART_RATE'
+  | 'TEMPERATURE'
+  | 'RESPIRATORY_RATE';
 
 // Vital types that should appear in the configuration table
 const CONFIGURABLE_VITAL_TYPES: ConfigurableVitalType[] = [
@@ -161,15 +170,17 @@ function createDisplayThresholds(apiThresholds: TriageVitalThreshold[]): TriageV
 // HELPER FUNCTIONS
 // =============================================================================
 
-function validateThresholds(
-  vitalType: VitalType,
-  data: EditFormData
-): ValidationError[] {
+function validateThresholds(vitalType: VitalType, data: EditFormData): ValidationError[] {
   const errors: ValidationError[] = [];
   const config = VITAL_TYPE_CONFIG[vitalType];
 
   // Validate range for each non-null value
-  const fields: (keyof EditFormData)[] = ['critical_low', 'warning_low', 'warning_high', 'critical_high'];
+  const fields: (keyof EditFormData)[] = [
+    'critical_low',
+    'warning_low',
+    'warning_high',
+    'critical_high',
+  ];
   for (const field of fields) {
     const value = data[field];
     if (value !== null) {
@@ -220,7 +231,7 @@ function validateThresholds(
 function LoadingSkeleton() {
   return (
     <div data-testid="thresholds-loading" className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <Skeleton className="h-8 w-48" />
         <div className="flex gap-2">
           <Skeleton className="h-9 w-24" />
@@ -373,24 +384,27 @@ function ThresholdEditDialog({
             </div>
 
             {/* General errors */}
-            {errors.length > 0 && !errors.some((e) => ['critical_low', 'warning_low', 'warning_high', 'critical_high'].includes(e.field)) && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{errors[0]?.message}</AlertDescription>
-              </Alert>
-            )}
+            {errors.length > 0 &&
+              !errors.some((e) =>
+                ['critical_low', 'warning_low', 'warning_high', 'critical_high'].includes(e.field)
+              ) && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{errors[0]?.message}</AlertDescription>
+                </Alert>
+              )}
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button
               variant="outline"
               onClick={() => setShowResetConfirm(true)}
               className="w-full sm:w-auto"
             >
-              <RotateCcw className="h-4 w-4 mr-2" />
+              <RotateCcw className="mr-2 h-4 w-4" />
               Reset to Default
             </Button>
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex w-full gap-2 sm:w-auto">
               <Button variant="ghost" onClick={onClose}>
                 Cancel
               </Button>
@@ -472,13 +486,13 @@ export function TriageThresholdsSettings({
       {/* Action Bar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" size="sm" onClick={onExport}>
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="mr-2 h-4 w-4" />
           Export
         </Button>
         {canEdit && (
           <>
             <Button variant="outline" size="sm" onClick={handleImportClick}>
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="mr-2 h-4 w-4" />
               Import
             </Button>
             <Label htmlFor="triage-thresholds-import" className="sr-only">
@@ -495,7 +509,7 @@ export function TriageThresholdsSettings({
               title="Import triage threshold configuration (JSON)"
             />
             <Button variant="outline" size="sm">
-              <RotateCcw className="h-4 w-4 mr-2" />
+              <RotateCcw className="mr-2 h-4 w-4" />
               Reset All
             </Button>
           </>
@@ -513,101 +527,91 @@ export function TriageThresholdsSettings({
       )}
 
       <Card>
-          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              <CardTitle className="text-base sm:text-lg">Threshold Configuration</CardTitle>
-              <HelpPopover content="Values outside these thresholds will trigger alerts during triage. Critical thresholds trigger immediate alerts; warning thresholds prompt review. Click Edit to customize values for your facility." />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table data-testid="thresholds-table">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Vital Type</TableHead>
-                  <TableHead className="text-center">Critical Low</TableHead>
-                  <TableHead className="text-center">Warning Low</TableHead>
-                  <TableHead className="text-center">Warning High</TableHead>
-                  <TableHead className="text-center">Critical High</TableHead>
-                  <TableHead className="text-center">Active</TableHead>
-                  {canEdit && <TableHead className="text-right">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayThresholds.map((threshold) => {
-                  const config = VITAL_TYPE_CONFIG[threshold.vital_type];
-                  const isDefault = threshold.id < 0;
-                  return (
-                    <TableRow
-                      key={threshold.id}
-                      data-testid={`threshold-row-${threshold.vital_type}`}
-                      className={cn(!threshold.is_active && 'opacity-50')}
-                    >
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <span className="font-medium">{config.label}</span>
-                            <span className="text-muted-foreground ml-1">({config.unit})</span>
-                          </div>
-                          {isDefault && (
-                            <Badge variant="secondary" className="text-xs">
-                              Default
-                            </Badge>
-                          )}
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            <CardTitle className="text-base sm:text-lg">Threshold Configuration</CardTitle>
+            <HelpPopover content="Values outside these thresholds will trigger alerts during triage. Critical thresholds trigger immediate alerts; warning thresholds prompt review. Click Edit to customize values for your facility." />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table data-testid="thresholds-table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Vital Type</TableHead>
+                <TableHead className="text-center">Critical Low</TableHead>
+                <TableHead className="text-center">Warning Low</TableHead>
+                <TableHead className="text-center">Warning High</TableHead>
+                <TableHead className="text-center">Critical High</TableHead>
+                <TableHead className="text-center">Active</TableHead>
+                {canEdit && <TableHead className="text-right">Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {displayThresholds.map((threshold) => {
+                const config = VITAL_TYPE_CONFIG[threshold.vital_type];
+                const isDefault = threshold.id < 0;
+                return (
+                  <TableRow
+                    key={threshold.id}
+                    data-testid={`threshold-row-${threshold.vital_type}`}
+                    className={cn(!threshold.is_active && 'opacity-50')}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <span className="font-medium">{config.label}</span>
+                          <span className="ml-1 text-muted-foreground">({config.unit})</span>
                         </div>
+                        {isDefault && (
+                          <Badge variant="secondary" className="text-xs">
+                            Default
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center font-mono">
+                      <span className="text-red-600">{threshold.critical_low ?? '-'}</span>
+                    </TableCell>
+                    <TableCell className="text-center font-mono">
+                      <span className="text-orange-600">{threshold.warning_low ?? '-'}</span>
+                    </TableCell>
+                    <TableCell className="text-center font-mono">
+                      <span className="text-orange-600">{threshold.warning_high ?? '-'}</span>
+                    </TableCell>
+                    <TableCell className="text-center font-mono">
+                      <span className="text-red-600">{threshold.critical_high ?? '-'}</span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        <Switch
+                          data-testid={`active-indicator-${threshold.vital_type}`}
+                          checked={threshold.is_active}
+                          onCheckedChange={(checked) => onToggleActive(threshold.id, checked)}
+                          disabled={!canEdit}
+                          aria-label={`${config.label} active`}
+                        />
+                      </div>
+                    </TableCell>
+                    {canEdit && (
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingThreshold(threshold)}
+                        >
+                          <Edit className="mr-1 h-4 w-4" />
+                          Edit
+                        </Button>
                       </TableCell>
-                      <TableCell className="text-center font-mono">
-                        <span className="text-red-600">
-                          {threshold.critical_low ?? '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center font-mono">
-                        <span className="text-orange-600">
-                          {threshold.warning_low ?? '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center font-mono">
-                        <span className="text-orange-600">
-                          {threshold.warning_high ?? '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center font-mono">
-                        <span className="text-red-600">
-                          {threshold.critical_high ?? '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center">
-                          <Switch
-                            data-testid={`active-indicator-${threshold.vital_type}`}
-                            checked={threshold.is_active}
-                            onCheckedChange={(checked) =>
-                              onToggleActive(threshold.id, checked)
-                            }
-                            disabled={!canEdit}
-                            aria-label={`${config.label} active`}
-                          />
-                        </div>
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingThreshold(threshold)}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                    )}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Edit Dialog */}
       {editingThreshold && (

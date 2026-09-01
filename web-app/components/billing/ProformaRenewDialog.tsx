@@ -19,13 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Loader2,
-  RefreshCw,
-  Calendar,
-  Clock,
-  AlertCircle,
-} from 'lucide-react';
+import { Loader2, RefreshCw, Calendar, Clock, AlertCircle } from 'lucide-react';
 import { formatDate } from '@/lib/utils/format';
 import { addDays, format } from 'date-fns';
 import type { Invoice } from '@/lib/types/billing';
@@ -103,12 +97,14 @@ export function ProformaRenewDialog({
             Renew Proforma Invoice
           </DialogTitle>
           <DialogDescription>
-            Renew expired proforma <span className="font-mono font-medium">{invoice.invoice_number}</span> with a new validity period.
+            Renew expired proforma{' '}
+            <span className="font-mono font-medium">{invoice.invoice_number}</span> with a new
+            validity period.
           </DialogDescription>
         </DialogHeader>
 
         {/* Expired Info */}
-        <Alert variant="destructive" className="bg-red-50 border-red-200">
+        <Alert variant="destructive" className="border-red-200 bg-red-50">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             This proforma expired on{' '}
@@ -190,7 +186,7 @@ export function ProformaRenewDialog({
 
         {/* New Expiry Preview */}
         {newExpiryDate && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
             <div className="flex items-center gap-2 text-amber-700">
               <Calendar className="h-4 w-4" />
               <span className="font-medium">New Expiry Date</span>
@@ -206,7 +202,7 @@ export function ProformaRenewDialog({
         )}
 
         {/* Original Proforma Info */}
-        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+        <div className="space-y-2 rounded-lg bg-gray-50 p-4">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Patient:</span>
             <span className="font-medium">{invoice.patient_name}</span>
@@ -218,7 +214,8 @@ export function ProformaRenewDialog({
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Total:</span>
             <span className="font-medium">
-              KES {parseFloat(invoice.total_amount).toLocaleString('en-KE', {
+              KES{' '}
+              {parseFloat(invoice.total_amount).toLocaleString('en-KE', {
                 minimumFractionDigits: 2,
               })}
             </span>
@@ -226,12 +223,7 @@ export function ProformaRenewDialog({
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isLoading}
-          >
+          <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
           <Button
@@ -242,12 +234,12 @@ export function ProformaRenewDialog({
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Renewing...
               </>
             ) : (
               <>
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="mr-2 h-4 w-4" />
                 Renew Proforma
               </>
             )}

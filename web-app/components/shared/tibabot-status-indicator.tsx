@@ -20,12 +20,7 @@
 import React from 'react';
 import { Bot, BotMessageSquare, BotOff } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TibaBotAvailability } from '@/lib/types/ai';
 
 // =============================================================================
@@ -80,8 +75,7 @@ const tooltipText: Record<TibaBotAvailability, string> = {
   available: 'TibaBot is available — using advanced AI models for clinical assistance.',
   degraded:
     'TibaBot is using a less advanced implementation (rule-based / RAG only) due to AI model unavailability.',
-  unavailable:
-    'TibaBot is currently unavailable. Clinical AI features are offline.',
+  unavailable: 'TibaBot is currently unavailable. Clinical AI features are offline.',
   loading: 'Checking TibaBot availability…',
 };
 
@@ -148,7 +142,7 @@ export function TibaBotStatusIndicator({
           className={cn(
             'absolute z-20 rounded-full bg-green-500 ring-2 ring-background',
             // Position at top-right
-            '-top-0.5 -right-0.5',
+            '-right-0.5 -top-0.5',
             // Size scales with icon size
             size >= 24 ? 'h-3 w-3' : 'h-2.5 w-2.5'
           )}
@@ -161,9 +155,7 @@ export function TibaBotStatusIndicator({
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
-        <TooltipTrigger asChild>
-          {indicator}
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{indicator}</TooltipTrigger>
         <TooltipContent side="top" className="max-w-[260px] text-center">
           <p>{tooltipText[availability]}</p>
         </TooltipContent>

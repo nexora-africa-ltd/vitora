@@ -54,8 +54,7 @@ export function useCreateSocialHistory(patientId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: SocialHistoryCreatePayload) =>
-      socialHistoryApi.create(patientId, data),
+    mutationFn: (data: SocialHistoryCreatePayload) => socialHistoryApi.create(patientId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: socialHistoryKeys.patient(patientId) });
       toast.success('Social history recorded');

@@ -2,10 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Loader2,
-  Search,
-} from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -110,7 +107,7 @@ export function EquipmentAssignDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-4 grid-cols-3">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="eq-qty">Quantity</Label>
               <Input
@@ -151,11 +148,19 @@ export function EquipmentAssignDialog({
           </div>
         </div>
         <DialogFooter className="flex-col gap-2 sm:flex-row">
-          <Button variant="outline" onClick={() => handleOpenChange(false)} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || !canSubmit} className="w-full sm:w-auto">
-            {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting || !canSubmit}
+            className="w-full sm:w-auto"
+          >
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Add Equipment
           </Button>
         </DialogFooter>

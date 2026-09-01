@@ -30,9 +30,7 @@ interface FeatureGateProps {
 export function FeatureGate({ feature, minTier, children, fallback = null }: FeatureGateProps) {
   const { hasFeature, isAtLeast } = useSubscription();
 
-  const allowed =
-    (feature ? hasFeature(feature) : true) &&
-    (minTier ? isAtLeast(minTier) : true);
+  const allowed = (feature ? hasFeature(feature) : true) && (minTier ? isAtLeast(minTier) : true);
 
   if (!allowed) return <>{fallback}</>;
   return <>{children}</>;

@@ -156,22 +156,19 @@ export function useSmartSuggestions(
     [allSuggestions]
   );
 
-  const accept = useCallback(
-    (id: string) => {
-      let value: unknown;
-      setSuggestions((prev) =>
-        prev.map((s) => {
-          if (s.id === id) {
-            value = s.value;
-            return { ...s, status: 'accepted' as SuggestionStatus };
-          }
-          return s;
-        })
-      );
-      return value;
-    },
-    []
-  );
+  const accept = useCallback((id: string) => {
+    let value: unknown;
+    setSuggestions((prev) =>
+      prev.map((s) => {
+        if (s.id === id) {
+          value = s.value;
+          return { ...s, status: 'accepted' as SuggestionStatus };
+        }
+        return s;
+      })
+    );
+    return value;
+  }, []);
 
   const reject = useCallback((id: string) => {
     setSuggestions((prev) =>
@@ -195,7 +192,9 @@ export function useSmartSuggestions(
 
   const rejectAll = useCallback(() => {
     setSuggestions((prev) =>
-      prev.map((s) => (s.status === 'pending' ? { ...s, status: 'rejected' as SuggestionStatus } : s))
+      prev.map((s) =>
+        s.status === 'pending' ? { ...s, status: 'rejected' as SuggestionStatus } : s
+      )
     );
   }, []);
 

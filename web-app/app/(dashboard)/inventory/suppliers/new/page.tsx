@@ -10,7 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -51,24 +57,12 @@ export default function NewSupplierPage() {
     queryFn: inventoryApi.getBootstrap,
   });
   const canManageSuppliersFromCapabilities = bootstrap?.permissions.can_manage_suppliers ?? true;
-
-  if (!canCreateSupplier || !canManageSuppliersFromCapabilities) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="Add Supplier" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to manage suppliers for this facility.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  const hasSupplierAccess = canCreateSupplier && canManageSuppliersFromCapabilities;
 
   const { data: paymentTerms = [] } = useQuery({
     queryKey: ['payment-terms'],
     queryFn: () => inventoryApi.listPaymentTerms(),
+    enabled: hasSupplierAccess,
   });
 
   const form = useForm<SupplierFormValues>({
@@ -90,6 +84,20 @@ export default function NewSupplierPage() {
 
   const isSubmitting = form.formState.isSubmitting;
 
+  if (!hasSupplierAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="Add Supplier" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to manage suppliers for this facility.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   async function onSubmit(data: SupplierFormValues) {
     try {
       const created = await inventoryApi.createSupplier({
@@ -99,19 +107,28 @@ export default function NewSupplierPage() {
       toast({ variant: 'success', title: 'Supplier created successfully' });
       router.push(`/inventory/suppliers/${created.id}`);
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Failed to create supplier', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to create supplier',
+        description: getApiErrorMessage(err),
+      });
     }
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-3xl mx-auto">
-      <PageHeader title="Add Supplier" helpContent="Create a new supplier record. Suppliers are shared across all facilities in the organization." />
+    <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
+      <PageHeader
+        title="Add Supplier"
+        helpContent="Create a new supplier record. Suppliers are shared across all facilities in the organization."
+      />
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
           {/* Basic Info */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Basic Information</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Basic Information</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-3">
                 <FormField
@@ -120,7 +137,9 @@ export default function NewSupplierPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Supplier Code *</FormLabel>
-                      <FormControl><Input placeholder="e.g. SUP-001" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="e.g. SUP-001" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -131,7 +150,9 @@ export default function NewSupplierPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Supplier Name *</FormLabel>
-                      <FormControl><Input placeholder="e.g. Kenya Medical Supplies" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="e.g. Kenya Medical Supplies" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -144,7 +165,9 @@ export default function NewSupplierPage() {
                       <FormLabel>Supplier Type *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="MANUFACTURER">Manufacturer</SelectItem>
@@ -164,7 +187,9 @@ export default function NewSupplierPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>KRA PIN</FormLabel>
-                    <FormControl><Input placeholder="e.g. P051234567A" {...field} /></FormControl>
+                    <FormControl>
+                      <Input placeholder="e.g. P051234567A" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -174,7 +199,9 @@ export default function NewSupplierPage() {
 
           {/* Contact */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Contact Details</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Contact Details</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
@@ -183,7 +210,9 @@ export default function NewSupplierPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Contact Person</FormLabel>
-                      <FormControl><Input placeholder="Full name" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="Full name" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -194,7 +223,9 @@ export default function NewSupplierPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone</FormLabel>
-                      <FormControl><Input placeholder="+254..." {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="+254..." {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -206,7 +237,9 @@ export default function NewSupplierPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
-                    <FormControl><Input type="email" placeholder="supplier@example.com" {...field} /></FormControl>
+                    <FormControl>
+                      <Input type="email" placeholder="supplier@example.com" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -217,7 +250,9 @@ export default function NewSupplierPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Address</FormLabel>
-                    <FormControl><Textarea placeholder="Physical or postal address" rows={2} {...field} /></FormControl>
+                    <FormControl>
+                      <Textarea placeholder="Physical or postal address" rows={2} {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -227,7 +262,9 @@ export default function NewSupplierPage() {
 
           {/* Terms */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Terms & Performance</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Terms & Performance</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
@@ -241,14 +278,18 @@ export default function NewSupplierPage() {
                         value={field.value?.toString() ?? ''}
                       >
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Select payment terms" /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select payment terms" />
+                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {paymentTerms.filter(t => t.is_active).map((term) => (
-                            <SelectItem key={term.id} value={term.id.toString()}>
-                              {term.name} ({term.days} days)
-                            </SelectItem>
-                          ))}
+                          {paymentTerms
+                            .filter((t) => t.is_active)
+                            .map((term) => (
+                              <SelectItem key={term.id} value={term.id.toString()}>
+                                {term.name} ({term.days} days)
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -261,7 +302,9 @@ export default function NewSupplierPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Lead Time (days)</FormLabel>
-                      <FormControl><Input type="number" min={0} {...field} /></FormControl>
+                      <FormControl>
+                        <Input type="number" min={0} {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -273,7 +316,13 @@ export default function NewSupplierPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Notes</FormLabel>
-                    <FormControl><Textarea placeholder="Additional notes about this supplier" rows={3} {...field} /></FormControl>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Additional notes about this supplier"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -283,7 +332,12 @@ export default function NewSupplierPage() {
 
           {/* Actions */}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">

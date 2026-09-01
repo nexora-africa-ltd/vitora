@@ -117,20 +117,20 @@ function AlertItem({ alert, showClinicalNote, onAcknowledge, compact }: AlertIte
       className={cn(
         'flex items-start gap-2 rounded-lg border-2 shadow-sm',
         isCritical
-          ? 'border-red-600 dark:border-red-500 bg-red-600 dark:bg-red-600 text-white'
-          : 'border-orange-500 dark:border-orange-400 bg-orange-500 dark:bg-orange-600 text-white',
+          ? 'border-red-600 bg-red-600 text-white dark:border-red-500 dark:bg-red-600'
+          : 'border-orange-500 bg-orange-500 text-white dark:border-orange-400 dark:bg-orange-600',
         compact ? 'px-2.5 py-1.5' : 'px-3 py-2',
         'max-w-xs'
       )}
     >
       {/* Icon */}
       {isCritical ? (
-        <AlertCircle className={cn('shrink-0 mt-0.5', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
+        <AlertCircle className={cn('mt-0.5 shrink-0', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
       ) : (
-        <AlertTriangle className={cn('shrink-0 mt-0.5', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
+        <AlertTriangle className={cn('mt-0.5 shrink-0', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
       )}
 
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         {/* Message */}
         <p className={cn('font-medium leading-tight', compact ? 'text-xs' : 'text-sm')}>
           {alert.message}
@@ -138,10 +138,7 @@ function AlertItem({ alert, showClinicalNote, onAcknowledge, compact }: AlertIte
 
         {/* Clinical Note */}
         {showClinicalNote && alert.clinical_note && !compact && (
-          <p className={cn(
-            'text-xs mt-0.5',
-            isCritical ? 'text-red-100' : 'text-orange-100'
-          )}>
+          <p className={cn('mt-0.5 text-xs', isCritical ? 'text-red-100' : 'text-orange-100')}>
             {alert.clinical_note}
           </p>
         )}
@@ -153,7 +150,7 @@ function AlertItem({ alert, showClinicalNote, onAcknowledge, compact }: AlertIte
           variant="ghost"
           size="sm"
           onClick={() => onAcknowledge(alert.id!)}
-          className="shrink-0 h-auto p-1 text-white hover:text-white hover:bg-white/20"
+          className="h-auto shrink-0 p-1 text-white hover:bg-white/20 hover:text-white"
         >
           <CheckCircle className="h-4 w-4" />
         </Button>
@@ -208,8 +205,8 @@ export function VitalsAlertsPanel({
           type="button"
           onClick={handleToggle}
           className={cn(
-            'w-full flex items-center justify-between p-3 text-left',
-            'hover:bg-muted/50 transition-colors',
+            'flex w-full items-center justify-between p-3 text-left',
+            'transition-colors hover:bg-muted/50',
             critical > 0 ? 'bg-red-50 dark:bg-red-950/30' : 'bg-orange-50 dark:bg-orange-950/30'
           )}
         >
@@ -226,9 +223,7 @@ export function VitalsAlertsPanel({
                 </Badge>
               )}
               {warning > 0 && (
-                <Badge className="bg-orange-500 hover:bg-orange-600">
-                  {warning} Warning
-                </Badge>
+                <Badge className="bg-orange-500 hover:bg-orange-600">{warning} Warning</Badge>
               )}
             </span>
           </div>
@@ -241,7 +236,7 @@ export function VitalsAlertsPanel({
 
         {/* Content */}
         {isExpanded && (
-          <div className="p-3 space-y-3 border-t">
+          <div className="space-y-3 border-t p-3">
             {criticalAlerts.length > 0 && (
               <div className="space-y-2">
                 <div className="flex flex-wrap gap-2">

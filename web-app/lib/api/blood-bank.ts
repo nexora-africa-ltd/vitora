@@ -27,9 +27,32 @@ import type {
 import type { PaginatedResponse } from '@/lib/types';
 
 const BloodGroupSchema = z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
-const BloodComponentSchema = z.enum(['WHOLE_BLOOD', 'PACKED_RBC', 'PLATELETS', 'FFP', 'CRYOPRECIPITATE']);
-const UnitStatusSchema = z.enum(['COLLECTED', 'TESTING', 'AVAILABLE', 'RESERVED', 'ISSUED', 'EXPIRED', 'DISCARDED', 'QUARANTINED']);
-const RequestStatusSchema = z.enum(['PENDING', 'CROSSMATCH_PENDING', 'READY', 'ISSUED', 'TRANSFUSED', 'CANCELLED', 'RETURNED']);
+const BloodComponentSchema = z.enum([
+  'WHOLE_BLOOD',
+  'PACKED_RBC',
+  'PLATELETS',
+  'FFP',
+  'CRYOPRECIPITATE',
+]);
+const UnitStatusSchema = z.enum([
+  'COLLECTED',
+  'TESTING',
+  'AVAILABLE',
+  'RESERVED',
+  'ISSUED',
+  'EXPIRED',
+  'DISCARDED',
+  'QUARANTINED',
+]);
+const RequestStatusSchema = z.enum([
+  'PENDING',
+  'CROSSMATCH_PENDING',
+  'READY',
+  'ISSUED',
+  'TRANSFUSED',
+  'CANCELLED',
+  'RETURNED',
+]);
 const RequestUrgencySchema = z.enum(['ROUTINE', 'URGENT', 'EMERGENCY']);
 const CrossMatchResultSchema = z.enum(['COMPATIBLE', 'INCOMPATIBLE', 'PENDING']);
 
@@ -223,9 +246,13 @@ function buildParams<T extends object>(params: T): string {
 
 export const bloodBankApi = {
   // Donors
-  async listDonors(params: BloodDonorListParams = {}): Promise<PaginatedResponse<BloodDonorListItem>> {
+  async listDonors(
+    params: BloodDonorListParams = {}
+  ): Promise<PaginatedResponse<BloodDonorListItem>> {
     const response = await apiClient.get(`/api/blood-bank/donors/${buildParams(params)}`);
-    return parseResponse(PaginatedBloodDonorSchema, response.data, { context: 'bloodBankApi.listDonors' });
+    return parseResponse(PaginatedBloodDonorSchema, response.data, {
+      context: 'bloodBankApi.listDonors',
+    });
   },
 
   async getDonor(id: number): Promise<BloodDonor> {
@@ -246,7 +273,9 @@ export const bloodBankApi = {
   // Units
   async listUnits(params: BloodUnitListParams = {}): Promise<PaginatedResponse<BloodUnitListItem>> {
     const response = await apiClient.get(`/api/blood-bank/units/${buildParams(params)}`);
-    return parseResponse(PaginatedBloodUnitSchema, response.data, { context: 'bloodBankApi.listUnits' });
+    return parseResponse(PaginatedBloodUnitSchema, response.data, {
+      context: 'bloodBankApi.listUnits',
+    });
   },
 
   async getUnit(id: number): Promise<BloodUnit> {
@@ -259,7 +288,10 @@ export const bloodBankApi = {
     return parseResponse(BloodUnitSchema, response.data, { context: 'bloodBankApi.createUnit' });
   },
 
-  async updateUnit(id: number, data: Partial<BloodUnitCreateData & { status: string }>): Promise<BloodUnit> {
+  async updateUnit(
+    id: number,
+    data: Partial<BloodUnitCreateData & { status: string }>
+  ): Promise<BloodUnit> {
     const response = await apiClient.patch(`/api/blood-bank/units/${id}/`, data);
     return parseResponse(BloodUnitSchema, response.data, { context: 'bloodBankApi.updateUnit' });
   },
@@ -276,13 +308,19 @@ export const bloodBankApi = {
 
   async transitionUnit(id: number, data: BloodUnitTransitionData): Promise<BloodUnit> {
     const response = await apiClient.post(`/api/blood-bank/units/${id}/transition/`, data);
-    return parseResponse(BloodUnitSchema, response.data, { context: 'bloodBankApi.transitionUnit' });
+    return parseResponse(BloodUnitSchema, response.data, {
+      context: 'bloodBankApi.transitionUnit',
+    });
   },
 
   // Requests
-  async listRequests(params: BloodRequestListParams = {}): Promise<PaginatedResponse<BloodRequestListItem>> {
+  async listRequests(
+    params: BloodRequestListParams = {}
+  ): Promise<PaginatedResponse<BloodRequestListItem>> {
     const response = await apiClient.get(`/api/blood-bank/requests/${buildParams(params)}`);
-    return parseResponse(PaginatedBloodRequestSchema, response.data, { context: 'bloodBankApi.listRequests' });
+    return parseResponse(PaginatedBloodRequestSchema, response.data, {
+      context: 'bloodBankApi.listRequests',
+    });
   },
 
   async getRequest(id: number): Promise<BloodRequest> {
@@ -292,40 +330,54 @@ export const bloodBankApi = {
 
   async createRequest(data: BloodRequestCreateData): Promise<BloodRequest> {
     const response = await apiClient.post('/api/blood-bank/requests/', data);
-    return parseResponse(BloodRequestSchema, response.data, { context: 'bloodBankApi.createRequest' });
+    return parseResponse(BloodRequestSchema, response.data, {
+      context: 'bloodBankApi.createRequest',
+    });
   },
 
   async cancelRequest(id: number, reason: string): Promise<BloodRequest> {
     const response = await apiClient.post(`/api/blood-bank/requests/${id}/cancel/`, { reason });
-    return parseResponse(BloodRequestSchema, response.data, { context: 'bloodBankApi.cancelRequest' });
+    return parseResponse(BloodRequestSchema, response.data, {
+      context: 'bloodBankApi.cancelRequest',
+    });
   },
 
   // Cross-Match
   async listCrossMatches(requestId?: number): Promise<PaginatedResponse<CrossMatch>> {
     const params = requestId ? `?blood_request=${requestId}` : '';
     const response = await apiClient.get(`/api/blood-bank/crossmatches/${params}`);
-    return parseResponse(PaginatedCrossMatchSchema, response.data, { context: 'bloodBankApi.listCrossMatches' });
+    return parseResponse(PaginatedCrossMatchSchema, response.data, {
+      context: 'bloodBankApi.listCrossMatches',
+    });
   },
 
   async createCrossMatch(data: CrossMatchCreateData): Promise<CrossMatch> {
     const response = await apiClient.post('/api/blood-bank/crossmatches/', data);
-    return parseResponse(CrossMatchSchema, response.data, { context: 'bloodBankApi.createCrossMatch' });
+    return parseResponse(CrossMatchSchema, response.data, {
+      context: 'bloodBankApi.createCrossMatch',
+    });
   },
 
   async getCrossMatch(id: number): Promise<CrossMatch> {
     const response = await apiClient.get(`/api/blood-bank/crossmatches/${id}/`);
-    return parseResponse(CrossMatchSchema, response.data, { context: 'bloodBankApi.getCrossMatch' });
+    return parseResponse(CrossMatchSchema, response.data, {
+      context: 'bloodBankApi.getCrossMatch',
+    });
   },
 
   async recordResult(id: number, result: 'COMPATIBLE' | 'INCOMPATIBLE'): Promise<CrossMatch> {
-    const response = await apiClient.post(`/api/blood-bank/crossmatches/${id}/record_result/`, { result });
+    const response = await apiClient.post(`/api/blood-bank/crossmatches/${id}/record_result/`, {
+      result,
+    });
     return parseResponse(CrossMatchSchema, response.data, { context: 'bloodBankApi.recordResult' });
   },
 
   // Issues
   async listIssues(): Promise<PaginatedResponse<BloodIssue>> {
     const response = await apiClient.get('/api/blood-bank/issues/');
-    return parseResponse(PaginatedBloodIssueSchema, response.data, { context: 'bloodBankApi.listIssues' });
+    return parseResponse(PaginatedBloodIssueSchema, response.data, {
+      context: 'bloodBankApi.listIssues',
+    });
   },
 
   async createIssue(data: BloodIssueCreateData): Promise<BloodIssue> {
@@ -338,6 +390,8 @@ export const bloodBankApi = {
       reaction,
       details,
     });
-    return parseResponse(BloodIssueSchema, response.data, { context: 'bloodBankApi.completeTransfusion' });
+    return parseResponse(BloodIssueSchema, response.data, {
+      context: 'bloodBankApi.completeTransfusion',
+    });
   },
 };

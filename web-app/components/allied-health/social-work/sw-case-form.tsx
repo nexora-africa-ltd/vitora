@@ -37,26 +37,12 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  User,
-  AlertCircle,
-  Check,
-  ChevronsUpDown,
-  Shield,
-  AlertTriangle,
-} from 'lucide-react';
+import { User, AlertCircle, Check, ChevronsUpDown, Shield, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  useCreateSWCase,
-  useUpdateSWCase,
-} from '@/lib/hooks/use-social-work';
+import { useCreateSWCase, useUpdateSWCase } from '@/lib/hooks/use-social-work';
 import { usePatients, usePatient } from '@/lib/hooks/use-patients';
 import {
   REFERRAL_REASON_LABELS,
@@ -134,12 +120,7 @@ interface SWCaseFormProps {
   };
 }
 
-export function SWCaseForm({
-  patientId,
-  encounterId,
-  referralId,
-  swCase,
-}: SWCaseFormProps) {
+export function SWCaseForm({ patientId, encounterId, referralId, swCase }: SWCaseFormProps) {
   const router = useRouter();
   const isEditMode = !!swCase;
 
@@ -197,12 +178,15 @@ export function SWCaseForm({
   }, [patientId, form]);
 
   // Handle patient selection
-  const handlePatientSelect = useCallback((id: number) => {
-    setSelectedPatientId(id);
-    form.setValue('patient_id', id);
-    setPatientOpen(false);
-    setPatientSearch('');
-  }, [form]);
+  const handlePatientSelect = useCallback(
+    (id: number) => {
+      setSelectedPatientId(id);
+      form.setValue('patient_id', id);
+      setPatientOpen(false);
+      setPatientSearch('');
+    },
+    [form]
+  );
 
   // Handle form submission
   const handleSubmit = async (data: CaseFormData) => {
@@ -274,8 +258,9 @@ export function SWCaseForm({
         <Alert>
           <Shield className="h-4 w-4" />
           <AlertDescription>
-            This case involves a sensitive issue ({REFERRAL_REASON_LABELS[watchReason as SWReferralReason]}).
-            Access will be restricted to authorized staff only.
+            This case involves a sensitive issue (
+            {REFERRAL_REASON_LABELS[watchReason as SWReferralReason]}). Access will be restricted to
+            authorized staff only.
           </AlertDescription>
         </Alert>
       )}
@@ -285,7 +270,7 @@ export function SWCaseForm({
           {/* Patient Selection */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <User className="h-4 w-4 sm:h-5 sm:w-5" />
                 Patient
               </CardTitle>
@@ -301,17 +286,22 @@ export function SWCaseForm({
                       {patientId ? (
                         <div className="space-y-1">
                           {patientLoading ? (
-                            <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                            <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-2">
                               <LoadingSpinner className="h-4 w-4" />
-                              <span className="text-sm text-muted-foreground">Loading patient...</span>
+                              <span className="text-sm text-muted-foreground">
+                                Loading patient...
+                              </span>
                             </div>
                           ) : selectedPatient ? (
-                            <div className="p-2 border rounded-md bg-muted/50">
-                              <p className="font-medium">{selectedPatient.full_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}</p>
+                            <div className="rounded-md border bg-muted/50 p-2">
+                              <p className="font-medium">
+                                {selectedPatient.full_name ||
+                                  `${selectedPatient.first_name} ${selectedPatient.last_name}`}
+                              </p>
                               <p className="text-sm text-muted-foreground">{selectedPatient.mrn}</p>
                             </div>
                           ) : (
-                            <div className="p-2 border rounded-md bg-muted/50">
+                            <div className="rounded-md border bg-muted/50 p-2">
                               <p className="text-sm text-muted-foreground">Patient #{patientId}</p>
                             </div>
                           )}
@@ -341,7 +331,7 @@ export function SWCaseForm({
                               <CommandList>
                                 {patientsLoading ? (
                                   <div className="p-2 text-center">
-                                    <LoadingSpinner className="h-4 w-4 mx-auto" />
+                                    <LoadingSpinner className="mx-auto h-4 w-4" />
                                   </div>
                                 ) : patients.length === 0 ? (
                                   <CommandEmpty>No patients found.</CommandEmpty>
@@ -356,14 +346,19 @@ export function SWCaseForm({
                                         <Check
                                           className={cn(
                                             'mr-2 h-4 w-4',
-                                            selectedPatientId === patient.id ? 'opacity-100' : 'opacity-0'
+                                            selectedPatientId === patient.id
+                                              ? 'opacity-100'
+                                              : 'opacity-0'
                                           )}
                                         />
                                         <div>
                                           <p className="font-medium">
-                                            {patient.full_name || `${patient.first_name} ${patient.last_name}`}
+                                            {patient.full_name ||
+                                              `${patient.first_name} ${patient.last_name}`}
                                           </p>
-                                          <p className="text-sm text-muted-foreground">{patient.mrn}</p>
+                                          <p className="text-sm text-muted-foreground">
+                                            {patient.mrn}
+                                          </p>
                                         </div>
                                       </CommandItem>
                                     ))}
@@ -385,9 +380,7 @@ export function SWCaseForm({
           {/* Case Details */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg">
-                Case Details
-              </CardTitle>
+              <CardTitle className="text-base sm:text-lg">Case Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -407,7 +400,7 @@ export function SWCaseForm({
                           {referralReasons.map((reason) => (
                             <SelectItem key={reason} value={reason}>
                               {SENSITIVE_REASONS.includes(reason) && (
-                                <Shield className="inline h-3 w-3 mr-1 text-muted-foreground" />
+                                <Shield className="mr-1 inline h-3 w-3 text-muted-foreground" />
                               )}
                               {REFERRAL_REASON_LABELS[reason]}
                             </SelectItem>
@@ -468,7 +461,7 @@ export function SWCaseForm({
           {/* Safety & Immediate Needs */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
                 Safety & Immediate Needs
                 <HelpPopover content="Document any safety concerns and immediate needs that require urgent attention." />
@@ -514,9 +507,7 @@ export function SWCaseForm({
           {/* Support & Planning */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg">
-                Support & Planning
-              </CardTitle>
+              <CardTitle className="text-base sm:text-lg">Support & Planning</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField
@@ -543,10 +534,7 @@ export function SWCaseForm({
                   <FormItem>
                     <FormLabel>Goals</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Treatment goals and desired outcomes..."
-                        {...field}
-                      />
+                      <Textarea placeholder="Treatment goals and desired outcomes..." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -560,10 +548,7 @@ export function SWCaseForm({
                   <FormItem>
                     <FormLabel>Intervention Plan</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Planned interventions and actions..."
-                        {...field}
-                      />
+                      <Textarea placeholder="Planned interventions and actions..." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -600,11 +585,7 @@ export function SWCaseForm({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="w-full sm:w-auto"
-            >
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending && <LoadingSpinner className="mr-2 h-4 w-4" />}
               {isEditMode ? 'Update Case' : 'Create Case'}
             </Button>

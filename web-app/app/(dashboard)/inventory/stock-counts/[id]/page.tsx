@@ -83,9 +83,9 @@ function CountStepper({ status }: { status: StockCountStatus }) {
         const isCompleted = i < currentIndex;
         const isCurrent = i === currentIndex;
         return (
-          <div key={step} className="flex items-center gap-1 shrink-0">
+          <div key={step} className="flex shrink-0 items-center gap-1">
             <div
-              className={`flex items-center justify-center h-7 w-7 rounded-full border-2 text-xs font-medium ${
+              className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-medium ${
                 isCompleted
                   ? 'border-green-500 bg-green-500 text-white'
                   : isCurrent
@@ -96,7 +96,7 @@ function CountStepper({ status }: { status: StockCountStatus }) {
               {isCompleted ? <Check className="h-3.5 w-3.5" /> : i + 1}
             </div>
             <span
-              className={`text-xs hidden sm:inline ${
+              className={`hidden text-xs sm:inline ${
                 isCurrent ? 'font-medium' : 'text-muted-foreground'
               }`}
             >
@@ -116,11 +116,7 @@ function CountStepper({ status }: { status: StockCountStatus }) {
   );
 }
 
-export default function StockCountDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function StockCountDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = parseInt(resolvedParams.id, 10);
   const { toast } = useToast();
@@ -248,13 +244,19 @@ export default function StockCountDetailPage({
   }
 
   function getEditValue(item: StockCountItem) {
-    return editedItems[item.id] ?? {
-      counted_quantity: item.counted_quantity != null ? String(item.counted_quantity) : '',
-      variance_reason: item.variance_reason || '',
-    };
+    return (
+      editedItems[item.id] ?? {
+        counted_quantity: item.counted_quantity != null ? String(item.counted_quantity) : '',
+        variance_reason: item.variance_reason || '',
+      }
+    );
   }
 
-  function setEditField(itemId: number, field: 'counted_quantity' | 'variance_reason', value: string) {
+  function setEditField(
+    itemId: number,
+    field: 'counted_quantity' | 'variance_reason',
+    value: string
+  ) {
     setEditedItems((prev) => ({
       ...prev,
       [itemId]: {
@@ -334,7 +336,8 @@ export default function StockCountDetailPage({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Start Stock Count?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will move the count to In Progress. Staff can begin recording physical quantities.
+                        This will move the count to In Progress. Staff can begin recording physical
+                        quantities.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -383,7 +386,8 @@ export default function StockCountDetailPage({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Approve Stock Count?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will create stock adjustments for all variances and finalize the count. This action cannot be undone.
+                      This will create stock adjustments for all variances and finalize the count.
+                      This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -427,30 +431,33 @@ export default function StockCountDetailPage({
 
       {/* Progress stepper */}
       <Card>
-        <CardContent className="py-3 px-4">
+        <CardContent className="px-4 py-3">
           <CountStepper status={count.status} />
         </CardContent>
       </Card>
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {count.count_number}
-            <span className="text-muted-foreground"> · {count.store_location_name || 'All locations'}</span>
+            <span className="text-muted-foreground">
+              {' '}
+              · {count.store_location_name || 'All locations'}
+            </span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Created {new Date(count.created_at).toLocaleDateString()} by {count.started_by_name}
           </p>
         </div>
-        <Badge variant="outline" className={`${statusColors[count.status]} shrink-0 w-fit`}>
+        <Badge variant="outline" className={`${statusColors[count.status]} w-fit shrink-0`}>
           {statusLabels[count.status]}
         </Badge>
       </div>
 
       {/* Variance summary */}
       {hasItems && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Card className="relative overflow-hidden">
             <div
               className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
@@ -488,7 +495,9 @@ export default function StockCountDetailPage({
             />
             <CardContent className="relative p-3">
               <p className="text-xs text-muted-foreground">Discrepancies</p>
-              <p className={`text-lg font-bold ${count.total_discrepancies > 0 ? 'text-destructive' : ''}`}>
+              <p
+                className={`text-lg font-bold ${count.total_discrepancies > 0 ? 'text-destructive' : ''}`}
+              >
                 {count.total_discrepancies}
               </p>
             </CardContent>
@@ -499,16 +508,12 @@ export default function StockCountDetailPage({
       {/* Count Items */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">
-            Count Items ({count.item_count})
-          </CardTitle>
+          <CardTitle className="text-base">Count Items ({count.item_count})</CardTitle>
         </CardHeader>
         <CardContent className="px-0 sm:px-6">
           {!hasItems ? (
-            <div className="text-center py-8">
-              <p className="text-sm text-muted-foreground mb-2">
-                No items generated yet.
-              </p>
+            <div className="py-8 text-center">
+              <p className="mb-2 text-sm text-muted-foreground">No items generated yet.</p>
               {isDraft && (
                 <p className="text-xs text-muted-foreground">
                   Click &quot;Generate Items&quot; to populate from current stock batches.
@@ -539,42 +544,35 @@ export default function StockCountDetailPage({
                     return (
                       <TableRow
                         key={item.id}
-                        className={
-                          item.has_discrepancy
-                            ? 'bg-red-50/50 dark:bg-red-950/10'
-                            : ''
-                        }
+                        className={item.has_discrepancy ? 'bg-red-50/50 dark:bg-red-950/10' : ''}
                       >
-                        <TableCell className="font-medium text-sm">
-                          {item.drug_name}
-                        </TableCell>
+                        <TableCell className="text-sm font-medium">{item.drug_name}</TableCell>
                         <TableCell className="text-sm">{item.batch_number}</TableCell>
-                        <TableCell className="text-right text-sm">
-                          {item.system_quantity}
-                        </TableCell>
+                        <TableCell className="text-right text-sm">{item.system_quantity}</TableCell>
                         <TableCell className="text-right">
                           {isEditable ? (
                             <Input
                               type="number"
                               min={0}
-                              className="w-20 ml-auto text-right h-8 text-sm"
+                              className="ml-auto h-8 w-20 text-right text-sm"
                               value={edit.counted_quantity}
                               onChange={(e) =>
                                 setEditField(item.id, 'counted_quantity', e.target.value)
                               }
                             />
                           ) : (
-                            <span className="text-sm">
-                              {item.counted_quantity ?? '—'}
-                            </span>
+                            <span className="text-sm">{item.counted_quantity ?? '—'}</span>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
                           {(() => {
                             const countedStr = edit.counted_quantity;
                             const counted = countedStr !== '' ? parseInt(countedStr, 10) : NaN;
-                            const variance = !isNaN(counted) ? counted - item.system_quantity : (item.variance ?? NaN);
-                            if (isNaN(variance)) return <span className="text-sm text-muted-foreground">—</span>;
+                            const variance = !isNaN(counted)
+                              ? counted - item.system_quantity
+                              : (item.variance ?? NaN);
+                            if (isNaN(variance))
+                              return <span className="text-sm text-muted-foreground">—</span>;
                             return (
                               <span
                                 className={`text-sm font-medium ${
@@ -591,10 +589,10 @@ export default function StockCountDetailPage({
                             );
                           })()}
                         </TableCell>
-                          {isEditable && (
-                            <TableCell>
+                        {isEditable && (
+                          <TableCell>
                             <Input
-                              className="w-32 h-8 text-sm"
+                              className="h-8 w-32 text-sm"
                               placeholder="Reason"
                               value={edit.variance_reason}
                               onChange={(e) =>
@@ -603,14 +601,14 @@ export default function StockCountDetailPage({
                             />
                           </TableCell>
                         )}
-                          {isEditable && (
-                            <TableCell>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
-                                onClick={() => saveItem(item)}
-                                disabled={isSaving || !hasEdit}
+                        {isEditable && (
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => saveItem(item)}
+                              disabled={isSaving || !hasEdit}
                             >
                               {isSaving ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -628,15 +626,25 @@ export default function StockCountDetailPage({
             </div>
           )}
           {totalItemPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t">
+            <div className="flex items-center justify-between border-t px-4 py-3">
               <p className="text-sm text-muted-foreground">
                 Page {itemsPage} of {totalItemPages}
               </p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setItemsPage((p) => Math.max(1, p - 1))} disabled={itemsPage <= 1}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setItemsPage((p) => Math.max(1, p - 1))}
+                  disabled={itemsPage <= 1}
+                >
                   Previous
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setItemsPage((p) => Math.min(totalItemPages, p + 1))} disabled={itemsPage >= totalItemPages}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setItemsPage((p) => Math.min(totalItemPages, p + 1))}
+                  disabled={itemsPage >= totalItemPages}
+                >
                   Next
                 </Button>
               </div>
@@ -651,10 +659,12 @@ export default function StockCountDetailPage({
           <CardTitle className="text-base">Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <dt className="text-muted-foreground">Count Type</dt>
-              <dd className="font-medium capitalize">{count.count_type.toLowerCase().replace('_', ' ')}</dd>
+              <dd className="font-medium capitalize">
+                {count.count_type.toLowerCase().replace('_', ' ')}
+              </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Store Location</dt>
@@ -691,8 +701,8 @@ export default function StockCountDetailPage({
           </dl>
 
           {count.notes && (
-            <div className="mt-4 pt-4 border-t text-sm">
-              <p className="text-muted-foreground mb-1">Notes</p>
+            <div className="mt-4 border-t pt-4 text-sm">
+              <p className="mb-1 text-muted-foreground">Notes</p>
               <p className="whitespace-pre-wrap">{count.notes}</p>
             </div>
           )}
@@ -701,8 +711,8 @@ export default function StockCountDetailPage({
             <Alert className="mt-4">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                This count has <strong>{count.total_discrepancies}</strong> discrepancies.
-                Approving will create stock adjustment records to reconcile the differences.
+                This count has <strong>{count.total_discrepancies}</strong> discrepancies. Approving
+                will create stock adjustment records to reconcile the differences.
               </AlertDescription>
             </Alert>
           )}

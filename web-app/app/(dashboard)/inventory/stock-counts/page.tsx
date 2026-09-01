@@ -110,7 +110,7 @@ export default function StockCountsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {[
             { label: 'Total Counts', value: totalCount },
             { label: 'In Progress', value: inProgressCount },
@@ -123,7 +123,7 @@ export default function StockCountsPage() {
               />
               <CardContent className="relative p-3 sm:p-4">
                 <p className="text-xs text-muted-foreground">{stat.label}</p>
-                <p className="text-lg sm:text-2xl font-bold">{stat.value}</p>
+                <p className="text-lg font-bold sm:text-2xl">{stat.value}</p>
               </CardContent>
             </Card>
           ))}
@@ -231,7 +231,7 @@ export default function StockCountsPage() {
                 sortType: 'number',
                 hideOnMobile: true,
                 cell: (c) => (
-                  <span className={c.total_discrepancies > 0 ? 'text-destructive font-medium' : ''}>
+                  <span className={c.total_discrepancies > 0 ? 'font-medium text-destructive' : ''}>
                     {c.total_discrepancies}
                   </span>
                 ),
@@ -248,10 +248,10 @@ export default function StockCountsPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="font-medium truncate">{c.count_number}</span>
+                    <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate font-medium">{c.count_number}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {c.store_location_name || 'All locations'} · {c.started_by_name}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -264,7 +264,7 @@ export default function StockCountsPage() {
                     )}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
+                <div className="flex shrink-0 flex-col items-end gap-1">
                   <Badge variant="outline" className={typeColors[c.count_type]}>
                     {typeLabels[c.count_type]}
                   </Badge>

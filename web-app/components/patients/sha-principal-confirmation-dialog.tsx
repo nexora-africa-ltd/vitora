@@ -78,7 +78,7 @@ export function SHAPrincipalConfirmationDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <AlertDialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <AlertDialogHeader>
           <div className="flex items-center gap-2">
             <AlertDialogTitle className="flex items-center gap-2">
@@ -90,36 +90,56 @@ export function SHAPrincipalConfirmationDialog({
           <AlertDialogDescription asChild>
             <div className="space-y-4">
               {/* SHA Member Info */}
-              <Alert className={cn(
-                shaDetails.is_eligible
-                  ? "border-secondary/30 bg-secondary/5"
-                  : "border-muted-foreground/30 bg-muted/50"
-              )}>
-                <UserCheck className={cn(
-                  "h-4 w-4",
-                  shaDetails.is_eligible ? "text-secondary" : "text-muted-foreground"
-                )} />
-                <AlertTitle className={cn(
-                  "flex items-center gap-2",
-                  shaDetails.is_eligible ? "text-secondary" : "text-muted-foreground"
-                )}>
+              <Alert
+                className={cn(
+                  shaDetails.is_eligible
+                    ? 'border-secondary/30 bg-secondary/5'
+                    : 'border-muted-foreground/30 bg-muted/50'
+                )}
+              >
+                <UserCheck
+                  className={cn(
+                    'h-4 w-4',
+                    shaDetails.is_eligible ? 'text-secondary' : 'text-muted-foreground'
+                  )}
+                />
+                <AlertTitle
+                  className={cn(
+                    'flex items-center gap-2',
+                    shaDetails.is_eligible ? 'text-secondary' : 'text-muted-foreground'
+                  )}
+                >
                   SHA Principal Member
                   {!shaDetails.is_eligible && (
-                    <Badge variant="outline" className="text-warning-foreground border-warning/50 text-xs">
+                    <Badge
+                      variant="outline"
+                      className="border-warning/50 text-xs text-warning-foreground"
+                    >
                       Not Eligible
                     </Badge>
                   )}
                 </AlertTitle>
-                <AlertDescription className={shaDetails.is_eligible ? "text-secondary/80" : "text-muted-foreground"}>
+                <AlertDescription
+                  className={shaDetails.is_eligible ? 'text-secondary/80' : 'text-muted-foreground'}
+                >
                   <div className="mt-2 space-y-1">
-                    <p><strong>Name:</strong> {shaDetails.full_name || 'Not available'}</p>
-                    <p><strong>SHA Number:</strong> {shaDetails.sha_number || 'Not available'}</p>
+                    <p>
+                      <strong>Name:</strong> {shaDetails.full_name || 'Not available'}
+                    </p>
+                    <p>
+                      <strong>SHA Number:</strong> {shaDetails.sha_number || 'Not available'}
+                    </p>
                     {shaDetails.coverage_end_date && (
-                      <p><strong>Coverage Until:</strong> {shaDetails.coverage_end_date}</p>
+                      <p>
+                        <strong>Coverage Until:</strong> {shaDetails.coverage_end_date}
+                      </p>
                     )}
-                    {shaDetails.copay_percentage !== undefined && shaDetails.copay_percentage > 0 && (
-                      <p><strong>Co-pay:</strong> {shaDetails.copay_percentage}%</p>
-                    )}
+                    {shaDetails.copay_percentage !== undefined &&
+                      shaDetails.copay_percentage > 0 && (
+                        <p>
+                          <strong>Co-pay:</strong> {shaDetails.copay_percentage}%
+                        </p>
+                      )}
                   </div>
                 </AlertDescription>
               </Alert>
@@ -127,8 +147,8 @@ export function SHAPrincipalConfirmationDialog({
               {/* Question */}
               <p className="text-sm text-muted-foreground">
                 {shaDetails.is_eligible
-                  ? "Confirm if the principal member shown above is the patient, or select a dependent."
-                  : "Coverage is not active, but you can still use these details to populate the form."}
+                  ? 'Confirm if the principal member shown above is the patient, or select a dependent.'
+                  : 'Coverage is not active, but you can still use these details to populate the form.'}
               </p>
 
               {/* Dependents Section */}
@@ -136,32 +156,35 @@ export function SHAPrincipalConfirmationDialog({
                 <div className="space-y-3">
                   <Alert className="border-warning/30 bg-warning/5">
                     <Users className="h-4 w-4 text-warning-foreground" />
-                    <AlertTitle className="text-warning-foreground flex items-center gap-2">
+                    <AlertTitle className="flex items-center gap-2 text-warning-foreground">
                       Dependents Found
-                      <Badge variant="outline" className="text-warning-foreground border-warning/50">
+                      <Badge
+                        variant="outline"
+                        className="border-warning/50 text-warning-foreground"
+                      >
                         {shaDetails.dependents?.length}
                       </Badge>
                     </AlertTitle>
                     <AlertDescription className="text-warning-foreground/80">
-                      <p className="mb-2">
-                        If the patient is a dependent, select them below:
-                      </p>
-                      <div className="space-y-2 mt-3">
+                      <p className="mb-2">If the patient is a dependent, select them below:</p>
+                      <div className="mt-3 space-y-2">
                         {shaDetails.dependents?.map((dependent, index) => (
                           <button
                             key={index}
                             type="button"
                             onClick={() => handleSelectDependent(dependent)}
                             className={cn(
-                              "w-full text-left px-3 py-2 rounded-md border transition-colors",
+                              'w-full rounded-md border px-3 py-2 text-left transition-colors',
                               selectedDependent === dependent
-                                ? "border-warning bg-warning/20"
-                                : "border-warning/30 bg-background hover:border-warning/50 hover:bg-warning/10"
+                                ? 'border-warning bg-warning/20'
+                                : 'border-warning/30 bg-background hover:border-warning/50 hover:bg-warning/10'
                             )}
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-medium text-warning-foreground">{dependent.name}</p>
+                                <p className="font-medium text-warning-foreground">
+                                  {dependent.name}
+                                </p>
                                 <p className="text-xs text-warning-foreground/70">
                                   {dependent.relationship && `${dependent.relationship} • `}
                                   {dependent.date_of_birth && `DOB: ${dependent.date_of_birth}`}
@@ -169,7 +192,10 @@ export function SHAPrincipalConfirmationDialog({
                                 </p>
                               </div>
                               {dependent.sha_number && (
-                                <Badge variant="outline" className="text-warning-foreground border-warning/50 text-xs">
+                                <Badge
+                                  variant="outline"
+                                  className="border-warning/50 text-xs text-warning-foreground"
+                                >
                                   {dependent.sha_number}
                                 </Badge>
                               )}
@@ -185,7 +211,7 @@ export function SHAPrincipalConfirmationDialog({
               {/* Warning for manual entry */}
               <Alert className="border-border bg-muted">
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                <AlertDescription className="text-muted-foreground text-xs">
+                <AlertDescription className="text-xs text-muted-foreground">
                   If the patient is not shown here, click &quot;Enter Manually&quot; to proceed
                   without auto-populating SHA details.
                 </AlertDescription>
@@ -193,24 +219,22 @@ export function SHAPrincipalConfirmationDialog({
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-          <AlertDialogCancel onClick={handleCancel}>
-            Enter Manually
-          </AlertDialogCancel>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+          <AlertDialogCancel onClick={handleCancel}>Enter Manually</AlertDialogCancel>
           {selectedDependent ? (
             <AlertDialogAction
               onClick={handleConfirmDependent}
               className="bg-warning text-warning-foreground hover:bg-warning/90"
             >
-              <Users className="h-4 w-4 mr-2" />
+              <Users className="mr-2 h-4 w-4" />
               Use Dependent: {selectedDependent.name.split(' ')[0]}
             </AlertDialogAction>
           ) : (
             <AlertDialogAction
               onClick={handleConfirmPrincipal}
-              className="bg-secondary hover:bg-teal-500/90 hover:animate-pulse"
+              className="bg-secondary hover:animate-pulse hover:bg-teal-500/90"
             >
-              <UserCheck className="h-4 w-4 mr-2" />
+              <UserCheck className="mr-2 h-4 w-4" />
               Yes, This is the Patient
             </AlertDialogAction>
           )}

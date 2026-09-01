@@ -22,14 +22,14 @@ import { surveillanceApi } from '@/lib/api/surveillance';
 import { formatDateTime } from '@/lib/utils/format';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useSurveillanceWebSocket } from '@/lib/hooks/surveillance-websocket';
-import type {
-  NotifiableCaseListItem,
-  NotifiableCaseListParams,
-} from '@/lib/types/surveillance';
+import type { NotifiableCaseListItem, NotifiableCaseListParams } from '@/lib/types/surveillance';
 
 const PAGE_SIZE = 20;
 
-const STATUS_BADGE_VARIANTS: Record<string, 'secondary' | 'warning' | 'info' | 'success' | 'destructive'> = {
+const STATUS_BADGE_VARIANTS: Record<
+  string,
+  'secondary' | 'warning' | 'info' | 'success' | 'destructive'
+> = {
   PENDING: 'warning',
   NOTIFIED: 'info',
   ACKNOWLEDGED: 'info',
@@ -79,7 +79,8 @@ export default function NotifiableCasesPage() {
     }
 
     if (filters.status !== 'all') {
-      params.notification_status = filters.status as NotifiableCaseListParams['notification_status'];
+      params.notification_status =
+        filters.status as NotifiableCaseListParams['notification_status'];
     }
 
     if (filters.overdue !== 'all') {
@@ -144,9 +145,7 @@ export default function NotifiableCasesPage() {
       sortable: true,
       sortType: 'date' as const,
       cell: (item: NotifiableCaseListItem) => (
-        <span className="text-sm text-muted-foreground">
-          {formatDateTime(item.detected_at)}
-        </span>
+        <span className="text-sm text-muted-foreground">{formatDateTime(item.detected_at)}</span>
       ),
     },
     {
@@ -163,10 +162,13 @@ export default function NotifiableCasesPage() {
       key: 'is_overdue',
       header: 'Overdue',
       sortable: true,
-      sortFn: (a: NotifiableCaseListItem, b: NotifiableCaseListItem) => Number(a.is_overdue) - Number(b.is_overdue),
+      sortFn: (a: NotifiableCaseListItem, b: NotifiableCaseListItem) =>
+        Number(a.is_overdue) - Number(b.is_overdue),
       cell: (item: NotifiableCaseListItem) =>
         item.is_overdue ? (
-          <Badge variant="destructive" className="w-fit">Yes</Badge>
+          <Badge variant="destructive" className="w-fit">
+            Yes
+          </Badge>
         ) : (
           <span className="text-muted-foreground">No</span>
         ),
@@ -189,7 +191,7 @@ export default function NotifiableCasesPage() {
           }
         />
 
-        <Card className="p-4 space-y-3">
+        <Card className="space-y-3 p-4">
           <Input
             placeholder="Search patient, MRN, or disease..."
             value={search}
@@ -279,11 +281,11 @@ export default function NotifiableCasesPage() {
                     <p className="text-xs text-muted-foreground">
                       {item.patient_name} • {item.patient_mrn}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {formatDateTime(item.detected_at)}
                     </p>
                   </div>
-                  <div className="flex flex-col gap-2 items-end">
+                  <div className="flex flex-col items-end gap-2">
                     {item.is_overdue && (
                       <Badge variant="destructive" className="w-fit">
                         Overdue
@@ -304,13 +306,23 @@ export default function NotifiableCasesPage() {
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!hasPrev}
+            >
               Previous
             </Button>
             <span className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </span>
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNext}
+            >
               Next
             </Button>
           </div>

@@ -25,9 +25,7 @@ export interface ScrollMoreButtonProps {
 
 function getViewportEl(scrollAreaRoot: HTMLElement | null): HTMLElement | null {
   if (!scrollAreaRoot) return null;
-  return scrollAreaRoot.querySelector(
-    '[data-slot="scroll-area-viewport"]'
-  ) as HTMLElement | null;
+  return scrollAreaRoot.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement | null;
 }
 
 function computeScrollState(viewport: HTMLElement) {
@@ -78,16 +76,14 @@ export function ScrollMoreButton({
   }, [direction, scrollAreaRef]);
 
   const Icon = direction === 'down' ? ChevronDown : ChevronUp;
-  const label =
-    ariaLabel ?? (direction === 'down' ? 'Scroll for more' : 'Scroll up');
+  const label = ariaLabel ?? (direction === 'down' ? 'Scroll for more' : 'Scroll up');
 
   const handleClick = React.useCallback(() => {
     const viewport = getViewportEl(scrollAreaRef.current);
     if (!viewport) return;
 
     const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
-    const top =
-      scrollToPx ?? (direction === 'down' ? maxScrollTop : 0);
+    const top = scrollToPx ?? (direction === 'down' ? maxScrollTop : 0);
 
     viewport.scrollTo({
       top,
@@ -114,7 +110,7 @@ export function ScrollMoreButton({
           'pointer-events-auto h-8 w-8 rounded-full shadow-md',
           'bg-background/80 text-foreground backdrop-blur',
           'border border-primary/15 dark:border-primary/25',
-          'hover:bg-background/95 hover:border-primary/25 dark:hover:border-primary/35',
+          'hover:border-primary/25 hover:bg-background/95 dark:hover:border-primary/35',
           buttonClassName
         )}
         onClick={handleClick}

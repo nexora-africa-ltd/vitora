@@ -97,7 +97,7 @@ export default function EditPatientPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <div className="flex items-center gap-4">
           <Skeleton className="h-10 w-10" />
           <div className="space-y-2">
@@ -124,7 +124,7 @@ export default function EditPatientPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <h2 className="text-xl font-semibold">Patient not found</h2>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           The patient you&apos;re looking for doesn&apos;t exist.
         </p>
         <Button onClick={() => router.push('/patients')} className="mt-4">
@@ -146,7 +146,16 @@ export default function EditPatientPage() {
     first_name: patient.first_name,
     middle_name: patient.middle_name || '',
     last_name: patient.last_name,
-    title: (patient.title || '') as '' | 'Mr' | 'Mrs' | 'Miss' | 'Ms' | 'Dr' | 'Prof' | 'Hon' | 'Rev',
+    title: (patient.title || '') as
+      | ''
+      | 'Mr'
+      | 'Mrs'
+      | 'Miss'
+      | 'Ms'
+      | 'Dr'
+      | 'Prof'
+      | 'Hon'
+      | 'Rev',
     date_of_birth: patient.date_of_birth ? parseISO(patient.date_of_birth) : undefined,
     place_of_birth: patient.place_of_birth || '',
     gender: patient.gender as 'M' | 'F' | 'O',
@@ -173,7 +182,7 @@ export default function EditPatientPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>

@@ -18,10 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import StatusIndicator from '@/components/ui/status-indicator';
 import { cn } from '@/lib/utils/cn';
-import {
-  CATEGORY_COLORS,
-  TRIAGE_CATEGORY_ORDER,
-} from '@/lib/config/emergency';
+import { CATEGORY_COLORS, TRIAGE_CATEGORY_ORDER } from '@/lib/config/emergency';
 import type { TriageCategory } from '@/lib/types/triage';
 
 export interface ZoneData {
@@ -64,12 +61,7 @@ export function ZoneCard({ zone, onNavigate, className }: ZoneCardProps) {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-base">
           <span className="truncate">{zone.name}</span>
-          {hasPatients && (
-            <StatusIndicator
-              state={categoryColors.indicatorState}
-              size="md"
-            />
-          )}
+          {hasPatients && <StatusIndicator state={categoryColors.indicatorState} size="md" />}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -83,9 +75,7 @@ export function ZoneCard({ zone, onNavigate, className }: ZoneCardProps) {
           >
             {zone.total} pts
           </span>
-          <span className="text-sm text-muted-foreground">
-            Cap: {zone.capacity}
-          </span>
+          <span className="text-sm text-muted-foreground">Cap: {zone.capacity}</span>
         </div>
 
         {/* Category breakdown (if patients) */}
@@ -100,7 +90,7 @@ export function ZoneCard({ zone, onNavigate, className }: ZoneCardProps) {
                 <Badge
                   key={cat}
                   variant="secondary"
-                  className={cn('text-xs gap-1', colors.bg, colors.text)}
+                  className={cn('gap-1 text-xs', colors.bg, colors.text)}
                 >
                   <StatusIndicator state={colors.indicatorState} size="sm" />
                   {count}
@@ -136,20 +126,20 @@ export function ZoneCardSkeleton() {
     <Card className="border-2 border-muted">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <div className="h-5 w-24 bg-muted animate-pulse rounded" />
-          <div className="h-3 w-3 bg-muted animate-pulse rounded-full" />
+          <div className="h-5 w-24 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-3 animate-pulse rounded-full bg-muted" />
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between">
-          <div className="h-8 w-16 bg-muted animate-pulse rounded" />
-          <div className="h-4 w-12 bg-muted animate-pulse rounded" />
+          <div className="h-8 w-16 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-12 animate-pulse rounded bg-muted" />
         </div>
         <div className="flex gap-1">
-          <div className="h-5 w-10 bg-muted animate-pulse rounded" />
-          <div className="h-5 w-10 bg-muted animate-pulse rounded" />
+          <div className="h-5 w-10 animate-pulse rounded bg-muted" />
+          <div className="h-5 w-10 animate-pulse rounded bg-muted" />
         </div>
-        <div className="h-8 w-full bg-muted animate-pulse rounded" />
+        <div className="h-8 w-full animate-pulse rounded bg-muted" />
       </CardContent>
     </Card>
   );

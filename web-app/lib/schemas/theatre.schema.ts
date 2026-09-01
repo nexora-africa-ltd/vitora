@@ -14,13 +14,28 @@ import { z } from 'zod';
 // =============================================================================
 
 export const THEATRE_TYPES = [
-  'GENERAL', 'ORTHO', 'CARDIAC', 'NEURO', 'EYE',
-  'ENT', 'OBSTETRIC', 'PEDIATRIC', 'EMERGENCY', 'MINOR',
+  'GENERAL',
+  'ORTHO',
+  'CARDIAC',
+  'NEURO',
+  'EYE',
+  'ENT',
+  'OBSTETRIC',
+  'PEDIATRIC',
+  'EMERGENCY',
+  'MINOR',
 ] as const;
 
 export const CASE_STATUSES = [
-  'REQUESTED', 'SCHEDULED', 'PRE_OP', 'IN_THEATRE', 'IN_SURGERY',
-  'IN_PACU', 'DISCHARGED', 'POSTPONED', 'CANCELLED',
+  'REQUESTED',
+  'SCHEDULED',
+  'PRE_OP',
+  'IN_THEATRE',
+  'IN_SURGERY',
+  'IN_PACU',
+  'DISCHARGED',
+  'POSTPONED',
+  'CANCELLED',
 ] as const;
 
 export const PRIORITIES = ['ELECTIVE', 'URGENT', 'EMERGENCY'] as const;
@@ -28,7 +43,13 @@ export const PRIORITIES = ['ELECTIVE', 'URGENT', 'EMERGENCY'] as const;
 export const ASA_CLASSES = ['I', 'II', 'III', 'IV', 'V', 'VI'] as const;
 
 export const ANESTHESIA_TYPES = [
-  'GENERAL', 'SPINAL', 'EPIDURAL', 'REGIONAL', 'LOCAL', 'SEDATION', 'COMBINED',
+  'GENERAL',
+  'SPINAL',
+  'EPIDURAL',
+  'REGIONAL',
+  'LOCAL',
+  'SEDATION',
+  'COMBINED',
 ] as const;
 
 export const LATERALITIES = ['LEFT', 'RIGHT', 'BILATERAL', 'NA'] as const;
@@ -57,7 +78,8 @@ export const PACU_DESTINATIONS = [
 // =============================================================================
 
 function caseInsensitiveEnum<const T extends readonly [string, ...string[]]>(values: T) {
-  return z.string()
+  return z
+    .string()
     .transform((v) => v.toUpperCase())
     .pipe(z.enum(values));
 }
@@ -308,7 +330,12 @@ export const CaseSchedulingContextSchema = z.object({
 // =============================================================================
 
 export const EQUIPMENT_CATEGORIES = [
-  'IMAGING', 'MONITORING', 'SURGICAL_INSTRUMENT', 'LIFE_SUPPORT', 'STERILIZATION', 'OTHER',
+  'IMAGING',
+  'MONITORING',
+  'SURGICAL_INSTRUMENT',
+  'LIFE_SUPPORT',
+  'STERILIZATION',
+  'OTHER',
 ] as const;
 
 export const EquipmentCategorySchema = caseInsensitiveEnum(EQUIPMENT_CATEGORIES);
@@ -742,7 +769,9 @@ export type TheatreReportTotals = z.infer<typeof TheatreReportTotalsSchema>;
 export type TheatreReportTurnaround = z.infer<typeof TheatreReportTurnaroundSchema>;
 export type TheatreReportOnTimeStarts = z.infer<typeof TheatreReportOnTimeStartsSchema>;
 export type TheatreReportDay = z.infer<typeof TheatreReportDaySchema>;
-export type TheatreReportUtilizationByTheatre = z.infer<typeof TheatreReportUtilizationByTheatreSchema>;
+export type TheatreReportUtilizationByTheatre = z.infer<
+  typeof TheatreReportUtilizationByTheatreSchema
+>;
 export type TheatreReportStatusBreakdown = z.infer<typeof TheatreReportStatusBreakdownSchema>;
 export type TheatreReportClinicianWorkload = z.infer<typeof TheatreReportClinicianWorkloadSchema>;
 export type TheatreReportSummary = z.infer<typeof TheatreReportSummarySchema>;

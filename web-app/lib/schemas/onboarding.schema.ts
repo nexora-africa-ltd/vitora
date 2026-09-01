@@ -7,7 +7,13 @@ import { z } from 'zod';
 // ENUMS
 // =============================================================================
 
-export const InvitationStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED', 'DECLINED']);
+export const InvitationStatusSchema = z.enum([
+  'PENDING',
+  'ACCEPTED',
+  'EXPIRED',
+  'REVOKED',
+  'DECLINED',
+]);
 
 // =============================================================================
 // INVITATION SCHEMAS

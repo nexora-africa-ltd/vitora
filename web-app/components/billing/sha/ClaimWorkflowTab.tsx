@@ -64,10 +64,15 @@ function WorkflowStepCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-base">{step}. {title}</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">{description}</p>
+            <CardTitle className="text-base">
+              {step}. {title}
+            </CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
           </div>
-          <Badge variant="outline" className={complete ? 'border-emerald-300 text-emerald-700' : ''}>
+          <Badge
+            variant="outline"
+            className={complete ? 'border-emerald-300 text-emerald-700' : ''}
+          >
             {complete ? (
               <>
                 <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
@@ -87,7 +92,12 @@ function WorkflowStepCard({
   );
 }
 
-export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: ClaimWorkflowTabProps) {
+export function ClaimWorkflowTab({
+  claim,
+  flow,
+  isActive = true,
+  onChange,
+}: ClaimWorkflowTabProps) {
   const [consentTokenStr, setConsentTokenStr] = useState('');
   const [consentCredential, setConsentCredential] = useState<ConsentCredential>({});
   // Intervention code selected during consent — reused by ClaimILMPanel for start_visit
@@ -105,7 +115,7 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
 
   const localActiveInterventions = useMemo(
     () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active'),
-    [claim.claim_interventions],
+    [claim.claim_interventions]
   );
 
   const {
@@ -124,38 +134,37 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
 
   const previewInterventionsState = useMemo(
     () => extractPreviewActiveInterventions(workflowPreviewResult?.payload),
-    [workflowPreviewResult?.payload],
+    [workflowPreviewResult?.payload]
   );
 
   const activeInterventions = useMemo(
-    () => (
+    () =>
       previewInterventionsState.available
         ? previewInterventionsState.interventions
         : visitStarted && workflowPreviewFetching
           ? []
-        : localActiveInterventions
-    ),
-    [localActiveInterventions, previewInterventionsState, visitStarted, workflowPreviewFetching],
+          : localActiveInterventions,
+    [localActiveInterventions, previewInterventionsState, visitStarted, workflowPreviewFetching]
   );
-  const interventionSourceLabel =
-    previewInterventionsState.available
-      ? 'DHA preview'
-      : visitStarted && workflowPreviewFetching
-        ? 'Syncing DHA preview...'
-        : 'Local fallback';
+  const interventionSourceLabel = previewInterventionsState.available
+    ? 'DHA preview'
+    : visitStarted && workflowPreviewFetching
+      ? 'Syncing DHA preview...'
+      : 'Local fallback';
   const workflowLastSyncText =
     previewInterventionsState.available && workflowPreviewUpdatedAt > 0
       ? new Date(workflowPreviewUpdatedAt).toLocaleTimeString()
       : 'Not yet synced';
 
   const hasPerDiemInpatientIntervention = useMemo(
-    () => activeInterventions.some((i) => {
-      if (!i.is_per_diem) return false;
-      if (i.access_point === 'IP') return true;
-      const prefix = i.intervention_code.split('-').slice(0, 2).join('-');
-      return INPATIENT_PREFIXES.includes(prefix);
-    }),
-    [activeInterventions],
+    () =>
+      activeInterventions.some((i) => {
+        if (!i.is_per_diem) return false;
+        if (i.access_point === 'IP') return true;
+        const prefix = i.intervention_code.split('-').slice(0, 2).join('-');
+        return INPATIENT_PREFIXES.includes(prefix);
+      }),
+    [activeInterventions]
   );
 
   const facilityLevel = useMemo(() => {
@@ -192,19 +201,30 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
       return;
     }
 
-    shaApi.getLatestConsent(memberId, {
-      encounterId: typeof claim.encounter === 'number' ? claim.encounter : undefined,
-      claimPk: claim.id,
-    }).then((data) => {
-      if (data?.consent_token) {
-        setConsentTokenStr(data.consent_token);
-      }
-    }).catch(() => {
-      // Non-fatal — no existing valid token found.
-    }).finally(() => {
-      setConsentLookupChecked(true);
-    });
-  }, [claim.id, claim.sha_member, claim.encounter, consentTokenStr, visitStarted, flow.requiresConsent]);
+    shaApi
+      .getLatestConsent(memberId, {
+        encounterId: typeof claim.encounter === 'number' ? claim.encounter : undefined,
+        claimPk: claim.id,
+      })
+      .then((data) => {
+        if (data?.consent_token) {
+          setConsentTokenStr(data.consent_token);
+        }
+      })
+      .catch(() => {
+        // Non-fatal — no existing valid token found.
+      })
+      .finally(() => {
+        setConsentLookupChecked(true);
+      });
+  }, [
+    claim.id,
+    claim.sha_member,
+    claim.encounter,
+    consentTokenStr,
+    visitStarted,
+    flow.requiresConsent,
+  ]);
 
   // Hide consent panel if a valid (non-expired) token exists.
   // consent_obtained is derived from live token state; false means missing or expired.
@@ -212,12 +232,12 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
   const needsConsentRefresh = forceConsentRefresh || !consentObtained;
 
   const showConsent =
-    flow.requiresConsent
-    && !!claim.sha_member
-    && needsConsentRefresh
-    && (consentLookupChecked || forceConsentRefresh)
-    && (!visitStarted || forceConsentRefresh)
-    && !isTerminal;
+    flow.requiresConsent &&
+    !!claim.sha_member &&
+    needsConsentRefresh &&
+    (consentLookupChecked || forceConsentRefresh) &&
+    (!visitStarted || forceConsentRefresh) &&
+    !isTerminal;
   const showIlm = !isTerminal;
   const showDischarge =
     flow.supportsInpatientDischarge &&
@@ -227,13 +247,14 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
 
   const activeInterventionCodeSet = useMemo(
     () => toActiveInterventionCodeSet(activeInterventions),
-    [activeInterventions],
+    [activeInterventions]
   );
   const missingFromClaim = useMemo(
-    () => filterClaimMissingDocumentTypesByActiveInterventions(claim.missing_document_types ?? [], {
-      activeInterventionCodes: activeInterventionCodeSet,
-    }),
-    [activeInterventionCodeSet, claim.missing_document_types],
+    () =>
+      filterClaimMissingDocumentTypesByActiveInterventions(claim.missing_document_types ?? [], {
+        activeInterventionCodes: activeInterventionCodeSet,
+      }),
+    [activeInterventionCodeSet, claim.missing_document_types]
   );
 
   const { data: submitValidation } = useQuery({
@@ -246,19 +267,24 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
   });
 
   const filteredValidationErrors = useMemo(
-    () => filterValidationErrorsByActiveInterventions(submitValidation?.errors ?? [], {
-      activeInterventionCodes: activeInterventionCodeSet,
-    }),
-    [activeInterventionCodeSet, submitValidation?.errors],
+    () =>
+      filterValidationErrorsByActiveInterventions(submitValidation?.errors ?? [], {
+        activeInterventionCodes: activeInterventionCodeSet,
+      }),
+    [activeInterventionCodeSet, submitValidation?.errors]
   );
   const coreAttachmentErrors = useMemo(
     () => parseMissingCoreAttachmentErrors(filteredValidationErrors).map((entry) => entry.rawError),
-    [filteredValidationErrors],
+    [filteredValidationErrors]
   );
-  const tariffMappingErrors =
-    filteredValidationErrors.filter((error) => /missing SHA tariff code/i.test(error));
+  const tariffMappingErrors = filteredValidationErrors.filter((error) =>
+    /missing SHA tariff code/i.test(error)
+  );
   const missing = useMemo(() => {
-    const merged = new Map<string, { intervention_code: string; intervention_name: string; missing: string[] }>();
+    const merged = new Map<
+      string,
+      { intervention_code: string; intervention_name: string; missing: string[] }
+    >();
 
     for (const entry of missingFromClaim) {
       const interventionCode = entry.intervention_code?.trim().toUpperCase();
@@ -302,7 +328,8 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
     if (!prepareReady) blockers.push('Add at least one intervention to continue');
     if (coreAttachmentErrors.length > 0) blockers.push('Core attachments are still missing');
     if (missing.length > 0) blockers.push('Intervention-specific required documents are missing');
-    if (tariffMappingErrors.length > 0) blockers.push('Some claim items are missing SHA tariff mapping');
+    if (tariffMappingErrors.length > 0)
+      blockers.push('Some claim items are missing SHA tariff mapping');
     if (showConsent) blockers.push('Consent/authorization is required before submission');
     if (!showIlm) blockers.push('Claim is no longer in an editable workflow state');
     return blockers;
@@ -320,8 +347,8 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          This claim is in a terminal state ({claim.status.replace('_', ' ')}). No further
-          workflow actions are available.
+          This claim is in a terminal state ({claim.status.replace('_', ' ')}). No further workflow
+          actions are available.
         </AlertDescription>
       </Alert>
     );
@@ -329,7 +356,9 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
 
   return (
     <div id="claim-workflow-section" className="space-y-3 sm:space-y-4 md:space-y-6">
-      <Card className={readinessBlockers.length > 0 ? 'border-amber-200 dark:border-amber-800/60' : ''}>
+      <Card
+        className={readinessBlockers.length > 0 ? 'border-amber-200 dark:border-amber-800/60' : ''}
+      >
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Workflow path</CardTitle>
         </CardHeader>
@@ -340,12 +369,16 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
             </p>
             <Badge
               variant="outline"
-              className={previewInterventionsState.available ? 'border-emerald-300 text-emerald-700' : ''}
+              className={
+                previewInterventionsState.available ? 'border-emerald-300 text-emerald-700' : ''
+              }
             >
               Interventions: {interventionSourceLabel}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground">Last synced from DHA: {workflowLastSyncText}</p>
+          <p className="text-xs text-muted-foreground">
+            Last synced from DHA: {workflowLastSyncText}
+          </p>
           {readinessBlockers.length === 0 ? (
             <Alert>
               <CheckCircle2 className="h-4 w-4" />
@@ -355,7 +388,7 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                <ul className="list-disc pl-5 space-y-1">
+                <ul className="list-disc space-y-1 pl-5">
                   {readinessBlockers.map((blocker) => (
                     <li key={blocker}>{blocker}</li>
                   ))}
@@ -419,10 +452,14 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
               <p className="text-sm font-medium">Intervention-specific required documents</p>
               {missing.map((entry, i) => (
                 <div key={i} className="flex flex-col gap-1">
-                  <span className="text-sm font-medium">{entry.intervention_name || entry.intervention_code}</span>
+                  <span className="text-sm font-medium">
+                    {entry.intervention_name || entry.intervention_code}
+                  </span>
                   <div className="flex flex-wrap gap-1">
                     {entry.missing.map((docType, j) => (
-                      <Badge key={j} variant="outline">{docType.replace(/_/g, ' ')}</Badge>
+                      <Badge key={j} variant="outline">
+                        {docType.replace(/_/g, ' ')}
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -433,7 +470,8 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
           {tariffMappingErrors.length > 0 && (
             <Alert>
               <AlertDescription>
-                <span className="font-medium">Tariff mapping required:</span> {tariffMappingErrors.join(' · ')}
+                <span className="font-medium">Tariff mapping required:</span>{' '}
+                {tariffMappingErrors.join(' · ')}
               </AlertDescription>
             </Alert>
           )}
@@ -526,7 +564,9 @@ export function ClaimWorkflowTab({ claim, flow, isActive = true, onChange }: Cla
               shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
               consentToken={consentTokenStr}
               patientExternalId={previewMemberNumber || claim.dha_external_id || ''}
-              invoiceNumber={claim.dha_invoice_number || previewDhaInvoiceNumber || claim.invoice_number || ''}
+              invoiceNumber={
+                claim.dha_invoice_number || previewDhaInvoiceNumber || claim.invoice_number || ''
+              }
               invoiceId={typeof claim.invoice === 'number' ? claim.invoice : null}
               facilityLevel={facilityLevel}
               activeInterventions={activeInterventions}

@@ -12,7 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -142,7 +148,7 @@ export default function AnalyzersPage() {
           helpContent="Connect laboratory instruments to receive results automatically. Create a channel for each analyzer, select a protocol, and optionally apply a driver template for pre-configured settings."
           actions={
             <Button onClick={() => setShowAddDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">Add Channel</span>
               <span className="sm:hidden">Add</span>
             </Button>
@@ -153,43 +159,57 @@ export default function AnalyzersPage() {
         {dashboard && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
               <CardContent className="relative p-3 sm:p-4">
                 <div className="flex items-center gap-2">
                   <Cpu className="h-4 w-4 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">Channels</p>
                 </div>
-                <p className="text-xl font-bold mt-1">{dashboard.active_channels}/{dashboard.total_channels}</p>
+                <p className="mt-1 text-xl font-bold">
+                  {dashboard.active_channels}/{dashboard.total_channels}
+                </p>
               </CardContent>
             </Card>
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
               <CardContent className="relative p-3 sm:p-4">
                 <div className="flex items-center gap-2">
                   <Wifi className="h-4 w-4 text-green-500" />
                   <p className="text-xs text-muted-foreground">Connected</p>
                 </div>
-                <p className="text-xl font-bold mt-1">{dashboard.connected_channels}</p>
+                <p className="mt-1 text-xl font-bold">{dashboard.connected_channels}</p>
               </CardContent>
             </Card>
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
               <CardContent className="relative p-3 sm:p-4">
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-blue-500" />
                   <p className="text-xs text-muted-foreground">Results Today</p>
                 </div>
-                <p className="text-xl font-bold mt-1">{dashboard.results_applied_today}</p>
+                <p className="mt-1 text-xl font-bold">{dashboard.results_applied_today}</p>
               </CardContent>
             </Card>
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
               <CardContent className="relative p-3 sm:p-4">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-red-500" />
                   <p className="text-xs text-muted-foreground">Errors</p>
                 </div>
-                <p className="text-xl font-bold mt-1">{dashboard.error_channels}</p>
+                <p className="mt-1 text-xl font-bold">{dashboard.error_channels}</p>
               </CardContent>
             </Card>
           </div>
@@ -213,30 +233,34 @@ export default function AnalyzersPage() {
             {channels.length === 0 && !channelsLoading ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="rounded-full bg-muted p-4 mb-4">
+                  <div className="mb-4 rounded-full bg-muted p-4">
                     <PlugZap className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No analyzer channels configured</h3>
-                  <p className="text-sm text-muted-foreground max-w-md mb-6">
-                    Create a channel to connect a laboratory instrument. Each channel defines how Vitora
-                    communicates with an analyzer — protocol, host, and port.
+                  <h3 className="mb-2 text-lg font-semibold">No analyzer channels configured</h3>
+                  <p className="mb-6 max-w-md text-sm text-muted-foreground">
+                    Create a channel to connect a laboratory instrument. Each channel defines how
+                    Vitora communicates with an analyzer — protocol, host, and port.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row">
                     <Button onClick={() => setShowAddDialog(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Plus className="mr-2 h-4 w-4" />
                       Create Channel Manually
                     </Button>
                     {templates.length > 0 && (
                       <Button variant="outline" onClick={() => setTab('templates')}>
-                        <Settings2 className="h-4 w-4 mr-2" />
+                        <Settings2 className="mr-2 h-4 w-4" />
                         Browse Driver Templates
                       </Button>
                     )}
                   </div>
                   {instruments.length === 0 && (
-                    <p className="text-xs text-muted-foreground mt-4">
-                      You need at least one instrument registered before adding a channel. Register instruments in{' '}
-                      <a href="/laboratory/settings" className="underline text-primary">Lab Settings</a>.
+                    <p className="mt-4 text-xs text-muted-foreground">
+                      You need at least one instrument registered before adding a channel. Register
+                      instruments in{' '}
+                      <a href="/laboratory/settings" className="text-primary underline">
+                        Lab Settings
+                      </a>
+                      .
                     </p>
                   )}
                 </CardContent>
@@ -275,7 +299,9 @@ export default function AnalyzersPage() {
                         key: 'host',
                         header: 'Endpoint',
                         cell: (ch) => (
-                          <span className="text-sm font-mono">{ch.host}:{ch.port}</span>
+                          <span className="font-mono text-sm">
+                            {ch.host}:{ch.port}
+                          </span>
                         ),
                         hideOnMobile: true,
                       },
@@ -285,9 +311,15 @@ export default function AnalyzersPage() {
                         sortable: true,
                         cell: (ch) => (
                           <Badge className={statusColors[ch.connection_status] || ''}>
-                            {ch.connection_status === 'CONNECTED' && <Wifi className="h-3 w-3 mr-1" />}
-                            {ch.connection_status === 'DISCONNECTED' && <WifiOff className="h-3 w-3 mr-1" />}
-                            {ch.connection_status === 'ERROR' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                            {ch.connection_status === 'CONNECTED' && (
+                              <Wifi className="mr-1 h-3 w-3" />
+                            )}
+                            {ch.connection_status === 'DISCONNECTED' && (
+                              <WifiOff className="mr-1 h-3 w-3" />
+                            )}
+                            {ch.connection_status === 'ERROR' && (
+                              <AlertTriangle className="mr-1 h-3 w-3" />
+                            )}
                             {ch.connection_status_display}
                           </Badge>
                         ),
@@ -361,16 +393,21 @@ export default function AnalyzersPage() {
             {templates.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="rounded-full bg-muted p-4 mb-4">
+                  <div className="mb-4 rounded-full bg-muted p-4">
                     <Settings2 className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No driver templates available</h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    Driver templates provide pre-configured protocol settings for common laboratory analyzers
-                    (Sysmex, Roche, Abbott, etc.). Seed default templates to start managing them in this tab.
+                  <h3 className="mb-2 text-lg font-semibold">No driver templates available</h3>
+                  <p className="max-w-md text-sm text-muted-foreground">
+                    Driver templates provide pre-configured protocol settings for common laboratory
+                    analyzers (Sysmex, Roche, Abbott, etc.). Seed default templates to start
+                    managing them in this tab.
                   </p>
-                  <Button className="mt-6" onClick={() => seedTemplates.mutate()} disabled={seedTemplates.isPending}>
-                    {seedTemplates.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                  <Button
+                    className="mt-6"
+                    onClick={() => seedTemplates.mutate()}
+                    disabled={seedTemplates.isPending}
+                  >
+                    {seedTemplates.isPending && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
                     Seed Default Templates
                   </Button>
                 </CardContent>
@@ -379,28 +416,31 @@ export default function AnalyzersPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-end">
                   <Button variant="outline" size="sm" onClick={() => setTab('templates')}>
-                    <Settings2 className="h-4 w-4 mr-1.5" />
+                    <Settings2 className="mr-1.5 h-4 w-4" />
                     Manage Templates
                   </Button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {templates.map((tpl) => (
                     <Card key={tpl.id} className="relative overflow-hidden">
-                      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+                      <div
+                        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                        aria-hidden="true"
+                      />
                       <CardContent className="relative p-4">
-                        <div className="flex items-start justify-between mb-2">
+                        <div className="mb-2 flex items-start justify-between">
                           <div>
-                            <p className="font-medium text-sm">{tpl.name}</p>
+                            <p className="text-sm font-medium">{tpl.name}</p>
                             <p className="text-xs text-muted-foreground">
                               {tpl.manufacturer} • {tpl.category}
                             </p>
                           </div>
-                          <Badge variant="outline" className="text-xs shrink-0">
+                          <Badge variant="outline" className="shrink-0 text-xs">
                             {tpl.protocol}
                           </Badge>
                         </div>
                         {tpl.description && (
-                          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                          <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">
                             {tpl.description}
                           </p>
                         )}
@@ -422,7 +462,7 @@ export default function AnalyzersPage() {
                           }}
                           title={channels.length === 0 ? 'Create a channel first' : undefined}
                         >
-                          <Zap className="h-3 w-3 mr-1.5" />
+                          <Zap className="mr-1.5 h-3 w-3" />
                           Apply to Channel
                         </Button>
                       </CardContent>
@@ -499,7 +539,7 @@ function ChannelDetailPanel({
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={onTestConnection}>
-            <Zap className="h-4 w-4 mr-1.5" />
+            <Zap className="mr-1.5 h-4 w-4" />
             Test
           </Button>
           <Button size="sm" variant="ghost" onClick={onClose}>
@@ -510,25 +550,27 @@ function ChannelDetailPanel({
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Endpoint</p>
-            <p className="text-sm font-mono">{channel.host}:{channel.port}</p>
+            <p className="mb-1 text-xs text-muted-foreground">Endpoint</p>
+            <p className="font-mono text-sm">
+              {channel.host}:{channel.port}
+            </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Direction</p>
+            <p className="mb-1 text-xs text-muted-foreground">Direction</p>
             <p className="text-sm">{channel.direction_display}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Status</p>
+            <p className="mb-1 text-xs text-muted-foreground">Status</p>
             <Badge className={statusColors[channel.connection_status] || ''}>
               {channel.connection_status_display}
             </Badge>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Encoding</p>
+            <p className="mb-1 text-xs text-muted-foreground">Encoding</p>
             <p className="text-sm">{channel.encoding || 'utf-8'}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Last Activity</p>
+            <p className="mb-1 text-xs text-muted-foreground">Last Activity</p>
             <p className="text-sm">
               {channel.last_activity_at
                 ? new Date(channel.last_activity_at).toLocaleString()
@@ -536,19 +578,19 @@ function ChannelDetailPanel({
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Active</p>
+            <p className="mb-1 text-xs text-muted-foreground">Active</p>
             <p className="text-sm">{channel.is_active ? 'Yes' : 'No'}</p>
           </div>
         </div>
         {channel.last_error && (
-          <div className="mt-4 p-3 rounded-md bg-destructive/10 border border-destructive/20">
-            <p className="text-xs font-medium text-destructive mb-1">Last Error</p>
-            <p className="text-xs text-destructive/80 font-mono">{channel.last_error}</p>
+          <div className="mt-4 rounded-md border border-destructive/20 bg-destructive/10 p-3">
+            <p className="mb-1 text-xs font-medium text-destructive">Last Error</p>
+            <p className="font-mono text-xs text-destructive/80">{channel.last_error}</p>
           </div>
         )}
         {templates.length > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <p className="text-xs text-muted-foreground mb-2">Apply Driver Template</p>
+          <div className="mt-4 border-t pt-4">
+            <p className="mb-2 text-xs text-muted-foreground">Apply Driver Template</p>
             <div className="flex flex-wrap gap-2">
               {templates
                 .filter((t) => t.protocol === channel.protocol)
@@ -563,7 +605,7 @@ function ChannelDetailPanel({
                   </Button>
                 ))}
               {templates.filter((t) => t.protocol === channel.protocol).length === 0 && (
-                <p className="text-xs text-muted-foreground italic">
+                <p className="text-xs italic text-muted-foreground">
                   No templates available for {channel.protocol} protocol
                 </p>
               )}
@@ -690,8 +732,12 @@ function AddChannelDialog({
               </SelectContent>
             </Select>
             {instruments.length === 0 && (
-              <p className="text-xs text-destructive mt-1">
-                No instruments found. <a href="/laboratory/settings" className="underline">Register one in Lab Settings</a> first.
+              <p className="mt-1 text-xs text-destructive">
+                No instruments found.{' '}
+                <a href="/laboratory/settings" className="underline">
+                  Register one in Lab Settings
+                </a>{' '}
+                first.
               </p>
             )}
           </div>
@@ -713,7 +759,9 @@ function AddChannelDialog({
             <Label htmlFor="protocol">Protocol *</Label>
             <Select
               value={formData.protocol}
-              onValueChange={(v) => setFormData((prev) => ({ ...prev, protocol: v as ChannelProtocol }))}
+              onValueChange={(v) =>
+                setFormData((prev) => ({ ...prev, protocol: v as ChannelProtocol }))
+              }
             >
               <SelectTrigger id="protocol" className="mt-1">
                 <SelectValue placeholder="Select protocol..." />
@@ -760,7 +808,7 @@ function AddChannelDialog({
               type="submit"
               disabled={isLoading || !formData.instrument || !formData.name || !formData.protocol}
             >
-              {isLoading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+              {isLoading && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
               Create Channel
             </Button>
           </DialogFooter>
@@ -838,7 +886,7 @@ function ApplyTemplateDialog({
             disabled={!channelId || !templateId || isLoading}
             onClick={() => onApply(Number(channelId), Number(templateId))}
           >
-            {isLoading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+            {isLoading && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
             Apply Template
           </Button>
         </DialogFooter>

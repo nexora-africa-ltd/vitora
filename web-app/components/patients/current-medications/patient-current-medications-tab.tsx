@@ -4,7 +4,10 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { usePatientCurrentMedications, useDeleteCurrentMedication } from '@/lib/hooks/use-current-medications';
+import {
+  usePatientCurrentMedications,
+  useDeleteCurrentMedication,
+} from '@/lib/hooks/use-current-medications';
 import { CurrentMedicationFormDialog } from './current-medication-form-dialog';
 import type { CurrentMedication } from '@/lib/types/current-medication';
 
@@ -21,31 +24,65 @@ export function PatientCurrentMedicationsTab({ patientId }: { patientId: number 
   const { data: medications, isLoading } = usePatientCurrentMedications(patientId);
   const deleteMutation = useDeleteCurrentMedication(patientId);
 
-  if (isLoading) return <div className="h-20 bg-muted/40 rounded animate-pulse" />;
+  if (isLoading) return <div className="h-20 animate-pulse rounded bg-muted/40" />;
 
   const items = medications ?? [];
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{items.length} medication{items.length !== 1 ? 's' : ''}</p>
-        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+        <p className="text-sm text-muted-foreground">
+          {items.length} medication{items.length !== 1 ? 's' : ''}
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 gap-1 text-xs"
+          onClick={() => setShowAdd(true)}
+        >
           <Plus className="h-3 w-3" /> Add
         </Button>
       </div>
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic p-4 text-center">No current medications recorded.</p>
+        <p className="p-4 text-center text-sm italic text-muted-foreground">
+          No current medications recorded.
+        </p>
       ) : (
         <div className="space-y-1.5">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 text-sm group">
-              <span className="font-medium truncate">{item.medication_name}</span>
-              {item.dosage && <span className="text-xs text-muted-foreground shrink-0">{item.dosage}</span>}
-              {item.frequency && <span className="text-xs text-muted-foreground shrink-0">{item.frequency}</span>}
-              <Badge className={`${statusColors[item.status] ?? ''} text-xs shrink-0`}>{item.status_display}</Badge>
-              <span className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button type="button" variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setEditItem(item)}>Edit</Button>
-                <Button type="button" variant="ghost" size="sm" className="h-6 text-xs px-2 text-destructive" onClick={() => deleteMutation.mutate(item.id)}>Delete</Button>
+            <div
+              key={item.id}
+              className="group flex items-center gap-2 rounded-lg border bg-muted/20 p-2 text-sm"
+            >
+              <span className="truncate font-medium">{item.medication_name}</span>
+              {item.dosage && (
+                <span className="shrink-0 text-xs text-muted-foreground">{item.dosage}</span>
+              )}
+              {item.frequency && (
+                <span className="shrink-0 text-xs text-muted-foreground">{item.frequency}</span>
+              )}
+              <Badge className={`${statusColors[item.status] ?? ''} shrink-0 text-xs`}>
+                {item.status_display}
+              </Badge>
+              <span className="ml-auto flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setEditItem(item)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-destructive"
+                  onClick={() => deleteMutation.mutate(item.id)}
+                >
+                  Delete
+                </Button>
               </span>
             </div>
           ))}

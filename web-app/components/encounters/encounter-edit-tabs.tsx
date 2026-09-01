@@ -43,7 +43,9 @@ interface TabConfig {
   icon: React.ReactNode;
   path: string;
   description: string;
-  sectionKey?: keyof ReturnType<typeof useEncounterEditStore.getState>['sessions'][number]['completedSections'];
+  sectionKey?: keyof ReturnType<
+    typeof useEncounterEditStore.getState
+  >['sessions'][number]['completedSections'];
 }
 
 const TABS: TabConfig[] = [
@@ -180,8 +182,8 @@ export function EncounterEditTabs() {
   if (isLoading) {
     return (
       <div className="border-b bg-card">
-        <div className="flex items-center gap-1 px-2 sm:px-4 h-12">
-          <div className="animate-pulse bg-muted h-8 w-full rounded" />
+        <div className="flex h-12 items-center gap-1 px-2 sm:px-4">
+          <div className="h-8 w-full animate-pulse rounded bg-muted" />
         </div>
       </div>
     );
@@ -190,7 +192,7 @@ export function EncounterEditTabs() {
   return (
     <div className="border-b bg-card">
       <nav
-        className="flex items-center gap-0.5 sm:gap-1 px-2 sm:px-4 overflow-x-auto scrollbar-thin"
+        className="scrollbar-thin flex items-center gap-0.5 overflow-x-auto px-2 sm:gap-1 sm:px-4"
         aria-label="Encounter edit tabs"
       >
         {visibleTabs.map((tab, index) => {
@@ -203,19 +205,19 @@ export function EncounterEditTabs() {
               key={tab.id}
               href={href}
               className={cn(
-                'flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium',
-                'border-b-2 transition-colors whitespace-nowrap',
+                'flex items-center gap-1 px-2 py-2 text-xs font-medium sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-sm',
+                'whitespace-nowrap border-b-2 transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 isActive
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                  : 'border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground'
               )}
               aria-current={isActive ? 'page' : undefined}
             >
               {/* Step number for workflow visualization - hidden on mobile */}
               <span
                 className={cn(
-                  'hidden md:flex items-center justify-center w-5 h-5 rounded-full text-xs',
+                  'hidden h-5 w-5 items-center justify-center rounded-full text-xs md:flex',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : isComplete
@@ -227,9 +229,15 @@ export function EncounterEditTabs() {
               </span>
 
               {/* Icon */}
-              <span className={cn(
-                isActive ? 'text-primary' : isComplete ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
-              )}>
+              <span
+                className={cn(
+                  isActive
+                    ? 'text-primary'
+                    : isComplete
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-muted-foreground'
+                )}
+              >
                 {tab.icon}
               </span>
 
@@ -242,7 +250,10 @@ export function EncounterEditTabs() {
 
         {/* Status indicator */}
         {isReadOnly && (
-          <Badge variant="outline" className="ml-auto shrink-0 text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800">
+          <Badge
+            variant="outline"
+            className="ml-auto shrink-0 border-amber-300 bg-amber-50 text-amber-600 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
+          >
             Read-only
           </Badge>
         )}

@@ -6,7 +6,17 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { CreditCard, Hash, Fingerprint, Globe, Building2, Clock, FileText, Search, Loader2 } from 'lucide-react';
+import {
+  CreditCard,
+  Hash,
+  Fingerprint,
+  Globe,
+  Building2,
+  Clock,
+  FileText,
+  Search,
+  Loader2,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -88,21 +98,26 @@ export function IdentificationInput({
   onBlur,
   onKeyDown,
 }: IdentificationInputProps) {
-  const currentTypeOption = IDENTIFICATION_TYPE_OPTIONS.find(opt => opt.value === identificationType);
+  const currentTypeOption = IDENTIFICATION_TYPE_OPTIONS.find(
+    (opt) => opt.value === identificationType
+  );
   const currentLabel = currentTypeOption?.label || 'Select ID Type';
   const currentIcon = ID_TYPE_ICONS[identificationType];
   const currentPlaceholder = ID_TYPE_PLACEHOLDERS[identificationType];
 
-  const handleTypeSelect = useCallback((type: IdentificationType) => {
-    onTypeChange(type);
-  }, [onTypeChange]);
+  const handleTypeSelect = useCallback(
+    (type: IdentificationType) => {
+      onTypeChange(type);
+    },
+    [onTypeChange]
+  );
 
   return (
     <div className={cn('space-y-2', className)}>
       <div className="space-y-1">
         <Label>
           Identification Type
-          {required && <span className="text-destructive ml-0.5">*</span>}
+          {required && <span className="ml-0.5 text-destructive">*</span>}
         </Label>
         <Select
           value={identificationType}
@@ -152,15 +167,16 @@ export function IdentificationInput({
             onClick={onSearch}
             disabled={disabled || isSearching || identificationNumber.length < minSearchLength}
             className={cn(
-              'absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-colors',
+              'absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 transition-colors',
               'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
               identificationNumber.length >= minSearchLength && !isSearching && !disabled
-                ? 'text-teal-600 hover:bg-teal-600/10 cursor-pointer'
-                : 'text-muted-foreground/40 cursor-not-allowed'
+                ? 'cursor-pointer text-teal-600 hover:bg-teal-600/10'
+                : 'cursor-not-allowed text-muted-foreground/40'
             )}
-            title={identificationNumber.length < minSearchLength
-              ? `Enter at least ${minSearchLength} characters to search`
-              : 'Search CR/SHA'
+            title={
+              identificationNumber.length < minSearchLength
+                ? `Enter at least ${minSearchLength} characters to search`
+                : 'Search CR/SHA'
             }
           >
             {isSearching ? (
@@ -173,9 +189,7 @@ export function IdentificationInput({
       </div>
 
       {/* Error Message */}
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }

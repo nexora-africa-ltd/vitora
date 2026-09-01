@@ -61,11 +61,13 @@ export function useClinicQueueActions(
 
   // Mutations
   const { mutateAsync: callPatient, isPending: isCallingPatient } = useCallPatient();
-  const { mutateAsync: startConsultation, isPending: isStartingConsultation } = useStartConsultation();
+  const { mutateAsync: startConsultation, isPending: isStartingConsultation } =
+    useStartConsultation();
   const { mutateAsync: markNoShow, isPending: isMarkingNoShow } = useMarkNoShow();
   const { mutateAsync: cancelVisit, isPending: isCancellingVisit } = useCancelVisit();
 
-  const isPending = isCallingPatient || isStartingConsultation || isMarkingNoShow || isCancellingVisit;
+  const isPending =
+    isCallingPatient || isStartingConsultation || isMarkingNoShow || isCancellingVisit;
 
   // Dialog management
   const openDialog = useCallback((type: Exclude<QueueDialogType, null>, visit: ClinicVisit) => {

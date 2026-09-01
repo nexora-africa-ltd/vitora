@@ -99,74 +99,70 @@ interface ElementAggregate {
 function getStatusIcon(status: string) {
   switch (status) {
     case 'FAIL':
-      return <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />;
+      return <XCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />;
     case 'WARNING':
-      return <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />;
+      return <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />;
     case 'PASS':
-      return <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />;
+      return <CheckCircle className="h-3.5 w-3.5 shrink-0 text-green-500" />;
     default:
-      return <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
+      return <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
   }
 }
 
 function getLevelBadge(level: string) {
   if (level === 'MANDATORY')
     return (
-      <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+      <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">
         Mandatory
       </Badge>
     );
   if (level === 'CONDITIONAL')
     return (
-      <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5 py-0">
+      <Badge className="bg-amber-100 px-1.5 py-0 text-[10px] text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
         Conditional
       </Badge>
     );
   return (
-    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+    <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
       Optional
     </Badge>
   );
 }
 
-function FailedRecordRow({
-  record,
-  resourceType,
-}: {
-  record: FailedRecord;
-  resourceType: string;
-}) {
+function FailedRecordRow({ record, resourceType }: { record: FailedRecord; resourceType: string }) {
   const [expanded, setExpanded] = useState(false);
-  const href = record.record_exists !== false ? getRecordHref(resourceType, record.record_id) : null;
+  const href =
+    record.record_exists !== false ? getRecordHref(resourceType, record.record_id) : null;
   const isDeleted = record.record_exists === false;
 
   return (
-    <div className="border rounded-lg">
+    <div className="rounded-lg border">
       <button
         type="button"
-        className="flex items-center justify-between w-full p-3 text-left hover:bg-muted/50 transition-colors"
+        className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted/50"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           {expanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           )}
-          <span className="text-sm font-medium font-mono">
-            Record #{record.record_id}
-          </span>
+          <span className="font-mono text-sm font-medium">Record #{record.record_id}</span>
           {isDeleted ? (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex items-center gap-0.5">
+            <Badge
+              variant="secondary"
+              className="flex items-center gap-0.5 px-1.5 py-0 text-[10px]"
+            >
               <Trash2 className="h-2.5 w-2.5" />
               Deleted
             </Badge>
           ) : record.is_compliant ? (
-            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5 py-0">
+            <Badge className="bg-green-100 px-1.5 py-0 text-[10px] text-green-800 dark:bg-green-900/30 dark:text-green-400">
               Compliant
             </Badge>
           ) : (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+            <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">
               Non-Compliant
             </Badge>
           )}
@@ -174,14 +170,14 @@ function FailedRecordRow({
             <Link
               href={href}
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline shrink-0"
+              className="inline-flex shrink-0 items-center gap-1 text-[11px] text-primary hover:underline"
             >
               View {getResourceLabel(resourceType)}
               <ExternalLink className="h-3 w-3" />
             </Link>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+        <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
           {record.fail_count > 0 && (
             <span className="flex items-center gap-1">
               <XCircle className="h-3 w-3 text-red-500" />
@@ -204,20 +200,20 @@ function FailedRecordRow({
       </button>
 
       {expanded && record.violation_details.length > 0 && (
-        <div className="border-t px-3 py-2 space-y-1.5 bg-muted/20">
+        <div className="space-y-1.5 border-t bg-muted/20 px-3 py-2">
           {record.violation_details.map((v: ViolationDetail, idx: number) => (
             <div
               key={`${v.element_id}-${idx}`}
-              className="flex items-start gap-2 text-xs p-1.5 rounded bg-background"
+              className="flex items-start gap-2 rounded bg-background p-1.5 text-xs"
             >
               {getStatusIcon(v.status)}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{v.element_name}</span>
                   {getLevelBadge(v.requirement_level)}
                 </div>
-                <div className="text-muted-foreground mt-0.5">{v.message}</div>
-                <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                <div className="mt-0.5 text-muted-foreground">{v.message}</div>
+                <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
                   <span className="font-mono">{v.element_id}</span>
                   <span>·</span>
                   <span className="font-mono">{v.field_name}</span>
@@ -237,7 +233,7 @@ function FailedRecordRow({
       )}
 
       {expanded && record.violation_details.length === 0 && (
-        <div className="border-t px-3 py-3 text-xs text-muted-foreground text-center">
+        <div className="border-t px-3 py-3 text-center text-xs text-muted-foreground">
           No violation details recorded for this record.
         </div>
       )}
@@ -245,11 +241,7 @@ function FailedRecordRow({
   );
 }
 
-export function KENHDDRunDetailDialog({
-  runId,
-  open,
-  onOpenChange,
-}: KENHDDRunDetailDialogProps) {
+export function KENHDDRunDetailDialog({ runId, open, onOpenChange }: KENHDDRunDetailDialogProps) {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('by-record');
 
@@ -288,7 +280,10 @@ export function KENHDDRunDetailDialog({
           if (v.status === 'FAIL') existing.fail_count++;
           if (v.status === 'WARNING') existing.warning_count++;
           existing.total++;
-          if (existing.sample_messages.length < 3 && !existing.sample_messages.includes(v.message)) {
+          if (
+            existing.sample_messages.length < 3 &&
+            !existing.sample_messages.includes(v.message)
+          ) {
             existing.sample_messages.push(v.message);
           }
         } else {
@@ -308,17 +303,13 @@ export function KENHDDRunDetailDialog({
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [runDetail]);
 
-  const score = runDetail
-    ? parseFloat(runDetail.compliance_score)
-    : null;
+  const score = runDetail ? parseFloat(runDetail.compliance_score) : null;
 
-  const mandatoryRate = runDetail
-    ? parseFloat(runDetail.mandatory_pass_rate)
-    : null;
+  const mandatoryRate = runDetail ? parseFloat(runDetail.mandatory_pass_rate) : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-muted-foreground" />
@@ -349,21 +340,21 @@ export function KENHDDRunDetailDialog({
         )}
 
         {runDetail && (
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+          <div className="flex-1 space-y-4 overflow-y-auto pr-1">
             {/* Run summary bar */}
-            <div className="flex flex-col gap-2 p-3 rounded-lg bg-muted/30 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 rounded-lg bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium">
-                    {runDetail.resource_type}
-                  </span>
-                  <span className={`text-lg font-bold ${
-                    score !== null && score >= 90
-                      ? 'text-green-600'
-                      : score !== null && score >= 70
-                        ? 'text-amber-600'
-                        : 'text-red-600'
-                  }`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium">{runDetail.resource_type}</span>
+                  <span
+                    className={`text-lg font-bold ${
+                      score !== null && score >= 90
+                        ? 'text-green-600'
+                        : score !== null && score >= 70
+                          ? 'text-amber-600'
+                          : 'text-red-600'
+                    }`}
+                  >
                     {score !== null ? `${score.toFixed(0)}%` : '—'}
                   </span>
                   {score !== null && score >= 90 ? (
@@ -383,7 +374,8 @@ export function KENHDDRunDetailDialog({
                 <div className="text-xs text-muted-foreground">
                   {runDetail.records_compliant}/{runDetail.records_checked} compliant
                   {' · '}Mandatory: {mandatoryRate !== null ? `${mandatoryRate.toFixed(0)}%` : '—'}
-                  {' · '}{new Date(runDetail.run_at).toLocaleString()}
+                  {' · '}
+                  {new Date(runDetail.run_at).toLocaleString()}
                   {runDetail.run_by_name && ` · ${runDetail.run_by_name}`}
                 </div>
               </div>
@@ -397,9 +389,9 @@ export function KENHDDRunDetailDialog({
                   onClick={() => revalidateMutation.mutate()}
                 >
                   {revalidateMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                   ) : (
-                    <RefreshCw className="h-4 w-4 mr-1.5" />
+                    <RefreshCw className="mr-1.5 h-4 w-4" />
                   )}
                   <span className="hidden sm:inline">Revalidate Failed</span>
                   <span className="sm:hidden">Revalidate</span>
@@ -411,12 +403,12 @@ export function KENHDDRunDetailDialog({
             {runDetail.failed_records.length > 0 ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center rounded-lg border p-0.5 bg-muted/30">
+                  <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
                     <button
                       type="button"
-                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                         viewMode === 'by-record'
-                          ? 'bg-background shadow-sm text-foreground'
+                          ? 'bg-background text-foreground shadow-sm'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                       onClick={() => setViewMode('by-record')}
@@ -428,9 +420,9 @@ export function KENHDDRunDetailDialog({
                     </button>
                     <button
                       type="button"
-                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                         viewMode === 'by-element'
-                          ? 'bg-background shadow-sm text-foreground'
+                          ? 'bg-background text-foreground shadow-sm'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                       onClick={() => setViewMode('by-element')}
@@ -456,33 +448,26 @@ export function KENHDDRunDetailDialog({
                 ) : (
                   <div className="space-y-1.5">
                     {elementAggregates.map((el) => (
-                      <div
-                        key={el.element_id}
-                        className="border rounded-lg p-3 space-y-1.5"
-                      >
+                      <div key={el.element_id} className="space-y-1.5 rounded-lg border p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                            <span className="text-sm font-medium">
-                              {el.element_name}
-                            </span>
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium">{el.element_name}</span>
                             {getLevelBadge(el.requirement_level)}
                           </div>
-                          <div className="flex items-center gap-2 text-xs shrink-0">
+                          <div className="flex shrink-0 items-center gap-2 text-xs">
                             {el.fail_count > 0 && (
-                              <span className="flex items-center gap-1 text-red-600 font-medium">
+                              <span className="flex items-center gap-1 font-medium text-red-600">
                                 <XCircle className="h-3 w-3" />
                                 {el.fail_count}
                               </span>
                             )}
                             {el.warning_count > 0 && (
-                              <span className="flex items-center gap-1 text-amber-600 font-medium">
+                              <span className="flex items-center gap-1 font-medium text-amber-600">
                                 <AlertTriangle className="h-3 w-3" />
                                 {el.warning_count}
                               </span>
                             )}
-                            <span className="text-muted-foreground">
-                              {el.total} total
-                            </span>
+                            <span className="text-muted-foreground">{el.total} total</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
@@ -491,12 +476,10 @@ export function KENHDDRunDetailDialog({
                           <span className="font-mono">{el.field_name}</span>
                         </div>
                         {el.sample_messages.length > 0 && (
-                          <div className="text-xs text-muted-foreground space-y-0.5 pt-0.5 border-t">
+                          <div className="space-y-0.5 border-t pt-0.5 text-xs text-muted-foreground">
                             {el.sample_messages.map((msg, i) => (
                               <div key={i} className="flex items-start gap-1.5">
-                                <span className="text-muted-foreground/60 shrink-0">
-                                  ·
-                                </span>
+                                <span className="shrink-0 text-muted-foreground/60">·</span>
                                 <span>{msg}</span>
                               </div>
                             ))}
@@ -509,7 +492,7 @@ export function KENHDDRunDetailDialog({
               </div>
             ) : (
               <div className="py-8 text-center text-sm text-muted-foreground">
-                <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500 opacity-60" />
+                <CheckCircle className="mx-auto mb-2 h-8 w-8 text-green-500 opacity-60" />
                 <p>All records passed validation.</p>
               </div>
             )}

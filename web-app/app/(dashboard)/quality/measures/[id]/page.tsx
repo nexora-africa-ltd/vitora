@@ -22,14 +22,7 @@ import { qualityApi } from '@/lib/api/quality';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { toast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
-import {
-  Code2,
-  Target,
-  BarChart3,
-  Link2,
-  Activity,
-  AlertTriangle,
-} from 'lucide-react';
+import { Code2, Target, BarChart3, Link2, Activity, AlertTriangle } from 'lucide-react';
 import type {
   QualityEvaluationRule,
   QualityEvaluationRuleType,
@@ -55,7 +48,7 @@ type RulePreviewForm = {
 function generateDraftFromNarrative(
   numeratorLogic: string,
   denominatorLogic: string,
-  exclusionLogic: string,
+  exclusionLogic: string
 ): RuleDraft | null {
   const text = `${numeratorLogic} ${denominatorLogic} ${exclusionLogic}`.toLowerCase();
   const waitTimeMatch = text.match(/(\d+)\s*(minute|minutes|min|mins)/i);
@@ -72,7 +65,9 @@ function generateDraftFromNarrative(
           diastolic_max: 90,
         },
       },
-      assumptions: ['Blood pressure control inferred from narrative terms (BP, blood pressure, 140/90).'],
+      assumptions: [
+        'Blood pressure control inferred from narrative terms (BP, blood pressure, 140/90).',
+      ],
       warnings: [],
       confidence: 0.84,
     };
@@ -98,7 +93,10 @@ function generateDraftFromNarrative(
         },
       },
       assumptions: ['Lab threshold rule inferred from narrative threshold language.'],
-      warnings: threshold === 0 ? ['Threshold value could not be confidently inferred. Review and edit before applying.'] : [],
+      warnings:
+        threshold === 0
+          ? ['Threshold value could not be confidently inferred. Review and edit before applying.']
+          : [],
       confidence: threshold === 0 ? 0.62 : 0.82,
     };
   }
@@ -154,7 +152,11 @@ function generateDraftFromNarrative(
     };
   }
 
-  if (text.includes('defaulter') || text.includes('active enrollment') || text.includes('enrollment')) {
+  if (
+    text.includes('defaulter') ||
+    text.includes('active enrollment') ||
+    text.includes('enrollment')
+  ) {
     return {
       rule: {
         type: 'enrollment_active',
@@ -197,10 +199,10 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-start gap-3 py-2">
-      <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <div className="text-sm font-medium break-words">{value}</div>
+        <div className="break-words text-sm font-medium">{value}</div>
       </div>
     </div>
   );
@@ -211,7 +213,11 @@ export default function QualityMeasureDetailPage() {
   const measureId = Number(params?.id);
   const queryClient = useQueryClient();
 
-  const { data: measure, isLoading, error } = useQuery({
+  const {
+    data: measure,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['quality-measure', measureId],
     queryFn: () => qualityApi.getMeasure(measureId),
     enabled: Number.isFinite(measureId),
@@ -264,7 +270,8 @@ export default function QualityMeasureDetailPage() {
     onError: (err: unknown) => {
       toast({
         title: 'Failed to save rule',
-        description: err instanceof Error ? err.message : 'Please review rule settings and try again.',
+        description:
+          err instanceof Error ? err.message : 'Please review rule settings and try again.',
         variant: 'destructive',
       });
     },
@@ -474,7 +481,9 @@ export default function QualityMeasureDetailPage() {
       return {
         valid: true,
         errors: [] as string[],
-        warnings: ['No automated evaluation rule is applied. This measure will not auto-calculate.'],
+        warnings: [
+          'No automated evaluation rule is applied. This measure will not auto-calculate.',
+        ],
       };
     }
 
@@ -485,19 +494,24 @@ export default function QualityMeasureDetailPage() {
       const threshold = Number((rule.params as Record<string, unknown>).threshold ?? 0);
       const testName = String((rule.params as Record<string, unknown>).test_name ?? '');
       const testCode = String((rule.params as Record<string, unknown>).test_code ?? '');
-      if (!testName && !testCode) errors.push('Lab threshold rule requires test_name or test_code.');
-      if (!Number.isFinite(threshold) || threshold === 0) errors.push('Lab threshold rule requires a non-zero threshold value.');
-      if (testName && !testCode) warnings.push('Consider adding test_code (LOINC) for precise mapping.');
+      if (!testName && !testCode)
+        errors.push('Lab threshold rule requires test_name or test_code.');
+      if (!Number.isFinite(threshold) || threshold === 0)
+        errors.push('Lab threshold rule requires a non-zero threshold value.');
+      if (testName && !testCode)
+        warnings.push('Consider adding test_code (LOINC) for precise mapping.');
     }
 
     if (rule.type === 'wait_time') {
       const maxMinutes = Number((rule.params as Record<string, unknown>).max_minutes ?? 0);
-      if (!Number.isFinite(maxMinutes) || maxMinutes <= 0) errors.push('Wait time rule requires max_minutes greater than 0.');
+      if (!Number.isFinite(maxMinutes) || maxMinutes <= 0)
+        errors.push('Wait time rule requires max_minutes greater than 0.');
     }
 
     if (rule.type === 'visit_count') {
       const minVisits = Number((rule.params as Record<string, unknown>).min_visits ?? 0);
-      if (!Number.isFinite(minVisits) || minVisits <= 0) errors.push('Visit count rule requires min_visits greater than 0.');
+      if (!Number.isFinite(minVisits) || minVisits <= 0)
+        errors.push('Visit count rule requires min_visits greater than 0.');
     }
 
     return { valid: errors.length === 0, errors, warnings };
@@ -508,10 +522,14 @@ export default function QualityMeasureDetailPage() {
     const draft = generateDraftFromNarrative(
       measure.numerator_logic,
       measure.denominator_logic,
-      measure.exclusion_logic || '',
+      measure.exclusion_logic || ''
     );
     if (!draft) {
-      toast({ title: 'No draft generated', description: 'Could not infer a safe structured rule from measure logic.', variant: 'destructive' });
+      toast({
+        title: 'No draft generated',
+        description: 'Could not infer a safe structured rule from measure logic.',
+        variant: 'destructive',
+      });
       return;
     }
     setDraftRule(draft);
@@ -579,9 +597,7 @@ export default function QualityMeasureDetailPage() {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader title="Quality Measure" />
         <Card className="p-6">
-          <p className="text-destructive">
-            Failed to load quality measure. It may not exist.
-          </p>
+          <p className="text-destructive">Failed to load quality measure. It may not exist.</p>
         </Card>
       </div>
     );
@@ -595,26 +611,18 @@ export default function QualityMeasureDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="font-mono text-sm text-muted-foreground">
-            {measure.code}
-          </p>
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="font-mono text-sm text-muted-foreground">{measure.code}</p>
           <p className="text-sm text-muted-foreground">
             {measure.reporting_period_display} reporting
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge
-            className={`${DOMAIN_COLORS[measure.domain]} w-fit`}
-            variant="secondary"
-          >
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge className={`${DOMAIN_COLORS[measure.domain]} w-fit`} variant="secondary">
             {measure.domain_display}
           </Badge>
-          <Badge
-            className={`${STATUS_COLORS[measure.status]} w-fit`}
-            variant="secondary"
-          >
+          <Badge className={`${STATUS_COLORS[measure.status]} w-fit`} variant="secondary">
             {measure.status_display}
           </Badge>
         </div>
@@ -635,35 +643,33 @@ export default function QualityMeasureDetailPage() {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-base sm:text-lg">
-                Measure Logic
-              </CardTitle>
+              <CardTitle className="text-base sm:text-lg">Measure Logic</CardTitle>
               <HelpPopover content="The numerator defines patients meeting the measure criteria. The denominator defines the eligible population." />
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Numerator
               </p>
-              <p className="text-sm bg-muted/50 rounded p-3 font-mono whitespace-pre-wrap">
+              <p className="whitespace-pre-wrap rounded bg-muted/50 p-3 font-mono text-sm">
                 {measure.numerator_logic || '—'}
               </p>
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Denominator
               </p>
-              <p className="text-sm bg-muted/50 rounded p-3 font-mono whitespace-pre-wrap">
+              <p className="whitespace-pre-wrap rounded bg-muted/50 p-3 font-mono text-sm">
                 {measure.denominator_logic || '—'}
               </p>
             </div>
             {measure.exclusion_logic && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Exclusions
                 </p>
-                <p className="text-sm bg-muted/50 rounded p-3 font-mono whitespace-pre-wrap">
+                <p className="whitespace-pre-wrap rounded bg-muted/50 p-3 font-mono text-sm">
                   {measure.exclusion_logic}
                 </p>
               </div>
@@ -674,28 +680,18 @@ export default function QualityMeasureDetailPage() {
         {/* Thresholds & Configuration */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">
-              Thresholds & Configuration
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">Thresholds & Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
             <InfoRow
               icon={Target}
               label="Target Percentage"
-              value={
-                measure.target_percentage
-                  ? `${measure.target_percentage}%`
-                  : 'Not set'
-              }
+              value={measure.target_percentage ? `${measure.target_percentage}%` : 'Not set'}
             />
             <InfoRow
               icon={AlertTriangle}
               label="Low Threshold"
-              value={
-                measure.low_threshold
-                  ? `${measure.low_threshold}%`
-                  : 'Not set'
-              }
+              value={measure.low_threshold ? `${measure.low_threshold}%` : 'Not set'}
             />
             <InfoRow
               icon={BarChart3}
@@ -716,7 +712,7 @@ export default function QualityMeasureDetailPage() {
                     href={measure.reference_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline break-all"
+                    className="break-all text-primary hover:underline"
                   >
                     {measure.reference_url}
                   </a>
@@ -728,7 +724,7 @@ export default function QualityMeasureDetailPage() {
                 icon={Activity}
                 label="Applicable Clinic Types"
                 value={
-                  <div className="flex gap-1 flex-wrap mt-1">
+                  <div className="mt-1 flex flex-wrap gap-1">
                     {measure.applicable_clinic_types.map((t) => (
                       <Badge key={t} variant="outline" className="text-xs">
                         {t}
@@ -747,30 +743,54 @@ export default function QualityMeasureDetailPage() {
           <CardTitle className="text-base sm:text-lg">Automated Evaluation Rule</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-sm text-muted-foreground">Update structured evaluation logic without recreating this measure.</p>
-            <Button type="button" variant="outline" onClick={handleGenerateDraft}>Generate Draft from Measure Logic</Button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              Update structured evaluation logic without recreating this measure.
+            </p>
+            <Button type="button" variant="outline" onClick={handleGenerateDraft}>
+              Generate Draft from Measure Logic
+            </Button>
           </div>
 
           {draftRule ? (
-            <div className="rounded-md border p-3 space-y-2 text-sm">
+            <div className="space-y-2 rounded-md border p-3 text-sm">
               <p className="font-medium">Draft Rule (Review Required)</p>
-              <p><span className="text-muted-foreground">Type:</span> {draftRule.rule.type}</p>
-              <pre className="text-xs bg-muted p-2 rounded-md overflow-x-auto">{JSON.stringify(draftRule.rule.params, null, 2)}</pre>
-              <p><span className="text-muted-foreground">Confidence:</span> {Math.round(draftRule.confidence * 100)}%</p>
+              <p>
+                <span className="text-muted-foreground">Type:</span> {draftRule.rule.type}
+              </p>
+              <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs">
+                {JSON.stringify(draftRule.rule.params, null, 2)}
+              </pre>
+              <p>
+                <span className="text-muted-foreground">Confidence:</span>{' '}
+                {Math.round(draftRule.confidence * 100)}%
+              </p>
               {draftRule.assumptions.length > 0 ? (
                 <ul className="list-disc pl-5">
-                  {draftRule.assumptions.map((item) => <li key={item}>{item}</li>)}
+                  {draftRule.assumptions.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
                 </ul>
               ) : null}
               {draftRule.warnings.length > 0 ? (
                 <ul className="list-disc pl-5 text-muted-foreground">
-                  {draftRule.warnings.map((item) => <li key={item}>{item}</li>)}
+                  {draftRule.warnings.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
                 </ul>
               ) : null}
               <div className="flex gap-2">
-                <Button type="button" size="sm" onClick={handleApplyDraft} disabled={isSavingRule}>Apply Draft</Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => setDraftRule(null)}>Discard Draft</Button>
+                <Button type="button" size="sm" onClick={handleApplyDraft} disabled={isSavingRule}>
+                  Apply Draft
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDraftRule(null)}
+                >
+                  Discard Draft
+                </Button>
               </div>
             </div>
           ) : null}
@@ -780,9 +800,13 @@ export default function QualityMeasureDetailPage() {
               <Label>Rule Type</Label>
               <Select
                 value={manualRuleType || '__NONE__'}
-                onValueChange={(v) => setManualRuleType(v === '__NONE__' ? '' : (v as QualityEvaluationRuleType))}
+                onValueChange={(v) =>
+                  setManualRuleType(v === '__NONE__' ? '' : (v as QualityEvaluationRuleType))
+                }
               >
-                <SelectTrigger><SelectValue placeholder="No automated rule" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="No automated rule" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__NONE__">No automated rule</SelectItem>
                   <SelectItem value="visit_count">Visit Count</SelectItem>
@@ -793,7 +817,9 @@ export default function QualityMeasureDetailPage() {
                   <SelectItem value="stock_availability">Stock Availability</SelectItem>
                   <SelectItem value="skilled_birth_attendance">Skilled Birth Attendance</SelectItem>
                   <SelectItem value="tb_treatment_success">TB Treatment Success</SelectItem>
-                  <SelectItem value="immunization_completeness">Immunization Completeness</SelectItem>
+                  <SelectItem value="immunization_completeness">
+                    Immunization Completeness
+                  </SelectItem>
                   <SelectItem value="maternal_mortality_ratio">Maternal Mortality Ratio</SelectItem>
                   <SelectItem value="idsr_timeliness">IDSR Timeliness</SelectItem>
                 </SelectContent>
@@ -803,11 +829,24 @@ export default function QualityMeasureDetailPage() {
 
           {manualRuleType === 'visit_count' ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2"><Label>Minimum Visits</Label><Input type="number" min="1" value={manualParams.min_visits} onChange={(e) => setManualParams((p) => ({ ...p, min_visits: e.target.value }))} /></div>
+              <div className="space-y-2">
+                <Label>Minimum Visits</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={manualParams.min_visits}
+                  onChange={(e) => setManualParams((p) => ({ ...p, min_visits: e.target.value }))}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Enrollment Status</Label>
-                <Select value={manualParams.enrollment_status} onValueChange={(v) => setManualParams((p) => ({ ...p, enrollment_status: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={manualParams.enrollment_status}
+                  onValueChange={(v) => setManualParams((p) => ({ ...p, enrollment_status: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ACTIVE">ACTIVE</SelectItem>
                     <SelectItem value="ANY">ANY</SelectItem>
@@ -819,13 +858,40 @@ export default function QualityMeasureDetailPage() {
 
           {manualRuleType === 'lab_threshold' ? (
             <div className="grid gap-4 sm:grid-cols-4">
-              <div className="space-y-2"><Label>Test Name</Label><Input value={manualParams.test_name} onChange={(e) => setManualParams((p) => ({ ...p, test_name: e.target.value }))} placeholder="HbA1c" /></div>
-              <div className="space-y-2"><Label>Test Code (LOINC)</Label><Input value={manualParams.test_code} onChange={(e) => setManualParams((p) => ({ ...p, test_code: e.target.value }))} placeholder="4548-4" /></div>
-              <div className="space-y-2"><Label>Threshold</Label><Input type="number" step="0.01" value={manualParams.threshold} onChange={(e) => setManualParams((p) => ({ ...p, threshold: e.target.value }))} /></div>
+              <div className="space-y-2">
+                <Label>Test Name</Label>
+                <Input
+                  value={manualParams.test_name}
+                  onChange={(e) => setManualParams((p) => ({ ...p, test_name: e.target.value }))}
+                  placeholder="HbA1c"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Test Code (LOINC)</Label>
+                <Input
+                  value={manualParams.test_code}
+                  onChange={(e) => setManualParams((p) => ({ ...p, test_code: e.target.value }))}
+                  placeholder="4548-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Threshold</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={manualParams.threshold}
+                  onChange={(e) => setManualParams((p) => ({ ...p, threshold: e.target.value }))}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Comparison</Label>
-                <Select value={manualParams.comparison} onValueChange={(v) => setManualParams((p) => ({ ...p, comparison: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={manualParams.comparison}
+                  onValueChange={(v) => setManualParams((p) => ({ ...p, comparison: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="lt">&lt;</SelectItem>
                     <SelectItem value="lte">&lt;=</SelectItem>
@@ -839,18 +905,47 @@ export default function QualityMeasureDetailPage() {
 
           {manualRuleType === 'bp_control' ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2"><Label>Systolic Max</Label><Input type="number" value={manualParams.systolic_max} onChange={(e) => setManualParams((p) => ({ ...p, systolic_max: e.target.value }))} /></div>
-              <div className="space-y-2"><Label>Diastolic Max</Label><Input type="number" value={manualParams.diastolic_max} onChange={(e) => setManualParams((p) => ({ ...p, diastolic_max: e.target.value }))} /></div>
+              <div className="space-y-2">
+                <Label>Systolic Max</Label>
+                <Input
+                  type="number"
+                  value={manualParams.systolic_max}
+                  onChange={(e) => setManualParams((p) => ({ ...p, systolic_max: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Diastolic Max</Label>
+                <Input
+                  type="number"
+                  value={manualParams.diastolic_max}
+                  onChange={(e) =>
+                    setManualParams((p) => ({ ...p, diastolic_max: e.target.value }))
+                  }
+                />
+              </div>
             </div>
           ) : null}
 
           {manualRuleType === 'wait_time' ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2"><Label>Max Minutes</Label><Input type="number" min="1" value={manualParams.max_minutes} onChange={(e) => setManualParams((p) => ({ ...p, max_minutes: e.target.value }))} /></div>
+              <div className="space-y-2">
+                <Label>Max Minutes</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={manualParams.max_minutes}
+                  onChange={(e) => setManualParams((p) => ({ ...p, max_minutes: e.target.value }))}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Data Source</Label>
-                <Select value={manualParams.wait_data_source} onValueChange={(v) => setManualParams((p) => ({ ...p, wait_data_source: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={manualParams.wait_data_source}
+                  onValueChange={(v) => setManualParams((p) => ({ ...p, wait_data_source: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="clinic_visit">Clinic Visit</SelectItem>
                     <SelectItem value="triage_assessment">Triage Assessment</SelectItem>
@@ -861,10 +956,15 @@ export default function QualityMeasureDetailPage() {
           ) : null}
 
           {manualRuleType === 'enrollment_active' ? (
-            <div className="space-y-2 max-w-xs">
+            <div className="max-w-xs space-y-2">
               <Label>Target Status</Label>
-              <Select value={manualParams.target_status} onValueChange={(v) => setManualParams((p) => ({ ...p, target_status: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={manualParams.target_status}
+                onValueChange={(v) => setManualParams((p) => ({ ...p, target_status: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ACTIVE">ACTIVE</SelectItem>
                   <SelectItem value="DEFAULTED">DEFAULTED</SelectItem>
@@ -877,23 +977,63 @@ export default function QualityMeasureDetailPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Tracer Only</Label>
-                <Select value={manualParams.tracer_only} onValueChange={(v) => setManualParams((p) => ({ ...p, tracer_only: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="true">True</SelectItem><SelectItem value="false">False</SelectItem></SelectContent>
+                <Select
+                  value={manualParams.tracer_only}
+                  onValueChange={(v) => setManualParams((p) => ({ ...p, tracer_only: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">True</SelectItem>
+                    <SelectItem value="false">False</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>Stock-out Threshold</Label><Input type="number" value={manualParams.stock_out_threshold} onChange={(e) => setManualParams((p) => ({ ...p, stock_out_threshold: e.target.value }))} /></div>
+              <div className="space-y-2">
+                <Label>Stock-out Threshold</Label>
+                <Input
+                  type="number"
+                  value={manualParams.stock_out_threshold}
+                  onChange={(e) =>
+                    setManualParams((p) => ({ ...p, stock_out_threshold: e.target.value }))
+                  }
+                />
+              </div>
             </div>
           ) : null}
 
           {manualRuleType === 'immunization_completeness' ? (
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2"><Label>Vaccine Program</Label><Input value={manualParams.vaccine_program} onChange={(e) => setManualParams((p) => ({ ...p, vaccine_program: e.target.value }))} /></div>
-              <div className="space-y-2"><Label>Max Patient Age (Years)</Label><Input type="number" min="1" value={manualParams.max_patient_age_years} onChange={(e) => setManualParams((p) => ({ ...p, max_patient_age_years: e.target.value }))} /></div>
+              <div className="space-y-2">
+                <Label>Vaccine Program</Label>
+                <Input
+                  value={manualParams.vaccine_program}
+                  onChange={(e) =>
+                    setManualParams((p) => ({ ...p, vaccine_program: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Max Patient Age (Years)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={manualParams.max_patient_age_years}
+                  onChange={(e) =>
+                    setManualParams((p) => ({ ...p, max_patient_age_years: e.target.value }))
+                  }
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Strict Due In Period</Label>
-                <Select value={manualParams.strict_due_in_period} onValueChange={(v) => setManualParams((p) => ({ ...p, strict_due_in_period: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={manualParams.strict_due_in_period}
+                  onValueChange={(v) => setManualParams((p) => ({ ...p, strict_due_in_period: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="true">True</SelectItem>
                     <SelectItem value="false">False</SelectItem>
@@ -904,89 +1044,167 @@ export default function QualityMeasureDetailPage() {
           ) : null}
 
           {manualRuleType === 'maternal_mortality_ratio' ? (
-            <div className="space-y-2 max-w-xs">
+            <div className="max-w-xs space-y-2">
               <Label>Ratio Multiplier</Label>
-              <Input type="number" min="1" value={manualParams.ratio_multiplier} onChange={(e) => setManualParams((p) => ({ ...p, ratio_multiplier: e.target.value }))} />
+              <Input
+                type="number"
+                min="1"
+                value={manualParams.ratio_multiplier}
+                onChange={(e) =>
+                  setManualParams((p) => ({ ...p, ratio_multiplier: e.target.value }))
+                }
+              />
             </div>
           ) : null}
 
           {manualRuleType === 'idsr_timeliness' ? (
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2"><Label>Deadline Days After Week End</Label><Input type="number" min="0" value={manualParams.deadline_days_after_week_end} onChange={(e) => setManualParams((p) => ({ ...p, deadline_days_after_week_end: e.target.value }))} /></div>
+              <div className="space-y-2">
+                <Label>Deadline Days After Week End</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={manualParams.deadline_days_after_week_end}
+                  onChange={(e) =>
+                    setManualParams((p) => ({ ...p, deadline_days_after_week_end: e.target.value }))
+                  }
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Include Approved</Label>
-                <Select value={manualParams.include_approved} onValueChange={(v) => setManualParams((p) => ({ ...p, include_approved: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="true">True</SelectItem><SelectItem value="false">False</SelectItem></SelectContent>
+                <Select
+                  value={manualParams.include_approved}
+                  onValueChange={(v) => setManualParams((p) => ({ ...p, include_approved: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">True</SelectItem>
+                    <SelectItem value="false">False</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Require DHIS2 Timestamp</Label>
-                <Select value={manualParams.require_dhis2_timestamp} onValueChange={(v) => setManualParams((p) => ({ ...p, require_dhis2_timestamp: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="true">True</SelectItem><SelectItem value="false">False</SelectItem></SelectContent>
+                <Select
+                  value={manualParams.require_dhis2_timestamp}
+                  onValueChange={(v) =>
+                    setManualParams((p) => ({ ...p, require_dhis2_timestamp: v }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">True</SelectItem>
+                    <SelectItem value="false">False</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
             </div>
           ) : null}
 
           {manualRuleType === 'skilled_birth_attendance' ? (
-            <p className="text-sm text-muted-foreground">Uses completed facility deliveries with documented attendant by default.</p>
+            <p className="text-sm text-muted-foreground">
+              Uses completed facility deliveries with documented attendant by default.
+            </p>
           ) : null}
 
           {manualRuleType === 'tb_treatment_success' ? (
-            <p className="text-sm text-muted-foreground">Uses TB enrollment outcomes in-period with success status/keywords defaults.</p>
+            <p className="text-sm text-muted-foreground">
+              Uses TB enrollment outcomes in-period with success status/keywords defaults.
+            </p>
           ) : null}
 
-          <div className="flex gap-2 flex-wrap">
-            <Button type="button" onClick={handleApplyManualRule} disabled={isSavingRule}>{isSavingRule ? 'Saving...' : 'Save Rule'}</Button>
-            <Button type="button" variant="outline" onClick={() => saveMeasureRule({ evaluation_rule: null })} disabled={isSavingRule}>Clear Saved Rule</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={handleApplyManualRule} disabled={isSavingRule}>
+              {isSavingRule ? 'Saving...' : 'Save Rule'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => saveMeasureRule({ evaluation_rule: null })}
+              disabled={isSavingRule}
+            >
+              Clear Saved Rule
+            </Button>
           </div>
 
           <div className="rounded-md border p-3">
-            <p className="text-sm font-medium mb-1">Saved Rule JSON</p>
+            <p className="mb-1 text-sm font-medium">Saved Rule JSON</p>
             {currentRule ? (
-              <pre className="text-xs bg-muted p-2 rounded-md overflow-x-auto">{JSON.stringify(currentRule, null, 2)}</pre>
+              <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs">
+                {JSON.stringify(currentRule, null, 2)}
+              </pre>
             ) : (
               <p className="text-sm text-muted-foreground">No structured evaluation rule saved.</p>
             )}
           </div>
 
-          <div className="rounded-md border p-3 space-y-2">
+          <div className="space-y-2 rounded-md border p-3">
             <p className="text-sm font-medium">Rule Validation</p>
             {validationSummary.errors.length > 0 ? (
               <ul className="list-disc pl-5 text-sm text-destructive">
-                {validationSummary.errors.map((errorItem) => <li key={errorItem}>{errorItem}</li>)}
+                {validationSummary.errors.map((errorItem) => (
+                  <li key={errorItem}>{errorItem}</li>
+                ))}
               </ul>
             ) : (
               <p className="text-sm text-emerald-700">Rule structure is valid for save/test.</p>
             )}
             {validationSummary.warnings.length > 0 ? (
               <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                {validationSummary.warnings.map((warningItem) => <li key={warningItem}>{warningItem}</li>)}
+                {validationSummary.warnings.map((warningItem) => (
+                  <li key={warningItem}>{warningItem}</li>
+                ))}
               </ul>
             ) : null}
           </div>
 
-          <div className="rounded-md border p-3 space-y-3">
+          <div className="space-y-3 rounded-md border p-3">
             <p className="text-sm font-medium">Test Rule (Dry Run)</p>
             <div className="grid gap-3 sm:grid-cols-4">
               <div className="space-y-2 sm:col-span-2">
                 <Label>Clinic</Label>
-                <Select value={previewConfig.clinic_id} onValueChange={(v) => setPreviewConfig((p) => ({ ...p, clinic_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select clinic" /></SelectTrigger>
+                <Select
+                  value={previewConfig.clinic_id}
+                  onValueChange={(v) => setPreviewConfig((p) => ({ ...p, clinic_id: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select clinic" />
+                  </SelectTrigger>
                   <SelectContent>
                     {availableClinics.map((clinic) => (
-                      <SelectItem key={clinic.id} value={String(clinic.id)}>{clinic.name}</SelectItem>
+                      <SelectItem key={clinic.id} value={String(clinic.id)}>
+                        {clinic.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>Year</Label><Input type="number" value={previewConfig.year} onChange={(e) => setPreviewConfig((p) => ({ ...p, year: e.target.value }))} /></div>
+              <div className="space-y-2">
+                <Label>Year</Label>
+                <Input
+                  type="number"
+                  value={previewConfig.year}
+                  onChange={(e) => setPreviewConfig((p) => ({ ...p, year: e.target.value }))}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Period Type</Label>
-                <Select value={previewConfig.period_type} onValueChange={(v) => setPreviewConfig((p) => ({ ...p, period_type: v as 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={previewConfig.period_type}
+                  onValueChange={(v) =>
+                    setPreviewConfig((p) => ({
+                      ...p,
+                      period_type: v as 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MONTHLY">MONTHLY</SelectItem>
                     <SelectItem value="QUARTERLY">QUARTERLY</SelectItem>
@@ -995,15 +1213,40 @@ export default function QualityMeasureDetailPage() {
                 </Select>
               </div>
             </div>
-            <div className="max-w-xs space-y-2"><Label>Period</Label><Input type="number" value={previewConfig.period} onChange={(e) => setPreviewConfig((p) => ({ ...p, period: e.target.value }))} /></div>
-            <Button type="button" onClick={handlePreviewRule} disabled={isPreviewPending || !validationSummary.valid || !currentRule}>{isPreviewPending ? 'Testing...' : 'Run Test Rule'}</Button>
+            <div className="max-w-xs space-y-2">
+              <Label>Period</Label>
+              <Input
+                type="number"
+                value={previewConfig.period}
+                onChange={(e) => setPreviewConfig((p) => ({ ...p, period: e.target.value }))}
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={handlePreviewRule}
+              disabled={isPreviewPending || !validationSummary.valid || !currentRule}
+            >
+              {isPreviewPending ? 'Testing...' : 'Run Test Rule'}
+            </Button>
             {previewError ? <p className="text-sm text-destructive">{previewError}</p> : null}
             {previewResult ? (
-              <div className="rounded-md bg-muted p-3 text-sm space-y-1">
-                <p><span className="text-muted-foreground">Numerator:</span> {previewResult.numerator}</p>
-                <p><span className="text-muted-foreground">Denominator:</span> {previewResult.denominator}</p>
-                <p><span className="text-muted-foreground">Percentage:</span> {previewResult.percentage}%</p>
-                <p><span className="text-muted-foreground">Notes:</span> {previewResult.notes || 'N/A'}</p>
+              <div className="space-y-1 rounded-md bg-muted p-3 text-sm">
+                <p>
+                  <span className="text-muted-foreground">Numerator:</span>{' '}
+                  {previewResult.numerator}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Denominator:</span>{' '}
+                  {previewResult.denominator}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Percentage:</span>{' '}
+                  {previewResult.percentage}%
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Notes:</span>{' '}
+                  {previewResult.notes || 'N/A'}
+                </p>
               </div>
             ) : null}
           </div>
@@ -1012,7 +1255,7 @@ export default function QualityMeasureDetailPage() {
 
       {/* Timestamps */}
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row sm:justify-between text-xs text-muted-foreground gap-1">
+        <CardContent className="flex flex-col gap-1 p-4 text-xs text-muted-foreground sm:flex-row sm:justify-between">
           <span>Created: {formatDateTime(measure.created_at)}</span>
           <span>Updated: {formatDateTime(measure.updated_at)}</span>
         </CardContent>

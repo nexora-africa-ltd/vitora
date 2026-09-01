@@ -23,13 +23,12 @@ const ShareCornerstoneViewer = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-full bg-black">
-        <Skeleton className="w-20 h-20 rounded-full" />
+      <div className="flex h-full items-center justify-center bg-black">
+        <Skeleton className="h-20 w-20 rounded-full" />
       </div>
     ),
   }
 );
-
 
 interface ShareViewerPageProps {
   params: Promise<{ token: string }>;
@@ -70,47 +69,50 @@ export default function ShareViewerPage({ params }: ShareViewerPageProps) {
 
   const baseUrl = getApiBaseUrl();
 
-  const fetchStudy = useCallback(async (pinValue?: string) => {
-    try {
-      const headers: Record<string, string> = {};
-      if (pinValue) {
-        headers['X-Share-PIN'] = pinValue;
-      }
+  const fetchStudy = useCallback(
+    async (pinValue?: string) => {
+      try {
+        const headers: Record<string, string> = {};
+        if (pinValue) {
+          headers['X-Share-PIN'] = pinValue;
+        }
 
-      const response = await fetch(`${baseUrl}/api/imaging/share/${token}/`, {
-        headers,
-      });
+        const response = await fetch(`${baseUrl}/api/imaging/share/${token}/`, {
+          headers,
+        });
 
-      if (response.status === 200) {
-        const data = await response.json();
-        setStudyData(data);
-        setState('ready');
-        setPinError('');
-        if (pinValue) setVerifiedPin(pinValue);
-      } else if (response.status === 401) {
-        const body = await response.json();
-        if (body.code === 'pin_required') {
-          setState('pin_required');
-          if (pinValue) {
-            setPinError('Incorrect PIN. Please try again.');
+        if (response.status === 200) {
+          const data = await response.json();
+          setStudyData(data);
+          setState('ready');
+          setPinError('');
+          if (pinValue) setVerifiedPin(pinValue);
+        } else if (response.status === 401) {
+          const body = await response.json();
+          if (body.code === 'pin_required') {
+            setState('pin_required');
+            if (pinValue) {
+              setPinError('Incorrect PIN. Please try again.');
+            }
+          } else {
+            setState('error');
+            setErrorMessage('Access denied');
           }
+        } else if (response.status === 410) {
+          setState('expired');
+          const body = await response.json();
+          setErrorMessage(body.error || 'This share link has expired or been revoked.');
         } else {
           setState('error');
-          setErrorMessage('Access denied');
+          setErrorMessage('Failed to load study');
         }
-      } else if (response.status === 410) {
-        setState('expired');
-        const body = await response.json();
-        setErrorMessage(body.error || 'This share link has expired or been revoked.');
-      } else {
+      } catch {
         setState('error');
-        setErrorMessage('Failed to load study');
+        setErrorMessage('Network error. Please try again.');
       }
-    } catch {
-      setState('error');
-      setErrorMessage('Network error. Please try again.');
-    }
-  }, [baseUrl, token]);
+    },
+    [baseUrl, token]
+  );
 
   useEffect(() => {
     fetchStudy();
@@ -130,9 +132,9 @@ export default function ShareViewerPage({ params }: ShareViewerPageProps) {
 
   if (state === 'loading') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Skeleton className="h-16 w-16 rounded-full mx-auto" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="space-y-4 text-center">
+          <Skeleton className="mx-auto h-16 w-16 rounded-full" />
           <p className="text-muted-foreground">Loading shared study...</p>
         </div>
       </div>
@@ -141,10 +143,10 @@ export default function ShareViewerPage({ params }: ShareViewerPageProps) {
 
   if (state === 'pin_required') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
-            <Shield className="h-10 w-10 mx-auto text-primary mb-2" />
+            <Shield className="mx-auto mb-2 h-10 w-10 text-primary" />
             <CardTitle>PIN Protected</CardTitle>
             <p className="text-sm text-muted-foreground">
               This study is PIN-protected. Enter the PIN to view.
@@ -157,16 +159,17 @@ export default function ShareViewerPage({ params }: ShareViewerPageProps) {
                   type="password"
                   placeholder="Enter PIN"
                   value={pin}
-                  onChange={(e) => { setPin(e.target.value); setPinError(''); }}
+                  onChange={(e) => {
+                    setPin(e.target.value);
+                    setPinError('');
+                  }}
                   maxLength={8}
                   autoFocus
                 />
-                {pinError && (
-                  <p className="text-xs text-destructive mt-1">{pinError}</p>
-                )}
+                {pinError && <p className="mt-1 text-xs text-destructive">{pinError}</p>}
               </div>
               <Button type="submit" className="w-full" disabled={!pin.trim()}>
-                <Lock className="h-4 w-4 mr-2" />
+                <Lock className="mr-2 h-4 w-4" />
                 Unlock
               </Button>
             </form>
@@ -178,11 +181,11 @@ export default function ShareViewerPage({ params }: ShareViewerPageProps) {
 
   if (state === 'expired') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm text-center">
           <CardContent className="py-12">
-            <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Link Expired</h2>
+            <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive" />
+            <h2 className="mb-2 text-lg font-semibold">Link Expired</h2>
             <p className="text-sm text-muted-foreground">{errorMessage}</p>
           </CardContent>
         </Card>
@@ -192,11 +195,11 @@ export default function ShareViewerPage({ params }: ShareViewerPageProps) {
 
   if (state === 'error') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm text-center">
           <CardContent className="py-12">
-            <AlertTriangle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Access Error</h2>
+            <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h2 className="mb-2 text-lg font-semibold">Access Error</h2>
             <p className="text-sm text-muted-foreground">{errorMessage}</p>
           </CardContent>
         </Card>
@@ -223,11 +226,11 @@ export default function ShareViewerPage({ params }: ShareViewerPageProps) {
   });
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* Header bar */}
-      <div className="border-b px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between shrink-0">
+      <div className="flex shrink-0 flex-col gap-2 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold truncate">
+          <h1 className="truncate text-lg font-semibold">
             {studyData.study_description || 'Shared DICOM Study'}
           </h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -251,7 +254,7 @@ export default function ShareViewerPage({ params }: ShareViewerPageProps) {
           </div>
           {studyData.allow_download && (
             <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="mr-2 h-4 w-4" />
               Download ZIP
             </Button>
           )}
@@ -259,19 +262,19 @@ export default function ShareViewerPage({ params }: ShareViewerPageProps) {
       </div>
 
       {/* Cornerstone DICOM Viewer */}
-      <div className="flex-1 min-h-0 relative">
+      <div className="relative min-h-0 flex-1">
         {allInstances.length > 0 ? (
           <ShareCornerstoneViewer
             imageUrls={dicomUrls}
             studyDescription={studyData.study_description}
           />
         ) : (
-          <div className="flex items-center justify-center h-full p-8">
+          <div className="flex h-full items-center justify-center p-8">
             <Card>
               <CardContent className="py-12 text-center">
-                <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <ImageIcon className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                 <p className="text-lg font-medium">No viewable images</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="mt-1 text-sm text-muted-foreground">
                   This study has no instances available for viewing.
                 </p>
               </CardContent>
@@ -281,7 +284,7 @@ export default function ShareViewerPage({ params }: ShareViewerPageProps) {
       </div>
 
       {/* Footer */}
-      <div className="border-t px-4 py-3 text-center text-xs text-muted-foreground shrink-0">
+      <div className="shrink-0 border-t px-4 py-3 text-center text-xs text-muted-foreground">
         Shared via Vitora HMIS • {studyData.institution_name || 'Medical Imaging'}
       </div>
     </div>

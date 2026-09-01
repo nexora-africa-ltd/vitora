@@ -22,7 +22,12 @@ function formatDate(d: Date): string {
 }
 
 function displayDate(d: Date): string {
-  return d.toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  return d.toLocaleDateString('en-KE', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
 export default function TheatreSchedulePage() {
@@ -46,10 +51,12 @@ export default function TheatreSchedulePage() {
     }
   }, [dateStr]);
 
-  useEffect(() => { fetchCases(); }, [fetchCases]);
+  useEffect(() => {
+    fetchCases();
+  }, [fetchCases]);
 
   const goDay = (offset: number) => {
-    setCurrentDate(prev => {
+    setCurrentDate((prev) => {
       const d = new Date(prev);
       d.setDate(d.getDate() + offset);
       return d;
@@ -61,7 +68,14 @@ export default function TheatreSchedulePage() {
   const isToday = formatDate(currentDate) === formatDate(new Date());
 
   return (
-    <PullToRefresh onRefresh={() => { refresh(); return fetchCases(); }} isRefreshing={isRefreshing} className="min-h-full">
+    <PullToRefresh
+      onRefresh={() => {
+        refresh();
+        return fetchCases();
+      }}
+      isRefreshing={isRefreshing}
+      className="min-h-full"
+    >
       <div className="space-y-6">
         <PageHeader
           title="Theatre Schedule"
@@ -69,7 +83,7 @@ export default function TheatreSchedulePage() {
           actions={
             <Button asChild>
               <CreateRouteLink href="/theatre/cases/new">
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Book Surgery</span>
               </CreateRouteLink>
             </Button>
@@ -81,9 +95,11 @@ export default function TheatreSchedulePage() {
           <Button variant="outline" size="icon" onClick={() => goDay(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="text-center flex-1 min-w-0">
-            <p className="font-semibold truncate">{displayDate(currentDate)}</p>
-            <p className="text-xs text-muted-foreground">{cases.length} case{cases.length !== 1 ? 's' : ''}</p>
+          <div className="min-w-0 flex-1 text-center">
+            <p className="truncate font-semibold">{displayDate(currentDate)}</p>
+            <p className="text-xs text-muted-foreground">
+              {cases.length} case{cases.length !== 1 ? 's' : ''}
+            </p>
           </div>
           <Button variant="outline" size="icon" onClick={() => goDay(1)}>
             <ChevronRight className="h-4 w-4" />
@@ -91,47 +107,53 @@ export default function TheatreSchedulePage() {
         </div>
         {!isToday && (
           <div className="flex justify-center">
-            <Button variant="ghost" size="sm" onClick={goToday}>Back to Today</Button>
+            <Button variant="ghost" size="sm" onClick={goToday}>
+              Back to Today
+            </Button>
           </div>
         )}
 
         {/* Cases */}
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading...</div>
+          <div className="py-12 text-center text-muted-foreground">Loading...</div>
         ) : cases.length === 0 ? (
           <Card>
-            <CardContent className="text-center py-12">
-              <Clock className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+            <CardContent className="py-12 text-center">
+              <Clock className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
               <p className="text-muted-foreground">No cases scheduled for this date.</p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
-            {cases.map(c => (
+            {cases.map((c) => (
               <Card
                 key={c.id}
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                className="cursor-pointer transition-colors hover:bg-muted/50"
                 onClick={() => router.push(`/theatre/cases/${c.case_number}`)}
               >
-                <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3 p-4">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="text-center shrink-0 w-16">
-                      <p className="font-mono text-lg font-bold">{c.scheduled_start_time?.slice(0, 5) || '--:--'}</p>
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="w-16 shrink-0 text-center">
+                      <p className="font-mono text-lg font-bold">
+                        {c.scheduled_start_time?.slice(0, 5) || '--:--'}
+                      </p>
                       {c.estimated_duration_minutes && (
-                        <p className="text-xs text-muted-foreground">{c.estimated_duration_minutes}min</p>
+                        <p className="text-xs text-muted-foreground">
+                          {c.estimated_duration_minutes}min
+                        </p>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{c.primary_procedure_name}</p>
-                      <p className="text-sm text-muted-foreground truncate">
+                      <p className="truncate font-medium">{c.primary_procedure_name}</p>
+                      <p className="truncate text-sm text-muted-foreground">
                         {c.patient_name} &middot; {c.patient_mrn}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="truncate text-xs text-muted-foreground">
                         {c.theatre_name} &middot; {c.case_number}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex shrink-0 items-center gap-2">
                     <TheatreCasePriorityBadge priority={c.priority} hideElective />
                     <TheatreCaseStatusBadge status={c.status} />
                   </div>

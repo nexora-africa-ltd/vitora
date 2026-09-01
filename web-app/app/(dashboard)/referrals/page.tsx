@@ -83,7 +83,9 @@ export default function ReferralsPage() {
       <div className="space-y-4">
         <Skeleton className="h-10 w-48" />
         <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-16 rounded-lg" />
+          ))}
         </div>
       </div>
     );
@@ -98,7 +100,7 @@ export default function ReferralsPage() {
           actions={
             canCreateReferral ? (
               <Button onClick={() => router.push('/referrals/new')} size="sm">
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">New Referral</span>
                 <span className="sm:hidden">New</span>
               </Button>
@@ -107,17 +109,26 @@ export default function ReferralsPage() {
         />
 
         {/* Filters */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="relative min-w-[200px] max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search patient, referral #..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="pl-9"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as ReferralStatus | ''); setPage(1); }}>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setStatusFilter(v as ReferralStatus | '');
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-full sm:w-[140px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -132,7 +143,13 @@ export default function ReferralsPage() {
               <SelectItem value="EXPIRED">Expired</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v as ReferralPriority | ''); setPage(1); }}>
+          <Select
+            value={priorityFilter}
+            onValueChange={(v) => {
+              setPriorityFilter(v as ReferralPriority | '');
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-full sm:w-[130px]">
               <SelectValue placeholder="Priority" />
             </SelectTrigger>
@@ -143,7 +160,13 @@ export default function ReferralsPage() {
               <SelectItem value="EMERGENCY">Emergency</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v as ReferralType | ''); setPage(1); }}>
+          <Select
+            value={typeFilter}
+            onValueChange={(v) => {
+              setTypeFilter(v as ReferralType | '');
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
@@ -168,7 +191,7 @@ export default function ReferralsPage() {
               key: 'referral_number',
               header: 'Referral #',
               cell: (item: ClinicalReferralListItem) => (
-                <span className="font-medium text-sm">{item.referral_number}</span>
+                <span className="text-sm font-medium">{item.referral_number}</span>
               ),
             },
             {
@@ -176,7 +199,7 @@ export default function ReferralsPage() {
               header: 'Patient',
               cell: (item: ClinicalReferralListItem) => (
                 <div>
-                  <p className="font-medium truncate">{item.patient_name}</p>
+                  <p className="truncate font-medium">{item.patient_name}</p>
                   <p className="text-xs text-muted-foreground">{item.patient_mrn}</p>
                 </div>
               ),
@@ -190,18 +213,14 @@ export default function ReferralsPage() {
               key: 'priority',
               header: 'Priority',
               cell: (item: ClinicalReferralListItem) => (
-                <Badge className={PRIORITY_COLORS[item.priority]}>
-                  {item.priority_display}
-                </Badge>
+                <Badge className={PRIORITY_COLORS[item.priority]}>{item.priority_display}</Badge>
               ),
             },
             {
               key: 'status',
               header: 'Status',
               cell: (item: ClinicalReferralListItem) => (
-                <Badge className={STATUS_COLORS[item.status]}>
-                  {item.status_display}
-                </Badge>
+                <Badge className={STATUS_COLORS[item.status]}>{item.status_display}</Badge>
               ),
             },
             {
@@ -212,27 +231,30 @@ export default function ReferralsPage() {
             {
               key: 'created_at',
               header: 'Date',
-              cell: (item: ClinicalReferralListItem) => format(new Date(item.created_at), 'dd MMM yyyy'),
+              cell: (item: ClinicalReferralListItem) =>
+                format(new Date(item.created_at), 'dd MMM yyyy'),
             },
           ]}
           mobileCard={(item: ClinicalReferralListItem) => (
             <Card className="p-3" onClick={() => router.push(`/referrals/${item.id}`)}>
-              <div className="flex justify-between items-start gap-2">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{item.patient_name}</p>
-                  <p className="text-xs text-muted-foreground">{item.referral_number} · {item.patient_mrn}</p>
+                  <p className="truncate font-medium">{item.patient_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.referral_number} · {item.patient_mrn}
+                  </p>
                 </div>
-                <Badge className={`${STATUS_COLORS[item.status]} shrink-0 w-fit`}>
+                <Badge className={`${STATUS_COLORS[item.status]} w-fit shrink-0`}>
                   {item.status_display}
                 </Badge>
               </div>
-              <div className="flex justify-between items-center mt-2 text-sm">
+              <div className="mt-2 flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{item.target_service_display}</span>
                 <Badge className={PRIORITY_COLORS[item.priority]} variant="outline">
                   {item.priority_display}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="mt-1 text-xs text-muted-foreground">
                 By {item.referred_by_name} · {format(new Date(item.created_at), 'dd MMM yyyy')}
               </p>
             </Card>
@@ -246,11 +268,23 @@ export default function ReferralsPage() {
               {totalCount} referral{totalCount !== 1 ? 's' : ''}
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-sm">{page} / {totalPages}</span>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+              <span className="text-sm">
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

@@ -23,7 +23,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Search, FileText, Clock, ArrowRightCircle, MoreHorizontal, CreditCard, FileCheck, FileX, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Search,
+  FileText,
+  Clock,
+  ArrowRightCircle,
+  MoreHorizontal,
+  CreditCard,
+  FileCheck,
+  FileX,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { EmptyState } from '@/components/shared/empty-state';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import type { Invoice, InvoiceStatus } from '@/lib/types/billing';
@@ -93,7 +105,7 @@ function ProformaExpiryBadge({ invoice }: { invoice: Invoice }) {
 
   return (
     <Badge variant="outline" className={`${colorClass} ml-1 text-xs`}>
-      <Clock className="h-3 w-3 mr-1" />
+      <Clock className="mr-1 h-3 w-3" />
       {label}
     </Badge>
   );
@@ -144,21 +156,24 @@ export function InvoiceList({
   };
 
   // Client-side payment type filter
-  const filteredInvoices = paymentTypeFilter === 'all'
-    ? invoices
-    : invoices.filter((inv) => inv.payment_type?.toLowerCase() === paymentTypeFilter.toLowerCase());
+  const filteredInvoices =
+    paymentTypeFilter === 'all'
+      ? invoices
+      : invoices.filter(
+          (inv) => inv.payment_type?.toLowerCase() === paymentTypeFilter.toLowerCase()
+        );
 
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-2 w-full">
+      <div className="flex w-full flex-col gap-2 sm:flex-row">
         <div className="relative flex-1 sm:flex-initial">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search invoices..."
             value={searchQuery}
             onChange={handleSearchChange}
-            className="pl-9 w-full sm:w-64"
+            className="w-full pl-9 sm:w-64"
           />
         </div>
 
@@ -215,7 +230,7 @@ export function InvoiceList({
               header: 'Invoice #',
               sortable: true,
               cell: (invoice) => (
-                <span className="font-medium font-mono text-sm">{invoice.invoice_number}</span>
+                <span className="font-mono text-sm font-medium">{invoice.invoice_number}</span>
               ),
             },
             {
@@ -238,7 +253,9 @@ export function InvoiceList({
               sortable: true,
               sortType: 'date',
               cell: (invoice) => (
-                <span className="text-sm text-muted-foreground">{formatDate(invoice.invoice_date)}</span>
+                <span className="text-sm text-muted-foreground">
+                  {formatDate(invoice.invoice_date)}
+                </span>
               ),
               hideOnMobile: true,
             },
@@ -249,7 +266,9 @@ export function InvoiceList({
               sortType: 'number',
               sortFn: (a, b) => parseFloat(a.total_amount) - parseFloat(b.total_amount),
               cell: (invoice) => (
-                <span className="font-medium">{formatCurrency(parseFloat(invoice.total_amount))}</span>
+                <span className="font-medium">
+                  {formatCurrency(parseFloat(invoice.total_amount))}
+                </span>
               ),
             },
             {
@@ -258,7 +277,7 @@ export function InvoiceList({
               sortable: true,
               cell: (invoice) => (
                 <div className="flex items-center gap-1">
-                  <Badge className={`${statusColors[invoice.status]} shrink-0 w-fit`}>
+                  <Badge className={`${statusColors[invoice.status]} w-fit shrink-0`}>
                     {invoice.status}
                   </Badge>
                   <ProformaExpiryBadge invoice={invoice} />
@@ -271,7 +290,9 @@ export function InvoiceList({
               sortable: true,
               sortType: 'date',
               cell: (invoice) => (
-                <span className="text-sm text-muted-foreground">{formatDate(invoice.due_date)}</span>
+                <span className="text-sm text-muted-foreground">
+                  {formatDate(invoice.due_date)}
+                </span>
               ),
               hideOnMobile: true,
             },
@@ -280,7 +301,8 @@ export function InvoiceList({
               header: '',
               cell: (invoice) => {
                 const canPay = ['PENDING', 'PARTIAL', 'OVERDUE'].includes(invoice.status);
-                const canFinalizeInv = invoice.status === 'DRAFT' && (invoice.items?.length ?? 0) > 0;
+                const canFinalizeInv =
+                  invoice.status === 'DRAFT' && (invoice.items?.length ?? 0) > 0;
                 const canCancelInv = ['DRAFT', 'PENDING'].includes(invoice.status);
                 const canConvert = invoice.status === 'PROFORMA' && invoice.can_convert;
                 const hasActions = canPay || canFinalizeInv || canCancelInv || canConvert;
@@ -290,7 +312,10 @@ export function InvoiceList({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => { e.stopPropagation(); onSelect(invoice); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(invoice);
+                      }}
                       title="View invoice"
                     >
                       <Eye className="h-4 w-4" />
@@ -307,24 +332,24 @@ export function InvoiceList({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => onSelect(invoice)}>
-                        <Eye className="h-4 w-4 mr-2" />
+                        <Eye className="mr-2 h-4 w-4" />
                         View
                       </DropdownMenuItem>
                       {canPay && onReceivePayment && (
                         <DropdownMenuItem onClick={() => onReceivePayment(invoice)}>
-                          <CreditCard className="h-4 w-4 mr-2" />
+                          <CreditCard className="mr-2 h-4 w-4" />
                           Receive Payment
                         </DropdownMenuItem>
                       )}
                       {canFinalizeInv && onFinalize && (
                         <DropdownMenuItem onClick={() => onFinalize(invoice)}>
-                          <FileCheck className="h-4 w-4 mr-2" />
+                          <FileCheck className="mr-2 h-4 w-4" />
                           Finalize
                         </DropdownMenuItem>
                       )}
                       {canConvert && onConvertProforma && (
                         <DropdownMenuItem onClick={() => onConvertProforma(invoice)}>
-                          <ArrowRightCircle className="h-4 w-4 mr-2" />
+                          <ArrowRightCircle className="mr-2 h-4 w-4" />
                           Convert to Invoice
                         </DropdownMenuItem>
                       )}
@@ -335,7 +360,7 @@ export function InvoiceList({
                             className="text-destructive focus:text-destructive"
                             onClick={() => onCancel(invoice)}
                           >
-                            <FileX className="h-4 w-4 mr-2" />
+                            <FileX className="mr-2 h-4 w-4" />
                             Cancel
                           </DropdownMenuItem>
                         </>
@@ -351,23 +376,25 @@ export function InvoiceList({
             <Card className="p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-sm font-medium truncate">
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="truncate font-mono text-sm font-medium">
                       {invoice.invoice_number}
                     </span>
-                    <Badge className={`${statusColors[invoice.status]} text-xs shrink-0 w-fit`}>
+                    <Badge className={`${statusColors[invoice.status]} w-fit shrink-0 text-xs`}>
                       {invoice.status}
                     </Badge>
                     <ProformaExpiryBadge invoice={invoice} />
                   </div>
-                  <p className="text-sm truncate">{invoice.patient_name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="truncate text-sm">{invoice.patient_name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {formatDate(invoice.invoice_date)}
                     {invoice.due_date && ` • Due ${formatDate(invoice.due_date)}`}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="font-semibold">{formatCurrency(parseFloat(invoice.total_amount))}</p>
+                <div className="shrink-0 text-right">
+                  <p className="font-semibold">
+                    {formatCurrency(parseFloat(invoice.total_amount))}
+                  </p>
                 </div>
               </div>
             </Card>
@@ -379,7 +406,8 @@ export function InvoiceList({
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
           <p className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}{totalCount != null && ` • ${totalCount} invoices`}
+            Page {page} of {totalPages}
+            {totalCount != null && ` • ${totalCount} invoices`}
           </p>
           <div className="flex gap-2">
             <Button
@@ -388,7 +416,7 @@ export function InvoiceList({
               onClick={() => onPageChange?.(page - 1)}
               disabled={page <= 1}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ChevronLeft className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">Previous</span>
             </Button>
             <Button
@@ -398,7 +426,7 @@ export function InvoiceList({
               disabled={page >= totalPages}
             >
               <span className="hidden sm:inline">Next</span>
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
         </div>

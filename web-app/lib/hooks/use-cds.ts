@@ -17,7 +17,8 @@ import { cdsApi } from '@/lib/api/cds';
 export const cdsKeys = {
   all: ['cds'] as const,
   alerts: () => [...cdsKeys.all, 'alerts'] as const,
-  encounterAlerts: (encounterId: number) => [...cdsKeys.alerts(), 'encounter', encounterId] as const,
+  encounterAlerts: (encounterId: number) =>
+    [...cdsKeys.alerts(), 'encounter', encounterId] as const,
   patientAlerts: (patientId: number) => [...cdsKeys.alerts(), 'patient', patientId] as const,
   dashboard: () => [...cdsKeys.all, 'dashboard'] as const,
 };

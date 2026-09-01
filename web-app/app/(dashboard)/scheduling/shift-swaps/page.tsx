@@ -19,12 +19,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useSchedulingSocket } from '@/lib/hooks/use-websocket';
@@ -116,7 +111,11 @@ export default function ShiftSwapsPage() {
   );
 
   const formatDate = (d: string) => {
-    try { return format(parseISO(d), 'MMM d, yyyy'); } catch { return d; }
+    try {
+      return format(parseISO(d), 'MMM d, yyyy');
+    } catch {
+      return d;
+    }
   };
 
   const mySwapColumns = [
@@ -140,16 +139,18 @@ export default function ShiftSwapsPage() {
     {
       key: 'target_staff_name',
       header: 'Target',
-      cell: (item: ShiftSwapListItem) => item.target_staff_name || (
-        <span className="text-muted-foreground italic">Open</span>
-      ),
+      cell: (item: ShiftSwapListItem) =>
+        item.target_staff_name || <span className="italic text-muted-foreground">Open</span>,
     },
     {
       key: 'is_partial',
       header: 'Partial',
-      cell: (item: ShiftSwapListItem) => item.is_partial ? (
-        <Badge variant="secondary" className="text-xs">Partial</Badge>
-      ) : null,
+      cell: (item: ShiftSwapListItem) =>
+        item.is_partial ? (
+          <Badge variant="secondary" className="text-xs">
+            Partial
+          </Badge>
+        ) : null,
       hideOnMobile: true,
     },
     {
@@ -157,7 +158,7 @@ export default function ShiftSwapsPage() {
       header: 'Status',
       sortable: true,
       cell: (item: ShiftSwapListItem) => (
-        <Badge className={`${statusColors[item.status]} gap-1 shrink-0 w-fit`}>
+        <Badge className={`${statusColors[item.status]} w-fit shrink-0 gap-1`}>
           {statusIcons[item.status]}
           {item.status_display}
         </Badge>
@@ -186,7 +187,10 @@ export default function ShiftSwapsPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={(e) => { e.stopPropagation(); cancelMutation.mutate(item.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              cancelMutation.mutate(item.id);
+            }}
           >
             Cancel
           </Button>
@@ -213,22 +217,27 @@ export default function ShiftSwapsPage() {
       header: 'Type',
       sortable: true,
       cell: (item: ShiftSwapListItem) => (
-        <Badge variant="outline" className="text-xs">{item.requesting_shift_type}</Badge>
+        <Badge variant="outline" className="text-xs">
+          {item.requesting_shift_type}
+        </Badge>
       ),
     },
     {
       key: 'is_partial',
       header: 'Partial',
-      cell: (item: ShiftSwapListItem) => item.is_partial ? (
-        <Badge variant="secondary" className="text-xs">Partial</Badge>
-      ) : null,
+      cell: (item: ShiftSwapListItem) =>
+        item.is_partial ? (
+          <Badge variant="secondary" className="text-xs">
+            Partial
+          </Badge>
+        ) : null,
       hideOnMobile: true,
     },
     {
       key: 'reason',
       header: 'Reason',
       cell: (item: ShiftSwapListItem) => (
-        <span className="text-sm text-muted-foreground truncate max-w-[200px] block">
+        <span className="block max-w-[200px] truncate text-sm text-muted-foreground">
           {item.reason || '—'}
         </span>
       ),
@@ -241,7 +250,10 @@ export default function ShiftSwapsPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={(e) => { e.stopPropagation(); acceptMutation.mutate(item.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            acceptMutation.mutate(item.id);
+          }}
           disabled={acceptMutation.isPending}
         >
           Accept
@@ -291,7 +303,9 @@ export default function ShiftSwapsPage() {
       header: 'Type',
       sortable: true,
       cell: (item: ShiftSwapListItem) => (
-        <Badge variant="outline" className="text-xs">{item.requesting_shift_type}</Badge>
+        <Badge variant="outline" className="text-xs">
+          {item.requesting_shift_type}
+        </Badge>
       ),
     },
     {
@@ -302,9 +316,12 @@ export default function ShiftSwapsPage() {
     {
       key: 'is_partial',
       header: 'Partial',
-      cell: (item: ShiftSwapListItem) => item.is_partial ? (
-        <Badge variant="secondary" className="text-xs">Partial</Badge>
-      ) : null,
+      cell: (item: ShiftSwapListItem) =>
+        item.is_partial ? (
+          <Badge variant="secondary" className="text-xs">
+            Partial
+          </Badge>
+        ) : null,
       hideOnMobile: true,
     },
     {
@@ -315,14 +332,20 @@ export default function ShiftSwapsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={(e) => { e.stopPropagation(); rejectMutation.mutate(item.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              rejectMutation.mutate(item.id);
+            }}
             disabled={rejectMutation.isPending}
           >
             Reject
           </Button>
           <Button
             size="sm"
-            onClick={(e) => { e.stopPropagation(); approveMutation.mutate(item.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              approveMutation.mutate(item.id);
+            }}
             disabled={approveMutation.isPending}
           >
             Approve
@@ -332,8 +355,8 @@ export default function ShiftSwapsPage() {
     },
   ];
 
-  const pendingCount = mySwaps.filter(s => s.status === 'PENDING').length;
-  const acceptedCount = mySwaps.filter(s => s.status === 'ACCEPTED').length;
+  const pendingCount = mySwaps.filter((s) => s.status === 'PENDING').length;
+  const acceptedCount = mySwaps.filter((s) => s.status === 'ACCEPTED').length;
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
@@ -343,7 +366,7 @@ export default function ShiftSwapsPage() {
           helpContent="Request, accept, and manage shift swaps with colleagues. Open swaps are visible to all eligible staff."
           actions={
             <Button onClick={() => router.push('/scheduling/shift-swaps/new')}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">New Swap Request</span>
               <span className="sm:hidden">New</span>
             </Button>
@@ -351,46 +374,58 @@ export default function ShiftSwapsPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-yellow-500" />
                 <span className="text-sm text-muted-foreground">Pending</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{pendingCount}</p>
+              <p className="mt-1 text-2xl font-bold">{pendingCount}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-blue-500" />
                 <span className="text-sm text-muted-foreground">Accepted</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{acceptedCount}</p>
+              <p className="mt-1 text-2xl font-bold">{acceptedCount}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <ArrowLeftRight className="h-4 w-4 text-green-500" />
                 <span className="text-sm text-muted-foreground">Available</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{availableSwaps.length}</p>
+              <p className="mt-1 text-2xl font-bold">{availableSwaps.length}</p>
             </CardContent>
           </Card>
           {canManageSchedules && (
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
               <CardContent className="relative p-3 sm:p-4">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-purple-500" />
                   <span className="text-sm text-muted-foreground">Awaiting Approval</span>
                 </div>
-                <p className="text-2xl font-bold mt-1">{pendingApprovalSwaps.length}</p>
+                <p className="mt-1 text-2xl font-bold">{pendingApprovalSwaps.length}</p>
               </CardContent>
             </Card>
           )}
@@ -404,7 +439,9 @@ export default function ShiftSwapsPage() {
               <span className="sm:hidden">Mine</span>
               <span className="hidden sm:inline">My Swaps</span>
               {pendingCount > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">{pendingCount}</Badge>
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {pendingCount}
+                </Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="available" className="gap-2">
@@ -412,7 +449,9 @@ export default function ShiftSwapsPage() {
               <span className="sm:hidden">Available</span>
               <span className="hidden sm:inline">Available Swaps</span>
               {availableSwaps.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">{availableSwaps.length}</Badge>
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {availableSwaps.length}
+                </Badge>
               )}
             </TabsTrigger>
             {canManageSchedules && (
@@ -421,7 +460,9 @@ export default function ShiftSwapsPage() {
                 <span className="sm:hidden">Approval</span>
                 <span className="hidden sm:inline">Pending Approval</span>
                 {pendingApprovalSwaps.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 text-xs">{pendingApprovalSwaps.length}</Badge>
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {pendingApprovalSwaps.length}
+                  </Badge>
                 )}
               </TabsTrigger>
             )}
@@ -439,7 +480,7 @@ export default function ShiftSwapsPage() {
               emptyMessage="No swap requests yet. Create one to get started."
               mobileCard={(item: ShiftSwapListItem) => (
                 <Card className="p-3">
-                  <div className="flex justify-between items-start">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">{formatDate(item.requesting_shift_date)}</p>
                       <p className="text-sm text-muted-foreground">
@@ -447,7 +488,7 @@ export default function ShiftSwapsPage() {
                         {item.target_staff_name ? ` → ${item.target_staff_name}` : ' (open)'}
                       </p>
                     </div>
-                    <Badge className={`${statusColors[item.status]} gap-1 shrink-0 w-fit`}>
+                    <Badge className={`${statusColors[item.status]} w-fit shrink-0 gap-1`}>
                       {statusIcons[item.status]}
                       {item.status_display}
                     </Badge>
@@ -469,21 +510,24 @@ export default function ShiftSwapsPage() {
               emptyMessage="No available swap requests at this time."
               mobileCard={(item: ShiftSwapListItem) => (
                 <Card className="p-3">
-                  <div className="flex justify-between items-start gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-medium">{item.requesting_staff_name}</p>
                       <p className="text-sm text-muted-foreground">
                         {formatDate(item.requesting_shift_date)} • {item.requesting_shift_type}
                       </p>
                       {item.reason && (
-                        <p className="text-xs text-muted-foreground truncate mt-1">{item.reason}</p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">{item.reason}</p>
                       )}
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
                       className="shrink-0"
-                      onClick={(e) => { e.stopPropagation(); acceptMutation.mutate(item.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        acceptMutation.mutate(item.id);
+                      }}
                     >
                       Accept
                     </Button>
@@ -506,27 +550,35 @@ export default function ShiftSwapsPage() {
                 emptyMessage="No swaps awaiting approval."
                 mobileCard={(item: ShiftSwapListItem) => (
                   <Card className="p-3">
-                    <div className="flex justify-between items-start gap-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-medium">{item.requesting_staff_name}</p>
                         <p className="text-sm text-muted-foreground">
                           {formatDate(item.requesting_shift_date)} • {item.requesting_shift_type}
                         </p>
                         {item.target_staff_name && (
-                          <p className="text-xs text-muted-foreground mt-1">Accepted by {item.target_staff_name}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Accepted by {item.target_staff_name}
+                          </p>
                         )}
                       </div>
-                      <div className="flex gap-1 shrink-0">
+                      <div className="flex shrink-0 gap-1">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={(e) => { e.stopPropagation(); rejectMutation.mutate(item.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            rejectMutation.mutate(item.id);
+                          }}
                         >
                           Reject
                         </Button>
                         <Button
                           size="sm"
-                          onClick={(e) => { e.stopPropagation(); approveMutation.mutate(item.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            approveMutation.mutate(item.id);
+                          }}
                         >
                           Approve
                         </Button>

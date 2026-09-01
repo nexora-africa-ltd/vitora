@@ -217,7 +217,17 @@ export interface MpesaCallbackData {
 export interface CreditNoteCreateData {
   invoice: number;
   amount: string;
-  reason: 'OVERCHARGE' | 'SERVICE_NOT_RENDERED' | 'DUPLICATE_BILLING' | 'DUPLICATE' | 'DUPLICATE_CHARGE' | 'PRICING_ERROR' | 'OTHER' | 'INSURANCE' | 'INSURANCE_ADJUSTMENT' | 'GOODWILL';
+  reason:
+    | 'OVERCHARGE'
+    | 'SERVICE_NOT_RENDERED'
+    | 'DUPLICATE_BILLING'
+    | 'DUPLICATE'
+    | 'DUPLICATE_CHARGE'
+    | 'PRICING_ERROR'
+    | 'OTHER'
+    | 'INSURANCE'
+    | 'INSURANCE_ADJUSTMENT'
+    | 'GOODWILL';
   reason_detail: string;
 }
 
@@ -255,7 +265,15 @@ export interface InvoiceListParams {
   page_size?: number;
   search?: string;
   source?: 'local' | 'dha';
-  status?: 'PROFORMA' | 'DRAFT' | 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED' | 'OVERDUE' | 'WRITTEN_OFF';
+  status?:
+    | 'PROFORMA'
+    | 'DRAFT'
+    | 'PENDING'
+    | 'PARTIAL'
+    | 'PAID'
+    | 'CANCELLED'
+    | 'OVERDUE'
+    | 'WRITTEN_OFF';
   status__in?: string;
   payment_type?: 'CASH' | 'MPESA' | 'INSURANCE' | 'CORPORATE' | 'MIXED';
   payer_type?: 'CASH' | 'SHA' | 'PRIVATE_INSURANCE' | 'CORPORATE' | 'MIXED';
@@ -388,7 +406,9 @@ export interface FacilityBillingConfigCreateData {
   automation_rules?: BillingAutomationRuleInput[];
 }
 
-export interface FacilityBillingConfigUpdateData extends Partial<Omit<FacilityBillingConfigCreateData, 'facility'>> {}
+export interface FacilityBillingConfigUpdateData extends Partial<
+  Omit<FacilityBillingConfigCreateData, 'facility'>
+> {}
 
 export interface BillingAutomationRuleInput {
   id?: number;

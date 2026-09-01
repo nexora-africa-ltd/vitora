@@ -95,7 +95,7 @@ export function RouteToEmergencyDialog({
 
       toast({
         title: 'Routed to Emergency',
-        description: `Patient has been routed to ${EMERGENCY_AREA_OPTIONS.find(a => a.value === selectedArea)?.label || selectedArea}.`,
+        description: `Patient has been routed to ${EMERGENCY_AREA_OPTIONS.find((a) => a.value === selectedArea)?.label || selectedArea}.`,
       });
 
       setSelectedArea('');
@@ -132,14 +132,19 @@ export function RouteToEmergencyDialog({
         </DialogHeader>
 
         {/* Current category indicator */}
-        <Alert className={cn(
-          'border',
-          CATEGORY_URGENCY[assessment.triage_category]?.border,
-          CATEGORY_URGENCY[assessment.triage_category]?.bg
-        )}>
-          <AlertTriangle className={cn('h-4 w-4', CATEGORY_URGENCY[assessment.triage_category]?.text)} />
+        <Alert
+          className={cn(
+            'border',
+            CATEGORY_URGENCY[assessment.triage_category]?.border,
+            CATEGORY_URGENCY[assessment.triage_category]?.bg
+          )}
+        >
+          <AlertTriangle
+            className={cn('h-4 w-4', CATEGORY_URGENCY[assessment.triage_category]?.text)}
+          />
           <AlertDescription className={CATEGORY_URGENCY[assessment.triage_category]?.text}>
-            Triage Category: <strong>{TRIAGE_CATEGORY_CONFIG[assessment.triage_category]?.label}</strong>
+            Triage Category:{' '}
+            <strong>{TRIAGE_CATEGORY_CONFIG[assessment.triage_category]?.label}</strong>
           </AlertDescription>
         </Alert>
 
@@ -157,22 +162,19 @@ export function RouteToEmergencyDialog({
 
               return (
                 <div key={area.value} className="relative">
-                  <RadioGroupItem
-                    value={area.value}
-                    id={area.value}
-                    className="peer sr-only"
-                  />
+                  <RadioGroupItem value={area.value} id={area.value} className="peer sr-only" />
                   <Label
                     htmlFor={area.value}
                     className={cn(
-                      'flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all duration-200',
+                      'flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-all duration-200',
                       'hover:border-primary/50 hover:bg-accent/50',
                       'peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5',
-                      selectedArea === area.value && 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-md border-primary'
+                      selectedArea === area.value &&
+                        'scale-[1.02] border-primary shadow-md ring-2 ring-primary ring-offset-2'
                     )}
                   >
                     <div className="flex flex-col gap-0.5">
-                      <span className="font-medium text-sm">{area.label}</span>
+                      <span className="text-sm font-medium">{area.label}</span>
                       {isRecommended && (
                         <span className="text-xs text-muted-foreground">
                           Recommended for {assessment.triage_category} patients
@@ -181,12 +183,12 @@ export function RouteToEmergencyDialog({
                     </div>
                     <div className="flex items-center gap-2">
                       {selectedArea === area.value && (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
                       )}
                       <Badge
                         variant="outline"
                         className={cn(
-                          'text-xs shrink-0',
+                          'shrink-0 text-xs',
                           categoryColors?.bg,
                           categoryColors?.border,
                           categoryColors?.text
@@ -213,12 +215,12 @@ export function RouteToEmergencyDialog({
           >
             {isRouting ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Routing...
               </>
             ) : (
               <>
-                <ArrowRight className="h-4 w-4 mr-2" />
+                <ArrowRight className="mr-2 h-4 w-4" />
                 Send to ER
               </>
             )}

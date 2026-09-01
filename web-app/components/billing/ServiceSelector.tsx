@@ -109,7 +109,7 @@ export function ServiceSelector({
           <button
             key={service.id}
             type="button"
-            className="w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm hover:bg-accent"
+            className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm hover:bg-accent"
             onClick={() => onSelect(service)}
             disabled={disabled}
           >

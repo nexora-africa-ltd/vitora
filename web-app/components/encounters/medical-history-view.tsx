@@ -60,7 +60,7 @@ export function MedicalHistoryView({ encounter }: MedicalHistoryViewProps) {
         return (
           <Card key={section.title} className={section.className}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
                 <Icon className="h-4 w-4" />
                 {section.title}
               </CardTitle>
@@ -68,7 +68,7 @@ export function MedicalHistoryView({ encounter }: MedicalHistoryViewProps) {
             <CardContent>
               <p className="text-sm">
                 {section.content || (
-                  <span className="text-muted-foreground italic">Not recorded</span>
+                  <span className="italic text-muted-foreground">Not recorded</span>
                 )}
               </p>
             </CardContent>

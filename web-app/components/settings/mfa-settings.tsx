@@ -12,13 +12,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Shield, ShieldCheck, ShieldOff, Key, AlertCircle, Loader2, RefreshCw, Fingerprint, Trash2, Download, Plus } from 'lucide-react';
+import {
+  Shield,
+  ShieldCheck,
+  ShieldOff,
+  Key,
+  AlertCircle,
+  Loader2,
+  RefreshCw,
+  Fingerprint,
+  Trash2,
+  Download,
+  Plus,
+} from 'lucide-react';
 import { mfaApi, type MFAStatus, type WebAuthnCredential } from '@/lib/api/mfa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { MFASetupWizard } from '@/components/auth/mfa-setup-wizard';
 import { toast } from 'sonner';
@@ -231,16 +250,18 @@ export function MFASettingsTab() {
               <Shield className="h-6 w-6" />
               <div>
                 <CardTitle>Two-Factor Authentication</CardTitle>
-                <CardDescription>
-                  Add an extra layer of security to your account
-                </CardDescription>
+                <CardDescription>Add an extra layer of security to your account</CardDescription>
               </div>
             </div>
             <Badge variant={mfaEnabled ? 'default' : 'secondary'}>
               {mfaEnabled ? (
-                <><ShieldCheck className="h-3 w-3 mr-1" /> Enabled</>
+                <>
+                  <ShieldCheck className="mr-1 h-3 w-3" /> Enabled
+                </>
               ) : (
-                <><ShieldOff className="h-3 w-3 mr-1" /> Disabled</>
+                <>
+                  <ShieldOff className="mr-1 h-3 w-3" /> Disabled
+                </>
               )}
             </Badge>
           </div>
@@ -252,57 +273,62 @@ export function MFASettingsTab() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>MFA is required for your role.</strong> You must enable two-factor authentication to comply with security policies.
+                  <strong>MFA is required for your role.</strong> You must enable two-factor
+                  authentication to comply with security policies.
                 </AlertDescription>
               </Alert>
             )}
 
             {mfaEnabled && (
               <div className="grid gap-4 sm:grid-cols-3">
-                <div className="p-4 rounded-lg border bg-muted/50">
+                <div className="rounded-lg border bg-muted/50 p-4">
                   <div className="text-sm text-muted-foreground">TOTP Devices</div>
                   <div className="text-2xl font-semibold">{status?.devices_count ?? 0}</div>
                 </div>
-                <div className="p-4 rounded-lg border bg-muted/50">
+                <div className="rounded-lg border bg-muted/50 p-4">
                   <div className="text-sm text-muted-foreground">Passkeys</div>
-                  <div className="text-2xl font-semibold">{status?.webauthn_credentials_count ?? 0}</div>
+                  <div className="text-2xl font-semibold">
+                    {status?.webauthn_credentials_count ?? 0}
+                  </div>
                 </div>
-                <div className="p-4 rounded-lg border bg-muted/50">
+                <div className="rounded-lg border bg-muted/50 p-4">
                   <div className="text-sm text-muted-foreground">Backup Codes Left</div>
-                  <div className="text-2xl font-semibold">{status?.backup_codes_remaining ?? 0}</div>
+                  <div className="text-2xl font-semibold">
+                    {status?.backup_codes_remaining ?? 0}
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex flex-wrap items-center gap-3">
             {!mfaEnabled ? (
               <Button onClick={() => setShowSetupWizard(true)}>
-                <ShieldCheck className="h-4 w-4 mr-2" />
+                <ShieldCheck className="mr-2 h-4 w-4" />
                 Enable MFA
               </Button>
             ) : (
               <>
                 <Button variant="outline" onClick={() => setShowAddPasskeyDialog(true)}>
-                  <Fingerprint className="h-4 w-4 mr-2" />
+                  <Fingerprint className="mr-2 h-4 w-4" />
                   <span className="sm:hidden">Passkey</span>
                   <span className="hidden sm:inline">Add Passkey</span>
                 </Button>
                 <Button variant="outline" onClick={() => setShowDownloadDialog(true)}>
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="mr-2 h-4 w-4" />
                   <span className="sm:hidden">Codes</span>
                   <span className="hidden sm:inline">Re-download Codes</span>
                 </Button>
                 <Button variant="outline" onClick={() => setShowRegenerateDialog(true)}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className="mr-2 h-4 w-4" />
                   <span className="sm:hidden">Regen</span>
                   <span className="hidden sm:inline">Regenerate Codes</span>
                 </Button>
 
                 {!mfaRequired && (
                   <Button variant="destructive" onClick={() => setShowDisableDialog(true)}>
-                    <ShieldOff className="h-4 w-4 mr-2" />
+                    <ShieldOff className="mr-2 h-4 w-4" />
                     Disable MFA
                   </Button>
                 )}
@@ -312,18 +338,16 @@ export function MFASettingsTab() {
 
           {/* MFA Required Notice */}
           {mfaEnabled && mfaRequired && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
+            <div className="flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-amber-700 dark:text-amber-400">
               <Shield className="h-4 w-4 shrink-0" />
-              <p className="text-sm">
-                MFA cannot be disabled because it's required for your role.
-              </p>
+              <p className="text-sm">MFA cannot be disabled because it's required for your role.</p>
             </div>
           )}
 
           {/* WebAuthn Credentials */}
           {mfaEnabled && webauthnCredentials.length > 0 && (
-            <div className="pt-4 border-t">
-              <h4 className="font-medium mb-3 flex items-center gap-2">
+            <div className="border-t pt-4">
+              <h4 className="mb-3 flex items-center gap-2 font-medium">
                 <Fingerprint className="h-4 w-4" />
                 Registered Passkeys
               </h4>
@@ -331,17 +355,19 @@ export function MFASettingsTab() {
                 {webauthnCredentials.map((cred) => (
                   <div
                     key={cred.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                    className="flex items-center justify-between rounded-lg border bg-muted/30 p-3"
                   >
                     <div className="min-w-0">
-                      <div className="font-medium text-sm truncate">{cred.name}</div>
+                      <div className="truncate text-sm font-medium">{cred.name}</div>
                       <div className="text-xs text-muted-foreground">
                         Added {new Date(cred.created_at).toLocaleDateString()}
                         {cred.last_used_at && (
                           <> · Last used {new Date(cred.last_used_at).toLocaleDateString()}</>
                         )}
                         {cred.backed_up && (
-                          <Badge variant="secondary" className="ml-2 text-[10px] px-1 py-0">Synced</Badge>
+                          <Badge variant="secondary" className="ml-2 px-1 py-0 text-[10px]">
+                            Synced
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -360,13 +386,15 @@ export function MFASettingsTab() {
           )}
 
           {/* How MFA Works */}
-          <div className="pt-4 border-t">
-            <h4 className="font-medium mb-2">How it works</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+          <div className="border-t pt-4">
+            <h4 className="mb-2 font-medium">How it works</h4>
+            <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
               <li>Install an authenticator app like Google Authenticator or Authy</li>
               <li>Scan the QR code to link your account</li>
               <li>Enter the 6-digit code when logging in</li>
-              <li>Optionally add a passkey (Windows Hello, Touch ID, security key) for faster login</li>
+              <li>
+                Optionally add a passkey (Windows Hello, Touch ID, security key) for faster login
+              </li>
               <li>Keep backup codes safe in case you lose your device</li>
             </ul>
           </div>
@@ -390,7 +418,8 @@ export function MFASettingsTab() {
           <DialogHeader>
             <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
             <DialogDescription>
-              Enter your password to confirm you want to disable MFA. This will make your account less secure.
+              Enter your password to confirm you want to disable MFA. This will make your account
+              less secure.
             </DialogDescription>
           </DialogHeader>
 
@@ -428,7 +457,7 @@ export function MFASettingsTab() {
             >
               {actionLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Disabling...
                 </>
               ) : (
@@ -445,7 +474,8 @@ export function MFASettingsTab() {
           <DialogHeader>
             <DialogTitle>Regenerate Backup Codes</DialogTitle>
             <DialogDescription>
-              Enter a code from your authenticator app to generate new backup codes. Your old codes will be invalidated.
+              Enter a code from your authenticator app to generate new backup codes. Your old codes
+              will be invalidated.
             </DialogDescription>
           </DialogHeader>
 
@@ -486,12 +516,12 @@ export function MFASettingsTab() {
             >
               {actionLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Regenerating...
                 </>
               ) : (
                 <>
-                  <Key className="h-4 w-4 mr-2" />
+                  <Key className="mr-2 h-4 w-4" />
                   Regenerate
                 </>
               )}
@@ -512,10 +542,7 @@ export function MFASettingsTab() {
 
           <div className="grid grid-cols-2 gap-2">
             {newBackupCodes?.map((code, index) => (
-              <div
-                key={index}
-                className="p-2 bg-muted rounded font-mono text-sm text-center"
-              >
+              <div key={index} className="rounded bg-muted p-2 text-center font-mono text-sm">
                 {code}
               </div>
             ))}
@@ -533,15 +560,19 @@ export function MFASettingsTab() {
             >
               Copy All
             </Button>
-            <Button onClick={() => setNewBackupCodes(null)}>
-              I've Saved These Codes
-            </Button>
+            <Button onClick={() => setNewBackupCodes(null)}>I've Saved These Codes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Add Passkey Dialog */}
-      <Dialog open={showAddPasskeyDialog} onOpenChange={(open) => { setShowAddPasskeyDialog(open); setActionError(null); }}>
+      <Dialog
+        open={showAddPasskeyDialog}
+        onOpenChange={(open) => {
+          setShowAddPasskeyDialog(open);
+          setActionError(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -549,7 +580,8 @@ export function MFASettingsTab() {
               Add Passkey
             </DialogTitle>
             <DialogDescription>
-              Register a passkey using Windows Hello, Touch ID, Face ID, or a security key for faster login.
+              Register a passkey using Windows Hello, Touch ID, Face ID, or a security key for
+              faster login.
             </DialogDescription>
           </DialogHeader>
 
@@ -583,12 +615,12 @@ export function MFASettingsTab() {
             <Button onClick={handleAddPasskey} disabled={actionLoading}>
               {actionLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Waiting for device...
                 </>
               ) : (
                 <>
-                  <Fingerprint className="h-4 w-4 mr-2" />
+                  <Fingerprint className="mr-2 h-4 w-4" />
                   Register Passkey
                 </>
               )}
@@ -598,7 +630,14 @@ export function MFASettingsTab() {
       </Dialog>
 
       {/* Delete Passkey Dialog */}
-      <Dialog open={showDeletePasskeyDialog !== null} onOpenChange={() => { setShowDeletePasskeyDialog(null); setActionError(null); setDeletePassword(''); }}>
+      <Dialog
+        open={showDeletePasskeyDialog !== null}
+        onOpenChange={() => {
+          setShowDeletePasskeyDialog(null);
+          setActionError(null);
+          setDeletePassword('');
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Passkey</DialogTitle>
@@ -641,12 +680,12 @@ export function MFASettingsTab() {
             >
               {actionLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...
                 </>
               ) : (
                 <>
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </>
               )}
@@ -656,7 +695,13 @@ export function MFASettingsTab() {
       </Dialog>
 
       {/* Download Backup Codes Dialog */}
-      <Dialog open={showDownloadDialog} onOpenChange={(open) => { setShowDownloadDialog(open); setActionError(null); }}>
+      <Dialog
+        open={showDownloadDialog}
+        onOpenChange={(open) => {
+          setShowDownloadDialog(open);
+          setActionError(null);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -664,7 +709,8 @@ export function MFASettingsTab() {
               Re-download Backup Codes
             </DialogTitle>
             <DialogDescription>
-              Enter a code from your authenticator app to get a fresh set of backup codes. Your old codes will be replaced.
+              Enter a code from your authenticator app to get a fresh set of backup codes. Your old
+              codes will be replaced.
             </DialogDescription>
           </DialogHeader>
 
@@ -705,12 +751,12 @@ export function MFASettingsTab() {
             >
               {actionLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="mr-2 h-4 w-4" />
                   Get Codes
                 </>
               )}

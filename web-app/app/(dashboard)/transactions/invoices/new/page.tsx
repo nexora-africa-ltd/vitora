@@ -78,9 +78,7 @@ export default function NewInvoicePage() {
         helpContent="Create a new invoice for a patient. Select the patient, add line items with services, and set a due date."
       />
 
-      {selectedPatientId && (
-        <EligibilityBanner patientId={selectedPatientId} compact />
-      )}
+      {selectedPatientId && <EligibilityBanner patientId={selectedPatientId} compact />}
 
       {isLoading ? (
         <div className="space-y-4">

@@ -102,7 +102,7 @@ export default function NewImagingOrderPage() {
         <Card>
           <CardContent className="p-6 text-center">
             <p className="text-sm font-medium">Access denied</p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="mt-1 text-sm text-muted-foreground">
               You do not have permission to create imaging orders.
             </p>
           </CardContent>
@@ -120,7 +120,9 @@ export default function NewImagingOrderPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold">New Imaging Order</h1>
-          <p className="text-muted-foreground">Select a patient and encounter to create an order.</p>
+          <p className="text-muted-foreground">
+            Select a patient and encounter to create an order.
+          </p>
         </div>
       </div>
 

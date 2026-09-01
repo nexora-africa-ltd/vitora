@@ -11,7 +11,15 @@
  */
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useEmergencySocket } from '@/lib/hooks/use-websocket';
 import { BREACH_SEVERITY_CONFIG } from '@/lib/types/triage';
@@ -88,7 +96,9 @@ function getStoredAudioPref(): boolean {
  */
 function playAlertTone(severity: BreachSeverity): void {
   try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
 
     const ctx = new AudioCtx();
@@ -131,8 +141,14 @@ export function EmergencyAlertsProvider({ children }: { children: React.ReactNod
   const { toast } = useToast();
   const [audioEnabled, setAudioEnabledState] = useState(getStoredAudioPref);
   const [pendingBreachCount, setPendingBreachCount] = useState(0);
-  const [lastBreachEvent, setLastBreachEvent] = useState<{ breaches: BreachAlertData[]; timestamp: string } | null>(null);
-  const [lastEscalationEvent, setLastEscalationEvent] = useState<{ escalation: EscalationAlertData; timestamp: string } | null>(null);
+  const [lastBreachEvent, setLastBreachEvent] = useState<{
+    breaches: BreachAlertData[];
+    timestamp: string;
+  } | null>(null);
+  const [lastEscalationEvent, setLastEscalationEvent] = useState<{
+    escalation: EscalationAlertData;
+    timestamp: string;
+  } | null>(null);
 
   // Track processed breach IDs to prevent duplicate toasts
   const processedBreachIds = useRef(new Set<number>());
@@ -155,7 +171,8 @@ export function EmergencyAlertsProvider({ children }: { children: React.ReactNod
         processedBreachIds.current.add(breach.id);
 
         const severityConfig = BREACH_SEVERITY_CONFIG[breach.severity];
-        const variant = breach.severity === 'CRITICAL' ? 'destructive' as const : 'default' as const;
+        const variant =
+          breach.severity === 'CRITICAL' ? ('destructive' as const) : ('default' as const);
 
         toast({
           title: `${severityConfig.label}: Wait Time Breach`,
@@ -170,7 +187,7 @@ export function EmergencyAlertsProvider({ children }: { children: React.ReactNod
         }
       }
     },
-    [toast, audioEnabled],
+    [toast, audioEnabled]
   );
 
   // Handle escalation events from WebSocket
@@ -186,7 +203,7 @@ export function EmergencyAlertsProvider({ children }: { children: React.ReactNod
         duration: 10000,
       });
     },
-    [toast],
+    [toast]
   );
 
   // Connect to emergency WebSocket with breach/escalation handlers
@@ -213,12 +230,10 @@ export function EmergencyAlertsProvider({ children }: { children: React.ReactNod
       lastBreachEvent,
       lastEscalationEvent,
     }),
-    [audioEnabled, setAudioEnabled, pendingBreachCount, lastBreachEvent, lastEscalationEvent],
+    [audioEnabled, setAudioEnabled, pendingBreachCount, lastBreachEvent, lastEscalationEvent]
   );
 
   return (
-    <EmergencyAlertsContext.Provider value={value}>
-      {children}
-    </EmergencyAlertsContext.Provider>
+    <EmergencyAlertsContext.Provider value={value}>{children}</EmergencyAlertsContext.Provider>
   );
 }

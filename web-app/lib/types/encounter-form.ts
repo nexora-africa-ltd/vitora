@@ -34,14 +34,25 @@ export interface EncounterFormData {
   history_of_present_illness: string;
   physical_examination: string;
   assessment: string;
-  plan?: string;  // SOAP 'P' (Plan) - can also use TreatmentPlan.clinical_notes
+  plan?: string; // SOAP 'P' (Plan) - can also use TreatmentPlan.clinical_notes
 
   // Clinical template
   clinical_template?: number | null;
   clinical_template_data?: Record<string, Record<string, unknown>> | null;
 
   // Status
-  status: 'CREATED' | 'CHECKED_IN' | 'TRIAGED' | 'IN_PROGRESS' | 'ON_HOLD' | 'ORDERS_PLACED' | 'RESULTS_PENDING' | 'READY_TO_CLOSE' | 'CLOSED' | 'COMPLETED' | 'CANCELLED';
+  status:
+    | 'CREATED'
+    | 'CHECKED_IN'
+    | 'TRIAGED'
+    | 'IN_PROGRESS'
+    | 'ON_HOLD'
+    | 'ORDERS_PLACED'
+    | 'RESULTS_PENDING'
+    | 'READY_TO_CLOSE'
+    | 'CLOSED'
+    | 'COMPLETED'
+    | 'CANCELLED';
 }
 
 export const defaultEncounterFormData: EncounterFormData = {

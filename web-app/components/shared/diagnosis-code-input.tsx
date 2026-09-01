@@ -70,7 +70,9 @@ export function DiagnosisCodeInput({
 }: DiagnosisCodeInputProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [codingSystem, setCodingSystem] = useState<CodingSystem>(defaultToICD11 ? 'icd11' : 'icd10');
+  const [codingSystem, setCodingSystem] = useState<CodingSystem>(
+    defaultToICD11 ? 'icd11' : 'icd10'
+  );
   const [snomedQuery, setSnomedQuery] = useState('');
   const [snomedResults, setSnomedResults] = useState<SNOMEDSearchResult[]>([]);
   const [snomedSearching, setSnomedSearching] = useState(false);
@@ -80,40 +82,49 @@ export function DiagnosisCodeInput({
 
   const hasSelectedCode = value.icd10Code || value.icd11Code || value.snomedCode;
 
-  const handleSelectICD10 = useCallback((code: ICD10SearchResult) => {
-    onChange({
-      icd10Code: code.id,
-      icd10Display: `${code.code} - ${code.short_description || code.description}`,
-      icd11Code: '',
-      icd11Display: '',
-      snomedCode: value.snomedCode,
-      snomedDisplay: value.snomedDisplay,
-    });
-    setSearchQuery('');
-    setIsSearchOpen(false);
-  }, [onChange, value.snomedCode, value.snomedDisplay]);
+  const handleSelectICD10 = useCallback(
+    (code: ICD10SearchResult) => {
+      onChange({
+        icd10Code: code.id,
+        icd10Display: `${code.code} - ${code.short_description || code.description}`,
+        icd11Code: '',
+        icd11Display: '',
+        snomedCode: value.snomedCode,
+        snomedDisplay: value.snomedDisplay,
+      });
+      setSearchQuery('');
+      setIsSearchOpen(false);
+    },
+    [onChange, value.snomedCode, value.snomedDisplay]
+  );
 
-  const handleSelectICD11 = useCallback((code: { code: string; title: string }) => {
-    onChange({
-      icd10Code: null,
-      icd10Display: '',
-      icd11Code: code.code,
-      icd11Display: `${code.code} - ${code.title}`,
-      snomedCode: value.snomedCode,
-      snomedDisplay: value.snomedDisplay,
-    });
-  }, [onChange, value.snomedCode, value.snomedDisplay]);
+  const handleSelectICD11 = useCallback(
+    (code: { code: string; title: string }) => {
+      onChange({
+        icd10Code: null,
+        icd10Display: '',
+        icd11Code: code.code,
+        icd11Display: `${code.code} - ${code.title}`,
+        snomedCode: value.snomedCode,
+        snomedDisplay: value.snomedDisplay,
+      });
+    },
+    [onChange, value.snomedCode, value.snomedDisplay]
+  );
 
-  const handleSelectSNOMED = useCallback((result: SNOMEDSearchResult) => {
-    onChange({
-      ...value,
-      snomedCode: result.concept_id,
-      snomedDisplay: result.display,
-    });
-    setSnomedQuery('');
-    setIsSnomedOpen(false);
-    setSnomedResults([]);
-  }, [onChange, value]);
+  const handleSelectSNOMED = useCallback(
+    (result: SNOMEDSearchResult) => {
+      onChange({
+        ...value,
+        snomedCode: result.concept_id,
+        snomedDisplay: result.display,
+      });
+      setSnomedQuery('');
+      setIsSnomedOpen(false);
+      setSnomedResults([]);
+    },
+    [onChange, value]
+  );
 
   const handleSnomedSearch = useCallback(async (query: string) => {
     setSnomedQuery(query);
@@ -145,18 +156,25 @@ export function DiagnosisCodeInput({
 
   // Determine the display text and code to show
   const displayCode = value.icd10Display?.split(' - ')[0] || value.icd11Code || value.snomedCode;
-  const displayText = value.icd10Display?.split(' - ').slice(1).join(' - ') ||
+  const displayText =
+    value.icd10Display?.split(' - ').slice(1).join(' - ') ||
     value.icd11Display?.split(' - ').slice(1).join(' - ') ||
     value.snomedDisplay;
-  const codeVersion = value.icd11Code ? 'ICD-11' : value.icd10Code ? 'ICD-10' : value.snomedCode ? 'SNOMED' : null;
+  const codeVersion = value.icd11Code
+    ? 'ICD-11'
+    : value.icd10Code
+      ? 'ICD-10'
+      : value.snomedCode
+        ? 'SNOMED'
+        : null;
 
   return (
-    <div className={cn('space-y-2 min-w-0', className)}>
+    <div className={cn('min-w-0 space-y-2', className)}>
       {label && <Label>{label}</Label>}
 
       {hasSelectedCode ? (
-        <div className="flex flex-wrap items-center gap-2 p-3 rounded-md border bg-muted/50 min-w-0">
-          <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border bg-muted/50 p-3">
+          <div className="flex shrink-0 items-center gap-1.5">
             <Badge variant="outline" className="font-mono">
               {displayCode}
             </Badge>
@@ -166,21 +184,22 @@ export function DiagnosisCodeInput({
               </Badge>
             )}
             {value.snomedCode && codeVersion !== 'SNOMED' && (
-              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+              <Badge
+                variant="secondary"
+                className="bg-purple-100 text-xs text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
+              >
                 SNOMED: {value.snomedCode}
               </Badge>
             )}
           </div>
-          <span className="flex-1 text-sm truncate min-w-0">
-            {displayText}
-          </span>
+          <span className="min-w-0 flex-1 truncate text-sm">{displayText}</span>
           <Button
             type="button"
             variant="ghost"
             size="icon"
             onClick={handleClear}
             disabled={disabled}
-            className="shrink-0 h-7 w-7"
+            className="h-7 w-7 shrink-0"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -189,13 +208,15 @@ export function DiagnosisCodeInput({
         <div className="space-y-3">
           {/* Coding System Selector */}
           {showVersionToggle && (
-            <div className="flex flex-wrap gap-1 rounded-md border p-1 w-fit">
+            <div className="flex w-fit flex-wrap gap-1 rounded-md border p-1">
               <button
                 type="button"
                 onClick={() => setCodingSystem('icd10')}
                 className={cn(
-                  'px-3 py-1 rounded text-xs font-medium transition-colors',
-                  codingSystem === 'icd10' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                  'rounded px-3 py-1 text-xs font-medium transition-colors',
+                  codingSystem === 'icd10'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
                 )}
               >
                 ICD-10
@@ -204,8 +225,10 @@ export function DiagnosisCodeInput({
                 type="button"
                 onClick={() => setCodingSystem('icd11')}
                 className={cn(
-                  'px-3 py-1 rounded text-xs font-medium transition-colors',
-                  codingSystem === 'icd11' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                  'rounded px-3 py-1 text-xs font-medium transition-colors',
+                  codingSystem === 'icd11'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
                 )}
               >
                 ICD-11
@@ -215,7 +238,7 @@ export function DiagnosisCodeInput({
                   type="button"
                   onClick={() => setCodingSystem('snomed')}
                   className={cn(
-                    'px-3 py-1 rounded text-xs font-medium transition-colors',
+                    'rounded px-3 py-1 text-xs font-medium transition-colors',
                     codingSystem === 'snomed' ? 'bg-purple-600 text-white' : 'hover:bg-accent'
                   )}
                 >
@@ -228,7 +251,7 @@ export function DiagnosisCodeInput({
           {/* ICD-10 Search */}
           {codingSystem === 'icd10' && (
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder={placeholder || 'Search ICD-10 codes (e.g., malaria, J18, diabetes)...'}
@@ -248,9 +271,9 @@ export function DiagnosisCodeInput({
 
               {/* Search Results Dropdown */}
               {isSearchOpen && searchQuery.length >= 2 && (
-                <Card className="absolute z-50 mt-1 w-full shadow-lg overflow-hidden">
+                <Card className="absolute z-50 mt-1 w-full overflow-hidden shadow-lg">
                   <CardContent
-                    className="p-2 max-h-64 overflow-y-auto overscroll-contain touch-pan-y"
+                    className="max-h-64 touch-pan-y overflow-y-auto overscroll-contain p-2"
                     onWheel={(event) => event.stopPropagation()}
                     onTouchMove={(event) => event.stopPropagation()}
                   >
@@ -273,9 +296,9 @@ export function DiagnosisCodeInput({
                                 e.preventDefault();
                                 handleSelectICD10(code);
                               }}
-                              className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
+                              className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-accent"
                             >
-                              <Badge variant="outline" className="font-mono shrink-0">
+                              <Badge variant="outline" className="shrink-0 font-mono">
                                 {code.code}
                               </Badge>
                               <span className="text-sm">
@@ -286,7 +309,7 @@ export function DiagnosisCodeInput({
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-center text-muted-foreground py-4 text-sm">
+                      <p className="py-4 text-center text-sm text-muted-foreground">
                         No ICD-10 codes found for &quot;{searchQuery}&quot;
                       </p>
                     )}
@@ -309,10 +332,12 @@ export function DiagnosisCodeInput({
           {/* SNOMED CT Search */}
           {codingSystem === 'snomed' && (
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder={placeholder || 'Search SNOMED CT (e.g., diabetes mellitus, fracture)...'}
+                placeholder={
+                  placeholder || 'Search SNOMED CT (e.g., diabetes mellitus, fracture)...'
+                }
                 value={snomedQuery}
                 onChange={(e) => {
                   handleSnomedSearch(e.target.value);
@@ -327,9 +352,9 @@ export function DiagnosisCodeInput({
               />
 
               {isSnomedOpen && snomedQuery.length >= 2 && (
-                <Card className="absolute z-50 mt-1 w-full shadow-lg overflow-hidden">
+                <Card className="absolute z-50 mt-1 w-full overflow-hidden shadow-lg">
                   <CardContent
-                    className="p-2 max-h-64 overflow-y-auto overscroll-contain touch-pan-y"
+                    className="max-h-64 touch-pan-y overflow-y-auto overscroll-contain p-2"
                     onWheel={(event) => event.stopPropagation()}
                     onTouchMove={(event) => event.stopPropagation()}
                   >
@@ -352,15 +377,18 @@ export function DiagnosisCodeInput({
                                 e.preventDefault();
                                 handleSelectSNOMED(result);
                               }}
-                              className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
+                              className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-accent"
                             >
-                              <Badge variant="outline" className="font-mono shrink-0 bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">
+                              <Badge
+                                variant="outline"
+                                className="shrink-0 bg-purple-50 font-mono text-purple-700 dark:bg-purple-900/20 dark:text-purple-400"
+                              >
                                 {result.concept_id}
                               </Badge>
                               <div className="min-w-0">
                                 <span className="text-sm">{result.display}</span>
                                 {result.semantic_tag && (
-                                  <span className="text-xs text-muted-foreground ml-1">
+                                  <span className="ml-1 text-xs text-muted-foreground">
                                     ({result.semantic_tag})
                                   </span>
                                 )}
@@ -370,7 +398,7 @@ export function DiagnosisCodeInput({
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-center text-muted-foreground py-4 text-sm">
+                      <p className="py-4 text-center text-sm text-muted-foreground">
                         No SNOMED CT concepts found for &quot;{snomedQuery}&quot;
                       </p>
                     )}

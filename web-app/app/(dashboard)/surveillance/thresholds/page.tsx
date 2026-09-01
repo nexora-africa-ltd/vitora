@@ -2,7 +2,17 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle, TrendingUp, Database, Loader2, Plus, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle,
+  TrendingUp,
+  Database,
+  Loader2,
+  Plus,
+  Pencil,
+  Trash2,
+  MoreHorizontal,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -89,7 +99,9 @@ function ThresholdProgress({ threshold }: { threshold: OutbreakThreshold }) {
       </div>
       <Progress
         value={percentage}
-        className={is_exceeded ? '[&>div]:bg-destructive' : percentage >= 70 ? '[&>div]:bg-warning' : ''}
+        className={
+          is_exceeded ? '[&>div]:bg-destructive' : percentage >= 70 ? '[&>div]:bg-warning' : ''
+        }
       />
     </div>
   );
@@ -163,7 +175,9 @@ export default function OutbreakThresholdsPage() {
       queryClient.invalidateQueries({ queryKey: ['outbreak-thresholds-exceeded'] });
     },
     onError: () => {
-      toast.error('Failed to seed thresholds. Ensure diseases are seeded first and you have admin permissions.');
+      toast.error(
+        'Failed to seed thresholds. Ensure diseases are seeded first and you have admin permissions.'
+      );
     },
   });
 
@@ -222,9 +236,7 @@ export default function OutbreakThresholdsPage() {
       key: 'disease_name',
       header: 'Disease',
       sortable: true,
-      cell: (item: OutbreakThreshold) => (
-        <span className="font-medium">{item.disease_name}</span>
-      ),
+      cell: (item: OutbreakThreshold) => <span className="font-medium">{item.disease_name}</span>,
     },
     {
       key: 'county_name',
@@ -232,9 +244,7 @@ export default function OutbreakThresholdsPage() {
       hideOnMobile: true,
       sortable: true,
       cell: (item: OutbreakThreshold) => (
-        <span className="text-muted-foreground">
-          {item.county_name || 'National'}
-        </span>
+        <span className="text-muted-foreground">{item.county_name || 'National'}</span>
       ),
     },
     {
@@ -270,7 +280,8 @@ export default function OutbreakThresholdsPage() {
       header: 'Active',
       hideOnMobile: true,
       sortable: true,
-      sortFn: (a: OutbreakThreshold, b: OutbreakThreshold) => Number(a.is_active) - Number(b.is_active),
+      sortFn: (a: OutbreakThreshold, b: OutbreakThreshold) =>
+        Number(a.is_active) - Number(b.is_active),
       cell: (item: OutbreakThreshold) =>
         item.is_active ? (
           <Badge variant="outline">Active</Badge>
@@ -361,7 +372,7 @@ export default function OutbreakThresholdsPage() {
         )}
 
         {/* Summary Cards */}
-        <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -374,9 +385,7 @@ export default function OutbreakThresholdsPage() {
           </Card>
           <Card className={exceededCount > 0 ? 'border-destructive' : ''}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Exceeded
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Exceeded</CardTitle>
             </CardHeader>
             <CardContent>
               <p className={`text-2xl font-bold ${exceededCount > 0 ? 'text-destructive' : ''}`}>
@@ -386,14 +395,13 @@ export default function OutbreakThresholdsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Warning
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Warning</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold text-warning">
                 {data?.results?.filter((t) => {
-                  const pct = (t.threshold_status.current_count / t.threshold_status.threshold) * 100;
+                  const pct =
+                    (t.threshold_status.current_count / t.threshold_status.threshold) * 100;
                   return pct >= 70 && !t.threshold_status.is_exceeded;
                 }).length ?? 0}
               </p>
@@ -401,14 +409,13 @@ export default function OutbreakThresholdsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                OK
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">OK</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold text-success">
                 {data?.results?.filter((t) => {
-                  const pct = (t.threshold_status.current_count / t.threshold_status.threshold) * 100;
+                  const pct =
+                    (t.threshold_status.current_count / t.threshold_status.threshold) * 100;
                   return pct < 70 && !t.threshold_status.is_exceeded;
                 }).length ?? 0}
               </p>
@@ -474,16 +481,17 @@ export default function OutbreakThresholdsPage() {
             mobileCard={(item) => (
               <Card className="p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1 flex-1 min-w-0">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <p className="font-medium">{item.disease_name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {item.county_name || 'National'} • {item.case_threshold} cases / {item.period_days} days
+                      {item.county_name || 'National'} • {item.case_threshold} cases /{' '}
+                      {item.period_days} days
                     </p>
                     <div className="pt-2">
                       <ThresholdProgress threshold={item} />
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2 items-end">
+                  <div className="flex flex-col items-end gap-2">
                     <ThresholdStatusBadge threshold={item} />
                     {!item.is_active && (
                       <Badge variant="secondary" className="w-fit">
@@ -558,14 +566,15 @@ export default function OutbreakThresholdsPage() {
       {/* Delete Confirmation */}
       <AlertDialog
         open={!!deletingThreshold}
-        onOpenChange={(open) => { if (!open) setDeletingThreshold(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDeletingThreshold(null);
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Threshold</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete the outbreak threshold for{' '}
-              <strong>{deletingThreshold?.disease_name}</strong>
+              Delete the outbreak threshold for <strong>{deletingThreshold?.disease_name}</strong>
               {deletingThreshold?.county_name
                 ? ` (${deletingThreshold.county_name})`
                 : ' (National)'}
@@ -573,9 +582,7 @@ export default function OutbreakThresholdsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteMutation.isPending}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteMutation.isPending}
@@ -583,9 +590,7 @@ export default function OutbreakThresholdsPage() {
                 if (deletingThreshold) deleteMutation.mutate(deletingThreshold.id);
               }}
             >
-              {deleteMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

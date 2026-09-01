@@ -15,14 +15,21 @@ const coerceDecimal = z.preprocess(
 // =============================================================================
 
 export const CriticalNotificationStatusSchema = z.enum([
-  'PENDING', 'NOTIFIED', 'READ_BACK',
-  'ACKNOWLEDGED', 'ESCALATED', 'FAILED',
+  'PENDING',
+  'NOTIFIED',
+  'READ_BACK',
+  'ACKNOWLEDGED',
+  'ESCALATED',
+  'FAILED',
 ]);
 
 export const CriticalNotificationSeveritySchema = z.enum(['CRITICAL', 'PANIC']);
 
 export const CriticalNotificationMethodSchema = z.enum([
-  'PHONE_CALL', 'IN_PERSON', 'SECURE_MESSAGE', 'PAGER',
+  'PHONE_CALL',
+  'IN_PERSON',
+  'SECURE_MESSAGE',
+  'PAGER',
 ]);
 
 // =============================================================================

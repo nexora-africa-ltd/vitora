@@ -6,13 +6,7 @@
 
 import { useState, useMemo, useId } from 'react';
 import { format, addDays, subDays, parseISO, isToday } from 'date-fns';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,17 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import {
   ChevronLeft,
@@ -163,21 +148,16 @@ export function SchedulingCalendar({
   };
 
   if (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'An error occurred';
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred';
     const description =
-      errorMessage === 'Failed to load calendar'
-        ? 'Please try again.'
-        : errorMessage;
+      errorMessage === 'Failed to load calendar' ? 'Please try again.' : errorMessage;
     return (
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <XCircle className="h-12 w-12 text-destructive mb-4" />
+            <XCircle className="mb-4 h-12 w-12 text-destructive" />
             <h3 className="text-lg font-semibold">Failed to load calendar</h3>
-            <p className="text-muted-foreground mb-4">
-              {description}
-            </p>
+            <p className="mb-4 text-muted-foreground">{description}</p>
             <Button onClick={() => refetch()} variant="outline">
               Retry
             </Button>
@@ -190,13 +170,13 @@ export function SchedulingCalendar({
   return (
     <Card>
       <CardHeader className="pb-3 sm:pb-4">
-        <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div className="min-w-0">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
               Imaging Schedule
             </CardTitle>
-            <CardDescription className="text-xs sm:text-sm mt-1">
+            <CardDescription className="mt-1 text-xs sm:text-sm">
               View and manage imaging resource availability
             </CardDescription>
           </div>
@@ -204,28 +184,25 @@ export function SchedulingCalendar({
           {/* Stats Pills */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <Badge variant="outline" className="bg-background text-xs">
-              <span className="text-muted-foreground mr-1">Total:</span>
+              <span className="mr-1 text-muted-foreground">Total:</span>
               {stats.totalSlots}
             </Badge>
-            <Badge
-              variant="success"
-              className="border border-emerald-500/20 text-xs"
-            >
-              <CheckCircle2 className="h-3 w-3 mr-1" />
+            <Badge variant="success" className="border border-emerald-500/20 text-xs">
+              <CheckCircle2 className="mr-1 h-3 w-3" />
               {stats.availableSlots}
             </Badge>
             <Badge
               variant="destructive"
-              className="bg-destructive/10 text-destructive border-destructive/30 text-xs"
+              className="border-destructive/30 bg-destructive/10 text-xs text-destructive"
             >
-              <Clock className="h-3 w-3 mr-1" />
+              <Clock className="mr-1 h-3 w-3" />
               {stats.bookedSlots}
             </Badge>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="flex flex-col gap-3 mt-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-3 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Date Navigation */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Button
@@ -243,12 +220,12 @@ export function SchedulingCalendar({
                 <Button
                   variant="outline"
                   className={cn(
-                    'flex-1 sm:flex-none sm:w-[200px] justify-start text-left font-normal text-sm',
+                    'flex-1 justify-start text-left text-sm font-normal sm:w-[200px] sm:flex-none',
                     !selectedDate && 'text-muted-foreground'
                   )}
                   size="sm"
                 >
-                  <CalendarIcon className="mr-1.5 sm:mr-2 h-4 w-4" />
+                  <CalendarIcon className="mr-1.5 h-4 w-4 sm:mr-2" />
                   <span className="truncate">{format(selectedDate, 'EEE, MMM d, yyyy')}</span>
                 </Button>
               </PopoverTrigger>
@@ -278,7 +255,12 @@ export function SchedulingCalendar({
             </Button>
 
             {!isToday(selectedDate) && (
-              <Button variant="ghost" size="sm" onClick={handleToday} className="text-xs sm:text-sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToday}
+                className="text-xs sm:text-sm"
+              >
                 Today
               </Button>
             )}
@@ -288,11 +270,9 @@ export function SchedulingCalendar({
           <div className="flex items-center gap-2">
             <Select
               value={modalityFilter}
-              onValueChange={(value) =>
-                setModalityFilter(value as ImagingModality | '')
-              }
+              onValueChange={(value) => setModalityFilter(value as ImagingModality | '')}
             >
-              <SelectTrigger className="flex-1 sm:flex-none sm:w-[140px] text-sm">
+              <SelectTrigger className="flex-1 text-sm sm:w-[140px] sm:flex-none">
                 <SelectValue placeholder="All Modalities" />
               </SelectTrigger>
               <SelectContent>
@@ -312,28 +292,28 @@ export function SchedulingCalendar({
         {isLoading ? (
           <CalendarSkeleton />
         ) : filteredResources.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
-            <Calendar className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4" />
-            <h3 className="text-base sm:text-lg font-semibold">No resources found</h3>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+          <div className="flex flex-col items-center justify-center py-8 text-center sm:py-12">
+            <Calendar className="mb-3 h-10 w-10 text-muted-foreground sm:mb-4 sm:h-12 sm:w-12" />
+            <h3 className="text-base font-semibold sm:text-lg">No resources found</h3>
+            <p className="text-xs text-muted-foreground sm:text-sm">
               {modalityFilter
                 ? `No imaging resources available for ${MODALITY_LABELS[modalityFilter]}`
                 : 'No imaging resources configured yet'}
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+          <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
             <TooltipProvider delayDuration={0}>
-              <table className="w-full border-collapse min-w-[600px]">
+              <table className="w-full min-w-[600px] border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left p-1.5 sm:p-2 border-b bg-muted/50 sticky left-0 min-w-[140px] sm:min-w-[180px] text-xs sm:text-sm">
+                    <th className="sticky left-0 min-w-[140px] border-b bg-muted/50 p-1.5 text-left text-xs sm:min-w-[180px] sm:p-2 sm:text-sm">
                       Resource
                     </th>
                     {timeSlots.map((time) => (
                       <th
                         key={time}
-                        className="p-1 sm:p-2 border-b bg-muted/50 text-center text-[10px] sm:text-xs font-medium min-w-[60px] sm:min-w-[80px]"
+                        className="min-w-[60px] border-b bg-muted/50 p-1 text-center text-[10px] font-medium sm:min-w-[80px] sm:p-2 sm:text-xs"
                       >
                         {formatTime(time)}
                       </th>
@@ -359,17 +339,17 @@ export function SchedulingCalendar({
 
         {/* Legend */}
         {filteredResources.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t text-xs sm:text-sm text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-xs text-muted-foreground sm:mt-4 sm:gap-4 sm:pt-4 sm:text-sm">
             <span className="flex items-center gap-1">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-emerald-500/15 border border-emerald-500/30 dark:bg-emerald-500/20 dark:border-emerald-500/40" />
+              <div className="h-3 w-3 rounded border border-emerald-500/30 bg-emerald-500/15 dark:border-emerald-500/40 dark:bg-emerald-500/20 sm:h-4 sm:w-4" />
               Available
             </span>
             <span className="flex items-center gap-1">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-destructive/10 border border-destructive/30" />
+              <div className="h-3 w-3 rounded border border-destructive/30 bg-destructive/10 sm:h-4 sm:w-4" />
               Booked
             </span>
             {onSlotSelect && (
-              <span className="sm:ml-auto text-[10px] sm:text-xs">
+              <span className="text-[10px] sm:ml-auto sm:text-xs">
                 Click on an available slot to schedule
               </span>
             )}
@@ -407,11 +387,11 @@ function ResourceRow({
   }, [resource.slots]);
 
   return (
-    <tr className="hover:bg-muted/30 transition-colors">
-      <td className="p-1.5 sm:p-2 border-b sticky left-0 bg-background">
+    <tr className="transition-colors hover:bg-muted/30">
+      <td className="sticky left-0 border-b bg-background p-1.5 sm:p-2">
         <div className="flex flex-col gap-0.5 sm:gap-1">
-          <div className="font-medium text-xs sm:text-sm">{resource.resource.name}</div>
-          <div className="flex items-center gap-0.5 sm:gap-1 flex-wrap">
+          <div className="text-xs font-medium sm:text-sm">{resource.resource.name}</div>
+          <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
             {modalities.slice(0, 3).map((mod) => (
               <ModalityBadge key={mod} modality={mod} size="sm" />
             ))}
@@ -421,7 +401,7 @@ function ResourceRow({
               </Badge>
             )}
           </div>
-          <div className="text-[10px] sm:text-xs text-muted-foreground">
+          <div className="text-[10px] text-muted-foreground sm:text-xs">
             {resource.available_slots}/{resource.total_slots} available
           </div>
         </div>
@@ -430,22 +410,22 @@ function ResourceRow({
         const slot = slotMap.get(time);
         if (!slot) {
           return (
-            <td key={time} className="p-1 border-b">
-              <div className="h-12 bg-muted/20 rounded" />
+            <td key={time} className="border-b p-1">
+              <div className="h-12 rounded bg-muted/20" />
             </td>
           );
         }
 
         if (showOnlyAvailable && !slot.is_available) {
           return (
-            <td key={time} className="p-1 border-b">
-              <div className="h-12 bg-muted/50 rounded opacity-30" />
+            <td key={time} className="border-b p-1">
+              <div className="h-12 rounded bg-muted/50 opacity-30" />
             </td>
           );
         }
 
         return (
-          <td key={time} className="p-1 border-b">
+          <td key={time} className="border-b p-1">
             <SlotCell
               slot={slot}
               resourceId={resource.resource.id}
@@ -476,19 +456,17 @@ function SlotCell({ slot, resourceId, onSlotClick, compact }: SlotCellProps) {
       type="button"
       onClick={() => canClick && onSlotClick(resourceId, slot)}
       aria-describedby={slot.appointment ? appointmentId : undefined}
-        disabled={!canClick}
+      disabled={!canClick}
       className={cn(
-        'w-full h-12 rounded border transition-all flex items-center justify-center text-xs',
+        'flex h-12 w-full items-center justify-center rounded border text-xs transition-all',
         isAvailable
-          ? 'bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/15 hover:border-emerald-500/35 dark:bg-emerald-500/20 dark:border-emerald-500/40 dark:hover:bg-emerald-500/25'
-          : 'bg-destructive/10 border-destructive/30 cursor-default',
+          ? 'border-emerald-500/25 bg-emerald-500/10 hover:border-emerald-500/35 hover:bg-emerald-500/15 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/25'
+          : 'cursor-default border-destructive/30 bg-destructive/10',
         canClick && 'cursor-pointer hover:shadow-sm',
         !canClick && isAvailable && 'cursor-default'
       )}
       aria-label={
-        isAvailable
-          ? `Available slot at ${slot.start_time}`
-          : `Booked slot at ${slot.start_time}`
+        isAvailable ? `Available slot at ${slot.start_time}` : `Booked slot at ${slot.start_time}`
       }
     >
       {isAvailable ? (
@@ -511,12 +489,8 @@ function SlotCell({ slot, resourceId, onSlotClick, compact }: SlotCellProps) {
         <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent side="top" className="max-w-[200px]">
           <div className="space-y-1">
-            <p className="font-medium">
-              {slot.appointment.patient_name || 'Unknown Patient'}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {slot.appointment.appointment_number}
-            </p>
+            <p className="font-medium">{slot.appointment.patient_name || 'Unknown Patient'}</p>
+            <p className="text-xs text-muted-foreground">{slot.appointment.appointment_number}</p>
             <Badge variant="outline" className="text-xs">
               {slot.appointment.status}
             </Badge>

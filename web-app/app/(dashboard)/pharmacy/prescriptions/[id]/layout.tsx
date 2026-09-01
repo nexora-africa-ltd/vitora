@@ -9,18 +9,10 @@ import { usePrescription } from '@/lib/hooks/use-pharmacy';
  * Resolves patient ID from the prescription record so child components
  * have access to usePatientContext() for allergy warnings, SHA status, etc.
  */
-export default function PrescriptionDetailLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function PrescriptionDetailLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const prescriptionId = String(params.id);
   const { data: prescription } = usePrescription(prescriptionId);
 
-  return (
-    <PatientProvider patientId={prescription?.patient ?? null}>
-      {children}
-    </PatientProvider>
-  );
+  return <PatientProvider patientId={prescription?.patient ?? null}>{children}</PatientProvider>;
 }

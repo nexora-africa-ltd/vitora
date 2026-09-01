@@ -21,11 +21,11 @@ export function EncounterChiefComplaintCard({ encounter }: EncounterChiefComplai
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const canEditChiefComplaint =
-    canAccessModule('encounters' as never)
-    && canPerformAction('encounters.edit' as never)
-    && encounter.triage_status === 'COMPLETED'
-    && encounter.status !== 'CLOSED'
-    && encounter.status !== 'CANCELLED';
+    canAccessModule('encounters' as never) &&
+    canPerformAction('encounters.edit' as never) &&
+    encounter.triage_status === 'COMPLETED' &&
+    encounter.status !== 'CLOSED' &&
+    encounter.status !== 'CANCELLED';
 
   const handleConfirm = async (data: {
     chief_complaint: string;

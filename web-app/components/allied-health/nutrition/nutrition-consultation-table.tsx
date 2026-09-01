@@ -88,10 +88,10 @@ export function NutritionConsultationTable({ initialParams }: NutritionConsultat
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <form onSubmit={handleSearch} className="flex flex-1 gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search consultations, patients..."
               value={searchTerm}
@@ -120,7 +120,7 @@ export function NutritionConsultationTable({ initialParams }: NutritionConsultat
           </Select>
 
           <Button onClick={() => router.push('/allied-health/nutrition/consultations/new')}>
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             New Consultation
           </Button>
         </div>
@@ -142,7 +142,7 @@ export function NutritionConsultationTable({ initialParams }: NutritionConsultat
         />
       ) : (
         <>
-          <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -192,9 +192,7 @@ export function NutritionConsultationTable({ initialParams }: NutritionConsultat
                     </TableCell>
                     <TableCell>
                       {consultation.nutritional_status ? (
-                        <Badge variant="outline">
-                          {consultation.nutritional_status}
-                        </Badge>
+                        <Badge variant="outline">{consultation.nutritional_status}</Badge>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
@@ -229,9 +227,7 @@ export function NutritionConsultationTable({ initialParams }: NutritionConsultat
                 variant="outline"
                 size="sm"
                 disabled={!data.previous}
-                onClick={() =>
-                  setParams((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))
-                }
+                onClick={() => setParams((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))}
               >
                 <ChevronLeft className="h-4 w-4" />
                 Previous
@@ -240,9 +236,7 @@ export function NutritionConsultationTable({ initialParams }: NutritionConsultat
                 variant="outline"
                 size="sm"
                 disabled={!data.next}
-                onClick={() =>
-                  setParams((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))
-                }
+                onClick={() => setParams((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))}
               >
                 Next
                 <ChevronRight className="h-4 w-4" />

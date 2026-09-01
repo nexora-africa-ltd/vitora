@@ -3,15 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Play,
-  Pause,
-  Archive,
-  Shield,
-} from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Play, Pause, Archive, Shield } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +20,10 @@ const STATUS_BADGE_VARIANTS: Record<string, 'secondary' | 'success' | 'warning' 
   RETIRED: 'outline',
 };
 
-const PRIORITY_BADGE_VARIANTS: Record<string, 'destructive' | 'warning' | 'info' | 'secondary' | 'outline'> = {
+const PRIORITY_BADGE_VARIANTS: Record<
+  string,
+  'destructive' | 'warning' | 'info' | 'secondary' | 'outline'
+> = {
   CRITICAL: 'destructive',
   HIGH: 'warning',
   MEDIUM: 'info',
@@ -59,7 +54,7 @@ const EVIDENCE_LABELS: Record<string, string> = {
 
 function ConditionDisplay({ condition }: { condition: Record<string, unknown> | null }) {
   if (!condition || typeof condition !== 'object') {
-    return <p className="text-sm text-muted-foreground italic">No trigger conditions defined.</p>;
+    return <p className="text-sm italic text-muted-foreground">No trigger conditions defined.</p>;
   }
 
   const type = condition.type as string;
@@ -83,7 +78,8 @@ function ConditionDisplay({ condition }: { condition: Record<string, unknown> | 
               <div className="rounded border p-2">
                 <span className="text-xs text-muted-foreground">Minimum Threshold</span>
                 <p className="text-sm font-medium">
-                  &lt; {min} {minLabel && <span className="text-muted-foreground">({minLabel})</span>}
+                  &lt; {min}{' '}
+                  {minLabel && <span className="text-muted-foreground">({minLabel})</span>}
                 </p>
               </div>
             )}
@@ -91,14 +87,20 @@ function ConditionDisplay({ condition }: { condition: Record<string, unknown> | 
               <div className="rounded border p-2">
                 <span className="text-xs text-muted-foreground">Maximum Threshold</span>
                 <p className="text-sm font-medium">
-                  &gt; {max} {maxLabel && <span className="text-muted-foreground">({maxLabel})</span>}
+                  &gt; {max}{' '}
+                  {maxLabel && <span className="text-muted-foreground">({maxLabel})</span>}
                 </p>
               </div>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
             Triggers when {vital.replace(/_/g, ' ')} is
-            {min != null && max != null ? ` below ${min} or above ${max}` : min != null ? ` below ${min}` : ` above ${max}`}.
+            {min != null && max != null
+              ? ` below ${min} or above ${max}`
+              : min != null
+                ? ` below ${min}`
+                : ` above ${max}`}
+            .
           </p>
         </div>
       );
@@ -113,7 +115,8 @@ function ConditionDisplay({ condition }: { condition: Record<string, unknown> | 
           <Badge variant="secondary">Drug-Allergy Interaction</Badge>
           {checkMode === 'prescribing' ? (
             <p className="text-sm">
-              Triggers when prescribing a drug that matches any of the patient&apos;s recorded allergies.
+              Triggers when prescribing a drug that matches any of the patient&apos;s recorded
+              allergies.
             </p>
           ) : substance ? (
             <div className="space-y-2">
@@ -124,19 +127,22 @@ function ConditionDisplay({ condition }: { condition: Record<string, unknown> | 
               {crossReactive && crossReactive.length > 0 && (
                 <div className="rounded border p-2">
                   <span className="text-xs text-muted-foreground">Cross-reactive drugs</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <div className="mt-1 flex flex-wrap gap-1">
                     {crossReactive.map((drug) => (
-                      <Badge key={drug} variant="outline" className="text-xs capitalize">{drug}</Badge>
+                      <Badge key={drug} variant="outline" className="text-xs capitalize">
+                        {drug}
+                      </Badge>
                     ))}
                   </div>
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Triggers when patient has allergy to {substance} and is prescribed {substance} or cross-reactive drugs.
+                Triggers when patient has allergy to {substance} and is prescribed {substance} or
+                cross-reactive drugs.
               </p>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground italic">Generic drug-allergy check.</p>
+            <p className="text-sm italic text-muted-foreground">Generic drug-allergy check.</p>
           )}
         </div>
       );
@@ -151,9 +157,11 @@ function ConditionDisplay({ condition }: { condition: Record<string, unknown> | 
           {drugs && drugs.length > 0 && (
             <div className="rounded border p-2">
               <span className="text-xs text-muted-foreground">Interacting Drugs</span>
-              <div className="flex flex-wrap gap-1 mt-1">
+              <div className="mt-1 flex flex-wrap gap-1">
                 {drugs.map((drug) => (
-                  <Badge key={drug} variant="outline" className="text-xs capitalize">{drug}</Badge>
+                  <Badge key={drug} variant="outline" className="text-xs capitalize">
+                    {drug}
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -189,13 +197,17 @@ function ConditionDisplay({ condition }: { condition: Record<string, unknown> | 
             {min != null && (
               <div className="rounded border p-2">
                 <span className="text-xs text-muted-foreground">Low Threshold</span>
-                <p className="text-sm font-medium">&lt; {min} {unit || ''}</p>
+                <p className="text-sm font-medium">
+                  &lt; {min} {unit || ''}
+                </p>
               </div>
             )}
             {max != null && (
               <div className="rounded border p-2">
                 <span className="text-xs text-muted-foreground">High Threshold</span>
-                <p className="text-sm font-medium">&gt; {max} {unit || ''}</p>
+                <p className="text-sm font-medium">
+                  &gt; {max} {unit || ''}
+                </p>
               </div>
             )}
           </div>
@@ -214,7 +226,7 @@ function ConditionDisplay({ condition }: { condition: Record<string, unknown> | 
           {expression && (
             <div className="rounded border p-2">
               <span className="text-xs text-muted-foreground">Expression</span>
-              <p className="text-sm font-mono text-xs">{expression}</p>
+              <p className="font-mono text-sm text-xs">{expression}</p>
             </div>
           )}
           <p className="text-xs text-muted-foreground">
@@ -255,7 +267,7 @@ function ConditionDisplay({ condition }: { condition: Record<string, unknown> | 
       return (
         <div className="space-y-2">
           <Badge variant="outline">Unknown Type: {type || 'none'}</Badge>
-          <p className="text-sm text-muted-foreground italic">
+          <p className="text-sm italic text-muted-foreground">
             Condition type not recognized. See raw JSON below for details.
           </p>
         </div>
@@ -315,7 +327,9 @@ export default function CDSRuleDetailPage() {
         <PageHeader title="CDS Rule" />
         <Card className="p-6 text-center">
           <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">You do not have permission to view CDS rules.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to view CDS rules.
+          </p>
         </Card>
       </div>
     );
@@ -327,9 +341,9 @@ export default function CDSRuleDetailPage() {
         <PageHeader title="CDS Rule" />
         <Card className="p-6">
           <div className="animate-pulse space-y-3">
-            <div className="h-4 bg-muted rounded w-1/3" />
-            <div className="h-4 bg-muted rounded w-2/3" />
-            <div className="h-4 bg-muted rounded w-1/2" />
+            <div className="h-4 w-1/3 rounded bg-muted" />
+            <div className="h-4 w-2/3 rounded bg-muted" />
+            <div className="h-4 w-1/2 rounded bg-muted" />
           </div>
         </Card>
       </div>
@@ -359,20 +373,34 @@ export default function CDSRuleDetailPage() {
         actions={
           <div className="flex gap-2">
             {canActivate && (
-              <Button size="sm" onClick={() => activateMutation.mutate()} disabled={activateMutation.isPending}>
-                <Play className="h-4 w-4 mr-1" />
+              <Button
+                size="sm"
+                onClick={() => activateMutation.mutate()}
+                disabled={activateMutation.isPending}
+              >
+                <Play className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">Activate</span>
               </Button>
             )}
             {canDeactivate && (
-              <Button size="sm" variant="outline" onClick={() => deactivateMutation.mutate()} disabled={deactivateMutation.isPending}>
-                <Pause className="h-4 w-4 mr-1" />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => deactivateMutation.mutate()}
+                disabled={deactivateMutation.isPending}
+              >
+                <Pause className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">Deactivate</span>
               </Button>
             )}
             {canRetire && (
-              <Button size="sm" variant="destructive" onClick={() => retireMutation.mutate()} disabled={retireMutation.isPending}>
-                <Archive className="h-4 w-4 mr-1" />
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => retireMutation.mutate()}
+                disabled={retireMutation.isPending}
+              >
+                <Archive className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">Retire</span>
               </Button>
             )}
@@ -381,17 +409,18 @@ export default function CDSRuleDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
-            {rule.name}
-          </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            {CATEGORY_LABELS[rule.category] ?? rule.category} • {EVIDENCE_LABELS[rule.evidence_level] ?? rule.evidence_level}
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">{rule.name}</p>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            {CATEGORY_LABELS[rule.category] ?? rule.category} •{' '}
+            {EVIDENCE_LABELS[rule.evidence_level] ?? rule.evidence_level}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge variant={PRIORITY_BADGE_VARIANTS[rule.priority] ?? 'secondary'}>{rule.priority}</Badge>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge variant={PRIORITY_BADGE_VARIANTS[rule.priority] ?? 'secondary'}>
+            {rule.priority}
+          </Badge>
           <Badge variant={STATUS_BADGE_VARIANTS[rule.status] ?? 'secondary'}>{rule.status}</Badge>
         </div>
       </div>
@@ -399,14 +428,20 @@ export default function CDSRuleDetailPage() {
       {/* Description */}
       {rule.description && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
-          <CardContent><p className="text-sm">{rule.description}</p></CardContent>
+          <CardHeader>
+            <CardTitle className="text-base">Description</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">{rule.description}</p>
+          </CardContent>
         </Card>
       )}
 
       {/* Rule Logic */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Rule Logic</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Rule Logic</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-3">
           <div>
             <span className="text-xs text-muted-foreground">Action Type</span>
@@ -414,7 +449,9 @@ export default function CDSRuleDetailPage() {
           </div>
           <div>
             <span className="text-xs text-muted-foreground">Message Template</span>
-            <p className="text-sm bg-muted/50 p-2 rounded font-mono text-xs">{rule.action_message}</p>
+            <p className="rounded bg-muted/50 p-2 font-mono text-sm text-xs">
+              {rule.action_message}
+            </p>
           </div>
           {rule.suggestion && (
             <div>
@@ -427,14 +464,16 @@ export default function CDSRuleDetailPage() {
 
       {/* Trigger Conditions */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Trigger Conditions</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Trigger Conditions</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-3">
           <ConditionDisplay condition={rule.condition} />
           <details className="text-xs">
-            <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
               View raw condition JSON
             </summary>
-            <pre className="mt-2 bg-muted/50 p-2 rounded overflow-x-auto">
+            <pre className="mt-2 overflow-x-auto rounded bg-muted/50 p-2">
               {JSON.stringify(rule.condition, null, 2)}
             </pre>
           </details>
@@ -442,7 +481,7 @@ export default function CDSRuleDetailPage() {
       </Card>
 
       {/* Statistics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Card className="p-3">
           <div className="text-xs text-muted-foreground">Triggers</div>
           <div className="text-2xl font-bold">{rule.trigger_count}</div>
@@ -465,11 +504,15 @@ export default function CDSRuleDetailPage() {
       {/* References */}
       {rule.references.length > 0 && (
         <Card>
-          <CardHeader><CardTitle className="text-base">References</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">References</CardTitle>
+          </CardHeader>
           <CardContent>
-            <ul className="list-disc pl-4 space-y-1">
+            <ul className="list-disc space-y-1 pl-4">
               {rule.references.map((ref, idx) => (
-                <li key={idx} className="text-sm">{ref}</li>
+                <li key={idx} className="text-sm">
+                  {ref}
+                </li>
               ))}
             </ul>
           </CardContent>
@@ -479,7 +522,9 @@ export default function CDSRuleDetailPage() {
       {/* Approval */}
       {rule.approved_by_name && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Approval</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Approval</CardTitle>
+          </CardHeader>
           <CardContent className="text-sm">
             Approved by <span className="font-medium">{rule.approved_by_name}</span>
             {rule.approved_at && <> on {formatDateTime(rule.approved_at)}</>}

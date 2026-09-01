@@ -116,7 +116,7 @@ const BulkCreateShiftsResultSchema = z.object({
     z.object({
       index: z.number(),
       errors: z.union([z.string(), z.record(z.array(z.string()))]),
-    }),
+    })
   ),
 });
 
@@ -158,7 +158,7 @@ const ShiftTypeConfigDefaultsSchema = z.record(
     end_time: z.string(),
     label: z.string(),
     color: z.string(),
-  }),
+  })
 );
 
 // =============================================================================
@@ -200,9 +200,15 @@ export const resourcesApi = {
 
   /** Get clinics linked to a PLACE resource via ClinicRoom. */
   linkedClinics: async (
-    id: number,
+    id: number
   ): Promise<
-    { clinic_room_id: number; clinic_id: number; clinic_name: string; clinic_code: string; is_default: boolean }[]
+    {
+      clinic_room_id: number;
+      clinic_id: number;
+      clinic_name: string;
+      clinic_code: string;
+      is_default: boolean;
+    }[]
   > => {
     const response = await apiClient.get(`${BASE_URL}/resources/${id}/linked-clinics/`);
     return parseResponse(z.array(LinkedClinicSchema), response.data, {
@@ -251,7 +257,11 @@ export const resourcesApi = {
   },
 
   /** Get available slots for a resource on a specific date. */
-  getAvailability: async (id: number, date: string, appointmentType?: string): Promise<ResourceAvailability> => {
+  getAvailability: async (
+    id: number,
+    date: string,
+    appointmentType?: string
+  ): Promise<ResourceAvailability> => {
     const params: Record<string, string> = { date };
     if (appointmentType) params.appointment_type = appointmentType;
     const response = await apiClient.get(`${BASE_URL}/resources/${id}/availability/`, { params });
@@ -261,10 +271,16 @@ export const resourcesApi = {
   },
 
   /** Get weekly availability for a resource. */
-  getWeeklyAvailability: async (id: number, startDate: string, weeks?: number): Promise<Record<string, unknown>> => {
+  getWeeklyAvailability: async (
+    id: number,
+    startDate: string,
+    weeks?: number
+  ): Promise<Record<string, unknown>> => {
     const params: Record<string, string | number> = { start_date: startDate };
     if (weeks) params.weeks = weeks;
-    const response = await apiClient.get(`${BASE_URL}/resources/${id}/availability/weekly/`, { params });
+    const response = await apiClient.get(`${BASE_URL}/resources/${id}/availability/weekly/`, {
+      params,
+    });
     return parseResponse(WeeklyAvailabilitySchema, response.data, {
       context: 'resourcesApi.getWeeklyAvailability',
     });
@@ -275,7 +291,7 @@ export const resourcesApi = {
     id: number,
     date: string,
     startTime: string,
-    durationMinutes: number,
+    durationMinutes: number
   ): Promise<SlotCheckResult> => {
     const response = await apiClient.get(`${BASE_URL}/resources/${id}/availability/check/`, {
       params: { date, start_time: startTime, duration_minutes: durationMinutes },
@@ -399,7 +415,9 @@ export const appointmentsApi = {
 
   /** Complete an appointment. */
   complete: async (id: number, notes?: string): Promise<Appointment> => {
-    const response = await apiClient.post(`${BASE_URL}/appointments/${id}/complete/`, { notes: notes || '' });
+    const response = await apiClient.post(`${BASE_URL}/appointments/${id}/complete/`, {
+      notes: notes || '',
+    });
     return parseResponse(AppointmentSchema, response.data, {
       context: 'appointmentsApi.complete',
     });
@@ -407,7 +425,9 @@ export const appointmentsApi = {
 
   /** Cancel an appointment. */
   cancel: async (id: number, reason?: string): Promise<Appointment> => {
-    const response = await apiClient.post(`${BASE_URL}/appointments/${id}/cancel/`, { reason: reason || '' });
+    const response = await apiClient.post(`${BASE_URL}/appointments/${id}/cancel/`, {
+      reason: reason || '',
+    });
     return parseResponse(AppointmentSchema, response.data, {
       context: 'appointmentsApi.cancel',
     });
@@ -484,7 +504,10 @@ export const shiftsApi = {
   },
 
   /** Get staff workload aggregation for a date range. */
-  staffWorkload: async (params?: { from_date?: string; to_date?: string }): Promise<StaffWorkload[]> => {
+  staffWorkload: async (params?: {
+    from_date?: string;
+    to_date?: string;
+  }): Promise<StaffWorkload[]> => {
     const response = await apiClient.get(`${BASE_URL}/shifts/staff-workload/`, { params });
     return parseResponse(StaffWorkloadSchema.array(), response.data, {
       context: 'shiftsApi.staffWorkload',
@@ -502,7 +525,11 @@ export const shiftsApi = {
   },
 
   /** Bulk-delete shifts in a date range. Pass includeAll to also remove active/completed shifts. */
-  bulkDelete: async (fromDate: string, toDate: string, includeAll = false): Promise<{ deleted: number }> => {
+  bulkDelete: async (
+    fromDate: string,
+    toDate: string,
+    includeAll = false
+  ): Promise<{ deleted: number }> => {
     const response = await apiClient.post(`${BASE_URL}/shifts/bulk-delete/`, {
       from_date: fromDate,
       to_date: toDate,
@@ -514,8 +541,13 @@ export const shiftsApi = {
   },
 
   /** Check for cross-facility scheduling conflicts. */
-  crossFacilityConflicts: async (params: { from_date: string; to_date: string }): Promise<CrossFacilityConflict[]> => {
-    const response = await apiClient.get(`${BASE_URL}/shifts/cross-facility-conflicts/`, { params });
+  crossFacilityConflicts: async (params: {
+    from_date: string;
+    to_date: string;
+  }): Promise<CrossFacilityConflict[]> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/cross-facility-conflicts/`, {
+      params,
+    });
     return parseResponse(z.array(CrossFacilityConflictSchema), response.data, {
       context: 'shiftsApi.crossFacilityConflicts',
     });
@@ -563,7 +595,12 @@ export const schedulingSettingsApi = {
 // =============================================================================
 
 export const staffConstraintsApi = {
-  list: async (params?: { staff_resource?: number; is_active?: boolean; page?: number; page_size?: number }): Promise<{ count: number; results: StaffConstraint[] }> => {
+  list: async (params?: {
+    staff_resource?: number;
+    is_active?: boolean;
+    page?: number;
+    page_size?: number;
+  }): Promise<{ count: number; results: StaffConstraint[] }> => {
     const response = await apiClient.get(`${BASE_URL}/constraints/`, { params });
     return parseResponse(PaginatedStaffConstraintSchema, response.data, {
       context: 'staffConstraintsApi.list',
@@ -584,7 +621,10 @@ export const staffConstraintsApi = {
     });
   },
 
-  update: async (id: number, data: Partial<StaffConstraintCreateData>): Promise<StaffConstraint> => {
+  update: async (
+    id: number,
+    data: Partial<StaffConstraintCreateData>
+  ): Promise<StaffConstraint> => {
     const response = await apiClient.patch(`${BASE_URL}/constraints/${id}/`, data);
     return parseResponse(StaffConstraintSchema, response.data, {
       context: 'staffConstraintsApi.update',
@@ -821,7 +861,10 @@ export const shiftTypeConfigsApi = {
   },
 
   /** Update a shift type config. */
-  update: async (id: number, data: Partial<ShiftTypeConfigCreateData>): Promise<ShiftTypeConfig> => {
+  update: async (
+    id: number,
+    data: Partial<ShiftTypeConfigCreateData>
+  ): Promise<ShiftTypeConfig> => {
     const response = await apiClient.patch(`${BASE_URL}/shift-type-configs/${id}/`, data);
     return parseResponse(ShiftTypeConfigSchema, response.data, {
       context: 'shiftTypeConfigsApi.update',
@@ -843,7 +886,7 @@ export const shiftTypeConfigsApi = {
 
   /** Bulk create or update multiple configs at once. */
   bulkUpsert: async (
-    items: ShiftTypeConfigCreateData[],
+    items: ShiftTypeConfigCreateData[]
   ): Promise<ShiftTypeConfigBulkUpsertResult> => {
     const response = await apiClient.post(`${BASE_URL}/shift-type-configs/bulk_upsert/`, items);
     return parseResponse(ShiftTypeConfigBulkUpsertResultSchema, response.data, {

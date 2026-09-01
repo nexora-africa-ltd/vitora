@@ -13,7 +13,14 @@
  */
 'use client';
 
-import React, { useCallback, useRef, useState, useEffect, useMemo, type PointerEvent as RPointerEvent } from 'react';
+import React, {
+  useCallback,
+  useRef,
+  useState,
+  useEffect,
+  useMemo,
+  type PointerEvent as RPointerEvent,
+} from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -38,9 +45,17 @@ import { useAIFeedback } from '@/lib/hooks/use-ai';
 import { useProactiveInsights } from '@/lib/hooks/use-proactive-insights';
 import { ProactiveInsightsPanel } from './proactive-insight-card';
 import { TibaBotStatusIndicator } from './tibabot-status-indicator';
-import { assessContextSufficiency, mergeContextWithEnrichment } from '@/lib/utils/ai-context-sufficiency';
+import {
+  assessContextSufficiency,
+  mergeContextWithEnrichment,
+} from '@/lib/utils/ai-context-sufficiency';
 import { AIContextEnrichmentForm } from './ai-context-enrichment';
-import type { AIChatMessage, AIVerbosity, AIFeedbackDirection, AIQuickAction } from '@/lib/types/ai';
+import type {
+  AIChatMessage,
+  AIVerbosity,
+  AIFeedbackDirection,
+  AIQuickAction,
+} from '@/lib/types/ai';
 import { AI_VERBOSITY_OPTIONS } from '@/lib/types/ai';
 
 // =============================================================================
@@ -138,9 +153,9 @@ const ChatComposer = React.memo(function ChatComposer({
 
   return (
     <div className="p-3">
-      <div className="flex items-center gap-1.5 mb-2">
-        <Gauge className="h-3 w-3 text-muted-foreground shrink-0" />
-        <div className="flex gap-0.5 flex-wrap">
+      <div className="mb-2 flex items-center gap-1.5">
+        <Gauge className="h-3 w-3 shrink-0 text-muted-foreground" />
+        <div className="flex flex-wrap gap-0.5">
           {(['concise', 'standard', 'educational'] as AIVerbosity[]).map((v) => {
             const opt = AI_VERBOSITY_OPTIONS.find((o) => o.value === v);
             return (
@@ -149,7 +164,7 @@ const ChatComposer = React.memo(function ChatComposer({
                 type="button"
                 onClick={() => setVerbosity(v)}
                 className={cn(
-                  'px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
+                  'rounded px-2 py-0.5 text-[10px] font-medium transition-colors',
                   verbosity === v
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -178,7 +193,7 @@ const ChatComposer = React.memo(function ChatComposer({
             'text-sm placeholder:text-muted-foreground',
             'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
             'disabled:cursor-not-allowed disabled:opacity-50',
-            'min-h-[40px] max-h-[180px]'
+            'max-h-[180px] min-h-[40px]'
           )}
           rows={1}
         />
@@ -191,7 +206,7 @@ const ChatComposer = React.memo(function ChatComposer({
           {isSending ? 'TibaBot is thinking...' : <Send className="h-4 w-4" />}
         </Button>
       </div>
-      <p className="mt-1.5 text-[10px] text-muted-foreground text-center">
+      <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
         Advisory only — always verify with clinical guidelines
       </p>
     </div>
@@ -215,7 +230,11 @@ const STREAMING_STATUS_MESSAGES = [
   'One moment while I double-check...',
 ] as const;
 
-const MessageBubble = React.memo(function MessageBubble({ message, feedbackGiven, onFeedback }: MessageBubbleProps) {
+const MessageBubble = React.memo(function MessageBubble({
+  message,
+  feedbackGiven,
+  onFeedback,
+}: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const isAssistant = message.role === 'assistant';
@@ -236,19 +255,14 @@ const MessageBubble = React.memo(function MessageBubble({ message, feedbackGiven
   }, [message.isStreaming]);
 
   return (
-    <div
-      className={cn(
-        'flex w-full',
-        isUser ? 'justify-end' : 'justify-start'
-      )}
-    >
+    <div className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}>
       <div className="max-w-[85%]">
         <div
           className={cn(
-            'rounded-2xl px-4 py-2.5 text-sm leading-relaxed overflow-hidden',
-            isUser && 'bg-primary text-primary-foreground rounded-br-md',
-            !isUser && !isSystem && 'bg-muted text-foreground rounded-bl-md',
-            isSystem && 'bg-muted/50 text-muted-foreground text-xs italic text-center w-full'
+            'overflow-hidden rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
+            isUser && 'rounded-br-md bg-primary text-primary-foreground',
+            !isUser && !isSystem && 'rounded-bl-md bg-muted text-foreground',
+            isSystem && 'w-full bg-muted/50 text-center text-xs italic text-muted-foreground'
           )}
         >
           {/* Streaming indicator */}
@@ -262,7 +276,7 @@ const MessageBubble = React.memo(function MessageBubble({ message, feedbackGiven
           ) : message.isStreaming ? (
             <div className="whitespace-pre-wrap break-words">{message.content}</div>
           ) : (
-            <div className="tibabot-markdown break-words overflow-hidden">
+            <div className="tibabot-markdown overflow-hidden break-words">
               <Markdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -279,7 +293,7 @@ const MessageBubble = React.memo(function MessageBubble({ message, feedbackGiven
                   pre: ({ children, ...props }) => (
                     <pre
                       {...props}
-                      className="overflow-x-auto rounded bg-black/10 p-2 text-xs my-1"
+                      className="my-1 overflow-x-auto rounded bg-black/10 p-2 text-xs"
                     >
                       {children}
                     </pre>
@@ -287,10 +301,7 @@ const MessageBubble = React.memo(function MessageBubble({ message, feedbackGiven
                   code: ({ children, className: codeClassName, ...props }) => {
                     const isInline = !codeClassName;
                     return isInline ? (
-                      <code
-                        {...props}
-                        className="rounded bg-black/10 px-1 py-0.5 text-xs"
-                      >
+                      <code {...props} className="rounded bg-black/10 px-1 py-0.5 text-xs">
                         {children}
                       </code>
                     ) : (
@@ -309,18 +320,18 @@ const MessageBubble = React.memo(function MessageBubble({ message, feedbackGiven
 
         {/* Feedback buttons — only on assistant messages that are done streaming */}
         {showFeedback && (
-          <div className="flex items-center gap-1 mt-1 ml-1">
+          <div className="ml-1 mt-1 flex items-center gap-1">
             <button
               type="button"
               onClick={() => onFeedback(message.id, 'up')}
               disabled={feedbackGiven != null}
               className={cn(
-                'p-1 rounded transition-colors',
+                'rounded p-1 transition-colors',
                 feedbackGiven === 'up'
                   ? 'text-green-600 dark:text-green-400'
                   : feedbackGiven != null
-                    ? 'text-muted-foreground/30 cursor-default'
-                    : 'text-muted-foreground hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/20'
+                    ? 'cursor-default text-muted-foreground/30'
+                    : 'text-muted-foreground hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950/20 dark:hover:text-green-400'
               )}
               title={feedbackGiven === 'up' ? 'You rated this helpful' : 'Helpful'}
             >
@@ -331,19 +342,19 @@ const MessageBubble = React.memo(function MessageBubble({ message, feedbackGiven
               onClick={() => onFeedback(message.id, 'down')}
               disabled={feedbackGiven != null}
               className={cn(
-                'p-1 rounded transition-colors',
+                'rounded p-1 transition-colors',
                 feedbackGiven === 'down'
                   ? 'text-red-600 dark:text-red-400'
                   : feedbackGiven != null
-                    ? 'text-muted-foreground/30 cursor-default'
-                    : 'text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20'
+                    ? 'cursor-default text-muted-foreground/30'
+                    : 'text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20 dark:hover:text-red-400'
               )}
               title={feedbackGiven === 'down' ? 'You rated this unhelpful' : 'Not helpful'}
             >
               <ThumbsDown className={cn('h-3 w-3', feedbackGiven === 'down' && 'fill-current')} />
             </button>
             {feedbackGiven && (
-              <span className="text-[10px] text-muted-foreground ml-1">
+              <span className="ml-1 text-[10px] text-muted-foreground">
                 Thanks for the feedback
               </span>
             )}
@@ -486,9 +497,13 @@ export function AIChatPanel({
 
       // Find the preceding user message to include as user_query
       const msgIndex = messages.findIndex((m) => m.id === msg.id);
-      const userMsg = msgIndex > 0
-        ? messages.slice(0, msgIndex).reverse().find((m) => m.role === 'user')
-        : undefined;
+      const userMsg =
+        msgIndex > 0
+          ? messages
+              .slice(0, msgIndex)
+              .reverse()
+              .find((m) => m.role === 'user')
+          : undefined;
 
       setFeedbackMap((prev) => ({ ...prev, [msg.id]: direction }));
       feedbackMutation.mutate({
@@ -512,13 +527,16 @@ export function AIChatPanel({
   })();
 
   return (
-    <div className={cn('relative flex flex-col h-full', className)}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+    <div className={cn('relative flex h-full flex-col', className)}>
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+        aria-hidden="true"
+      />
       {/* Header */}
       {showHeader && (
         <>
           <div
-            className="flex items-center justify-between px-4 py-3 md:cursor-default touch-none select-none"
+            className="flex touch-none select-none items-center justify-between px-4 py-3 md:cursor-default"
             {...(headerDragHandlers ?? {})}
           >
             <div className="flex items-center gap-2.5">
@@ -530,9 +548,7 @@ export function AIChatPanel({
               />
               <div>
                 <h3 className="text-sm font-semibold leading-tight">TibaBot</h3>
-                <p className="text-xs text-muted-foreground">
-                  {headerSubtitle}
-                </p>
+                <p className="text-xs text-muted-foreground">{headerSubtitle}</p>
               </div>
             </div>
 
@@ -593,7 +609,7 @@ export function AIChatPanel({
               <p className="text-sm font-medium text-foreground">
                 {isAvailable ? 'How can I help?' : 'TibaBot is currently unavailable'}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground max-w-[240px]">
+              <p className="mt-1 max-w-[240px] text-xs text-muted-foreground">
                 {isAvailable
                   ? 'Ask clinical questions, get differential diagnoses, or look up ICD-10 codes.'
                   : 'The AI service is unreachable. Try again later.'}
@@ -608,9 +624,7 @@ export function AIChatPanel({
                 size="sm"
                 className="h-7 px-2.5 text-[11px]"
                 onClick={() =>
-                  setVisibleMessageCount((prev) =>
-                    Math.min(messages.length, prev + LOAD_MORE_STEP)
-                  )
+                  setVisibleMessageCount((prev) => Math.min(messages.length, prev + LOAD_MORE_STEP))
                 }
               >
                 Load earlier messages
@@ -636,24 +650,27 @@ export function AIChatPanel({
       {/* Clinical Assist CTA (encounter-aware) + context indicator */}
       {isEncounterAware && isAvailable && (
         <>
-          <div className="px-3 pt-2 pb-1.5 space-y-1.5">
+          <div className="space-y-1.5 px-3 pb-1.5 pt-2">
             {/* Context sufficiency indicator */}
             <div
               className={cn(
                 'flex items-start gap-2 rounded-lg px-3 py-2 text-xs',
-                contextSufficiency.level === 'sufficient' && 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400',
-                contextSufficiency.level === 'partial' && 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400',
-                contextSufficiency.level === 'insufficient' && 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400'
+                contextSufficiency.level === 'sufficient' &&
+                  'bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-400',
+                contextSufficiency.level === 'partial' &&
+                  'bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400',
+                contextSufficiency.level === 'insufficient' &&
+                  'bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400'
               )}
             >
               {contextSufficiency.level === 'sufficient' && (
-                <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               )}
               {contextSufficiency.level === 'partial' && (
-                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               )}
               {contextSufficiency.level === 'insufficient' && (
-                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               )}
               <div className="min-w-0">
                 <span className="font-medium">
@@ -671,7 +688,7 @@ export function AIChatPanel({
             {/* Ask about patient button */}
             <button
               type="button"
-              className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/5 transition-colors w-full text-left rounded-lg"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-primary transition-colors hover:bg-primary/5"
               onClick={onAskAboutPatient}
               disabled={isSending}
             >
@@ -694,7 +711,7 @@ export function AIChatPanel({
       {/* Proactive Insights (when encounter-aware) */}
       {isEncounterAware && (
         <>
-          <div className="px-3 py-2 max-h-[200px] overflow-y-auto">
+          <div className="max-h-[200px] overflow-y-auto px-3 py-2">
             <ProactiveInsightsPanel
               insights={proactiveInsights}
               onDismiss={dismissProactiveInsight}
@@ -718,7 +735,7 @@ export function AIChatPanel({
               <button
                 key={action.id}
                 type="button"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border border-teal-500/20 text-teal-700 bg-teal-500/5 hover:bg-teal-500/10 dark:text-teal-300 dark:border-teal-400/20 dark:bg-teal-400/5 dark:hover:bg-teal-400/10 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/20 bg-teal-500/5 px-3 py-1.5 text-xs font-medium text-teal-700 transition-colors hover:bg-teal-500/10 disabled:opacity-50 dark:border-teal-400/20 dark:bg-teal-400/5 dark:text-teal-300 dark:hover:bg-teal-400/10"
                 onClick={() => onQuickAction?.(action)}
                 disabled={isSending}
               >

@@ -38,7 +38,10 @@ export function IDSRDashboardWidget() {
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-base sm:text-lg">
-          <Link href="/surveillance/idsr" className="underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-primary sm:no-underline">
+          <Link
+            href="/surveillance/idsr"
+            className="underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-primary sm:no-underline"
+          >
             IDSR Weekly Reports
           </Link>
         </CardTitle>
@@ -50,9 +53,7 @@ export function IDSRDashboardWidget() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">This Week</p>
-            <p className="text-2xl font-semibold">
-              {currentWeek?.total_cases ?? 0}
-            </p>
+            <p className="text-2xl font-semibold">{currentWeek?.total_cases ?? 0}</p>
           </div>
           {currentWeek?.status ? (
             <IDSRStatusBadge status={currentWeek.status} />

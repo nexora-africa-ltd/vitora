@@ -46,7 +46,7 @@ export default function FacilitiesPage() {
             isSuperuser ? (
               <Button asChild size="sm">
                 <CreateRouteLink href="/admin/facilities/new">
-                  <Plus className="h-4 w-4 mr-1" />
+                  <Plus className="mr-1 h-4 w-4" />
                   New Facility
                 </CreateRouteLink>
               </Button>
@@ -55,7 +55,7 @@ export default function FacilitiesPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           <AdminStatCard
             title="Total Facilities"
             value={isLoading ? '...' : totalFacilities}
@@ -88,7 +88,9 @@ export default function FacilitiesPage() {
         {/* Table */}
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
           </div>
         ) : (
           <ResponsiveTable
@@ -100,17 +102,13 @@ export default function FacilitiesPage() {
                 key: 'name',
                 header: 'Facility',
                 sortable: true,
-                cell: (f) => (
-                  <p className="font-medium">{f.name}</p>
-                ),
+                cell: (f) => <p className="font-medium">{f.name}</p>,
               },
               {
                 key: 'mfl_code',
                 header: 'MFL Code',
                 sortable: true,
-                cell: (f) => (
-                  <span className="font-mono text-xs">{f.mfl_code}</span>
-                ),
+                cell: (f) => <span className="font-mono text-xs">{f.mfl_code}</span>,
               },
               {
                 key: 'level',
@@ -173,12 +171,13 @@ export default function FacilitiesPage() {
             mobileCard={(f: FacilityListItem) => (
               <div className="flex items-center justify-between p-3">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{f.name}</p>
+                  <p className="truncate font-medium">{f.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {f.mfl_code} · {formatFacilityLevel(f.level, f.level_subtype, true)} · {f.county_name}
+                    {f.mfl_code} · {formatFacilityLevel(f.level, f.level_subtype, true)} ·{' '}
+                    {f.county_name}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   <Badge variant={f.is_active ? 'default' : 'secondary'}>
                     {f.is_active ? 'Active' : 'Inactive'}
                   </Badge>

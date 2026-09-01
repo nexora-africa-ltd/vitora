@@ -59,12 +59,12 @@ export function AIFeedbackButtons({
         onClick={() => handleFeedback('up')}
         disabled={given != null}
         className={cn(
-          'p-1 rounded transition-colors',
+          'rounded p-1 transition-colors',
           given === 'up'
             ? 'text-green-600 dark:text-green-400'
             : given != null
-              ? 'text-muted-foreground/30 cursor-default'
-              : 'text-muted-foreground hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/20'
+              ? 'cursor-default text-muted-foreground/30'
+              : 'text-muted-foreground hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950/20 dark:hover:text-green-400'
         )}
         title={given === 'up' ? 'Rated helpful' : 'Helpful'}
       >
@@ -75,22 +75,18 @@ export function AIFeedbackButtons({
         onClick={() => handleFeedback('down')}
         disabled={given != null}
         className={cn(
-          'p-1 rounded transition-colors',
+          'rounded p-1 transition-colors',
           given === 'down'
             ? 'text-red-600 dark:text-red-400'
             : given != null
-              ? 'text-muted-foreground/30 cursor-default'
-              : 'text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20'
+              ? 'cursor-default text-muted-foreground/30'
+              : 'text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20 dark:hover:text-red-400'
         )}
         title={given === 'down' ? 'Rated unhelpful' : 'Not helpful'}
       >
         <ThumbsDown className={cn('h-3.5 w-3.5', given === 'down' && 'fill-current')} />
       </button>
-      {given && (
-        <span className="text-[10px] text-muted-foreground ml-1">
-          Thanks!
-        </span>
-      )}
+      {given && <span className="ml-1 text-[10px] text-muted-foreground">Thanks!</span>}
     </div>
   );
 }

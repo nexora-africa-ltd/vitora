@@ -4,13 +4,13 @@
 
 export { useDebounce } from './use-debounce';
 export { useAutoSave, type AutoSaveStatus } from './use-auto-save';
-export { useIdleTimer, formatCountdown, type IdleTimerConfig, type IdleTimerState } from './use-idle-timer';
 export {
-  usePatientLookup,
-  useTodayCheckins,
-  useCheckinPatient,
-  checkinKeys,
-} from './use-checkin';
+  useIdleTimer,
+  formatCountdown,
+  type IdleTimerConfig,
+  type IdleTimerState,
+} from './use-idle-timer';
+export { usePatientLookup, useTodayCheckins, useCheckinPatient, checkinKeys } from './use-checkin';
 export { useDraftSave } from './use-draft-save';
 export { useEventLogger } from './use-event-logger';
 export {
@@ -169,10 +169,7 @@ export {
 } from './use-imaging';
 
 // Procedure hooks
-export {
-  procedureKeys,
-  useEncounterProcedureOrders,
-} from './use-procedures';
+export { procedureKeys, useEncounterProcedureOrders } from './use-procedures';
 
 // Triage hooks
 export {
@@ -254,15 +251,9 @@ export {
 } from './use-clinics';
 
 // Clinic Queue Actions hook (unified queue action handlers)
-export {
-  useClinicQueueActions,
-  type QueueDialogType,
-} from './use-clinic-queue-actions';
+export { useClinicQueueActions, type QueueDialogType } from './use-clinic-queue-actions';
 
-export {
-  useClinicalWorkflowCounts,
-  type ClinicalWorkflowCounts,
-} from './use-clinical-workflow';
+export { useClinicalWorkflowCounts, type ClinicalWorkflowCounts } from './use-clinical-workflow';
 
 // Patient Allied Health hooks - fetch allied health data by patient
 export {

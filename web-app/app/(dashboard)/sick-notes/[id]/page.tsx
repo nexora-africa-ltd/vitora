@@ -134,7 +134,11 @@ export default function SickNoteDetailPage() {
       facility: facilityDetail
         ? {
             name: facilityDetail.name,
-            address: `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(/^, |, $/g, ''),
+            address:
+              `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(
+                /^, |, $/g,
+                ''
+              ),
             phone: '',
             license: facilityDetail.mfl_code || '',
           }
@@ -159,19 +163,25 @@ export default function SickNoteDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {sickNote.patient_name}
             <span className="text-muted-foreground"> • {sickNote.patient_mrn}</span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Created {format(new Date(sickNote.created_at), 'dd MMM yyyy, HH:mm')}
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <SignatureBadge documentType="SickNote" documentId={id} canSign={sickNote.status === 'ISSUED'} />
-          <Badge className={`${STATUS_COLORS[sickNote.status as SickNoteStatus] || ''} shrink-0 w-fit`}>
+          <SignatureBadge
+            documentType="SickNote"
+            documentId={id}
+            canSign={sickNote.status === 'ISSUED'}
+          />
+          <Badge
+            className={`${STATUS_COLORS[sickNote.status as SickNoteStatus] || ''} w-fit shrink-0`}
+          >
             {SICK_NOTE_STATUS_CONFIG[sickNote.status as SickNoteStatus]?.label || sickNote.status}
           </Badge>
         </div>
@@ -181,17 +191,12 @@ export default function SickNoteDetailPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         {sickNote.status === 'DRAFT' && (
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancel}
-              disabled={isSubmitting}
-            >
-              <Ban className="h-4 w-4 mr-1" />
+            <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSubmitting}>
+              <Ban className="mr-1 h-4 w-4" />
               Cancel
             </Button>
             <Button size="sm" onClick={handleIssue} disabled={isSubmitting}>
-              <CheckCircle2 className="h-4 w-4 mr-1" />
+              <CheckCircle2 className="mr-1 h-4 w-4" />
               Issue
             </Button>
           </>
@@ -199,7 +204,7 @@ export default function SickNoteDetailPage() {
         {sickNote.status === 'ISSUED' && (
           <>
             <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-1" />
+              <Printer className="mr-1 h-4 w-4" />
               Print
             </Button>
             <Button
@@ -208,7 +213,7 @@ export default function SickNoteDetailPage() {
               onClick={() => setRevokeDialogOpen(true)}
               disabled={isSubmitting}
             >
-              <XCircle className="h-4 w-4 mr-1" />
+              <XCircle className="mr-1 h-4 w-4" />
               Revoke
             </Button>
           </>
@@ -220,7 +225,7 @@ export default function SickNoteDetailPage() {
         {/* Leave Period */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Calendar className="h-4 w-4" />
               Leave Period
             </CardTitle>
@@ -236,7 +241,9 @@ export default function SickNoteDetailPage() {
             </div>
             <div className="flex justify-between text-sm font-medium">
               <span className="text-muted-foreground">Total Days</span>
-              <span>{sickNote.leave_days} day{sickNote.leave_days !== 1 ? 's' : ''}</span>
+              <span>
+                {sickNote.leave_days} day{sickNote.leave_days !== 1 ? 's' : ''}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -244,7 +251,7 @@ export default function SickNoteDetailPage() {
         {/* Clinical Details */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <FileText className="h-4 w-4" />
               Clinical Details
             </CardTitle>
@@ -252,13 +259,13 @@ export default function SickNoteDetailPage() {
           <CardContent className="space-y-2">
             {sickNote.recommendations && (
               <div className="text-sm">
-                <span className="text-muted-foreground block mb-1">Recommendations</span>
+                <span className="mb-1 block text-muted-foreground">Recommendations</span>
                 <span>{sickNote.recommendations}</span>
               </div>
             )}
             {sickNote.notes && (
               <div className="text-sm">
-                <span className="text-muted-foreground block mb-1">Notes</span>
+                <span className="mb-1 block text-muted-foreground">Notes</span>
                 <span>{sickNote.notes}</span>
               </div>
             )}
@@ -279,7 +286,7 @@ export default function SickNoteDetailPage() {
         {(sickNote.employer_name || sickNote.employer_contact) && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Building2 className="h-4 w-4" />
                 Employer
               </CardTitle>
@@ -305,14 +312,14 @@ export default function SickNoteDetailPage() {
         {sickNote.status === 'REVOKED' && (
           <Card className="border-destructive/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base text-destructive flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base text-destructive">
                 <XCircle className="h-4 w-4" />
                 Revocation
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="text-sm">
-                <span className="text-muted-foreground block mb-1">Reason</span>
+                <span className="mb-1 block text-muted-foreground">Reason</span>
                 <span>{sickNote.revoke_reason}</span>
               </div>
               <div className="flex justify-between text-sm">
@@ -332,7 +339,7 @@ export default function SickNoteDetailPage() {
         {sickNote.status === 'CANCELLED' && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Ban className="h-4 w-4" />
                 Cancellation
               </CardTitle>

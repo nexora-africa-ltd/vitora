@@ -1,7 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
-import { DonutChart, createChartConfig, formatChartValue, ChartEmptyState } from '@/components/charts';
+import {
+  DonutChart,
+  createChartConfig,
+  formatChartValue,
+  ChartEmptyState,
+} from '@/components/charts';
 import type { RevenueData } from '@/lib/types/dashboard';
 
 interface RevenueBreakdownChartProps {
@@ -12,23 +17,25 @@ interface RevenueBreakdownChartProps {
 export function RevenueBreakdownChart({ data, showLegend = true }: RevenueBreakdownChartProps) {
   // Transform data for DonutChart format
   const chartData = useMemo(
-    () => (data ?? []).map((item) => ({
-      name: item.department.toLowerCase().replace(/\s+/g, '_'),
-      value: item.amount,
-    })),
+    () =>
+      (data ?? []).map((item) => ({
+        name: item.department.toLowerCase().replace(/\s+/g, '_'),
+        value: item.amount,
+      })),
     [data]
   );
 
   // Create dynamic config based on departments in data
   const chartConfig = useMemo(
-    () => createChartConfig(
-      (data ?? []).map((d) => d.department.toLowerCase().replace(/\s+/g, '_')),
-      {
-        labels: Object.fromEntries(
-          (data ?? []).map((d) => [d.department.toLowerCase().replace(/\s+/g, '_'), d.department])
-        ),
-      }
-    ),
+    () =>
+      createChartConfig(
+        (data ?? []).map((d) => d.department.toLowerCase().replace(/\s+/g, '_')),
+        {
+          labels: Object.fromEntries(
+            (data ?? []).map((d) => [d.department.toLowerCase().replace(/\s+/g, '_'), d.department])
+          ),
+        }
+      ),
     [data]
   );
 
@@ -50,7 +57,7 @@ export function RevenueBreakdownChart({ data, showLegend = true }: RevenueBreakd
   }
 
   return (
-    <div className="h-[250px] w-full min-h-[250px] min-w-0">
+    <div className="h-[250px] min-h-[250px] w-full min-w-0">
       <DonutChart
         data={chartData}
         config={chartConfig}

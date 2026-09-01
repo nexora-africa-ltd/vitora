@@ -24,11 +24,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -92,42 +88,33 @@ function InterventionItem({
       onSelect={onSelect}
       className="flex items-start gap-2 py-2"
     >
-      <Check
-        className={cn(
-          'h-4 w-4 mt-0.5',
-          isSelected ? 'opacity-100' : 'opacity-0'
-        )}
-      />
-      <div className="flex-1 min-w-0">
+      <Check className={cn('mt-0.5 h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')} />
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">
-            {intervention.code}
-          </span>
+          <span className="font-mono text-xs text-muted-foreground">{intervention.code}</span>
           {intervention.requires_preauthorization && (
-            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+            <Badge variant="outline" className="h-4 px-1 py-0 text-[10px]">
               Pre-auth
             </Badge>
           )}
         </div>
-        <p className="text-sm font-medium truncate">{intervention.name}</p>
+        <p className="truncate text-sm font-medium">{intervention.name}</p>
         {intervention.description && (
-          <p className="text-xs text-muted-foreground truncate">
-            {intervention.description}
-          </p>
+          <p className="truncate text-xs text-muted-foreground">{intervention.description}</p>
         )}
-        <div className="flex items-center gap-2 mt-1">
+        <div className="mt-1 flex items-center gap-2">
           {showPrice && intervention.price > 0 && (
-            <span className="text-xs text-green-600 font-medium">
+            <span className="text-xs font-medium text-green-600">
               {formatCurrency(intervention.price)}
             </span>
           )}
           {showFacilityLevel && intervention.facility_level && (
-            <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+            <Badge variant="secondary" className="h-4 px-1 py-0 text-[10px]">
               Level {intervention.facility_level}
             </Badge>
           )}
           {intervention.category && (
-            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+            <Badge variant="outline" className="h-4 px-1 py-0 text-[10px]">
               {intervention.category}
             </Badge>
           )}
@@ -198,16 +185,22 @@ export function SHAInterventionSelect({
     };
   }, [searchQuery, facilityLevel, category, minSearchLength, debounceMs]);
 
-  const handleSelect = useCallback((intervention: SHAIntervention) => {
-    onSelect(intervention);
-    setOpen(false);
-    setSearchQuery('');
-  }, [onSelect]);
+  const handleSelect = useCallback(
+    (intervention: SHAIntervention) => {
+      onSelect(intervention);
+      setOpen(false);
+      setSearchQuery('');
+    },
+    [onSelect]
+  );
 
-  const handleClear = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelect(null);
-  }, [onSelect]);
+  const handleClear = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSelect(null);
+    },
+    [onSelect]
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -218,31 +211,29 @@ export function SHAInterventionSelect({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'w-full justify-between h-auto min-h-10 py-2',
+            'h-auto min-h-10 w-full justify-between py-2',
             !value && 'text-muted-foreground',
             className
           )}
         >
           {value ? (
-            <div className="flex items-center gap-2 text-left flex-1 min-w-0">
-              <div className="flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {value.code}
-                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">{value.code}</span>
                   {showPrice && value.price > 0 && (
-                    <span className="text-xs text-green-600 font-medium">
+                    <span className="text-xs font-medium text-green-600">
                       {formatCurrency(value.price)}
                     </span>
                   )}
                 </div>
-                <p className="text-sm truncate">{value.name}</p>
+                <p className="truncate text-sm">{value.name}</p>
               </div>
               {allowClear && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-5 w-5 p-0 shrink-0"
+                  className="h-5 w-5 shrink-0 p-0"
                   onClick={handleClear}
                 >
                   <X className="h-3 w-3" />
@@ -273,7 +264,7 @@ export function SHAInterventionSelect({
                 Type at least {minSearchLength} characters to search...
               </div>
             ) : isLoading ? (
-              <div className="p-4 space-y-2">
+              <div className="space-y-2 p-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="space-y-1">
                     <Skeleton className="h-4 w-20" />

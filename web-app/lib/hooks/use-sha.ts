@@ -36,12 +36,14 @@ export const shaQueryKeys = {
 
   // SHA Members
   members: () => [...shaQueryKeys.all, 'members'] as const,
-  membersByPatient: (patientId: number) => [...shaQueryKeys.members(), 'patient', patientId] as const,
+  membersByPatient: (patientId: number) =>
+    [...shaQueryKeys.members(), 'patient', patientId] as const,
   member: (id: number) => [...shaQueryKeys.members(), id] as const,
 
   // Eligibility
   eligibility: () => [...shaQueryKeys.all, 'eligibility'] as const,
-  patientEligibility: (patientId: number) => [...shaQueryKeys.eligibility(), 'patient', patientId] as const,
+  patientEligibility: (patientId: number) =>
+    [...shaQueryKeys.eligibility(), 'patient', patientId] as const,
 
   // Benefits
   benefits: () => [...shaQueryKeys.all, 'benefits'] as const,
@@ -54,12 +56,17 @@ export const shaQueryKeys = {
 
   // Terminology
   terminology: () => [...shaQueryKeys.all, 'terminology'] as const,
-  icd11: (params?: TerminologySearchParams) => [...shaQueryKeys.terminology(), 'icd11', params] as const,
-  interventions: (params?: InterventionSearchParams) => [...shaQueryKeys.terminology(), 'interventions', params] as const,
-  ichi: (params?: TerminologySearchParams) => [...shaQueryKeys.terminology(), 'ichi', params] as const,
-  loinc: (params?: TerminologySearchParams) => [...shaQueryKeys.terminology(), 'loinc', params] as const,
+  icd11: (params?: TerminologySearchParams) =>
+    [...shaQueryKeys.terminology(), 'icd11', params] as const,
+  interventions: (params?: InterventionSearchParams) =>
+    [...shaQueryKeys.terminology(), 'interventions', params] as const,
+  ichi: (params?: TerminologySearchParams) =>
+    [...shaQueryKeys.terminology(), 'ichi', params] as const,
+  loinc: (params?: TerminologySearchParams) =>
+    [...shaQueryKeys.terminology(), 'loinc', params] as const,
   drugs: (params?: DrugSearchParams) => [...shaQueryKeys.terminology(), 'drugs', params] as const,
-  components: (params?: TerminologySearchParams) => [...shaQueryKeys.terminology(), 'components', params] as const,
+  components: (params?: TerminologySearchParams) =>
+    [...shaQueryKeys.terminology(), 'components', params] as const,
 
   // DHA HIE Consent
   consent: () => [...shaQueryKeys.all, 'consent'] as const,
@@ -104,7 +111,10 @@ export function useSHAMember(id: number | undefined) {
 /**
  * Check patient eligibility with SHA
  */
-export function usePatientEligibility(patientId: number | undefined, options?: { enabled?: boolean }) {
+export function usePatientEligibility(
+  patientId: number | undefined,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: shaQueryKeys.patientEligibility(patientId!),
     queryFn: () => shaApi.checkPatientEligibility(patientId!),
@@ -248,7 +258,10 @@ export function useICD11Search(params?: TerminologySearchParams, options?: { ena
 /**
  * Search SHA interventions
  */
-export function useInterventionsSearch(params?: InterventionSearchParams, options?: { enabled?: boolean }) {
+export function useInterventionsSearch(
+  params?: InterventionSearchParams,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: shaQueryKeys.interventions(params),
     queryFn: () => shaApi.searchInterventions(params),
@@ -296,7 +309,10 @@ export function useDrugsSearch(params?: DrugSearchParams, options?: { enabled?: 
 /**
  * Search active components
  */
-export function useActiveComponentsSearch(params?: TerminologySearchParams, options?: { enabled?: boolean }) {
+export function useActiveComponentsSearch(
+  params?: TerminologySearchParams,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: shaQueryKeys.components(params),
     queryFn: () => shaApi.searchActiveComponents(params),
@@ -474,13 +490,13 @@ export type BenefitsAvailableState =
   | { status: 'available' }
   | { status: 'empty'; reason: 'no_coverage' | 'no_benefits' }
   | {
-    status: 'error';
-    message: string;
-    title?: string;
-    detail?: string;
-    code?: string;
-    upstreamStatus?: number;
-  };
+      status: 'error';
+      message: string;
+      title?: string;
+      detail?: string;
+      code?: string;
+      upstreamStatus?: number;
+    };
 
 /**
  * Check whether a patient has active SHA benefit packages at the current facility.
@@ -523,10 +539,7 @@ export interface BenefitPackageItem {
  * optionally drill into sub-benefits / interventions via `ilmSubBenefits`
  * and `ilmBenefitInterventions`.
  */
-export function usePatientBenefitPackages(
-  crNumber: string | null | undefined,
-  enabled = true,
-) {
+export function usePatientBenefitPackages(crNumber: string | null | undefined, enabled = true) {
   return useQuery({
     queryKey: [...shaQueryKeys.patientBenefits(crNumber ?? ''), 'packages'],
     queryFn: async () => {
@@ -553,13 +566,16 @@ export function deriveBenefitsState(
   data: unknown,
   isLoading: boolean,
   isError: boolean,
-  error: Error | null,
+  error: Error | null
 ): BenefitsAvailableState {
   if (isLoading) return { status: 'loading' };
   if (isError) {
-    const axiosErr = error as { response?: { status?: number; data?: { message?: string; detail?: string } } } | null;
+    const axiosErr = error as {
+      response?: { status?: number; data?: { message?: string; detail?: string } };
+    } | null;
     if (axiosErr?.response?.status === 400) {
-      const text = `${axiosErr.response.data?.message ?? ''} ${axiosErr.response.data?.detail ?? ''}`.toLowerCase();
+      const text =
+        `${axiosErr.response.data?.message ?? ''} ${axiosErr.response.data?.detail ?? ''}`.toLowerCase();
       if (text.includes('no result found')) {
         return { status: 'empty', reason: 'no_coverage' };
       }

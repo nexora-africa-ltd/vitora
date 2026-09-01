@@ -204,7 +204,11 @@ export const LeveyJenningsDataSchema = z.object({
 // ============================================================================
 
 export const EQASurveyStatusEnum = z.enum([
-  'PENDING', 'IN_PROGRESS', 'SUBMITTED', 'RESULTS_RECEIVED', 'CLOSED',
+  'PENDING',
+  'IN_PROGRESS',
+  'SUBMITTED',
+  'RESULTS_RECEIVED',
+  'CLOSED',
 ]);
 export const EQAPerformanceEnum = z.enum(['ACCEPTABLE', 'WARNING', 'UNACCEPTABLE', 'PENDING']);
 

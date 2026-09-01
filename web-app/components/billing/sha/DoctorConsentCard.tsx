@@ -9,13 +9,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  RefreshCw,
-  Stethoscope,
-} from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, RefreshCw, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -150,11 +144,11 @@ export function DoctorConsentCard({
 
         {/* Waiting state — show polling indicator */}
         {isWaiting && !pollError && (
-          <div className="flex items-center gap-2 rounded-md bg-amber-50 dark:bg-amber-900/10 p-3">
+          <div className="flex items-center gap-2 rounded-md bg-amber-50 p-3 dark:bg-amber-900/10">
             <Loader2 className="h-4 w-4 animate-spin text-amber-600 dark:text-amber-400" />
             <div className="text-sm text-amber-800 dark:text-amber-400">
               <p className="font-medium">Awaiting doctor approval on Practice360</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 Auto-checking every 10 seconds (poll #{pollCount})
               </p>
             </div>
@@ -166,14 +160,9 @@ export function DoctorConsentCard({
           <div className="flex items-center justify-between rounded-md bg-destructive/10 p-3">
             <div className="text-sm text-destructive">
               <p className="font-medium">Failed to check status</p>
-              <p className="text-xs mt-0.5">{pollError}</p>
+              <p className="mt-0.5 text-xs">{pollError}</p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={poll}
-              disabled={isPolling}
-            >
+            <Button variant="outline" size="sm" onClick={poll} disabled={isPolling}>
               <RefreshCw className={cn('mr-1 h-3 w-3', isPolling && 'animate-spin')} />
               Retry
             </Button>
@@ -182,7 +171,7 @@ export function DoctorConsentCard({
 
         {/* Approved state */}
         {state.toUpperCase() === 'APPROVED' && (
-          <div className="flex items-center gap-2 rounded-md bg-green-50 dark:bg-green-900/10 p-3">
+          <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 dark:bg-green-900/10">
             <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             <p className="text-sm font-medium text-green-800 dark:text-green-400">
               Doctor has approved this pre-authorization
@@ -195,12 +184,8 @@ export function DoctorConsentCard({
           <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3">
             <XCircle className="h-4 w-4 text-destructive" />
             <div className="text-sm text-destructive">
-              <p className="font-medium">
-                Doctor consent {state.toLowerCase()}
-              </p>
-              <p className="text-xs mt-0.5">
-                You may retry by requesting doctor consent again.
-              </p>
+              <p className="font-medium">Doctor consent {state.toLowerCase()}</p>
+              <p className="mt-0.5 text-xs">You may retry by requesting doctor consent again.</p>
             </div>
           </div>
         )}
@@ -255,8 +240,6 @@ function getStateBadge(state: string) {
         </Badge>
       );
     default:
-      return state ? (
-        <Badge variant="outline">{state}</Badge>
-      ) : null;
+      return state ? <Badge variant="outline">{state}</Badge> : null;
   }
 }

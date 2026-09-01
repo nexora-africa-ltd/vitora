@@ -11,12 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -132,7 +127,7 @@ function FIMScoreSelector({
           {fimLevels.map((level) => (
             <SelectItem key={level} value={level.toString()}>
               <span className="font-medium">{level}</span>
-              <span className="text-muted-foreground ml-2">
+              <span className="ml-2 text-muted-foreground">
                 — {FIM_LEVEL_LABELS[level as FIMLevel].label}
               </span>
             </SelectItem>
@@ -161,11 +156,7 @@ function SessionStatusBadge({ status }: { status: string }) {
     NO_SHOW: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
   };
 
-  return (
-    <Badge className={variants[status] || ''}>
-      {status.replace('_', ' ')}
-    </Badge>
-  );
+  return <Badge className={variants[status] || ''}>{status.replace('_', ' ')}</Badge>;
 }
 
 // =============================================================================
@@ -284,11 +275,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
   }
 
   if (error || !session) {
-    return (
-      <div className="p-4 text-center text-destructive">
-        Failed to load session
-      </div>
-    );
+    return <div className="p-4 text-center text-destructive">Failed to load session</div>;
   }
 
   return (
@@ -301,7 +288,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
               <CheckCircle className="h-5 w-5" />
               <span className="font-medium">Session completed successfully!</span>
             </div>
-            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+            <p className="mt-1 text-sm text-green-600 dark:text-green-400">
               Invoice item created for billing.
             </p>
           </CardContent>
@@ -317,9 +304,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
                 <FileText className="h-5 w-5" />
                 {session.session_number}
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Occupational Therapy Session
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Occupational Therapy Session</p>
             </div>
             <SessionStatusBadge status={session.status} />
           </div>
@@ -327,14 +312,14 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="flex items-start gap-2">
-              <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <User className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">Patient</div>
                 <div className="text-sm text-muted-foreground">Order #{session.order}</div>
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <Calendar className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">
                   {format(parseISO(session.scheduled_date), 'MMMM d, yyyy')}
@@ -345,17 +330,19 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <User className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">{session.therapist_name || 'Unassigned'}</div>
                 <div className="text-sm text-muted-foreground">Therapist</div>
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <Clock className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">
-                  {isCompleted && session.duration_minutes ? `${session.duration_minutes} min` : '—'}
+                  {isCompleted && session.duration_minutes
+                    ? `${session.duration_minutes} min`
+                    : '—'}
                 </div>
                 <div className="text-sm text-muted-foreground">Duration</div>
               </div>
@@ -368,11 +355,11 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
       {isScheduled && (
         <div className="flex gap-2">
           <Button onClick={() => setShowStartDialog(true)}>
-            <Play className="h-4 w-4 mr-2" />
+            <Play className="mr-2 h-4 w-4" />
             Start Session
           </Button>
           <Button variant="outline" onClick={() => setShowCancelDialog(true)}>
-            <XCircle className="h-4 w-4 mr-2" />
+            <XCircle className="mr-2 h-4 w-4" />
             Cancel Session
           </Button>
         </div>
@@ -665,7 +652,12 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
                     <FormItem>
                       <FormLabel>Next Session Goals</FormLabel>
                       <FormControl>
-                        <Input type="text" {...field} disabled={isCompleted} placeholder="Goals for next session..." />
+                        <Input
+                          type="text"
+                          {...field}
+                          disabled={isCompleted}
+                          placeholder="Goals for next session..."
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -734,18 +726,14 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
               <div className="flex gap-2">
                 <Button type="submit" disabled={completeMutation.isPending}>
                   {completeMutation.isPending ? (
-                    <LoadingSpinner className="h-4 w-4 mr-2" />
+                    <LoadingSpinner className="mr-2 h-4 w-4" />
                   ) : (
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <CheckCircle className="mr-2 h-4 w-4" />
                   )}
                   Complete Session
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCancelDialog(true)}
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
+                <Button type="button" variant="outline" onClick={() => setShowCancelDialog(true)}>
+                  <XCircle className="mr-2 h-4 w-4" />
                   Cancel Session
                 </Button>
               </div>
@@ -759,16 +747,14 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Start OT Session</DialogTitle>
-            <DialogDescription>
-              Ready to begin the occupational therapy session?
-            </DialogDescription>
+            <DialogDescription>Ready to begin the occupational therapy session?</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowStartDialog(false)}>
               Cancel
             </Button>
             <Button onClick={handleStartSession} disabled={startMutation.isPending}>
-              {startMutation.isPending && <LoadingSpinner className="h-4 w-4 mr-2" />}
+              {startMutation.isPending && <LoadingSpinner className="mr-2 h-4 w-4" />}
               Start Session
             </Button>
           </DialogFooter>
@@ -797,9 +783,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
                 placeholder="Enter cancellation reason..."
                 rows={3}
               />
-              {cancelError && (
-                <p className="text-sm text-destructive mt-1">{cancelError}</p>
-              )}
+              {cancelError && <p className="mt-1 text-sm text-destructive">{cancelError}</p>}
             </div>
           </div>
           <DialogFooter>
@@ -811,7 +795,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
               onClick={handleCancelSession}
               disabled={cancelMutation.isPending}
             >
-              {cancelMutation.isPending && <LoadingSpinner className="h-4 w-4 mr-2" />}
+              {cancelMutation.isPending && <LoadingSpinner className="mr-2 h-4 w-4" />}
               Confirm Cancel
             </Button>
           </DialogFooter>

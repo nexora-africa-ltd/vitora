@@ -22,7 +22,9 @@ export default function CrossMatchDetailPage({ params }: { params: Promise<{ id:
   const { id } = use(params);
   const router = useRouter();
   const crossmatchId = Number(id);
-  const { data: crossmatch, isLoading } = useCrossMatch(Number.isNaN(crossmatchId) ? undefined : crossmatchId);
+  const { data: crossmatch, isLoading } = useCrossMatch(
+    Number.isNaN(crossmatchId) ? undefined : crossmatchId
+  );
   const recordResult = useRecordCrossMatchResult();
 
   if (isLoading) {
@@ -34,7 +36,9 @@ export default function CrossMatchDetailPage({ params }: { params: Promise<{ id:
       <div className="space-y-4">
         <PageHeader title="Crossmatch" />
         <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">Crossmatch not found.</CardContent>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Crossmatch not found.
+          </CardContent>
         </Card>
       </div>
     );
@@ -45,11 +49,11 @@ export default function CrossMatchDetailPage({ params }: { params: Promise<{ id:
       <PageHeader
         title={`Crossmatch #${crossmatch.id}`}
         helpContent="Review compatibility result for a selected blood unit and request."
-        actions={(
+        actions={
           <Button variant="outline" onClick={() => router.push('/blood-bank/crossmatch')}>
             Back to Crossmatches
           </Button>
-        )}
+        }
       />
 
       <Card>
@@ -57,18 +61,32 @@ export default function CrossMatchDetailPage({ params }: { params: Promise<{ id:
           <CardTitle className="text-base">Crossmatch Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p><span className="font-medium">Unit Number:</span> {crossmatch.unit_number}</p>
-          <p><span className="font-medium">Blood Request ID:</span> {crossmatch.blood_request}</p>
-          <p><span className="font-medium">Method:</span> {crossmatch.method}</p>
-          <p><span className="font-medium">Performed By:</span> {crossmatch.performed_by_name}</p>
-          <p><span className="font-medium">Performed At:</span> {formatDate(crossmatch.performed_at)}</p>
+          <p>
+            <span className="font-medium">Unit Number:</span> {crossmatch.unit_number}
+          </p>
+          <p>
+            <span className="font-medium">Blood Request ID:</span> {crossmatch.blood_request}
+          </p>
+          <p>
+            <span className="font-medium">Method:</span> {crossmatch.method}
+          </p>
+          <p>
+            <span className="font-medium">Performed By:</span> {crossmatch.performed_by_name}
+          </p>
+          <p>
+            <span className="font-medium">Performed At:</span> {formatDate(crossmatch.performed_at)}
+          </p>
           <p>
             <span className="font-medium">Current Result:</span>{' '}
             <Badge className={CROSSMATCH_COLORS[crossmatch.result]}>{crossmatch.result}</Badge>
           </p>
-          {crossmatch.notes && <p><span className="font-medium">Notes:</span> {crossmatch.notes}</p>}
+          {crossmatch.notes && (
+            <p>
+              <span className="font-medium">Notes:</span> {crossmatch.notes}
+            </p>
+          )}
 
-          <div className="pt-4 mt-4 border-t flex flex-col gap-2 sm:flex-row">
+          <div className="mt-4 flex flex-col gap-2 border-t pt-4 sm:flex-row">
             <Button
               onClick={async () => {
                 try {
@@ -80,7 +98,7 @@ export default function CrossMatchDetailPage({ params }: { params: Promise<{ id:
               }}
               disabled={recordResult.isPending || crossmatch.result === 'COMPATIBLE'}
             >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
+              <CheckCircle2 className="mr-2 h-4 w-4" />
               Mark Compatible
             </Button>
             <Button
@@ -95,7 +113,7 @@ export default function CrossMatchDetailPage({ params }: { params: Promise<{ id:
               }}
               disabled={recordResult.isPending || crossmatch.result === 'INCOMPATIBLE'}
             >
-              <XCircle className="h-4 w-4 mr-2" />
+              <XCircle className="mr-2 h-4 w-4" />
               Mark Incompatible
             </Button>
           </div>

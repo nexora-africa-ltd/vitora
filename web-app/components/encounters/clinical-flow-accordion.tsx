@@ -134,202 +134,202 @@ export function ClinicalFlowAccordion({
   onSectionChange,
 }: ClinicalFlowAccordionProps) {
   // Build sections array
-  const sections: FormAccordionSection[] = React.useMemo(() => [
-    {
-      id: 'history',
-      title: 'Medical History',
-      abbreviation: 'Hx',
-      icon: <FileText className="h-4 w-4" />,
-      isComplete: hasMedicalHistory(formData),
-      tooltipTitle: 'Medical History (Hx)',
-      tooltipDescription: 'Allergies, chronic conditions, medications, past surgeries, family & social history',
-      children: (
-        <MedicalHistoryFormContent
-          data={formData}
-          onChange={onFieldChange}
-          disabled={disabled}
-        />
-      ),
-    },
-    {
-      id: 'hpi',
-      title: 'History of Present Illness',
-      abbreviation: 'HPI',
-      icon: <ClipboardList className="h-4 w-4" />,
-      isComplete: hasClinicalNotes(formData),
-      tooltipTitle: 'History of Present Illness (HPI)',
-      tooltipDescription: 'Detailed narrative of the current complaint, physical examination, and assessment',
-      children: (
-        <ClinicalNotesFormContent
-          data={formData}
-          onChange={onFieldChange}
-          disabled={disabled}
-        />
-      ),
-    },
-    {
-      id: 'template',
-      title: 'Clinical Template',
-      icon: <LayoutTemplate className="h-4 w-4" />,
-      isComplete: !!selectedTemplate && !!formData.clinical_template_data,
-      badge: selectedTemplate?.name,
-      tooltipTitle: 'Clinical Template',
-      tooltipDescription: 'Structured templates for focused assessments (e.g., Pediatric, ANC, Diabetes). Guides documentation and ensures completeness.',
-      children: (
-        <ClinicalTemplateFormContent
-          encounterId={encounterId}
-          encounterType={formData.encounter_type}
-          chiefComplaint={formData.chief_complaint}
-          selectedTemplate={selectedTemplate}
-          templateData={formData.clinical_template_data || null}
-          onTemplateSelect={onTemplateSelect}
-          onTemplateDataChange={onTemplateDataChange}
-          onSaveSnapshot={onSaveTemplateSnapshot}
-          disabled={disabled}
-        />
-      ),
-    },
-    {
-      id: 'diagnosis',
-      title: 'Diagnosis',
-      abbreviation: 'Dx',
-      icon: <Stethoscope className="h-4 w-4" />,
-      isComplete: diagnoses.length > 0,
-      badge: diagnoses.length > 0 ? diagnoses.length : undefined,
-      tooltipTitle: 'Diagnosis (Dx)',
-      tooltipDescription: 'ICD-10/ICD-11 coded diagnoses and clinical impressions',
-      children: (
-        <DiagnosisFormContent
-          diagnoses={diagnoses}
-          onAdd={onAddDiagnosis}
-          onRemove={onRemoveDiagnosis}
-          onUpdate={onUpdateDiagnosis}
-          disabled={disabled}
-        />
-      ),
-    },
-    {
-      id: 'labs',
-      title: 'Laboratory Orders',
-      abbreviation: 'Labs',
-      icon: <Beaker className="h-4 w-4" />,
-      isComplete: labOrders.length > 0,
-      badge: labOrders.length > 0 ? labOrders.length : undefined,
-      tooltipTitle: 'Laboratory Orders (Labs)',
-      tooltipDescription: 'Order lab tests and view results',
-      children: (
-        <EncounterLabOrdersContent
-          encounterId={encounterId}
-          patientId={patientId}
-          disabled={disabled}
-        />
-      ),
-    },
-    {
-      id: 'imaging',
-      title: 'Imaging Orders',
-      abbreviation: 'Img',
-      icon: <ScanLine className="h-4 w-4" />,
-      isComplete: imagingOrders.length > 0,
-      badge: imagingOrders.length > 0 ? imagingOrders.length : undefined,
-      tooltipTitle: 'Imaging Orders (Img)',
-      tooltipDescription: 'X-ray, ultrasound, CT, MRI and other imaging',
-      children: (
-        <EncounterImagingOrdersContent
-          encounterId={encounterId}
-          patientId={patientId}
-          patientName={patientName}
-          disabled={disabled}
-        />
-      ),
-    },
-    {
-      id: 'rx',
-      title: 'Prescriptions',
-      abbreviation: 'Rx',
-      icon: <Pill className="h-4 w-4" />,
-      isComplete: prescriptions.length > 0,
-      badge: prescriptions.length > 0 ? prescriptions.length : undefined,
-      tooltipTitle: 'Prescriptions (Rx)',
-      tooltipDescription: 'Medications and pharmacy orders',
-      children: (
-        <EncounterPrescriptionsContent
-          encounterId={encounterId}
-          patientId={patientId}
-          disabled={disabled}
-        />
-      ),
-    },
-    {
-      id: 'procedures',
-      title: 'Procedures',
-      abbreviation: 'Proc',
-      icon: <Syringe className="h-4 w-4" />,
-      isComplete: procedureOrders.length > 0,
-      badge: procedureOrders.length > 0 ? procedureOrders.length : undefined,
-      tooltipTitle: 'Procedure Orders (Proc)',
-      tooltipDescription: 'Surgical and clinical procedures',
-      children: (
-        <EncounterProcedureOrdersContent
-          encounterId={encounterId}
-          patientId={patientId}
-          disabled={disabled}
-        />
-      ),
-    },
-    {
-      id: 'allied-health',
-      title: 'Allied Health',
-      abbreviation: 'AH',
-      icon: <HeartHandshake className="h-4 w-4" />,
-      isComplete: false,
-      tooltipTitle: 'Allied Health Orders (AH)',
-      tooltipDescription: 'View existing Physiotherapy, Nutrition, OT, Counselling, and Social Work orders linked to this encounter',
-      children: (
-        <EncounterAlliedHealthContent
-          encounterId={encounterId}
-          patientId={patientId}
-          showActions={false}
-          disabled={disabled}
-        />
-      ),
-    },
-    {
-      id: 'referrals',
-      title: 'Referrals',
-      abbreviation: 'Ref',
-      icon: <ArrowRightLeft className="h-4 w-4" />,
-      isComplete: false,
-      tooltipTitle: 'Referrals (Ref)',
-      tooltipDescription: 'Create referrals to allied health, specialty clinics, admission, or external facilities',
-      children: (
-        <EncounterReferralsContent
-          encounterId={encounterId}
-          patientId={patientId}
-          disabled={disabled}
-        />
-      ),
-    },
-  ], [
-    formData,
-    onFieldChange,
-    diagnoses,
-    onAddDiagnosis,
-    onRemoveDiagnosis,
-    onUpdateDiagnosis,
-    selectedTemplate,
-    onTemplateSelect,
-    onTemplateDataChange,
-    onSaveTemplateSnapshot,
-    encounterId,
-    patientId,
-    patientName,
-    labOrders,
-    imagingOrders,
-    prescriptions,
-    procedureOrders,
-    disabled,
-  ]);
+  const sections: FormAccordionSection[] = React.useMemo(
+    () => [
+      {
+        id: 'history',
+        title: 'Medical History',
+        abbreviation: 'Hx',
+        icon: <FileText className="h-4 w-4" />,
+        isComplete: hasMedicalHistory(formData),
+        tooltipTitle: 'Medical History (Hx)',
+        tooltipDescription:
+          'Allergies, chronic conditions, medications, past surgeries, family & social history',
+        children: (
+          <MedicalHistoryFormContent data={formData} onChange={onFieldChange} disabled={disabled} />
+        ),
+      },
+      {
+        id: 'hpi',
+        title: 'History of Present Illness',
+        abbreviation: 'HPI',
+        icon: <ClipboardList className="h-4 w-4" />,
+        isComplete: hasClinicalNotes(formData),
+        tooltipTitle: 'History of Present Illness (HPI)',
+        tooltipDescription:
+          'Detailed narrative of the current complaint, physical examination, and assessment',
+        children: (
+          <ClinicalNotesFormContent data={formData} onChange={onFieldChange} disabled={disabled} />
+        ),
+      },
+      {
+        id: 'template',
+        title: 'Clinical Template',
+        icon: <LayoutTemplate className="h-4 w-4" />,
+        isComplete: !!selectedTemplate && !!formData.clinical_template_data,
+        badge: selectedTemplate?.name,
+        tooltipTitle: 'Clinical Template',
+        tooltipDescription:
+          'Structured templates for focused assessments (e.g., Pediatric, ANC, Diabetes). Guides documentation and ensures completeness.',
+        children: (
+          <ClinicalTemplateFormContent
+            encounterId={encounterId}
+            encounterType={formData.encounter_type}
+            chiefComplaint={formData.chief_complaint}
+            selectedTemplate={selectedTemplate}
+            templateData={formData.clinical_template_data || null}
+            onTemplateSelect={onTemplateSelect}
+            onTemplateDataChange={onTemplateDataChange}
+            onSaveSnapshot={onSaveTemplateSnapshot}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        id: 'diagnosis',
+        title: 'Diagnosis',
+        abbreviation: 'Dx',
+        icon: <Stethoscope className="h-4 w-4" />,
+        isComplete: diagnoses.length > 0,
+        badge: diagnoses.length > 0 ? diagnoses.length : undefined,
+        tooltipTitle: 'Diagnosis (Dx)',
+        tooltipDescription: 'ICD-10/ICD-11 coded diagnoses and clinical impressions',
+        children: (
+          <DiagnosisFormContent
+            diagnoses={diagnoses}
+            onAdd={onAddDiagnosis}
+            onRemove={onRemoveDiagnosis}
+            onUpdate={onUpdateDiagnosis}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        id: 'labs',
+        title: 'Laboratory Orders',
+        abbreviation: 'Labs',
+        icon: <Beaker className="h-4 w-4" />,
+        isComplete: labOrders.length > 0,
+        badge: labOrders.length > 0 ? labOrders.length : undefined,
+        tooltipTitle: 'Laboratory Orders (Labs)',
+        tooltipDescription: 'Order lab tests and view results',
+        children: (
+          <EncounterLabOrdersContent
+            encounterId={encounterId}
+            patientId={patientId}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        id: 'imaging',
+        title: 'Imaging Orders',
+        abbreviation: 'Img',
+        icon: <ScanLine className="h-4 w-4" />,
+        isComplete: imagingOrders.length > 0,
+        badge: imagingOrders.length > 0 ? imagingOrders.length : undefined,
+        tooltipTitle: 'Imaging Orders (Img)',
+        tooltipDescription: 'X-ray, ultrasound, CT, MRI and other imaging',
+        children: (
+          <EncounterImagingOrdersContent
+            encounterId={encounterId}
+            patientId={patientId}
+            patientName={patientName}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        id: 'rx',
+        title: 'Prescriptions',
+        abbreviation: 'Rx',
+        icon: <Pill className="h-4 w-4" />,
+        isComplete: prescriptions.length > 0,
+        badge: prescriptions.length > 0 ? prescriptions.length : undefined,
+        tooltipTitle: 'Prescriptions (Rx)',
+        tooltipDescription: 'Medications and pharmacy orders',
+        children: (
+          <EncounterPrescriptionsContent
+            encounterId={encounterId}
+            patientId={patientId}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        id: 'procedures',
+        title: 'Procedures',
+        abbreviation: 'Proc',
+        icon: <Syringe className="h-4 w-4" />,
+        isComplete: procedureOrders.length > 0,
+        badge: procedureOrders.length > 0 ? procedureOrders.length : undefined,
+        tooltipTitle: 'Procedure Orders (Proc)',
+        tooltipDescription: 'Surgical and clinical procedures',
+        children: (
+          <EncounterProcedureOrdersContent
+            encounterId={encounterId}
+            patientId={patientId}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        id: 'allied-health',
+        title: 'Allied Health',
+        abbreviation: 'AH',
+        icon: <HeartHandshake className="h-4 w-4" />,
+        isComplete: false,
+        tooltipTitle: 'Allied Health Orders (AH)',
+        tooltipDescription:
+          'View existing Physiotherapy, Nutrition, OT, Counselling, and Social Work orders linked to this encounter',
+        children: (
+          <EncounterAlliedHealthContent
+            encounterId={encounterId}
+            patientId={patientId}
+            showActions={false}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        id: 'referrals',
+        title: 'Referrals',
+        abbreviation: 'Ref',
+        icon: <ArrowRightLeft className="h-4 w-4" />,
+        isComplete: false,
+        tooltipTitle: 'Referrals (Ref)',
+        tooltipDescription:
+          'Create referrals to allied health, specialty clinics, admission, or external facilities',
+        children: (
+          <EncounterReferralsContent
+            encounterId={encounterId}
+            patientId={patientId}
+            disabled={disabled}
+          />
+        ),
+      },
+    ],
+    [
+      formData,
+      onFieldChange,
+      diagnoses,
+      onAddDiagnosis,
+      onRemoveDiagnosis,
+      onUpdateDiagnosis,
+      selectedTemplate,
+      onTemplateSelect,
+      onTemplateDataChange,
+      onSaveTemplateSnapshot,
+      encounterId,
+      patientId,
+      patientName,
+      labOrders,
+      imagingOrders,
+      prescriptions,
+      procedureOrders,
+      disabled,
+    ]
+  );
 
   return (
     <FormAccordion

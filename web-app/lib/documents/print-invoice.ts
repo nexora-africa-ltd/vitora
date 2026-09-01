@@ -6,12 +6,7 @@
  */
 
 import type { Invoice, InvoiceItem } from '@/lib/types/billing';
-import type {
-  FacilityInfo,
-  PatientInfo,
-  LayoutType,
-  RenderContext,
-} from './types';
+import type { FacilityInfo, PatientInfo, LayoutType, RenderContext } from './types';
 import { invoiceSchema, invoiceDefaults, invoiceStatusColors } from './schemas/invoice.schema';
 import {
   renderDocumentAsync,
@@ -339,14 +334,16 @@ function buildLineItemsHtml(invoice: Invoice): string {
   }
 
   return items
-    .map((item: InvoiceItem) => `
+    .map(
+      (item: InvoiceItem) => `
       <tr>
         <td>${escapeHtml(item.description || item.service_name || 'Service')}</td>
         <td>${item.quantity}</td>
         <td>${formatCurrency(item.unit_price)}</td>
         <td>${formatCurrency(parseFloat(item.unit_price) * Number(item.quantity))}</td>
       </tr>
-    `)
+    `
+    )
     .join('\n');
 }
 
@@ -369,13 +366,7 @@ function getStatusBadgeStyle(status: string): string {
  * @returns Promise that resolves to the print window, or null if failed
  */
 export async function printInvoice(options: PrintInvoiceOptions): Promise<Window | null> {
-  const {
-    invoice,
-    patient,
-    facility,
-    layout = 'a4',
-    theme = 'default',
-  } = options;
+  const { invoice, patient, facility, layout = 'a4', theme = 'default' } = options;
 
   // Validate required data
   if (!invoice) {
@@ -391,9 +382,7 @@ export async function printInvoice(options: PrintInvoiceOptions): Promise<Window
   const discount = parseFloat(invoice.discount_amount || '0');
   const total = parseFloat(invoice.total_amount);
   const amountPaid = parseFloat(invoice.amount_paid || '0');
-  const balanceDue = invoice.balance_due
-    ? parseFloat(invoice.balance_due)
-    : (total - amountPaid);
+  const balanceDue = invoice.balance_due ? parseFloat(invoice.balance_due) : total - amountPaid;
 
   // Build render context
   const context: RenderContext = {
@@ -428,18 +417,10 @@ export async function printInvoice(options: PrintInvoiceOptions): Promise<Window
   const lineItemsHtml = buildLineItemsHtml(invoice);
 
   // Render template
-  let bodyHtml = await renderDocumentAsync(
-    INVOICE_TEMPLATE,
-    invoiceSchema,
-    context,
-    qrContent
-  );
+  let bodyHtml = await renderDocumentAsync(INVOICE_TEMPLATE, invoiceSchema, context, qrContent);
 
   // Replace line items in table
-  bodyHtml = bodyHtml.replace(
-    /<tbody>[\s\S]*?<\/tbody>/,
-    `<tbody>\n${lineItemsHtml}\n</tbody>`
-  );
+  bodyHtml = bodyHtml.replace(/<tbody>[\s\S]*?<\/tbody>/, `<tbody>\n${lineItemsHtml}\n</tbody>`);
 
   // Style the status badge dynamically
   const statusStyle = getStatusBadgeStyle(invoice.status);
@@ -466,13 +447,7 @@ export async function printInvoice(options: PrintInvoiceOptions): Promise<Window
  * Returns the generated HTML for inspection
  */
 export async function previewInvoice(options: PrintInvoiceOptions): Promise<string> {
-  const {
-    invoice,
-    patient,
-    facility,
-    layout = 'a4',
-    theme = 'default',
-  } = options;
+  const { invoice, patient, facility, layout = 'a4', theme = 'default' } = options;
 
   const qrContent = getInvoiceQRContent(invoice);
 
@@ -480,9 +455,7 @@ export async function previewInvoice(options: PrintInvoiceOptions): Promise<stri
   const discount = parseFloat(invoice.discount_amount || '0');
   const total = parseFloat(invoice.total_amount);
   const amountPaid = parseFloat(invoice.amount_paid || '0');
-  const balanceDue = invoice.balance_due
-    ? parseFloat(invoice.balance_due)
-    : (total - amountPaid);
+  const balanceDue = invoice.balance_due ? parseFloat(invoice.balance_due) : total - amountPaid;
 
   const context: RenderContext = {
     patient: patient || {
@@ -507,17 +480,9 @@ export async function previewInvoice(options: PrintInvoiceOptions): Promise<stri
 
   const lineItemsHtml = buildLineItemsHtml(invoice);
 
-  let bodyHtml = await renderDocumentAsync(
-    INVOICE_TEMPLATE,
-    invoiceSchema,
-    context,
-    qrContent
-  );
+  let bodyHtml = await renderDocumentAsync(INVOICE_TEMPLATE, invoiceSchema, context, qrContent);
 
-  bodyHtml = bodyHtml.replace(
-    /<tbody>[\s\S]*?<\/tbody>/,
-    `<tbody>\n${lineItemsHtml}\n</tbody>`
-  );
+  bodyHtml = bodyHtml.replace(/<tbody>[\s\S]*?<\/tbody>/, `<tbody>\n${lineItemsHtml}\n</tbody>`);
 
   const statusStyle = getStatusBadgeStyle(invoice.status);
   bodyHtml = bodyHtml.replace(

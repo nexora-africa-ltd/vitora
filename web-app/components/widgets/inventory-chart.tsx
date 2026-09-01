@@ -37,9 +37,7 @@ export function InventoryChart({ data, showLegend = true, maxItems = 10 }: Inven
       .sort((a, b) => statusPriority[a.status] - statusPriority[b.status])
       .slice(0, maxItems)
       .map((item) => ({
-        name: item.drug_name.length > 15
-          ? item.drug_name.slice(0, 12) + '...'
-          : item.drug_name,
+        name: item.drug_name.length > 15 ? item.drug_name.slice(0, 12) + '...' : item.drug_name,
         current_stock: item.current_stock,
         reorder_level: item.reorder_level,
       }));
@@ -47,7 +45,7 @@ export function InventoryChart({ data, showLegend = true, maxItems = 10 }: Inven
 
   if (!data || data.length === 0) {
     return (
-      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+      <div className="flex h-[300px] items-center justify-center text-muted-foreground">
         No inventory data available
       </div>
     );

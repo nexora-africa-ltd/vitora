@@ -50,16 +50,13 @@ const VITAL_THRESHOLDS = {
  * Vital signs Given steps
  */
 
-Given(
-  'the patient has SpO2 of {int}%',
-  async function (this: VitoraWorld, value: number) {
-    this.store('spo2', value);
+Given('the patient has SpO2 of {int}%', async function (this: VitoraWorld, value: number) {
+  this.store('spo2', value);
 
-    if (this.page) {
-      await this.page.fill('[data-testid="vital-spo2"]', String(value));
-    }
+  if (this.page) {
+    await this.page.fill('[data-testid="vital-spo2"]', String(value));
   }
-);
+});
 
 Given(
   'the patient has systolic blood pressure of {int} mmHg',
@@ -72,27 +69,21 @@ Given(
   }
 );
 
-Given(
-  'diastolic blood pressure of {int} mmHg',
-  async function (this: VitoraWorld, value: number) {
-    this.store('diastolicBp', value);
+Given('diastolic blood pressure of {int} mmHg', async function (this: VitoraWorld, value: number) {
+  this.store('diastolicBp', value);
 
-    if (this.page) {
-      await this.page.fill('[data-testid="vital-diastolic"]', String(value));
-    }
+  if (this.page) {
+    await this.page.fill('[data-testid="vital-diastolic"]', String(value));
   }
-);
+});
 
-Given(
-  'the patient has heart rate of {int} bpm',
-  async function (this: VitoraWorld, value: number) {
-    this.store('heartRate', value);
+Given('the patient has heart rate of {int} bpm', async function (this: VitoraWorld, value: number) {
+  this.store('heartRate', value);
 
-    if (this.page) {
-      await this.page.fill('[data-testid="vital-heart-rate"]', String(value));
-    }
+  if (this.page) {
+    await this.page.fill('[data-testid="vital-heart-rate"]', String(value));
   }
-);
+});
 
 Given(
   'the patient has temperature of {float}°C',
@@ -143,29 +134,23 @@ Given(
   }
 );
 
-Given(
-  'the patient has:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const vitals = dataTable.rowsHash() as Record<string, string>;
+Given('the patient has:', async function (this: VitoraWorld, dataTable: DataTable) {
+  const vitals = dataTable.rowsHash() as Record<string, string>;
 
-    for (const [vital, value] of Object.entries(vitals)) {
-      const normalizedVital = vital.toLowerCase().replace(/_/g, '');
-      this.store(normalizedVital, Number(value));
-    }
+  for (const [vital, value] of Object.entries(vitals)) {
+    const normalizedVital = vital.toLowerCase().replace(/_/g, '');
+    this.store(normalizedVital, Number(value));
   }
-);
+});
 
-Given(
-  'all patient vitals are within normal range',
-  async function (this: VitoraWorld) {
-    this.store('spo2', 98);
-    this.store('systolicBp', 120);
-    this.store('diastolicBp', 80);
-    this.store('heartRate', 72);
-    this.store('temperature', 36.8);
-    this.store('respiratoryRate', 16);
-  }
-);
+Given('all patient vitals are within normal range', async function (this: VitoraWorld) {
+  this.store('spo2', 98);
+  this.store('systolicBp', 120);
+  this.store('diastolicBp', 80);
+  this.store('heartRate', 72);
+  this.store('temperature', 36.8);
+  this.store('respiratoryRate', 16);
+});
 
 /**
  * Alert assertion steps
@@ -195,17 +180,14 @@ Then(
   }
 );
 
-Then(
-  'a WARNING alert should be displayed:',
-  async function (this: VitoraWorld, docString: string) {
-    this.store('expectedWarningAlert', docString.trim());
+Then('a WARNING alert should be displayed:', async function (this: VitoraWorld, docString: string) {
+  this.store('expectedWarningAlert', docString.trim());
 
-    if (this.page) {
-      const alertText = await this.page.locator('[data-testid="warning-alert"]').textContent();
-      expect(alertText).toContain('WARNING');
-    }
+  if (this.page) {
+    const alertText = await this.page.locator('[data-testid="warning-alert"]').textContent();
+    expect(alertText).toContain('WARNING');
   }
-);
+});
 
 Then(
   'a WARNING alert should be displayed containing {string}',
@@ -219,31 +201,25 @@ Then(
   }
 );
 
-Then(
-  'the alert should be styled in {word}',
-  async function (this: VitoraWorld, color: string) {
-    if (this.page) {
-      const alertClass = await this.page.locator('[data-testid="alert-panel"]').getAttribute('class');
-      expect(alertClass).toContain(color);
-    }
+Then('the alert should be styled in {word}', async function (this: VitoraWorld, color: string) {
+  if (this.page) {
+    const alertClass = await this.page.locator('[data-testid="alert-panel"]').getAttribute('class');
+    expect(alertClass).toContain(color);
   }
-);
+});
 
-Then(
-  'an alert sound should play \\(if enabled\\)',
-  async function (this: VitoraWorld) {
-    // Audio testing is handled at integration level
-    // For E2E, we verify the audio element exists and is configured
-    if (this.page) {
-      const audioEnabled = await this.page.evaluate(() => {
-        const audioSettings = localStorage.getItem('audioAlertsEnabled');
-        return audioSettings !== 'false';
-      });
-      // Just verify the setting exists, actual audio testing is complex
-      expect(audioEnabled).toBeDefined();
-    }
+Then('an alert sound should play \\(if enabled\\)', async function (this: VitoraWorld) {
+  // Audio testing is handled at integration level
+  // For E2E, we verify the audio element exists and is configured
+  if (this.page) {
+    const audioEnabled = await this.page.evaluate(() => {
+      const audioSettings = localStorage.getItem('audioAlertsEnabled');
+      return audioSettings !== 'false';
+    });
+    // Just verify the setting exists, actual audio testing is complex
+    expect(audioEnabled).toBeDefined();
   }
-);
+});
 
 /**
  * Multiple alerts steps
@@ -261,21 +237,18 @@ Then(
   }
 );
 
-Then(
-  'the alerts should be ordered:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const expectedOrder = dataTable.hashes();
-    this.store('expectedAlertOrder', expectedOrder);
+Then('the alerts should be ordered:', async function (this: VitoraWorld, dataTable: DataTable) {
+  const expectedOrder = dataTable.hashes();
+  this.store('expectedAlertOrder', expectedOrder);
 
-    if (this.page) {
-      const alerts = await this.page.locator('[data-testid="alert-item"]').all();
-      for (let i = 0; i < expectedOrder.length; i++) {
-        const alertText = await alerts[i].textContent();
-        expect(alertText).toContain(expectedOrder[i].message);
-      }
+  if (this.page) {
+    const alerts = await this.page.locator('[data-testid="alert-item"]').all();
+    for (let i = 0; i < expectedOrder.length; i++) {
+      const alertText = await alerts[i].textContent();
+      expect(alertText).toContain(expectedOrder[i].message);
     }
   }
-);
+});
 
 /**
  * Alert panel UI steps
@@ -289,125 +262,97 @@ Given(
   }
 );
 
-Then(
-  'the alert panel header should show:',
-  async function (this: VitoraWorld, docString: string) {
-    if (this.page) {
-      const headerText = await this.page.locator('[data-testid="alert-panel-header"]').textContent();
-      expect(headerText).toContain('Alerts');
-    }
+Then('the alert panel header should show:', async function (this: VitoraWorld, docString: string) {
+  if (this.page) {
+    const headerText = await this.page.locator('[data-testid="alert-panel-header"]').textContent();
+    expect(headerText).toContain('Alerts');
   }
-);
+});
 
-Then(
-  'the panel should be expanded by default',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const isExpanded = await this.page.locator('[data-testid="alert-panel"]').getAttribute('data-expanded');
-      expect(isExpanded).toBe('true');
-    }
+Then('the panel should be expanded by default', async function (this: VitoraWorld) {
+  if (this.page) {
+    const isExpanded = await this.page
+      .locator('[data-testid="alert-panel"]')
+      .getAttribute('data-expanded');
+    expect(isExpanded).toBe('true');
   }
-);
+});
 
-Then(
-  'the panel should show a green indicator',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const indicator = await this.page.locator('[data-testid="alert-indicator"]');
-      const indicatorClass = await indicator.getAttribute('class');
-      expect(indicatorClass).toContain('green');
-    }
+Then('the panel should show a green indicator', async function (this: VitoraWorld) {
+  if (this.page) {
+    const indicator = await this.page.locator('[data-testid="alert-indicator"]');
+    const indicatorClass = await indicator.getAttribute('class');
+    expect(indicatorClass).toContain('green');
   }
-);
+});
 
-Then(
-  'it should move to an "Acknowledged" section',
-  async function (this: VitoraWorld) {
-    this.store('movedToAcknowledgedSection', true);
-    if (this.page) {
-      const section = this.page.locator('[data-testid="acknowledged-section"], text=/Acknowledged/i');
-      await expect(section.first()).toBeVisible();
-    }
+Then('it should move to an "Acknowledged" section', async function (this: VitoraWorld) {
+  this.store('movedToAcknowledgedSection', true);
+  if (this.page) {
+    const section = this.page.locator('[data-testid="acknowledged-section"], text=/Acknowledged/i');
+    await expect(section.first()).toBeVisible();
   }
-);
+});
 
 /**
  * Audio settings steps
  */
 
-Given(
-  'audio alerts are enabled in settings',
-  async function (this: VitoraWorld) {
-    this.store('audioAlertsEnabled', true);
+Given('audio alerts are enabled in settings', async function (this: VitoraWorld) {
+  this.store('audioAlertsEnabled', true);
 
-    if (this.page) {
-      await this.page.evaluate(() => {
-        localStorage.setItem('audioAlertsEnabled', 'true');
-      });
-    }
+  if (this.page) {
+    await this.page.evaluate(() => {
+      localStorage.setItem('audioAlertsEnabled', 'true');
+    });
   }
-);
+});
 
-Given(
-  'audio alerts are disabled in settings',
-  async function (this: VitoraWorld) {
-    this.store('audioAlertsEnabled', false);
+Given('audio alerts are disabled in settings', async function (this: VitoraWorld) {
+  this.store('audioAlertsEnabled', false);
 
-    if (this.page) {
-      await this.page.evaluate(() => {
-        localStorage.setItem('audioAlertsEnabled', 'false');
-      });
-    }
+  if (this.page) {
+    await this.page.evaluate(() => {
+      localStorage.setItem('audioAlertsEnabled', 'false');
+    });
   }
-);
+});
 
-Then(
-  'no sound should play',
-  async function (this: VitoraWorld) {
-    const audioEnabled = this.retrieve('audioAlertsEnabled');
-    expect(audioEnabled).toBe(false);
-  }
-);
+Then('no sound should play', async function (this: VitoraWorld) {
+  const audioEnabled = this.retrieve('audioAlertsEnabled');
+  expect(audioEnabled).toBe(false);
+});
 
-Then(
-  'the visual alert should still appear',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const alert = await this.page.locator('[data-testid="alert-panel"]');
-      await expect(alert).toBeVisible();
-    }
+Then('the visual alert should still appear', async function (this: VitoraWorld) {
+  if (this.page) {
+    const alert = await this.page.locator('[data-testid="alert-panel"]');
+    await expect(alert).toBeVisible();
   }
-);
+});
 
 /**
  * Visual effects steps
  */
 
-Given(
-  'a new critical alert is generated',
-  async function (this: VitoraWorld) {
-    this.store('newCriticalAlert', true);
-  }
-);
+Given('a new critical alert is generated', async function (this: VitoraWorld) {
+  this.store('newCriticalAlert', true);
+});
 
-Then(
-  'the alert panel should flash red briefly',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const panel = await this.page.locator('[data-testid="alert-panel"]');
-      const hasFlashClass = await panel.evaluate(el => el.classList.contains('flash-red'));
-      // Flash animation may have completed, check for animation capability
-      expect(await panel.isVisible()).toBe(true);
-    }
+Then('the alert panel should flash red briefly', async function (this: VitoraWorld) {
+  if (this.page) {
+    const panel = await this.page.locator('[data-testid="alert-panel"]');
+    const hasFlashClass = await panel.evaluate((el) => el.classList.contains('flash-red'));
+    // Flash animation may have completed, check for animation capability
+    expect(await panel.isVisible()).toBe(true);
   }
-);
+});
 
 Then(
   'the alert should pulse for {int} seconds to draw attention',
   async function (this: VitoraWorld, seconds: number) {
     if (this.page) {
       const alert = await this.page.locator('[data-testid="alert-item"]').first();
-      const hasAnimation = await alert.evaluate(el => {
+      const hasAnimation = await alert.evaluate((el) => {
         const style = window.getComputedStyle(el);
         return style.animation !== 'none' || style.animationName !== 'none';
       });

@@ -96,7 +96,9 @@ function makeEnrollment(overrides: AnyRecord = {}) {
     status: 'ACTIVE',
     status_display: 'Active',
     program_data: {},
-    next_appointment_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    next_appointment_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10),
     last_visit_date: null,
     visit_count: 0,
     notes: '',
@@ -135,14 +137,25 @@ async function setupMocks(page: Page) {
 
   // Clinic detail
   await page.route(/.*\/api\/clinics\/(\d+)\/$/, async (route) => {
-    const match = route.request().url().match(/\/api\/clinics\/(\d+)\/$/);
+    const match = route
+      .request()
+      .url()
+      .match(/\/api\/clinics\/(\d+)\/$/);
     const id = match ? Number(match[1]) : NaN;
     const detail = clinicDetail(id);
     if (!detail) {
-      await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: 'Not found' }) });
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Not found' }),
+      });
       return;
     }
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detail) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(detail),
+    });
   });
 
   // Patients list (search)
@@ -183,7 +196,12 @@ async function setupMocks(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ count: enrollmentsState.length, next: null, previous: null, results: enrollmentsState }),
+        body: JSON.stringify({
+          count: enrollmentsState.length,
+          next: null,
+          previous: null,
+          results: enrollmentsState,
+        }),
       });
       return;
     }
@@ -197,7 +215,11 @@ async function setupMocks(page: Page) {
       const patient = mockPatients.find((p) => p.id === patientId);
 
       if (!clinic || !patient) {
-        await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ detail: 'Invalid clinic_id or patient_id' }) });
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Invalid clinic_id or patient_id' }),
+        });
         return;
       }
 
@@ -216,7 +238,11 @@ async function setupMocks(page: Page) {
 
       enrollmentsState = [enrollment, ...enrollmentsState];
 
-      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(enrollment) });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(enrollment),
+      });
       return;
     }
 
@@ -225,16 +251,27 @@ async function setupMocks(page: Page) {
 
   // Enrollment detail
   await page.route(/.*\/api\/clinic-enrollments\/(\d+)\/$/, async (route) => {
-    const match = route.request().url().match(/\/api\/clinic-enrollments\/(\d+)\/$/);
+    const match = route
+      .request()
+      .url()
+      .match(/\/api\/clinic-enrollments\/(\d+)\/$/);
     const id = match ? Number(match[1]) : NaN;
     const enrollment = enrollmentsState.find((e) => Number(e.id) === id);
 
     if (!enrollment) {
-      await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: 'Not found' }) });
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Not found' }),
+      });
       return;
     }
 
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(enrollment) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(enrollment),
+    });
   });
 
   // Overdue
@@ -242,7 +279,9 @@ async function setupMocks(page: Page) {
     const overdue = enrollmentsState.map((e, idx) => ({
       ...e,
       id: 700 + idx,
-      next_appointment_date: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      next_appointment_date: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10),
       last_visit_date: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
     }));
 
@@ -266,7 +305,12 @@ async function setupMocks(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ count: defaulters.length, next: null, previous: null, results: defaulters }),
+      body: JSON.stringify({
+        count: defaulters.length,
+        next: null,
+        previous: null,
+        results: defaulters,
+      }),
     });
   });
 
@@ -287,7 +331,11 @@ async function setupMocks(page: Page) {
 
   // Queue page dependencies after recording visit
   await page.route(/.*\/api\/clinics\/\d+\/sessions\/today\/$/, async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'OPEN', status_display: 'Open' }) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'OPEN', status_display: 'Open' }),
+    });
   });
 
   await page.route(/.*\/api\/clinics\/\d+\/queue\/stats\/$/, async (route) => {

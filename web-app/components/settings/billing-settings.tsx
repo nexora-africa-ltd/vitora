@@ -47,7 +47,11 @@ export function BillingSettingsTab() {
       closeDialog();
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Failed to create', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to create',
+        description: getApiErrorMessage(err),
+      });
     },
   });
 
@@ -60,7 +64,11 @@ export function BillingSettingsTab() {
       closeDialog();
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Failed to update', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to update',
+        description: getApiErrorMessage(err),
+      });
     },
   });
 
@@ -71,7 +79,11 @@ export function BillingSettingsTab() {
       toast({ variant: 'success', title: 'Payment term deleted' });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Failed to delete', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to delete',
+        description: getApiErrorMessage(err),
+      });
     },
   });
 
@@ -120,7 +132,7 @@ export function BillingSettingsTab() {
             <HelpPopover content="Configure payment term options that appear in supplier forms. Each term defines how many days until payment is due." />
           </div>
           <Button size="sm" onClick={openCreateDialog}>
-            <Plus className="h-4 w-4 mr-1.5" />
+            <Plus className="mr-1.5 h-4 w-4" />
             Add Term
           </Button>
         </div>
@@ -131,12 +143,13 @@ export function BillingSettingsTab() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : paymentTerms.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-sm text-muted-foreground mb-3">
-              No payment terms configured yet. Add common terms like &quot;Net 30&quot; or &quot;Cash on Delivery&quot;.
+          <div className="py-8 text-center">
+            <p className="mb-3 text-sm text-muted-foreground">
+              No payment terms configured yet. Add common terms like &quot;Net 30&quot; or
+              &quot;Cash on Delivery&quot;.
             </p>
             <Button variant="outline" size="sm" onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-1.5" />
+              <Plus className="mr-1.5 h-4 w-4" />
               Add First Term
             </Button>
           </div>
@@ -145,17 +158,19 @@ export function BillingSettingsTab() {
             {paymentTerms.map((term) => (
               <div
                 key={term.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
+                className="flex items-center justify-between rounded-lg border p-3"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium">{term.name}</p>
-                      <Badge variant="outline" className="text-xs font-mono">
+                      <Badge variant="outline" className="font-mono text-xs">
                         {term.code}
                       </Badge>
                       {!term.is_active && (
-                        <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          Inactive
+                        </Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -163,7 +178,7 @@ export function BillingSettingsTab() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   <Switch
                     checked={term.is_active}
                     onCheckedChange={(checked) =>
@@ -234,7 +249,9 @@ export function BillingSettingsTab() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button variant="outline" onClick={closeDialog}>
+              Cancel
+            </Button>
             <Button onClick={handleSubmit} disabled={isSaving || !formData.code || !formData.name}>
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingTerm ? 'Save Changes' : 'Create'}

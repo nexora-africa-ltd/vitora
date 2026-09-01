@@ -33,12 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { AdminStatCard } from '@/components/admin/admin-stat-card';
@@ -65,17 +60,37 @@ const DIRECTION_OPTIONS = [
 function getStatusBadge(status: string) {
   switch (status) {
     case 'ACK':
-      return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">Acknowledged</Badge>;
+      return (
+        <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+          Acknowledged
+        </Badge>
+      );
     case 'SENT':
-      return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">Sent</Badge>;
+      return (
+        <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+          Sent
+        </Badge>
+      );
     case 'PENDING':
-      return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">Pending</Badge>;
+      return (
+        <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+          Pending
+        </Badge>
+      );
     case 'SENDING':
-      return <Badge className="bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400">Sending</Badge>;
+      return (
+        <Badge className="bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400">
+          Sending
+        </Badge>
+      );
     case 'FAILED':
       return <Badge variant="destructive">Failed</Badge>;
     case 'DEAD':
-      return <Badge className="bg-gray-200 text-gray-800 dark:bg-gray-800 dark:text-gray-400">Dead Letter</Badge>;
+      return (
+        <Badge className="bg-gray-200 text-gray-800 dark:bg-gray-800 dark:text-gray-400">
+          Dead Letter
+        </Badge>
+      );
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -109,7 +124,10 @@ export default function HL7MessagesPage() {
       hl7Api.list({
         search: search || undefined,
         status: statusFilter !== 'all' ? (statusFilter as HL7MessageListItem['status']) : undefined,
-        direction: directionFilter !== 'all' ? (directionFilter as HL7MessageListItem['direction']) : undefined,
+        direction:
+          directionFilter !== 'all'
+            ? (directionFilter as HL7MessageListItem['direction'])
+            : undefined,
       }),
   });
 
@@ -226,7 +244,9 @@ export default function HL7MessagesPage() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   {STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -237,7 +257,9 @@ export default function HL7MessagesPage() {
                 <SelectContent>
                   <SelectItem value="all">All Directions</SelectItem>
                   {DIRECTION_OPTIONS.map((d) => (
-                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                    <SelectItem key={d.value} value={d.value}>
+                      {d.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -251,7 +273,9 @@ export default function HL7MessagesPage() {
             <CardTitle className="flex items-center gap-2">
               <Network className="h-5 w-5" />
               Message Log
-              <Badge variant="secondary" className="ml-1">{data?.count ?? 0}</Badge>
+              <Badge variant="secondary" className="ml-1">
+                {data?.count ?? 0}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -272,9 +296,9 @@ export default function HL7MessagesPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <DirectionIcon direction={msg.direction} />
-                        <span className="font-medium text-sm">{msg.message_type}</span>
+                        <span className="text-sm font-medium">{msg.message_type}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
                         {msg.message_control_id}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -302,8 +326,11 @@ export default function HL7MessagesPage() {
                     key: 'control_id',
                     header: 'Control ID',
                     sortable: true,
-                    sortFn: (a, b) => (a.message_control_id || '').localeCompare(b.message_control_id || ''),
-                    cell: (msg) => <span className="font-mono text-sm">{msg.message_control_id}</span>,
+                    sortFn: (a, b) =>
+                      (a.message_control_id || '').localeCompare(b.message_control_id || ''),
+                    cell: (msg) => (
+                      <span className="font-mono text-sm">{msg.message_control_id}</span>
+                    ),
                   },
                   {
                     key: 'status',
@@ -331,7 +358,9 @@ export default function HL7MessagesPage() {
                     sortType: 'number',
                     sortFn: (a, b) => a.retry_count - b.retry_count,
                     cell: (msg) => (
-                      <span className={`text-sm ${msg.retry_count > 0 ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
+                      <span
+                        className={`text-sm ${msg.retry_count > 0 ? 'font-medium text-amber-600' : 'text-muted-foreground'}`}
+                      >
                         {msg.retry_count}
                       </span>
                     ),
@@ -342,7 +371,8 @@ export default function HL7MessagesPage() {
                     hideOnMobile: true,
                     sortable: true,
                     sortType: 'date',
-                    sortFn: (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+                    sortFn: (a, b) =>
+                      new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
                     cell: (msg) => (
                       <span className="text-sm text-muted-foreground">
                         {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
@@ -357,7 +387,7 @@ export default function HL7MessagesPage() {
 
         {/* Message Detail Dialog */}
         <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogContent className="max-h-[80vh] max-w-2xl overflow-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <DirectionIcon direction={selectedMessage?.direction ?? 'OUT'} />
@@ -373,12 +403,16 @@ export default function HL7MessagesPage() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Direction</p>
-                    <p className="text-sm font-medium">{selectedMessage.direction === 'OUT' ? 'Outbound' : 'Inbound'}</p>
+                    <p className="text-sm font-medium">
+                      {selectedMessage.direction === 'OUT' ? 'Outbound' : 'Inbound'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Resource</p>
                     <p className="text-sm">
-                      {selectedMessage.resource_type ? `${selectedMessage.resource_type} #${selectedMessage.resource_id}` : '—'}
+                      {selectedMessage.resource_type
+                        ? `${selectedMessage.resource_type} #${selectedMessage.resource_id}`
+                        : '—'}
                     </p>
                   </div>
                   <div>
@@ -391,7 +425,9 @@ export default function HL7MessagesPage() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Retries</p>
-                    <p className="text-sm">{selectedMessage.retry_count} / {selectedMessage.max_retries}</p>
+                    <p className="text-sm">
+                      {selectedMessage.retry_count} / {selectedMessage.max_retries}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">ACK Code</p>
@@ -415,8 +451,8 @@ export default function HL7MessagesPage() {
                 )}
 
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Raw HL7 Message</p>
-                  <pre className="rounded-md border bg-muted/30 p-3 text-xs overflow-auto max-h-48 whitespace-pre-wrap break-all font-mono">
+                  <p className="mb-1 text-xs text-muted-foreground">Raw HL7 Message</p>
+                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md border bg-muted/30 p-3 font-mono text-xs">
                     {selectedMessage.raw_message}
                   </pre>
                 </div>

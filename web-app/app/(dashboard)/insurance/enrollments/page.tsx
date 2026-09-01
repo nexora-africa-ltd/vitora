@@ -75,7 +75,11 @@ export default function InsuranceEnrollmentsPage() {
       });
       refetch();
     } catch {
-      toast({ title: 'Error', description: 'Failed to verify via HealthCloud.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to verify via HealthCloud.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -103,7 +107,12 @@ export default function InsuranceEnrollmentsPage() {
         title="Insurance Enrollments"
         helpContent="Manage patient insurance enrollments and verify eligibility via HealthCloud."
         actions={
-          <Button onClick={() => router.push('/insurance/enrollments/new')} disabled={!canCreateRoute('/insurance/enrollments/new')}>New Enrollment</Button>
+          <Button
+            onClick={() => router.push('/insurance/enrollments/new')}
+            disabled={!canCreateRoute('/insurance/enrollments/new')}
+          >
+            New Enrollment
+          </Button>
         }
       />
 
@@ -119,7 +128,7 @@ export default function InsuranceEnrollmentsPage() {
             header: 'Patient',
             cell: (item) => (
               <div>
-                <p className="font-medium text-sm">{item.patient_name}</p>
+                <p className="text-sm font-medium">{item.patient_name}</p>
                 <p className="text-xs text-muted-foreground">{item.member_number}</p>
               </div>
             ),
@@ -139,7 +148,8 @@ export default function InsuranceEnrollmentsPage() {
             header: 'Validity',
             cell: (item) => (
               <p className="text-sm">
-                {new Date(item.valid_from).toLocaleDateString()} - {new Date(item.valid_to).toLocaleDateString()}
+                {new Date(item.valid_from).toLocaleDateString()} -{' '}
+                {new Date(item.valid_to).toLocaleDateString()}
               </p>
             ),
           },
@@ -176,11 +186,25 @@ export default function InsuranceEnrollmentsPage() {
                   {hasValidatedToken ? (
                     <Badge variant="secondary">Verified</Badge>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); void handleVerifyViaHealthcloud(item.id); }}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleVerifyViaHealthcloud(item.id);
+                      }}
+                    >
                       Verify
                     </Button>
                   )}
-                  <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); router.push(`/insurance/enrollments/${item.id}`); }}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/insurance/enrollments/${item.id}`);
+                    }}
+                  >
                     View
                   </Button>
                   {existingSession ? (
@@ -212,9 +236,11 @@ export default function InsuranceEnrollmentsPage() {
         ]}
         mobileCard={(item) => (
           <Card key={item.id}>
-            <CardContent className="p-3 space-y-2">
-              <p className="font-medium text-sm">{item.patient_name}</p>
-              <p className="text-xs text-muted-foreground">{item.provider_name} - {item.plan_name}</p>
+            <CardContent className="space-y-2 p-3">
+              <p className="text-sm font-medium">{item.patient_name}</p>
+              <p className="text-xs text-muted-foreground">
+                {item.provider_name} - {item.plan_name}
+              </p>
               <Badge className={STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-800'}>
                 {item.status.replace('_', ' ')}
               </Badge>
@@ -234,25 +260,42 @@ export default function InsuranceEnrollmentsPage() {
                   return hasValidatedToken ? (
                     <Badge variant="secondary">Verified</Badge>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => void handleVerifyViaHealthcloud(item.id)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void handleVerifyViaHealthcloud(item.id)}
+                    >
                       Verify
                     </Button>
                   );
                 })()}
-                <Button size="sm" variant="secondary" onClick={() => router.push(`/insurance/enrollments/${item.id}`)}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => router.push(`/insurance/enrollments/${item.id}`)}
+                >
                   View
                 </Button>
                 {(() => {
                   const existingSession = sessionsByEnrollment.get(item.id);
                   if (existingSession) {
                     return (
-                      <Button size="sm" onClick={() => router.push(`/insurance/authorizations/${existingSession.id}`)}>
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          router.push(`/insurance/authorizations/${existingSession.id}`)
+                        }
+                      >
                         View Session
                       </Button>
                     );
                   }
                   return (
-                    <Button size="sm" disabled={startSession.isPending} onClick={() => void handleStartSession(item.id)}>
+                    <Button
+                      size="sm"
+                      disabled={startSession.isPending}
+                      onClick={() => void handleStartSession(item.id)}
+                    >
                       {startSession.isPending ? 'Starting...' : 'Start Session'}
                     </Button>
                   );

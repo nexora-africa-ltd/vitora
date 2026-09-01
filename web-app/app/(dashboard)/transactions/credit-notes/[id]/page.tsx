@@ -142,8 +142,8 @@ export default function CreditNoteDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
       </div>
     );
   }
@@ -162,7 +162,11 @@ export default function CreditNoteDetailPage() {
     );
   }
 
-  const config = statusConfig[creditNote.status] ?? { color: 'bg-slate-100 text-slate-700', icon: ScrollText, label: creditNote.status };
+  const config = statusConfig[creditNote.status] ?? {
+    color: 'bg-slate-100 text-slate-700',
+    icon: ScrollText,
+    label: creditNote.status,
+  };
   const StatusIcon = config.icon;
 
   return (
@@ -176,25 +180,22 @@ export default function CreditNoteDetailPage() {
               <>
                 <Button
                   variant="outline"
-                  className="text-destructive border-destructive hover:bg-destructive/10"
+                  className="border-destructive text-destructive hover:bg-destructive/10"
                   onClick={() => setShowRejectDialog(true)}
                   disabled={rejectMutation.isPending}
                 >
-                  <XCircle className="h-4 w-4 mr-2" />
+                  <XCircle className="mr-2 h-4 w-4" />
                   Reject
                 </Button>
-                <Button
-                  onClick={handleApprove}
-                  disabled={approveMutation.isPending}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                <Button onClick={handleApprove} disabled={approveMutation.isPending}>
+                  <CheckCircle className="mr-2 h-4 w-4" />
                   {approveMutation.isPending ? 'Approving...' : 'Approve'}
                 </Button>
               </>
             )}
             {creditNote.status === 'APPROVED' && (
               <Button onClick={() => setShowRefundDialog(true)} disabled={refundMutation.isPending}>
-                <Undo2 className="h-4 w-4 mr-2" />
+                <Undo2 className="mr-2 h-4 w-4" />
                 Process Refund
               </Button>
             )}
@@ -203,21 +204,22 @@ export default function CreditNoteDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {creditNote.patient_name || 'Unknown Patient'}
             <span className="text-muted-foreground">
-              {' '}• Invoice {creditNote.invoice_number || `#${creditNote.invoice}`}
+              {' '}
+              • Invoice {creditNote.invoice_number || `#${creditNote.invoice}`}
             </span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Requested {format(new Date(creditNote.created_at), 'dd MMM yyyy, HH:mm')}
           </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex shrink-0 items-center gap-3">
           <span className="text-lg font-bold">{formatCurrency(parseFloat(creditNote.amount))}</span>
-          <Badge className={`${config.color} gap-1 shrink-0 w-fit`}>
+          <Badge className={`${config.color} w-fit shrink-0 gap-1`}>
             <StatusIcon className="h-3 w-3" />
             {config.label}
           </Badge>
@@ -228,7 +230,7 @@ export default function CreditNoteDetailPage() {
         {/* Details Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <FileText className="h-4 w-4" />
               Details
             </CardTitle>
@@ -236,12 +238,14 @@ export default function CreditNoteDetailPage() {
           <CardContent className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Reason</span>
-              <span className="font-medium">{reasonLabels[creditNote.reason] || creditNote.reason}</span>
+              <span className="font-medium">
+                {reasonLabels[creditNote.reason] || creditNote.reason}
+              </span>
             </div>
             <Separator />
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Detail</span>
-              <span className="text-right max-w-[60%]">{creditNote.reason_detail || '—'}</span>
+              <span className="max-w-[60%] text-right">{creditNote.reason_detail || '—'}</span>
             </div>
             <Separator />
             <div className="flex justify-between text-sm">
@@ -272,7 +276,7 @@ export default function CreditNoteDetailPage() {
         {/* Workflow Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <User className="h-4 w-4" />
               Workflow
             </CardTitle>
@@ -280,7 +284,11 @@ export default function CreditNoteDetailPage() {
           <CardContent className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Requested By</span>
-              <span>{creditNote.requested_by_name || creditNote.requested_by_username || `User #${creditNote.requested_by}`}</span>
+              <span>
+                {creditNote.requested_by_name ||
+                  creditNote.requested_by_username ||
+                  `User #${creditNote.requested_by}`}
+              </span>
             </div>
             <Separator />
             <div className="flex justify-between text-sm">
@@ -292,7 +300,11 @@ export default function CreditNoteDetailPage() {
                 <Separator />
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Approved By</span>
-                  <span>{creditNote.approved_by_name || creditNote.approved_by_username || `User #${creditNote.approved_by}`}</span>
+                  <span>
+                    {creditNote.approved_by_name ||
+                      creditNote.approved_by_username ||
+                      `User #${creditNote.approved_by}`}
+                  </span>
                 </div>
                 {creditNote.approved_at && (
                   <>
@@ -317,7 +329,7 @@ export default function CreditNoteDetailPage() {
                     <Separator />
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Rejection Reason</span>
-                      <span className="text-right max-w-[60%]">{creditNote.rejection_reason}</span>
+                      <span className="max-w-[60%] text-right">{creditNote.rejection_reason}</span>
                     </div>
                   </>
                 )}
@@ -382,7 +394,10 @@ export default function CreditNoteDetailPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="refund-method">Refund Method</Label>
-              <Select value={refundMethod} onValueChange={(v) => setRefundMethod(v as CreditNoteRefundData['refund_method'])}>
+              <Select
+                value={refundMethod}
+                onValueChange={(v) => setRefundMethod(v as CreditNoteRefundData['refund_method'])}
+              >
                 <SelectTrigger id="refund-method">
                   <SelectValue />
                 </SelectTrigger>

@@ -13,21 +13,11 @@ import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Database,
-  X,
-} from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, AlertCircle, Database, X } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
-import type {
-  ClientRegistryClient,
-  DirectEligibilityCheckResponse,
-} from '@/lib/types/sha';
+import type { ClientRegistryClient, DirectEligibilityCheckResponse } from '@/lib/types/sha';
 
 // ============================================================================
 // Types
@@ -59,15 +49,16 @@ interface CRResultProps {
 
 function CRResult({ client, onUse, onClear }: CRResultProps) {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 p-2 rounded-md bg-muted/50 text-sm">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <Database className="h-4 w-4 text-blue-600 shrink-0" />
-        <div className="flex-1 min-w-0">
+    <div className="flex flex-col gap-2 rounded-md bg-muted/50 p-2 text-sm sm:flex-row sm:items-center sm:gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <Database className="h-4 w-4 shrink-0 text-blue-600" />
+        <div className="min-w-0 flex-1">
           <span className="font-medium">
             {client.first_name} {client.last_name}
           </span>
-          <span className="text-muted-foreground ml-2 hidden sm:inline">
-            {client.date_of_birth} • {client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : 'Other'}
+          <span className="ml-2 hidden text-muted-foreground sm:inline">
+            {client.date_of_birth} •{' '}
+            {client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : 'Other'}
           </span>
           {client.client_number && (
             <Badge variant="outline" className="ml-2 text-xs">
@@ -76,7 +67,7 @@ function CRResult({ client, onUse, onClear }: CRResultProps) {
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 justify-end">
+      <div className="flex items-center justify-end gap-1">
         <Button size="sm" variant="ghost" onClick={onUse} className="h-7 text-xs">
           Use
         </Button>
@@ -97,28 +88,34 @@ function EligibilityResult({ eligibility, onClear }: EligibilityResultProps) {
   const isEligible = eligibility.is_eligible;
 
   return (
-    <div className={cn(
-      "flex flex-col gap-2 p-3 rounded-md text-sm",
-      isEligible ? "bg-green-50 dark:bg-green-950/30" : "bg-yellow-50 dark:bg-yellow-950/30"
-    )}>
+    <div
+      className={cn(
+        'flex flex-col gap-2 rounded-md p-3 text-sm',
+        isEligible ? 'bg-green-50 dark:bg-green-950/30' : 'bg-yellow-50 dark:bg-yellow-950/30'
+      )}
+    >
       <div className="flex items-center gap-3">
         {isEligible ? (
-          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
         ) : (
-          <XCircle className="h-4 w-4 text-yellow-600 shrink-0" />
+          <XCircle className="h-4 w-4 shrink-0 text-yellow-600" />
         )}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {isEligible ? (
             <>
               <span className="font-medium text-green-700 dark:text-green-300">Eligible</span>
               {eligibility.full_name && (
-                <span className="text-green-600 dark:text-green-400 ml-2">{eligibility.full_name}</span>
+                <span className="ml-2 text-green-600 dark:text-green-400">
+                  {eligibility.full_name}
+                </span>
               )}
-              <span className="text-green-600 dark:text-green-400 ml-2">
-                {eligibility.copay_percentage === 0 ? '• Full coverage' : `• ${eligibility.copay_percentage}% copay`}
+              <span className="ml-2 text-green-600 dark:text-green-400">
+                {eligibility.copay_percentage === 0
+                  ? '• Full coverage'
+                  : `• ${eligibility.copay_percentage}% copay`}
               </span>
               {eligibility.coverage_end_date && (
-                <span className="text-green-600/70 dark:text-green-400/70 ml-1">
+                <span className="ml-1 text-green-600/70 dark:text-green-400/70">
                   until {eligibility.coverage_end_date}
                 </span>
               )}
@@ -127,7 +124,9 @@ function EligibilityResult({ eligibility, onClear }: EligibilityResultProps) {
             <>
               <span className="font-medium text-yellow-700 dark:text-yellow-300">Not Eligible</span>
               {eligibility.sha_number && (
-                <span className="text-yellow-600 dark:text-yellow-400 ml-2">• {eligibility.sha_number}</span>
+                <span className="ml-2 text-yellow-600 dark:text-yellow-400">
+                  • {eligibility.sha_number}
+                </span>
               )}
             </>
           )}
@@ -139,12 +138,12 @@ function EligibilityResult({ eligibility, onClear }: EligibilityResultProps) {
 
       {/* Additional details for ineligible patients */}
       {!isEligible && (eligibility.reason || eligibility.possible_solution) && (
-        <div className="pl-7 space-y-1 text-xs">
+        <div className="space-y-1 pl-7 text-xs">
           {eligibility.reason && (
             <p className="text-yellow-700 dark:text-yellow-300">{eligibility.reason}</p>
           )}
           {eligibility.possible_solution && (
-            <p className="text-blue-600 dark:text-blue-400 font-medium">
+            <p className="font-medium text-blue-600 dark:text-blue-400">
               💡 {eligibility.possible_solution}
             </p>
           )}
@@ -259,7 +258,7 @@ export function PatientVerificationBar({
   const isLoading = status === 'loading';
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn('space-y-2', className)}>
       {/* Input and action buttons */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-xs">
@@ -303,9 +302,9 @@ export function PatientVerificationBar({
             className="flex-1 sm:flex-none"
           >
             {activeAction === 'cr' && isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
             ) : (
-              <Database className="h-4 w-4 mr-1" />
+              <Database className="mr-1 h-4 w-4" />
             )}
             <span className="sm:hidden">CR</span>
             <span className="hidden sm:inline">Lookup CR</span>
@@ -319,7 +318,7 @@ export function PatientVerificationBar({
             className="flex-1 sm:flex-none"
           >
             {activeAction === 'eligibility' && isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
             ) : (
               <SHALogo size="sm" className="mr-1" />
             )}
@@ -338,19 +337,10 @@ export function PatientVerificationBar({
       )}
 
       {/* Results */}
-      {crClient && (
-        <CRResult
-          client={crClient}
-          onUse={handleUseCRClient}
-          onClear={clearCRResult}
-        />
-      )}
+      {crClient && <CRResult client={crClient} onUse={handleUseCRClient} onClear={clearCRResult} />}
 
       {eligibility && (
-        <EligibilityResult
-          eligibility={eligibility}
-          onClear={clearEligibilityResult}
-        />
+        <EligibilityResult eligibility={eligibility} onClear={clearEligibilityResult} />
       )}
     </div>
   );

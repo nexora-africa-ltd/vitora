@@ -40,10 +40,11 @@ const revenueConfig = createChartConfig(['total', 'cash', 'mpesa', 'insurance', 
 export function RevenueChart({ data, showLegend = true, showByMethod = false }: RevenueChartProps) {
   // Format dates for display
   const chartData = useMemo(
-    () => (data ?? []).map((item) => ({
-      ...item,
-      formattedDate: format(parseISO(item.date), 'MMM d'),
-    })),
+    () =>
+      (data ?? []).map((item) => ({
+        ...item,
+        formattedDate: format(parseISO(item.date), 'MMM d'),
+      })),
     [data]
   );
 
@@ -55,7 +56,7 @@ export function RevenueChart({ data, showLegend = true, showByMethod = false }: 
 
   if (!data || data.length === 0) {
     return (
-      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+      <div className="flex h-[300px] items-center justify-center text-muted-foreground">
         No revenue data available
       </div>
     );
@@ -63,8 +64,8 @@ export function RevenueChart({ data, showLegend = true, showByMethod = false }: 
 
   // Determine which data keys to show
   const dataKeys = showByMethod
-    ? ['cash', 'mpesa', 'insurance', 'card'] as const
-    : ['total'] as const;
+    ? (['cash', 'mpesa', 'insurance', 'card'] as const)
+    : (['total'] as const);
 
   return (
     <div className="space-y-2">

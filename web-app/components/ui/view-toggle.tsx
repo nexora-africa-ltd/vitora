@@ -4,12 +4,7 @@ import * as React from 'react';
 import { LayoutGrid, List } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export type ViewMode = 'list' | 'grid';
 
@@ -26,16 +21,13 @@ interface ViewToggleProps {
 export function ViewToggle({ value, onChange, className }: ViewToggleProps) {
   return (
     <TooltipProvider delayDuration={300}>
-      <div className={cn('flex items-center border rounded-md', className)}>
+      <div className={cn('flex items-center rounded-md border', className)}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
-              className={cn(
-                'h-8 w-8 p-0 rounded-r-none',
-                value === 'list' && 'bg-muted'
-              )}
+              className={cn('h-8 w-8 rounded-r-none p-0', value === 'list' && 'bg-muted')}
               onClick={() => onChange('list')}
               aria-label="List view"
               aria-pressed={value === 'list'}
@@ -51,10 +43,7 @@ export function ViewToggle({ value, onChange, className }: ViewToggleProps) {
             <Button
               variant="ghost"
               size="sm"
-              className={cn(
-                'h-8 w-8 p-0 rounded-l-none border-l',
-                value === 'grid' && 'bg-muted'
-              )}
+              className={cn('h-8 w-8 rounded-l-none border-l p-0', value === 'grid' && 'bg-muted')}
               onClick={() => onChange('grid')}
               aria-label="Grid view"
               aria-pressed={value === 'grid'}

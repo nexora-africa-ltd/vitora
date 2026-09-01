@@ -16,13 +16,16 @@ import type {
 export const dialysisKeys = {
   all: ['dialysis'] as const,
   accesses: () => [...dialysisKeys.all, 'accesses'] as const,
-  accessList: (params?: VascularAccessListParams) => [...dialysisKeys.accesses(), 'list', params] as const,
+  accessList: (params?: VascularAccessListParams) =>
+    [...dialysisKeys.accesses(), 'list', params] as const,
   accessDetail: (id: number) => [...dialysisKeys.accesses(), 'detail', id] as const,
   orders: () => [...dialysisKeys.all, 'orders'] as const,
-  orderList: (params?: DialysisOrderListParams) => [...dialysisKeys.orders(), 'list', params] as const,
+  orderList: (params?: DialysisOrderListParams) =>
+    [...dialysisKeys.orders(), 'list', params] as const,
   orderDetail: (id: number) => [...dialysisKeys.orders(), 'detail', id] as const,
   sessions: () => [...dialysisKeys.all, 'sessions'] as const,
-  sessionList: (params?: DialysisSessionListParams) => [...dialysisKeys.sessions(), 'list', params] as const,
+  sessionList: (params?: DialysisSessionListParams) =>
+    [...dialysisKeys.sessions(), 'list', params] as const,
   sessionDetail: (id: number) => [...dialysisKeys.sessions(), 'detail', id] as const,
 };
 
@@ -148,7 +151,8 @@ export function useCompleteSession() {
 export function useAbortSession() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) => dialysisApi.abortSession(id, reason),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      dialysisApi.abortSession(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dialysisKeys.sessions() });
     },

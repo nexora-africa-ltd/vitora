@@ -26,11 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
   CommandEmpty,
@@ -88,9 +84,7 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
   const consumables = useMemo(() => consumablesData?.results || [], [consumablesData]);
 
   // Fetch batches for selected consumable item
-  const { data: batches, isLoading: batchesLoading } = useBatchesForDrug(
-    selectedItem?.id
-  );
+  const { data: batches, isLoading: batchesLoading } = useBatchesForDrug(selectedItem?.id);
   const availableBatches = useMemo(
     () => (batches ?? []).filter((b) => b.quantity_available > 0),
     [batches]
@@ -122,15 +116,27 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
     const parsedQuantity = Number(quantityUsed);
 
     if (!selectedItem) {
-      toast({ title: 'Validation Error', description: 'Select a consumable item.', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Select a consumable item.',
+        variant: 'destructive',
+      });
       return;
     }
     if (!selectedBatchId) {
-      toast({ title: 'Validation Error', description: 'Select a stock batch.', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Select a stock batch.',
+        variant: 'destructive',
+      });
       return;
     }
     if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
-      toast({ title: 'Validation Error', description: 'Quantity must be at least 1.', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Quantity must be at least 1.',
+        variant: 'destructive',
+      });
       return;
     }
     if (selectedBatch && parsedQuantity > selectedBatch.quantity_available) {
@@ -151,18 +157,29 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
           notes: notes.trim() || undefined,
         },
       });
-      toast({ title: 'Consumable Recorded', description: `${parsedQuantity} × ${selectedItem.generic_name} debited from stock.` });
+      toast({
+        title: 'Consumable Recorded',
+        description: `${parsedQuantity} × ${selectedItem.generic_name} debited from stock.`,
+      });
       setRecordOpen(false);
       resetRecordForm();
     } catch {
-      toast({ title: 'Error', description: 'Failed to record consumable usage.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to record consumable usage.',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleReverseUsage = async () => {
     if (!reverseTargetId) return;
     if (!reverseReason.trim()) {
-      toast({ title: 'Validation Error', description: 'Provide a reason before reversing.', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Provide a reason before reversing.',
+        variant: 'destructive',
+      });
       return;
     }
     try {
@@ -175,7 +192,11 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
       setReverseTargetId(null);
       setReverseReason('');
     } catch {
-      toast({ title: 'Error', description: 'Failed to reverse consumable usage.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to reverse consumable usage.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -190,10 +211,16 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
           <CardTitle className="text-lg">Consumable Usage</CardTitle>
           <HelpPopover content="Record inpatient consumables (gloves, dressings, syringes, etc.) against pharmacy stock. Only items marked as 'Consumable' in the catalog are shown." />
         </div>
-        <Dialog open={recordOpen} onOpenChange={(open) => { setRecordOpen(open); if (!open) resetRecordForm(); }}>
+        <Dialog
+          open={recordOpen}
+          onOpenChange={(open) => {
+            setRecordOpen(open);
+            if (!open) resetRecordForm();
+          }}
+        >
           <DialogTrigger asChild>
             <Button disabled={!isActive} size="sm">
-              <Package className="h-4 w-4 mr-2" />
+              <Package className="mr-2 h-4 w-4" />
               Record Usage
             </Button>
           </DialogTrigger>
@@ -232,7 +259,7 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
                       <CommandList className="max-h-[200px]">
                         {consumablesLoading ? (
                           <div className="p-4 text-center text-sm text-muted-foreground">
-                            <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
                             Searching...
                           </div>
                         ) : consumables.length === 0 ? (
@@ -256,7 +283,9 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
                                 <div className="flex flex-col">
                                   <span>{item.generic_name}</span>
                                   <span className="text-xs text-muted-foreground">
-                                    {item.code}{item.strength ? ` · ${item.strength}` : ''} · Stock: {item.current_stock ?? 0}
+                                    {item.code}
+                                    {item.strength ? ` · ${item.strength}` : ''} · Stock:{' '}
+                                    {item.current_stock ?? 0}
                                   </span>
                                 </div>
                               </CommandItem>
@@ -274,7 +303,7 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
                 <div className="space-y-2">
                   <Label>Stock Batch *</Label>
                   {batchesLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                    <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading batches...
                     </div>
@@ -289,7 +318,8 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
                         <SelectContent>
                           {availableBatches.map((batch) => (
                             <SelectItem key={batch.id} value={String(batch.id)}>
-                              {batch.batch_number} · {batch.quantity_available} avail · exp {batch.expiry_date}
+                              {batch.batch_number} · {batch.quantity_available} avail · exp{' '}
+                              {batch.expiry_date}
                               {batch.store_location_name ? ` · ${batch.store_location_name}` : ''}
                             </SelectItem>
                           ))}
@@ -297,8 +327,10 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
                       </Select>
                       {selectedBatch && (
                         <p className="text-xs text-muted-foreground">
-                          {selectedBatch.quantity_available} units available · expires {selectedBatch.expiry_date}
-                          {selectedBatch.store_location_name && ` · ${selectedBatch.store_location_name}`}
+                          {selectedBatch.quantity_available} units available · expires{' '}
+                          {selectedBatch.expiry_date}
+                          {selectedBatch.store_location_name &&
+                            ` · ${selectedBatch.store_location_name}`}
                         </p>
                       )}
                     </>
@@ -338,7 +370,13 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setRecordOpen(false); resetRecordForm(); }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRecordOpen(false);
+                  resetRecordForm();
+                }}
+              >
                 Cancel
               </Button>
               <Button
@@ -371,19 +409,18 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
               >
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium">
-                      {usage.drug_name ?? `Item #${usage.drug}`}
-                    </p>
+                    <p className="font-medium">{usage.drug_name ?? `Item #${usage.drug}`}</p>
                     <Badge variant={usage.is_reversed ? 'secondary' : 'outline'}>
                       {usage.is_reversed ? 'Reversed' : `${usage.quantity_used} used`}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Batch {usage.batch_number} · by {usage.used_by_username ?? 'Unknown'} · {formatDateTime(usage.used_at)}
+                    Batch {usage.batch_number} · by {usage.used_by_username ?? 'Unknown'} ·{' '}
+                    {formatDateTime(usage.used_at)}
                   </p>
                   {usage.notes && <p className="text-sm">{usage.notes}</p>}
                   {usage.is_reversed && usage.reverse_reason && (
-                    <p className="text-sm text-muted-foreground italic">
+                    <p className="text-sm italic text-muted-foreground">
                       Reversed: {usage.reverse_reason}
                     </p>
                   )}
@@ -395,7 +432,7 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
                     className="shrink-0"
                     onClick={() => setReverseTargetId(usage.id)}
                   >
-                    <RotateCcw className="h-4 w-4 mr-2" />
+                    <RotateCcw className="mr-2 h-4 w-4" />
                     Reverse
                   </Button>
                 )}
@@ -405,9 +442,15 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
         )}
 
         {/* Reverse Dialog */}
-        <Dialog open={reverseTargetId !== null} onOpenChange={(open) => {
-          if (!open) { setReverseTargetId(null); setReverseReason(''); }
-        }}>
+        <Dialog
+          open={reverseTargetId !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setReverseTargetId(null);
+              setReverseReason('');
+            }
+          }}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Reverse Consumable Usage</DialogTitle>
@@ -426,10 +469,19 @@ export function ConsumableUsagePanel({ admissionId, isActive }: ConsumableUsageP
               />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setReverseTargetId(null); setReverseReason(''); }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setReverseTargetId(null);
+                  setReverseReason('');
+                }}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleReverseUsage} disabled={reverseUsage.isPending || !reverseReason.trim()}>
+              <Button
+                onClick={handleReverseUsage}
+                disabled={reverseUsage.isPending || !reverseReason.trim()}
+              >
                 {reverseUsage.isPending ? 'Reversing...' : 'Reverse Usage'}
               </Button>
             </DialogFooter>

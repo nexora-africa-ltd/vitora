@@ -101,9 +101,7 @@ export default function ProcedureCatalogPage() {
       key: 'code',
       header: 'Code',
       sortable: true,
-      cell: (item: ProcedureCatalogEntry) => (
-        <span className="font-mono text-sm">{item.code}</span>
-      ),
+      cell: (item: ProcedureCatalogEntry) => <span className="font-mono text-sm">{item.code}</span>,
       hideOnMobile: true,
     },
     {
@@ -114,7 +112,7 @@ export default function ProcedureCatalogPage() {
         <div>
           <span className="font-medium">{item.name}</span>
           {item.ichi_code && (
-            <span className="text-xs text-muted-foreground ml-2">ICHI: {item.ichi_code}</span>
+            <span className="ml-2 text-xs text-muted-foreground">ICHI: {item.ichi_code}</span>
           )}
         </div>
       ),
@@ -124,7 +122,9 @@ export default function ProcedureCatalogPage() {
       header: 'Category',
       sortable: true,
       cell: (item: ProcedureCatalogEntry) => (
-        <Badge className={`${CATEGORY_COLORS[item.category] || CATEGORY_COLORS.OTHER} shrink-0 w-fit`}>
+        <Badge
+          className={`${CATEGORY_COLORS[item.category] || CATEGORY_COLORS.OTHER} w-fit shrink-0`}
+        >
           {CATEGORY_LABELS[item.category] || item.category}
         </Badge>
       ),
@@ -134,7 +134,7 @@ export default function ProcedureCatalogPage() {
       header: 'Risk',
       sortable: true,
       cell: (item: ProcedureCatalogEntry) => (
-        <Badge className={`${RISK_LEVEL_COLORS[item.risk_level] || ''} shrink-0 w-fit`}>
+        <Badge className={`${RISK_LEVEL_COLORS[item.risk_level] || ''} w-fit shrink-0`}>
           {item.risk_level}
         </Badge>
       ),
@@ -161,7 +161,9 @@ export default function ProcedureCatalogPage() {
       header: 'Consent',
       sortable: true,
       cell: (item: ProcedureCatalogEntry) => (
-        <span className={item.consent_required ? 'text-amber-600 font-medium' : 'text-muted-foreground'}>
+        <span
+          className={item.consent_required ? 'font-medium text-amber-600' : 'text-muted-foreground'}
+        >
           {item.consent_required ? 'Required' : 'No'}
         </span>
       ),
@@ -176,8 +178,11 @@ export default function ProcedureCatalogPage() {
           title="Procedure Catalog"
           helpContent="Browse all available procedures. Filter by category and risk level. View procedure codes, fees, and consent requirements."
           actions={
-            <Button onClick={() => router.push('/procedures/catalog/new')} disabled={!canCreateRoute('/procedures/catalog/new')}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button
+              onClick={() => router.push('/procedures/catalog/new')}
+              disabled={!canCreateRoute('/procedures/catalog/new')}
+            >
+              <Plus className="mr-2 h-4 w-4" />
               New Procedure
             </Button>
           }
@@ -186,7 +191,7 @@ export default function ProcedureCatalogPage() {
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 sm:max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name, code, ICHI..."
               value={search}
@@ -227,7 +232,8 @@ export default function ProcedureCatalogPage() {
           <Alert>
             <AlertTitle>Procedure catalog not seeded for this tenant</AlertTitle>
             <AlertDescription>
-              No active procedures are available for your organization yet. Run the procedure catalog seed for this tenant before ordering procedures.
+              No active procedures are available for your organization yet. Run the procedure
+              catalog seed for this tenant before ordering procedures.
             </AlertDescription>
           </Alert>
         )}
@@ -246,14 +252,28 @@ export default function ProcedureCatalogPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!hasPrev}
+            >
               Previous
             </Button>
             <span className="text-sm text-muted-foreground">
-              <span className="hidden sm:inline">Page {page} of {totalPages} ({totalCount} procedures)</span>
-              <span className="sm:hidden">{page}/{totalPages}</span>
+              <span className="hidden sm:inline">
+                Page {page} of {totalPages} ({totalCount} procedures)
+              </span>
+              <span className="sm:hidden">
+                {page}/{totalPages}
+              </span>
             </span>
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNext}
+            >
               Next
             </Button>
           </div>

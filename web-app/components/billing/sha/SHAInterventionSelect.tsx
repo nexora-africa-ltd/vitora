@@ -18,11 +18,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -80,42 +76,33 @@ function InterventionItem({
       onSelect={onSelect}
       className="flex items-start gap-2 py-2"
     >
-      <Check
-        className={cn(
-          'h-4 w-4 mt-0.5',
-          isSelected ? 'opacity-100' : 'opacity-0'
-        )}
-      />
-      <div className="flex-1 min-w-0">
+      <Check className={cn('mt-0.5 h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')} />
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">
-            {intervention.code}
-          </span>
+          <span className="font-mono text-xs text-muted-foreground">{intervention.code}</span>
           {intervention.requires_preauthorization && (
-            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+            <Badge variant="outline" className="h-4 px-1 py-0 text-[10px]">
               Pre-auth
             </Badge>
           )}
         </div>
-        <p className="text-sm font-medium truncate">{intervention.name}</p>
+        <p className="truncate text-sm font-medium">{intervention.name}</p>
         {intervention.description && (
-          <p className="text-xs text-muted-foreground truncate">
-            {intervention.description}
-          </p>
+          <p className="truncate text-xs text-muted-foreground">{intervention.description}</p>
         )}
-        <div className="flex items-center gap-2 mt-1">
+        <div className="mt-1 flex items-center gap-2">
           {showPrice && intervention.price > 0 && (
-            <span className="text-xs text-green-600 font-medium">
+            <span className="text-xs font-medium text-green-600">
               {formatCurrency(intervention.price)}
             </span>
           )}
           {showFacilityLevel && intervention.facility_level && (
-            <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+            <Badge variant="secondary" className="h-4 px-1 py-0 text-[10px]">
               Level {intervention.facility_level}
             </Badge>
           )}
           {intervention.category && (
-            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+            <Badge variant="outline" className="h-4 px-1 py-0 text-[10px]">
               {intervention.category}
             </Badge>
           )}
@@ -182,16 +169,22 @@ export function SHAInterventionSelect({
     };
   }, [searchQuery, facilityLevel, category]);
 
-  const handleSelect = useCallback((intervention: SHAIntervention) => {
-    onSelect(intervention);
-    setOpen(false);
-    setSearchQuery('');
-  }, [onSelect]);
+  const handleSelect = useCallback(
+    (intervention: SHAIntervention) => {
+      onSelect(intervention);
+      setOpen(false);
+      setSearchQuery('');
+    },
+    [onSelect]
+  );
 
-  const handleClear = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelect(null as unknown as SHAIntervention);
-  }, [onSelect]);
+  const handleClear = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSelect(null as unknown as SHAIntervention);
+    },
+    [onSelect]
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -202,30 +195,28 @@ export function SHAInterventionSelect({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'w-full justify-between h-auto min-h-10 py-2',
+            'h-auto min-h-10 w-full justify-between py-2',
             !value && 'text-muted-foreground',
             className
           )}
         >
           {value ? (
-            <div className="flex items-center gap-2 text-left flex-1 min-w-0">
-              <div className="flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {value.code}
-                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">{value.code}</span>
                   {showPrice && value.price > 0 && (
-                    <span className="text-xs text-green-600 font-medium">
+                    <span className="text-xs font-medium text-green-600">
                       {formatCurrency(value.price)}
                     </span>
                   )}
                 </div>
-                <p className="text-sm truncate">{value.name}</p>
+                <p className="truncate text-sm">{value.name}</p>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 p-0 shrink-0"
+                className="h-5 w-5 shrink-0 p-0"
                 onClick={handleClear}
               >
                 <X className="h-3 w-3" />
@@ -255,7 +246,7 @@ export function SHAInterventionSelect({
                 Type at least 2 characters to search...
               </div>
             ) : isLoading ? (
-              <div className="p-4 space-y-2">
+              <div className="space-y-2 p-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="space-y-1">
                     <Skeleton className="h-4 w-20" />
@@ -310,7 +301,9 @@ export function ICD11Select({
 }: ICD11SelectProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<Array<{ id: number; code: string; title: string; description?: string }>>([]);
+  const [results, setResults] = useState<
+    Array<{ id: number; code: string; title: string; description?: string }>
+  >([]);
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
 
@@ -353,15 +346,15 @@ export function ICD11Select({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'w-full justify-between h-auto min-h-10 py-2',
+            'h-auto min-h-10 w-full justify-between py-2',
             !value && 'text-muted-foreground',
             className
           )}
         >
           {value ? (
-            <div className="flex items-center gap-2 text-left flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
               <span className="font-mono text-xs">{value.code}</span>
-              <span className="text-sm truncate">{value.title}</span>
+              <span className="truncate text-sm">{value.title}</span>
             </div>
           ) : (
             <span className="truncate">{placeholder}</span>
@@ -387,7 +380,7 @@ export function ICD11Select({
                 Type at least 2 characters to search...
               </div>
             ) : isLoading ? (
-              <div className="p-4 space-y-2">
+              <div className="space-y-2 p-4">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
@@ -410,17 +403,15 @@ export function ICD11Select({
                     >
                       <Check
                         className={cn(
-                          'h-4 w-4 mt-0.5',
+                          'mt-0.5 h-4 w-4',
                           value?.code === code.code ? 'opacity-100' : 'opacity-0'
                         )}
                       />
-                      <div className="flex-1 min-w-0">
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {code.code}
-                        </span>
+                      <div className="min-w-0 flex-1">
+                        <span className="font-mono text-xs text-muted-foreground">{code.code}</span>
                         <p className="text-sm font-medium">{code.title}</p>
                         {code.description && (
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="truncate text-xs text-muted-foreground">
                             {code.description}
                           </p>
                         )}
@@ -458,7 +449,9 @@ export function LOINCSelect({
 }: LOINCSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<Array<{ loinc_num: string; long_common_name?: string | null; component: string }>>([]);
+  const [results, setResults] = useState<
+    Array<{ loinc_num: string; long_common_name?: string | null; component: string }>
+  >([]);
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
 
@@ -501,15 +494,15 @@ export function LOINCSelect({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'w-full justify-between h-auto min-h-10 py-2',
+            'h-auto min-h-10 w-full justify-between py-2',
             !value && 'text-muted-foreground',
             className
           )}
         >
           {value ? (
-            <div className="flex items-center gap-2 text-left flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
               <span className="font-mono text-xs">{value.code}</span>
-              <span className="text-sm truncate">{value.name}</span>
+              <span className="truncate text-sm">{value.name}</span>
             </div>
           ) : (
             <span className="truncate">{placeholder}</span>
@@ -535,7 +528,7 @@ export function LOINCSelect({
                 Type at least 2 characters to search...
               </div>
             ) : isLoading ? (
-              <div className="p-4 space-y-2">
+              <div className="space-y-2 p-4">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
@@ -550,7 +543,10 @@ export function LOINCSelect({
                       key={code.loinc_num}
                       value={`${code.loinc_num}-${code.long_common_name || code.component}`}
                       onSelect={() => {
-                        onSelect({ code: code.loinc_num, name: code.long_common_name || code.component });
+                        onSelect({
+                          code: code.loinc_num,
+                          name: code.long_common_name || code.component,
+                        });
                         setOpen(false);
                         setSearchQuery('');
                       }}
@@ -558,18 +554,18 @@ export function LOINCSelect({
                     >
                       <Check
                         className={cn(
-                          'h-4 w-4 mt-0.5',
+                          'mt-0.5 h-4 w-4',
                           value?.code === code.loinc_num ? 'opacity-100' : 'opacity-0'
                         )}
                       />
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="font-mono text-xs text-muted-foreground">
                           {code.loinc_num}
                         </span>
-                        <p className="text-sm font-medium">{code.long_common_name || code.component}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {code.component}
+                        <p className="text-sm font-medium">
+                          {code.long_common_name || code.component}
                         </p>
+                        <p className="text-xs text-muted-foreground">{code.component}</p>
                       </div>
                     </CommandItem>
                   ))}
@@ -606,16 +602,18 @@ export function DrugSelect({
 }: DrugSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<Array<{
-    id: number;
-    code: string;
-    name: string;
-    generic_name?: string;
-    dosage_form?: string;
-    strength?: string;
-    price?: number;
-    currency?: string;
-  }>>([]);
+  const [results, setResults] = useState<
+    Array<{
+      id: number;
+      code: string;
+      name: string;
+      generic_name?: string;
+      dosage_form?: string;
+      strength?: string;
+      price?: number;
+      currency?: string;
+    }>
+  >([]);
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
 
@@ -658,19 +656,17 @@ export function DrugSelect({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'w-full justify-between h-auto min-h-10 py-2',
+            'h-auto min-h-10 w-full justify-between py-2',
             !value && 'text-muted-foreground',
             className
           )}
         >
           {value ? (
-            <div className="flex items-center gap-2 text-left flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
               <span className="font-mono text-xs">{value.code}</span>
-              <span className="text-sm truncate">{value.name}</span>
+              <span className="truncate text-sm">{value.name}</span>
               {showPrice && value.price && (
-                <span className="text-xs text-green-600">
-                  {formatCurrency(value.price)}
-                </span>
+                <span className="text-xs text-green-600">{formatCurrency(value.price)}</span>
               )}
             </div>
           ) : (
@@ -697,7 +693,7 @@ export function DrugSelect({
                 Type at least 2 characters to search...
               </div>
             ) : isLoading ? (
-              <div className="p-4 space-y-2">
+              <div className="space-y-2 p-4">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
@@ -724,14 +720,12 @@ export function DrugSelect({
                     >
                       <Check
                         className={cn(
-                          'h-4 w-4 mt-0.5',
+                          'mt-0.5 h-4 w-4',
                           value?.code === drug.code ? 'opacity-100' : 'opacity-0'
                         )}
                       />
-                      <div className="flex-1 min-w-0">
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {drug.code}
-                        </span>
+                      <div className="min-w-0 flex-1">
+                        <span className="font-mono text-xs text-muted-foreground">{drug.code}</span>
                         <p className="text-sm font-medium">{drug.name}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           {drug.generic_name && <span>{drug.generic_name}</span>}
@@ -739,7 +733,7 @@ export function DrugSelect({
                           {drug.strength && <span>• {drug.strength}</span>}
                         </div>
                         {showPrice && drug.price && (
-                          <span className="text-xs text-green-600 font-medium">
+                          <span className="text-xs font-medium text-green-600">
                             {formatCurrency(drug.price)}
                           </span>
                         )}

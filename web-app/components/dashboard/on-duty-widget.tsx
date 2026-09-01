@@ -1,14 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  UserCheck,
-  AlertTriangle,
-  UserX,
-  Clock,
-  Coffee,
-  MapPin,
-} from 'lucide-react';
+import { UserCheck, AlertTriangle, UserX, Clock, Coffee, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
 import { attendanceApi } from '@/lib/api/scheduling';
@@ -45,7 +38,13 @@ function formatTime(timeStr: string): string {
 // Staff Row
 // =============================================================================
 
-function StaffRow({ entry, variant }: { entry: OnDutyStaffEntry; variant: 'active' | 'late' | 'absent' | 'upcoming' }) {
+function StaffRow({
+  entry,
+  variant,
+}: {
+  entry: OnDutyStaffEntry;
+  variant: 'active' | 'late' | 'absent' | 'upcoming';
+}) {
   const variantStyles = {
     active: 'border-emerald-500/20 bg-emerald-500/5',
     late: 'border-amber-500/20 bg-amber-500/5',
@@ -54,11 +53,18 @@ function StaffRow({ entry, variant }: { entry: OnDutyStaffEntry; variant: 'activ
   };
 
   return (
-    <div className={cn('flex items-center gap-3 rounded-lg border p-2.5 text-sm', variantStyles[variant])}>
+    <div
+      className={cn(
+        'flex items-center gap-3 rounded-lg border p-2.5 text-sm',
+        variantStyles[variant]
+      )}
+    >
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{entry.staff_name}</p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-          <span>{formatTime(entry.start_time)} – {formatTime(entry.end_time)}</span>
+          <span>
+            {formatTime(entry.start_time)} – {formatTime(entry.end_time)}
+          </span>
           {entry.department && <span>· {entry.department}</span>}
           {entry.on_break && (
             <Badge variant="outline" className="gap-1 px-1.5 py-0 text-[10px]">
@@ -74,17 +80,26 @@ function StaffRow({ entry, variant }: { entry: OnDutyStaffEntry; variant: 'activ
         </div>
       </div>
       {variant === 'late' && entry.minutes_overdue != null && entry.minutes_overdue > 0 && (
-        <Badge variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 dark:text-amber-400">
+        <Badge
+          variant="outline"
+          className="shrink-0 border-amber-500/40 text-amber-600 dark:text-amber-400"
+        >
           {entry.minutes_overdue}m late
         </Badge>
       )}
       {variant === 'upcoming' && entry.starts_in_minutes != null && (
-        <Badge variant="outline" className="shrink-0 border-blue-500/40 text-blue-600 dark:text-blue-400">
+        <Badge
+          variant="outline"
+          className="shrink-0 border-blue-500/40 text-blue-600 dark:text-blue-400"
+        >
           in {entry.starts_in_minutes}m
         </Badge>
       )}
       {variant === 'active' && entry.late_minutes > 0 && (
-        <Badge variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 dark:text-amber-400">
+        <Badge
+          variant="outline"
+          className="shrink-0 border-amber-500/40 text-amber-600 dark:text-amber-400"
+        >
           {entry.late_minutes}m late
         </Badge>
       )}
@@ -117,10 +132,12 @@ function Section({
 
   return (
     <details open={defaultExpanded} className="group">
-      <summary className="flex cursor-pointer items-center gap-2 py-1 text-sm font-medium select-none list-none [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer select-none list-none items-center gap-2 py-1 text-sm font-medium [&::-webkit-details-marker]:hidden">
         <Icon className={cn('h-4 w-4', iconColor)} />
         <span>{label}</span>
-        <Badge variant="secondary" className="ml-auto text-xs">{count}</Badge>
+        <Badge variant="secondary" className="ml-auto text-xs">
+          {count}
+        </Badge>
         <span className="text-muted-foreground transition-transform group-open:rotate-90">▸</span>
       </summary>
       <div className="mt-1.5 space-y-1.5 pl-6">
@@ -145,27 +162,59 @@ export function OnDutyWidget({ enabled = true }: { enabled?: boolean }) {
   if (isLoading) return <DashboardListSkeleton rows={4} />;
 
   if (isError || !data) {
-    return <DashboardEmptyState icon={UserCheck} title="Unavailable" description="Could not load on-duty data." />;
+    return (
+      <DashboardEmptyState
+        icon={UserCheck}
+        title="Unavailable"
+        description="Could not load on-duty data."
+      />
+    );
   }
 
   const { summary } = data;
 
   if (summary.total === 0) {
-    return <DashboardEmptyState icon={Clock} title="No shifts today" description="No working shifts are scheduled for today." />;
+    return (
+      <DashboardEmptyState
+        icon={Clock}
+        title="No shifts today"
+        description="No working shifts are scheduled for today."
+      />
+    );
   }
 
   return (
     <div className="space-y-3">
       {/* Summary chips */}
       <div className="flex flex-wrap gap-2">
-        <SummaryChip icon={UserCheck} count={summary.clocked_in} label="On Duty" color="text-emerald-600 dark:text-emerald-400" />
+        <SummaryChip
+          icon={UserCheck}
+          count={summary.clocked_in}
+          label="On Duty"
+          color="text-emerald-600 dark:text-emerald-400"
+        />
         {summary.late > 0 && (
-          <SummaryChip icon={AlertTriangle} count={summary.late} label="Late" color="text-amber-600 dark:text-amber-400" />
+          <SummaryChip
+            icon={AlertTriangle}
+            count={summary.late}
+            label="Late"
+            color="text-amber-600 dark:text-amber-400"
+          />
         )}
         {summary.absent > 0 && (
-          <SummaryChip icon={UserX} count={summary.absent} label="Absent" color="text-red-600 dark:text-red-400" />
+          <SummaryChip
+            icon={UserX}
+            count={summary.absent}
+            label="Absent"
+            color="text-red-600 dark:text-red-400"
+          />
         )}
-        <SummaryChip icon={Clock} count={summary.upcoming} label="Upcoming" color="text-blue-600 dark:text-blue-400" />
+        <SummaryChip
+          icon={Clock}
+          count={summary.upcoming}
+          label="Upcoming"
+          color="text-blue-600 dark:text-blue-400"
+        />
       </div>
 
       {/* Sections — late first (needs attention), then active, upcoming, absent */}

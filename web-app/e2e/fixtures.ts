@@ -66,10 +66,13 @@ export async function login(page: Page, username: string, password: string) {
   await page.getByRole('button', { name: /sign in|login/i }).click();
 
   // Wait for login to complete - handle redirect chain / -> /dashboard
-  await page.waitForURL((url) => {
-    const pathname = url.pathname;
-    return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
-  }, { timeout: 15000 });
+  await page.waitForURL(
+    (url) => {
+      const pathname = url.pathname;
+      return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
+    },
+    { timeout: 15000 }
+  );
 
   // If we landed on /, wait for redirect to /dashboard
   if (page.url().endsWith('/')) {

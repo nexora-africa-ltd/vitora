@@ -17,7 +17,27 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight, Eye, BadgeCheck, XCircle, Users, RotateCcw } from 'lucide-react';
+import {
+  CalendarIcon,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  Search,
+  Lock,
+  ChevronDown,
+  HelpCircle,
+  ChevronsUpDown,
+  Check,
+  Ban,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  BadgeCheck,
+  XCircle,
+  Users,
+  RotateCcw,
+} from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -54,22 +74,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -99,13 +106,20 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { ConsentConfirmationDialog, type ConsentDecision } from './consent-confirmation-dialog';
 import { DuplicatePatientAlert } from './duplicate-patient-alert';
 import { DuplicatePatientModal } from './duplicate-patient-modal';
-import { PatientVerificationDialog, type VerificationDecision } from './patient-verification-dialog';
+import {
+  PatientVerificationDialog,
+  type VerificationDecision,
+} from './patient-verification-dialog';
 import { cn } from '@/lib/utils';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
 import { useToast } from '@/lib/hooks/use-toast';
 import { shaApi } from '@/lib/api/sha';
 import { patientsApi } from '@/lib/api/patients';
-import { GENDER_OPTIONS, REFERRAL_SOURCE_OPTIONS, RELATIONSHIP_OPTIONS } from '@/lib/utils/constants';
+import {
+  GENDER_OPTIONS,
+  REFERRAL_SOURCE_OPTIONS,
+  RELATIONSHIP_OPTIONS,
+} from '@/lib/utils/constants';
 import { NATIONALITIES, NATIONALITY_OPTIONS } from '@/lib/utils/nationalities';
 import {
   type PatientCreateData,
@@ -118,7 +132,11 @@ import {
   TITLE_OPTIONS,
   PAYMENT_MODE_OPTIONS,
 } from '@/lib/types/patient';
-import type { ClientRegistryClient, DirectEligibilityCheckResponse, SHAPayloadPerson } from '@/lib/types/sha';
+import type {
+  ClientRegistryClient,
+  DirectEligibilityCheckResponse,
+  SHAPayloadPerson,
+} from '@/lib/types/sha';
 
 // Debounce hook for auto-search
 function useDebounce<T>(value: T, delay: number): T {
@@ -140,7 +158,18 @@ function useDebounce<T>(value: T, delay: number): T {
 // Validation schema
 const patientFormSchema = z.object({
   // Identification (at the top)
-  identification_type: z.enum(['national_id', 'cr_number', 'mandate_number', 'alien_id', 'kra_pin', 'temporary_id', 'passport', 'birth_certificate']).default('national_id'),
+  identification_type: z
+    .enum([
+      'national_id',
+      'cr_number',
+      'mandate_number',
+      'alien_id',
+      'kra_pin',
+      'temporary_id',
+      'passport',
+      'birth_certificate',
+    ])
+    .default('national_id'),
   identification_number: z.string().optional(),
   cr_number: z.string().optional(), // Read-only, populated from CR lookup
   sha_number: z.string().optional(), // Read-only, populated from SHA lookup
@@ -152,11 +181,13 @@ const patientFormSchema = z.object({
   first_name: z.string().min(1, 'First name is required').max(100),
   middle_name: z.string().optional(),
   last_name: z.string().min(1, 'Last name is required').max(100),
-  date_of_birth: z.date({
-    required_error: 'Date of birth is required',
-  }).refine((date) => date <= new Date(), {
-    message: 'Date of birth cannot be in the future',
-  }),
+  date_of_birth: z
+    .date({
+      required_error: 'Date of birth is required',
+    })
+    .refine((date) => date <= new Date(), {
+      message: 'Date of birth cannot be in the future',
+    }),
   place_of_birth: z.string().optional(),
   gender: z.enum(['M', 'F', 'O'], {
     required_error: 'Gender is required',
@@ -203,17 +234,17 @@ const patientFormSchemaRefined = patientFormSchema.superRefine((data, ctx) => {
   const idNumber = data.identification_number?.trim() || '';
   if (idNumber) {
     const maxLen = data.identification_type === 'birth_certificate' ? 64 : 15;
-    const format = data.identification_type === 'birth_certificate'
-      ? /^[a-zA-Z0-9_-]*$/
-      : /^[a-zA-Z0-9-]*$/;
+    const format =
+      data.identification_type === 'birth_certificate' ? /^[a-zA-Z0-9_-]*$/ : /^[a-zA-Z0-9-]*$/;
 
     if (idNumber.length > maxLen) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['identification_number'],
-        message: data.identification_type === 'birth_certificate'
-          ? 'Birth certificate number cannot exceed 64 characters'
-          : 'ID number cannot exceed 15 characters',
+        message:
+          data.identification_type === 'birth_certificate'
+            ? 'Birth certificate number cannot exceed 64 characters'
+            : 'ID number cannot exceed 15 characters',
       });
     }
 
@@ -221,15 +252,19 @@ const patientFormSchemaRefined = patientFormSchema.superRefine((data, ctx) => {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['identification_number'],
-        message: data.identification_type === 'birth_certificate'
-          ? 'Birth certificate can only contain letters, numbers, dashes, and underscores'
-          : 'ID can only contain letters, numbers, and dashes',
+        message:
+          data.identification_type === 'birth_certificate'
+            ? 'Birth certificate can only contain letters, numbers, dashes, and underscores'
+            : 'ID can only contain letters, numbers, and dashes',
       });
     }
   }
 
   // If referral_source is 'other_facility', referred_from_facility is required
-  if (data.referral_source === 'other_facility' && (!data.referred_from_facility || data.referred_from_facility.trim().length === 0)) {
+  if (
+    data.referral_source === 'other_facility' &&
+    (!data.referred_from_facility || data.referred_from_facility.trim().length === 0)
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['referred_from_facility'],
@@ -261,17 +296,17 @@ interface PatientFormProps {
 
 const SHA_IDENTIFICATION_TYPE_MAP: Record<string, IdentificationType> = {
   'national id': 'national_id',
-  'national_id': 'national_id',
+  national_id: 'national_id',
   'hie patient id': 'cr_number',
   'cr id': 'cr_number',
   'cr number': 'cr_number',
-  'cr_number': 'cr_number',
+  cr_number: 'cr_number',
   'mandate number': 'mandate_number',
-  'mandate_number': 'mandate_number',
+  mandate_number: 'mandate_number',
   'alien id': 'alien_id',
-  'alien_id': 'alien_id',
+  alien_id: 'alien_id',
   'kra pin': 'kra_pin',
-  'kra_pin': 'kra_pin',
+  kra_pin: 'kra_pin',
   passport: 'passport',
   'passport number': 'passport',
   'birth certificate': 'birth_certificate',
@@ -348,7 +383,7 @@ export function PatientForm({
   prePopulatedClient,
   prePopulatedShaPerson,
   prePopulatedShaEligibility,
-  isEditing = false
+  isEditing = false,
 }: PatientFormProps) {
   const { toast } = useToast();
 
@@ -385,7 +420,9 @@ export function PatientForm({
 
   // Unified verification dialog state (combines duplicates + SHA eligibility)
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
-  const [pendingShaDetails, setPendingShaDetails] = useState<DirectEligibilityCheckResponse | null>(null);
+  const [pendingShaDetails, setPendingShaDetails] = useState<DirectEligibilityCheckResponse | null>(
+    null
+  );
   const [pendingShaLocation, setPendingShaLocation] = useState<{
     county?: string;
     subCounty?: string;
@@ -403,7 +440,9 @@ export function PatientForm({
   const [customRelationship, setCustomRelationship] = useState('');
 
   // Duplicate check state - for detecting existing patients
-  const [duplicateCheckResult, setDuplicateCheckResult] = useState<DuplicateCheckResult | null>(null);
+  const [duplicateCheckResult, setDuplicateCheckResult] = useState<DuplicateCheckResult | null>(
+    null
+  );
   const [duplicateAcknowledged, setDuplicateAcknowledged] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [registeringName, setRegisteringName] = useState<string>('');
@@ -477,7 +516,7 @@ export function PatientForm({
   const normalizeTwoNameRule = (
     first?: string | null,
     middle?: string | null,
-    last?: string | null,
+    last?: string | null
   ): { first?: string; middle?: string; last?: string } => {
     const f = (first ?? '').trim();
     const m = (middle ?? '').trim();
@@ -494,183 +533,198 @@ export function PatientForm({
   };
 
   // Define populateFromCRClient with useCallback
-  const populateFromCRClient = useCallback((client: ClientRegistryClient) => {
-    // Auto-populate form fields from CR client
-    const names = normalizeTwoNameRule(client.first_name, client.middle_name, client.last_name);
-    if (names.first) form.setValue('first_name', names.first);
-    if (names.middle !== undefined) form.setValue('middle_name', names.middle);
-    if (names.last) form.setValue('last_name', names.last);
-    if (client.date_of_birth) {
-      const dob = new Date(client.date_of_birth);
-      if (!isNaN(dob.getTime())) {
-        form.setValue('date_of_birth', dob);
-      }
-    }
-    if (client.gender) {
-      const g = client.gender.charAt(0).toUpperCase();
-      if (g === 'M' || g === 'F' || g === 'O') form.setValue('gender', g);
-    }
-    if (client.phone_number) form.setValue('phone_number', client.phone_number);
-    if (client.email) form.setValue('email', client.email);
-    if (client.client_number) form.setValue('cr_number', client.client_number);
-    if (client.place_of_birth) form.setValue('place_of_birth', client.place_of_birth);
-    if (client.citizenship) form.setValue('nationality', client.citizenship);
-    if (client.is_person_with_disability !== undefined && client.is_person_with_disability !== null) {
-      form.setValue('is_person_with_disability', client.is_person_with_disability);
-    }
-    if (client.address) form.setValue('address', client.address);
-    if (client.village_estate) form.setValue('village', client.village_estate);
-
-    // Auto-populate identification from CR client
-    // Check top-level fields first, then fall back to other_identifications
-    let idPopulated = false;
-    if (client.national_id) {
-      form.setValue('identification_type', 'national_id');
-      form.setValue('identification_number', client.national_id);
-      idPopulated = true;
-    } else if (client.passport_number) {
-      form.setValue('identification_type', 'passport');
-      form.setValue('identification_number', client.passport_number);
-      idPopulated = true;
-    } else if (client.alien_id) {
-      form.setValue('identification_type', 'alien_id');
-      form.setValue('identification_number', client.alien_id);
-      idPopulated = true;
-    }
-
-    // Fallback: extract national ID from other_identifications if top-level is empty
-    if (!idPopulated && client.other_identifications?.length) {
-      for (const ident of client.other_identifications) {
-        const typeLabel = ident.identification_type.toLowerCase();
-        if ((typeLabel.includes('national') || typeLabel === 'national id') && ident.identification_number) {
-          form.setValue('identification_type', 'national_id');
-          form.setValue('identification_number', ident.identification_number);
-          idPopulated = true;
-          break;
-        }
-        if (typeLabel.includes('passport') && ident.identification_number) {
-          form.setValue('identification_type', 'passport');
-          form.setValue('identification_number', ident.identification_number);
-          idPopulated = true;
-          break;
-        }
-        if (typeLabel.includes('alien') && ident.identification_number) {
-          form.setValue('identification_type', 'alien_id');
-          form.setValue('identification_number', ident.identification_number);
-          idPopulated = true;
-          break;
+  const populateFromCRClient = useCallback(
+    (client: ClientRegistryClient) => {
+      // Auto-populate form fields from CR client
+      const names = normalizeTwoNameRule(client.first_name, client.middle_name, client.last_name);
+      if (names.first) form.setValue('first_name', names.first);
+      if (names.middle !== undefined) form.setValue('middle_name', names.middle);
+      if (names.last) form.setValue('last_name', names.last);
+      if (client.date_of_birth) {
+        const dob = new Date(client.date_of_birth);
+        if (!isNaN(dob.getTime())) {
+          form.setValue('date_of_birth', dob);
         }
       }
-    }
+      if (client.gender) {
+        const g = client.gender.charAt(0).toUpperCase();
+        if (g === 'M' || g === 'F' || g === 'O') form.setValue('gender', g);
+      }
+      if (client.phone_number) form.setValue('phone_number', client.phone_number);
+      if (client.email) form.setValue('email', client.email);
+      if (client.client_number) form.setValue('cr_number', client.client_number);
+      if (client.place_of_birth) form.setValue('place_of_birth', client.place_of_birth);
+      if (client.citizenship) form.setValue('nationality', client.citizenship);
+      if (
+        client.is_person_with_disability !== undefined &&
+        client.is_person_with_disability !== null
+      ) {
+        form.setValue('is_person_with_disability', client.is_person_with_disability);
+      }
+      if (client.address) form.setValue('address', client.address);
+      if (client.village_estate) form.setValue('village', client.village_estate);
 
-    // Extract sha_number and household_number from other_identifications
-    if (client.other_identifications?.length) {
-      for (const ident of client.other_identifications) {
-        const typeLabel = ident.identification_type.toLowerCase();
-        if (typeLabel.includes('sha') && ident.identification_number) {
-          form.setValue('sha_number', ident.identification_number);
-        }
-        if (typeLabel.includes('household') && ident.identification_number) {
-          form.setValue('household_number', ident.identification_number);
+      // Auto-populate identification from CR client
+      // Check top-level fields first, then fall back to other_identifications
+      let idPopulated = false;
+      if (client.national_id) {
+        form.setValue('identification_type', 'national_id');
+        form.setValue('identification_number', client.national_id);
+        idPopulated = true;
+      } else if (client.passport_number) {
+        form.setValue('identification_type', 'passport');
+        form.setValue('identification_number', client.passport_number);
+        idPopulated = true;
+      } else if (client.alien_id) {
+        form.setValue('identification_type', 'alien_id');
+        form.setValue('identification_number', client.alien_id);
+        idPopulated = true;
+      }
+
+      // Fallback: extract national ID from other_identifications if top-level is empty
+      if (!idPopulated && client.other_identifications?.length) {
+        for (const ident of client.other_identifications) {
+          const typeLabel = ident.identification_type.toLowerCase();
+          if (
+            (typeLabel.includes('national') || typeLabel === 'national id') &&
+            ident.identification_number
+          ) {
+            form.setValue('identification_type', 'national_id');
+            form.setValue('identification_number', ident.identification_number);
+            idPopulated = true;
+            break;
+          }
+          if (typeLabel.includes('passport') && ident.identification_number) {
+            form.setValue('identification_type', 'passport');
+            form.setValue('identification_number', ident.identification_number);
+            idPopulated = true;
+            break;
+          }
+          if (typeLabel.includes('alien') && ident.identification_number) {
+            form.setValue('identification_type', 'alien_id');
+            form.setValue('identification_number', ident.identification_number);
+            idPopulated = true;
+            break;
+          }
         }
       }
-    }
-  }, [form]);
+
+      // Extract sha_number and household_number from other_identifications
+      if (client.other_identifications?.length) {
+        for (const ident of client.other_identifications) {
+          const typeLabel = ident.identification_type.toLowerCase();
+          if (typeLabel.includes('sha') && ident.identification_number) {
+            form.setValue('sha_number', ident.identification_number);
+          }
+          if (typeLabel.includes('household') && ident.identification_number) {
+            form.setValue('household_number', ident.identification_number);
+          }
+        }
+      }
+    },
+    [form]
+  );
 
   // Populate form from SHA eligibility details (when no CR record exists)
-  const populateFromShaDetails = useCallback((details: DirectEligibilityCheckResponse, dependentName?: string) => {
-    // Set SHA number
-    if (details.sha_number) {
-      form.setValue('sha_number', details.sha_number);
-    }
-
-    // Parse name - could be from principal or dependent
-    const fullName = dependentName || details.full_name;
-    if (fullName) {
-      const nameParts = fullName.trim().split(/\s+/);
-      if (nameParts.length >= 1 && nameParts[0]) {
-        form.setValue('first_name', nameParts[0]);
+  const populateFromShaDetails = useCallback(
+    (details: DirectEligibilityCheckResponse, dependentName?: string) => {
+      // Set SHA number
+      if (details.sha_number) {
+        form.setValue('sha_number', details.sha_number);
       }
-      if (nameParts.length >= 3) {
-        const middleName = nameParts.slice(1, -1).join(' ');
-        const lastName = nameParts[nameParts.length - 1];
-        if (middleName) form.setValue('middle_name', middleName);
-        if (lastName) form.setValue('last_name', lastName);
-      } else if (nameParts.length === 2 && nameParts[1]) {
-        // Two-name rule: treat as first + last
-        form.setValue('middle_name', '');
-        form.setValue('last_name', nameParts[1]);
+
+      // Parse name - could be from principal or dependent
+      const fullName = dependentName || details.full_name;
+      if (fullName) {
+        const nameParts = fullName.trim().split(/\s+/);
+        if (nameParts.length >= 1 && nameParts[0]) {
+          form.setValue('first_name', nameParts[0]);
+        }
+        if (nameParts.length >= 3) {
+          const middleName = nameParts.slice(1, -1).join(' ');
+          const lastName = nameParts[nameParts.length - 1];
+          if (middleName) form.setValue('middle_name', middleName);
+          if (lastName) form.setValue('last_name', lastName);
+        } else if (nameParts.length === 2 && nameParts[1]) {
+          // Two-name rule: treat as first + last
+          form.setValue('middle_name', '');
+          form.setValue('last_name', nameParts[1]);
+        }
       }
-    }
 
-    // Only auto-select SHA payment mode if eligible
-    if (details.is_eligible) {
-      form.setValue('payment_mode', 'sha');
-    }
-  }, [form]);
-
-  const populateFromShaPerson = useCallback((
-    person: SHAPayloadPerson,
-    eligibility?: DirectEligibilityCheckResponse | null,
-  ) => {
-    const names = normalizeTwoNameRule(person.first_name, person.middle_name, person.last_name);
-    if (names.first) form.setValue('first_name', names.first);
-    if (names.middle !== undefined) form.setValue('middle_name', names.middle);
-    if (names.last) form.setValue('last_name', names.last);
-
-    const normalizedGender = normalizeShaGender(person.gender);
-    if (normalizedGender) form.setValue('gender', normalizedGender);
-
-    if (person.date_of_birth) {
-      const dob = new Date(person.date_of_birth);
-      if (!isNaN(dob.getTime())) {
-        form.setValue('date_of_birth', dob);
-      }
-    }
-
-    const normalizedIdentificationType = normalizeShaIdentificationType(person.identification_type);
-    if (normalizedIdentificationType) {
-      form.setValue('identification_type', normalizedIdentificationType);
-    }
-    if (person.identification_number) form.setValue('identification_number', person.identification_number);
-    if (person.cr_number) form.setValue('cr_number', person.cr_number);
-    if (person.phone) form.setValue('phone_number', person.phone);
-    if (person.place_of_birth) form.setValue('place_of_birth', person.place_of_birth);
-    if (person.citizenship) form.setValue('nationality', person.citizenship);
-    if (person.village_estate) form.setValue('village', person.village_estate);
-    if (person.household_number) form.setValue('household_number', person.household_number);
-
-    const shaAddress = buildShaAddress(person);
-    if (shaAddress) form.setValue('address', shaAddress);
-
-    if (person.sha_number) {
-      form.setValue('sha_number', person.sha_number);
-      // Choose payment mode from eligibility: ineligible → cash, eligible (or
-      // unknown for legacy callers) → sha. Caller can override later.
-      const isEligible = eligibility?.is_eligible;
-      if (isEligible === false) {
-        form.setValue('payment_mode', 'cash');
-      } else {
+      // Only auto-select SHA payment mode if eligible
+      if (details.is_eligible) {
         form.setValue('payment_mode', 'sha');
       }
-    }
+    },
+    [form]
+  );
 
-    // For dependants, set the principal's national ID (needed for eligibility checks)
-    if (person.source === 'dependent' && person.principal_national_id) {
-      form.setValue('principal_national_id', person.principal_national_id);
-    }
+  const populateFromShaPerson = useCallback(
+    (person: SHAPayloadPerson, eligibility?: DirectEligibilityCheckResponse | null) => {
+      const names = normalizeTwoNameRule(person.first_name, person.middle_name, person.last_name);
+      if (names.first) form.setValue('first_name', names.first);
+      if (names.middle !== undefined) form.setValue('middle_name', names.middle);
+      if (names.last) form.setValue('last_name', names.last);
 
-    setPendingShaLocation({
-      county: person.county,
-      subCounty: person.sub_county,
-      ward: person.ward,
-    });
-  }, [form]);
+      const normalizedGender = normalizeShaGender(person.gender);
+      if (normalizedGender) form.setValue('gender', normalizedGender);
+
+      if (person.date_of_birth) {
+        const dob = new Date(person.date_of_birth);
+        if (!isNaN(dob.getTime())) {
+          form.setValue('date_of_birth', dob);
+        }
+      }
+
+      const normalizedIdentificationType = normalizeShaIdentificationType(
+        person.identification_type
+      );
+      if (normalizedIdentificationType) {
+        form.setValue('identification_type', normalizedIdentificationType);
+      }
+      if (person.identification_number)
+        form.setValue('identification_number', person.identification_number);
+      if (person.cr_number) form.setValue('cr_number', person.cr_number);
+      if (person.phone) form.setValue('phone_number', person.phone);
+      if (person.place_of_birth) form.setValue('place_of_birth', person.place_of_birth);
+      if (person.citizenship) form.setValue('nationality', person.citizenship);
+      if (person.village_estate) form.setValue('village', person.village_estate);
+      if (person.household_number) form.setValue('household_number', person.household_number);
+
+      const shaAddress = buildShaAddress(person);
+      if (shaAddress) form.setValue('address', shaAddress);
+
+      if (person.sha_number) {
+        form.setValue('sha_number', person.sha_number);
+        // Choose payment mode from eligibility: ineligible → cash, eligible (or
+        // unknown for legacy callers) → sha. Caller can override later.
+        const isEligible = eligibility?.is_eligible;
+        if (isEligible === false) {
+          form.setValue('payment_mode', 'cash');
+        } else {
+          form.setValue('payment_mode', 'sha');
+        }
+      }
+
+      // For dependants, set the principal's national ID (needed for eligibility checks)
+      if (person.source === 'dependent' && person.principal_national_id) {
+        form.setValue('principal_national_id', person.principal_national_id);
+      }
+
+      setPendingShaLocation({
+        county: person.county,
+        subCounty: person.sub_county,
+        ward: person.ward,
+      });
+    },
+    [form]
+  );
 
   // Run duplicate check after user selects a person from verification dialog
   // This checks if the SELECTED person (principal/dependent) already exists locally
-  const runPostSelectionDuplicateCheck = useCallback(async (
-    options: {
+  const runPostSelectionDuplicateCheck = useCallback(
+    async (options: {
       idNumber?: string;
       idType?: IdentificationType;
       firstName?: string;
@@ -678,374 +732,401 @@ export function PatientForm({
       dateOfBirth?: string;
       gender?: 'M' | 'F' | 'O';
       fullName?: string;
-    }
-  ) => {
-    try {
-      let result: DuplicateCheckResult | null = null;
+    }) => {
+      try {
+        let result: DuplicateCheckResult | null = null;
 
-      // If we have ID number, check by ID first (more precise)
-      if (options.idNumber && options.idType) {
-        result = await patientsApi.checkDuplicate({
-          identification_number: options.idNumber,
-          identification_type: options.idType,
-        });
+        // If we have ID number, check by ID first (more precise)
+        if (options.idNumber && options.idType) {
+          result = await patientsApi.checkDuplicate({
+            identification_number: options.idNumber,
+            identification_type: options.idType,
+          });
+        }
+
+        // If no ID match and we have name + DOB, check by demographics
+        if (
+          (!result || !result.has_duplicate) &&
+          options.firstName &&
+          options.lastName &&
+          options.dateOfBirth
+        ) {
+          result = await patientsApi.checkDuplicate({
+            first_name: options.firstName,
+            last_name: options.lastName,
+            date_of_birth: options.dateOfBirth,
+            ...(options.gender && { gender: options.gender }),
+          });
+        }
+
+        if (result?.has_duplicate && result.matches.length > 0) {
+          setDuplicateCheckResult(result);
+          // Store registering name for modal context
+          const name =
+            options.fullName ||
+            (options.firstName && options.lastName
+              ? `${options.firstName} ${options.lastName}`
+              : '');
+          setRegisteringName(name);
+          // Show modal for exact match or if matches found
+          setShowDuplicateModal(true);
+        }
+
+        return result;
+      } catch (error) {
+        console.error('Post-selection duplicate check failed:', error);
+        return null;
       }
-
-      // If no ID match and we have name + DOB, check by demographics
-      if ((!result || !result.has_duplicate) && options.firstName && options.lastName && options.dateOfBirth) {
-        result = await patientsApi.checkDuplicate({
-          first_name: options.firstName,
-          last_name: options.lastName,
-          date_of_birth: options.dateOfBirth,
-          ...(options.gender && { gender: options.gender }),
-        });
-      }
-
-      if (result?.has_duplicate && result.matches.length > 0) {
-        setDuplicateCheckResult(result);
-        // Store registering name for modal context
-        const name = options.fullName ||
-          (options.firstName && options.lastName ? `${options.firstName} ${options.lastName}` : '');
-        setRegisteringName(name);
-        // Show modal for exact match or if matches found
-        setShowDuplicateModal(true);
-      }
-
-      return result;
-    } catch (error) {
-      console.error('Post-selection duplicate check failed:', error);
-      return null;
-    }
-  }, []);
+    },
+    []
+  );
 
   // Handle unified verification dialog decision
-  const handleVerificationDecision = useCallback(async (decision: VerificationDecision) => {
-    setShowVerificationDialog(false);
+  const handleVerificationDecision = useCallback(
+    async (decision: VerificationDecision) => {
+      setShowVerificationDialog(false);
 
-    switch (decision.type) {
-      case 'select_existing':
-        // Navigate to check-in for existing patient using MRN (SSOT)
-        window.location.href = `/patients/checkin?select=${encodeURIComponent(decision.mrn)}`;
-        break;
+      switch (decision.type) {
+        case 'select_existing':
+          // Navigate to check-in for existing patient using MRN (SSOT)
+          window.location.href = `/patients/checkin?select=${encodeURIComponent(decision.mrn)}`;
+          break;
 
-      case 'continue_new':
-        // Continue with new registration (duplicates acknowledged)
-        setDuplicateAcknowledged(true);
-        // If SHA details are available, populate them
-        if (pendingShaDetails) {
-          populateFromShaDetails(pendingShaDetails);
-          toast({
-            title: 'Form Auto-Populated',
-            description: pendingShaDetails.is_eligible
-              ? 'Patient details filled from SHA records. Please verify and complete remaining fields.'
-              : 'Patient details filled from SHA records (coverage not active). Please verify and complete remaining fields.',
-          });
-        }
-        break;
-
-      case 'use_sha_principal':
-        // Use SHA principal details
-        if (pendingShaDetails) {
-          populateFromShaDetails(pendingShaDetails);
-
-          // Run duplicate check for the principal using name + DOB
-          // (ID-based check already happened, this catches demographic matches)
-          const principalName = pendingShaDetails.full_name;
-          if (principalName) {
-            const nameParts = principalName.trim().split(/\s+/);
-            const firstName = nameParts[0] || '';
-            const lastName = nameParts.length >= 2 ? nameParts[nameParts.length - 1] : '';
-            if (firstName && lastName) {
-              // Also get the ID number from the form for a more precise check
-              const idNumber = form.getValues('identification_number');
-              const idType = form.getValues('identification_type');
-              await runPostSelectionDuplicateCheck({
-                idNumber: idNumber || undefined,
-                idType: idNumber ? idType : undefined,
-                firstName,
-                lastName,
-                fullName: principalName,
-              });
-            }
-          }
-
-          toast({
-            title: 'Form Auto-Populated',
-            description: pendingShaDetails.is_eligible
-              ? 'Patient details filled from SHA records. Please verify and complete remaining fields.'
-              : 'Patient details filled from SHA records (coverage not active). Please verify and complete remaining fields.',
-          });
-        }
-        break;
-
-      case 'use_sha_dependent':
-        // Use dependent details
-        if (decision.dependent) {
-          const dep = decision.dependent;
-          let depFirstName = '';
-          let depLastName = '';
-
-          if (dep.sha_number) {
-            form.setValue('sha_number', dep.sha_number);
-          }
-
-          // Store principal's national ID for dependant eligibility checks
-          // DHA only resolves coverage via principal, not dependant's own ID
-          const principalContributor = pendingShaDetails?.schemes?.[0]?.principalContributor;
-          if (principalContributor?.idNumber && principalContributor?.idType === 'NATIONAL_ID') {
-            form.setValue('principal_national_id', principalContributor.idNumber);
-          } else {
-            // Fallback: the original search was done using principal's national ID
-            // (identification_number field contains what the user entered)
-            const searchedId = form.getValues('identification_number');
-            const searchedIdType = form.getValues('identification_type');
-            if (searchedId && searchedIdType === 'national_id') {
-              form.setValue('principal_national_id', searchedId);
-            }
-          }
-          if (dep.name) {
-            const nameParts = dep.name.trim().split(/\s+/);
-            if (nameParts.length >= 1 && nameParts[0]) {
-              depFirstName = nameParts[0];
-              form.setValue('first_name', nameParts[0]);
-            }
-            if (nameParts.length >= 3) {
-              const middleName = nameParts.slice(1, -1).join(' ');
-              const lastName = nameParts[nameParts.length - 1];
-              if (middleName) form.setValue('middle_name', middleName);
-              if (lastName) {
-                depLastName = lastName;
-                form.setValue('last_name', lastName);
-              }
-            } else if (nameParts.length === 2 && nameParts[1]) {
-              depLastName = nameParts[1];
-              form.setValue('last_name', nameParts[1]);
-            }
-          }
-          if (dep.date_of_birth) {
-            const dob = new Date(dep.date_of_birth);
-            if (!isNaN(dob.getTime())) {
-              form.setValue('date_of_birth', dob);
-            }
-          }
-          // Only auto-select SHA payment mode if eligible
-          if (pendingShaDetails?.is_eligible) {
-            form.setValue('payment_mode', 'sha');
-          }
-
-          // Run duplicate check for the dependent using name + DOB
-          if (depFirstName && depLastName && dep.date_of_birth) {
-            await runPostSelectionDuplicateCheck({
-              firstName: depFirstName,
-              lastName: depLastName,
-              dateOfBirth: dep.date_of_birth,
-              fullName: dep.name,
+        case 'continue_new':
+          // Continue with new registration (duplicates acknowledged)
+          setDuplicateAcknowledged(true);
+          // If SHA details are available, populate them
+          if (pendingShaDetails) {
+            populateFromShaDetails(pendingShaDetails);
+            toast({
+              title: 'Form Auto-Populated',
+              description: pendingShaDetails.is_eligible
+                ? 'Patient details filled from SHA records. Please verify and complete remaining fields.'
+                : 'Patient details filled from SHA records (coverage not active). Please verify and complete remaining fields.',
             });
           }
+          break;
 
-          toast({
-            title: 'Dependent Selected',
-            description: pendingShaDetails?.is_eligible
-              ? `Patient details filled for ${dep.name}. Please verify and complete remaining fields.`
-              : `Patient details filled for ${dep.name} (coverage not active). Please verify and complete remaining fields.`,
-          });
-        }
-        break;
+        case 'use_sha_principal':
+          // Use SHA principal details
+          if (pendingShaDetails) {
+            populateFromShaDetails(pendingShaDetails);
 
-      case 'enter_manually':
-        // Just set SHA number if available, user enters rest
-        if (pendingShaDetails?.sha_number) {
-          form.setValue('sha_number', pendingShaDetails.sha_number);
-        }
-        break;
+            // Run duplicate check for the principal using name + DOB
+            // (ID-based check already happened, this catches demographic matches)
+            const principalName = pendingShaDetails.full_name;
+            if (principalName) {
+              const nameParts = principalName.trim().split(/\s+/);
+              const firstName = nameParts[0] || '';
+              const lastName = nameParts.length >= 2 ? nameParts[nameParts.length - 1] : '';
+              if (firstName && lastName) {
+                // Also get the ID number from the form for a more precise check
+                const idNumber = form.getValues('identification_number');
+                const idType = form.getValues('identification_type');
+                await runPostSelectionDuplicateCheck({
+                  idNumber: idNumber || undefined,
+                  idType: idNumber ? idType : undefined,
+                  firstName,
+                  lastName,
+                  fullName: principalName,
+                });
+              }
+            }
 
-      case 'cancelled':
-        // User cancelled, just set SHA number if available
-        if (pendingShaDetails?.sha_number) {
-          form.setValue('sha_number', pendingShaDetails.sha_number);
-        }
-        break;
-    }
+            toast({
+              title: 'Form Auto-Populated',
+              description: pendingShaDetails.is_eligible
+                ? 'Patient details filled from SHA records. Please verify and complete remaining fields.'
+                : 'Patient details filled from SHA records (coverage not active). Please verify and complete remaining fields.',
+            });
+          }
+          break;
 
-    // Clear pending SHA details after decision
-    setPendingShaDetails(null);
-  }, [form, pendingShaDetails, populateFromShaDetails, toast, runPostSelectionDuplicateCheck]);
+        case 'use_sha_dependent':
+          // Use dependent details
+          if (decision.dependent) {
+            const dep = decision.dependent;
+            let depFirstName = '';
+            let depLastName = '';
+
+            if (dep.sha_number) {
+              form.setValue('sha_number', dep.sha_number);
+            }
+
+            // Store principal's national ID for dependant eligibility checks
+            // DHA only resolves coverage via principal, not dependant's own ID
+            const principalContributor = pendingShaDetails?.schemes?.[0]?.principalContributor;
+            if (principalContributor?.idNumber && principalContributor?.idType === 'NATIONAL_ID') {
+              form.setValue('principal_national_id', principalContributor.idNumber);
+            } else {
+              // Fallback: the original search was done using principal's national ID
+              // (identification_number field contains what the user entered)
+              const searchedId = form.getValues('identification_number');
+              const searchedIdType = form.getValues('identification_type');
+              if (searchedId && searchedIdType === 'national_id') {
+                form.setValue('principal_national_id', searchedId);
+              }
+            }
+            if (dep.name) {
+              const nameParts = dep.name.trim().split(/\s+/);
+              if (nameParts.length >= 1 && nameParts[0]) {
+                depFirstName = nameParts[0];
+                form.setValue('first_name', nameParts[0]);
+              }
+              if (nameParts.length >= 3) {
+                const middleName = nameParts.slice(1, -1).join(' ');
+                const lastName = nameParts[nameParts.length - 1];
+                if (middleName) form.setValue('middle_name', middleName);
+                if (lastName) {
+                  depLastName = lastName;
+                  form.setValue('last_name', lastName);
+                }
+              } else if (nameParts.length === 2 && nameParts[1]) {
+                depLastName = nameParts[1];
+                form.setValue('last_name', nameParts[1]);
+              }
+            }
+            if (dep.date_of_birth) {
+              const dob = new Date(dep.date_of_birth);
+              if (!isNaN(dob.getTime())) {
+                form.setValue('date_of_birth', dob);
+              }
+            }
+            // Only auto-select SHA payment mode if eligible
+            if (pendingShaDetails?.is_eligible) {
+              form.setValue('payment_mode', 'sha');
+            }
+
+            // Run duplicate check for the dependent using name + DOB
+            if (depFirstName && depLastName && dep.date_of_birth) {
+              await runPostSelectionDuplicateCheck({
+                firstName: depFirstName,
+                lastName: depLastName,
+                dateOfBirth: dep.date_of_birth,
+                fullName: dep.name,
+              });
+            }
+
+            toast({
+              title: 'Dependent Selected',
+              description: pendingShaDetails?.is_eligible
+                ? `Patient details filled for ${dep.name}. Please verify and complete remaining fields.`
+                : `Patient details filled for ${dep.name} (coverage not active). Please verify and complete remaining fields.`,
+            });
+          }
+          break;
+
+        case 'enter_manually':
+          // Just set SHA number if available, user enters rest
+          if (pendingShaDetails?.sha_number) {
+            form.setValue('sha_number', pendingShaDetails.sha_number);
+          }
+          break;
+
+        case 'cancelled':
+          // User cancelled, just set SHA number if available
+          if (pendingShaDetails?.sha_number) {
+            form.setValue('sha_number', pendingShaDetails.sha_number);
+          }
+          break;
+      }
+
+      // Clear pending SHA details after decision
+      setPendingShaDetails(null);
+    },
+    [form, pendingShaDetails, populateFromShaDetails, toast, runPostSelectionDuplicateCheck]
+  );
 
   // Define performCRLookup with useCallback
   // Returns { found: boolean, idType, idNumber } to allow caller to check eligibility
   // Enhanced: Also checks local patients for duplicates
-  const performCRLookup = useCallback(async (idType: IdentificationType, idNumber: string): Promise<{ found: boolean; idType: IdentificationType; idNumber: string } | null> => {
-    if (!idNumber || idNumber.length < 5) return null;
+  const performCRLookup = useCallback(
+    async (
+      idType: IdentificationType,
+      idNumber: string
+    ): Promise<{ found: boolean; idType: IdentificationType; idNumber: string } | null> => {
+      if (!idNumber || idNumber.length < 5) return null;
 
-    setIsSearchingCR(true);
-    setFormLocked(true);
-    // Reset duplicate state when starting new lookup
-    setDuplicateCheckResult(null);
-    setDuplicateAcknowledged(false);
+      setIsSearchingCR(true);
+      setFormLocked(true);
+      // Reset duplicate state when starting new lookup
+      setDuplicateCheckResult(null);
+      setDuplicateAcknowledged(false);
 
-    try {
-      // Build ILM-compatible request based on supported identifier types.
-      const ilmIdentificationType = toIlmIdentificationType(idType);
-      if (!ilmIdentificationType) {
-        toast({
-          title: 'Unsupported lookup identifier',
-          description: 'Use National ID, CR ID, Mandate Number, Alien ID, Temporary ID, or Birth Certificate Number for CR/SHA lookup.',
-          variant: 'destructive',
-        });
-        return null;
-      }
-
-      const request: Record<string, string> = {};
-      request.identification_type = ilmIdentificationType;
-      request.identification_number = idNumber;
-
-      // Run CR lookup and local duplicate check in parallel
-      // Use Promise.allSettled so failures in one don't block the other
-      const [crResult, duplicateResult] = await Promise.allSettled([
-        shaApi.fetchFromClientRegistry(request),
-        patientsApi.checkDuplicate({
-          identification_number: idNumber,
-          identification_type: idType,
-        }),
-      ]);
-
-      setCrSearched(true);
-
-      // Handle local duplicate check result (if successful)
-      if (duplicateResult.status === 'fulfilled') {
-        const duplicateData = duplicateResult.value;
-        if (duplicateData.has_duplicate && duplicateData.matches.length > 0) {
-          setDuplicateCheckResult(duplicateData);
-          // Don't show modal here - unified dialog will be shown after SHA check completes
+      try {
+        // Build ILM-compatible request based on supported identifier types.
+        const ilmIdentificationType = toIlmIdentificationType(idType);
+        if (!ilmIdentificationType) {
+          toast({
+            title: 'Unsupported lookup identifier',
+            description:
+              'Use National ID, CR ID, Mandate Number, Alien ID, Temporary ID, or Birth Certificate Number for CR/SHA lookup.',
+            variant: 'destructive',
+          });
+          return null;
         }
-      } else {
-        // Duplicate check failed - log but don't block the flow
-        console.warn('Duplicate check failed:', duplicateResult.reason);
-      }
 
-      // Handle CR lookup result
-      if (crResult.status === 'fulfilled') {
-        const crResponse = crResult.value;
-        if (crResponse.found && crResponse.client) {
-          setCrClient(crResponse.client);
+        const request: Record<string, string> = {};
+        request.identification_type = ilmIdentificationType;
+        request.identification_number = idNumber;
 
-          // Only show CR toast if no exact local duplicate
-          const hasDuplicate = duplicateResult.status === 'fulfilled' && duplicateResult.value.has_duplicate;
-          const isExactMatch = duplicateResult.status === 'fulfilled' && duplicateResult.value.match_type === 'exact_id';
-          if (!hasDuplicate || !isExactMatch) {
-            toast({
-              title: 'Client Registry Record Found',
-              description: `Found record for ${crResponse.client.first_name} ${crResponse.client.last_name}. Fields will be auto-populated.`,
-            });
+        // Run CR lookup and local duplicate check in parallel
+        // Use Promise.allSettled so failures in one don't block the other
+        const [crResult, duplicateResult] = await Promise.allSettled([
+          shaApi.fetchFromClientRegistry(request),
+          patientsApi.checkDuplicate({
+            identification_number: idNumber,
+            identification_type: idType,
+          }),
+        ]);
+
+        setCrSearched(true);
+
+        // Handle local duplicate check result (if successful)
+        if (duplicateResult.status === 'fulfilled') {
+          const duplicateData = duplicateResult.value;
+          if (duplicateData.has_duplicate && duplicateData.matches.length > 0) {
+            setDuplicateCheckResult(duplicateData);
+            // Don't show modal here - unified dialog will be shown after SHA check completes
           }
-
-          populateFromCRClient(crResponse.client);
-
-          return { found: true, idType, idNumber };
         } else {
-          // Only show "no CR record" toast if no duplicates found
-          const hasDuplicate = duplicateResult.status === 'fulfilled' && duplicateResult.value.has_duplicate;
-          if (!hasDuplicate) {
-            toast({
-              title: 'No Record Found',
-              description: 'No existing Client Registry record. A new record will be created upon registration.',
-              variant: 'default',
-            });
-          }
-          // Don't set eligibility here - we'll check directly with SHA API
-          return { found: false, idType, idNumber };
+          // Duplicate check failed - log but don't block the flow
+          console.warn('Duplicate check failed:', duplicateResult.reason);
         }
-      } else {
-        // CR lookup failed
-        console.error('CR lookup failed:', crResult.reason);
+
+        // Handle CR lookup result
+        if (crResult.status === 'fulfilled') {
+          const crResponse = crResult.value;
+          if (crResponse.found && crResponse.client) {
+            setCrClient(crResponse.client);
+
+            // Only show CR toast if no exact local duplicate
+            const hasDuplicate =
+              duplicateResult.status === 'fulfilled' && duplicateResult.value.has_duplicate;
+            const isExactMatch =
+              duplicateResult.status === 'fulfilled' &&
+              duplicateResult.value.match_type === 'exact_id';
+            if (!hasDuplicate || !isExactMatch) {
+              toast({
+                title: 'Client Registry Record Found',
+                description: `Found record for ${crResponse.client.first_name} ${crResponse.client.last_name}. Fields will be auto-populated.`,
+              });
+            }
+
+            populateFromCRClient(crResponse.client);
+
+            return { found: true, idType, idNumber };
+          } else {
+            // Only show "no CR record" toast if no duplicates found
+            const hasDuplicate =
+              duplicateResult.status === 'fulfilled' && duplicateResult.value.has_duplicate;
+            if (!hasDuplicate) {
+              toast({
+                title: 'No Record Found',
+                description:
+                  'No existing Client Registry record. A new record will be created upon registration.',
+                variant: 'default',
+              });
+            }
+            // Don't set eligibility here - we'll check directly with SHA API
+            return { found: false, idType, idNumber };
+          }
+        } else {
+          // CR lookup failed
+          console.error('CR lookup failed:', crResult.reason);
+          toast({
+            title: 'Lookup Failed',
+            description: 'Unable to search Client Registry. You can continue with manual entry.',
+            variant: 'destructive',
+          });
+          return null;
+        }
+      } catch (error) {
+        console.error('CR lookup failed:', error);
         toast({
           title: 'Lookup Failed',
           description: 'Unable to search Client Registry. You can continue with manual entry.',
           variant: 'destructive',
         });
         return null;
+      } finally {
+        setIsSearchingCR(false);
+        setFormLocked(false);
       }
-    } catch (error) {
-      console.error('CR lookup failed:', error);
-      toast({
-        title: 'Lookup Failed',
-        description: 'Unable to search Client Registry. You can continue with manual entry.',
-        variant: 'destructive',
-      });
-      return null;
-    } finally {
-      setIsSearchingCR(false);
-      setFormLocked(false);
-    }
-  }, [toast, populateFromCRClient]);
+    },
+    [toast, populateFromCRClient]
+  );
 
   // Check SHA eligibility for the patient
   // When crFound is false and SHA details are found, show confirmation dialog
-  const checkShaEligibility = useCallback(async (idType: IdentificationType, idNumber: string, crFound: boolean = false) => {
-    if (!idNumber) return;
+  const checkShaEligibility = useCallback(
+    async (idType: IdentificationType, idNumber: string, crFound: boolean = false) => {
+      if (!idNumber) return;
 
-    setIsCheckingEligibility(true);
-    try {
-      // Build eligibility check request based on ID type
-      const params: Record<string, string> = {};
-      if (idType === 'national_id') {
-        params.national_id = idNumber;
-      } else if (idType === 'cr_number') {
-        params.sha_number = idNumber;
-      } else {
-        params.identification_type = idType;
-        params.identification_number = idNumber;
-      }
+      setIsCheckingEligibility(true);
+      try {
+        // Build eligibility check request based on ID type
+        const params: Record<string, string> = {};
+        if (idType === 'national_id') {
+          params.national_id = idNumber;
+        } else if (idType === 'cr_number') {
+          params.sha_number = idNumber;
+        } else {
+          params.identification_type = idType;
+          params.identification_number = idNumber;
+        }
 
-      const response = await shaApi.checkDirectEligibility(params);
+        const response = await shaApi.checkDirectEligibility(params);
 
-      setShaEligibility({
-        checked: true,
-        isEligible: response.is_eligible,
-        reason: response.is_eligible
-          ? undefined
-          : response.reason || 'Patient is not eligible for SHA coverage',
-        details: response,
-      });
-
-      // Always set SHA number if available
-      if (response.sha_number) {
-        form.setValue('sha_number', response.sha_number);
-      }
-
-      // Show success feedback (dialog removed — user picks principal/dependant in SHA modal)
-      if (crFound && response.is_eligible) {
-        toast({
-          title: 'SHA Coverage Active',
-          description: `Patient ${response.full_name || ''} has active SHA coverage.`,
+        setShaEligibility({
+          checked: true,
+          isEligible: response.is_eligible,
+          reason: response.is_eligible
+            ? undefined
+            : response.reason || 'Patient is not eligible for SHA coverage',
+          details: response,
         });
-      }
 
-      // If ineligible and SHA was selected, switch to cash
-      if (!response.is_eligible) {
-        const currentPaymentMode = form.getValues('payment_mode');
-        if (currentPaymentMode === 'sha') {
-          form.setValue('payment_mode', 'cash');
+        // Always set SHA number if available
+        if (response.sha_number) {
+          form.setValue('sha_number', response.sha_number);
+        }
+
+        // Show success feedback (dialog removed — user picks principal/dependant in SHA modal)
+        if (crFound && response.is_eligible) {
           toast({
-            title: 'Payment Mode Changed',
-            description: 'SHA coverage is not available. Switched to Cash payment.',
-            variant: 'default',
+            title: 'SHA Coverage Active',
+            description: `Patient ${response.full_name || ''} has active SHA coverage.`,
           });
         }
+
+        // If ineligible and SHA was selected, switch to cash
+        if (!response.is_eligible) {
+          const currentPaymentMode = form.getValues('payment_mode');
+          if (currentPaymentMode === 'sha') {
+            form.setValue('payment_mode', 'cash');
+            toast({
+              title: 'Payment Mode Changed',
+              description: 'SHA coverage is not available. Switched to Cash payment.',
+              variant: 'default',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('SHA eligibility check failed:', error);
+        // On error, allow SHA as an option but show warning
+        setShaEligibility({
+          checked: true,
+          isEligible: true, // Allow selection, verification will happen at claim time
+          reason: undefined,
+          details: undefined,
+        });
+      } finally {
+        setIsCheckingEligibility(false);
       }
-    } catch (error) {
-      console.error('SHA eligibility check failed:', error);
-      // On error, allow SHA as an option but show warning
-      setShaEligibility({
-        checked: true,
-        isEligible: true, // Allow selection, verification will happen at claim time
-        reason: undefined,
-        details: undefined,
-      });
-    } finally {
-      setIsCheckingEligibility(false);
-    }
-  }, [form, toast]);
+    },
+    [form, toast]
+  );
 
   // NOTE: Auto-search on debounced ID input is DISABLED in favor of explicit triggers
   // (Enter, Tab, blur, or clicking the search button). This prevents accidental
@@ -1114,12 +1195,16 @@ export function PatientForm({
         lastName,
         dateOfBirth: prePopulatedShaPerson.date_of_birth,
         gender: normalizedGender,
-        fullName: [prePopulatedShaPerson.first_name, prePopulatedShaPerson.middle_name, prePopulatedShaPerson.last_name]
+        fullName: [
+          prePopulatedShaPerson.first_name,
+          prePopulatedShaPerson.middle_name,
+          prePopulatedShaPerson.last_name,
+        ]
           .filter(Boolean)
           .join(' '),
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prePopulatedShaPerson, populateFromShaPerson, runPostSelectionDuplicateCheck]);
 
   useEffect(() => {
@@ -1131,7 +1216,8 @@ export function PatientForm({
     let isActive = true;
     setIsLoadingHouseholdMembers(true);
 
-    void patientsApi.getHouseholdMembers(householdNumber)
+    void patientsApi
+      .getHouseholdMembers(householdNumber)
       .then((response) => {
         if (isActive) {
           setHouseholdMembers(response.results);
@@ -1160,7 +1246,8 @@ export function PatientForm({
     }
 
     const countyMatch = counties.find(
-      (county) => normalizeLocationName(county.name) === normalizeLocationName(pendingShaLocation.county)
+      (county) =>
+        normalizeLocationName(county.name) === normalizeLocationName(pendingShaLocation.county)
     );
     if (!countyMatch) {
       return;
@@ -1179,7 +1266,9 @@ export function PatientForm({
     }
 
     const subCountyMatch = subCounties.find(
-      (subCounty) => normalizeLocationName(subCounty.name) === normalizeLocationName(pendingShaLocation.subCounty)
+      (subCounty) =>
+        normalizeLocationName(subCounty.name) ===
+        normalizeLocationName(pendingShaLocation.subCounty)
     );
     if (!subCountyMatch) {
       return;
@@ -1317,7 +1406,8 @@ export function PatientForm({
       setIsCheckingEligibility(false);
       toast({
         title: 'Unsupported lookup identifier',
-        description: 'Use National ID, CR ID, Mandate Number, Alien ID, Temporary ID, or Birth Certificate Number for CR/SHA lookup.',
+        description:
+          'Use National ID, CR ID, Mandate Number, Alien ID, Temporary ID, or Birth Certificate Number for CR/SHA lookup.',
         variant: 'destructive',
       });
       return;
@@ -1334,123 +1424,132 @@ export function PatientForm({
         identification_type: idType,
       }),
       shaApi.checkDirectEligibility(
-        idType === 'national_id' ? { national_id: idNumber } :
-        idType === 'cr_number' ? { sha_number: idNumber } :
-        { identification_type: idType, identification_number: idNumber }
+        idType === 'national_id'
+          ? { national_id: idNumber }
+          : idType === 'cr_number'
+            ? { sha_number: idNumber }
+            : { identification_type: idType, identification_number: idNumber }
       ),
-    ]).then(([crResult, duplicateResult, shaResult]) => {
-      setCrSearched(true);
+    ])
+      .then(([crResult, duplicateResult, shaResult]) => {
+        setCrSearched(true);
 
-      if (duplicateResult.status === 'fulfilled') {
-        const duplicateData = duplicateResult.value;
-        if (duplicateData.has_duplicate && duplicateData.matches.length > 0) {
-          setDuplicateCheckResult(duplicateData);
-        }
-      } else {
-        console.warn('Duplicate check failed:', duplicateResult.reason);
-      }
-
-      // Handle CR lookup result
-      let crFound = false;
-      let foundCrClient: ClientRegistryClient | null = null;
-      if (crResult.status === 'fulfilled') {
-        const crResponse = crResult.value;
-        if (crResponse.found && crResponse.client) {
-          setCrClient(crResponse.client);
-          foundCrClient = crResponse.client;
-          crFound = true;
-          // Don't auto-populate here - let user confirm in dialog first
-        }
-      }
-
-      // Handle SHA eligibility result
-      if (shaResult.status === 'fulfilled') {
-        const response = shaResult.value;
-        setShaEligibility({
-          checked: true,
-          isEligible: response.is_eligible,
-          reason: response.is_eligible
-            ? undefined
-            : response.reason || 'Patient is not eligible for SHA coverage',
-          details: response,
-        });
-
-        // Set SHA number in form
-        if (response.sha_number) {
-          form.setValue('sha_number', response.sha_number);
+        if (duplicateResult.status === 'fulfilled') {
+          const duplicateData = duplicateResult.value;
+          if (duplicateData.has_duplicate && duplicateData.matches.length > 0) {
+            setDuplicateCheckResult(duplicateData);
+          }
+        } else {
+          console.warn('Duplicate check failed:', duplicateResult.reason);
         }
 
-        // If SHA has dependants OR CR has dependants, open verification dialog
-        // so user can pick principal vs dependant
-        const hasDependants = (response.dependents && response.dependents.length > 0)
-          || (foundCrClient?.dependants && foundCrClient.dependants.some(g => (g.result?.length ?? 0) > 0));
-
-        if (hasDependants && response.sha_number) {
-          // Open the verification dialog for principal/dependant selection
-          setPendingShaDetails(response);
-          setShowVerificationDialog(true);
-        } else if (crFound && foundCrClient) {
-          // No dependants — auto-populate from CR
-          populateFromCRClient(foundCrClient);
-          toast({
-            title: 'Client Registry Record Found',
-            description: 'Patient details auto-populated from registry.',
-          });
-        } else if (!response.full_name && !response.sha_number) {
-          // No SHA, no CR
-          toast({
-            title: 'No Records Found',
-            description: 'No existing registry records. Please enter patient details manually.',
-            variant: 'default',
-          });
-        }
-
-        // Handle ineligible SHA
-        if (!response.is_eligible) {
-          const currentPaymentMode = form.getValues('payment_mode');
-          if (currentPaymentMode === 'sha') {
-            form.setValue('payment_mode', 'cash');
+        // Handle CR lookup result
+        let crFound = false;
+        let foundCrClient: ClientRegistryClient | null = null;
+        if (crResult.status === 'fulfilled') {
+          const crResponse = crResult.value;
+          if (crResponse.found && crResponse.client) {
+            setCrClient(crResponse.client);
+            foundCrClient = crResponse.client;
+            crFound = true;
+            // Don't auto-populate here - let user confirm in dialog first
           }
         }
-      } else {
-        // SHA check failed
-        console.error('SHA eligibility check failed:', shaResult.reason);
-        setShaEligibility({
-          checked: true,
-          isEligible: true, // Allow selection, verification at claim time
-          reason: undefined,
-          details: undefined,
-        });
 
-        // If only CR found, populate from it
-        if (crFound && foundCrClient) {
-          populateFromCRClient(foundCrClient);
-          toast({
-            title: 'Client Registry Record Found',
-            description: 'Patient details auto-populated from registry.',
+        // Handle SHA eligibility result
+        if (shaResult.status === 'fulfilled') {
+          const response = shaResult.value;
+          setShaEligibility({
+            checked: true,
+            isEligible: response.is_eligible,
+            reason: response.is_eligible
+              ? undefined
+              : response.reason || 'Patient is not eligible for SHA coverage',
+            details: response,
           });
+
+          // Set SHA number in form
+          if (response.sha_number) {
+            form.setValue('sha_number', response.sha_number);
+          }
+
+          // If SHA has dependants OR CR has dependants, open verification dialog
+          // so user can pick principal vs dependant
+          const hasDependants =
+            (response.dependents && response.dependents.length > 0) ||
+            (foundCrClient?.dependants &&
+              foundCrClient.dependants.some((g) => (g.result?.length ?? 0) > 0));
+
+          if (hasDependants && response.sha_number) {
+            // Open the verification dialog for principal/dependant selection
+            setPendingShaDetails(response);
+            setShowVerificationDialog(true);
+          } else if (crFound && foundCrClient) {
+            // No dependants — auto-populate from CR
+            populateFromCRClient(foundCrClient);
+            toast({
+              title: 'Client Registry Record Found',
+              description: 'Patient details auto-populated from registry.',
+            });
+          } else if (!response.full_name && !response.sha_number) {
+            // No SHA, no CR
+            toast({
+              title: 'No Records Found',
+              description: 'No existing registry records. Please enter patient details manually.',
+              variant: 'default',
+            });
+          }
+
+          // Handle ineligible SHA
+          if (!response.is_eligible) {
+            const currentPaymentMode = form.getValues('payment_mode');
+            if (currentPaymentMode === 'sha') {
+              form.setValue('payment_mode', 'cash');
+            }
+          }
+        } else {
+          // SHA check failed
+          console.error('SHA eligibility check failed:', shaResult.reason);
+          setShaEligibility({
+            checked: true,
+            isEligible: true, // Allow selection, verification at claim time
+            reason: undefined,
+            details: undefined,
+          });
+
+          // If only CR found, populate from it
+          if (crFound && foundCrClient) {
+            populateFromCRClient(foundCrClient);
+            toast({
+              title: 'Client Registry Record Found',
+              description: 'Patient details auto-populated from registry.',
+            });
+          }
         }
-      }
-    }).finally(() => {
-      setIsSearchingCR(false);
-      setIsCheckingEligibility(false);
-      setFormLocked(false);
-    });
+      })
+      .finally(() => {
+        setIsSearchingCR(false);
+        setIsCheckingEligibility(false);
+        setFormLocked(false);
+      });
   }, [form, toast, populateFromCRClient]);
 
   // Handle Enter/Tab key on ID input field
-  const handleIdInputKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' || event.key === 'Tab') {
-      const idNumber = form.getValues('identification_number');
-      if (idNumber && idNumber.length >= 5 && !isSearchingCR && !crSearched) {
-        // Prevent form submission on Enter
-        if (event.key === 'Enter') {
-          event.preventDefault();
+  const handleIdInputKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        const idNumber = form.getValues('identification_number');
+        if (idNumber && idNumber.length >= 5 && !isSearchingCR && !crSearched) {
+          // Prevent form submission on Enter
+          if (event.key === 'Enter') {
+            event.preventDefault();
+          }
+          triggerIdSearch();
         }
-        triggerIdSearch();
       }
-    }
-  }, [form, isSearchingCR, crSearched, triggerIdSearch]);
+    },
+    [form, isSearchingCR, crSearched, triggerIdSearch]
+  );
 
   // Handle blur on ID input field
   const handleIdInputBlur = useCallback(() => {
@@ -1502,7 +1601,8 @@ export function PatientForm({
 
         toast({
           title: 'Consent Deferred',
-          description: 'Patient consent must be obtained before discharge, claim submission, or encounter completion.',
+          description:
+            'Patient consent must be obtained before discharge, claim submission, or encounter completion.',
           variant: 'default',
         });
       }
@@ -1619,8 +1719,10 @@ export function PatientForm({
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormErrors)} className="space-y-6 sm:space-y-8">
-
+        <form
+          onSubmit={form.handleSubmit(handleFormSubmit, handleFormErrors)}
+          className="space-y-6 sm:space-y-8"
+        >
           {/* ================================================================== */}
           {/* SECTION 1: Identification & CR Status (Top Priority) */}
           {/* ================================================================== */}
@@ -1629,7 +1731,7 @@ export function PatientForm({
               <h3 className="text-lg font-medium">Identification</h3>
               {isSearchingCR && (
                 <Badge variant="secondary" className="animate-pulse">
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                   Searching Client Registry...
                 </Badge>
               )}
@@ -1642,15 +1744,12 @@ export function PatientForm({
                 <AlertTitle className="text-success">Client Registry Record Found</AlertTitle>
                 <AlertDescription className="flex items-center justify-between">
                   <span>
-                    <strong>{crClient.first_name} {crClient.last_name}</strong>
+                    <strong>
+                      {crClient.first_name} {crClient.last_name}
+                    </strong>
                     {crClient.client_number && ` • CR: ${crClient.client_number}`}
                   </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={resetVerificationState}
-                  >
+                  <Button type="button" variant="ghost" size="sm" onClick={resetVerificationState}>
                     Clear
                   </Button>
                 </AlertDescription>
@@ -1686,7 +1785,7 @@ export function PatientForm({
             {/* SHA Eligibility Status Banner */}
             {isCheckingEligibility && (
               <Alert className="border-primary/30 bg-primary/5">
-                <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 <AlertTitle className="text-primary">Checking SHA Coverage...</AlertTitle>
                 <AlertDescription className="text-primary/80">
                   Verifying patient eligibility with Social Health Authority.
@@ -1694,44 +1793,53 @@ export function PatientForm({
               </Alert>
             )}
 
-            {shaEligibility.checked && !isCheckingEligibility && shaEligibility.isEligible && shaEligibility.details && (
-              <Alert className="border-success/30 bg-success/5">
-                <BadgeCheck className="h-4 w-4 text-success" />
-                <AlertTitle className="text-success">
-                  <div className="flex items-center gap-2">
-                    <span>Active SHA Coverage</span>
-                    {/* Mobile: emoji only, Desktop: badge with text */}
-                    <span className="sm:hidden text-lg" title="Eligible">👍</span>
-                    <Badge variant="outline" className="hidden sm:inline-flex border-success/50 text-success bg-success/10 w-fit">
-                      Eligible
-                    </Badge>
-                  </div>
-                </AlertTitle>
-                <AlertDescription className="flex items-center justify-between gap-2">
-                  <span className="text-success/90">
-                    {shaEligibility.details.full_name && (
-                      <strong>{shaEligibility.details.full_name}</strong>
-                    )}
-                    {shaEligibility.details.sha_number && (
-                      <span> • SHA#: {shaEligibility.details.sha_number}</span>
-                    )}
-                    {shaEligibility.details.copay_percentage !== undefined && shaEligibility.details.copay_percentage > 0 && (
-                      <span> • Co-pay: {shaEligibility.details.copay_percentage}%</span>
-                    )}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="border-success/50 text-success hover:bg-success/10 w-fit shrink-0"
-                    onClick={() => setShowShaDetailsDialog(true)}
-                    title="View SHA Details"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            )}
+            {shaEligibility.checked &&
+              !isCheckingEligibility &&
+              shaEligibility.isEligible &&
+              shaEligibility.details && (
+                <Alert className="border-success/30 bg-success/5">
+                  <BadgeCheck className="h-4 w-4 text-success" />
+                  <AlertTitle className="text-success">
+                    <div className="flex items-center gap-2">
+                      <span>Active SHA Coverage</span>
+                      {/* Mobile: emoji only, Desktop: badge with text */}
+                      <span className="text-lg sm:hidden" title="Eligible">
+                        👍
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="hidden w-fit border-success/50 bg-success/10 text-success sm:inline-flex"
+                      >
+                        Eligible
+                      </Badge>
+                    </div>
+                  </AlertTitle>
+                  <AlertDescription className="flex items-center justify-between gap-2">
+                    <span className="text-success/90">
+                      {shaEligibility.details.full_name && (
+                        <strong>{shaEligibility.details.full_name}</strong>
+                      )}
+                      {shaEligibility.details.sha_number && (
+                        <span> • SHA#: {shaEligibility.details.sha_number}</span>
+                      )}
+                      {shaEligibility.details.copay_percentage !== undefined &&
+                        shaEligibility.details.copay_percentage > 0 && (
+                          <span> • Co-pay: {shaEligibility.details.copay_percentage}%</span>
+                        )}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-fit shrink-0 border-success/50 text-success hover:bg-success/10"
+                      onClick={() => setShowShaDetailsDialog(true)}
+                      title="View SHA Details"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
 
             {(householdNumber || isLoadingHouseholdMembers) && (
               <Alert className="border-primary/20 bg-primary/5">
@@ -1740,22 +1848,29 @@ export function PatientForm({
                 <AlertDescription className="space-y-2">
                   {householdNumber && (
                     <p>
-                      Household Number: <span className="font-mono font-medium">{householdNumber}</span>
+                      Household Number:{' '}
+                      <span className="font-mono font-medium">{householdNumber}</span>
                     </p>
                   )}
                   {isLoadingHouseholdMembers ? (
-                    <p className="text-sm text-muted-foreground">Looking up locally registered household members...</p>
+                    <p className="text-sm text-muted-foreground">
+                      Looking up locally registered household members...
+                    </p>
                   ) : householdMembers.length > 0 ? (
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">
-                        Found {householdMembers.length} linked patient{householdMembers.length === 1 ? '' : 's'} in this organization.
+                        Found {householdMembers.length} linked patient
+                        {householdMembers.length === 1 ? '' : 's'} in this organization.
                       </p>
                       <div className="space-y-2">
                         {householdMembers.map((member) => (
-                          <div key={member.id} className="flex flex-col gap-2 rounded-lg border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div
+                            key={member.id}
+                            className="flex flex-col gap-2 rounded-lg border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                          >
                             <div className="min-w-0">
-                              <p className="font-medium break-words">{member.full_name}</p>
-                              <p className="text-xs text-muted-foreground break-words">
+                              <p className="break-words font-medium">{member.full_name}</p>
+                              <p className="break-words text-xs text-muted-foreground">
                                 {member.mrn} • DOB: {member.date_of_birth}
                                 {member.cr_number ? ` • CR: ${member.cr_number}` : ''}
                                 {member.sha_number ? ` • SHA: ${member.sha_number}` : ''}
@@ -1777,7 +1892,8 @@ export function PatientForm({
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      No locally registered household members found yet. This household number will still be stored for future family registration and dependant verification.
+                      No locally registered household members found yet. This household number will
+                      still be stored for future family registration and dependant verification.
                     </p>
                   )}
                 </AlertDescription>
@@ -1785,85 +1901,100 @@ export function PatientForm({
             )}
 
             {/* Ineligible: Has SHA number but coverage not active (RED) */}
-            {shaEligibility.checked && !isCheckingEligibility && !shaEligibility.isEligible && shaEligibility.details?.sha_number && (
-              <Alert className="border-destructive/30 bg-destructive/5">
-                <XCircle className="h-4 w-4 text-destructive" />
-                <AlertTitle className="text-destructive">
-                  <div className="flex items-center gap-2">
-                    <span>SHA Coverage Inactive</span>
-                    {/* Mobile: emoji only, Desktop: badge with text */}
-                    <span className="sm:hidden text-lg" title="Not Eligible">👎</span>
-                    <Badge variant="outline" className="hidden sm:inline-flex border-destructive/50 text-destructive bg-destructive/10 w-fit">
-                      Not Eligible
-                    </Badge>
-                  </div>
-                </AlertTitle>
-                <AlertDescription className="text-destructive/80">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      {shaEligibility.reason || 'Patient SHA coverage is not active.'}
-                      {shaEligibility.details?.possible_solution && (
-                        <span className="block mt-1 text-sm">
-                          <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
-                        </span>
-                      )}
+            {shaEligibility.checked &&
+              !isCheckingEligibility &&
+              !shaEligibility.isEligible &&
+              shaEligibility.details?.sha_number && (
+                <Alert className="border-destructive/30 bg-destructive/5">
+                  <XCircle className="h-4 w-4 text-destructive" />
+                  <AlertTitle className="text-destructive">
+                    <div className="flex items-center gap-2">
+                      <span>SHA Coverage Inactive</span>
+                      {/* Mobile: emoji only, Desktop: badge with text */}
+                      <span className="text-lg sm:hidden" title="Not Eligible">
+                        👎
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="hidden w-fit border-destructive/50 bg-destructive/10 text-destructive sm:inline-flex"
+                      >
+                        Not Eligible
+                      </Badge>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="border-destructive/50 text-destructive hover:bg-destructive/10 w-fit shrink-0"
-                      onClick={() => setShowShaDetailsDialog(true)}
-                      title="View Details"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Unregistered: No SHA record found (AMBER) */}
-            {shaEligibility.checked && !isCheckingEligibility && !shaEligibility.isEligible && !shaEligibility.details?.sha_number && (
-              <Alert className="border-warning/30 bg-warning/5">
-                <XCircle className="h-4 w-4 text-warning-foreground" />
-                <AlertTitle className="text-warning-foreground">
-                  <div className="flex items-center gap-2">
-                    <span>Not Registered with SHA</span>
-                    <Badge variant="outline" className="hidden sm:inline-flex border-warning/50 text-warning-foreground bg-warning/10 w-fit">
-                      Unregistered
-                    </Badge>
-                  </div>
-                </AlertTitle>
-                <AlertDescription className="text-warning-foreground/80">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      {shaEligibility.reason || 'Patient is not registered with Social Health Authority.'}
-                      {shaEligibility.details?.possible_solution && (
-                        <span className="block mt-1 text-sm">
-                          <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
-                        </span>
-                      )}
-                    </div>
-                    {shaEligibility.details && (
+                  </AlertTitle>
+                  <AlertDescription className="text-destructive/80">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        {shaEligibility.reason || 'Patient SHA coverage is not active.'}
+                        {shaEligibility.details?.possible_solution && (
+                          <span className="mt-1 block text-sm">
+                            <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
+                          </span>
+                        )}
+                      </div>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="border-warning/50 text-warning-foreground hover:bg-warning/10 w-fit shrink-0"
+                        className="w-fit shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10"
                         onClick={() => setShowShaDetailsDialog(true)}
                         title="View Details"
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                    )}
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+            {/* Unregistered: No SHA record found (AMBER) */}
+            {shaEligibility.checked &&
+              !isCheckingEligibility &&
+              !shaEligibility.isEligible &&
+              !shaEligibility.details?.sha_number && (
+                <Alert className="border-warning/30 bg-warning/5">
+                  <XCircle className="h-4 w-4 text-warning-foreground" />
+                  <AlertTitle className="text-warning-foreground">
+                    <div className="flex items-center gap-2">
+                      <span>Not Registered with SHA</span>
+                      <Badge
+                        variant="outline"
+                        className="hidden w-fit border-warning/50 bg-warning/10 text-warning-foreground sm:inline-flex"
+                      >
+                        Unregistered
+                      </Badge>
+                    </div>
+                  </AlertTitle>
+                  <AlertDescription className="text-warning-foreground/80">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        {shaEligibility.reason ||
+                          'Patient is not registered with Social Health Authority.'}
+                        {shaEligibility.details?.possible_solution && (
+                          <span className="mt-1 block text-sm">
+                            <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
+                          </span>
+                        )}
+                      </div>
+                      {shaEligibility.details && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-fit shrink-0 border-warning/50 text-warning-foreground hover:bg-warning/10"
+                          onClick={() => setShowShaDetailsDialog(true)}
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
 
             <div className="space-y-2">
-              <div className="grid items-start gap-3 grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)]">
+              <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
                 <FormField
                   control={form.control}
                   name="identification_type"
@@ -1917,17 +2048,26 @@ export function PatientForm({
                           <button
                             type="button"
                             onClick={handleManualCRSearch}
-                            disabled={formLocked || isFormLoading || isSearchingCR || (field.value || '').length < 5}
+                            disabled={
+                              formLocked ||
+                              isFormLoading ||
+                              isSearchingCR ||
+                              (field.value || '').length < 5
+                            }
                             className={cn(
-                              'absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-colors',
+                              'absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 transition-colors',
                               'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
-                              (field.value || '').length >= 5 && !isSearchingCR && !formLocked && !isFormLoading
-                                ? 'text-teal-600 hover:bg-teal-600/10 cursor-pointer'
-                                : 'text-muted-foreground/40 cursor-not-allowed'
+                              (field.value || '').length >= 5 &&
+                                !isSearchingCR &&
+                                !formLocked &&
+                                !isFormLoading
+                                ? 'cursor-pointer text-teal-600 hover:bg-teal-600/10'
+                                : 'cursor-not-allowed text-muted-foreground/40'
                             )}
-                            title={(field.value || '').length < 5
-                              ? 'Enter at least 5 characters to search'
-                              : 'Search CR/SHA'
+                            title={
+                              (field.value || '').length < 5
+                                ? 'Enter at least 5 characters to search'
+                                : 'Search CR/SHA'
                             }
                           >
                             {isSearchingCR ? (
@@ -1948,8 +2088,7 @@ export function PatientForm({
               </div>
             </div>
 
-            <div className="grid items-start gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-
+            <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {/* CR Number (Read-only) */}
               <FormField
                 control={form.control}
@@ -1969,9 +2108,7 @@ export function PatientForm({
                         className="bg-muted font-mono text-sm"
                       />
                     </FormControl>
-                    <FormDescription>
-                      Auto-assigned from registry
-                    </FormDescription>
+                    <FormDescription>Auto-assigned from registry</FormDescription>
                   </FormItem>
                 )}
               />
@@ -1992,12 +2129,10 @@ export function PatientForm({
                         readOnly
                         disabled
                         placeholder="Auto-populated"
-                        className="bg-secondary/5 border-secondary/20 font-mono text-sm text-teal-400"
+                        className="border-secondary/20 bg-secondary/5 font-mono text-sm text-teal-400"
                       />
                     </FormControl>
-                    <FormDescription className="text-teal-400">
-                      From SHA lookup
-                    </FormDescription>
+                    <FormDescription className="text-teal-400">From SHA lookup</FormDescription>
                   </FormItem>
                 )}
               />
@@ -2009,7 +2144,9 @@ export function PatientForm({
                   name="principal_national_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className={`flex items-center gap-1 ${principalNationalId ? 'text-teal-400' : 'text-amber-500'}`}>
+                      <FormLabel
+                        className={`flex items-center gap-1 ${principalNationalId ? 'text-teal-400' : 'text-amber-500'}`}
+                      >
                         <Users className="h-4 w-4" />
                         Principal&apos;s National ID
                       </FormLabel>
@@ -2017,14 +2154,19 @@ export function PatientForm({
                         <Input
                           {...field}
                           placeholder="Enter principal's national ID (for dependants)"
-                          className={principalNationalId
-                            ? 'bg-secondary/5 border-secondary/20 font-mono text-sm text-teal-400'
-                            : 'border-amber-500/30 focus:border-amber-500'
+                          className={
+                            principalNationalId
+                              ? 'border-secondary/20 bg-secondary/5 font-mono text-sm text-teal-400'
+                              : 'border-amber-500/30 focus:border-amber-500'
                           }
                         />
                       </FormControl>
-                      <FormDescription className={principalNationalId ? 'text-teal-400' : 'text-amber-500/80'}>
-                        {principalNationalId ? 'Used for dependant eligibility verification' : 'Required if patient is a dependant'}
+                      <FormDescription
+                        className={principalNationalId ? 'text-teal-400' : 'text-amber-500/80'}
+                      >
+                        {principalNationalId
+                          ? 'Used for dependant eligibility verification'
+                          : 'Required if patient is a dependant'}
                       </FormDescription>
                     </FormItem>
                   )}
@@ -2110,7 +2252,7 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Personal Information</h3>
 
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <FormField
                 control={form.control}
                 name="title"
@@ -2124,13 +2266,13 @@ export function PatientForm({
                           role="combobox"
                           disabled={formLocked || isFormLoading}
                           className={cn(
-                            "w-full justify-between font-normal",
-                            !field.value && "text-muted-foreground"
+                            'w-full justify-between font-normal',
+                            !field.value && 'text-muted-foreground'
                           )}
                         >
                           {field.value
                             ? TITLE_OPTIONS.find((t) => t.value === field.value)?.label
-                            : "Select"}
+                            : 'Select'}
                           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -2203,7 +2345,7 @@ export function PatientForm({
               />
             </div>
 
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 items-start">
+            <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <FormField
                 control={form.control}
                 name="gender"
@@ -2219,9 +2361,8 @@ export function PatientForm({
                             disabled={formLocked || isFormLoading}
                           >
                             {field.value
-                              ? GENDER_OPTIONS.find(opt => opt.value === field.value)?.label
-                              : 'Select gender'
-                            }
+                              ? GENDER_OPTIONS.find((opt) => opt.value === field.value)?.label
+                              : 'Select gender'}
                             <ChevronDown className="h-4 w-4 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -2231,10 +2372,7 @@ export function PatientForm({
                             onValueChange={field.onChange}
                           >
                             {GENDER_OPTIONS.map((option) => (
-                              <DropdownMenuRadioItem
-                                key={option.value}
-                                value={option.value}
-                              >
+                              <DropdownMenuRadioItem key={option.value} value={option.value}>
                                 {option.label}
                               </DropdownMenuRadioItem>
                             ))}
@@ -2356,7 +2494,7 @@ export function PatientForm({
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                              <HelpCircle className="h-4 w-4 cursor-help text-muted-foreground" />
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>Check if patient has a registered disability</p>
@@ -2379,7 +2517,7 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Contact Information</h3>
 
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <FormField
                 control={form.control}
                 name="phone_number"
@@ -2447,7 +2585,7 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Location</h3>
 
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <FormField
                 control={form.control}
                 name="county"
@@ -2456,7 +2594,9 @@ export function PatientForm({
                     <FormLabel>County *</FormLabel>
                     <FormControl>
                       <LocationCombobox
-                        options={counties?.map(c => ({ value: c.id.toString(), label: c.name })) || []}
+                        options={
+                          counties?.map((c) => ({ value: c.id.toString(), label: c.name })) || []
+                        }
                         value={field.value?.toString()}
                         onSelect={(value) => {
                           field.onChange(Number(value));
@@ -2483,7 +2623,10 @@ export function PatientForm({
                     <FormLabel>Sub-County *</FormLabel>
                     <FormControl>
                       <LocationCombobox
-                        options={subCounties?.map(sc => ({ value: sc.id.toString(), label: sc.name })) || []}
+                        options={
+                          subCounties?.map((sc) => ({ value: sc.id.toString(), label: sc.name })) ||
+                          []
+                        }
                         value={field.value?.toString()}
                         onSelect={(value) => {
                           field.onChange(Number(value));
@@ -2509,7 +2652,9 @@ export function PatientForm({
                     <FormLabel>Ward (Optional)</FormLabel>
                     <FormControl>
                       <LocationCombobox
-                        options={wards?.map(w => ({ value: w.id.toString(), label: w.name })) || []}
+                        options={
+                          wards?.map((w) => ({ value: w.id.toString(), label: w.name })) || []
+                        }
                         value={field.value?.toString()}
                         onSelect={(value) => field.onChange(Number(value))}
                         placeholder={!selectedSubCounty ? 'Select sub-county first' : 'Select ward'}
@@ -2550,7 +2695,7 @@ export function PatientForm({
           {(paymentMode === 'insurance_private' || paymentMode === 'insurance_corporate') && (
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Insurance Details</h3>
-              <div className="grid gap-4 md:grid-cols-2 p-4 rounded-lg border bg-muted/30">
+              <div className="grid gap-4 rounded-lg border bg-muted/30 p-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="insurance_provider"
@@ -2596,7 +2741,7 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Emergency Contact</h3>
 
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <FormField
                 control={form.control}
                 name="emergency_contact_name"
@@ -2718,7 +2863,10 @@ export function PatientForm({
                     {REFERRAL_SOURCE_OPTIONS.map((option) => (
                       <div key={option.value} className="flex items-center space-x-2">
                         <RadioGroupItem value={option.value} id={`referral-${option.value}`} />
-                        <Label htmlFor={`referral-${option.value}`} className="cursor-pointer font-normal">
+                        <Label
+                          htmlFor={`referral-${option.value}`}
+                          className="cursor-pointer font-normal"
+                        >
                           {option.label}
                         </Label>
                       </div>
@@ -2736,7 +2884,9 @@ export function PatientForm({
               name="referred_from_facility"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Referring Facility Name <span className="text-destructive">*</span></FormLabel>
+                  <FormLabel>
+                    Referring Facility Name <span className="text-destructive">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Enter the name of the referring facility"
@@ -2762,7 +2912,8 @@ export function PatientForm({
               <Info className="h-4 w-4" />
               <AlertTitle>Kenya Data Protection Act 2019</AlertTitle>
               <AlertDescription>
-                Patient consent will be requested upon form submission. Data will be encrypted and stored securely in compliance with the law.
+                Patient consent will be requested upon form submission. Data will be encrypted and
+                stored securely in compliance with the law.
               </AlertDescription>
             </Alert>
 
@@ -2776,16 +2927,14 @@ export function PatientForm({
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={(checked) => {
-                           field.onChange(checked);
-                           if (checked) form.setValue('consent_deferred', false);
+                          field.onChange(checked);
+                          if (checked) form.setValue('consent_deferred', false);
                         }}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Patient Consent
-                      </FormLabel>
+                      <FormLabel>Patient Consent</FormLabel>
                       <FormDescription>
                         I confirm that the patient has given consent for data collection.
                       </FormDescription>
@@ -2803,16 +2952,14 @@ export function PatientForm({
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={(checked) => {
-                           field.onChange(checked);
-                           if (checked) form.setValue('consent_given', false);
+                          field.onChange(checked);
+                          if (checked) form.setValue('consent_given', false);
                         }}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Defer Consent
-                      </FormLabel>
+                      <FormLabel>Defer Consent</FormLabel>
                       <FormDescription>
                         Consent is deferred due to emergency or incapacity.
                       </FormDescription>
@@ -2834,19 +2981,21 @@ export function PatientForm({
             const isSubmitDisabled = isFormLoading || formLocked || hasExactMatch;
 
             const submitButton = (
-              <Button
-                type="submit"
-                disabled={isSubmitDisabled}
-                className="order-1 sm:order-3"
-              >
+              <Button type="submit" disabled={isSubmitDisabled} className="order-1 sm:order-3">
                 {isFormLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditing ? 'Update Patient' : 'Register Patient'}
               </Button>
             );
 
             return (
-              <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 sm:justify-end pt-4">
-                <Button type="button" variant="outline" onClick={onCancel} disabled={isFormLoading} className="order-3 sm:order-1">
+              <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end sm:gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancel}
+                  disabled={isFormLoading}
+                  className="order-3 sm:order-1"
+                >
                   Cancel
                 </Button>
                 <Button
@@ -2911,7 +3060,9 @@ export function PatientForm({
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="top">
-                        <p>Patient already exists with 100% match. Use the existing record instead.</p>
+                        <p>
+                          Patient already exists with 100% match. Use the existing record instead.
+                        </p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -2987,7 +3138,7 @@ export function PatientForm({
             <div className="space-y-4">
               {/* Eligibility Status */}
               {shaEligibility.isEligible ? (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/30">
+                <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3">
                   <BadgeCheck className="h-5 w-5 text-success" />
                   <div>
                     <p className="font-medium text-success">Active Coverage</p>
@@ -2995,12 +3146,13 @@ export function PatientForm({
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+                <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
                   <XCircle className="h-5 w-5 text-warning-foreground" />
                   <div>
                     <p className="font-medium text-warning-foreground">Coverage Inactive</p>
                     <p className="text-sm text-warning-foreground/80">
-                      {shaEligibility.reason || 'Patient is not currently eligible for SHA benefits'}
+                      {shaEligibility.reason ||
+                        'Patient is not currently eligible for SHA benefits'}
                     </p>
                   </div>
                 </div>
@@ -3009,47 +3161,53 @@ export function PatientForm({
               {/* Member Details */}
               <div className="grid gap-3">
                 {shaEligibility.details.full_name && (
-                  <div className="flex justify-between py-2 border-b">
+                  <div className="flex justify-between border-b py-2">
                     <span className="text-muted-foreground">Member Name</span>
                     <span className="font-medium">{shaEligibility.details.full_name}</span>
                   </div>
                 )}
 
                 {shaEligibility.details.sha_number && (
-                  <div className="flex justify-between py-2 border-b">
+                  <div className="flex justify-between border-b py-2">
                     <span className="text-muted-foreground">SHA Number</span>
-                    <span className="font-mono font-medium">{shaEligibility.details.sha_number}</span>
+                    <span className="font-mono font-medium">
+                      {shaEligibility.details.sha_number}
+                    </span>
                   </div>
                 )}
 
                 {shaEligibility.details.coverage_end_date && (
-                  <div className="flex justify-between py-2 border-b">
+                  <div className="flex justify-between border-b py-2">
                     <span className="text-muted-foreground">Coverage Valid Until</span>
                     <span className="font-medium">{shaEligibility.details.coverage_end_date}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between py-2 border-b">
+                <div className="flex justify-between border-b py-2">
                   <span className="text-muted-foreground">Co-pay Percentage</span>
-                  <span className="font-medium">{shaEligibility.details.copay_percentage || 0}%</span>
+                  <span className="font-medium">
+                    {shaEligibility.details.copay_percentage || 0}%
+                  </span>
                 </div>
 
                 {shaEligibility.details.employment_type && (
-                  <div className="flex justify-between py-2 border-b">
+                  <div className="flex justify-between border-b py-2">
                     <span className="text-muted-foreground">Employment Type</span>
-                    <span className="font-medium capitalize">{shaEligibility.details.employment_type}</span>
+                    <span className="font-medium capitalize">
+                      {shaEligibility.details.employment_type}
+                    </span>
                   </div>
                 )}
 
                 {shaEligibility.details.employer_name && (
-                  <div className="flex justify-between py-2 border-b">
+                  <div className="flex justify-between border-b py-2">
                     <span className="text-muted-foreground">Employer</span>
                     <span className="font-medium">{shaEligibility.details.employer_name}</span>
                   </div>
                 )}
 
                 {shaEligibility.details.nhif_transition_status && (
-                  <div className="flex justify-between py-2 border-b">
+                  <div className="flex justify-between border-b py-2">
                     <span className="text-muted-foreground">NHIF Transition</span>
                     <Badge variant="outline" className="capitalize">
                       {shaEligibility.details.nhif_transition_status}
@@ -3060,8 +3218,8 @@ export function PatientForm({
 
               {/* Means Testing Info (if available) */}
               {shaEligibility.details.means_testing && (
-                <div className="p-3 rounded-lg bg-muted/50 space-y-2">
-                  <p className="text-sm font-medium flex items-center gap-1">
+                <div className="space-y-2 rounded-lg bg-muted/50 p-3">
+                  <p className="flex items-center gap-1 text-sm font-medium">
                     <Info className="h-4 w-4" />
                     Means Testing Information
                   </p>
@@ -3069,13 +3227,18 @@ export function PatientForm({
                     {shaEligibility.details.means_testing.monthly_contribution !== undefined && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Monthly Contribution</span>
-                        <span>KES {shaEligibility.details.means_testing.monthly_contribution?.toLocaleString()}</span>
+                        <span>
+                          KES{' '}
+                          {shaEligibility.details.means_testing.monthly_contribution?.toLocaleString()}
+                        </span>
                       </div>
                     )}
                     {shaEligibility.details.means_testing.income_prediction_category && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Income Category</span>
-                        <span className="capitalize">{shaEligibility.details.means_testing.income_prediction_category}</span>
+                        <span className="capitalize">
+                          {shaEligibility.details.means_testing.income_prediction_category}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -3084,28 +3247,34 @@ export function PatientForm({
 
               {/* Dependents Accordion - Shows SHA dependents or CR dependants */}
               <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="dependents" className="border rounded-lg px-3">
+                <AccordionItem value="dependents" className="rounded-lg border px-3">
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-muted-foreground" />
-                      <span>Dependents ({
-                        shaEligibility.details.dependents?.length
-                        || crClient?.dependants?.reduce((sum, g) => sum + (g.result?.length ?? 0), 0)
-                        || shaEligibility.details.dependents_covered
-                        || 0
-                      })</span>
+                      <span>
+                        Dependents (
+                        {shaEligibility.details.dependents?.length ||
+                          crClient?.dependants?.reduce(
+                            (sum, g) => sum + (g.result?.length ?? 0),
+                            0
+                          ) ||
+                          shaEligibility.details.dependents_covered ||
+                          0}
+                        )
+                      </span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-3 pt-2">
-                      {shaEligibility.details.dependents && shaEligibility.details.dependents.length > 0 ? (
+                      {shaEligibility.details.dependents &&
+                      shaEligibility.details.dependents.length > 0 ? (
                         shaEligibility.details.dependents.map((dependent, index) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between p-3 rounded-md bg-muted/30 border"
+                            className="flex items-center justify-between rounded-md border bg-muted/30 p-3"
                           >
                             <div className="space-y-1">
-                              <p className="font-medium text-sm">{dependent.name}</p>
+                              <p className="text-sm font-medium">{dependent.name}</p>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 {dependent.relationship && (
                                   <span className="capitalize">{dependent.relationship}</span>
@@ -3118,7 +3287,7 @@ export function PatientForm({
                                 )}
                               </div>
                               {dependent.sha_number && (
-                                <p className="text-xs font-mono text-muted-foreground">
+                                <p className="font-mono text-xs text-muted-foreground">
                                   SHA#: {dependent.sha_number}
                                 </p>
                               )}
@@ -3135,28 +3304,24 @@ export function PatientForm({
                           (group.result ?? []).map((dep, dIdx) => (
                             <div
                               key={`cr-${gIdx}-${dIdx}`}
-                              className="flex items-center justify-between p-3 rounded-md bg-muted/30 border"
+                              className="flex items-center justify-between rounded-md border bg-muted/30 p-3"
                             >
                               <div className="space-y-1">
-                                <p className="font-medium text-sm">
-                                  {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ')}
+                                <p className="text-sm font-medium">
+                                  {[dep.first_name, dep.middle_name, dep.last_name]
+                                    .filter(Boolean)
+                                    .join(' ')}
                                 </p>
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   {group.relationship && (
                                     <span className="capitalize">{group.relationship}</span>
                                   )}
-                                  {dep.date_of_birth && (
-                                    <span>• DOB: {dep.date_of_birth}</span>
-                                  )}
-                                  {dep.gender && (
-                                    <span>• {dep.gender}</span>
-                                  )}
-                                  {dep.phone && (
-                                    <span>• {dep.phone}</span>
-                                  )}
+                                  {dep.date_of_birth && <span>• DOB: {dep.date_of_birth}</span>}
+                                  {dep.gender && <span>• {dep.gender}</span>}
+                                  {dep.phone && <span>• {dep.phone}</span>}
                                 </div>
                                 {dep.identification_number && (
-                                  <p className="text-xs font-mono text-muted-foreground">
+                                  <p className="font-mono text-xs text-muted-foreground">
                                     {dep.identification_type}: {dep.identification_number}
                                   </p>
                                 )}
@@ -3165,7 +3330,7 @@ export function PatientForm({
                           ))
                         )
                       ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">
+                        <p className="py-4 text-center text-sm text-muted-foreground">
                           No dependents registered under this membership
                         </p>
                       )}
@@ -3183,8 +3348,6 @@ export function PatientForm({
           </div>
         </DialogContent>
       </Dialog>
-
-
     </>
   );
 }

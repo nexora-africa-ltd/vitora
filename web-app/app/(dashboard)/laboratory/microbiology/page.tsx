@@ -8,7 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -102,7 +108,7 @@ export default function MicrobiologyPage() {
       header: 'Status',
       sortable: true,
       cell: (item: (typeof cultures)[number]) => (
-        <Badge className={`${STATUS_COLORS[item.status]} shrink-0 w-fit`}>
+        <Badge className={`${STATUS_COLORS[item.status]} w-fit shrink-0`}>
           {item.status_display}
         </Badge>
       ),
@@ -127,8 +133,7 @@ export default function MicrobiologyPage() {
       header: 'Date',
       sortable: true,
       sortType: 'date' as const,
-      cell: (item: (typeof cultures)[number]) =>
-        new Date(item.created_at).toLocaleDateString(),
+      cell: (item: (typeof cultures)[number]) => new Date(item.created_at).toLocaleDateString(),
     },
   ];
 
@@ -148,8 +153,11 @@ export default function MicrobiologyPage() {
           title="Microbiology"
           helpContent="Culture & sensitivity workflow, antibiogram generation, and WHONET-compatible data export."
           actions={
-            <Button onClick={() => router.push('/laboratory/microbiology/new')} disabled={!canCreateRoute('/laboratory/microbiology/new')}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button
+              onClick={() => router.push('/laboratory/microbiology/new')}
+              disabled={!canCreateRoute('/laboratory/microbiology/new')}
+            >
+              <Plus className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">New Culture</span>
               <span className="sm:hidden">New</span>
             </Button>
@@ -157,7 +165,7 @@ export default function MicrobiologyPage() {
         />
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Card className="relative overflow-hidden">
             <div
               className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
@@ -168,7 +176,7 @@ export default function MicrobiologyPage() {
                 <Bug className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Total Cultures</p>
               </div>
-              <p className="text-xl font-bold mt-1">{totalCultures}</p>
+              <p className="mt-1 text-xl font-bold">{totalCultures}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
@@ -181,7 +189,7 @@ export default function MicrobiologyPage() {
                 <FlaskConical className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">In Progress</p>
               </div>
-              <p className="text-xl font-bold mt-1">{activeCultures}</p>
+              <p className="mt-1 text-xl font-bold">{activeCultures}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
@@ -194,7 +202,7 @@ export default function MicrobiologyPage() {
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Antibiogram</p>
               </div>
-              <p className="text-xl font-bold mt-1">{antibiograms.length}</p>
+              <p className="mt-1 text-xl font-bold">{antibiograms.length}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
@@ -207,7 +215,7 @@ export default function MicrobiologyPage() {
                 <FileDown className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Year</p>
               </div>
-              <p className="text-xl font-bold mt-1">{antibiogramYear}</p>
+              <p className="mt-1 text-xl font-bold">{antibiogramYear}</p>
             </CardContent>
           </Card>
         </div>
@@ -227,14 +235,20 @@ export default function MicrobiologyPage() {
 
           <TabsContent value="cultures" className="mt-4 space-y-4">
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
               <Input
                 placeholder="Search organism, order..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full sm:w-64"
               />
-              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v === 'all' ? '' : v); setPage(1); }}>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setStatusFilter(v === 'all' ? '' : v);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger className="w-full sm:w-40">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
@@ -263,7 +277,7 @@ export default function MicrobiologyPage() {
 
             {/* Pagination */}
             {culturesData && culturesData.count > 20 && (
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
                   Showing {cultures.length} of {culturesData.count}
                 </p>
@@ -291,8 +305,8 @@ export default function MicrobiologyPage() {
 
           <TabsContent value="antibiogram" className="mt-4 space-y-4">
             {/* Antibiogram Controls */}
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center sm:justify-between">
-              <div className="flex gap-2 items-center">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <div className="flex items-center gap-2">
                 <Select
                   value={String(antibiogramYear)}
                   onValueChange={(v) => setAntibiogramYear(Number(v))}
@@ -302,7 +316,9 @@ export default function MicrobiologyPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {[2024, 2025, 2026].map((y) => (
-                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      <SelectItem key={y} value={String(y)}>
+                        {y}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -314,11 +330,13 @@ export default function MicrobiologyPage() {
                   onClick={handleGenerateAntibiogram}
                   disabled={generateAntibiogram.isPending}
                 >
-                  <RefreshCw className={`h-4 w-4 mr-1 ${generateAntibiogram.isPending ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`mr-1 h-4 w-4 ${generateAntibiogram.isPending ? 'animate-spin' : ''}`}
+                  />
                   Generate
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleWHONETExport}>
-                  <FileDown className="h-4 w-4 mr-1" />
+                  <FileDown className="mr-1 h-4 w-4" />
                   WHONET
                 </Button>
               </div>
@@ -326,12 +344,14 @@ export default function MicrobiologyPage() {
 
             {/* Antibiogram Table */}
             {antibiogramLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading antibiogram data...</div>
+              <div className="py-8 text-center text-muted-foreground">
+                Loading antibiogram data...
+              </div>
             ) : antibiograms.length === 0 ? (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
                   <p>No antibiogram data for {antibiogramYear}.</p>
-                  <p className="text-sm mt-1">Generate from finalized culture results.</p>
+                  <p className="mt-1 text-sm">Generate from finalized culture results.</p>
                 </CardContent>
               </Card>
             ) : (
@@ -343,14 +363,14 @@ export default function MicrobiologyPage() {
                 </CardHeader>
                 <CardContent className="px-0 sm:px-6">
                   <div className="overflow-x-auto">
-                    <table className="min-w-[600px] w-full text-sm">
+                    <table className="w-full min-w-[600px] text-sm">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left p-2 font-medium">Organism</th>
-                          <th className="text-left p-2 font-medium">Antibiotic</th>
-                          <th className="text-center p-2 font-medium">N</th>
-                          <th className="text-center p-2 font-medium">%S</th>
-                          <th className="text-center p-2 font-medium">%R</th>
+                          <th className="p-2 text-left font-medium">Organism</th>
+                          <th className="p-2 text-left font-medium">Antibiotic</th>
+                          <th className="p-2 text-center font-medium">N</th>
+                          <th className="p-2 text-center font-medium">%S</th>
+                          <th className="p-2 text-center font-medium">%R</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -364,10 +384,10 @@ export default function MicrobiologyPage() {
                                 variant="outline"
                                 className={
                                   (row.percent_sensitive ?? 0) >= 80
-                                    ? 'text-green-700 border-green-300'
+                                    ? 'border-green-300 text-green-700'
                                     : (row.percent_sensitive ?? 0) >= 50
-                                      ? 'text-amber-700 border-amber-300'
-                                      : 'text-red-700 border-red-300'
+                                      ? 'border-amber-300 text-amber-700'
+                                      : 'border-red-300 text-red-700'
                                 }
                               >
                                 {row.percent_sensitive != null ? `${row.percent_sensitive}%` : '—'}

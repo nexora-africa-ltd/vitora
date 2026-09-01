@@ -9,13 +9,32 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Eye, ChevronLeft, ChevronRight, AlertTriangle, XCircle, Shield, Star, MoreVertical, Edit, Trash2, Filter } from 'lucide-react';
+import {
+  Search,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  XCircle,
+  Shield,
+  Star,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Filter,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
@@ -290,9 +309,7 @@ export function DrugTable({
       console.error('Error deleting drug:', err);
       const error = err as { response?: { data?: { detail?: string } }; message?: string };
       setDeleteError(
-        error.response?.data?.detail ||
-        error.message ||
-        'Cannot delete item with existing stock'
+        error.response?.data?.detail || error.message || 'Cannot delete item with existing stock'
       );
     } finally {
       setIsDeleting(false);
@@ -318,7 +335,7 @@ export function DrugTable({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <XCircle className="h-12 w-12 text-destructive mb-4" />
+        <XCircle className="mb-4 h-12 w-12 text-destructive" />
         <p className="text-destructive">{error.message}</p>
       </div>
     );
@@ -330,13 +347,13 @@ export function DrugTable({
     const isOutOfStock = drug.current_stock === 0;
 
     return (
-      <Card className="p-4 space-y-3">
+      <Card className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="font-medium text-left hover:underline cursor-pointer truncate"
+                className="cursor-pointer truncate text-left font-medium hover:underline"
                 onClick={() => router.push(`/pharmacy/drugs/${drug.id}`)}
               >
                 {drug.generic_name}
@@ -344,11 +361,11 @@ export function DrugTable({
               <Badge className={SCHEDULE_COLORS[drug.schedule]}>{drug.schedule}</Badge>
             </div>
             {drug.brand_names && drug.brand_names.length > 0 && (
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
                 {drug.brand_names.join(', ')}
               </p>
             )}
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="mt-1 text-sm text-muted-foreground">
               {FORM_LABELS[drug.form]} • {drug.strength}
             </p>
           </div>
@@ -360,43 +377,51 @@ export function DrugTable({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => router.push(`/pharmacy/drugs/${drug.id}`)}>
-                <Eye className="h-4 w-4 mr-2" />
+                <Eye className="mr-2 h-4 w-4" />
                 View Details
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push(`/pharmacy/drugs/${drug.id}/edit`)}>
-                <Edit className="h-4 w-4 mr-2" />
+                <Edit className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleDeleteClick(drug)}
                 className="text-destructive"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
-        <div className="flex items-center justify-between gap-4 pt-2 border-t">
+        <div className="flex items-center justify-between gap-4 border-t pt-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Stock:</span>
-            <span className={`text-sm font-medium ${isOutOfStock ? 'text-destructive' : isLowStock ? 'text-amber-600' : ''}`}>
+            <span
+              className={`text-sm font-medium ${isOutOfStock ? 'text-destructive' : isLowStock ? 'text-amber-600' : ''}`}
+            >
               {drug.current_stock}
             </span>
             {isOutOfStock && <XCircle className="h-3.5 w-3.5 text-destructive" />}
             {isLowStock && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
           </div>
-          <div className="flex gap-1 flex-wrap justify-end">
+          <div className="flex flex-wrap justify-end gap-1">
             {drug.is_essential && (
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
-                <Star className="h-2.5 w-2.5 mr-0.5" />
+              <Badge
+                variant="outline"
+                className="border-primary/20 bg-primary/10 text-xs text-primary"
+              >
+                <Star className="mr-0.5 h-2.5 w-2.5" />
                 Essential
               </Badge>
             )}
             {drug.is_controlled && (
-              <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 text-xs">
-                <Shield className="h-2.5 w-2.5 mr-0.5" />
+              <Badge
+                variant="outline"
+                className="border-destructive/20 bg-destructive/10 text-xs text-destructive"
+              >
+                <Shield className="mr-0.5 h-2.5 w-2.5" />
                 Controlled
               </Badge>
             )}
@@ -423,7 +448,7 @@ export function DrugTable({
           <div className="flex flex-col gap-1">
             <button
               type="button"
-              className="font-medium text-left hover:underline cursor-pointer"
+              className="cursor-pointer text-left font-medium hover:underline"
               onClick={(e) => {
                 e.stopPropagation();
                 router.push(`/pharmacy/drugs/${drug.id}`);
@@ -432,28 +457,26 @@ export function DrugTable({
               {drug.generic_name}
             </button>
             {drug.brand_names && drug.brand_names.length > 0 && (
-              <div className="text-xs text-muted-foreground">
-                {drug.brand_names.join(', ')}
-              </div>
+              <div className="text-xs text-muted-foreground">{drug.brand_names.join(', ')}</div>
             )}
-            <div className="flex gap-1 mt-1">
+            <div className="mt-1 flex gap-1">
               {drug.is_essential && (
                 <Badge
                   variant="outline"
-                  className="bg-primary/10 text-primary border-primary/20 text-xs"
+                  className="border-primary/20 bg-primary/10 text-xs text-primary"
                   title="Kenya Essential Medicines List"
                 >
-                  <Star className="h-3 w-3 mr-1" />
+                  <Star className="mr-1 h-3 w-3" />
                   Essential
                 </Badge>
               )}
               {drug.is_controlled && (
                 <Badge
                   variant="outline"
-                  className="bg-destructive/10 text-destructive border-destructive/20 text-xs"
+                  className="border-destructive/20 bg-destructive/10 text-xs text-destructive"
                   title="Controlled Drug"
                 >
-                  <Shield className="h-3 w-3 mr-1" />
+                  <Shield className="mr-1 h-3 w-3" />
                   Controlled
                 </Badge>
               )}
@@ -480,20 +503,21 @@ export function DrugTable({
       header: 'Category',
       sortable: true,
       sortFn: (a: Drug, b: Drug) => {
-        const aCategories = (a.categories && a.categories.length > 0)
-          ? a.categories
-          : (a.category ? [a.category] : []);
-        const bCategories = (b.categories && b.categories.length > 0)
-          ? b.categories
-          : (b.category ? [b.category] : []);
+        const aCategories =
+          a.categories && a.categories.length > 0 ? a.categories : a.category ? [a.category] : [];
+        const bCategories =
+          b.categories && b.categories.length > 0 ? b.categories : b.category ? [b.category] : [];
         const aLabel = aCategories.map((cat) => CATEGORY_LABELS[cat] ?? cat).join(', ');
         const bLabel = bCategories.map((cat) => CATEGORY_LABELS[cat] ?? cat).join(', ');
         return aLabel.localeCompare(bLabel);
       },
       cell: (drug: Drug) => {
-        const categories = (drug.categories && Array.isArray(drug.categories) && drug.categories.length > 0)
-          ? drug.categories
-          : (drug.category ? [drug.category] : []);
+        const categories =
+          drug.categories && Array.isArray(drug.categories) && drug.categories.length > 0
+            ? drug.categories
+            : drug.category
+              ? [drug.category]
+              : [];
         return (
           <div className="flex flex-wrap gap-1">
             {categories.length > 0 ? (
@@ -503,10 +527,14 @@ export function DrugTable({
                 </Badge>
               ))
             ) : (
-              <Badge variant="outline" className="text-xs">-</Badge>
+              <Badge variant="outline" className="text-xs">
+                -
+              </Badge>
             )}
             {categories.length > 2 && (
-              <Badge variant="outline" className="text-xs">+{categories.length - 2}</Badge>
+              <Badge variant="outline" className="text-xs">
+                +{categories.length - 2}
+              </Badge>
             )}
           </div>
         );
@@ -519,18 +547,19 @@ export function DrugTable({
       sortable: true,
       sortFn: (a: Drug, b: Drug) => a.current_stock - b.current_stock,
       cell: (drug: Drug) => {
-        const isLowStock = drug.current_stock > 0 && drug.current_stock < drug.default_reorder_level;
+        const isLowStock =
+          drug.current_stock > 0 && drug.current_stock < drug.default_reorder_level;
         const isOutOfStock = drug.current_stock === 0;
         return (
           <div>
             <div className="flex items-center gap-2">
-              <span className={isOutOfStock ? 'text-destructive font-medium' : ''}>
+              <span className={isOutOfStock ? 'font-medium text-destructive' : ''}>
                 {drug.current_stock}
               </span>
               {isOutOfStock && <XCircle className="h-4 w-4 text-destructive" />}
               {isLowStock && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
             </div>
-            {isOutOfStock && <div className="text-xs text-destructive mt-1">OOS</div>}
+            {isOutOfStock && <div className="mt-1 text-xs text-destructive">OOS</div>}
           </div>
         );
       },
@@ -538,7 +567,9 @@ export function DrugTable({
     {
       key: 'schedule',
       header: 'Schedule',
-      cell: (drug: Drug) => <Badge className={SCHEDULE_COLORS[drug.schedule]}>{drug.schedule}</Badge>,
+      cell: (drug: Drug) => (
+        <Badge className={SCHEDULE_COLORS[drug.schedule]}>{drug.schedule}</Badge>
+      ),
       hideOnMobile: true,
       sortable: true,
     },
@@ -580,7 +611,7 @@ export function DrugTable({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => router.push(`/pharmacy/drugs/${drug.id}`)}>
-                <Eye className="h-4 w-4 mr-2" />
+                <Eye className="mr-2 h-4 w-4" />
                 View Details
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -596,7 +627,7 @@ export function DrugTable({
       {/* Search and Filters */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm" role="search" aria-label="Search items">
+          <div className="relative max-w-sm flex-1" role="search" aria-label="Search items">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
@@ -615,14 +646,14 @@ export function DrugTable({
               onClick={() => setShowFilters(!showFilters)}
               className="w-full sm:w-auto"
             >
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="mr-2 h-4 w-4" />
               {showFilters ? 'Hide Filters' : 'Filters'}
             </Button>
           )}
         </div>
 
         {onFiltersChange && showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4 border rounded-lg bg-muted/30">
+          <div className="grid grid-cols-1 gap-3 rounded-lg border bg-muted/30 p-4 sm:grid-cols-2 lg:grid-cols-3">
             <Select value={categoryFilter} onValueChange={handleCategoryChange}>
               <SelectTrigger data-testid="category-filter">
                 <SelectValue placeholder="Category" />
@@ -630,7 +661,9 @@ export function DrugTable({
               <SelectContent>
                 <SelectItem value="">All Categories</SelectItem>
                 {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                  <SelectItem key={key} value={key}>
+                    {label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -642,7 +675,9 @@ export function DrugTable({
               <SelectContent>
                 <SelectItem value="">All Forms</SelectItem>
                 {Object.entries(FORM_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                  <SelectItem key={key} value={key}>
+                    {label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -667,7 +702,9 @@ export function DrugTable({
               <SelectContent>
                 <SelectItem value="">All Types</SelectItem>
                 {Object.entries(ITEM_TYPE_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                  <SelectItem key={key} value={key}>
+                    {label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -679,7 +716,7 @@ export function DrugTable({
                 checked={essentialOnly}
                 onCheckedChange={handleEssentialChange}
               />
-              <Label htmlFor="essential-filter" className="text-sm cursor-pointer">
+              <Label htmlFor="essential-filter" className="cursor-pointer text-sm">
                 Essential Only (KEML)
               </Label>
             </div>
@@ -691,7 +728,7 @@ export function DrugTable({
                 checked={activeOnly}
                 onCheckedChange={handleActiveChange}
               />
-              <Label htmlFor="active-filter" className="text-sm cursor-pointer">
+              <Label htmlFor="active-filter" className="cursor-pointer text-sm">
                 Active Only
               </Label>
             </div>
@@ -703,7 +740,7 @@ export function DrugTable({
                 checked={inStockOnly}
                 onCheckedChange={handleInStockChange}
               />
-              <Label htmlFor="in-stock-filter" className="text-sm cursor-pointer">
+              <Label htmlFor="in-stock-filter" className="cursor-pointer text-sm">
                 In Stock Only
               </Label>
             </div>
@@ -727,12 +764,19 @@ export function DrugTable({
 
       {/* Pagination */}
       {totalPages > 0 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-testid="pagination">
-          <p className="text-sm text-muted-foreground text-center sm:text-left">
+        <div
+          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          data-testid="pagination"
+        >
+          <p className="text-center text-sm text-muted-foreground sm:text-left">
             {totalCount ? (
-              <>Showing {drugs.length} of {totalCount} items</>
+              <>
+                Showing {drugs.length} of {totalCount} items
+              </>
             ) : (
-              <>Page {page} of {totalPages}</>
+              <>
+                Page {page} of {totalPages}
+              </>
             )}
           </p>
           <div className="flex items-center justify-center gap-2">
@@ -766,26 +810,29 @@ export function DrugTable({
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete <strong>{drugToDelete?.generic_name}</strong> from the catalog.
-              This action cannot be undone.
+              This will permanently delete <strong>{drugToDelete?.generic_name}</strong> from the
+              catalog. This action cannot be undone.
               {drugToDelete && drugToDelete.current_stock > 0 && (
-                <span className="block mt-2 text-destructive font-semibold">
-                  Warning: This item has {drugToDelete.current_stock} units in stock and cannot be deleted.
+                <span className="mt-2 block font-semibold text-destructive">
+                  Warning: This item has {drugToDelete.current_stock} units in stock and cannot be
+                  deleted.
                 </span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteError && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded">
+            <div className="rounded bg-destructive/10 p-3 text-sm text-destructive">
               {deleteError}
             </div>
           )}
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <AlertDialogCancel onClick={() => {
-              setDeleteDialogOpen(false);
-              setDrugToDelete(null);
-              setDeleteError(null);
-            }}>
+            <AlertDialogCancel
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setDrugToDelete(null);
+                setDeleteError(null);
+              }}
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

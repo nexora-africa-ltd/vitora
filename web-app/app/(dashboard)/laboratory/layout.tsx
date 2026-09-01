@@ -7,16 +7,10 @@ export const metadata: Metadata = {
   description: 'Laboratory management and test results',
 };
 
-export default function LaboratoryLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function LaboratoryLayout({ children }: { children: React.ReactNode }) {
   return (
     <LaboratoryLicenseGate>
-      <LabClinicianSocketProvider>
-        {children}
-      </LabClinicianSocketProvider>
+      <LabClinicianSocketProvider>{children}</LabClinicianSocketProvider>
     </LaboratoryLicenseGate>
   );
 }

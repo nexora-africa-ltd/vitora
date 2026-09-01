@@ -101,7 +101,7 @@ interface PieDataEntry {
 function breakdownToPieData<K extends string>(
   breakdown: Record<K, number>,
   labels: Record<K, string>,
-  colors: Record<K, string>,
+  colors: Record<K, string>
 ): PieDataEntry[] {
   return (Object.keys(breakdown) as K[])
     .map((key) => ({
@@ -133,7 +133,15 @@ function renderCustomLabel({
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
   return (
-    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600}>
+    <text
+      x={x}
+      y={y}
+      fill="white"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={11}
+      fontWeight={600}
+    >
       {`${(percent * 100).toFixed(0)}%`}
     </text>
   );
@@ -161,7 +169,7 @@ function DonutChart({
             <HelpPopover content={helpContent} />
           </div>
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-48 text-sm text-muted-foreground">
+        <CardContent className="flex h-48 items-center justify-center text-sm text-muted-foreground">
           No data
         </CardContent>
       </Card>
@@ -200,7 +208,7 @@ function DonutChart({
                 if (!active || !payload?.length) return null;
                 const item = payload[0];
                 return (
-                  <div className="rounded-md bg-popover px-3 py-2 shadow-md border text-sm">
+                  <div className="rounded-md border bg-popover px-3 py-2 text-sm shadow-md">
                     <p className="font-medium">{item?.name}</p>
                     <p className="text-muted-foreground">{item?.value}</p>
                   </div>
@@ -228,7 +236,7 @@ function MonthlyTrendChart({ data }: { data: DeliveryMonthlyTrend[] }) {
         'C-Sections': m.cs_deliveries,
         total: m.total,
       })),
-    [data],
+    [data]
   );
 
   if (chartData.length === 0) {
@@ -240,7 +248,7 @@ function MonthlyTrendChart({ data }: { data: DeliveryMonthlyTrend[] }) {
             <HelpPopover content="Deliveries per month broken down by outcome." />
           </div>
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-48 text-sm text-muted-foreground">
+        <CardContent className="flex h-48 items-center justify-center text-sm text-muted-foreground">
           No trend data yet
         </CardContent>
       </Card>
@@ -260,14 +268,20 @@ function MonthlyTrendChart({ data }: { data: DeliveryMonthlyTrend[] }) {
           <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" opacity={0.3} />
             <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fontSize: 10 }} width={30} tickLine={false} axisLine={false} allowDecimals={false} />
+            <YAxis
+              tick={{ fontSize: 10 }}
+              width={30}
+              tickLine={false}
+              axisLine={false}
+              allowDecimals={false}
+            />
             <RechartsTooltip
               cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
               content={({ active, payload, label }) => {
                 if (!active || !payload?.length) return null;
                 return (
-                  <div className="rounded-md bg-popover px-3 py-2 shadow-md border text-sm">
-                    <p className="font-medium mb-1">{label}</p>
+                  <div className="rounded-md border bg-popover px-3 py-2 text-sm shadow-md">
+                    <p className="mb-1 font-medium">{label}</p>
                     {payload.map((entry) => (
                       <p key={entry.name} style={{ color: entry.color }}>
                         {entry.name}: {entry.value}
@@ -301,13 +315,17 @@ function KeyIndicatorsCard({ stats }: { stats: DeliveryDashboardStats }) {
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Live Birth Rate</span>
-          <span className="font-semibold text-green-600 dark:text-green-400">{stats.live_birth_rate}%</span>
+          <span className="font-semibold text-green-600 dark:text-green-400">
+            {stats.live_birth_rate}%
+          </span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">C-Section Rate</span>
           <Badge
             variant="outline"
-            className={stats.cs_rate > 15 ? 'border-orange-500 text-orange-700 dark:text-orange-400' : ''}
+            className={
+              stats.cs_rate > 15 ? 'border-orange-500 text-orange-700 dark:text-orange-400' : ''
+            }
           >
             {stats.cs_rate}%
           </Badge>
@@ -339,15 +357,15 @@ interface DeliveryStatsChartsProps {
 export function DeliveryStatsCharts({ dashboard, className }: DeliveryStatsChartsProps) {
   const outcomesData = useMemo(
     () => breakdownToPieData(dashboard.outcomes_breakdown, OUTCOME_LABELS, OUTCOME_COLORS),
-    [dashboard.outcomes_breakdown],
+    [dashboard.outcomes_breakdown]
   );
   const typesData = useMemo(
     () => breakdownToPieData(dashboard.types_breakdown, TYPE_LABELS, TYPE_COLORS),
-    [dashboard.types_breakdown],
+    [dashboard.types_breakdown]
   );
   const placesData = useMemo(
     () => breakdownToPieData(dashboard.places_breakdown, PLACE_LABELS, PLACE_COLORS),
-    [dashboard.places_breakdown],
+    [dashboard.places_breakdown]
   );
 
   return (

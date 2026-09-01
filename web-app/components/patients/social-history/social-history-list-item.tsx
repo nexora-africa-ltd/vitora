@@ -70,24 +70,22 @@ export function SocialHistoryListItem({
 
   return (
     <>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border bg-muted/30">
-        <div className="flex items-start gap-3 min-w-0">
-          <span className="text-lg shrink-0 mt-0.5" aria-hidden="true">
+      <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="mt-0.5 shrink-0 text-lg" aria-hidden="true">
             {icon}
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{observation.observation_type_display}</span>
-              <Badge className={`${badgeColor} shrink-0`}>
-                {observation.status_display}
-              </Badge>
+              <Badge className={`${badgeColor} shrink-0`}>{observation.status_display}</Badge>
             </div>
             {observation.value_text && (
-              <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
+              <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
                 {observation.value_text}
               </p>
             )}
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {new Date(observation.effective_date).toLocaleDateString()}
               {observation.recorded_by_username && (
                 <span> &bull; {observation.recorded_by_username}</span>
@@ -107,7 +105,7 @@ export function SocialHistoryListItem({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-                  <Pencil className="h-4 w-4 mr-2" />
+                  <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -115,7 +113,7 @@ export function SocialHistoryListItem({
                   onClick={() => setShowDeleteDialog(true)}
                   className="text-destructive focus:text-destructive"
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -139,8 +137,8 @@ export function SocialHistoryListItem({
             <AlertDialogTitle>Delete Social History</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this{' '}
-              <strong>{observation.observation_type_display.toLowerCase()}</strong> record?
-              This action cannot be undone.
+              <strong>{observation.observation_type_display.toLowerCase()}</strong> record? This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

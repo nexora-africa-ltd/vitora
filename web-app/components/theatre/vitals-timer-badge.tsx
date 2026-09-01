@@ -15,10 +15,7 @@ interface VitalsTimerBadgeProps {
  * Shows elapsed time since the last vital reading and prompts when
  * the next reading is overdue (default: every 5 minutes).
  */
-export function VitalsTimerBadge({
-  lastRecordedAt,
-  intervalSeconds = 300,
-}: VitalsTimerBadgeProps) {
+export function VitalsTimerBadge({ lastRecordedAt, intervalSeconds = 300 }: VitalsTimerBadgeProps) {
   const [elapsed, setElapsed] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -85,9 +82,7 @@ export function VitalsTimerBadge({
       className={`gap-1 ${isOverdue ? 'animate-pulse' : ''}`}
     >
       <Timer className="h-3 w-3" />
-      {isOverdue
-        ? `Overdue ${formatTime(remaining)}`
-        : `Next in ${formatTime(remaining)}`}
+      {isOverdue ? `Overdue ${formatTime(remaining)}` : `Next in ${formatTime(remaining)}`}
     </Badge>
   );
 }

@@ -18,12 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { inventoryApi } from '@/lib/api/inventory';
@@ -121,7 +116,7 @@ export default function ETIMSConfigPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
+      <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -139,7 +134,7 @@ export default function ETIMSConfigPage() {
   const anyPending = saveMutation.isPending || testMutation.isPending;
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
       <PageHeader
         title="eTIMS Configuration"
         helpContent="Configure the KRA eTIMS integration for this facility. eTIMS (electronic Tax Invoice Management System) enables real-time tax invoice reporting to KRA."
@@ -164,13 +159,14 @@ export default function ETIMSConfigPage() {
 
       {/* Status banner */}
       {config && (
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
+        <div className="flex flex-col gap-2 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <div className="flex flex-col gap-1">
             <p className="text-sm font-medium">
               {config.environment === 'PRODUCTION' ? 'Production' : 'Sandbox'} Environment
             </p>
             <p className="text-xs text-muted-foreground">
-              Last sync: {config.last_sync_at ? new Date(config.last_sync_at).toLocaleString() : 'Never'}
+              Last sync:{' '}
+              {config.last_sync_at ? new Date(config.last_sync_at).toLocaleString() : 'Never'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -205,19 +201,21 @@ export default function ETIMSConfigPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-              {([
-                { label: 'NS', value: config.counter_ns, desc: 'Normal Sale' },
-                { label: 'NC', value: config.counter_nc, desc: 'Normal Credit' },
-                { label: 'CS', value: config.counter_cs, desc: 'Copy Sale' },
-                { label: 'CC', value: config.counter_cc, desc: 'Copy Credit' },
-                { label: 'TS', value: config.counter_ts, desc: 'Training Sale' },
-                { label: 'TC', value: config.counter_tc, desc: 'Training Credit' },
-                { label: 'PS', value: config.counter_ps, desc: 'Proforma Sale' },
-              ] as const).map((c) => (
+              {(
+                [
+                  { label: 'NS', value: config.counter_ns, desc: 'Normal Sale' },
+                  { label: 'NC', value: config.counter_nc, desc: 'Normal Credit' },
+                  { label: 'CS', value: config.counter_cs, desc: 'Copy Sale' },
+                  { label: 'CC', value: config.counter_cc, desc: 'Copy Credit' },
+                  { label: 'TS', value: config.counter_ts, desc: 'Training Sale' },
+                  { label: 'TC', value: config.counter_tc, desc: 'Training Credit' },
+                  { label: 'PS', value: config.counter_ps, desc: 'Proforma Sale' },
+                ] as const
+              ).map((c) => (
                 <div key={c.label} className="rounded-md border p-2 text-center">
                   <p className="text-xs text-muted-foreground">{c.label}</p>
-                  <p className="text-lg font-bold font-mono">{c.value}</p>
-                  <p className="text-[10px] text-muted-foreground leading-tight">{c.desc}</p>
+                  <p className="font-mono text-lg font-bold">{c.value}</p>
+                  <p className="text-[10px] leading-tight text-muted-foreground">{c.desc}</p>
                 </div>
               ))}
             </div>
@@ -261,8 +259,10 @@ export default function ETIMSConfigPage() {
             </div>
 
             <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <Label htmlFor="dvc-srl-no" className="mb-0">VSCU Serial Number *</Label>
+              <div className="mb-1 flex items-center gap-1.5">
+                <Label htmlFor="dvc-srl-no" className="mb-0">
+                  VSCU Serial Number *
+                </Label>
                 <HelpPopover content="For Online eTIMS (VSCU), this is the virtual serial number assigned by KRA during eTIMS registration on iTax. For on-site devices (OSCU), use the physical hardware serial." />
               </div>
               <Input
@@ -323,7 +323,10 @@ export default function ETIMSConfigPage() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <div id="environment" className="h-10 rounded-md border px-3 flex items-center text-sm text-muted-foreground">
+                  <div
+                    id="environment"
+                    className="flex h-10 items-center rounded-md border px-3 text-sm text-muted-foreground"
+                  >
                     {environment === 'PRODUCTION' ? 'Production' : 'Sandbox'}
                   </div>
                 )}
@@ -332,11 +335,8 @@ export default function ETIMSConfigPage() {
                 <TooltipProvider delayDuration={300}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-2 w-fit cursor-default">
-                        <Switch
-                          checked={isActive}
-                          onCheckedChange={setIsActive}
-                        />
+                      <div className="flex w-fit cursor-default items-center gap-2">
+                        <Switch checked={isActive} onCheckedChange={setIsActive} />
                         <span className="text-sm font-medium">
                           {isActive ? 'Active' : 'Inactive'}
                         </span>
@@ -352,7 +352,7 @@ export default function ETIMSConfigPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2 mt-4">
+        <div className="mt-4 flex justify-end gap-2">
           <Button type="submit" disabled={anyPending || !tin || !dvcSrlNo || !apiBaseUrl}>
             {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-1 h-4 w-4" />

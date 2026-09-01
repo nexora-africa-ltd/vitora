@@ -45,7 +45,7 @@ export function TheatreCaseStatusBadge({
   className?: string;
 }) {
   return (
-    <Badge className={cn(CASE_STATUS_STYLES[status] || '', 'text-xs shrink-0 w-fit', className)}>
+    <Badge className={cn(CASE_STATUS_STYLES[status] || '', 'w-fit shrink-0 text-xs', className)}>
       {status.replace(/_/g, ' ')}
     </Badge>
   );
@@ -69,7 +69,7 @@ export function TheatreCasePriorityBadge({
   }
 
   return (
-    <Badge className={cn(PRIORITY_STYLES[priority], 'text-xs shrink-0 w-fit', className)}>
+    <Badge className={cn(PRIORITY_STYLES[priority], 'w-fit shrink-0 text-xs', className)}>
       {priority === 'EMERGENCY' && <AlertTriangle className="mr-1 h-3 w-3" />}
       {priority}
     </Badge>
@@ -78,7 +78,13 @@ export function TheatreCasePriorityBadge({
 
 export function TheatreSchedulingReadinessBadge({ ready }: { ready: boolean }) {
   return (
-    <Badge className={ready ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'}>
+    <Badge
+      className={
+        ready
+          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+          : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
+      }
+    >
       {ready ? 'Ready' : 'Pending'}
     </Badge>
   );
@@ -86,22 +92,22 @@ export function TheatreSchedulingReadinessBadge({ ready }: { ready: boolean }) {
 
 export function TheatreOperationalStatusBadge({ isActive }: { isActive: boolean }) {
   return (
-    <Badge variant={isActive ? 'default' : 'outline'} className={isActive ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : ''}>
+    <Badge
+      variant={isActive ? 'default' : 'outline'}
+      className={isActive ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : ''}
+    >
       {isActive ? 'Active' : 'Inactive'}
     </Badge>
   );
 }
 
-export function TheatreMetricCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
+export function TheatreMetricCard({ label, value }: { label: string; value: number }) {
   return (
     <Card className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+        aria-hidden="true"
+      />
       <CardContent className="relative p-4">
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="mt-1 text-2xl font-semibold">{value}</p>

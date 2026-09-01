@@ -5,7 +5,15 @@
  * Uses Naegele's Rule: EDD = LMP + 280 days (40 weeks)
  */
 
-import { addDays, addWeeks, differenceInDays, differenceInWeeks, format, isValid, parseISO } from 'date-fns';
+import {
+  addDays,
+  addWeeks,
+  differenceInDays,
+  differenceInWeeks,
+  format,
+  isValid,
+  parseISO,
+} from 'date-fns';
 
 export interface ObstetricCalculation {
   /** Last Menstrual Period date */

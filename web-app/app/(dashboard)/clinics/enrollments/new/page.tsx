@@ -70,7 +70,11 @@ export default function NewEnrollmentPage() {
     },
   });
 
-  const { data: clinicsData, isLoading: clinicsLoading, refetch: refetchClinics } = useClinics({ status: 'ACTIVE' });
+  const {
+    data: clinicsData,
+    isLoading: clinicsLoading,
+    refetch: refetchClinics,
+  } = useClinics({ status: 'ACTIVE' });
   const clinics = clinicsData?.results ?? [];
 
   // Patient search
@@ -101,10 +105,18 @@ export default function NewEnrollmentPage() {
       });
 
       router.push('/clinics/enrollments');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const description =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { detail?: string } } }).response?.data?.detail ===
+          'string'
+          ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : 'Failed to create enrollment. Please try again.';
       toast({
         title: 'Error',
-        description: error?.response?.data?.detail || 'Failed to create enrollment. Please try again.',
+        description,
         variant: 'destructive',
       });
     }
@@ -123,7 +135,7 @@ export default function NewEnrollmentPage() {
           <p className="text-muted-foreground">Enroll a patient into a chronic care program</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetchClinics()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
       </div>
@@ -189,17 +201,21 @@ export default function NewEnrollmentPage() {
                       ) : shouldSearchPatients ? (
                         <div className="rounded-md border">
                           {patients.length === 0 ? (
-                            <div className="p-3 text-sm text-muted-foreground">No patients found</div>
+                            <div className="p-3 text-sm text-muted-foreground">
+                              No patients found
+                            </div>
                           ) : (
                             <div className="divide-y">
                               {patients.map((p) => (
                                 <button
                                   key={p.id}
                                   type="button"
-                                  className="w-full text-left p-3 hover:bg-muted"
+                                  className="w-full p-3 text-left hover:bg-muted"
                                   onClick={() => field.onChange(p.id)}
                                 >
-                                  <div className="font-medium">{p.first_name} {p.last_name}</div>
+                                  <div className="font-medium">
+                                    {p.first_name} {p.last_name}
+                                  </div>
                                   <div className="text-xs text-muted-foreground">{p.mrn}</div>
                                 </button>
                               ))}
@@ -207,7 +223,9 @@ export default function NewEnrollmentPage() {
                           )}
                         </div>
                       ) : (
-                        <div className="text-sm text-muted-foreground">Type at least 2 characters to search.</div>
+                        <div className="text-sm text-muted-foreground">
+                          Type at least 2 characters to search.
+                        </div>
                       )}
 
                       {field.value ? (
@@ -251,11 +269,15 @@ export default function NewEnrollmentPage() {
               />
 
               <div className="flex items-center justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => router.push('/clinics/enrollments')}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push('/clinics/enrollments')}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={creating}>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="mr-2 h-4 w-4" />
                   {creating ? 'Creating...' : 'Create Enrollment'}
                 </Button>
               </div>

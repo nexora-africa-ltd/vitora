@@ -215,9 +215,11 @@ function buildEnrollmentPayload(data: Partial<PatientInsuranceCreateInput>): {
 
 async function createEnrollment(data: PatientInsuranceCreateInput): Promise<PatientInsurance> {
   const { payload, isMultipart } = buildEnrollmentPayload(data);
-  const response = await apiClient.post(`${BASE}/enrollments/`, payload, isMultipart
-    ? { headers: { 'Content-Type': 'multipart/form-data' } }
-    : undefined);
+  const response = await apiClient.post(
+    `${BASE}/enrollments/`,
+    payload,
+    isMultipart ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined
+  );
   return parseResponse(PatientInsuranceSchema, response.data, {
     context: 'insuranceApi.createEnrollment',
   });
@@ -228,9 +230,11 @@ async function updateEnrollment(
   data: Partial<PatientInsuranceCreateInput>
 ): Promise<PatientInsurance> {
   const { payload, isMultipart } = buildEnrollmentPayload(data);
-  const response = await apiClient.patch(`${BASE}/enrollments/${id}/`, payload, isMultipart
-    ? { headers: { 'Content-Type': 'multipart/form-data' } }
-    : undefined);
+  const response = await apiClient.patch(
+    `${BASE}/enrollments/${id}/`,
+    payload,
+    isMultipart ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined
+  );
   return parseResponse(PatientInsuranceSchema, response.data, {
     context: 'insuranceApi.updateEnrollment',
   });
@@ -250,7 +254,10 @@ async function verifyEnrollmentViaHealthcloud(id: number): Promise<VerifyViaHeal
 async function verifyEnrollmentViaHealthcloudPreview(
   data: VerifyEnrollmentPreviewInput
 ): Promise<VerifyViaHealthcloudResult> {
-  const response = await apiClient.post(`${BASE}/enrollments/verify-via-healthcloud-preview/`, data);
+  const response = await apiClient.post(
+    `${BASE}/enrollments/verify-via-healthcloud-preview/`,
+    data
+  );
   return parseResponse(VerifyViaHealthcloudResultSchema, response.data, {
     context: 'insuranceApi.verifyEnrollmentViaHealthcloudPreview',
   });
@@ -284,7 +291,10 @@ async function postHealthcloudProfile(
   id: number,
   data: HealthcloudPostProfileInput
 ): Promise<HealthcloudIdentityWorkflowResult> {
-  const response = await apiClient.post(`${BASE}/enrollments/${id}/healthcloud/post-profile/`, data);
+  const response = await apiClient.post(
+    `${BASE}/enrollments/${id}/healthcloud/post-profile/`,
+    data
+  );
   return parseResponse(HealthcloudIdentityWorkflowResultSchema, response.data, {
     context: 'insuranceApi.postHealthcloudProfile',
   });
@@ -294,7 +304,10 @@ async function getHealthcloudHealthId(
   id: number,
   data: HealthcloudGetHealthIdInput
 ): Promise<HealthcloudIdentityWorkflowResult> {
-  const response = await apiClient.post(`${BASE}/enrollments/${id}/healthcloud/get-health-id/`, data);
+  const response = await apiClient.post(
+    `${BASE}/enrollments/${id}/healthcloud/get-health-id/`,
+    data
+  );
   return parseResponse(HealthcloudIdentityWorkflowResultSchema, response.data, {
     context: 'insuranceApi.getHealthcloudHealthId',
   });
@@ -600,7 +613,6 @@ async function uploadClaimAttachmentFile(
     context: 'insuranceApi.uploadClaimAttachmentFile',
   });
 }
-
 
 async function checkClaimRemittance(id: number): Promise<Record<string, unknown>> {
   const response = await apiClient.post(`${BASE}/claims/${id}/check-remittance/`);

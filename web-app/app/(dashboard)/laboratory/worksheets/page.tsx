@@ -61,7 +61,16 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { worksheetsApi } from '@/lib/api/worksheets';
 import { toast } from 'sonner';
-import type { Worksheet, WorksheetTemplate, WorksheetTemplateCreateData, LabelPrintJob, LabelPrintJobListItem, LabelTemplate, WorksheetGroupBy, WorksheetExportFormat } from '@/lib/types/worksheets';
+import type {
+  Worksheet,
+  WorksheetTemplate,
+  WorksheetTemplateCreateData,
+  LabelPrintJob,
+  LabelPrintJobListItem,
+  LabelTemplate,
+  WorksheetGroupBy,
+  WorksheetExportFormat,
+} from '@/lib/types/worksheets';
 
 // =============================================================================
 // Helpers
@@ -133,7 +142,8 @@ export default function WorksheetsPage() {
   // Template CRUD state
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WorksheetTemplate | null>(null);
-  const [templateForm, setTemplateForm] = useState<WorksheetTemplateCreateData>(EMPTY_TEMPLATE_FORM);
+  const [templateForm, setTemplateForm] =
+    useState<WorksheetTemplateCreateData>(EMPTY_TEMPLATE_FORM);
   const [deleteTemplateId, setDeleteTemplateId] = useState<number | null>(null);
 
   // Label printing state
@@ -269,7 +279,10 @@ export default function WorksheetsPage() {
     }
 
     // ZPL output — copy to clipboard
-    if (fullJob.output_data && (fullJob.output_data.startsWith('^XA') || fullJob.output_data.includes('^FO'))) {
+    if (
+      fullJob.output_data &&
+      (fullJob.output_data.startsWith('^XA') || fullJob.output_data.includes('^FO'))
+    ) {
       try {
         await navigator.clipboard.writeText(fullJob.output_data);
         toast.success('ZPL commands copied to clipboard — paste into Zebra printer software');
@@ -313,9 +326,10 @@ export default function WorksheetsPage() {
       return;
     }
 
-    const labelHtml = items.map((item) => {
-      const data = item.label_data as Record<string, string>;
-      return `
+    const labelHtml = items
+      .map((item) => {
+        const data = item.label_data as Record<string, string>;
+        return `
         <div style="border:1px solid #ccc;padding:8px;margin:4px;display:inline-block;font-family:monospace;font-size:11px;width:200px;">
           <div style="font-weight:bold;font-size:14px;margin-bottom:4px;">${data.barcode || item.specimen_barcode}</div>
           ${data.patient_name ? `<div>${data.patient_name}</div>` : ''}
@@ -323,7 +337,8 @@ export default function WorksheetsPage() {
           ${data.test_name ? `<div>${data.test_name}</div>` : ''}
           ${data.collected_at ? `<div>${data.collected_at}</div>` : ''}
         </div>`;
-    }).join('');
+      })
+      .join('');
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -400,7 +415,10 @@ export default function WorksheetsPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
@@ -410,7 +428,10 @@ export default function WorksheetsPage() {
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-blue-500" />
@@ -420,7 +441,10 @@ export default function WorksheetsPage() {
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -430,7 +454,10 @@ export default function WorksheetsPage() {
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-4">
               <div className="flex items-center gap-2">
                 <Tag className="h-4 w-4 text-muted-foreground" />
@@ -444,17 +471,23 @@ export default function WorksheetsPage() {
         {/* Tabs */}
         <Tabs defaultValue="worksheets">
           <TabsList className="w-full sm:w-auto">
-            <TabsTrigger value="worksheets" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
+            <TabsTrigger
+              value="worksheets"
+              className="flex-1 gap-1.5 text-xs sm:flex-none sm:text-sm"
+            >
               <FileSpreadsheet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="sm:hidden">Sheets</span>
               <span className="hidden sm:inline">Worksheets</span>
             </TabsTrigger>
-            <TabsTrigger value="labels" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
+            <TabsTrigger value="labels" className="flex-1 gap-1.5 text-xs sm:flex-none sm:text-sm">
               <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="sm:hidden">Labels</span>
               <span className="hidden sm:inline">Print Jobs</span>
             </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm">
+            <TabsTrigger
+              value="templates"
+              className="flex-1 gap-1.5 text-xs sm:flex-none sm:text-sm"
+            >
               <FileSpreadsheet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Templates
             </TabsTrigger>
@@ -493,7 +526,7 @@ export default function WorksheetsPage() {
                   header: 'Status',
                   sortable: true,
                   cell: (item) => (
-                    <Badge className={`${worksheetStatusColor(item.status)} shrink-0 w-fit`}>
+                    <Badge className={`${worksheetStatusColor(item.status)} w-fit shrink-0`}>
                       {item.status.replace('_', ' ')}
                     </Badge>
                   ),
@@ -550,12 +583,12 @@ export default function WorksheetsPage() {
                             size="sm"
                             title="Print Worksheet"
                             onClick={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              const detail = await worksheetsApi.getWorksheet(item.id);
-                              const printWindow = window.open('', '_blank');
-                              if (printWindow) {
-                                printWindow.document.write(`
+                              e.stopPropagation();
+                              try {
+                                const detail = await worksheetsApi.getWorksheet(item.id);
+                                const printWindow = window.open('', '_blank');
+                                if (printWindow) {
+                                  printWindow.document.write(`
                                   <html><head><title>${detail.worksheet_number}</title>
                                   <style>
                                     body { font-family: system-ui, sans-serif; padding: 20px; }
@@ -572,31 +605,35 @@ export default function WorksheetsPage() {
                                   <table>
                                     <thead><tr><th>#</th><th>Patient</th><th>Test</th><th>Specimen</th></tr></thead>
                                     <tbody>
-                                      ${detail.items.map((it, idx) => `
+                                      ${detail.items
+                                        .map(
+                                          (it, idx) => `
                                         <tr>
                                           <td>${idx + 1}</td>
                                           <td>${it.patient_name}</td>
                                           <td>${it.test_name}</td>
                                           <td>${it.specimen_barcode || '—'}</td>
                                         </tr>
-                                      `).join('')}
+                                      `
+                                        )
+                                        .join('')}
                                     </tbody>
                                   </table>
                                   </body></html>
                                 `);
-                                printWindow.document.close();
-                                printWindow.focus();
-                                printWindow.print();
+                                  printWindow.document.close();
+                                  printWindow.focus();
+                                  printWindow.print();
+                                }
+                                markPrintedMutation.mutate(item.id);
+                              } catch {
+                                // If fetch fails, still allow marking as printed
+                                markPrintedMutation.mutate(item.id);
                               }
-                              markPrintedMutation.mutate(item.id);
-                            } catch {
-                              // If fetch fails, still allow marking as printed
-                              markPrintedMutation.mutate(item.id);
-                            }
-                          }}
-                        >
-                          <Printer className="h-4 w-4" />
-                        </Button>
+                            }}
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
                         </>
                       )}
                     </div>
@@ -604,15 +641,15 @@ export default function WorksheetsPage() {
                 },
               ]}
               mobileCard={(item) => (
-                <div className="p-3 space-y-2">
-                  <div className="flex justify-between items-start">
+                <div className="space-y-2 p-3">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="font-mono text-sm font-medium">{item.worksheet_number}</p>
                       <p className="text-sm text-muted-foreground">
                         {item.title || item.template_name}
                       </p>
                     </div>
-                    <Badge className={`${worksheetStatusColor(item.status)} shrink-0 w-fit`}>
+                    <Badge className={`${worksheetStatusColor(item.status)} w-fit shrink-0`}>
                       {item.status.replace('_', ' ')}
                     </Badge>
                   </div>
@@ -656,7 +693,7 @@ export default function WorksheetsPage() {
                   header: 'Status',
                   sortable: true,
                   cell: (item) => (
-                    <Badge className={`${labelJobStatusColor(item.status)} shrink-0 w-fit`}>
+                    <Badge className={`${labelJobStatusColor(item.status)} w-fit shrink-0`}>
                       {item.status}
                     </Badge>
                   ),
@@ -672,28 +709,38 @@ export default function WorksheetsPage() {
                 {
                   key: 'actions',
                   header: '',
-                  cell: (item) => item.status === 'GENERATED' || item.status === 'PRINTED' ? (
-                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openPrintOutput(item); }}>
-                      <Printer className="h-4 w-4 mr-1" />{item.status === 'PRINTED' ? 'Reprint' : 'Print'}
-                    </Button>
-                  ) : null,
+                  cell: (item) =>
+                    item.status === 'GENERATED' || item.status === 'PRINTED' ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openPrintOutput(item);
+                        }}
+                      >
+                        <Printer className="mr-1 h-4 w-4" />
+                        {item.status === 'PRINTED' ? 'Reprint' : 'Print'}
+                      </Button>
+                    ) : null,
                 },
               ]}
               mobileCard={(item) => (
-                <div className="p-3 space-y-2">
-                  <div className="flex justify-between items-start">
+                <div className="space-y-2 p-3">
+                  <div className="flex items-start justify-between">
                     <p className="font-medium">Job #{item.id}</p>
-                    <Badge className={`${labelJobStatusColor(item.status)} shrink-0 w-fit`}>
+                    <Badge className={`${labelJobStatusColor(item.status)} w-fit shrink-0`}>
                       {item.status}
                     </Badge>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
                       {item.template_name} • {item.label_count} labels
                     </p>
                     {(item.status === 'GENERATED' || item.status === 'PRINTED') && (
                       <Button size="sm" variant="outline" onClick={() => openPrintOutput(item)}>
-                        <Printer className="h-3 w-3 mr-1" />Print
+                        <Printer className="mr-1 h-3 w-3" />
+                        Print
                       </Button>
                     )}
                   </div>
@@ -705,9 +752,9 @@ export default function WorksheetsPage() {
           <TabsContent value="templates" className="mt-4">
             {templates.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FileSpreadsheet className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-sm font-medium text-muted-foreground mb-1">No templates yet</p>
-                <p className="text-xs text-muted-foreground mb-4">
+                <FileSpreadsheet className="mb-4 h-12 w-12 text-muted-foreground/50" />
+                <p className="mb-1 text-sm font-medium text-muted-foreground">No templates yet</p>
+                <p className="mb-4 text-xs text-muted-foreground">
                   Seed default lab worksheet templates to get started, or create your own.
                 </p>
                 <div className="flex gap-2">
@@ -718,120 +765,74 @@ export default function WorksheetsPage() {
                     disabled={seedDefaultsMutation.isPending}
                   >
                     {seedDefaultsMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <Sparkles className="h-4 w-4 mr-2" />
+                      <Sparkles className="mr-2 h-4 w-4" />
                     )}
                     Seed Defaults
                   </Button>
                   <Button size="sm" onClick={openCreateTemplate}>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     New Template
                   </Button>
                 </div>
               </div>
             ) : (
-            <>
-              <div className="flex justify-end mb-3">
-                <Button size="sm" onClick={openCreateTemplate}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">New Template</span>
-                  <span className="sm:hidden">New</span>
-                </Button>
-              </div>
-              <ResponsiveTable
-                data={templates}
-                keyExtractor={(item) => item.id}
-                onRowClick={(item) => openEditTemplate(item)}
-                columns={[
-                  {
-                    key: 'name',
-                    header: 'Name',
-                    sortable: true,
-                    cell: (item) => (
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        {item.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
-                        )}
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'group_by',
-                    header: 'Group By',
-                    sortable: true,
-                    cell: (item) => item.group_by.replace('_', ' '),
-                    hideOnMobile: true,
-                  },
-                  {
-                    key: 'section_filter',
-                    header: 'Section',
-                    sortable: true,
-                    cell: (item) => item.section_filter || '—',
-                    hideOnMobile: true,
-                  },
-                  {
-                    key: 'max_specimens_per_page',
-                    header: 'Max/Page',
-                    sortable: true,
-                    sortType: 'number',
-                    cell: (item) => item.max_specimens_per_page,
-                    hideOnMobile: true,
-                  },
-                  {
-                    key: 'is_active',
-                    header: 'Active',
-                    sortable: true,
-                    cell: (item) => (
-                      <Badge
-                        className={
-                          item.is_active
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-300'
-                        }
-                      >
-                        {item.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    ),
-                  },
-                  {
-                    key: 'actions',
-                    header: '',
-                    cell: (item) => (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditTemplate(item)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => setDeleteTemplateId(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ),
-                  },
-                ]}
-                mobileCard={(item) => (
-                  <div className="p-3 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{item.name}</p>
-                        {item.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
+              <>
+                <div className="mb-3 flex justify-end">
+                  <Button size="sm" onClick={openCreateTemplate}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    <span className="hidden sm:inline">New Template</span>
+                    <span className="sm:hidden">New</span>
+                  </Button>
+                </div>
+                <ResponsiveTable
+                  data={templates}
+                  keyExtractor={(item) => item.id}
+                  onRowClick={(item) => openEditTemplate(item)}
+                  columns={[
+                    {
+                      key: 'name',
+                      header: 'Name',
+                      sortable: true,
+                      cell: (item) => (
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          {item.description && (
+                            <p className="line-clamp-1 text-xs text-muted-foreground">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'group_by',
+                      header: 'Group By',
+                      sortable: true,
+                      cell: (item) => item.group_by.replace('_', ' '),
+                      hideOnMobile: true,
+                    },
+                    {
+                      key: 'section_filter',
+                      header: 'Section',
+                      sortable: true,
+                      cell: (item) => item.section_filter || '—',
+                      hideOnMobile: true,
+                    },
+                    {
+                      key: 'max_specimens_per_page',
+                      header: 'Max/Page',
+                      sortable: true,
+                      sortType: 'number',
+                      cell: (item) => item.max_specimens_per_page,
+                      hideOnMobile: true,
+                    },
+                    {
+                      key: 'is_active',
+                      header: 'Active',
+                      sortable: true,
+                      cell: (item) => (
                         <Badge
                           className={
                             item.is_active
@@ -841,35 +842,96 @@ export default function WorksheetsPage() {
                         >
                           {item.is_active ? 'Active' : 'Inactive'}
                         </Badge>
+                      ),
+                    },
+                    {
+                      key: 'actions',
+                      header: '',
+                      cell: (item) => (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEditTemplate(item)}>
-                              <Pencil className="h-4 w-4 mr-2" />
+                              <Pencil className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => setDeleteTemplateId(item.id)}
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
+                              <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                      ),
+                    },
+                  ]}
+                  mobileCard={(item) => (
+                    <div className="space-y-1 p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{item.name}</p>
+                          {item.description && (
+                            <p className="line-clamp-1 text-xs text-muted-foreground">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Badge
+                            className={
+                              item.is_active
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-300'
+                            }
+                          >
+                            {item.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditTemplate(item)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => setDeleteTemplateId(item.id)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
+                      <p className="text-sm text-muted-foreground">
+                        Group by {item.group_by.replace('_', ' ')} • {item.default_export_format} •{' '}
+                        {item.max_specimens_per_page}/page
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Group by {item.group_by.replace('_', ' ')} • {item.default_export_format} • {item.max_specimens_per_page}/page
-                    </p>
-                  </div>
-                )}
-              />
-            </>
+                  )}
+                />
+              </>
             )}
           </TabsContent>
         </Tabs>
@@ -892,7 +954,11 @@ export default function WorksheetsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowGenerateDialog(false)} className="w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setShowGenerateDialog(false)}
+                className="w-full sm:w-auto"
+              >
                 Cancel
               </Button>
               <Button
@@ -912,7 +978,7 @@ export default function WorksheetsPage() {
             <DialogHeader>
               <DialogTitle>{editingTemplate ? 'Edit Template' : 'New Template'}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
               <div>
                 <Label htmlFor="tpl-name">Name *</Label>
                 <Input
@@ -927,17 +993,21 @@ export default function WorksheetsPage() {
                 <Textarea
                   id="tpl-desc"
                   value={templateForm.description || ''}
-                  onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setTemplateForm({ ...templateForm, description: e.target.value })
+                  }
                   placeholder="Brief description of this worksheet template"
                   rows={2}
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label>Group By</Label>
                   <Select
                     value={templateForm.group_by}
-                    onValueChange={(v) => setTemplateForm({ ...templateForm, group_by: v as WorksheetGroupBy })}
+                    onValueChange={(v) =>
+                      setTemplateForm({ ...templateForm, group_by: v as WorksheetGroupBy })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -954,7 +1024,12 @@ export default function WorksheetsPage() {
                   <Label>Export Format</Label>
                   <Select
                     value={templateForm.default_export_format || 'PDF'}
-                    onValueChange={(v) => setTemplateForm({ ...templateForm, default_export_format: v as WorksheetExportFormat })}
+                    onValueChange={(v) =>
+                      setTemplateForm({
+                        ...templateForm,
+                        default_export_format: v as WorksheetExportFormat,
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -967,13 +1042,15 @@ export default function WorksheetsPage() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="tpl-section">Section Filter</Label>
                   <Input
                     id="tpl-section"
                     value={templateForm.section_filter || ''}
-                    onChange={(e) => setTemplateForm({ ...templateForm, section_filter: e.target.value })}
+                    onChange={(e) =>
+                      setTemplateForm({ ...templateForm, section_filter: e.target.value })
+                    }
                     placeholder="e.g., HEMATOLOGY"
                   />
                 </div>
@@ -984,24 +1061,39 @@ export default function WorksheetsPage() {
                     type="number"
                     min={1}
                     value={templateForm.max_specimens_per_page || 30}
-                    onChange={(e) => setTemplateForm({ ...templateForm, max_specimens_per_page: parseInt(e.target.value) || 30 })}
+                    onChange={(e) =>
+                      setTemplateForm({
+                        ...templateForm,
+                        max_specimens_per_page: parseInt(e.target.value) || 30,
+                      })
+                    }
                   />
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Switch
                   checked={templateForm.include_qc_slots || false}
-                  onCheckedChange={(checked) => setTemplateForm({ ...templateForm, include_qc_slots: checked })}
+                  onCheckedChange={(checked) =>
+                    setTemplateForm({ ...templateForm, include_qc_slots: checked })
+                  }
                 />
                 <Label>Include QC slots</Label>
               </div>
               <div>
                 <Label className="mb-2 block">Columns</Label>
                 <div className="space-y-2">
-                  {['specimen_barcode', 'patient_name', 'test_name', 'priority', 'collection_time', 'specimen_type', 'section'].map((col) => {
+                  {[
+                    'specimen_barcode',
+                    'patient_name',
+                    'test_name',
+                    'priority',
+                    'collection_time',
+                    'specimen_type',
+                    'section',
+                  ].map((col) => {
                     const selected = (templateForm.columns || []).includes(col);
                     return (
-                      <label key={col} className="flex items-center gap-2 cursor-pointer">
+                      <label key={col} className="flex cursor-pointer items-center gap-2">
                         <input
                           type="checkbox"
                           checked={selected}
@@ -1022,16 +1114,24 @@ export default function WorksheetsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowTemplateDialog(false)} className="w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setShowTemplateDialog(false)}
+                className="w-full sm:w-auto"
+              >
                 Cancel
               </Button>
               <Button
                 onClick={handleTemplateSubmit}
-                disabled={!templateForm.name || createTemplateMutation.isPending || updateTemplateMutation.isPending}
+                disabled={
+                  !templateForm.name ||
+                  createTemplateMutation.isPending ||
+                  updateTemplateMutation.isPending
+                }
                 className="w-full sm:w-auto"
               >
-                {(createTemplateMutation.isPending || updateTemplateMutation.isPending) ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {createTemplateMutation.isPending || updateTemplateMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 {editingTemplate ? 'Save Changes' : 'Create Template'}
               </Button>
@@ -1040,22 +1140,30 @@ export default function WorksheetsPage() {
         </Dialog>
 
         {/* Delete Template Confirmation */}
-        <AlertDialog open={deleteTemplateId !== null} onOpenChange={(open) => { if (!open) setDeleteTemplateId(null); }}>
+        <AlertDialog
+          open={deleteTemplateId !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTemplateId(null);
+          }}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete template?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently remove the template. Worksheets already generated from it will not be affected.
+                This will permanently remove the template. Worksheets already generated from it will
+                not be affected.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => { if (deleteTemplateId) deleteTemplateMutation.mutate(deleteTemplateId); }}
+                onClick={() => {
+                  if (deleteTemplateId) deleteTemplateMutation.mutate(deleteTemplateId);
+                }}
               >
                 {deleteTemplateMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 Delete
               </AlertDialogAction>
@@ -1073,7 +1181,7 @@ export default function WorksheetsPage() {
               <div>
                 <Label>Label Template</Label>
                 {labelTemplates.length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     No label templates configured. Create one in Lab Settings first.
                   </p>
                 ) : (
@@ -1099,12 +1207,18 @@ export default function WorksheetsPage() {
                   min={1}
                   max={10}
                   value={labelCopies}
-                  onChange={(e) => setLabelCopies(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                  onChange={(e) =>
+                    setLabelCopies(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))
+                  }
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowLabelDialog(false)} className="w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setShowLabelDialog(false)}
+                className="w-full sm:w-auto"
+              >
                 Cancel
               </Button>
               <Button
@@ -1113,9 +1227,9 @@ export default function WorksheetsPage() {
                 className="w-full sm:w-auto"
               >
                 {generateLabelsMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Tag className="h-4 w-4 mr-2" />
+                  <Tag className="mr-2 h-4 w-4" />
                 )}
                 Generate Labels
               </Button>

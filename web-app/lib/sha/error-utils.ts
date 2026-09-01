@@ -35,11 +35,11 @@ function extractFromPayload(payload: unknown): SHAErrorInfo | null {
   if (!data) return null;
 
   const hasExplicitErrorSignal =
-    asNonEmptyString(data.error)
-    || asNonEmptyString(data.error_code)
-    || asNonEmptyString(data.error_title)
-    || asNonEmptyString(data.error_detail)
-    || asNumber(data.upstream_status) !== undefined;
+    asNonEmptyString(data.error) ||
+    asNonEmptyString(data.error_code) ||
+    asNonEmptyString(data.error_title) ||
+    asNonEmptyString(data.error_detail) ||
+    asNumber(data.upstream_status) !== undefined;
   if (!hasExplicitErrorSignal) return null;
 
   const code = asNonEmptyString(data.error_code);
@@ -88,15 +88,17 @@ export function extractSHAErrorInfo(input: unknown): SHAErrorInfo | null {
 
   const responseStatus = asNumber(response?.status);
   if (responseStatus !== undefined && responseStatus >= 400) {
-    const title = asNonEmptyString(responseData?.error_title)
-      || asNonEmptyString(responseData?.detail)
-      || asNonEmptyString(responseData?.message)
-      || 'SHA request failed';
-    const message = asNonEmptyString(responseData?.error)
-      || asNonEmptyString(responseData?.message)
-      || asNonEmptyString(responseData?.detail)
-      || asNonEmptyString(source?.message)
-      || 'Unable to complete SHA request.';
+    const title =
+      asNonEmptyString(responseData?.error_title) ||
+      asNonEmptyString(responseData?.detail) ||
+      asNonEmptyString(responseData?.message) ||
+      'SHA request failed';
+    const message =
+      asNonEmptyString(responseData?.error) ||
+      asNonEmptyString(responseData?.message) ||
+      asNonEmptyString(responseData?.detail) ||
+      asNonEmptyString(source?.message) ||
+      'Unable to complete SHA request.';
 
     return {
       title,

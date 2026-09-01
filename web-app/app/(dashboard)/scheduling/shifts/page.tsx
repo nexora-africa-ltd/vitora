@@ -50,12 +50,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useSchedulingSocket } from '@/lib/hooks/use-websocket';
@@ -200,7 +195,15 @@ export default function DutyRosterPage() {
 
   // Fetch shifts
   const { data, isLoading } = useQuery({
-    queryKey: ['scheduling-shifts', typeFilter, statusFilter, departmentFilter, fromDate, toDate, page],
+    queryKey: [
+      'scheduling-shifts',
+      typeFilter,
+      statusFilter,
+      departmentFilter,
+      fromDate,
+      toDate,
+      page,
+    ],
     queryFn: () =>
       shiftsApi.list({
         shift_type: typeFilter || undefined,
@@ -233,9 +236,9 @@ export default function DutyRosterPage() {
 
   // Compute stats from visible shifts
   const stats = useMemo(() => {
-    const active = shifts.filter(s => s.status === 'ACTIVE').length;
-    const scheduled = shifts.filter(s => s.status === 'SCHEDULED').length;
-    const completed = shifts.filter(s => s.status === 'COMPLETED').length;
+    const active = shifts.filter((s) => s.status === 'ACTIVE').length;
+    const scheduled = shifts.filter((s) => s.status === 'SCHEDULED').length;
+    const completed = shifts.filter((s) => s.status === 'COMPLETED').length;
     const totalHours = shifts.reduce((sum, s) => sum + (s.duration_hours || 0), 0);
     return { active, scheduled, completed, totalHours };
   }, [shifts]);
@@ -307,7 +310,12 @@ export default function DutyRosterPage() {
   }
 
   function handleCreate() {
-    if (!createForm.staff_resource || !createForm.shift_date || !createForm.start_time || !createForm.end_time) {
+    if (
+      !createForm.staff_resource ||
+      !createForm.shift_date ||
+      !createForm.start_time ||
+      !createForm.end_time
+    ) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -331,7 +339,7 @@ export default function DutyRosterPage() {
       REST: { start: '00:00', end: '23:59' },
     };
     const defaults = timeDefaults[type];
-    setCreateForm(prev => ({
+    setCreateForm((prev) => ({
       ...prev,
       shift_type: type,
       start_time: defaults?.start || prev.start_time,
@@ -349,7 +357,7 @@ export default function DutyRosterPage() {
           helpContent="Manage staff shifts and duty assignments. Create shifts, clock in/out, and track coverage across departments. Use the 'Sync Staff' button in the New Shift dialog to import staff profiles as scheduling resources."
           actions={
             <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">New Shift</span>
               <span className="sm:hidden">New</span>
             </Button>
@@ -357,7 +365,7 @@ export default function DutyRosterPage() {
         />
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatsCard
             title="On Duty"
             value={stats.active}
@@ -390,17 +398,26 @@ export default function DutyRosterPage() {
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <TabsList>
-              <TabsTrigger value="today" className="text-xs sm:text-sm">Today</TabsTrigger>
-              <TabsTrigger value="week" className="text-xs sm:text-sm">This Week</TabsTrigger>
-              <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
+              <TabsTrigger value="today" className="text-xs sm:text-sm">
+                Today
+              </TabsTrigger>
+              <TabsTrigger value="week" className="text-xs sm:text-sm">
+                This Week
+              </TabsTrigger>
+              <TabsTrigger value="all" className="text-xs sm:text-sm">
+                All
+              </TabsTrigger>
             </TabsList>
 
             <div className="flex flex-wrap gap-2">
               <Select
                 value={typeFilter || '_all'}
-                onValueChange={(v) => { setTypeFilter(v === '_all' ? '' : (v as ShiftType)); setPage(1); }}
+                onValueChange={(v) => {
+                  setTypeFilter(v === '_all' ? '' : (v as ShiftType));
+                  setPage(1);
+                }}
               >
-                <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectTrigger className="h-8 w-[130px] text-xs">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -414,9 +431,12 @@ export default function DutyRosterPage() {
 
               <Select
                 value={statusFilter || '_all'}
-                onValueChange={(v) => { setStatusFilter(v === '_all' ? '' : (v as ShiftStatus)); setPage(1); }}
+                onValueChange={(v) => {
+                  setStatusFilter(v === '_all' ? '' : (v as ShiftStatus));
+                  setPage(1);
+                }}
               >
-                <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectTrigger className="h-8 w-[130px] text-xs">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -430,15 +450,20 @@ export default function DutyRosterPage() {
 
               <Select
                 value={departmentFilter ? String(departmentFilter) : '_all'}
-                onValueChange={(v) => { setDepartmentFilter(v === '_all' ? '' : Number(v)); setPage(1); }}
+                onValueChange={(v) => {
+                  setDepartmentFilter(v === '_all' ? '' : Number(v));
+                  setPage(1);
+                }}
               >
-                <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectTrigger className="h-8 w-[130px] text-xs">
                   <SelectValue placeholder="Department" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_all">All Depts</SelectItem>
                   {departmentsList.map((d) => (
-                    <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                    <SelectItem key={d.id} value={String(d.id)}>
+                      {d.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -447,19 +472,25 @@ export default function DutyRosterPage() {
 
           {/* Custom date range (visible on "All" tab) */}
           {activeTab === 'all' && (
-            <div className="flex flex-wrap gap-2 mt-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               <Input
                 type="date"
                 value={fromDate}
-                onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
-                className="w-full sm:w-[150px] h-8 text-xs"
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setPage(1);
+                }}
+                className="h-8 w-full text-xs sm:w-[150px]"
               />
-              <span className="hidden sm:flex items-center text-xs text-muted-foreground">to</span>
+              <span className="hidden items-center text-xs text-muted-foreground sm:flex">to</span>
               <Input
                 type="date"
                 value={toDate}
-                onChange={(e) => { setToDate(e.target.value); setPage(1); }}
-                className="w-full sm:w-[150px] h-8 text-xs"
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setPage(1);
+                }}
+                className="h-8 w-full text-xs sm:w-[150px]"
               />
             </div>
           )}
@@ -469,7 +500,10 @@ export default function DutyRosterPage() {
             <p className="text-sm text-muted-foreground">
               {totalCount} shift{totalCount !== 1 ? 's' : ''}
               {fromDate && toDate && fromDate === toDate && ` for ${formatDate(fromDate)}`}
-              {fromDate && toDate && fromDate !== toDate && ` from ${formatDate(fromDate)} to ${formatDate(toDate)}`}
+              {fromDate &&
+                toDate &&
+                fromDate !== toDate &&
+                ` from ${formatDate(fromDate)} to ${formatDate(toDate)}`}
             </p>
 
             {/* Table */}
@@ -505,8 +539,10 @@ export default function DutyRosterPage() {
                     const Icon = shiftTypeIcons[s.shift_type] || Clock;
                     return (
                       <div className="flex items-center gap-1.5">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-sm">{formatTime(s.start_time)} – {formatTime(s.end_time)}</span>
+                        <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <span className="text-sm">
+                          {formatTime(s.start_time)} – {formatTime(s.end_time)}
+                        </span>
                       </div>
                     );
                   },
@@ -517,7 +553,10 @@ export default function DutyRosterPage() {
                   sortable: true,
                   hideOnMobile: true,
                   cell: (s) => (
-                    <Badge className={`${shiftTypeColors[s.shift_type]} shrink-0 w-fit`} variant="secondary">
+                    <Badge
+                      className={`${shiftTypeColors[s.shift_type]} w-fit shrink-0`}
+                      variant="secondary"
+                    >
                       {s.shift_type_display}
                     </Badge>
                   ),
@@ -542,7 +581,10 @@ export default function DutyRosterPage() {
                   header: 'Status',
                   sortable: true,
                   cell: (s) => (
-                    <Badge className={`${statusColors[s.status]} shrink-0 w-fit`} variant="secondary">
+                    <Badge
+                      className={`${statusColors[s.status]} w-fit shrink-0`}
+                      variant="secondary"
+                    >
                       {s.status_display}
                     </Badge>
                   ),
@@ -592,18 +634,25 @@ export default function DutyRosterPage() {
               mobileCard={(s: ShiftListItem) => {
                 const Icon = shiftTypeIcons[s.shift_type] || Clock;
                 return (
-                  <div className="p-3 space-y-2.5">
+                  <div className="space-y-2.5 p-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className={`shrink-0 rounded-md p-1.5 ${shiftTypeColors[s.shift_type]}`}>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div
+                          className={`shrink-0 rounded-md p-1.5 ${shiftTypeColors[s.shift_type]}`}
+                        >
                           <Icon className="h-3.5 w-3.5" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{s.staff_resource_name}</p>
-                          <p className="text-xs text-muted-foreground">{s.department || 'No department'}</p>
+                          <p className="truncate text-sm font-medium">{s.staff_resource_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {s.department || 'No department'}
+                          </p>
                         </div>
                       </div>
-                      <Badge className={`${statusColors[s.status]} shrink-0 w-fit text-xs`} variant="secondary">
+                      <Badge
+                        className={`${statusColors[s.status]} w-fit shrink-0 text-xs`}
+                        variant="secondary"
+                      >
                         {s.status_display}
                       </Badge>
                     </div>
@@ -616,7 +665,9 @@ export default function DutyRosterPage() {
                         <Clock className="h-3 w-3" />
                         {formatTime(s.start_time)} – {formatTime(s.end_time)}
                         {s.duration_hours != null && (
-                          <span className="font-medium text-foreground">({s.duration_hours.toFixed(1)}h)</span>
+                          <span className="font-medium text-foreground">
+                            ({s.duration_hours.toFixed(1)}h)
+                          </span>
                         )}
                       </div>
                     </div>
@@ -624,17 +675,32 @@ export default function DutyRosterPage() {
                       <div className="flex gap-2 pt-0.5">
                         {s.status === 'SCHEDULED' && (
                           <>
-                            <Button size="sm" variant="default" className="h-7 text-xs flex-1" onClick={() => startMutation.mutate(s.id)}>
-                              <Play className="h-3 w-3 mr-1" /> Clock In
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="h-7 flex-1 text-xs"
+                              onClick={() => startMutation.mutate(s.id)}
+                            >
+                              <Play className="mr-1 h-3 w-3" /> Clock In
                             </Button>
-                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setCancelId(s.id)}>
-                              <XCircle className="h-3 w-3 mr-1" /> Cancel
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => setCancelId(s.id)}
+                            >
+                              <XCircle className="mr-1 h-3 w-3" /> Cancel
                             </Button>
                           </>
                         )}
                         {s.status === 'ACTIVE' && (
-                          <Button size="sm" variant="default" className="h-7 text-xs flex-1" onClick={() => completeMutation.mutate(s.id)}>
-                            <CheckCircle className="h-3 w-3 mr-1" /> Clock Out
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-7 flex-1 text-xs"
+                            onClick={() => completeMutation.mutate(s.id)}
+                          >
+                            <CheckCircle className="mr-1 h-3 w-3" /> Clock Out
                           </Button>
                         )}
                       </div>
@@ -651,10 +717,20 @@ export default function DutyRosterPage() {
                   Page {page} of {totalPages}
                 </p>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1}
+                    onClick={() => setPage(page - 1)}
+                  >
                     Previous
                   </Button>
-                  <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(page + 1)}
+                  >
                     Next
                   </Button>
                 </div>
@@ -677,18 +753,19 @@ export default function DutyRosterPage() {
               <div className="space-y-2">
                 <Label>Staff Member *</Label>
                 {resourcesLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
+                  <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
                     <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                     Loading staff...
                   </div>
                 ) : !hasResources ? (
                   <Card className="border-dashed">
-                    <CardContent className="p-4 text-center space-y-3">
-                      <Users className="h-8 w-8 mx-auto text-muted-foreground" />
+                    <CardContent className="space-y-3 p-4 text-center">
+                      <Users className="mx-auto h-8 w-8 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">No staff resources found</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Staff profiles need to be synced as scheduling resources before they can be assigned shifts.
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Staff profiles need to be synced as scheduling resources before they can
+                          be assigned shifts.
                         </p>
                       </div>
                       <Button
@@ -697,7 +774,9 @@ export default function DutyRosterPage() {
                         onClick={() => syncMutation.mutate()}
                         disabled={syncMutation.isPending}
                       >
-                        <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                        <RefreshCw
+                          className={`mr-1.5 h-3.5 w-3.5 ${syncMutation.isPending ? 'animate-spin' : ''}`}
+                        />
                         {syncMutation.isPending ? 'Syncing...' : 'Sync Staff Profiles'}
                       </Button>
                     </CardContent>
@@ -705,7 +784,9 @@ export default function DutyRosterPage() {
                 ) : (
                   <Select
                     value={createForm.staff_resource ? String(createForm.staff_resource) : ''}
-                    onValueChange={(v) => setCreateForm({ ...createForm, staff_resource: Number(v) })}
+                    onValueChange={(v) =>
+                      setCreateForm({ ...createForm, staff_resource: Number(v) })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select staff member" />
@@ -733,22 +814,34 @@ export default function DutyRosterPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="DAY">
-                      <div className="flex items-center gap-2"><Sun className="h-3.5 w-3.5" /> Day (7am–7pm)</div>
+                      <div className="flex items-center gap-2">
+                        <Sun className="h-3.5 w-3.5" /> Day (7am–7pm)
+                      </div>
                     </SelectItem>
                     <SelectItem value="NIGHT">
-                      <div className="flex items-center gap-2"><Moon className="h-3.5 w-3.5" /> Night (7pm–7am)</div>
+                      <div className="flex items-center gap-2">
+                        <Moon className="h-3.5 w-3.5" /> Night (7pm–7am)
+                      </div>
                     </SelectItem>
                     <SelectItem value="MORNING">
-                      <div className="flex items-center gap-2"><Sunrise className="h-3.5 w-3.5" /> Morning (6am–2pm)</div>
+                      <div className="flex items-center gap-2">
+                        <Sunrise className="h-3.5 w-3.5" /> Morning (6am–2pm)
+                      </div>
                     </SelectItem>
                     <SelectItem value="AFTERNOON">
-                      <div className="flex items-center gap-2"><Sunset className="h-3.5 w-3.5" /> Afternoon (2pm–10pm)</div>
+                      <div className="flex items-center gap-2">
+                        <Sunset className="h-3.5 w-3.5" /> Afternoon (2pm–10pm)
+                      </div>
                     </SelectItem>
                     <SelectItem value="ON_CALL">
-                      <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> On-Call (24h)</div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5" /> On-Call (24h)
+                      </div>
                     </SelectItem>
                     <SelectItem value="OVERTIME">
-                      <div className="flex items-center gap-2"><Timer className="h-3.5 w-3.5" /> Overtime</div>
+                      <div className="flex items-center gap-2">
+                        <Timer className="h-3.5 w-3.5" /> Overtime
+                      </div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -789,7 +882,12 @@ export default function DutyRosterPage() {
                 <Label>Department</Label>
                 <Select
                   value={createForm.department ? String(createForm.department) : '_none'}
-                  onValueChange={(v) => setCreateForm({ ...createForm, department: v === '_none' ? undefined : Number(v) })}
+                  onValueChange={(v) =>
+                    setCreateForm({
+                      ...createForm,
+                      department: v === '_none' ? undefined : Number(v),
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select department..." />
@@ -797,7 +895,9 @@ export default function DutyRosterPage() {
                   <SelectContent>
                     <SelectItem value="_none">No department</SelectItem>
                     {departmentsList.map((d) => (
-                      <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                      <SelectItem key={d.id} value={String(d.id)}>
+                        {d.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -815,7 +915,9 @@ export default function DutyRosterPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>
+                Cancel
+              </Button>
               <Button onClick={handleCreate} disabled={createMutation.isPending || !hasResources}>
                 {createMutation.isPending ? 'Creating...' : 'Create Shift'}
               </Button>
@@ -824,7 +926,15 @@ export default function DutyRosterPage() {
         </Dialog>
 
         {/* Cancel Shift Dialog */}
-        <Dialog open={cancelId !== null} onOpenChange={(open) => { if (!open) { setCancelId(null); setCancelReason(''); } }}>
+        <Dialog
+          open={cancelId !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCancelId(null);
+              setCancelReason('');
+            }
+          }}
+        >
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
               <DialogTitle>Cancel Shift</DialogTitle>
@@ -844,12 +954,20 @@ export default function DutyRosterPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setCancelId(null); setCancelReason(''); }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCancelId(null);
+                  setCancelReason('');
+                }}
+              >
                 Back
               </Button>
               <Button
                 variant="destructive"
-                onClick={() => { if (cancelId) cancelMutation.mutate({ id: cancelId, reason: cancelReason }); }}
+                onClick={() => {
+                  if (cancelId) cancelMutation.mutate({ id: cancelId, reason: cancelReason });
+                }}
                 disabled={cancelMutation.isPending}
               >
                 {cancelMutation.isPending ? 'Cancelling...' : 'Cancel Shift'}

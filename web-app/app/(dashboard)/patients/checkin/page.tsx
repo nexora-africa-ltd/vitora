@@ -32,31 +32,51 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { proceduresApi } from '@/lib/api/procedures';
-import { usePatientSearch, usePatientLookup, useTodayCheckins, useCheckinPatient } from '@/lib/hooks/use-checkin';
+import {
+  usePatientSearch,
+  usePatientLookup,
+  useTodayCheckins,
+  useCheckinPatient,
+} from '@/lib/hooks/use-checkin';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
-import { VISIT_REASON_OPTIONS, type VisitReason, type PatientLookupResponse, type PatientSearchResult } from '@/lib/types/checkin';
+import {
+  VISIT_REASON_OPTIONS,
+  type VisitReason,
+  type PatientLookupResponse,
+  type PatientSearchResult,
+} from '@/lib/types/checkin';
 import { cn } from '@/lib/utils';
-import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
+import {
+  CheckinSuccessModal,
+  type CheckinSuccessData,
+} from '@/components/patients/checkin-success-modal';
 import { QRScannerDialog } from '@/components/patients/qr-scanner-dialog';
-import { RouteToClinicDialog, type DirectRouteToClinicPayload } from '@/components/triage/route-to-clinic-dialog';
+import {
+  RouteToClinicDialog,
+  type DirectRouteToClinicPayload,
+} from '@/components/triage/route-to-clinic-dialog';
 import { SHAStatusIndicator } from '@/components/patients/sha-status-indicator';
 
 // =============================================================================
 // Constants
 // =============================================================================
 
-const CHRONIC_CARE_CLINIC_TYPES = ['CCC', 'TB', 'DIABETIC', 'HYPERTENSION', 'MENTAL_HEALTH', 'ONCOLOGY', 'DIALYSIS'];
+const CHRONIC_CARE_CLINIC_TYPES = [
+  'CCC',
+  'TB',
+  'DIABETIC',
+  'HYPERTENSION',
+  'MENTAL_HEALTH',
+  'ONCOLOGY',
+  'DIALYSIS',
+];
 
 // =============================================================================
 // Help Popover Component
@@ -68,10 +88,10 @@ function HelpPopover({ content }: { content: string }) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-full p-1 hover:bg-muted transition-colors"
+          className="inline-flex items-center justify-center rounded-full p-1 transition-colors hover:bg-muted"
           aria-label="Help"
         >
-          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+          <HelpCircle className="h-4 w-4 cursor-help text-muted-foreground" />
         </button>
       </PopoverTrigger>
       <PopoverContent side="bottom" align="start" className="max-w-xs p-3">
@@ -94,7 +114,14 @@ function PatientCheckinCard({
 }: {
   patient: PatientLookupResponse;
   onTriageCheckin: (visitReason: VisitReason) => void;
-  onOpenDirectRoute: (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number; procedureOrderId?: number; scheduledClinicId?: number }) => void;
+  onOpenDirectRoute: (context: {
+    visitReason: VisitReason;
+    skipTriage: boolean;
+    referralFacility?: string;
+    chronicClinicId?: number;
+    procedureOrderId?: number;
+    scheduledClinicId?: number;
+  }) => void;
   onEmergencyCheckin: (visitReason: VisitReason, chiefComplaint: string) => void;
   isLoading: boolean;
 }) {
@@ -120,7 +147,10 @@ function PatientCheckinCard({
   // Fetch clinics for chronic care dropdown
   const { data: chronicClinicsData } = useClinics({ status: 'ACTIVE', page_size: 100 });
   const chronicClinics = useMemo(
-    () => (chronicClinicsData?.results ?? []).filter((c) => CHRONIC_CARE_CLINIC_TYPES.includes(c.clinic_type)),
+    () =>
+      (chronicClinicsData?.results ?? []).filter((c) =>
+        CHRONIC_CARE_CLINIC_TYPES.includes(c.clinic_type)
+      ),
     [chronicClinicsData]
   );
 
@@ -157,7 +187,9 @@ function PatientCheckinCard({
     onOpenDirectRoute({
       visitReason,
       skipTriage: shouldSkipTriage,
-      ...(isReferral && referralFacility.trim() ? { referralFacility: referralFacility.trim() } : {}),
+      ...(isReferral && referralFacility.trim()
+        ? { referralFacility: referralFacility.trim() }
+        : {}),
       ...(isChronicCare && chronicClinicId ? { chronicClinicId } : {}),
       ...(isScheduledProcedure && procedureOrderId ? { procedureOrderId } : {}),
       ...(scheduledClinicId ? { scheduledClinicId } : {}),
@@ -168,14 +200,14 @@ function PatientCheckinCard({
 
   return (
     <Card className="border-2 border-primary/20">
-      <CardHeader className="pb-3 px-4 sm:px-6">
+      <CardHeader className="px-4 pb-3 sm:px-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-            <User className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:h-12 sm:w-12">
+            <User className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <CardTitle className="text-lg sm:text-xl truncate">{patient.full_name}</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="truncate text-lg sm:text-xl">{patient.full_name}</CardTitle>
               <Badge
                 variant={patient.suggested_visit_type === 'NEW' ? 'default' : 'secondary'}
                 size="sm"
@@ -185,14 +217,14 @@ function PatientCheckinCard({
                 {patient.suggested_visit_type}
               </Badge>
             </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground sm:text-sm">
               <span className="font-mono">{patient.mrn}</span>
-              <span className="hidden xs:inline">•</span>
+              <span className="xs:inline hidden">•</span>
               <span>
                 {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'},{' '}
                 {patient.age}y
               </span>
-              <span className="hidden xs:inline">•</span>
+              <span className="xs:inline hidden">•</span>
               <SHAStatusIndicator
                 patientId={patient.id}
                 identificationNumber={patient.identification_number}
@@ -220,11 +252,11 @@ function PatientCheckinCard({
         )}
 
         {/* Clinical Snapshot Grid */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           {/* Allergies */}
           {snapshot.allergies.length > 0 && (
-            <div className="rounded-lg bg-red-50 dark:bg-red-950/20 p-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400 mb-2">
+            <div className="rounded-lg bg-red-50 p-3 dark:bg-red-950/20">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>Allergies</span>
                 <HelpPopover content="Known drug and food allergies recorded in the patient's medical history" />
@@ -241,8 +273,8 @@ function PatientCheckinCard({
 
           {/* Active Conditions */}
           {snapshot.active_conditions.length > 0 && (
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-400 mb-2">
+            <div className="rounded-lg bg-blue-50 p-3 dark:bg-blue-950/20">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-400">
                 <Activity className="h-4 w-4 shrink-0" />
                 <span>Active Conditions</span>
                 <HelpPopover content="Current chronic conditions and active diagnoses from recent encounters" />
@@ -259,8 +291,8 @@ function PatientCheckinCard({
 
           {/* Current Medications */}
           {snapshot.current_medications.length > 0 && (
-            <div className="rounded-lg bg-green-50 dark:bg-green-950/20 p-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400 mb-2">
+            <div className="rounded-lg bg-green-50 p-3 dark:bg-green-950/20">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400">
                 <Pill className="h-4 w-4 shrink-0" />
                 <span>Medications</span>
                 <HelpPopover content="Active prescriptions and ongoing medications the patient is currently taking" />
@@ -280,8 +312,8 @@ function PatientCheckinCard({
 
           {/* Pending Results */}
           {snapshot.pending_results.length > 0 && (
-            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400 mb-2">
+            <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-950/20">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
                 <FlaskConical className="h-4 w-4 shrink-0" />
                 <span>Pending Results</span>
                 <HelpPopover content="Lab tests and investigations awaiting results from previous visits" />
@@ -314,7 +346,7 @@ function PatientCheckinCard({
         )}
 
         {/* Visit Reason Selection */}
-        <div className="pt-3 border-t space-y-3">
+        <div className="space-y-3 border-t pt-3">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">Visit Reason</label>
@@ -330,7 +362,8 @@ function PatientCheckinCard({
               <SelectContent>
                 {VISIT_REASON_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.emergency ? '🚨 ' : ''}{option.label}
+                    {option.emergency ? '🚨 ' : ''}
+                    {option.label}
                     {option.skipTriage && ' (Skip Triage)'}
                   </SelectItem>
                 ))}
@@ -339,7 +372,7 @@ function PatientCheckinCard({
           </div>
 
           {shouldSkipTriage && (
-            <div className="text-xs text-muted-foreground flex items-center gap-2 p-2 rounded-md bg-muted/50">
+            <div className="flex items-center gap-2 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
               <AlertCircle className="h-4 w-4 shrink-0" />
               This visit reason will skip triage when going directly to clinic.
             </div>
@@ -356,7 +389,7 @@ function PatientCheckinCard({
               value={referralFacility}
               onChange={(e) => setReferralFacility(e.target.value)}
               placeholder="e.g., Kenyatta National Hospital, Moi Teaching & Referral..."
-              className="text-sm h-9"
+              className="h-9 text-sm"
             />
             {!referralFacility.trim() && (
               <p className="text-xs text-destructive">Referral facility name is required</p>
@@ -384,9 +417,7 @@ function PatientCheckinCard({
                   </SelectItem>
                 ))}
                 {chronicClinics.length === 0 && (
-                  <SelectItem value="_none">
-                    No chronic care clinics available
-                  </SelectItem>
+                  <SelectItem value="_none">No chronic care clinics available</SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -413,18 +444,14 @@ function PatientCheckinCard({
                 {scheduledProcedures.map((order) => (
                   <SelectItem key={order.id} value={order.id.toString()}>
                     <div className="flex items-center gap-2">
-                      <Scissors className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <Scissors className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       <span>{order.procedure_name}</span>
-                      <span className="text-muted-foreground text-xs">
-                        ({order.order_number})
-                      </span>
+                      <span className="text-xs text-muted-foreground">({order.order_number})</span>
                     </div>
                   </SelectItem>
                 ))}
                 {scheduledProcedures.length === 0 && (
-                  <SelectItem value="_none">
-                    No scheduled procedures found
-                  </SelectItem>
+                  <SelectItem value="_none">No scheduled procedures found</SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -433,7 +460,8 @@ function PatientCheckinCard({
             )}
             {scheduledProcedures.length === 0 && (
               <p className="text-xs text-muted-foreground">
-                No scheduled procedures found for this patient. Check the procedures module or select a different visit reason.
+                No scheduled procedures found for this patient. Check the procedures module or
+                select a different visit reason.
               </p>
             )}
           </div>
@@ -447,7 +475,7 @@ function PatientCheckinCard({
               value={erComplaint}
               onChange={(e) => setErComplaint(e.target.value)}
               placeholder="e.g., chest pain, difficulty breathing, trauma..."
-              className="text-sm h-9 border-destructive/30 focus-visible:ring-destructive/30"
+              className="h-9 border-destructive/30 text-sm focus-visible:ring-destructive/30"
             />
           </div>
         )}
@@ -460,7 +488,7 @@ function PatientCheckinCard({
               variant="destructive"
               onClick={() => onEmergencyCheckin(visitReason, erComplaint)}
               disabled={isLoading}
-              className="w-full h-10 sm:h-11 text-sm"
+              className="h-10 w-full text-sm sm:h-11"
             >
               <Siren className="mr-2 h-4 w-4" />
               Check-in to Emergency
@@ -470,7 +498,7 @@ function PatientCheckinCard({
             <Button
               onClick={handleDirectCheckin}
               disabled={isLoading || !isProcedureValid}
-              className="w-full h-10 sm:h-11 text-sm"
+              className="h-10 w-full text-sm sm:h-11"
             >
               <Scissors className="mr-2 h-4 w-4" />
               Route to Procedure Area
@@ -480,7 +508,7 @@ function PatientCheckinCard({
             <Button
               onClick={handleDirectCheckin}
               disabled={isLoading || !isReferralValid || !isChronicCareValid}
-              className="w-full h-10 sm:h-11 text-sm"
+              className="h-10 w-full text-sm sm:h-11"
             >
               Select Clinic and Route
             </Button>
@@ -489,7 +517,7 @@ function PatientCheckinCard({
             <Button
               onClick={handleDirectCheckin}
               disabled={isLoading || !isChronicCareValid}
-              className="w-full h-10 sm:h-11 text-sm"
+              className="h-10 w-full text-sm sm:h-11"
             >
               Route to Chronic Care Clinic
             </Button>
@@ -498,7 +526,7 @@ function PatientCheckinCard({
               <Button
                 onClick={handleTriageCheckin}
                 disabled={isLoading || !isReferralValid}
-                className="w-full h-10 sm:h-11 text-sm"
+                className="h-10 w-full text-sm sm:h-11"
               >
                 <Stethoscope className="mr-2 h-4 w-4" />
                 Check-in to Triage
@@ -509,8 +537,10 @@ function PatientCheckinCard({
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t" />
                 </div>
-                <div className="relative flex justify-center text-[10px] sm:text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">or send directly to</span>
+                <div className="relative flex justify-center text-[10px] uppercase sm:text-xs">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    or send directly to
+                  </span>
                 </div>
               </div>
 
@@ -519,7 +549,7 @@ function PatientCheckinCard({
                 onClick={handleDirectCheckin}
                 disabled={isLoading || !isReferralValid}
                 aria-label="Direct to clinic"
-                className="w-full h-10 sm:h-11 text-sm"
+                className="h-10 w-full text-sm sm:h-11"
               >
                 Select Clinic and Route
               </Button>
@@ -552,48 +582,48 @@ function PatientSearchResultsList({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-muted-foreground px-1">
+      <p className="px-1 text-sm text-muted-foreground">
         {patients.length} patient{patients.length !== 1 ? 's' : ''} found. Select one to check in.
       </p>
-      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+      <div className="max-h-[400px] space-y-2 overflow-y-auto">
         {patients.map((patient) => (
           <Card
             key={patient.id}
             className={cn(
               'cursor-pointer transition-colors hover:bg-muted/50',
-              selectedId === patient.id && 'ring-2 ring-primary bg-muted/50'
+              selectedId === patient.id && 'bg-muted/50 ring-2 ring-primary'
             )}
             onClick={() => onSelect(patient)}
           >
-            <CardContent className="py-3 px-4">
+            <CardContent className="px-4 py-3">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="font-medium truncate">{patient.full_name}</span>
+                    <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate font-medium">{patient.full_name}</span>
                     {selectedId === patient.id && isLoadingDetails && (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent shrink-0" />
+                      <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                     <span className="font-mono">{patient.mrn}</span>
                     {patient.phone_number && <span>{patient.phone_number}</span>}
                     {patient.identification_number && (
-                      <span>{patient.identification_type}: {patient.identification_number}</span>
+                      <span>
+                        {patient.identification_type}: {patient.identification_number}
+                      </span>
                     )}
                   </div>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="shrink-0 text-right">
                   <Badge variant="outline" className="mb-1">
                     {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}
                   </Badge>
-                    <div className="text-xs text-muted-foreground">
-                    {patient.age} yrs
-                  </div>
+                  <div className="text-xs text-muted-foreground">{patient.age} yrs</div>
                 </div>
               </div>
               {patient.last_visit_date && (
-                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
                   Last visit: {patient.last_visit_date}
                 </div>
@@ -637,23 +667,19 @@ function RecentCheckinsCard() {
 
   return (
     <Card>
-      <CardHeader className="pb-3 px-4 sm:px-6">
+      <CardHeader className="px-4 pb-3 sm:px-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <CardTitle className="text-base">Recent Check-ins</CardTitle>
             <HelpPopover content="Patients checked in today across all clinics and triage" />
           </div>
-          {checkins.length > 0 && (
-            <Badge variant="secondary">
-              {data?.count ?? 0}
-            </Badge>
-          )}
+          {checkins.length > 0 && <Badge variant="secondary">{data?.count ?? 0}</Badge>}
         </div>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         {checkins.length === 0 ? (
-          <div className="text-sm text-muted-foreground text-center py-6">
+          <div className="py-6 text-center text-sm text-muted-foreground">
             No check-ins yet today
           </div>
         ) : (
@@ -661,24 +687,25 @@ function RecentCheckinsCard() {
             {checkins.map((checkin) => (
               <div
                 key={checkin.id}
-                className="flex items-center justify-between py-2.5 border-b last:border-0 gap-2"
+                className="flex items-center justify-between gap-2 border-b py-2.5 last:border-0"
               >
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                  <UserCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
-                    <div className="font-medium text-sm truncate">{checkin.patient_name}</div>
-                    <div className="text-xs text-muted-foreground truncate">
+                    <div className="truncate text-sm font-medium">{checkin.patient_name}</div>
+                    <div className="truncate text-xs text-muted-foreground">
                       <span className="font-mono">{checkin.patient_mrn}</span>
                       <span className="mx-1">•</span>
                       <span>{checkin.destination}</span>
                     </div>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="shrink-0 text-right">
                   <Badge variant="outline">
-                    {VISIT_REASON_OPTIONS.find((o) => o.value === checkin.visit_reason)?.label ?? checkin.visit_reason}
+                    {VISIT_REASON_OPTIONS.find((o) => o.value === checkin.visit_reason)?.label ??
+                      checkin.visit_reason}
                   </Badge>
-                  <div className="text-xs text-muted-foreground mt-0.5">
+                  <div className="mt-0.5 text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(checkin.checked_in_at), { addSuffix: true })}
                   </div>
                 </div>
@@ -741,12 +768,12 @@ export default function PatientCheckinPage() {
   });
 
   // Load clinical snapshot for selected patient
-  const {
-    data: patientDetails,
-    isLoading: isLoadingDetails,
-  } = usePatientLookup(selectedPatient?.mrn || '', {
-    enabled: !!selectedPatient,
-  });
+  const { data: patientDetails, isLoading: isLoadingDetails } = usePatientLookup(
+    selectedPatient?.mrn || '',
+    {
+      enabled: !!selectedPatient,
+    }
+  );
 
   // Reset selection when search query changes
   useEffect(() => {
@@ -810,7 +837,14 @@ export default function PatientCheckinPage() {
     }
   };
 
-  const handleOpenDirectRoute = (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number; procedureOrderId?: number; scheduledClinicId?: number }) => {
+  const handleOpenDirectRoute = (context: {
+    visitReason: VisitReason;
+    skipTriage: boolean;
+    referralFacility?: string;
+    chronicClinicId?: number;
+    procedureOrderId?: number;
+    scheduledClinicId?: number;
+  }) => {
     // If chronic care with a pre-selected clinic, route directly without dialog
     if (context.chronicClinicId) {
       handleDirectRouteToChronicClinic(context);
@@ -863,7 +897,11 @@ export default function PatientCheckinPage() {
     }
   };
 
-  const handleDirectRouteToChronicClinic = async (context: { visitReason: VisitReason; skipTriage: boolean; chronicClinicId?: number }) => {
+  const handleDirectRouteToChronicClinic = async (context: {
+    visitReason: VisitReason;
+    skipTriage: boolean;
+    chronicClinicId?: number;
+  }) => {
     if (!patientDetails || !context.chronicClinicId) return;
 
     try {
@@ -903,7 +941,12 @@ export default function PatientCheckinPage() {
     }
   };
 
-  const handleDirectRouteToProcedureClinic = async (context: { visitReason: VisitReason; skipTriage: boolean; procedureOrderId?: number; scheduledClinicId?: number }) => {
+  const handleDirectRouteToProcedureClinic = async (context: {
+    visitReason: VisitReason;
+    skipTriage: boolean;
+    procedureOrderId?: number;
+    scheduledClinicId?: number;
+  }) => {
     if (!patientDetails || !context.scheduledClinicId) return;
 
     try {
@@ -965,7 +1008,9 @@ export default function PatientCheckinPage() {
         visit_reason: pendingDirectRoute.visitReason,
         skip_triage: pendingDirectRoute.skipTriage,
         notes: combinedNotes,
-        ...(pendingDirectRoute.procedureOrderId ? { procedure_order: pendingDirectRoute.procedureOrderId } : {}),
+        ...(pendingDirectRoute.procedureOrderId
+          ? { procedure_order: pendingDirectRoute.procedureOrderId }
+          : {}),
       },
     });
 
@@ -1001,12 +1046,12 @@ export default function PatientCheckinPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
       {/* Page Header with Tooltip */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Patient Check-in</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Patient Check-in</h1>
             <HelpPopover content="Search for patients by MRN, National ID, or phone number. View clinical alerts and history before routing to triage or directly to a clinic." />
           </div>
         </div>
@@ -1015,16 +1060,16 @@ export default function PatientCheckinPage() {
       {/* Mobile: Stack columns, Desktop: Side by side */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Main Column - Search and Patient Card */}
-        <div className="lg:col-span-2 space-y-4 sm:space-y-6 order-1">
+        <div className="order-1 space-y-4 sm:space-y-6 lg:col-span-2">
           {/* Search Input + QR Scanner */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="MRN, National ID, or Phone..."
-                className="pl-10 h-11 sm:h-12 text-base sm:text-lg"
+                className="h-11 pl-10 text-base sm:h-12 sm:text-lg"
                 autoFocus
               />
             </div>
@@ -1042,7 +1087,7 @@ export default function PatientCheckinPage() {
             <Card>
               <CardContent className="py-6 sm:py-8">
                 <div className="flex items-center justify-center gap-3">
-                  <div className="h-5 w-5 sm:h-6 sm:w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent sm:h-6 sm:w-6" />
                   <span className="text-sm text-muted-foreground">Searching...</span>
                 </div>
               </CardContent>
@@ -1051,12 +1096,13 @@ export default function PatientCheckinPage() {
 
           {searchError && debouncedQuery.length >= 2 && (
             <Card>
-              <CardContent className="py-6 sm:py-8 text-center">
-                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground mb-2">No patients found</p>
+              <CardContent className="py-6 text-center sm:py-8">
+                <AlertCircle className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+                <p className="mb-2 text-muted-foreground">No patients found</p>
                 <Button
                   variant="outline"
-                  onClick={() => router.push('/patients/new')} disabled={!canCreateRoute('/patients/new')}
+                  onClick={() => router.push('/patients/new')}
+                  disabled={!canCreateRoute('/patients/new')}
                   size="sm"
                 >
                   Register New Patient
@@ -1093,8 +1139,10 @@ export default function PatientCheckinPage() {
                 <Card>
                   <CardContent className="py-6 sm:py-8">
                     <div className="flex items-center justify-center gap-3">
-                      <div className="h-5 w-5 sm:h-6 sm:w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      <span className="text-sm text-muted-foreground">Loading patient details...</span>
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent sm:h-6 sm:w-6" />
+                      <span className="text-sm text-muted-foreground">
+                        Loading patient details...
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -1113,9 +1161,9 @@ export default function PatientCheckinPage() {
           {/* Empty state */}
           {!debouncedQuery && !selectedPatient && (
             <Card>
-              <CardContent className="py-8 sm:py-12 text-center">
-                <User className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
-                <h3 className="font-medium text-base sm:text-lg mb-1 sm:mb-2">Ready to Check-in</h3>
+              <CardContent className="py-8 text-center sm:py-12">
+                <User className="mx-auto mb-3 h-10 w-10 text-muted-foreground sm:mb-4 sm:h-12 sm:w-12" />
+                <h3 className="mb-1 text-base font-medium sm:mb-2 sm:text-lg">Ready to Check-in</h3>
                 <p className="text-sm text-muted-foreground">
                   Enter a patient's MRN, National ID, name, or phone number to begin.
                 </p>
@@ -1125,7 +1173,7 @@ export default function PatientCheckinPage() {
         </div>
 
         {/* Sidebar - Recent Check-ins (on mobile, shows below main content) */}
-        <div className="space-y-4 sm:space-y-6 order-2 lg:order-2">
+        <div className="order-2 space-y-4 sm:space-y-6 lg:order-2">
           <RecentCheckinsCard />
         </div>
       </div>
@@ -1142,17 +1190,19 @@ export default function PatientCheckinPage() {
       <RouteToClinicDialog
         open={isRouteDialogOpen}
         onOpenChange={handleRouteDialogOpenChange}
-        patient={patientDetails
-          ? {
-              id: patientDetails.id,
-              first_name: patientDetails.first_name,
-              last_name: patientDetails.last_name,
-              mrn: patientDetails.mrn,
-              gender: patientDetails.gender as 'M' | 'F' | 'O',
-              age: patientDetails.age,
-              date_of_birth: patientDetails.date_of_birth,
-            }
-          : null}
+        patient={
+          patientDetails
+            ? {
+                id: patientDetails.id,
+                first_name: patientDetails.first_name,
+                last_name: patientDetails.last_name,
+                mrn: patientDetails.mrn,
+                gender: patientDetails.gender as 'M' | 'F' | 'O',
+                age: patientDetails.age,
+                date_of_birth: patientDetails.date_of_birth,
+              }
+            : null
+        }
         onDirectRoute={handleDirectRoute}
       />
     </div>

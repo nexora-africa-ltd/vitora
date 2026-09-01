@@ -17,7 +17,7 @@ export default function PatientHistoryPage() {
 
   if (patientLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <div className="flex items-center gap-4">
           <Skeleton className="h-10 w-10" />
           <div className="space-y-2">
@@ -33,7 +33,7 @@ export default function PatientHistoryPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <h2 className="text-xl font-semibold">Patient not found</h2>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           The patient you&apos;re looking for doesn&apos;t exist or has been removed.
         </p>
         <Button onClick={() => router.push('/patients')} className="mt-4">
@@ -44,7 +44,7 @@ export default function PatientHistoryPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between print:block">
         <div className="flex items-center gap-4">

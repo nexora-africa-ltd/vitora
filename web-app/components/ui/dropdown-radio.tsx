@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { ChevronDown } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,12 +11,12 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 
-export const title = "Dropdown with Radio Items";
+export const title = 'Dropdown with Radio Items';
 
 const Example = () => {
-  const [position, setPosition] = useState("bottom");
+  const [position, setPosition] = useState('bottom');
 
   return (
     <DropdownMenu>

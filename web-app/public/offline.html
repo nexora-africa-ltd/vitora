@@ -8,7 +8,13 @@
     <style>
       :root {
         color-scheme: light;
-        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
       }
 
       body {
@@ -71,16 +77,26 @@
         cursor: pointer;
         transition: opacity 0.15s;
       }
-      button:hover { opacity: 0.85; }
-      button:active { opacity: 0.7; }
+      button:hover {
+        opacity: 0.85;
+      }
+      button:active {
+        opacity: 0.7;
+      }
     </style>
   </head>
   <body>
     <main>
       <p class="eyebrow">Vitora HMIS</p>
       <h1>You are offline.</h1>
-      <p><strong>This page hasn&rsquo;t been cached yet.</strong> Pages you&rsquo;ve visited before will continue to work offline with locally stored clinical data.</p>
-      <p>Connect to the internet and visit this page once &mdash; it will be available offline from then on.</p>
+      <p>
+        <strong>This page hasn&rsquo;t been cached yet.</strong> Pages you&rsquo;ve visited before
+        will continue to work offline with locally stored clinical data.
+      </p>
+      <p>
+        Connect to the internet and visit this page once &mdash; it will be available offline from
+        then on.
+      </p>
       <button onclick="location.reload()">&#8635; Try again</button>
     </main>
   </body>

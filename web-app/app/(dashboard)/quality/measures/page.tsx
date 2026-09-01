@@ -95,11 +95,8 @@ export default function QualityMeasuresListPage() {
           helpContent="Clinical Quality Measures (CQM) define the indicators used to assess healthcare quality. Each measure has numerator/denominator logic and target percentages."
           actions={
             canCreateMeasure ? (
-              <Button
-                size="sm"
-                onClick={() => router.push('/quality/measures/new')}
-              >
-                <Plus className="h-4 w-4 mr-1" />
+              <Button size="sm" onClick={() => router.push('/quality/measures/new')}>
+                <Plus className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">Add Measure</span>
                 <span className="sm:hidden">Add</span>
               </Button>
@@ -108,9 +105,9 @@ export default function QualityMeasuresListPage() {
         />
 
         {/* Filters */}
-        <Card className="p-3 sm:p-4 space-y-3">
+        <Card className="space-y-3 p-3 sm:p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search measures..."
               value={search}
@@ -175,17 +172,13 @@ export default function QualityMeasuresListPage() {
               key: 'code',
               header: 'Code',
               sortable: true,
-              cell: (item) => (
-                <span className="font-mono text-sm">{item.code}</span>
-              ),
+              cell: (item) => <span className="font-mono text-sm">{item.code}</span>,
             },
             {
               key: 'name',
               header: 'Name',
               sortable: true,
-              cell: (item) => (
-                <span className="font-medium">{item.name}</span>
-              ),
+              cell: (item) => <span className="font-medium">{item.name}</span>,
             },
             {
               key: 'domain',
@@ -193,7 +186,7 @@ export default function QualityMeasuresListPage() {
               sortable: true,
               cell: (item) => (
                 <Badge
-                  className={`${DOMAIN_COLORS[item.domain]} shrink-0 w-fit`}
+                  className={`${DOMAIN_COLORS[item.domain]} w-fit shrink-0`}
                   variant="secondary"
                 >
                   {item.domain_display}
@@ -204,10 +197,7 @@ export default function QualityMeasuresListPage() {
             {
               key: 'target',
               header: 'Target',
-              cell: (item) =>
-                item.target_percentage
-                  ? `${item.target_percentage}%`
-                  : '—',
+              cell: (item) => (item.target_percentage ? `${item.target_percentage}%` : '—'),
               hideOnMobile: true,
             },
             {
@@ -221,7 +211,7 @@ export default function QualityMeasuresListPage() {
               header: 'Status',
               cell: (item) => (
                 <Badge
-                  className={`${STATUS_COLORS[item.status]} shrink-0 w-fit`}
+                  className={`${STATUS_COLORS[item.status]} w-fit shrink-0`}
                   variant="secondary"
                 >
                   {item.status_display}
@@ -231,25 +221,20 @@ export default function QualityMeasuresListPage() {
           ]}
           mobileCard={(item) => (
             <Card className="p-3">
-              <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="mb-2 flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {item.code}
-                  </p>
-                  <p className="font-medium text-sm truncate">{item.name}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{item.code}</p>
+                  <p className="truncate text-sm font-medium">{item.name}</p>
                 </div>
                 <Badge
-                  className={`${STATUS_COLORS[item.status]} shrink-0 w-fit self-start`}
+                  className={`${STATUS_COLORS[item.status]} w-fit shrink-0 self-start`}
                   variant="secondary"
                 >
                   {item.status_display}
                 </Badge>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge
-                  className={`${DOMAIN_COLORS[item.domain]} text-xs`}
-                  variant="secondary"
-                >
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className={`${DOMAIN_COLORS[item.domain]} text-xs`} variant="secondary">
                   {item.domain_display}
                 </Badge>
                 {item.target_percentage && (

@@ -33,11 +33,7 @@ function CaseLayoutError({ message }: { message: string }) {
   );
 }
 
-export default function TheatreCaseLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function TheatreCaseLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const caseNumber = typeof params.caseNumber === 'string' ? params.caseNumber : '';
 
@@ -74,9 +70,5 @@ export default function TheatreCaseLayout({
     return <CaseLayoutError message="Surgery case has no associated patient." />;
   }
 
-  return (
-    <PatientProvider patientId={patientId}>
-      {children}
-    </PatientProvider>
-  );
+  return <PatientProvider patientId={patientId}>{children}</PatientProvider>;
 }

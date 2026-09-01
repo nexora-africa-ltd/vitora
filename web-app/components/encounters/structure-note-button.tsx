@@ -83,7 +83,7 @@ export function StructureNoteButton({
       { free_text: freeText, note_format: noteFormat },
       {
         onSuccess: () => setShowPreview(true),
-      },
+      }
     );
   };
 
@@ -122,7 +122,7 @@ export function StructureNoteButton({
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <DialogTitle>Structured Note Preview</DialogTitle>
@@ -151,7 +151,7 @@ export function StructureNoteButton({
                   <h4 className="text-sm font-medium text-muted-foreground">
                     {SECTION_LABELS[section.toLowerCase()] ?? section}
                   </h4>
-                  <div className="rounded-md p-2.5 bg-muted/50 text-sm whitespace-pre-wrap">
+                  <div className="whitespace-pre-wrap rounded-md bg-muted/50 p-2.5 text-sm">
                     {result.structured_note[section] || '(empty)'}
                   </div>
                 </div>
@@ -159,16 +159,19 @@ export function StructureNoteButton({
             </div>
           )}
 
-          {result?.error && (
-            <p className="text-sm text-destructive">{result.error}</p>
-          )}
+          {result?.error && <p className="text-sm text-destructive">{result.error}</p>}
 
           <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button type="button" variant="outline" onClick={handleCancel} className="gap-1.5">
               <X className="h-4 w-4" />
               Cancel
             </Button>
-            <Button type="button" onClick={handleAccept} disabled={!result?.structured_note} className="gap-1.5">
+            <Button
+              type="button"
+              onClick={handleAccept}
+              disabled={!result?.structured_note}
+              className="gap-1.5"
+            >
               <Check className="h-4 w-4" />
               Apply to Form
             </Button>

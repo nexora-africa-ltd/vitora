@@ -53,10 +53,7 @@ export const referralsApi = {
   },
 
   /** Update a referral (only non-terminal) */
-  update: async (
-    id: number,
-    data: Partial<ReferralCreateData>
-  ): Promise<ClinicalReferral> => {
+  update: async (id: number, data: Partial<ReferralCreateData>): Promise<ClinicalReferral> => {
     const response = await apiClient.patch(`${BASE_URL}/${id}/`, data);
     return parseResponse(ClinicalReferralSchema, response.data, {
       context: 'referralsApi.update',
@@ -104,9 +101,7 @@ export const referralsApi = {
 
   /** List referrals for a specific encounter */
   forEncounter: async (encounterId: number): Promise<EncounterReferralItem[]> => {
-    const response = await apiClient.get(
-      `${BASE_URL}/for-encounter/${encounterId}/`
-    );
+    const response = await apiClient.get(`${BASE_URL}/for-encounter/${encounterId}/`);
     return parseResponse(z.array(EncounterReferralItemSchema), response.data, {
       context: 'referralsApi.forEncounter',
     });
@@ -136,10 +131,7 @@ export const referralsApi = {
   // ============ Stats ============
 
   /** Get referral statistics */
-  stats: async (params?: {
-    from_date?: string;
-    to_date?: string;
-  }): Promise<ReferralStats> => {
+  stats: async (params?: { from_date?: string; to_date?: string }): Promise<ReferralStats> => {
     const response = await apiClient.get(`${BASE_URL}/stats/`, { params });
     return parseResponse(ReferralStatsSchema, response.data, {
       context: 'referralsApi.stats',

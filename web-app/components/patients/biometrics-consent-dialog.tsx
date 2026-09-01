@@ -15,14 +15,17 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Fingerprint, Loader2, RefreshCcw, X, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Fingerprint,
+  Loader2,
+  RefreshCcw,
+  X,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
@@ -51,7 +54,14 @@ interface BiometricsConsentDialogProps {
   onMaxRetriesExhausted: () => void;
 }
 
-type BiometricStatus = 'initiating' | 'pending' | 'authorized' | 'failed' | 'expired' | 'cancelled' | 'sandbox';
+type BiometricStatus =
+  | 'initiating'
+  | 'pending'
+  | 'authorized'
+  | 'failed'
+  | 'expired'
+  | 'cancelled'
+  | 'sandbox';
 
 const MAX_RETRIES = 3;
 const POLL_INTERVAL_MS = 3000;
@@ -111,7 +121,7 @@ export function BiometricsConsentDialog({
       onSuccess({ authGuid, consentId });
     }, 2000);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sandboxMode, authGuid, consentId]);
 
   // Initiate biometric auth when dialog opens
@@ -151,7 +161,7 @@ export function BiometricsConsentDialog({
       setError(getApiErrorMessage(err));
       setStatus('failed');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shaMemberId, workstationId, agentNationalId]);
 
   // Start biometric auth when dialog opens
@@ -207,8 +217,14 @@ export function BiometricsConsentDialog({
   };
 
   const stopTimers = () => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
   };
 
   const handleRetry = () => {
@@ -242,7 +258,12 @@ export function BiometricsConsentDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) handleCancel(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleCancel();
+      }}
+    >
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -273,7 +294,7 @@ export function BiometricsConsentDialog({
               {status === 'cancelled' && 'Cancelled'}
             </span>
             {retryCount > 0 && (
-              <Badge variant="secondary" className="text-[10px] ml-auto">
+              <Badge variant="secondary" className="ml-auto text-[10px]">
                 Attempt {retryCount + 1}/{MAX_RETRIES}
               </Badge>
             )}
@@ -281,11 +302,11 @@ export function BiometricsConsentDialog({
 
           {/* Iframe for fingerprint capture */}
           {status === 'pending' && iframeUrl && (
-            <div className="rounded-md border bg-muted/30 overflow-hidden">
+            <div className="overflow-hidden rounded-md border bg-muted/30">
               <iframe
                 src={iframeUrl}
                 title="DHA Biometric Capture"
-                className="w-full h-[300px] border-0"
+                className="h-[300px] w-full border-0"
                 sandbox="allow-scripts allow-same-origin allow-forms"
               />
             </div>
@@ -302,7 +323,7 @@ export function BiometricsConsentDialog({
           {error && (status === 'failed' || status === 'expired') && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                 <p className="text-sm text-destructive">{error}</p>
               </div>
             </div>
@@ -344,7 +365,7 @@ function StatusIndicator({ status }: { status: BiometricStatus }) {
     case 'initiating':
       return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
     case 'pending':
-      return <Fingerprint className={cn('h-4 w-4 text-primary animate-pulse')} />;
+      return <Fingerprint className={cn('h-4 w-4 animate-pulse text-primary')} />;
     case 'sandbox':
       return <Loader2 className="h-4 w-4 animate-spin text-amber-500" />;
     case 'authorized':

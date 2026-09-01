@@ -68,7 +68,12 @@ export default function ValidationsPage() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const { data: pendingResults, isLoading, error, refetch } = usePendingVerificationPaginated({
+  const {
+    data: pendingResults,
+    isLoading,
+    error,
+    refetch,
+  } = usePendingVerificationPaginated({
     page,
     page_size: pageSize,
   });
@@ -156,7 +161,7 @@ export default function ValidationsPage() {
           <CardContent className="pt-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by test name or code..."
                   value={searchQuery}
@@ -202,7 +207,7 @@ export default function ValidationsPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'technical' | 'clinical')}>
-          <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-grid">
+          <TabsList className="grid w-full grid-cols-2 sm:inline-grid sm:w-auto">
             <TabsTrigger value="technical" className="gap-2">
               <Shield className="h-4 w-4" />
               <span className="sm:hidden">Technical</span>
@@ -295,7 +300,7 @@ function ValidationPagination({
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={!hasPreviousPage}
         >
-          <ChevronLeft className="h-4 w-4 mr-1" />
+          <ChevronLeft className="mr-1 h-4 w-4" />
           Previous
         </Button>
         <Button
@@ -305,7 +310,7 @@ function ValidationPagination({
           disabled={!hasNextPage}
         >
           Next
-          <ChevronRight className="h-4 w-4 ml-1" />
+          <ChevronRight className="ml-1 h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -425,11 +430,11 @@ function ResultCard({
           className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
           onClick={onClick}
         >
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium truncate">{result.test_name || result.test_code}</span>
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="truncate font-medium">{result.test_name || result.test_code}</span>
               {isCritical && (
-                <Badge variant="destructive" className="gap-1 shrink-0">
+                <Badge variant="destructive" className="shrink-0 gap-1">
                   <AlertTriangle className="h-3 w-3" />
                   Critical
                 </Badge>
@@ -457,12 +462,12 @@ function ResultCard({
           </div>
 
           {/* Result value */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex shrink-0 items-center gap-3">
             <div className="text-right">
               <p className="font-semibold">
                 {result.numeric_value ?? result.text_value ?? result.option_value ?? '-'}
                 {result.result_unit && (
-                  <span className="text-muted-foreground ml-1 font-normal">
+                  <span className="ml-1 font-normal text-muted-foreground">
                     {result.result_unit}
                   </span>
                 )}
@@ -489,13 +494,11 @@ function ResultCard({
 
         {/* Expanded validation panel */}
         {isSelected && (
-          <div className="mt-4 pt-4 border-t space-y-4">
+          <div className="mt-4 space-y-4 border-t pt-4">
             <ResultValidationPanel
               resultId={result.id}
               verificationStatus={result.verification_status}
-              requiresClinicalSignoff={
-                result.validation_summary?.requires_clinical_signoff ?? true
-              }
+              requiresClinicalSignoff={result.validation_summary?.requires_clinical_signoff ?? true}
               canAddTechnical={validationType === 'TECHNICAL'}
               canAddClinical={validationType === 'CLINICAL'}
               onValidationAdded={onValidationAdded}

@@ -100,7 +100,11 @@ export default function NotifiableCaseDetailPage() {
     return (
       <Card className="p-6 text-center text-destructive">
         <p>Failed to load case details</p>
-        <Button variant="outline" className="mt-4" onClick={() => router.push('/surveillance/cases')}>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => router.push('/surveillance/cases')}
+        >
           Back to Cases
         </Button>
       </Card>
@@ -127,22 +131,22 @@ export default function NotifiableCaseDetailPage() {
 
       {/* Summary Bar */}
       <Card className="p-3 sm:p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-          <div className="flex flex-col gap-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
               <Link
                 href={`/patients/${caseData.patient}`}
-                className="font-medium hover:underline text-primary"
+                className="font-medium text-primary hover:underline"
               >
                 {caseData.patient_name}
               </Link>
-              <span className="text-muted-foreground text-sm">• {caseData.patient_mrn}</span>
+              <span className="text-sm text-muted-foreground">• {caseData.patient_mrn}</span>
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               Detected {formatDateTime(caseData.detected_at)}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge className={`${SEVERITY_COLORS[caseData.severity]} shrink-0`}>
               {caseData.severity}
             </Badge>
@@ -151,7 +155,7 @@ export default function NotifiableCaseDetailPage() {
             </Badge>
             {caseData.is_overdue && (
               <Badge variant="destructive" className="shrink-0">
-                <AlertTriangle className="h-3 w-3 mr-1" />
+                <AlertTriangle className="mr-1 h-3 w-3" />
                 Overdue
               </Badge>
             )}
@@ -245,7 +249,7 @@ export default function NotifiableCaseDetailPage() {
                 icon={<AlertTriangle className="h-4 w-4" />}
                 label="Deadline"
                 value={
-                  <span className={caseData.is_overdue ? 'text-destructive font-medium' : ''}>
+                  <span className={caseData.is_overdue ? 'font-medium text-destructive' : ''}>
                     {formatDateTime(caseData.notification_deadline)}
                     {caseData.hours_until_deadline > 0 &&
                       ` (${caseData.hours_until_deadline}h remaining)`}
@@ -343,8 +347,8 @@ export default function NotifiableCaseDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-start gap-2">
-              <FileText className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-              <p className="text-sm whitespace-pre-wrap">{caseData.investigation_notes}</p>
+              <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="whitespace-pre-wrap text-sm">{caseData.investigation_notes}</p>
             </div>
           </CardContent>
         </Card>
@@ -353,7 +357,7 @@ export default function NotifiableCaseDetailPage() {
       {/* Timestamps */}
       <Card>
         <CardContent className="py-3">
-          <div className="flex flex-col gap-1 sm:flex-row sm:justify-between text-xs text-muted-foreground">
+          <div className="flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:justify-between">
             <span>Created: {formatDateTime(caseData.created_at)}</span>
             <span>Last Updated: {formatDateTime(caseData.updated_at)}</span>
           </div>
@@ -374,10 +378,10 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="text-muted-foreground shrink-0 mt-0.5">{icon}</span>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
-        <span className="text-sm font-medium text-muted-foreground shrink-0">{label}:</span>
-        <span className="text-sm break-words">{value}</span>
+      <span className="mt-0.5 shrink-0 text-muted-foreground">{icon}</span>
+      <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+        <span className="shrink-0 text-sm font-medium text-muted-foreground">{label}:</span>
+        <span className="break-words text-sm">{value}</span>
       </div>
     </div>
   );

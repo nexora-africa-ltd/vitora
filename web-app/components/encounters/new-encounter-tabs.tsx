@@ -41,7 +41,9 @@ interface TabConfig {
   icon: React.ReactNode;
   path: string;
   description: string;
-  sectionKey?: keyof NonNullable<ReturnType<typeof useNewEncounterStore.getState>['session']>['completedSections'];
+  sectionKey?: keyof NonNullable<
+    ReturnType<typeof useNewEncounterStore.getState>['session']
+  >['completedSections'];
   required?: boolean;
   /** Only show this tab when the predicate returns true */
   showWhen?: (encounterType: string) => boolean;
@@ -150,7 +152,7 @@ export function NewEncounterTabs() {
   return (
     <div className="border-b bg-card">
       <nav
-        className="flex items-center gap-0.5 sm:gap-1 px-2 sm:px-4 overflow-x-auto scrollbar-thin"
+        className="scrollbar-thin flex items-center gap-0.5 overflow-x-auto px-2 sm:gap-1 sm:px-4"
         aria-label="New encounter steps"
       >
         {visibleTabs.map((tab, index) => {
@@ -163,19 +165,19 @@ export function NewEncounterTabs() {
               key={tab.id}
               href={href}
               className={cn(
-                'flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium',
-                'border-b-2 transition-colors whitespace-nowrap',
+                'flex items-center gap-1 px-2 py-2 text-xs font-medium sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-sm',
+                'whitespace-nowrap border-b-2 transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 isActive
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                  : 'border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground'
               )}
               aria-current={isActive ? 'page' : undefined}
             >
               {/* Step number for workflow visualization - hidden on mobile */}
               <span
                 className={cn(
-                  'hidden md:flex items-center justify-center w-5 h-5 rounded-full text-xs',
+                  'hidden h-5 w-5 items-center justify-center rounded-full text-xs md:flex',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : isComplete
@@ -187,9 +189,15 @@ export function NewEncounterTabs() {
               </span>
 
               {/* Icon */}
-              <span className={cn(
-                isActive ? 'text-primary' : isComplete ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
-              )}>
+              <span
+                className={cn(
+                  isActive
+                    ? 'text-primary'
+                    : isComplete
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-muted-foreground'
+                )}
+              >
                 {tab.icon}
               </span>
 
@@ -198,9 +206,7 @@ export function NewEncounterTabs() {
               <span className="hidden md:inline">{tab.label}</span>
 
               {/* Required indicator */}
-              {tab.required && !isComplete && (
-                <span className="text-destructive text-xs">*</span>
-              )}
+              {tab.required && !isComplete && <span className="text-xs text-destructive">*</span>}
             </Link>
           );
         })}

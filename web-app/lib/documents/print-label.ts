@@ -6,12 +6,7 @@
  */
 
 import type { Dispensing } from '@/lib/types/pharmacy';
-import type {
-  FacilityInfo,
-  PatientInfo,
-  LayoutType,
-  RenderContext,
-} from './types';
+import type { FacilityInfo, PatientInfo, LayoutType, RenderContext } from './types';
 import { labelSchema, labelDefaults } from './schemas/label.schema';
 import {
   renderDocumentAsync,
@@ -250,10 +245,7 @@ function buildLabelHtml(
         Batch: ${escapeHtml(dispensing.batch_number)}
       </div>
     `;
-    html = html.replace(
-      '<div class="footer">',
-      `${batchInfo}\n  <div class="footer">`
-    );
+    html = html.replace('<div class="footer">', `${batchInfo}\n  <div class="footer">`);
   }
 
   // Add expiry warning if requested
@@ -263,10 +255,7 @@ function buildLabelHtml(
         ⚠️ Do not use after expiry date. Keep away from children.
       </div>
     `;
-    html = html.replace(
-      '<div class="footer">',
-      `${warning}\n  <div class="footer">`
-    );
+    html = html.replace('<div class="footer">', `${warning}\n  <div class="footer">`);
   }
 
   return html;
@@ -300,7 +289,9 @@ export async function printLabel(options: PrintLabelOptions): Promise<Window | n
   // Get QR content with verification status
   const qrContent = getDispensingQRContent({
     id: dispensing.id,
-    verification_url: verificationUrl || (dispensing as Dispensing & { verification_url?: string }).verification_url,
+    verification_url:
+      verificationUrl ||
+      (dispensing as Dispensing & { verification_url?: string }).verification_url,
     batch_number: dispensing.batch_number ?? undefined,
   });
 
@@ -319,9 +310,11 @@ export async function printLabel(options: PrintLabelOptions): Promise<Window | n
     drug: {
       drug_name: drug?.name || dispensing.drug_name || 'Medication',
       dosage: drug?.dosage || (dispensing as Dispensing & { dosage?: string }).dosage || '',
-      frequency: drug?.frequency || (dispensing as Dispensing & { frequency?: string }).frequency || '',
+      frequency:
+        drug?.frequency || (dispensing as Dispensing & { frequency?: string }).frequency || '',
       duration: drug?.duration || (dispensing as Dispensing & { duration?: string }).duration || '',
-      instructions: drug?.instructions ||
+      instructions:
+        drug?.instructions ||
         (dispensing as Dispensing & { instructions?: string }).instructions ||
         labelDefaults.drug.instructions,
     },
@@ -344,13 +337,7 @@ export async function printLabel(options: PrintLabelOptions): Promise<Window | n
   // Build complete HTML with CSS
   const title = `Label - ${dispensing.drug_name || 'Medication'}`;
   const variantCSS = getLayoutVariantCSS(layout);
-  const html = buildPrintDocument(
-    bodyHtml,
-    title,
-    layout,
-    theme,
-    LABEL_CSS + variantCSS
-  );
+  const html = buildPrintDocument(bodyHtml, title, layout, theme, LABEL_CSS + variantCSS);
 
   // Open print window
   return openPrintWindow(html);
@@ -376,7 +363,9 @@ export async function previewLabel(options: PrintLabelOptions): Promise<string> 
   // Get QR content with verification status
   const qrContent = getDispensingQRContent({
     id: dispensing.id,
-    verification_url: verificationUrl || (dispensing as Dispensing & { verification_url?: string }).verification_url,
+    verification_url:
+      verificationUrl ||
+      (dispensing as Dispensing & { verification_url?: string }).verification_url,
     batch_number: dispensing.batch_number ?? undefined,
   });
 

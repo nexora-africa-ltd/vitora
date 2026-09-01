@@ -22,7 +22,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Receipt, Smartphone, CreditCard, Banknote, Building, MoreHorizontal, Undo2 } from 'lucide-react';
+import {
+  Receipt,
+  Smartphone,
+  CreditCard,
+  Banknote,
+  Building,
+  MoreHorizontal,
+  Undo2,
+} from 'lucide-react';
 import type { Payment, PaymentMethod, PaymentStatus } from '@/lib/types/billing';
 import { formatCurrency, formatDateTime } from '@/lib/utils/format';
 
@@ -93,7 +101,7 @@ export function PaymentList({
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-stretch sm:items-center">
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-4">
         <Select value={methodFilter} onValueChange={handleMethodChange}>
           <SelectTrigger className="w-full sm:w-40" role="combobox" aria-label="Payment Method">
             <SelectValue placeholder="Filter by method" />
@@ -134,7 +142,7 @@ export function PaymentList({
             header: 'Receipt #',
             sortable: true,
             cell: (payment) => (
-              <span className="font-medium font-mono text-sm">{payment.payment_reference}</span>
+              <span className="font-mono text-sm font-medium">{payment.payment_reference}</span>
             ),
           },
           {
@@ -159,7 +167,7 @@ export function PaymentList({
             cell: (payment) => (
               <div className="flex items-center gap-2">
                 {methodIcons[payment.method]}
-                <span className="capitalize hidden sm:inline">
+                <span className="hidden capitalize sm:inline">
                   {payment.method.replace('_', ' ')}
                 </span>
               </div>
@@ -180,7 +188,7 @@ export function PaymentList({
             header: 'Status',
             sortable: true,
             cell: (payment) => (
-              <Badge className={`${statusColors[payment.status]} shrink-0 w-fit text-xs`}>
+              <Badge className={`${statusColors[payment.status]} w-fit shrink-0 text-xs`}>
                 {payment.status}
               </Badge>
             ),
@@ -202,7 +210,7 @@ export function PaymentList({
                       onViewReceipt(payment);
                     }}
                   >
-                    <Receipt className="h-4 w-4 mr-2" />
+                    <Receipt className="mr-2 h-4 w-4" />
                     View Receipt
                   </DropdownMenuItem>
                   {payment.status === 'COMPLETED' && onReversePayment && (
@@ -213,7 +221,7 @@ export function PaymentList({
                         onReversePayment(payment);
                       }}
                     >
-                      <Undo2 className="h-4 w-4 mr-2" />
+                      <Undo2 className="mr-2 h-4 w-4" />
                       Reverse Payment
                     </DropdownMenuItem>
                   )}
@@ -227,23 +235,23 @@ export function PaymentList({
           <Card className="p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-sm font-medium truncate">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="truncate font-mono text-sm font-medium">
                     {payment.payment_reference}
                   </span>
                   <Badge className={`${statusColors[payment.status]} shrink-0 text-xs`}>
                     {payment.status}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">
+                <p className="truncate text-sm text-muted-foreground">
                   {payment.invoice_number || 'No invoice'}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {formatDateTime(payment.created_at)}
                 </p>
               </div>
-              <div className="text-right shrink-0">
-                <div className="flex items-center gap-1 text-muted-foreground mb-1">
+              <div className="shrink-0 text-right">
+                <div className="mb-1 flex items-center gap-1 text-muted-foreground">
                   {methodIcons[payment.method]}
                 </div>
                 <p className="font-semibold">{formatCurrency(parseFloat(payment.amount))}</p>

@@ -114,7 +114,9 @@ export const immunizationRecordsApi = {
     });
   },
 
-  generateAdultSchedule: async (data: GenerateAdultScheduleData): Promise<ImmunizationRecordListItem[]> => {
+  generateAdultSchedule: async (
+    data: GenerateAdultScheduleData
+  ): Promise<ImmunizationRecordListItem[]> => {
     const response = await apiClient.post(`${BASE_URL}/records/generate-adult-schedule/`, data);
     return parseResponse(ImmunizationRecordListItemArraySchema, response.data, {
       context: 'immunizationRecordsApi.generateAdultSchedule',
@@ -148,7 +150,10 @@ export const vaccineCampaignsApi = {
     });
   },
 
-  update: async (id: number, data: Partial<VaccineCampaignCreateData>): Promise<VaccineCampaign> => {
+  update: async (
+    id: number,
+    data: Partial<VaccineCampaignCreateData>
+  ): Promise<VaccineCampaign> => {
     const response = await apiClient.patch(`${BASE_URL}/campaigns/${id}/`, data);
     return parseResponse(VaccineCampaignSchema, response.data, {
       context: 'vaccineCampaignsApi.update',
@@ -189,8 +194,14 @@ export const aefiApi = {
     });
   },
 
-  submitToAuthorities: async (id: number, data?: AEFISubmitToAuthoritiesData): Promise<AEFIReport> => {
-    const response = await apiClient.post(`${BASE_URL}/aefi/${id}/submit-to-authorities/`, data || {});
+  submitToAuthorities: async (
+    id: number,
+    data?: AEFISubmitToAuthoritiesData
+  ): Promise<AEFIReport> => {
+    const response = await apiClient.post(
+      `${BASE_URL}/aefi/${id}/submit-to-authorities/`,
+      data || {}
+    );
     return parseResponse(AEFIReportSchema, response.data, {
       context: 'aefiApi.submitToAuthorities',
     });
@@ -290,7 +301,10 @@ export const vaccineStockApi = {
 // =============================================================================
 
 export const coldChainApi = {
-  list: async (params?: { status?: string; equipment_type?: string }): Promise<PaginatedColdChainEquipment> => {
+  list: async (params?: {
+    status?: string;
+    equipment_type?: string;
+  }): Promise<PaginatedColdChainEquipment> => {
     const response = await apiClient.get(`${BASE_URL}/cold-chain/`, { params });
     return parseResponse(PaginatedColdChainEquipmentListSchema, response.data, {
       context: 'coldChainApi.list',
@@ -311,7 +325,10 @@ export const coldChainApi = {
     });
   },
 
-  update: async (id: number, data: Partial<ColdChainEquipmentCreateData>): Promise<ColdChainEquipmentType> => {
+  update: async (
+    id: number,
+    data: Partial<ColdChainEquipmentCreateData>
+  ): Promise<ColdChainEquipmentType> => {
     const response = await apiClient.patch(`${BASE_URL}/cold-chain/${id}/`, data);
     return parseResponse(ColdChainEquipmentSchema, response.data, {
       context: 'coldChainApi.update',
@@ -324,7 +341,10 @@ export const coldChainApi = {
 // =============================================================================
 
 export const temperatureLogApi = {
-  list: async (params?: { equipment?: number; is_excursion?: boolean }): Promise<PaginatedTemperatureLogs> => {
+  list: async (params?: {
+    equipment?: number;
+    is_excursion?: boolean;
+  }): Promise<PaginatedTemperatureLogs> => {
     const response = await apiClient.get(`${BASE_URL}/temperature-logs/`, { params });
     return parseResponse(PaginatedTemperatureLogListSchema, response.data, {
       context: 'temperatureLogApi.list',
@@ -365,11 +385,14 @@ export const incidentApi = {
     });
   },
 
-  resolve: async (id: number, data: {
-    corrective_actions: string;
-    preventive_actions?: string;
-    doses_lost?: number;
-  }): Promise<VaccineIncidentType> => {
+  resolve: async (
+    id: number,
+    data: {
+      corrective_actions: string;
+      preventive_actions?: string;
+      doses_lost?: number;
+    }
+  ): Promise<VaccineIncidentType> => {
     const response = await apiClient.post(`${BASE_URL}/incidents/${id}/resolve/`, data);
     return parseResponse(VaccineIncidentSchema, response.data, {
       context: 'incidentApi.resolve',

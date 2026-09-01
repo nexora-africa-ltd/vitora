@@ -76,11 +76,9 @@ async function importSDMX(file: File, source: string): Promise<SDMXImportRespons
   const formData = new FormData();
   formData.append('file', file);
   formData.append('source', source);
-  const response = await apiClient.post<SDMXImportResponse>(
-    '/api/quality/sdmx/import/',
-    formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
-  );
+  const response = await apiClient.post<SDMXImportResponse>('/api/quality/sdmx/import/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return response.data;
 }
 
@@ -169,7 +167,7 @@ export default function BenchmarksPage() {
         />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Card className="relative overflow-hidden">
             <div
               className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
@@ -247,7 +245,7 @@ export default function BenchmarksPage() {
             {/* Filters */}
             <Card>
               <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <Input
                     placeholder="Filter by indicator code..."
                     value={indicatorFilter}
@@ -288,14 +286,16 @@ export default function BenchmarksPage() {
             {isLoading ? (
               <Card>
                 <CardContent className="p-8 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground mt-2">Loading benchmarks...</p>
+                  <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                  <p className="mt-2 text-sm text-muted-foreground">Loading benchmarks...</p>
                 </CardContent>
               </Card>
             ) : benchmarks.length > 0 ? (
               <ResponsiveTable
                 data={benchmarks}
-                keyExtractor={(item: BenchmarkObservation) => `${item.indicator_code}-${item.time_period}-${item.facility_code}`}
+                keyExtractor={(item: BenchmarkObservation) =>
+                  `${item.indicator_code}-${item.time_period}-${item.facility_code}`
+                }
                 columns={[
                   {
                     key: 'indicator_code',
@@ -333,9 +333,7 @@ export default function BenchmarksPage() {
                     header: 'Value',
                     sortable: true,
                     sortType: 'number',
-                    cell: (item) => (
-                      <span className="font-medium tabular-nums">{item.value}</span>
-                    ),
+                    cell: (item) => <span className="font-medium tabular-nums">{item.value}</span>,
                   },
                   {
                     key: 'imported_at',
@@ -351,11 +349,9 @@ export default function BenchmarksPage() {
                   },
                 ]}
                 mobileCard={(item) => (
-                  <div className="p-3 space-y-1">
+                  <div className="space-y-1 p-3">
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-medium">
-                        {item.indicator_code}
-                      </span>
+                      <span className="font-mono text-xs font-medium">{item.indicator_code}</span>
                       <Badge variant="outline" className="text-xs">
                         {item.source}
                       </Badge>
@@ -370,11 +366,11 @@ export default function BenchmarksPage() {
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
-                  <Database className="h-10 w-10 mx-auto text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground mt-3">
+                  <Database className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                  <p className="mt-3 text-sm text-muted-foreground">
                     No benchmark data imported yet.
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Use the Import tab to upload SDMX-ML files from KHIS/DHIS2.
                   </p>
                 </CardContent>
@@ -400,41 +396,37 @@ export default function BenchmarksPage() {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
                     dragOver
                       ? 'border-primary bg-primary/5'
                       : 'border-muted-foreground/25 hover:border-muted-foreground/50'
                   }`}
                 >
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
+                  <Upload className="mx-auto mb-3 h-8 w-8 text-muted-foreground/50" />
                   <p className="text-sm font-medium">
                     Drag & drop an SDMX-ML file here, or click to browse
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Accepts .xml and .sdmx files
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Accepts .xml and .sdmx files</p>
                   <Input
                     type="file"
                     accept=".xml,.sdmx"
                     onChange={handleFileSelect}
-                    className="mt-3 max-w-xs mx-auto"
+                    className="mx-auto mt-3 max-w-xs"
                   />
                 </div>
 
                 {/* Selected file + source selector */}
                 {selectedFile && (
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 border rounded-lg bg-muted/50">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium truncate">
-                        {selectedFile.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground shrink-0">
+                  <div className="flex flex-col items-start gap-3 rounded-lg border bg-muted/50 p-3 sm:flex-row sm:items-center">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate text-sm font-medium">{selectedFile.name}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
                         ({(selectedFile.size / 1024).toFixed(1)} KB)
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex w-full items-center gap-2 sm:w-auto">
                       <Select value={importSource} onValueChange={setImportSource}>
                         <SelectTrigger className="w-32">
                           <SelectValue />
@@ -466,13 +458,13 @@ export default function BenchmarksPage() {
 
                 {/* Success result */}
                 {importMutation.isSuccess && importMutation.data && (
-                  <div className="flex items-start gap-3 p-4 border rounded-lg bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/20">
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
                     <div>
                       <p className="text-sm font-medium text-green-700 dark:text-green-300">
                         Successfully imported {importMutation.data.imported} observations
                       </p>
-                      <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                      <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                         <p>Dataset: {importMutation.data.dataset_id}</p>
                         <p>Sender: {importMutation.data.sender}</p>
                         <p>Structure: {importMutation.data.structure_ref}</p>
@@ -483,11 +475,11 @@ export default function BenchmarksPage() {
 
                 {/* Error */}
                 {importMutation.isError && (
-                  <div className="flex items-start gap-3 p-4 border rounded-lg bg-destructive/5 border-destructive/20">
-                    <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
                     <div>
                       <p className="text-sm font-medium text-destructive">Import failed</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {importMutation.error instanceof Error
                           ? importMutation.error.message
                           : 'Invalid SDMX-ML file or server error'}
@@ -497,16 +489,18 @@ export default function BenchmarksPage() {
                 )}
 
                 {/* File format info */}
-                <div className="border rounded-lg p-4 space-y-2">
+                <div className="space-y-2 rounded-lg border p-4">
                   <p className="text-sm font-medium">Expected File Format</p>
-                  <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="space-y-1 text-xs text-muted-foreground">
                     <p>• SDMX-ML 2.1 (Generic or Structure-Specific data messages)</p>
-                    <p>• Must contain a {`<DataSet>`} element with {`<Obs>`} child elements</p>
+                    <p>
+                      • Must contain a {`<DataSet>`} element with {`<Obs>`} child elements
+                    </p>
                     <p>• Each observation should have OBS_VALUE and TIME_PERIOD dimensions</p>
                     <p>• INDICATOR dimension maps to the benchmark indicator code</p>
                   </div>
-                  <pre className="mt-3 p-3 bg-muted rounded text-xs overflow-x-auto">
-{`<message:GenericData xmlns:message="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message">
+                  <pre className="mt-3 overflow-x-auto rounded bg-muted p-3 text-xs">
+                    {`<message:GenericData xmlns:message="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message">
   <message:Header>
     <message:ID>KHIS_EXPORT_2026Q1</message:ID>
     <message:Sender id="KHIS"/>

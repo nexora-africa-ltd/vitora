@@ -11,7 +11,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, ArrowLeftRight, Plus, X } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PatientSelector } from '@/components/encounters/patient-selector';
-import { DiagnosisCodeInput, emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import {
+  DiagnosisCodeInput,
+  emptyDiagnosisCodeValue,
+} from '@/components/shared/diagnosis-code-input';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,25 +54,10 @@ export default function NewReferralPage() {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
   const canCreateReferral = hasPermission('referrals.add_clinicalreferral');
-
-  if (!canCreateReferral) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Referral" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create referrals.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  const hasReferralAccess = canCreateReferral;
 
   // Pre-fill from URL params
-  const prePatientId = searchParams.get('patient')
-    ? parseInt(searchParams.get('patient')!)
-    : null;
+  const prePatientId = searchParams.get('patient') ? parseInt(searchParams.get('patient')!) : null;
   const preEncounterId = searchParams.get('encounter')
     ? parseInt(searchParams.get('encounter')!)
     : null;
@@ -89,7 +77,9 @@ export default function NewReferralPage() {
   const [isSensitive, setIsSensitive] = useState(false);
 
   // Admission-specific fields
-  const [admissionDiagnoses, setAdmissionDiagnoses] = useState<DiagnosisCodeValue[]>([emptyDiagnosisCodeValue()]);
+  const [admissionDiagnoses, setAdmissionDiagnoses] = useState<DiagnosisCodeValue[]>([
+    emptyDiagnosisCodeValue(),
+  ]);
   const [preferredWardType, setPreferredWardType] = useState('');
 
   // External-specific fields
@@ -100,14 +90,15 @@ export default function NewReferralPage() {
   // Derived state
   const isAdmission = useMemo(
     () => targetService && ADMISSION_SERVICES.includes(targetService as ReferralTargetService),
-    [targetService],
+    [targetService]
   );
   const isExternal = targetService === 'OTHER';
 
   // Fetch recent encounters for selected patient
   const { data: encountersData, isLoading: encountersLoading } = useQuery({
     queryKey: ['patient-encounters', patientId],
-    queryFn: () => encountersApi.list({ patient: patientId!, page_size: 10, ordering: '-encounter_date' }),
+    queryFn: () =>
+      encountersApi.list({ patient: patientId!, page_size: 10, ordering: '-encounter_date' }),
     enabled: !!patientId,
     staleTime: 30000,
   });
@@ -157,14 +148,11 @@ export default function NewReferralPage() {
     setClinicalNotes(parts.join('\n\n'));
   }, [selectedEncounter]);
 
-  const handlePatientChange = useCallback(
-    (id: number | null, patient: Patient | null) => {
-      setPatientId(id);
-      setSelectedPatient(patient);
-      setEncounterId(null);
-    },
-    [],
-  );
+  const handlePatientChange = useCallback((id: number | null, patient: Patient | null) => {
+    setPatientId(id);
+    setSelectedPatient(patient);
+    setEncounterId(null);
+  }, []);
 
   const handleAdmDiagnosisChange = useCallback((index: number, value: DiagnosisCodeValue) => {
     setAdmissionDiagnoses((prev) => {
@@ -186,12 +174,15 @@ export default function NewReferralPage() {
     const filled = admissionDiagnoses.filter((d) => d.icd10Code || d.icd11Code || d.snomedCode);
     if (filled.length === 0) return {};
     const primary = filled[0]!;
-    const code = primary.icd11Code || primary.icd10Display?.split(' - ')[0] || primary.snomedCode || '';
+    const code =
+      primary.icd11Code || primary.icd10Display?.split(' - ')[0] || primary.snomedCode || '';
     const texts = filled.map((d) => {
       const c = d.icd11Code || d.icd10Display?.split(' - ')[0] || d.snomedCode || '';
-      const t = d.icd11Display?.split(' - ').slice(1).join(' - ') ||
+      const t =
+        d.icd11Display?.split(' - ').slice(1).join(' - ') ||
         d.icd10Display?.split(' - ').slice(1).join(' - ') ||
-        d.snomedDisplay || '';
+        d.snomedDisplay ||
+        '';
       return c ? `${t} (${c})` : t;
     });
     return {
@@ -248,6 +239,20 @@ export default function NewReferralPage() {
 
   const canSubmit = patientId && encounterId && targetService && reason.trim();
 
+  if (!hasReferralAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Referral" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to create referrals.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
@@ -255,7 +260,7 @@ export default function NewReferralPage() {
         helpContent="Create a clinical referral from a patient encounter. Select the target service, provide the reason and clinical context, then submit."
       />
 
-      <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
+      <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
         {/* Step 1: Patient */}
         <Card>
           <CardHeader>
@@ -284,9 +289,7 @@ export default function NewReferralPage() {
                 Loading encounters...
               </div>
             ) : encounters.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No encounters found for this patient.
-              </p>
+              <p className="text-sm text-muted-foreground">No encounters found for this patient.</p>
             ) : (
               <Select
                 value={encounterId?.toString() || ''}
@@ -305,7 +308,7 @@ export default function NewReferralPage() {
                         {enc.chief_complaint && (
                           <>
                             <span className="text-muted-foreground">·</span>
-                            <span className="truncate max-w-[200px]">{enc.chief_complaint}</span>
+                            <span className="max-w-[200px] truncate">{enc.chief_complaint}</span>
                           </>
                         )}
                       </span>
@@ -315,16 +318,18 @@ export default function NewReferralPage() {
               </Select>
             )}
             {selectedEncounterSummary && (
-              <div className="mt-3 p-3 rounded-lg border bg-muted/30">
+              <div className="mt-3 rounded-lg border bg-muted/30 p-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <ArrowLeftRight className="h-4 w-4 text-primary shrink-0" />
+                  <ArrowLeftRight className="h-4 w-4 shrink-0 text-primary" />
                   <span className="font-medium">
                     {format(new Date(selectedEncounterSummary.encounter_date), 'dd MMM yyyy')}
                   </span>
-                  <Badge variant="outline" className="text-xs">{selectedEncounterSummary.encounter_type}</Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {selectedEncounterSummary.encounter_type}
+                  </Badge>
                 </div>
                 {selectedEncounterSummary.chief_complaint && (
-                  <p className="text-sm text-muted-foreground mt-1 ml-6">
+                  <p className="ml-6 mt-1 text-sm text-muted-foreground">
                     {selectedEncounterSummary.chief_complaint}
                   </p>
                 )}
@@ -424,7 +429,9 @@ export default function NewReferralPage() {
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">
-                      {admissionDiagnoses.length > 1 ? `Provisional Diagnosis ${index + 1}` : 'Provisional Diagnosis'}
+                      {admissionDiagnoses.length > 1
+                        ? `Provisional Diagnosis ${index + 1}`
+                        : 'Provisional Diagnosis'}
                     </span>
                     {admissionDiagnoses.length > 1 && (
                       <Button
@@ -454,7 +461,7 @@ export default function NewReferralPage() {
                 onClick={addAdmDiagnosis}
                 className="w-full sm:w-auto"
               >
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 Add Another Diagnosis
               </Button>
               <div>
@@ -532,7 +539,7 @@ export default function NewReferralPage() {
             Cancel
           </Button>
           <Button onClick={() => createReferral()} disabled={!canSubmit || isPending}>
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isPending ? 'Creating...' : 'Create Referral'}
           </Button>
         </div>

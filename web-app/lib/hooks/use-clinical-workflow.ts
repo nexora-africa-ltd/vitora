@@ -18,9 +18,24 @@ export interface ClinicalWorkflowCounts {
 export function useClinicalWorkflowCounts() {
   const waitingQueue = useWaitingQueue({});
   const consultationQueue = useConsultationQueue(undefined, { pollingInterval: 15000 });
-  const inProgress = useEncounters({ page: 1, page_size: 1, status: 'IN_PROGRESS', ordering: '-encounter_date' });
-  const pendingResults = useEncounters({ page: 1, page_size: 1, status: 'RESULTS_PENDING', ordering: '-encounter_date' });
-  const readyToClose = useEncounters({ page: 1, page_size: 1, status: 'READY_TO_CLOSE', ordering: '-encounter_date' });
+  const inProgress = useEncounters({
+    page: 1,
+    page_size: 1,
+    status: 'IN_PROGRESS',
+    ordering: '-encounter_date',
+  });
+  const pendingResults = useEncounters({
+    page: 1,
+    page_size: 1,
+    status: 'RESULTS_PENDING',
+    ordering: '-encounter_date',
+  });
+  const readyToClose = useEncounters({
+    page: 1,
+    page_size: 1,
+    status: 'READY_TO_CLOSE',
+    ordering: '-encounter_date',
+  });
   const today = new Date().toISOString().split('T')[0];
   const completedToday = useEncounters({
     page: 1,

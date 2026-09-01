@@ -33,7 +33,7 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
             <DialogTitle>Batch Details: {batch.batch_number}</DialogTitle>
             {onEdit && (
               <Button variant="outline" size="sm" onClick={() => onEdit(batch)}>
-                <Edit className="h-4 w-4 mr-2" />
+                <Edit className="mr-2 h-4 w-4" />
                 Edit
               </Button>
             )}
@@ -43,7 +43,7 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
         <div className="space-y-6">
           {/* Item Information */}
           <div>
-            <h3 className="font-semibold mb-2">Item Information</h3>
+            <h3 className="mb-2 font-semibold">Item Information</h3>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Item:</span>
@@ -60,24 +60,24 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
 
           {/* Quantity Breakdown */}
           <div>
-            <h3 className="font-semibold mb-2 flex items-center">
-              <Package className="h-4 w-4 mr-2" />
+            <h3 className="mb-2 flex items-center font-semibold">
+              <Package className="mr-2 h-4 w-4" />
               Quantity Breakdown
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-muted rounded-lg">
+              <div className="rounded-lg bg-muted p-3">
                 <div className="text-sm text-muted-foreground">Received</div>
                 <div className="text-2xl font-bold">{batch.quantity_received}</div>
               </div>
-              <div className="p-3 bg-muted rounded-lg">
+              <div className="rounded-lg bg-muted p-3">
                 <div className="text-sm text-muted-foreground">Available</div>
                 <div className="text-2xl font-bold text-green-600">{batch.quantity_available}</div>
               </div>
-              <div className="p-3 bg-muted rounded-lg">
+              <div className="rounded-lg bg-muted p-3">
                 <div className="text-sm text-muted-foreground">Dispensed</div>
                 <div className="text-2xl font-bold">{batch.quantity_dispensed}</div>
               </div>
-              <div className="p-3 bg-muted rounded-lg">
+              <div className="rounded-lg bg-muted p-3">
                 <div className="text-sm text-muted-foreground">Status</div>
                 <div className="mt-1">
                   <Badge>{batch.status}</Badge>
@@ -85,17 +85,21 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
               </div>
             </div>
             {(batch.quantity_damaged > 0 || batch.quantity_expired > 0) && (
-              <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="mt-4 grid grid-cols-2 gap-4">
                 {batch.quantity_damaged > 0 && (
-                  <div className="p-3 bg-destructive/10 rounded-lg">
+                  <div className="rounded-lg bg-destructive/10 p-3">
                     <div className="text-sm text-muted-foreground">Damaged</div>
-                    <div className="text-2xl font-bold text-destructive">{batch.quantity_damaged}</div>
+                    <div className="text-2xl font-bold text-destructive">
+                      {batch.quantity_damaged}
+                    </div>
                   </div>
                 )}
                 {batch.quantity_expired > 0 && (
-                  <div className="p-3 bg-destructive/10 rounded-lg">
+                  <div className="rounded-lg bg-destructive/10 p-3">
                     <div className="text-sm text-muted-foreground">Expired</div>
-                    <div className="text-2xl font-bold text-destructive">{batch.quantity_expired}</div>
+                    <div className="text-2xl font-bold text-destructive">
+                      {batch.quantity_expired}
+                    </div>
                   </div>
                 )}
               </div>
@@ -106,8 +110,8 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
 
           {/* Dates */}
           <div>
-            <h3 className="font-semibold mb-2 flex items-center">
-              <Calendar className="h-4 w-4 mr-2" />
+            <h3 className="mb-2 flex items-center font-semibold">
+              <Calendar className="mr-2 h-4 w-4" />
               Dates
             </h3>
             <div className="space-y-2">
@@ -123,7 +127,15 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Days to Expiry:</span>
-                <span className={batch.is_expired ? 'text-red-600' : batch.days_to_expiry < 90 ? 'text-yellow-600' : ''}>
+                <span
+                  className={
+                    batch.is_expired
+                      ? 'text-red-600'
+                      : batch.days_to_expiry < 90
+                        ? 'text-yellow-600'
+                        : ''
+                  }
+                >
                   {batch.days_to_expiry} days {batch.is_expired && '(Expired)'}
                 </span>
               </div>
@@ -138,8 +150,8 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
 
           {/* Pricing */}
           <div>
-            <h3 className="font-semibold mb-2 flex items-center">
-              <DollarSign className="h-4 w-4 mr-2" />
+            <h3 className="mb-2 flex items-center font-semibold">
+              <DollarSign className="mr-2 h-4 w-4" />
               Pricing
             </h3>
             <div className="space-y-2">
@@ -162,7 +174,7 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
 
           {/* Additional Information */}
           <div>
-            <h3 className="font-semibold mb-2">Additional Information</h3>
+            <h3 className="mb-2 font-semibold">Additional Information</h3>
             <div className="space-y-2">
               {batch.supplier && (
                 <div className="flex justify-between">
@@ -179,7 +191,7 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
               {batch.location && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    <MapPin className="h-4 w-4 inline mr-1" />
+                    <MapPin className="mr-1 inline h-4 w-4" />
                     Location:
                   </span>
                   <span>{batch.location}</span>
@@ -188,7 +200,7 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
               {batch.barcode && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    <Barcode className="h-4 w-4 inline mr-1" />
+                    <Barcode className="mr-1 inline h-4 w-4" />
                     Barcode:
                   </span>
                   <span className="font-mono text-sm">{batch.barcode}</span>
@@ -197,7 +209,7 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
               {batch.received_by_name && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    <User className="h-4 w-4 inline mr-1" />
+                    <User className="mr-1 inline h-4 w-4" />
                     Received By:
                   </span>
                   <span>{batch.received_by_name}</span>

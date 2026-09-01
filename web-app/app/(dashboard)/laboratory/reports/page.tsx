@@ -22,11 +22,7 @@ export default function DiagnosticReportsPage() {
   }, [reports]);
 
   return (
-    <PullToRefresh
-      onRefresh={refresh}
-      isRefreshing={isRefreshing}
-      className="min-h-full"
-    >
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <div className="space-y-6">
         <PageHeader
           title="Diagnostic Reports"
@@ -34,9 +30,9 @@ export default function DiagnosticReportsPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Card>
-            <CardContent className="pt-4 pb-4">
+            <CardContent className="pb-4 pt-4">
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-muted-foreground" />
                 <div>
@@ -47,7 +43,7 @@ export default function DiagnosticReportsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4 pb-4">
+            <CardContent className="pb-4 pt-4">
               <div className="flex items-center gap-3">
                 <Clock className="h-5 w-5 text-yellow-600" />
                 <div>
@@ -58,7 +54,7 @@ export default function DiagnosticReportsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4 pb-4">
+            <CardContent className="pb-4 pt-4">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                 <div>
@@ -69,7 +65,7 @@ export default function DiagnosticReportsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4 pb-4">
+            <CardContent className="pb-4 pt-4">
               <div className="flex items-center gap-3">
                 <PenLine className="h-5 w-5 text-blue-600" />
                 <div>

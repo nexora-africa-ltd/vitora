@@ -67,15 +67,12 @@ export function SensitiveCaseBanner({
   className,
   compact = false,
 }: SensitiveCaseBannerProps) {
-  const isReasonSensitive = SENSITIVE_REASONS.includes(
-    referralReason as SWReferralReason
-  );
+  const isReasonSensitive = SENSITIVE_REASONS.includes(referralReason as SWReferralReason);
   const showBanner = isSensitive || isReasonSensitive;
 
   if (!showBanner) return null;
 
-  const reasonLabel =
-    REFERRAL_REASON_LABELS[referralReason as SWReferralReason] || referralReason;
+  const reasonLabel = REFERRAL_REASON_LABELS[referralReason as SWReferralReason] || referralReason;
 
   const confConfig = confidentialityLevel
     ? CONFIDENTIALITY_CONFIG[confidentialityLevel]
@@ -88,7 +85,7 @@ export function SensitiveCaseBanner({
       <div
         className={cn(
           'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
-          'bg-destructive/10 text-destructive border border-destructive/20',
+          'border border-destructive/20 bg-destructive/10 text-destructive',
           className
         )}
       >
@@ -109,25 +106,23 @@ export function SensitiveCaseBanner({
     <div
       className={cn(
         'rounded-lg border p-3 sm:p-4',
-        'bg-destructive/5 border-destructive/20',
+        'border-destructive/20 bg-destructive/5',
         className
       )}
       role="alert"
     >
       <div className="flex items-start gap-3">
-        <div className="rounded-full bg-destructive/10 p-2 shrink-0">
-          <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive" />
+        <div className="shrink-0 rounded-full bg-destructive/10 p-2">
+          <AlertTriangle className="h-4 w-4 text-destructive sm:h-5 sm:w-5" />
         </div>
 
-        <div className="flex-1 min-w-0 space-y-1">
+        <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-sm sm:text-base font-semibold text-destructive">
-              Sensitive Case
-            </h4>
+            <h4 className="text-sm font-semibold text-destructive sm:text-base">Sensitive Case</h4>
             {confConfig && (
               <span
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border',
+                  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium',
                   confConfig.className
                 )}
               >
@@ -138,10 +133,9 @@ export function SensitiveCaseBanner({
           </div>
 
           <p className="text-sm text-muted-foreground">
-            This case involves{' '}
-            <span className="font-medium text-foreground">{reasonLabel}</span>.
-            Access is restricted to authorized personnel only. All access is
-            audited under the Kenya Data Protection Act 2019.
+            This case involves <span className="font-medium text-foreground">{reasonLabel}</span>.
+            Access is restricted to authorized personnel only. All access is audited under the Kenya
+            Data Protection Act 2019.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-muted-foreground">

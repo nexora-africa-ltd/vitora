@@ -25,7 +25,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/lib/hooks/use-toast';
-import { DiagnosisCodeInput, emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import {
+  DiagnosisCodeInput,
+  emptyDiagnosisCodeValue,
+} from '@/components/shared/diagnosis-code-input';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { sickNotesApi } from '@/lib/api/sick-notes';
 import { encountersApi } from '@/lib/api/encounters';
@@ -56,25 +59,10 @@ export default function NewSickNotePage() {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
   const canCreateSickNote = hasPermission('sick_notes.add_sicknote');
-
-  if (!canCreateSickNote) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Sick Note" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create sick notes.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  const hasSickNoteAccess = canCreateSickNote;
 
   // Pre-fill from URL params
-  const prePatientId = searchParams.get('patient')
-    ? parseInt(searchParams.get('patient')!)
-    : null;
+  const prePatientId = searchParams.get('patient') ? parseInt(searchParams.get('patient')!) : null;
   const preEncounterId = searchParams.get('encounter')
     ? parseInt(searchParams.get('encounter')!)
     : null;
@@ -98,7 +86,8 @@ export default function NewSickNotePage() {
   // Fetch recent encounters for selected patient
   const { data: encountersData, isLoading: encountersLoading } = useQuery({
     queryKey: ['patient-encounters', patientId],
-    queryFn: () => encountersApi.list({ patient: patientId!, page_size: 10, ordering: '-encounter_date' }),
+    queryFn: () =>
+      encountersApi.list({ patient: patientId!, page_size: 10, ordering: '-encounter_date' }),
     enabled: !!patientId,
     staleTime: 30000,
   });
@@ -107,14 +96,11 @@ export default function NewSickNotePage() {
 
   const selectedEncounter = encounters.find((e) => e.id === encounterId) || null;
 
-  const handlePatientChange = useCallback(
-    (id: number | null, patient: Patient | null) => {
-      setPatientId(id);
-      setSelectedPatient(patient);
-      setEncounterId(null);
-    },
-    [],
-  );
+  const handlePatientChange = useCallback((id: number | null, patient: Patient | null) => {
+    setPatientId(id);
+    setSelectedPatient(patient);
+    setEncounterId(null);
+  }, []);
 
   const handleDiagnosisChange = useCallback((index: number, value: DiagnosisCodeValue) => {
     setDiagnoses((prev) => {
@@ -133,9 +119,7 @@ export default function NewSickNotePage() {
   }, []);
 
   // Compute diagnosis text and code from selected diagnoses
-  const filledDiagnoses = diagnoses.filter(
-    (d) => d.icd10Code || d.icd11Code || d.snomedCode,
-  );
+  const filledDiagnoses = diagnoses.filter((d) => d.icd10Code || d.icd11Code || d.snomedCode);
   const hasDiagnosis = filledDiagnoses.length > 0;
 
   const buildDiagnosisFields = () => {
@@ -184,8 +168,21 @@ export default function NewSickNotePage() {
     },
   });
 
-  const canSubmit =
-    patientId && encounterId && leaveStartDate && leaveEndDate && hasDiagnosis;
+  const canSubmit = patientId && encounterId && leaveStartDate && leaveEndDate && hasDiagnosis;
+
+  if (!hasSickNoteAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Sick Note" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to create sick notes.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -194,7 +191,7 @@ export default function NewSickNotePage() {
         helpContent="Create a medical certificate / sick note for a patient. Select the patient and encounter, then fill in leave details and diagnosis."
       />
 
-      <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
+      <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
         {/* Step 1: Patient */}
         <Card>
           <CardHeader>
@@ -223,9 +220,7 @@ export default function NewSickNotePage() {
                 Loading encounters...
               </div>
             ) : encounters.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No encounters found for this patient.
-              </p>
+              <p className="text-sm text-muted-foreground">No encounters found for this patient.</p>
             ) : (
               <Select
                 value={encounterId?.toString() || ''}
@@ -244,7 +239,7 @@ export default function NewSickNotePage() {
                         {enc.chief_complaint && (
                           <>
                             <span className="text-muted-foreground">·</span>
-                            <span className="truncate max-w-[200px]">{enc.chief_complaint}</span>
+                            <span className="max-w-[200px] truncate">{enc.chief_complaint}</span>
                           </>
                         )}
                       </span>
@@ -254,16 +249,18 @@ export default function NewSickNotePage() {
               </Select>
             )}
             {selectedEncounter && (
-              <div className="mt-3 p-3 rounded-lg border bg-muted/30">
+              <div className="mt-3 rounded-lg border bg-muted/30 p-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 text-primary shrink-0" />
+                  <FileText className="h-4 w-4 shrink-0 text-primary" />
                   <span className="font-medium">
                     {format(new Date(selectedEncounter.encounter_date), 'dd MMM yyyy')}
                   </span>
-                  <Badge variant="outline" className="text-xs">{selectedEncounter.encounter_type}</Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {selectedEncounter.encounter_type}
+                  </Badge>
                 </div>
                 {selectedEncounter.chief_complaint && (
-                  <p className="text-sm text-muted-foreground mt-1 ml-6">
+                  <p className="ml-6 mt-1 text-sm text-muted-foreground">
                     {selectedEncounter.chief_complaint}
                   </p>
                 )}
@@ -304,7 +301,7 @@ export default function NewSickNotePage() {
                 <span className="text-muted-foreground">
                   {Math.ceil(
                     (new Date(leaveEndDate).getTime() - new Date(leaveStartDate).getTime()) /
-                      (1000 * 60 * 60 * 24),
+                      (1000 * 60 * 60 * 24)
                   ) + 1}{' '}
                   day(s) of leave
                 </span>
@@ -353,7 +350,7 @@ export default function NewSickNotePage() {
               onClick={addDiagnosis}
               className="w-full sm:w-auto"
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               Add Another Diagnosis
             </Button>
             <div>
@@ -419,7 +416,7 @@ export default function NewSickNotePage() {
             Cancel
           </Button>
           <Button onClick={() => createSickNote()} disabled={!canSubmit || isPending}>
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isPending ? 'Creating...' : 'Create Sick Note'}
           </Button>
         </div>

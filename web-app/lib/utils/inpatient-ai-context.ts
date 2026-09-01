@@ -19,9 +19,11 @@ function parseWardRoundTimestamp(round: WardRound): number {
 export function getLatestWardRound(wardRounds?: WardRound[] | null): WardRound | null {
   if (!wardRounds?.length) return null;
 
-  return [...wardRounds].sort((left, right) => {
-    return parseWardRoundTimestamp(right) - parseWardRoundTimestamp(left);
-  })[0] ?? null;
+  return (
+    [...wardRounds].sort((left, right) => {
+      return parseWardRoundTimestamp(right) - parseWardRoundTimestamp(left);
+    })[0] ?? null
+  );
 }
 
 export function buildSourceEncounterClinicalSummary(

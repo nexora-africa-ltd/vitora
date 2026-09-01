@@ -66,7 +66,9 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
   const { data: swCase, isLoading, error } = useSWCase(caseId);
   const { data: referral } = useSWReferral(swCase?.referral);
   const { data: notesData, isLoading: notesLoading } = useCaseNotes({ case_id: caseId });
-  const { data: interventionsData, isLoading: interventionsLoading } = useInterventions({ case_id: caseId });
+  const { data: interventionsData, isLoading: interventionsLoading } = useInterventions({
+    case_id: caseId,
+  });
 
   const updateMutation = useUpdateSWCase();
   const closeMutation = useCloseSWCase();
@@ -80,11 +82,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
   }
 
   if (error || !swCase) {
-    return (
-      <div className="p-4 text-center text-destructive">
-        Failed to load case details
-      </div>
-    );
+    return <div className="p-4 text-center text-destructive">Failed to load case details</div>;
   }
 
   const handleAction = async (action: string) => {
@@ -119,8 +117,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
     ? URGENCY_CONFIG[referral.urgency as keyof typeof URGENCY_CONFIG]
     : undefined;
   const isSensitive =
-    swCase.is_sensitive ||
-    SENSITIVE_REASONS.includes(referralReason as SWReferralReason);
+    swCase.is_sensitive || SENSITIVE_REASONS.includes(referralReason as SWReferralReason);
 
   const canActivate = ['OPEN', 'ON_HOLD'].includes(swCase.status);
   const canHold = ['OPEN', 'IN_PROGRESS'].includes(swCase.status);
@@ -144,7 +141,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
       />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
             <Badge variant={statusConfig?.variant} className={statusConfig?.className}>
@@ -156,7 +153,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground mt-1">
+          <p className="mt-1 text-muted-foreground">
             Opened {format(parseISO(swCase.opened_at), 'PPP')}
           </p>
         </div>
@@ -167,25 +164,25 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               variant="outline"
               onClick={() => router.push(`/allied-health/social-work/cases/${caseId}/edit`)}
             >
-              <Edit className="h-4 w-4 mr-2" />
+              <Edit className="mr-2 h-4 w-4" />
               Edit
             </Button>
           )}
           {canActivate && (
             <Button onClick={() => setConfirmAction('activate')}>
-              <Play className="h-4 w-4 mr-2" />
+              <Play className="mr-2 h-4 w-4" />
               Activate
             </Button>
           )}
           {canHold && (
             <Button variant="outline" onClick={() => setConfirmAction('hold')}>
-              <Pause className="h-4 w-4 mr-2" />
+              <Pause className="mr-2 h-4 w-4" />
               Hold
             </Button>
           )}
           {canClose && (
             <Button variant="ghost" onClick={() => setConfirmAction('close')}>
-              <XCircle className="h-4 w-4 mr-2" />
+              <XCircle className="mr-2 h-4 w-4" />
               Close
             </Button>
           )}
@@ -194,7 +191,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Info */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* Patient & Worker */}
           <Card>
             <CardHeader>
@@ -211,7 +208,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Referral Reason</h4>
-                <p className="font-medium flex items-center gap-2">
+                <p className="flex items-center gap-2 font-medium">
                   {isSensitive && <Shield className="h-4 w-4 text-muted-foreground" />}
                   {REFERRAL_REASON_LABELS[referralReason as SWReferralReason] || referralReason}
                 </p>
@@ -222,9 +219,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Assigned Worker</h4>
-                <p className="font-medium">
-                  {swCase.assigned_worker_name || 'Not assigned'}
-                </p>
+                <p className="font-medium">{swCase.assigned_worker_name || 'Not assigned'}</p>
               </div>
             </CardContent>
           </Card>
@@ -235,7 +230,12 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               <CardTitle>Presenting Issues</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap">{referral?.presenting_issues || referral?.clinical_summary || swCase.presenting_problem || ''}</p>
+              <p className="whitespace-pre-wrap">
+                {referral?.presenting_issues ||
+                  referral?.clinical_summary ||
+                  swCase.presenting_problem ||
+                  ''}
+              </p>
             </CardContent>
           </Card>
 
@@ -249,7 +249,9 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Specific Requests</h4>
+                <h4 className="mb-1 text-sm font-medium text-muted-foreground">
+                  Specific Requests
+                </h4>
                 <p className="whitespace-pre-wrap">{referral.specific_requests}</p>
               </CardContent>
             </Card>
@@ -264,19 +266,21 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               <CardContent className="space-y-4">
                 {swCase.assessment && (
                   <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Assessment</h4>
+                    <h4 className="mb-1 text-sm font-medium text-muted-foreground">Assessment</h4>
                     <p className="whitespace-pre-wrap">{swCase.assessment}</p>
                   </div>
                 )}
                 {swCase.goals && (
                   <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Goals</h4>
+                    <h4 className="mb-1 text-sm font-medium text-muted-foreground">Goals</h4>
                     <p className="whitespace-pre-wrap">{swCase.goals}</p>
                   </div>
                 )}
                 {swCase.intervention_plan && (
                   <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Intervention Plan</h4>
+                    <h4 className="mb-1 text-sm font-medium text-muted-foreground">
+                      Intervention Plan
+                    </h4>
                     <p className="whitespace-pre-wrap">{swCase.intervention_plan}</p>
                   </div>
                 )}
@@ -295,9 +299,11 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
                 {!swCase.status.startsWith('CLOSED') && (
                   <Button
                     size="sm"
-                    onClick={() => router.push(`/allied-health/social-work/cases/${caseId}/notes/new`)}
+                    onClick={() =>
+                      router.push(`/allied-health/social-work/cases/${caseId}/notes/new`)
+                    }
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     Add Note
                   </Button>
                 )}
@@ -307,29 +313,31 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               {notesLoading ? (
                 <LoadingSpinner />
               ) : notes.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No case notes yet</p>
+                <p className="py-4 text-center text-muted-foreground">No case notes yet</p>
               ) : (
                 <div className="space-y-3">
                   {notes.slice(0, 5).map((note) => (
                     <div
                       key={note.id}
-                      className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50"
+                      className="cursor-pointer rounded-lg border p-3 hover:bg-muted/50"
                       onClick={() => router.push(`/allied-health/social-work/notes/${note.id}`)}
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="mb-2 flex items-center justify-between">
                         <p className="text-sm font-medium">{note.author_name}</p>
                         <p className="text-xs text-muted-foreground">
                           {format(parseISO(note.created_at), 'PPp')}
                         </p>
                       </div>
-                      <p className="text-sm line-clamp-2">{note.content}</p>
+                      <p className="line-clamp-2 text-sm">{note.content}</p>
                     </div>
                   ))}
                   {notes.length > 5 && (
                     <Button
                       variant="ghost"
                       className="w-full"
-                      onClick={() => router.push(`/allied-health/social-work/cases/${caseId}/notes`)}
+                      onClick={() =>
+                        router.push(`/allied-health/social-work/cases/${caseId}/notes`)
+                      }
                     >
                       View all {notes.length} notes
                     </Button>
@@ -350,9 +358,11 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
                 {!swCase.status.startsWith('CLOSED') && (
                   <Button
                     size="sm"
-                    onClick={() => router.push(`/allied-health/social-work/cases/${caseId}/interventions/new`)}
+                    onClick={() =>
+                      router.push(`/allied-health/social-work/cases/${caseId}/interventions/new`)
+                    }
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     Add Intervention
                   </Button>
                 )}
@@ -362,19 +372,29 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               {interventionsLoading ? (
                 <LoadingSpinner />
               ) : interventions.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No interventions recorded</p>
+                <p className="py-4 text-center text-muted-foreground">No interventions recorded</p>
               ) : (
                 <div className="space-y-3">
                   {interventions.map((intervention) => (
                     <div
                       key={intervention.id}
-                      className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50"
-                      onClick={() => router.push(`/allied-health/social-work/interventions/${intervention.id}`)}
+                      className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                      onClick={() =>
+                        router.push(`/allied-health/social-work/interventions/${intervention.id}`)
+                      }
                     >
                       <div>
                         <p className="font-medium">{intervention.intervention_type}</p>
                         <p className="text-sm text-muted-foreground">
-                          {format(parseISO(intervention.completion_date || intervention.start_date || intervention.planned_date || intervention.created_at), 'PPP')}
+                          {format(
+                            parseISO(
+                              intervention.completion_date ||
+                                intervention.start_date ||
+                                intervention.planned_date ||
+                                intervention.created_at
+                            ),
+                            'PPP'
+                          )}
                         </p>
                       </div>
                       <Badge variant={intervention.status === 'COMPLETED' ? 'default' : 'outline'}>
@@ -428,7 +448,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
                 <CardTitle>Outcome</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{swCase.outcome}</p>
+                <p className="whitespace-pre-wrap text-sm">{swCase.outcome}</p>
               </CardContent>
             </Card>
           )}
@@ -449,17 +469,13 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               {swCase.next_review_date && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Next Review</span>
-                  <span className="text-sm">
-                    {format(parseISO(swCase.next_review_date), 'PP')}
-                  </span>
+                  <span className="text-sm">{format(parseISO(swCase.next_review_date), 'PP')}</span>
                 </div>
               )}
               {swCase.closed_at && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Closed</span>
-                  <span className="text-sm">
-                    {format(parseISO(swCase.closed_at), 'PP')}
-                  </span>
+                  <span className="text-sm">{format(parseISO(swCase.closed_at), 'PP')}</span>
                 </div>
               )}
             </CardContent>
@@ -487,9 +503,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => confirmAction && handleAction(confirmAction)}
-            >
+            <AlertDialogAction onClick={() => confirmAction && handleAction(confirmAction)}>
               Confirm
             </AlertDialogAction>
           </AlertDialogFooter>

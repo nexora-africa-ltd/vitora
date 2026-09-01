@@ -63,7 +63,9 @@ function getSubnetSeed(savedUrl?: string): string | null {
     return null;
   }
 
-  const validIpv4 = octets.every((part) => /^\d+$/.test(part) && Number(part) >= 0 && Number(part) <= 255);
+  const validIpv4 = octets.every(
+    (part) => /^\d+$/.test(part) && Number(part) >= 0 && Number(part) <= 255
+  );
   if (!validIpv4) {
     return null;
   }

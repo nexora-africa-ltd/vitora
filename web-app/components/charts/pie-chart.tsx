@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { Pie, PieChart as RechartsPieChart, Cell, Label } from "recharts";
-import type { ValueType, NameType } from "recharts/types/component/DefaultTooltipContent";
+import * as React from 'react';
+import { Pie, PieChart as RechartsPieChart, Cell, Label } from 'recharts';
+import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import {
   ChartContainer,
   ChartTooltip,
@@ -10,8 +10,8 @@ import {
   ChartLegend,
   ChartLegendContent,
   type ChartConfig,
-} from "@/components/ui/chart";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/chart';
+import { cn } from '@/lib/utils';
 
 export interface PieChartDataItem {
   name: string;
@@ -37,7 +37,7 @@ export interface PieChartProps {
   /** Show legend */
   showLegend?: boolean;
   /** Legend position */
-  legendPosition?: "top" | "bottom" | "left" | "right";
+  legendPosition?: 'top' | 'bottom' | 'left' | 'right';
   /** Inner radius for donut chart (0 for pie, >0 for donut) */
   innerRadius?: number;
   /** Outer radius */
@@ -65,7 +65,7 @@ export interface PieChartProps {
   /** Additional className for the container */
   className?: string;
   /** Tooltip indicator style */
-  tooltipIndicator?: "line" | "dot" | "dashed";
+  tooltipIndicator?: 'line' | 'dot' | 'dashed';
   /** Custom tooltip formatter */
   tooltipFormatter?: (
     value: ValueType,
@@ -119,13 +119,13 @@ export interface PieChartProps {
 export function PieChart({
   data,
   config,
-  nameKey = "name",
-  dataKey = "value",
+  nameKey = 'name',
+  dataKey = 'value',
   title,
   description,
   showTooltip = true,
   showLegend = true,
-  legendPosition = "bottom",
+  legendPosition = 'bottom',
   innerRadius = 0,
   outerRadius = 80,
   paddingAngle = 0,
@@ -135,11 +135,11 @@ export function PieChart({
   showCenterLabel = false,
   centerLabelTitle,
   centerLabelValue,
-  minHeight = "250px",
-  maxHeight = "300px",
+  minHeight = '250px',
+  maxHeight = '300px',
   compact = true,
   className,
-  tooltipIndicator = "dot",
+  tooltipIndicator = 'dot',
   tooltipFormatter,
   onSegmentClick,
   useDataColors = false,
@@ -159,22 +159,20 @@ export function PieChart({
   }, [data, useDataColors]);
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn('w-full', className)}>
       {(title || description) && (
         <div className="mb-4">
           {title && <h3 className="text-lg font-semibold">{title}</h3>}
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
       )}
       <ChartContainer
         config={config}
         className={cn(
           `min-h-[${minHeight}]`,
-          "mx-auto",
-          compact && "aspect-square",
-          compact && `max-h-[${maxHeight}]`,
+          'mx-auto',
+          compact && 'aspect-square',
+          compact && `max-h-[${maxHeight}]`
         )}
       >
         <RechartsPieChart accessibilityLayer>
@@ -193,8 +191,10 @@ export function PieChart({
           {showLegend && (
             <ChartLegend
               content={<ChartLegendContent nameKey={nameKey} />}
-              verticalAlign={legendPosition === "top" ? "top" : "bottom"}
-              align={legendPosition === "left" ? "left" : legendPosition === "right" ? "right" : "center"}
+              verticalAlign={legendPosition === 'top' ? 'top' : 'bottom'}
+              align={
+                legendPosition === 'left' ? 'left' : legendPosition === 'right' ? 'right' : 'center'
+              }
             />
           )}
           <Pie
@@ -216,7 +216,7 @@ export function PieChart({
                   }
                 : undefined
             }
-            className={onSegmentClick ? "cursor-pointer" : undefined}
+            className={onSegmentClick ? 'cursor-pointer' : undefined}
           >
             {chartData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -224,7 +224,7 @@ export function PieChart({
             {showCenterLabel && innerRadius > 0 && (
               <Label
                 content={({ viewBox }) => {
-                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                  if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
                     return (
                       <text
                         x={viewBox.cx}
@@ -237,7 +237,7 @@ export function PieChart({
                           y={viewBox.cy}
                           className="fill-foreground text-2xl font-bold"
                         >
-                          {typeof total === "number" ? total.toLocaleString() : total}
+                          {typeof total === 'number' ? total.toLocaleString() : total}
                         </tspan>
                         {centerLabelTitle && (
                           <tspan
@@ -262,13 +262,13 @@ export function PieChart({
   );
 }
 
-PieChart.displayName = "PieChart";
+PieChart.displayName = 'PieChart';
 
 /**
  * Convenience component for Donut Charts
  */
-export function DonutChart(props: Omit<PieChartProps, "innerRadius"> & { innerRadius?: number }) {
+export function DonutChart(props: Omit<PieChartProps, 'innerRadius'> & { innerRadius?: number }) {
   return <PieChart innerRadius={60} showCenterLabel {...props} />;
 }
 
-DonutChart.displayName = "DonutChart";
+DonutChart.displayName = 'DonutChart';

@@ -12,10 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
   if (process.env.VITORA_DESKTOP !== '1') {
-    return NextResponse.json(
-      { error: 'Local DB only available in desktop mode' },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: 'Local DB only available in desktop mode' }, { status: 404 });
   }
 
   try {
@@ -31,10 +28,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   if (process.env.VITORA_DESKTOP !== '1') {
-    return NextResponse.json(
-      { error: 'Local DB only available in desktop mode' },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: 'Local DB only available in desktop mode' }, { status: 404 });
   }
 
   try {
@@ -52,9 +46,6 @@ export async function POST(request: NextRequest) {
     const result = await runSyncCycle();
     return NextResponse.json(result || { pushed: 0, pulled: 0 });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Sync failed', details: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Sync failed', details: String(error) }, { status: 500 });
   }
 }

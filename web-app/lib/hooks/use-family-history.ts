@@ -9,8 +9,7 @@ import type {
 export const familyHistoryKeys = {
   all: ['family-history'] as const,
   patient: (patientId: number) => [...familyHistoryKeys.all, 'patient', patientId] as const,
-  detail: (patientId: number, id: number) =>
-    [...familyHistoryKeys.patient(patientId), id] as const,
+  detail: (patientId: number, id: number) => [...familyHistoryKeys.patient(patientId), id] as const,
 };
 
 export function usePatientFamilyHistory(patientId: number) {
@@ -24,8 +23,7 @@ export function usePatientFamilyHistory(patientId: number) {
 export function useCreateFamilyHistory(patientId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: FamilyHistoryCreatePayload) =>
-      familyHistoryApi.create(patientId, data),
+    mutationFn: (data: FamilyHistoryCreatePayload) => familyHistoryApi.create(patientId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: familyHistoryKeys.patient(patientId) });
       toast.success('Family history recorded');

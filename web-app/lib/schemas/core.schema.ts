@@ -48,14 +48,7 @@ export type LocationWardSchemaType = z.infer<typeof LocationWardSchema>;
 export const NotificationPrioritySchema = z.enum(['low', 'normal', 'high', 'critical']);
 
 export const NotificationTypeSchema = z.union([
-  z.enum([
-    'lab_result',
-    'appointment',
-    'prescription',
-    'low_stock',
-    'critical_vital',
-    'system',
-  ]),
+  z.enum(['lab_result', 'appointment', 'prescription', 'low_stock', 'critical_vital', 'system']),
   z.string(), // Allow other string types
 ]);
 

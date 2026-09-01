@@ -4,7 +4,16 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Calendar, User, Skull, PackageCheck, ShieldCheck, AlertTriangle } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Calendar,
+  User,
+  Skull,
+  PackageCheck,
+  ShieldCheck,
+  AlertTriangle,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { PermissionGate } from '@/components/shared/permission-gate';
@@ -39,7 +48,12 @@ export default function LastOfficePage() {
 
   const { data, isLoading } = useDeathRecords({
     status: (statusFilter || undefined) as DeathRecordStatus | undefined,
-    body_status: (bodyStatusFilter || undefined) as 'IN_MORGUE' | 'RELEASED' | 'TRANSFERRED' | 'PENDING_COLLECTION' | undefined,
+    body_status: (bodyStatusFilter || undefined) as
+      | 'IN_MORGUE'
+      | 'RELEASED'
+      | 'TRANSFERRED'
+      | 'PENDING_COLLECTION'
+      | undefined,
     search: debouncedSearch || undefined,
     ordering: '-date_of_death',
   });
@@ -61,7 +75,7 @@ export default function LastOfficePage() {
       sortable: true,
       cell: (item: DeathRecordListItem) => (
         <div className="min-w-0">
-          <p className="font-medium truncate">{item.patient_name}</p>
+          <p className="truncate font-medium">{item.patient_name}</p>
           <p className="text-xs text-muted-foreground">{item.patient_mrn}</p>
         </div>
       ),
@@ -91,7 +105,7 @@ export default function LastOfficePage() {
       header: 'Status',
       sortable: true,
       cell: (item: DeathRecordListItem) => (
-        <Badge className={`${DEATH_RECORD_STATUS_COLORS[item.status]} shrink-0 w-fit`}>
+        <Badge className={`${DEATH_RECORD_STATUS_COLORS[item.status]} w-fit shrink-0`}>
           {item.status_display}
         </Badge>
       ),
@@ -101,7 +115,10 @@ export default function LastOfficePage() {
       header: 'Body',
       sortable: true,
       cell: (item: DeathRecordListItem) => (
-        <Badge variant="outline" className={`${BODY_STATUS_COLORS[item.body_status]} shrink-0 w-fit`}>
+        <Badge
+          variant="outline"
+          className={`${BODY_STATUS_COLORS[item.body_status]} w-fit shrink-0`}
+        >
           {item.body_status_display}
         </Badge>
       ),
@@ -116,7 +133,7 @@ export default function LastOfficePage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Last Office"
           helpContent="Manage death records, morgue status, body release, and civil registry reporting."
@@ -124,7 +141,7 @@ export default function LastOfficePage() {
             <PermissionGate action="last_office.record_death">
               <Button asChild>
                 <CreateRouteLink href="/last-office/new">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Record Death</span>
                   <span className="sm:hidden">New</span>
                 </CreateRouteLink>
@@ -134,7 +151,7 @@ export default function LastOfficePage() {
         />
 
         {/* Stats */}
-        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
           <StatsCard
             title="Total Records"
             value={isLoading ? '-' : stats.total}
@@ -167,8 +184,8 @@ export default function LastOfficePage() {
 
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name, MRN..."
               value={search}

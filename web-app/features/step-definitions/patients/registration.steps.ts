@@ -14,15 +14,12 @@ import { createPatientData, safeHashes, safeRowsHash, ensureString } from '../..
  * Given Steps
  */
 
-Given(
-  'a patient exists with MRN {string}',
-  async function (this: VitoraWorld, mrn: string) {
-    // Create patient via API
-    const patientData = createPatientData({ mrn });
-    const response = await this.apiRequest('POST', '/patients/', patientData);
-    this.store('existingPatient', response);
-  }
-);
+Given('a patient exists with MRN {string}', async function (this: VitoraWorld, mrn: string) {
+  // Create patient via API
+  const patientData = createPatientData({ mrn });
+  const response = await this.apiRequest('POST', '/patients/', patientData);
+  this.store('existingPatient', response);
+});
 
 Given(
   'a patient exists with national ID {string}',
@@ -33,91 +30,82 @@ Given(
   }
 );
 
-Given(
-  'a patient exists with phone {string}',
-  async function (this: VitoraWorld, phone: string) {
-    const patientData = createPatientData({ phone_number: phone });
-    const response = await this.apiRequest('POST', '/patients/', patientData);
-    this.store('existingPatient', response);
-  }
-);
+Given('a patient exists with phone {string}', async function (this: VitoraWorld, phone: string) {
+  const patientData = createPatientData({ phone_number: phone });
+  const response = await this.apiRequest('POST', '/patients/', patientData);
+  this.store('existingPatient', response);
+});
 
-Given(
-  'a patient {string} exists',
-  async function (this: VitoraWorld, fullName: string) {
-    const nameParts = fullName.split(' ');
-    const firstName = nameParts[0] || 'Unknown';
-    const lastName = nameParts[1] || 'Test';
-    const patientData = createPatientData({
-      first_name: firstName,
-      last_name: lastName,
-    });
-    const response = await this.apiRequest('POST', '/patients/', patientData);
-    this.store('existingPatient', response);
-  }
-);
+Given('a patient {string} exists', async function (this: VitoraWorld, fullName: string) {
+  const nameParts = fullName.split(' ');
+  const firstName = nameParts[0] || 'Unknown';
+  const lastName = nameParts[1] || 'Test';
+  const patientData = createPatientData({
+    first_name: firstName,
+    last_name: lastName,
+  });
+  const response = await this.apiRequest('POST', '/patients/', patientData);
+  this.store('existingPatient', response);
+});
 
 /**
  * When Steps - Form Interactions
  */
 
-When(
-  'I leave {word} empty',
-  async function (this: VitoraWorld, field: string) {
-    const fieldName = field.toLowerCase().replace(/\s+/g, '_');
-    await this.page?.fill(`[name="${fieldName}"]`, '');
-  }
-);
+When('I leave {word} empty', async function (this: VitoraWorld, field: string) {
+  const fieldName = field.toLowerCase().replace(/\s+/g, '_');
+  await this.page?.fill(`[name="${fieldName}"]`, '');
+});
 
-When(
-  'I check the consent checkbox',
-  async function (this: VitoraWorld) {
-    await this.page?.check('[name="consent_given"]');
-  }
-);
+When('I check the consent checkbox', async function (this: VitoraWorld) {
+  await this.page?.check('[name="consent_given"]');
+});
 
-When(
-  'I register a new patient',
-  async function (this: VitoraWorld) {
-    const patientData = createPatientData();
-    this.store('newPatientData', patientData);
+When('I register a new patient', async function (this: VitoraWorld) {
+  const patientData = createPatientData();
+  this.store('newPatientData', patientData);
 
-    // Fill form with generated data
-    await this.page?.fill('[name="first_name"]', patientData['first_name'] ?? patientData['First Name'] ?? '');
-    await this.page?.fill('[name="last_name"]', patientData['last_name'] ?? patientData['Last Name'] ?? '');
-    await this.page?.fill('[name="date_of_birth"]', patientData['date_of_birth'] ?? patientData['Date of Birth'] ?? '');
-    await this.page?.click('[name="gender"]');
-    await this.page?.click(`[data-value="${patientData['gender'] ?? patientData['Gender'] ?? 'F'}"]`);
+  // Fill form with generated data
+  await this.page?.fill(
+    '[name="first_name"]',
+    patientData['first_name'] ?? patientData['First Name'] ?? ''
+  );
+  await this.page?.fill(
+    '[name="last_name"]',
+    patientData['last_name'] ?? patientData['Last Name'] ?? ''
+  );
+  await this.page?.fill(
+    '[name="date_of_birth"]',
+    patientData['date_of_birth'] ?? patientData['Date of Birth'] ?? ''
+  );
+  await this.page?.click('[name="gender"]');
+  await this.page?.click(`[data-value="${patientData['gender'] ?? patientData['Gender'] ?? 'F'}"]`);
 
-    // Select location
-    await this.page?.click('[name="county"]');
-    await this.page?.click('[role="option"]:first-child');
-    await this.page?.waitForResponse(/sub-counties/);
-    await this.page?.click('[name="sub_county"]');
-    await this.page?.click('[role="option"]:first-child');
+  // Select location
+  await this.page?.click('[name="county"]');
+  await this.page?.click('[role="option"]:first-child');
+  await this.page?.waitForResponse(/sub-counties/);
+  await this.page?.click('[name="sub_county"]');
+  await this.page?.click('[role="option"]:first-child');
 
-    // Submit
-    await this.page?.click('button[type="submit"]');
-    await this.page?.waitForLoadState('networkidle');
-  }
-);
+  // Submit
+  await this.page?.click('button[type="submit"]');
+  await this.page?.waitForLoadState('networkidle');
+});
 
 /**
  * Then Steps - Assertions
  */
 
-Then(
-  'a new patient record should be created',
-  async function (this: VitoraWorld) {
-    // Check for success indicator
-    const successMessage = await this.page?.locator('.toast-success, [role="alert"]').first();
-    expect(successMessage).toBeTruthy();
+Then('a new patient record should be created', async function (this: VitoraWorld) {
+  // Check for success indicator
+  const successMessage = await this.page?.locator('.toast-success, [role="alert"]').first();
+  expect(successMessage).toBeTruthy();
 
-    // Or check URL changed to patient detail
-    const url = this.page?.url();
-    expect(url).toMatch(/patients\/\d+|patients\/MRN-/);
-  }
-);
+  // Or check URL changed to patient detail
+  const url = this.page?.url();
+  expect(url).toMatch(/patients\/\d+|patients\/MRN-/);
+});
 
 Then(
   'an MRN should be auto-generated in format {string}',
@@ -138,7 +126,9 @@ Then(
     // Verify via API that the field is set correctly
     const mrn = this.retrieve<string>('generatedMrn');
     if (mrn) {
-      const patient = await this.apiRequest('GET', `/patients/?mrn=${mrn}`) as { results: Array<{ registered_by: number }> };
+      const patient = (await this.apiRequest('GET', `/patients/?mrn=${mrn}`)) as {
+        results: Array<{ registered_by: number }>;
+      };
       const firstPatient = patient.results[0];
       if (!firstPatient) {
         throw new Error('Patient not found');
@@ -152,7 +142,9 @@ Then(
   'an audit log entry {string} should be recorded',
   async function (this: VitoraWorld, action: string) {
     // Verify audit log via API
-    const logs = await this.apiRequest('GET', `/auditlogs/?action=${action}`) as { results: Array<{ action: string }> };
+    const logs = (await this.apiRequest('GET', `/auditlogs/?action=${action}`)) as {
+      results: Array<{ action: string }>;
+    };
     const recentLog = logs.results[0];
     if (!recentLog) {
       throw new Error('Audit log not found');
@@ -164,14 +156,11 @@ Then(
 // Note: 'I should see an error {string}' and 'I should see a warning {string}'
 // are defined in common/forms.steps.ts - using those instead of duplicating
 
-Then(
-  'the patient should not be created',
-  async function (this: VitoraWorld) {
-    // Still on registration page
-    const url = this.page?.url();
-    expect(url).toContain('/register');
-  }
-);
+Then('the patient should not be created', async function (this: VitoraWorld) {
+  // Still on registration page
+  const url = this.page?.url();
+  expect(url).toContain('/register');
+});
 
 Then(
   'sub-county dropdown should show only {word} sub-counties',
@@ -208,55 +197,55 @@ Then(
   }
 );
 
-Then(
-  'the emergency contact should be saved with the patient',
-  async function (this: VitoraWorld) {
-    const mrn = this.retrieve<string>('generatedMrn');
-    if (mrn) {
-      const patient = await this.apiRequest('GET', `/patients/?mrn=${mrn}`) as { results: Array<{ id: number }> };
-      const firstPatient = patient.results[0];
-      if (!firstPatient) {
-        throw new Error('Patient not found');
-      }
-      const patientId = firstPatient.id;
-
-      const contacts = await this.apiRequest('GET', `/patients/${patientId}/emergency-contacts/`) as Array<unknown>;
-      expect(contacts.length).toBeGreaterThan(0);
+Then('the emergency contact should be saved with the patient', async function (this: VitoraWorld) {
+  const mrn = this.retrieve<string>('generatedMrn');
+  if (mrn) {
+    const patient = (await this.apiRequest('GET', `/patients/?mrn=${mrn}`)) as {
+      results: Array<{ id: number }>;
+    };
+    const firstPatient = patient.results[0];
+    if (!firstPatient) {
+      throw new Error('Patient not found');
     }
-  }
-);
+    const patientId = firstPatient.id;
 
-Then(
-  'consent_given should be set to {word}',
-  async function (this: VitoraWorld, value: string) {
-    const mrn = this.retrieve<string>('generatedMrn');
-    if (mrn) {
-      const patient = await this.apiRequest('GET', `/patients/?mrn=${mrn}`) as { results: Array<{ consent_given: boolean }> };
-      const firstPatient = patient.results[0];
-      if (!firstPatient) {
-        throw new Error('Patient not found');
-      }
-      expect(firstPatient.consent_given).toBe(value === 'true');
+    const contacts = (await this.apiRequest(
+      'GET',
+      `/patients/${patientId}/emergency-contacts/`
+    )) as Array<unknown>;
+    expect(contacts.length).toBeGreaterThan(0);
+  }
+});
+
+Then('consent_given should be set to {word}', async function (this: VitoraWorld, value: string) {
+  const mrn = this.retrieve<string>('generatedMrn');
+  if (mrn) {
+    const patient = (await this.apiRequest('GET', `/patients/?mrn=${mrn}`)) as {
+      results: Array<{ consent_given: boolean }>;
+    };
+    const firstPatient = patient.results[0];
+    if (!firstPatient) {
+      throw new Error('Patient not found');
     }
+    expect(firstPatient.consent_given).toBe(value === 'true');
   }
-);
+});
 
-Then(
-  'consent_date should be set to current timestamp',
-  async function (this: VitoraWorld) {
-    const mrn = this.retrieve<string>('generatedMrn');
-    if (mrn) {
-      const patient = await this.apiRequest('GET', `/patients/?mrn=${mrn}`) as { results: Array<{ consent_date: string }> };
-      const firstPatient = patient.results[0];
-      if (!firstPatient) {
-        throw new Error('Patient not found');
-      }
-      const consentDate = new Date(firstPatient.consent_date);
-      const now = new Date();
-
-      // Should be within last minute
-      const diffMs = now.getTime() - consentDate.getTime();
-      expect(diffMs).toBeLessThan(60000);
+Then('consent_date should be set to current timestamp', async function (this: VitoraWorld) {
+  const mrn = this.retrieve<string>('generatedMrn');
+  if (mrn) {
+    const patient = (await this.apiRequest('GET', `/patients/?mrn=${mrn}`)) as {
+      results: Array<{ consent_date: string }>;
+    };
+    const firstPatient = patient.results[0];
+    if (!firstPatient) {
+      throw new Error('Patient not found');
     }
+    const consentDate = new Date(firstPatient.consent_date);
+    const now = new Date();
+
+    // Should be within last minute
+    const diffMs = now.getTime() - consentDate.getTime();
+    expect(diffMs).toBeLessThan(60000);
   }
-);
+});

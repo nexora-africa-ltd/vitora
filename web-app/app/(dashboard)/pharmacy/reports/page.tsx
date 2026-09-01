@@ -32,7 +32,7 @@ export default function PharmacyReportsPage() {
 
       {/* Reports Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-4 lg:inline-flex lg:w-auto">
           <TabsTrigger value="stock-summary" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
             <span className="hidden sm:inline">Stock Summary</span>

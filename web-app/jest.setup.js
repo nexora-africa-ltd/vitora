@@ -27,7 +27,8 @@ let server;
 
 beforeAll(async () => {
   try {
-    const testPath = (global.expect && global.expect.getState && global.expect.getState().testPath) || '';
+    const testPath =
+      (global.expect && global.expect.getState && global.expect.getState().testPath) || '';
     if (typeof testPath === 'string' && testPath.includes('__tests__/contracts/')) {
       return;
     }
@@ -85,7 +86,7 @@ afterAll(() => {
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
+  value: jest.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,

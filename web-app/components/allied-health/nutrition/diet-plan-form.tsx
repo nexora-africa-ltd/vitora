@@ -112,8 +112,10 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
   const isEditing = !!dietPlanId;
 
   const { data: existingPlan, isLoading: planLoading } = useDietPlan(dietPlanId);
-  const { data: consultations, isLoading: consultationsLoading } =
-    useNutritionConsultations({ page_size: 100, status: 'IN_PROGRESS' });
+  const { data: consultations, isLoading: consultationsLoading } = useNutritionConsultations({
+    page_size: 100,
+    status: 'IN_PROGRESS',
+  });
   const createMutation = useCreateDietPlan();
   const updateMutation = useUpdateDietPlan();
 
@@ -210,7 +212,9 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
         toast({ title: 'Diet plan updated' });
         router.push(`/allied-health/nutrition/diet-plans/${dietPlanId}`);
       } else {
-        const result = await createMutation.mutateAsync(cleanedData as Parameters<typeof createMutation.mutateAsync>[0]);
+        const result = await createMutation.mutateAsync(
+          cleanedData as Parameters<typeof createMutation.mutateAsync>[0]
+        );
         toast({ title: 'Diet plan created' });
         router.push(`/allied-health/nutrition/diet-plans/${result.id}`);
       }
@@ -264,9 +268,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
                     </FormControl>
                     <SelectContent>
                       {consultationsLoading ? (
-                        <SelectItem value="loading">
-                          Loading...
-                        </SelectItem>
+                        <SelectItem value="loading">Loading...</SelectItem>
                       ) : (
                         consultations?.results.map((c) => (
                           <SelectItem key={c.id} value={c.id.toString()}>
@@ -400,7 +402,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <FormField
                 control={form.control}
                 name="target_calories"
@@ -408,12 +410,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
                   <FormItem>
                     <FormLabel>Calories (kcal)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder="2000"
-                        {...field}
-                      />
+                      <Input type="number" min={0} placeholder="2000" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -426,12 +423,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
                   <FormItem>
                     <FormLabel>Protein (g)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder="60"
-                        {...field}
-                      />
+                      <Input type="number" min={0} placeholder="60" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -444,12 +436,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
                   <FormItem>
                     <FormLabel>Carbohydrates (g)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder="250"
-                        {...field}
-                      />
+                      <Input type="number" min={0} placeholder="250" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -462,12 +449,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
                   <FormItem>
                     <FormLabel>Fat (g)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder="65"
-                        {...field}
-                      />
+                      <Input type="number" min={0} placeholder="65" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -480,12 +462,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
                   <FormItem>
                     <FormLabel>Fiber (g)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder="25"
-                        {...field}
-                      />
+                      <Input type="number" min={0} placeholder="25" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -498,12 +475,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
                   <FormItem>
                     <FormLabel>Sodium (mg)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder="2300"
-                        {...field}
-                      />
+                      <Input type="number" min={0} placeholder="2300" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -701,9 +673,9 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
           </Button>
           <Button type="submit" disabled={isPending}>
             {isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Save className="h-4 w-4 mr-2" />
+              <Save className="mr-2 h-4 w-4" />
             )}
             {isEditing ? 'Update Diet Plan' : 'Create Diet Plan'}
           </Button>

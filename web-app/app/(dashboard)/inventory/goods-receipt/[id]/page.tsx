@@ -45,7 +45,11 @@ function formatCurrency(amount: number | string | null | undefined): string {
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(dateStr).toLocaleDateString('en-KE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -55,7 +59,11 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: grn, isLoading, error } = useQuery({
+  const {
+    data: grn,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['inventory-goods-receipt', grnId],
     queryFn: () => inventoryApi.getGoodsReceipt(grnId),
   });
@@ -69,7 +77,11 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
       toast({ variant: 'success', title: 'Goods receipt confirmed — stock updated' });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Failed to confirm', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to confirm',
+        description: getApiErrorMessage(err),
+      });
     },
   });
 
@@ -81,7 +93,11 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
       toast({ variant: 'success', title: 'Goods receipt cancelled' });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Failed to cancel', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Failed to cancel',
+        description: getApiErrorMessage(err),
+      });
     },
   });
 
@@ -98,7 +114,9 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
   if (error || !grn) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>{error instanceof Error ? error.message : 'Goods receipt not found'}</AlertDescription>
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Goods receipt not found'}
+        </AlertDescription>
       </Alert>
     );
   }
@@ -125,8 +143,8 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
                   <AlertDialogHeader>
                     <AlertDialogTitle>Confirm Goods Receipt?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will update inventory stock levels for {grn.total_items} items
-                      totaling {formatCurrency(grn.total_amount)}. This action cannot be undone.
+                      This will update inventory stock levels for {grn.total_items} items totaling{' '}
+                      {formatCurrency(grn.total_amount)}. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -136,7 +154,9 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
                       disabled={confirmMutation.isPending}
                       className="bg-green-600 hover:bg-green-700"
                     >
-                      {confirmMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {confirmMutation.isPending && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
                       Confirm
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -176,9 +196,9 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
       />
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {grn.supplier_name}
             {grn.po_number && <span className="text-muted-foreground"> · PO {grn.po_number}</span>}
           </p>
@@ -187,9 +207,9 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
             {grn.delivery_note_number && <> · DN: {grn.delivery_note_number}</>}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="text-sm font-bold">{formatCurrency(grn.total_amount)}</span>
-          <Badge className={`${statusColors[grn.status]} shrink-0 w-fit`}>
+          <Badge className={`${statusColors[grn.status]} w-fit shrink-0`}>
             {statusLabels[grn.status]}
           </Badge>
         </div>
@@ -210,41 +230,51 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
                       <th className="pb-2 pr-3 font-medium">Drug</th>
                       <th className="pb-2 pr-3 font-medium">Batch</th>
                       <th className="pb-2 pr-3 font-medium">Expiry</th>
-                      <th className="pb-2 pr-3 font-medium text-right">Qty</th>
-                      <th className="pb-2 pr-3 font-medium text-right">Cost</th>
-                      <th className="pb-2 font-medium text-right">Total</th>
+                      <th className="pb-2 pr-3 text-right font-medium">Qty</th>
+                      <th className="pb-2 pr-3 text-right font-medium">Cost</th>
+                      <th className="pb-2 text-right font-medium">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {grn.items.map((item) => {
                       const lineTotal = Number(item.quantity_received) * Number(item.cost_price);
-                      const isExpiringSoon = item.expiry_date && new Date(item.expiry_date) < new Date(Date.now() + 90 * 86400000);
+                      const isExpiringSoon =
+                        item.expiry_date &&
+                        new Date(item.expiry_date) < new Date(Date.now() + 90 * 86400000);
                       return (
                         <tr key={item.id} className="border-b last:border-0">
                           <td className="py-2.5 pr-3">{item.drug_name}</td>
                           <td className="py-2.5 pr-3 font-mono text-xs">{item.batch_number}</td>
                           <td className="py-2.5 pr-3">
-                            <span className={isExpiringSoon ? 'text-amber-600 font-medium' : ''}>
+                            <span className={isExpiringSoon ? 'font-medium text-amber-600' : ''}>
                               {formatDate(item.expiry_date)}
                             </span>
                           </td>
                           <td className="py-2.5 pr-3 text-right">{item.quantity_received}</td>
-                          <td className="py-2.5 pr-3 text-right">{formatCurrency(item.cost_price)}</td>
-                          <td className="py-2.5 text-right font-medium">{formatCurrency(lineTotal)}</td>
+                          <td className="py-2.5 pr-3 text-right">
+                            {formatCurrency(item.cost_price)}
+                          </td>
+                          <td className="py-2.5 text-right font-medium">
+                            {formatCurrency(lineTotal)}
+                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot>
                     <tr className="border-t">
-                      <td colSpan={5} className="py-2.5 text-right font-medium">Total</td>
-                      <td className="py-2.5 text-right font-bold">{formatCurrency(grn.total_amount)}</td>
+                      <td colSpan={5} className="py-2.5 text-right font-medium">
+                        Total
+                      </td>
+                      <td className="py-2.5 text-right font-bold">
+                        {formatCurrency(grn.total_amount)}
+                      </td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">No items</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">No items</p>
             )}
           </CardContent>
         </Card>
@@ -252,7 +282,9 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
         {/* Details sidebar */}
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Receipt Details</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Receipt Details</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
                 <p className="font-medium">Supplier</p>
@@ -262,8 +294,11 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
                 <div>
                   <p className="font-medium">Purchase Order</p>
                   <button
-                    className="text-primary hover:underline text-sm"
-                    onClick={() => grn.purchase_order && router.push(`/inventory/purchase-orders/${grn.purchase_order}`)}
+                    className="text-sm text-primary hover:underline"
+                    onClick={() =>
+                      grn.purchase_order &&
+                      router.push(`/inventory/purchase-orders/${grn.purchase_order}`)
+                    }
                   >
                     {grn.po_number}
                   </button>
@@ -292,13 +327,15 @@ export default function GoodsReceiptDetailPage({ params }: { params: Promise<{ i
               {grn.confirmed_by_name && (
                 <div>
                   <p className="font-medium">Confirmed By</p>
-                  <p className="text-muted-foreground">{grn.confirmed_by_name} · {formatDate(grn.confirmed_at)}</p>
+                  <p className="text-muted-foreground">
+                    {grn.confirmed_by_name} · {formatDate(grn.confirmed_at)}
+                  </p>
                 </div>
               )}
               {grn.notes && (
                 <div>
                   <p className="font-medium">Notes</p>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{grn.notes}</p>
+                  <p className="whitespace-pre-wrap text-muted-foreground">{grn.notes}</p>
                 </div>
               )}
             </CardContent>

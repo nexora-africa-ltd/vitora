@@ -50,10 +50,7 @@ export function useNotifications(
  * Polls every 30 seconds by default for badge updates.
  * @param options - Options including polling interval
  */
-export function useUnreadCount(options?: {
-  enabled?: boolean;
-  refetchInterval?: number | false;
-}) {
+export function useUnreadCount(options?: { enabled?: boolean; refetchInterval?: number | false }) {
   return useQuery({
     queryKey: notificationKeys.unreadCount(),
     queryFn: () => notificationApi.getUnreadCount(),
@@ -99,9 +96,7 @@ export function useMarkAllRead() {
  * Convenience hook that provides notification state and actions.
  * Use this in components that need full notification functionality.
  */
-export function useNotificationCenter(options?: {
-  pollingInterval?: number | false;
-}) {
+export function useNotificationCenter(options?: { pollingInterval?: number | false }) {
   const pollingInterval = options?.pollingInterval ?? DEFAULT_POLLING_INTERVAL;
 
   const notificationsQuery = useNotifications(

@@ -44,12 +44,15 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { TrendIndicator, DonutChart, BarChart, LineChart, createChartConfig, ChartEmptyState } from '@/components/charts';
-import type {
-  TriageReportSummary,
-  TriageCategory,
-  AssignedArea,
-} from '@/lib/types/triage';
+import {
+  TrendIndicator,
+  DonutChart,
+  BarChart,
+  LineChart,
+  createChartConfig,
+  ChartEmptyState,
+} from '@/components/charts';
+import type { TriageReportSummary, TriageCategory, AssignedArea } from '@/lib/types/triage';
 import { TRIAGE_CATEGORY_CONFIG, ASSIGNED_AREA_CONFIG } from '@/lib/types/triage';
 
 // =============================================================================
@@ -82,7 +85,10 @@ export interface TriageReportsPageProps {
   /** Current filters */
   filters?: ReportFilters;
   /** Callback when date range changes */
-  onDateRangeChange: (preset: DateRangePreset, customDates?: { start: string; end: string }) => void;
+  onDateRangeChange: (
+    preset: DateRangePreset,
+    customDates?: { start: string; end: string }
+  ) => void;
   /** Callback when filters change */
   onFilterChange: (filters: Partial<ReportFilters>) => void;
   /** Callback to export report */
@@ -170,10 +176,10 @@ function SummaryCard({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold mt-1">{value}</p>
-            {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+            <p className="mt-1 text-2xl font-bold">{value}</p>
+            {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
           </div>
-          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Icon className="h-6 w-6 text-primary" />
           </div>
         </div>
@@ -208,10 +214,10 @@ function CategoryVolumeBar({
 
   return (
     <div data-testid={`volume-${category}`} className="flex items-center gap-3">
-      <div className={cn('w-3 h-3 rounded-full shrink-0', CATEGORY_COLORS[category])} />
+      <div className={cn('h-3 w-3 shrink-0 rounded-full', CATEGORY_COLORS[category])} />
       <span className={cn('w-16 font-medium', CATEGORY_TEXT_COLORS[category])}>{category}</span>
       <div className="flex-1">
-        <div className="h-6 bg-muted rounded overflow-hidden">
+        <div className="h-6 overflow-hidden rounded bg-muted">
           <div
             className={cn('h-full transition-all', CATEGORY_COLORS[category])}
             style={{ width: `${widthPercent}%` }}
@@ -225,39 +231,38 @@ function CategoryVolumeBar({
 }
 
 // Triage Category DonutChart component
-const triageCategoryConfig = createChartConfig(
-  ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'],
-  {
-    labels: {
-      RED: 'Emergency',
-      ORANGE: 'Very Urgent',
-      YELLOW: 'Urgent',
-      GREEN: 'Standard',
-      BLUE: 'Non-Urgent',
-    },
-    colors: {
-      RED: 'hsl(0 84% 60%)',       // Red
-      ORANGE: 'hsl(25 95% 53%)',   // Orange
-      YELLOW: 'hsl(48 96% 53%)',   // Yellow
-      GREEN: 'hsl(142 71% 45%)',   // Green
-      BLUE: 'hsl(217 91% 60%)',    // Blue
-    },
-  }
-);
+const triageCategoryConfig = createChartConfig(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'], {
+  labels: {
+    RED: 'Emergency',
+    ORANGE: 'Very Urgent',
+    YELLOW: 'Urgent',
+    GREEN: 'Standard',
+    BLUE: 'Non-Urgent',
+  },
+  colors: {
+    RED: 'hsl(0 84% 60%)', // Red
+    ORANGE: 'hsl(25 95% 53%)', // Orange
+    YELLOW: 'hsl(48 96% 53%)', // Yellow
+    GREEN: 'hsl(142 71% 45%)', // Green
+    BLUE: 'hsl(217 91% 60%)', // Blue
+  },
+});
 
-function TriageCategoryChart({ data }: { data: Array<{ category: TriageCategory; count: number; percentage: number }> }) {
+function TriageCategoryChart({
+  data,
+}: {
+  data: Array<{ category: TriageCategory; count: number; percentage: number }>;
+}) {
   const chartData = React.useMemo(
-    () => data.map((item) => ({
-      name: item.category,
-      value: item.count,
-    })),
+    () =>
+      data.map((item) => ({
+        name: item.category,
+        value: item.count,
+      })),
     [data]
   );
 
-  const total = React.useMemo(
-    () => data.reduce((sum, item) => sum + item.count, 0),
-    [data]
-  );
+  const total = React.useMemo(() => data.reduce((sum, item) => sum + item.count, 0), [data]);
 
   if (total === 0) {
     return (
@@ -290,11 +295,11 @@ function LoadingSkeleton() {
   return (
     <div data-testid="reports-loading" className="space-y-6">
       {/* Summary Cards Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
             <CardContent className="p-6">
-              <Skeleton className="h-4 w-24 mb-2" />
+              <Skeleton className="mb-2 h-4 w-24" />
               <Skeleton className="h-8 w-16" />
             </CardContent>
           </Card>
@@ -396,12 +401,12 @@ export function TriageReportsPage({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <p className="text-sm text-muted-foreground">
           {formatDateRange(reportData.date_range.start, reportData.date_range.end)}
         </p>
         <Button variant="outline" size="sm" onClick={() => onExport('csv')}>
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="mr-2 h-4 w-4" />
           <span className="sm:hidden">Export</span>
           <span className="hidden sm:inline">Export Report</span>
         </Button>
@@ -416,7 +421,7 @@ export function TriageReportsPage({
               <Label htmlFor="date-range">Date Range</Label>
               <Select value={selectedDateRange} onValueChange={handleDateRangeChange}>
                 <SelectTrigger id="date-range" aria-label="Date range">
-                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  <CalendarIcon className="mr-2 h-4 w-4" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -508,7 +513,10 @@ export function TriageReportsPage({
       ) : (
         <>
           {/* Summary Cards */}
-          <div data-testid="summary-section" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div
+            data-testid="summary-section"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4"
+          >
             <SummaryCard
               title="Total Patients Triaged"
               value={reportData.total_assessments}
@@ -545,65 +553,60 @@ export function TriageReportsPage({
             </CardHeader>
             <CardContent className="px-0 sm:px-6">
               <div className="overflow-x-auto">
-              <Table data-testid="wait-times-table" className="min-w-[600px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Target</TableHead>
-                    <TableHead className="text-right">Avg Wait</TableHead>
-                    <TableHead className="text-right">Median</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Exceeded</TableHead>
-                    <TableHead className="text-right">Exceeded %</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reportData.wait_times_by_category.map((stat) => (
-                    <TableRow key={stat.category}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={cn(
-                              'w-3 h-3 rounded-full',
-                              CATEGORY_COLORS[stat.category]
-                            )}
-                          />
-                          <span className={CATEGORY_TEXT_COLORS[stat.category]}>
-                            {stat.category}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {stat.target_minutes === 0 ? 'Immediate' : `${stat.target_minutes} min`}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {stat.avg_wait_minutes} min
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {stat.median_wait_minutes} min
-                      </TableCell>
-                      <TableCell className="text-right">{stat.total_count}</TableCell>
-                      <TableCell className="text-right">{stat.exceeded_count}</TableCell>
-                      <TableCell className="text-right">
-                        <span
-                          className={cn(
-                            stat.exceeded_percentage > 15 && 'text-red-600 font-medium',
-                            stat.exceeded_percentage > 10 && stat.exceeded_percentage <= 15 && 'text-orange-600',
-                          )}
-                        >
-                          {stat.exceeded_percentage}%
-                        </span>
-                      </TableCell>
+                <Table data-testid="wait-times-table" className="min-w-[600px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Category</TableHead>
+                      <TableHead className="text-right">Target</TableHead>
+                      <TableHead className="text-right">Avg Wait</TableHead>
+                      <TableHead className="text-right">Median</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Exceeded</TableHead>
+                      <TableHead className="text-right">Exceeded %</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {reportData.wait_times_by_category.map((stat) => (
+                      <TableRow key={stat.category}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={cn('h-3 w-3 rounded-full', CATEGORY_COLORS[stat.category])}
+                            />
+                            <span className={CATEGORY_TEXT_COLORS[stat.category]}>
+                              {stat.category}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {stat.target_minutes === 0 ? 'Immediate' : `${stat.target_minutes} min`}
+                        </TableCell>
+                        <TableCell className="text-right">{stat.avg_wait_minutes} min</TableCell>
+                        <TableCell className="text-right">{stat.median_wait_minutes} min</TableCell>
+                        <TableCell className="text-right">{stat.total_count}</TableCell>
+                        <TableCell className="text-right">{stat.exceeded_count}</TableCell>
+                        <TableCell className="text-right">
+                          <span
+                            className={cn(
+                              stat.exceeded_percentage > 15 && 'font-medium text-red-600',
+                              stat.exceeded_percentage > 10 &&
+                                stat.exceeded_percentage <= 15 &&
+                                'text-orange-600'
+                            )}
+                          >
+                            {stat.exceeded_percentage}%
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
 
           {/* Volume Distribution */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
             {/* Volume by Category - DonutChart */}
             <Card data-testid="volume-section">
               <CardHeader>
@@ -635,7 +638,7 @@ export function TriageReportsPage({
                 <div className="space-y-3">
                   {reportData.volume_by_area.map((area) => (
                     <div key={area.area} className="flex items-center gap-3">
-                      <span className="w-36 text-sm truncate">{area.area_label}</span>
+                      <span className="w-36 truncate text-sm">{area.area_label}</span>
                       <div className="flex-1">
                         <Progress
                           value={(area.count / reportData.total_assessments) * 100}
@@ -667,9 +670,8 @@ export function TriageReportsPage({
                 <BarChart
                   data={reportData.staff_performance.map((s) => {
                     const parts = s.name.split(' ');
-                    const short = parts.length > 1 && parts[1]
-                      ? `${parts[0]} ${parts[1][0]}.`
-                      : parts[0];
+                    const short =
+                      parts.length > 1 && parts[1] ? `${parts[0]} ${parts[1][0]}.` : parts[0];
                     return {
                       name: short,
                       fullName: s.name,
@@ -693,12 +695,17 @@ export function TriageReportsPage({
                   yAxisFormatter={(v) => `${v}m`}
                   tooltipFormatter={(value, dataKey, item) => {
                     const payload = item as { payload?: { fullName?: string } };
-                    const label = typeof dataKey === 'string'
-                      ? (dataKey === 'avg_wait' ? 'Avg Wait' : 'Median Wait')
-                      : dataKey;
+                    const label =
+                      typeof dataKey === 'string'
+                        ? dataKey === 'avg_wait'
+                          ? 'Avg Wait'
+                          : 'Median Wait'
+                        : dataKey;
                     return (
                       <span>
-                        {payload?.payload?.fullName ? <span className="font-medium">{payload.payload.fullName}: </span> : null}
+                        {payload?.payload?.fullName ? (
+                          <span className="font-medium">{payload.payload.fullName}: </span>
+                        ) : null}
                         {label}: {value} min
                       </span>
                     );
@@ -723,13 +730,17 @@ export function TriageReportsPage({
                           <TableCell className="font-medium">{staff.name}</TableCell>
                           <TableCell className="text-right">{staff.assessment_count}</TableCell>
                           <TableCell className="text-right">{staff.avg_wait_minutes} min</TableCell>
-                          <TableCell className="text-right">{staff.median_wait_minutes} min</TableCell>
+                          <TableCell className="text-right">
+                            {staff.median_wait_minutes} min
+                          </TableCell>
                           <TableCell className="text-right">
                             <span
                               className={cn(
                                 staff.keta_compliance_pct >= 90 && 'text-green-600',
-                                staff.keta_compliance_pct >= 70 && staff.keta_compliance_pct < 90 && 'text-yellow-600',
-                                staff.keta_compliance_pct < 70 && 'text-red-600 font-medium',
+                                staff.keta_compliance_pct >= 70 &&
+                                  staff.keta_compliance_pct < 90 &&
+                                  'text-yellow-600',
+                                staff.keta_compliance_pct < 70 && 'font-medium text-red-600'
                               )}
                             >
                               {staff.keta_compliance_pct}%
@@ -745,70 +756,73 @@ export function TriageReportsPage({
           )}
 
           {/* Wait Time Trend */}
-          {reportData.wait_time_trend.length > 0 && (() => {
-            // Pivot trend data: one row per timestamp, one key per category
-            const categories = [...new Set(reportData.wait_time_trend.map((t) => t.category))] as TriageCategory[];
-            const byTimestamp = new Map<string, Record<string, unknown>>();
-            for (const entry of reportData.wait_time_trend) {
-              if (!byTimestamp.has(entry.timestamp)) {
-                byTimestamp.set(entry.timestamp, { timestamp: entry.timestamp });
+          {reportData.wait_time_trend.length > 0 &&
+            (() => {
+              // Pivot trend data: one row per timestamp, one key per category
+              const categories = [
+                ...new Set(reportData.wait_time_trend.map((t) => t.category)),
+              ] as TriageCategory[];
+              const byTimestamp = new Map<string, Record<string, unknown>>();
+              for (const entry of reportData.wait_time_trend) {
+                if (!byTimestamp.has(entry.timestamp)) {
+                  byTimestamp.set(entry.timestamp, { timestamp: entry.timestamp });
+                }
+                byTimestamp.get(entry.timestamp)![entry.category] = entry.avg_wait_minutes;
               }
-              byTimestamp.get(entry.timestamp)![entry.category] = entry.avg_wait_minutes;
-            }
-            const pivotedData = [...byTimestamp.values()].sort((a, b) =>
-              (a.timestamp as string).localeCompare(b.timestamp as string)
-            );
+              const pivotedData = [...byTimestamp.values()].sort((a, b) =>
+                (a.timestamp as string).localeCompare(b.timestamp as string)
+              );
 
-            const trendConfig = createChartConfig(categories, {
-              labels: Object.fromEntries(categories.map((c) => [c, c])),
-              colors: Object.fromEntries(categories.map((c) => [c, CATEGORY_CHART_COLORS[c]])),
-            });
+              const trendConfig = createChartConfig(categories, {
+                labels: Object.fromEntries(categories.map((c) => [c, c])),
+                colors: Object.fromEntries(categories.map((c) => [c, CATEGORY_CHART_COLORS[c]])),
+              });
 
-            // Format x-axis labels based on granularity
-            const isHourly = (pivotedData[0]?.timestamp as string)?.includes('T');
-            const xFormatter = (val: string): string => {
-              if (isHourly) {
-                // "2026-05-01T14:00:00" → "14:00"
-                const match = val.match(/T(\d{2}:\d{2})/);
-                return match?.[1] ?? val;
-              }
-              // "2026-05-01" → "May 1"
-              const d = new Date(val);
-              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            };
+              // Format x-axis labels based on granularity
+              const isHourly = (pivotedData[0]?.timestamp as string)?.includes('T');
+              const xFormatter = (val: string): string => {
+                if (isHourly) {
+                  // "2026-05-01T14:00:00" → "14:00"
+                  const match = val.match(/T(\d{2}:\d{2})/);
+                  return match?.[1] ?? val;
+                }
+                // "2026-05-01" → "May 1"
+                const d = new Date(val);
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              };
 
-            return (
-              <Card data-testid="wait-time-trend-section">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5" />
-                      Wait Time Trends
-                    </CardTitle>
-                    <HelpPopover content="Average wait time over time by triage category. Hourly resolution for today/yesterday, daily for longer ranges. Useful for identifying peak hours and shift coverage gaps." />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <LineChart
-                    data={pivotedData}
-                    config={trendConfig}
-                    dataKeys={categories}
-                    xAxisKey="timestamp"
-                    showGrid
-                    showXAxis
-                    showYAxis
-                    showTooltip
-                    showLegend
-                    showDots
-                    lineType="monotone"
-                    minHeight="300px"
-                    xAxisFormatter={xFormatter}
-                    yAxisFormatter={(v) => `${v}m`}
-                  />
-                </CardContent>
-              </Card>
-            );
-          })()}
+              return (
+                <Card data-testid="wait-time-trend-section">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        Wait Time Trends
+                      </CardTitle>
+                      <HelpPopover content="Average wait time over time by triage category. Hourly resolution for today/yesterday, daily for longer ranges. Useful for identifying peak hours and shift coverage gaps." />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <LineChart
+                      data={pivotedData}
+                      config={trendConfig}
+                      dataKeys={categories}
+                      xAxisKey="timestamp"
+                      showGrid
+                      showXAxis
+                      showYAxis
+                      showTooltip
+                      showLegend
+                      showDots
+                      lineType="monotone"
+                      minHeight="300px"
+                      xAxisFormatter={xFormatter}
+                      yAxisFormatter={(v) => `${v}m`}
+                    />
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
           {/* LWBS Section */}
           <Card data-testid="lwbs-section">
@@ -822,7 +836,7 @@ export function TriageReportsPage({
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6">
+              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
                 <div>
                   <p className="text-sm text-muted-foreground">Total LWBS</p>
                   <p data-testid="lwbs-total" className="text-3xl font-bold">
@@ -845,7 +859,7 @@ export function TriageReportsPage({
 
               {/* LWBS by Category */}
               <div>
-                <h4 className="text-sm font-medium mb-3">LWBS by Category</h4>
+                <h4 className="mb-3 text-sm font-medium">LWBS by Category</h4>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -860,19 +874,14 @@ export function TriageReportsPage({
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <div
-                              className={cn(
-                                'w-3 h-3 rounded-full',
-                                CATEGORY_COLORS[item.category]
-                              )}
+                              className={cn('h-3 w-3 rounded-full', CATEGORY_COLORS[item.category])}
                             />
                             {item.category}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">{item.count}</TableCell>
                         <TableCell className="text-right">
-                          <span
-                            className={cn(item.rate > 10 && 'text-red-600 font-medium')}
-                          >
+                          <span className={cn(item.rate > 10 && 'font-medium text-red-600')}>
                             {item.rate}%
                           </span>
                         </TableCell>

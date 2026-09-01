@@ -4,20 +4,14 @@
  */
 
 // Client Registry
-export {
-  ClientRegistryLookup,
-  useClientRegistryLookup,
-} from './ClientRegistryLookup';
+export { ClientRegistryLookup, useClientRegistryLookup } from './ClientRegistryLookup';
 
 // SHA Verification Modal (combined CR + Eligibility)
 export { SHAVerificationModal } from './SHAVerificationModal';
 export type { SHAPayloadPerson } from '@/lib/types/sha';
 
 // Eligibility
-export {
-  EligibilityBanner,
-  useEligibilityCheck,
-} from './EligibilityBanner';
+export { EligibilityBanner, useEligibilityCheck } from './EligibilityBanner';
 
 // Terminology Selects - Re-export from centralized terminology module
 // DEPRECATED: Import directly from '@/components/terminology' instead
@@ -55,10 +49,7 @@ export { SHABenefitsAlert } from './SHABenefitsAlert';
 export type { SHABenefitsAlertProps } from './SHABenefitsAlert';
 
 // Facility & Practitioner Validation
-export {
-  FacilityValidation,
-  PractitionerValidation,
-} from './FacilityValidation';
+export { FacilityValidation, PractitionerValidation } from './FacilityValidation';
 
 // DHA HIE Consent & Pre-authorization
 export { ConsentPanel } from './ConsentPanel';

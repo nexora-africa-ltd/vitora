@@ -20,10 +20,10 @@ export interface BMIResult {
  * These are approximations based on CDC guidelines
  */
 const BMI_PERCENTILE_CUTOFFS = {
-  underweight: 5,    // Below 5th percentile
-  healthy: 85,       // 5th to 84th percentile
-  overweight: 95,    // 85th to 94th percentile
-  obese: 100,        // 95th percentile and above
+  underweight: 5, // Below 5th percentile
+  healthy: 85, // 5th to 84th percentile
+  overweight: 95, // 85th to 94th percentile
+  obese: 100, // 95th percentile and above
 };
 
 /**
@@ -31,25 +31,85 @@ const BMI_PERCENTILE_CUTOFFS = {
  * These are median (50th percentile) values from CDC growth charts
  * In a production system, you'd use the full LMS tables for precise percentile calculations
  */
-const BMI_REFERENCE_BY_AGE: Record<number, { male: { p5: number; p50: number; p85: number; p95: number }; female: { p5: number; p50: number; p85: number; p95: number } }> = {
-  2: { male: { p5: 14.7, p50: 16.4, p85: 18.2, p95: 19.4 }, female: { p5: 14.4, p50: 16.0, p85: 17.8, p95: 18.9 } },
-  3: { male: { p5: 14.3, p50: 15.8, p85: 17.4, p95: 18.4 }, female: { p5: 14.0, p50: 15.5, p85: 17.2, p95: 18.3 } },
-  4: { male: { p5: 14.0, p50: 15.5, p85: 17.0, p95: 17.9 }, female: { p5: 13.7, p50: 15.2, p85: 16.9, p95: 18.0 } },
-  5: { male: { p5: 13.8, p50: 15.3, p85: 16.8, p95: 17.9 }, female: { p5: 13.5, p50: 15.0, p85: 16.8, p95: 18.0 } },
-  6: { male: { p5: 13.7, p50: 15.3, p85: 17.0, p95: 18.2 }, female: { p5: 13.4, p50: 15.1, p85: 17.0, p95: 18.4 } },
-  7: { male: { p5: 13.7, p50: 15.5, p85: 17.4, p95: 18.9 }, female: { p5: 13.4, p50: 15.4, p85: 17.5, p95: 19.1 } },
-  8: { male: { p5: 13.8, p50: 15.8, p85: 18.0, p95: 19.7 }, female: { p5: 13.5, p50: 15.8, p85: 18.2, p95: 20.1 } },
-  9: { male: { p5: 14.0, p50: 16.2, p85: 18.7, p95: 20.7 }, female: { p5: 13.7, p50: 16.3, p85: 19.1, p95: 21.2 } },
-  10: { male: { p5: 14.2, p50: 16.6, p85: 19.5, p95: 21.7 }, female: { p5: 14.0, p50: 16.9, p85: 20.0, p95: 22.4 } },
-  11: { male: { p5: 14.5, p50: 17.2, p85: 20.3, p95: 22.8 }, female: { p5: 14.4, p50: 17.6, p85: 21.0, p95: 23.6 } },
-  12: { male: { p5: 14.9, p50: 17.8, p85: 21.2, p95: 24.0 }, female: { p5: 14.8, p50: 18.4, p85: 22.0, p95: 24.8 } },
-  13: { male: { p5: 15.4, p50: 18.5, p85: 22.1, p95: 25.1 }, female: { p5: 15.3, p50: 19.1, p85: 22.9, p95: 25.8 } },
-  14: { male: { p5: 15.9, p50: 19.2, p85: 23.0, p95: 26.2 }, female: { p5: 15.8, p50: 19.8, p85: 23.7, p95: 26.7 } },
-  15: { male: { p5: 16.5, p50: 19.9, p85: 23.8, p95: 27.2 }, female: { p5: 16.3, p50: 20.4, p85: 24.3, p95: 27.4 } },
-  16: { male: { p5: 17.0, p50: 20.5, p85: 24.5, p95: 28.0 }, female: { p5: 16.7, p50: 20.9, p85: 24.8, p95: 27.9 } },
-  17: { male: { p5: 17.5, p50: 21.1, p85: 25.2, p95: 28.8 }, female: { p5: 17.1, p50: 21.3, p85: 25.2, p95: 28.2 } },
-  18: { male: { p5: 18.0, p50: 21.7, p85: 25.8, p95: 29.4 }, female: { p5: 17.5, p50: 21.6, p85: 25.5, p95: 28.5 } },
-  19: { male: { p5: 18.4, p50: 22.3, p85: 26.4, p95: 30.0 }, female: { p5: 17.8, p50: 21.9, p85: 25.7, p95: 28.7 } },
+const BMI_REFERENCE_BY_AGE: Record<
+  number,
+  {
+    male: { p5: number; p50: number; p85: number; p95: number };
+    female: { p5: number; p50: number; p85: number; p95: number };
+  }
+> = {
+  2: {
+    male: { p5: 14.7, p50: 16.4, p85: 18.2, p95: 19.4 },
+    female: { p5: 14.4, p50: 16.0, p85: 17.8, p95: 18.9 },
+  },
+  3: {
+    male: { p5: 14.3, p50: 15.8, p85: 17.4, p95: 18.4 },
+    female: { p5: 14.0, p50: 15.5, p85: 17.2, p95: 18.3 },
+  },
+  4: {
+    male: { p5: 14.0, p50: 15.5, p85: 17.0, p95: 17.9 },
+    female: { p5: 13.7, p50: 15.2, p85: 16.9, p95: 18.0 },
+  },
+  5: {
+    male: { p5: 13.8, p50: 15.3, p85: 16.8, p95: 17.9 },
+    female: { p5: 13.5, p50: 15.0, p85: 16.8, p95: 18.0 },
+  },
+  6: {
+    male: { p5: 13.7, p50: 15.3, p85: 17.0, p95: 18.2 },
+    female: { p5: 13.4, p50: 15.1, p85: 17.0, p95: 18.4 },
+  },
+  7: {
+    male: { p5: 13.7, p50: 15.5, p85: 17.4, p95: 18.9 },
+    female: { p5: 13.4, p50: 15.4, p85: 17.5, p95: 19.1 },
+  },
+  8: {
+    male: { p5: 13.8, p50: 15.8, p85: 18.0, p95: 19.7 },
+    female: { p5: 13.5, p50: 15.8, p85: 18.2, p95: 20.1 },
+  },
+  9: {
+    male: { p5: 14.0, p50: 16.2, p85: 18.7, p95: 20.7 },
+    female: { p5: 13.7, p50: 16.3, p85: 19.1, p95: 21.2 },
+  },
+  10: {
+    male: { p5: 14.2, p50: 16.6, p85: 19.5, p95: 21.7 },
+    female: { p5: 14.0, p50: 16.9, p85: 20.0, p95: 22.4 },
+  },
+  11: {
+    male: { p5: 14.5, p50: 17.2, p85: 20.3, p95: 22.8 },
+    female: { p5: 14.4, p50: 17.6, p85: 21.0, p95: 23.6 },
+  },
+  12: {
+    male: { p5: 14.9, p50: 17.8, p85: 21.2, p95: 24.0 },
+    female: { p5: 14.8, p50: 18.4, p85: 22.0, p95: 24.8 },
+  },
+  13: {
+    male: { p5: 15.4, p50: 18.5, p85: 22.1, p95: 25.1 },
+    female: { p5: 15.3, p50: 19.1, p85: 22.9, p95: 25.8 },
+  },
+  14: {
+    male: { p5: 15.9, p50: 19.2, p85: 23.0, p95: 26.2 },
+    female: { p5: 15.8, p50: 19.8, p85: 23.7, p95: 26.7 },
+  },
+  15: {
+    male: { p5: 16.5, p50: 19.9, p85: 23.8, p95: 27.2 },
+    female: { p5: 16.3, p50: 20.4, p85: 24.3, p95: 27.4 },
+  },
+  16: {
+    male: { p5: 17.0, p50: 20.5, p85: 24.5, p95: 28.0 },
+    female: { p5: 16.7, p50: 20.9, p85: 24.8, p95: 27.9 },
+  },
+  17: {
+    male: { p5: 17.5, p50: 21.1, p85: 25.2, p95: 28.8 },
+    female: { p5: 17.1, p50: 21.3, p85: 25.2, p95: 28.2 },
+  },
+  18: {
+    male: { p5: 18.0, p50: 21.7, p85: 25.8, p95: 29.4 },
+    female: { p5: 17.5, p50: 21.6, p85: 25.5, p95: 28.5 },
+  },
+  19: {
+    male: { p5: 18.4, p50: 22.3, p85: 26.4, p95: 30.0 },
+    female: { p5: 17.8, p50: 21.9, p85: 25.7, p95: 28.7 },
+  },
 };
 
 /**
@@ -76,8 +136,8 @@ export function calculateAgeInMonths(dateOfBirth: string | Date): number {
   const dob = typeof dateOfBirth === 'string' ? new Date(dateOfBirth) : dateOfBirth;
   const today = new Date();
 
-  const months = (today.getFullYear() - dob.getFullYear()) * 12 +
-                 (today.getMonth() - dob.getMonth());
+  const months =
+    (today.getFullYear() - dob.getFullYear()) * 12 + (today.getMonth() - dob.getMonth());
 
   return months;
 }
@@ -161,7 +221,7 @@ export function calculateBMI(
     return {
       bmi: null,
       classification: '',
-      isAgeAppropriate: true
+      isAgeAppropriate: true,
     };
   }
 
@@ -188,7 +248,8 @@ export function calculateBMI(
       bmi: null,
       classification: '',
       isAgeAppropriate: false,
-      message: 'BMI is not calculated for children under 2 years. Use weight-for-length charts instead.',
+      message:
+        'BMI is not calculated for children under 2 years. Use weight-for-length charts instead.',
     };
   }
 

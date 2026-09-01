@@ -3,7 +3,16 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Calendar, Clock, User, FileText, ShieldCheck, AlertTriangle, XCircle, Building2 } from 'lucide-react';
+import {
+  Calendar,
+  Clock,
+  User,
+  FileText,
+  ShieldCheck,
+  AlertTriangle,
+  XCircle,
+  Building2,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { PermissionGate } from '@/components/shared/permission-gate';
@@ -58,7 +67,7 @@ export default function DeathRecordDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-24 w-full" />
         <div className="grid gap-6 md:grid-cols-2">
@@ -136,28 +145,31 @@ export default function DeathRecordDetailPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title={`Death Record — ${record.patient_name}`}
           helpContent="View and manage death record details. Certify deaths, release bodies, and report to civil registry."
         />
 
         {/* Summary Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-sm font-medium truncate">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="truncate text-sm font-medium">
               {record.patient_name}
               <span className="text-muted-foreground"> • {record.patient_mrn}</span>
             </p>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               DOB: {formatDate(record.patient_date_of_birth)} • Gender: {record.patient_gender}
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Badge className={`${DEATH_RECORD_STATUS_COLORS[record.status]} shrink-0 w-fit`}>
+          <div className="flex flex-wrap gap-2">
+            <Badge className={`${DEATH_RECORD_STATUS_COLORS[record.status]} w-fit shrink-0`}>
               {record.status_display}
             </Badge>
-            <Badge variant="outline" className={`${BODY_STATUS_COLORS[record.body_status]} shrink-0 w-fit`}>
+            <Badge
+              variant="outline"
+              className={`${BODY_STATUS_COLORS[record.body_status]} w-fit shrink-0`}
+            >
               {record.body_status_display}
             </Badge>
           </div>
@@ -170,9 +182,10 @@ export default function DeathRecordDetailPage() {
               <XCircle className="h-5 w-5 text-destructive" />
               <p className="font-medium text-destructive">This record has been voided</p>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Voided by {record.voided_by_username} on {record.voided_at ? formatDate(record.voided_at) : 'N/A'}.
-              Reason: {record.void_reason}
+            <p className="mt-1 text-sm text-muted-foreground">
+              Voided by {record.voided_by_username} on{' '}
+              {record.voided_at ? formatDate(record.voided_at) : 'N/A'}. Reason:{' '}
+              {record.void_reason}
             </p>
           </div>
         )}
@@ -183,7 +196,7 @@ export default function DeathRecordDetailPage() {
             {!record.is_certified && (
               <PermissionGate action="last_office.certify">
                 <Button onClick={() => setCertifyOpen(true)}>
-                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  <ShieldCheck className="mr-2 h-4 w-4" />
                   Certify Death
                 </Button>
               </PermissionGate>
@@ -191,21 +204,27 @@ export default function DeathRecordDetailPage() {
             {record.is_certified && !record.is_released && (
               <PermissionGate action="last_office.release_body">
                 <Button onClick={() => setReleaseOpen(true)}>
-                  <User className="h-4 w-4 mr-2" />
+                  <User className="mr-2 h-4 w-4" />
                   Release Body
                 </Button>
               </PermissionGate>
             )}
-            {record.is_certified && record.status !== 'REPORTED_TO_CIVIL_REGISTRY' && record.status !== 'RELEASED_TO_FAMILY' && (
-              <Button variant="outline" onClick={handleReport} disabled={reportMutation.isPending}>
-                <Building2 className="h-4 w-4 mr-2" />
-                Report to Civil Registry
-              </Button>
-            )}
+            {record.is_certified &&
+              record.status !== 'REPORTED_TO_CIVIL_REGISTRY' &&
+              record.status !== 'RELEASED_TO_FAMILY' && (
+                <Button
+                  variant="outline"
+                  onClick={handleReport}
+                  disabled={reportMutation.isPending}
+                >
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Report to Civil Registry
+                </Button>
+              )}
             {!record.is_released && (
               <PermissionGate action="last_office.void_record">
                 <Button variant="destructive" onClick={() => setVoidOpen(true)}>
-                  <XCircle className="h-4 w-4 mr-2" />
+                  <XCircle className="mr-2 h-4 w-4" />
                   Void Record
                 </Button>
               </PermissionGate>
@@ -224,7 +243,11 @@ export default function DeathRecordDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <DetailRow icon={Calendar} label="Date of Death" value={formatDate(record.date_of_death)} />
+              <DetailRow
+                icon={Calendar}
+                label="Date of Death"
+                value={formatDate(record.date_of_death)}
+              />
               {record.time_of_death && (
                 <DetailRow icon={Clock} label="Time of Death" value={record.time_of_death} />
               )}
@@ -247,39 +270,50 @@ export default function DeathRecordDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <p className="text-xs text-muted-foreground font-medium">Line a — Immediate Cause</p>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Line a — Immediate Cause
+                </p>
                 <p className="text-sm">{record.primary_cause}</p>
                 {record.primary_cause_icd10_code && (
                   <p className="text-xs text-muted-foreground">
-                    ICD-10: {record.primary_cause_icd10_code} — {record.primary_cause_icd10_description}
+                    ICD-10: {record.primary_cause_icd10_code} —{' '}
+                    {record.primary_cause_icd10_description}
                   </p>
                 )}
               </div>
               {record.antecedent_cause && (
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium">Line b — Antecedent Cause</p>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Line b — Antecedent Cause
+                  </p>
                   <p className="text-sm">{record.antecedent_cause}</p>
                   {record.antecedent_cause_icd10_code && (
                     <p className="text-xs text-muted-foreground">
-                      ICD-10: {record.antecedent_cause_icd10_code} — {record.antecedent_cause_icd10_description}
+                      ICD-10: {record.antecedent_cause_icd10_code} —{' '}
+                      {record.antecedent_cause_icd10_description}
                     </p>
                   )}
                 </div>
               )}
               {record.underlying_cause && (
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium">Line c — Underlying Cause</p>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Line c — Underlying Cause
+                  </p>
                   <p className="text-sm">{record.underlying_cause}</p>
                   {record.underlying_cause_icd10_code && (
                     <p className="text-xs text-muted-foreground">
-                      ICD-10: {record.underlying_cause_icd10_code} — {record.underlying_cause_icd10_description}
+                      ICD-10: {record.underlying_cause_icd10_code} —{' '}
+                      {record.underlying_cause_icd10_description}
                     </p>
                   )}
                 </div>
               )}
               {record.contributing_conditions && (
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium">Part II — Contributing Conditions</p>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Part II — Contributing Conditions
+                  </p>
                   <p className="text-sm">{record.contributing_conditions}</p>
                 </div>
               )}
@@ -295,7 +329,10 @@ export default function DeathRecordDetailPage() {
               {record.certified_by_username ? (
                 <>
                   <DetailRow label="Certified By" value={record.certified_by_username} />
-                  <DetailRow label="Certified At" value={record.certified_at ? formatDate(record.certified_at) : '—'} />
+                  <DetailRow
+                    label="Certified At"
+                    value={record.certified_at ? formatDate(record.certified_at) : '—'}
+                  />
                   {record.death_certificate_number && (
                     <DetailRow label="Certificate No." value={record.death_certificate_number} />
                   )}
@@ -317,7 +354,10 @@ export default function DeathRecordDetailPage() {
                 <DetailRow label="Compartment" value={record.morgue_compartment} />
               )}
               {record.morgue_admission_date && (
-                <DetailRow label="Morgue Admission" value={formatDate(record.morgue_admission_date)} />
+                <DetailRow
+                  label="Morgue Admission"
+                  value={formatDate(record.morgue_admission_date)}
+                />
               )}
               {record.released_to && (
                 <>
@@ -374,7 +414,9 @@ export default function DeathRecordDetailPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCertifyOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setCertifyOpen(false)}>
+                Cancel
+              </Button>
               <Button onClick={handleCertify} disabled={certifyMutation.isPending}>
                 {certifyMutation.isPending ? 'Certifying...' : 'Certify'}
               </Button>
@@ -430,7 +472,9 @@ export default function DeathRecordDetailPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setReleaseOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setReleaseOpen(false)}>
+                Cancel
+              </Button>
               <Button onClick={handleReleaseBody} disabled={releaseBodyMutation.isPending}>
                 {releaseBodyMutation.isPending ? 'Releasing...' : 'Release Body'}
               </Button>
@@ -449,7 +493,7 @@ export default function DeathRecordDetailPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3">
-                <p className="text-sm text-destructive font-medium">
+                <p className="text-sm font-medium text-destructive">
                   This will reverse the patient&apos;s deceased status and mark them as alive.
                 </p>
               </div>
@@ -465,7 +509,9 @@ export default function DeathRecordDetailPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setVoidOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setVoidOpen(false)}>
+                Cancel
+              </Button>
               <Button
                 variant="destructive"
                 onClick={handleVoid}
@@ -492,7 +538,7 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start gap-2">
-      {Icon && <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />}
+      {Icon && <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="text-sm">{value}</p>

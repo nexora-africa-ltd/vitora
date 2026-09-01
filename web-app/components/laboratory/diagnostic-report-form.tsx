@@ -23,10 +23,7 @@ interface DiagnosticReportFormProps {
   trigger?: React.ReactNode;
 }
 
-export function DiagnosticReportForm({
-  labOrderId,
-  trigger,
-}: DiagnosticReportFormProps) {
+export function DiagnosticReportForm({ labOrderId, trigger }: DiagnosticReportFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -53,8 +50,7 @@ export function DiagnosticReportForm({
     } catch (error) {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to create report',
+        description: error instanceof Error ? error.message : 'Failed to create report',
         variant: 'destructive',
       });
     }
@@ -65,7 +61,7 @@ export function DiagnosticReportForm({
       <DialogTrigger asChild>
         {trigger ?? (
           <Button>
-            <FileText className="h-4 w-4 mr-2" />
+            <FileText className="mr-2 h-4 w-4" />
             Generate Report
           </Button>
         )}
@@ -106,7 +102,7 @@ export function DiagnosticReportForm({
           <Button onClick={handleSubmit} disabled={createReport.isPending}>
             {createReport.isPending ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creating...
               </>
             ) : (

@@ -3,16 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Bed,
-  Building2,
-  Plus,
-  User,
-  Settings,
-  AlertCircle,
-  Shield,
-  Info
-} from 'lucide-react';
+import { Bed, Building2, Plus, User, Settings, AlertCircle, Shield, Info } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -93,7 +84,7 @@ export default function WardDetailPage() {
   const { data: admissions, isLoading: admissionsLoading } = useAdmissions({
     ward: wardId,
     admission_status: 'ACTIVE',
-    page_size: 100
+    page_size: 100,
   });
   const { data: bedUtilization } = useBedUtilization(wardId);
   const { data: predictedDischarges } = usePredictedDischarges(wardId, 24);
@@ -118,7 +109,8 @@ export default function WardDetailPage() {
     if (bed.status === 'OCCUPIED') {
       toast({
         title: 'Bed Occupied',
-        description: 'Cannot change status of an occupied bed. Discharge or transfer the patient first.',
+        description:
+          'Cannot change status of an occupied bed. Discharge or transfer the patient first.',
         variant: 'destructive',
       });
       return;
@@ -209,7 +201,7 @@ export default function WardDetailPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <h2 className="text-xl font-semibold">Ward not found</h2>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           The ward you&apos;re looking for doesn&apos;t exist.
         </p>
         <Button onClick={() => router.push('/wards')} className="mt-4">
@@ -220,19 +212,15 @@ export default function WardDetailPage() {
   }
 
   return (
-    <PullToRefresh
-      onRefresh={refresh}
-      isRefreshing={isRefreshing}
-      className="min-h-full"
-    >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
+      <div className="container mx-auto space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
         <PageHeader
           title={ward.name}
           helpContent={ward.description || 'View ward details, current patients, and bed layout.'}
           actions={
             <>
               <PermissionGate action="inpatient.manage_ward">
-                <Button variant="outline" size="sm" asChild className="gap-2 w-full sm:w-auto">
+                <Button variant="outline" size="sm" asChild className="w-full gap-2 sm:w-auto">
                   <Link href={`/wards/${wardId}/edit`}>
                     <Settings className="h-4 w-4" />
                     Manage
@@ -240,7 +228,12 @@ export default function WardDetailPage() {
                 </Button>
               </PermissionGate>
               <PermissionGate action="inpatient.create_admission">
-                <Button size="sm" asChild disabled={stats.available === 0} className="gap-2 w-full sm:w-auto">
+                <Button
+                  size="sm"
+                  asChild
+                  disabled={stats.available === 0}
+                  className="w-full gap-2 sm:w-auto"
+                >
                   <Link href={`/admissions/new?ward=${wardId}`}>
                     <Plus className="h-4 w-4" />
                     Admit
@@ -252,16 +245,16 @@ export default function WardDetailPage() {
         />
 
         {/* Summary Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-sm font-medium truncate">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="truncate text-sm font-medium">
               <span className="inline-flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-muted-foreground" />
                 {ward.name}
               </span>
               <span className="text-muted-foreground"> • {ward.code}</span>
             </p>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               {stats.occupied} of {stats.total} beds occupied ({stats.occupancyRate}%)
             </p>
           </div>
@@ -274,400 +267,446 @@ export default function WardDetailPage() {
             />
             <Badge
               variant={ward.ward_type === 'ICU' ? 'destructive' : 'outline'}
-              className="shrink-0 w-fit self-start sm:self-auto"
+              className="w-fit shrink-0 self-start sm:self-auto"
             >
               {ward.ward_type_display || ward.ward_type}
             </Badge>
           </div>
         </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-5">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Total Beds</p>
-            <p className="text-2xl font-bold">{stats.total}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Available</p>
-            <p className="text-2xl font-bold">{stats.available}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Occupied</p>
-            <p className="text-2xl font-bold">{stats.occupied}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Maintenance</p>
-            <p className="text-2xl font-bold">{stats.maintenance}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Occupancy</p>
-            <p className="text-2xl font-bold">{stats.occupancyRate}%</p>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Stats */}
+        <div className="grid gap-4 md:grid-cols-5">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Beds</p>
+              <p className="text-2xl font-bold">{stats.total}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Available</p>
+              <p className="text-2xl font-bold">{stats.available}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Occupied</p>
+              <p className="text-2xl font-bold">{stats.occupied}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Maintenance</p>
+              <p className="text-2xl font-bold">{stats.maintenance}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Occupancy</p>
+              <p className="text-2xl font-bold">{stats.occupancyRate}%</p>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Occupancy Progress */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Bed Occupancy</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Progress value={stats.occupancyRate} className="h-3" />
-          <p className="text-sm text-muted-foreground mt-2">
-            {stats.occupied} of {stats.total} beds occupied
-          </p>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="relative overflow-hidden">
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-            aria-hidden="true"
-          />
-          <CardHeader className="relative pb-3">
-            <CardTitle className="text-base">Smart allocation snapshot</CardTitle>
-            <CardDescription>Real-time capacity and allocation insights.</CardDescription>
+        {/* Occupancy Progress */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Bed Occupancy</CardTitle>
           </CardHeader>
-          <CardContent className="relative space-y-3">
-            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
-              <span className="text-muted-foreground">Effective available beds</span>
-              <span className="font-semibold">{stats.effectiveAvailable}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
-              <span className="text-muted-foreground">Emergency buffer</span>
-              <span className="font-semibold">{stats.emergencyBufferBeds} beds ({stats.emergencyBufferPercent}%)</span>
-            </div>
-            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
-              <span className="text-muted-foreground">Predicted releases in 4h</span>
-              <span className="font-semibold">{stats.predictedNext4h}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
-              <span className="text-muted-foreground">Predicted releases in 24h</span>
-              <span className="font-semibold">{stats.predictedNext24h}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
-              <span className="text-muted-foreground">Beds in cleaning</span>
-              <span className="font-semibold">{stats.cleaning}</span>
-            </div>
+          <CardContent>
+            <Progress value={stats.occupancyRate} className="h-3" />
+            <p className="mt-2 text-sm text-muted-foreground">
+              {stats.occupied} of {stats.total} beds occupied
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden">
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-            aria-hidden="true"
-          />
-          <CardHeader className="relative pb-3">
-            <CardTitle className="text-base">Workload and stay profile</CardTitle>
-            <CardDescription>Use these values when deciding whether to override or hold beds.</CardDescription>
-          </CardHeader>
-          <CardContent className="relative space-y-3">
-            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
-              <span className="text-muted-foreground">Workload score</span>
-              <span className="font-semibold">{stats.workloadScore.toFixed(2)}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
-              <span className="text-muted-foreground">Average length of stay</span>
-              <span className="font-semibold">
-                {stats.averageLengthOfStay == null ? 'N/A' : `${stats.averageLengthOfStay.toFixed(1)} days`}
-              </span>
-            </div>
-            <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
-              Emergency admissions can still use the reserved buffer, but non-emergency placements should not consume it unless staff intentionally override the recommendation path.
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="relative overflow-hidden">
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
+            <CardHeader className="relative pb-3">
+              <CardTitle className="text-base">Smart allocation snapshot</CardTitle>
+              <CardDescription>Real-time capacity and allocation insights.</CardDescription>
+            </CardHeader>
+            <CardContent className="relative space-y-3">
+              <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+                <span className="text-muted-foreground">Effective available beds</span>
+                <span className="font-semibold">{stats.effectiveAvailable}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+                <span className="text-muted-foreground">Emergency buffer</span>
+                <span className="font-semibold">
+                  {stats.emergencyBufferBeds} beds ({stats.emergencyBufferPercent}%)
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+                <span className="text-muted-foreground">Predicted releases in 4h</span>
+                <span className="font-semibold">{stats.predictedNext4h}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+                <span className="text-muted-foreground">Predicted releases in 24h</span>
+                <span className="font-semibold">{stats.predictedNext24h}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+                <span className="text-muted-foreground">Beds in cleaning</span>
+                <span className="font-semibold">{stats.cleaning}</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className="relative overflow-hidden">
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-            aria-hidden="true"
-          />
-          <CardHeader className="relative pb-3">
-            <CardTitle className="text-base">Predicted discharges</CardTitle>
-            <CardDescription>Near-term bed releases based on expected discharge dates and LOS estimates.</CardDescription>
-          </CardHeader>
-          <CardContent className="relative space-y-3">
-            {!predictedDischarges || predictedDischarges.predictions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No predicted discharges in the next 24 hours.</p>
-            ) : (
-              predictedDischarges.predictions.slice(0, 4).map((prediction) => (
-                <div key={prediction.admission_id} className="rounded-md border bg-muted/20 p-3">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{prediction.bed_number} • {prediction.patient_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {prediction.expected_discharge_date
-                          ? `Expected ${formatDateTime(prediction.expected_discharge_date)}`
-                          : 'Estimated from average length of stay'}
-                      </p>
+          <Card className="relative overflow-hidden">
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
+            <CardHeader className="relative pb-3">
+              <CardTitle className="text-base">Workload and stay profile</CardTitle>
+              <CardDescription>
+                Use these values when deciding whether to override or hold beds.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="relative space-y-3">
+              <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+                <span className="text-muted-foreground">Workload score</span>
+                <span className="font-semibold">{stats.workloadScore.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+                <span className="text-muted-foreground">Average length of stay</span>
+                <span className="font-semibold">
+                  {stats.averageLengthOfStay == null
+                    ? 'N/A'
+                    : `${stats.averageLengthOfStay.toFixed(1)} days`}
+                </span>
+              </div>
+              <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+                Emergency admissions can still use the reserved buffer, but non-emergency placements
+                should not consume it unless staff intentionally override the recommendation path.
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden">
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
+            <CardHeader className="relative pb-3">
+              <CardTitle className="text-base">Predicted discharges</CardTitle>
+              <CardDescription>
+                Near-term bed releases based on expected discharge dates and LOS estimates.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="relative space-y-3">
+              {!predictedDischarges || predictedDischarges.predictions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No predicted discharges in the next 24 hours.
+                </p>
+              ) : (
+                predictedDischarges.predictions.slice(0, 4).map((prediction) => (
+                  <div key={prediction.admission_id} className="rounded-md border bg-muted/20 p-3">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {prediction.bed_number} • {prediction.patient_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {prediction.expected_discharge_date
+                            ? `Expected ${formatDateTime(prediction.expected_discharge_date)}`
+                            : 'Estimated from average length of stay'}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="w-fit shrink-0">
+                        {prediction.hours_until_available == null
+                          ? 'Timing unavailable'
+                          : `${prediction.hours_until_available}h`}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="w-fit shrink-0">
-                      {prediction.hours_until_available == null ? 'Timing unavailable' : `${prediction.hours_until_available}h`}
-                    </Badge>
                   </div>
-                </div>
-              ))
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Live ward activity</CardTitle>
+              <HelpPopover content="Real-time ward constraint and capacity events stream here. When the socket is unavailable, the page falls back to polling." />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {wardEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No live ward events captured yet for this session.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {wardEvents.slice(0, 5).map((event, index) => (
+                  <div
+                    key={`${event.timestamp}-${event.type}-${index}`}
+                    className="rounded-md border bg-muted/20 p-3"
+                  >
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{event.type.replace(/_/g, ' ')}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {event.patient_name ? `${event.patient_name} • ` : ''}
+                          {formatDateTime(event.timestamp)}
+                        </p>
+                      </div>
+                      {event.violations && event.violations.length > 0 && (
+                        <Badge variant="outline" className="w-fit shrink-0">
+                          {event.violations.length} violation
+                          {event.violations.length === 1 ? '' : 's'}
+                        </Badge>
+                      )}
+                    </div>
+                    {event.violations && event.violations.length > 0 && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {event.violations.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
-      </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-base">Live ward activity</CardTitle>
-            <HelpPopover content="Real-time ward constraint and capacity events stream here. When the socket is unavailable, the page falls back to polling." />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {wardEvents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No live ward events captured yet for this session.</p>
-          ) : (
-            <div className="space-y-2">
-              {wardEvents.slice(0, 5).map((event, index) => (
-                <div key={`${event.timestamp}-${event.type}-${index}`} className="rounded-md border bg-muted/20 p-3">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{event.type.replace(/_/g, ' ')}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {event.patient_name ? `${event.patient_name} • ` : ''}{formatDateTime(event.timestamp)}
-                      </p>
-                    </div>
-                    {event.violations && event.violations.length > 0 && (
-                      <Badge variant="outline" className="w-fit shrink-0">
-                        {event.violations.length} violation{event.violations.length === 1 ? '' : 's'}
-                      </Badge>
-                    )}
-                  </div>
-                  {event.violations && event.violations.length > 0 && (
-                    <p className="mt-2 text-xs text-muted-foreground">{event.violations.join(', ')}</p>
-                  )}
-                </div>
-              ))}
+        {/* Patient Compatibility Rules */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Patient Compatibility Rules</CardTitle>
+              <HelpPopover content="These rules determine which patients can be admitted to this ward. Violations show warnings during admission but can be overridden with justification." />
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {/* Gender Restriction */}
+              <div className="flex items-center justify-between rounded-md bg-muted/50 p-2 text-sm">
+                <span className="text-muted-foreground">Gender</span>
+                <Badge variant="outline" className="w-fit shrink-0 self-start sm:self-auto">
+                  {ward.gender_restriction === 'MALE_ONLY'
+                    ? 'Male Only'
+                    : ward.gender_restriction === 'FEMALE_ONLY'
+                      ? 'Female Only'
+                      : 'Any Gender'}
+                </Badge>
+              </div>
 
-      {/* Patient Compatibility Rules */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-base">Patient Compatibility Rules</CardTitle>
-            <HelpPopover content="These rules determine which patients can be admitted to this ward. Violations show warnings during admission but can be overridden with justification." />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Gender Restriction */}
-            <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
-              <span className="text-muted-foreground">Gender</span>
-              <Badge variant="outline" className="shrink-0 w-fit self-start sm:self-auto">
-                {ward.gender_restriction === 'MALE_ONLY'
-                  ? 'Male Only'
-                  : ward.gender_restriction === 'FEMALE_ONLY'
-                    ? 'Female Only'
-                    : 'Any Gender'}
+              {/* Age Range */}
+              <div className="flex items-center justify-between rounded-md bg-muted/50 p-2 text-sm">
+                <span className="text-muted-foreground">Age Range</span>
+                <span className="font-medium">
+                  {ward.min_age_years ?? 0} – {ward.max_age_years ?? '∞'} years
+                </span>
+              </div>
+
+              {/* Isolation Capable */}
+              <div className="flex items-center justify-between rounded-md bg-muted/50 p-2 text-sm">
+                <span className="text-muted-foreground">Isolation</span>
+                <Badge
+                  variant={ward.isolation_capable ? 'default' : 'secondary'}
+                  className="w-fit shrink-0 self-start sm:self-auto"
+                >
+                  {ward.isolation_capable ? 'Yes' : 'No'}
+                </Badge>
+              </div>
+
+              {/* Oxygen Equipped */}
+              <div className="flex items-center justify-between rounded-md bg-muted/50 p-2 text-sm">
+                <span className="text-muted-foreground">Oxygen</span>
+                <Badge
+                  variant={ward.oxygen_equipped ? 'default' : 'secondary'}
+                  className="w-fit shrink-0 self-start sm:self-auto"
+                >
+                  {ward.oxygen_equipped ? 'Yes' : 'No'}
+                </Badge>
+              </div>
+
+              {/* Ventilator Capable */}
+              <div className="flex items-center justify-between rounded-md bg-muted/50 p-2 text-sm">
+                <span className="text-muted-foreground">Ventilator</span>
+                <Badge
+                  variant={ward.ventilator_capable ? 'default' : 'secondary'}
+                  className="w-fit shrink-0 self-start sm:self-auto"
+                >
+                  {ward.ventilator_capable ? 'Yes' : 'No'}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Tabs defaultValue="beds" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="beds">Bed Layout</TabsTrigger>
+            <TabsTrigger value="patients">Current Patients ({admissionsList.length})</TabsTrigger>
+          </TabsList>
+
+          {/* Bed Layout Tab */}
+          <TabsContent value="beds" className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary" className="w-fit shrink-0">
+                Available
+              </Badge>
+              <Badge variant="default" className="w-fit shrink-0">
+                Occupied
+              </Badge>
+              <Badge variant="outline" className="w-fit shrink-0">
+                Cleaning
+              </Badge>
+              <Badge variant="outline" className="w-fit shrink-0">
+                Maintenance
+              </Badge>
+              <Badge variant="outline" className="w-fit shrink-0">
+                Reserved
               </Badge>
             </div>
 
-            {/* Age Range */}
-            <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
-              <span className="text-muted-foreground">Age Range</span>
-              <span className="font-medium">
-                {ward.min_age_years ?? 0} – {ward.max_age_years ?? '∞'} years
-              </span>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              {bedsList.length === 0 ? (
+                <Card className="col-span-full">
+                  <CardContent className="space-y-4 py-8 text-center">
+                    <Bed className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                    <p className="text-muted-foreground">No beds configured for this ward.</p>
+                    {ward && ward.capacity > 0 && <GenerateBedsButton wardId={Number(wardId)} />}
+                  </CardContent>
+                </Card>
+              ) : (
+                bedsList.map((bed) => (
+                  <BedCard key={bed.id} bed={bed} onStatusChange={handleBedClick} />
+                ))
+              )}
             </div>
+          </TabsContent>
 
-            {/* Isolation Capable */}
-            <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
-              <span className="text-muted-foreground">Isolation</span>
-              <Badge
-                variant={ward.isolation_capable ? 'default' : 'secondary'}
-                className="shrink-0 w-fit self-start sm:self-auto"
-              >
-                {ward.isolation_capable ? 'Yes' : 'No'}
-              </Badge>
-            </div>
-
-            {/* Oxygen Equipped */}
-            <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
-              <span className="text-muted-foreground">Oxygen</span>
-              <Badge
-                variant={ward.oxygen_equipped ? 'default' : 'secondary'}
-                className="shrink-0 w-fit self-start sm:self-auto"
-              >
-                {ward.oxygen_equipped ? 'Yes' : 'No'}
-              </Badge>
-            </div>
-
-            {/* Ventilator Capable */}
-            <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
-              <span className="text-muted-foreground">Ventilator</span>
-              <Badge
-                variant={ward.ventilator_capable ? 'default' : 'secondary'}
-                className="shrink-0 w-fit self-start sm:self-auto"
-              >
-                {ward.ventilator_capable ? 'Yes' : 'No'}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue="beds" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="beds">Bed Layout</TabsTrigger>
-          <TabsTrigger value="patients">Current Patients ({admissionsList.length})</TabsTrigger>
-        </TabsList>
-
-        {/* Bed Layout Tab */}
-        <TabsContent value="beds" className="space-y-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="shrink-0 w-fit">Available</Badge>
-            <Badge variant="default" className="shrink-0 w-fit">Occupied</Badge>
-            <Badge variant="outline" className="shrink-0 w-fit">Cleaning</Badge>
-            <Badge variant="outline" className="shrink-0 w-fit">Maintenance</Badge>
-            <Badge variant="outline" className="shrink-0 w-fit">Reserved</Badge>
-          </div>
-
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {bedsList.length === 0 ? (
-              <Card className="col-span-full">
-                <CardContent className="py-8 text-center space-y-4">
-                  <Bed className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No beds configured for this ward.</p>
-                  {ward && ward.capacity > 0 && (
-                    <GenerateBedsButton wardId={Number(wardId)} />
-                  )}
+          {/* Patients Tab */}
+          <TabsContent value="patients" className="space-y-4">
+            {admissionsList.length === 0 ? (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <User className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                  <p className="text-muted-foreground">
+                    No patients currently admitted to this ward.
+                  </p>
                 </CardContent>
               </Card>
             ) : (
-              bedsList.map((bed) => (
-                <BedCard key={bed.id} bed={bed} onStatusChange={handleBedClick} />
-              ))
-            )}
-          </div>
-        </TabsContent>
-
-        {/* Patients Tab */}
-        <TabsContent value="patients" className="space-y-4">
-          {admissionsList.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No patients currently admitted to this ward.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {admissionsList.map((admission: Admission) => (
-                <Card key={admission.id}>
-                  <CardContent className="py-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2 rounded-full bg-muted">
-                          <User className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{admission.patient_name}</p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
-                            <span className="truncate">Bed {admission.bed_number}</span>
-                            {(admission.admitting_diagnosis_text || admission.admitting_diagnosis) && (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className="inline-flex items-center justify-center rounded-full p-1 hover:bg-muted transition-colors shrink-0"
-                                    aria-label="View admitting diagnosis"
+              <div className="space-y-3">
+                {admissionsList.map((admission: Admission) => (
+                  <Card key={admission.id}>
+                    <CardContent className="py-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="rounded-full bg-muted p-2">
+                            <User className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{admission.patient_name}</p>
+                            <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                              <span className="truncate">Bed {admission.bed_number}</span>
+                              {(admission.admitting_diagnosis_text ||
+                                admission.admitting_diagnosis) && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="inline-flex shrink-0 items-center justify-center rounded-full p-1 transition-colors hover:bg-muted"
+                                      aria-label="View admitting diagnosis"
+                                    >
+                                      <Info className="h-4 w-4 text-muted-foreground" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    side="bottom"
+                                    align="start"
+                                    className="max-w-xs p-3"
                                   >
-                                    <Info className="h-4 w-4 text-muted-foreground" />
-                                  </button>
-                                </PopoverTrigger>
-                                <PopoverContent side="bottom" align="start" className="max-w-xs p-3">
-                                  <p className="text-sm font-medium">Admitting diagnosis</p>
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {admission.admitting_diagnosis_text || admission.admitting_diagnosis}
-                                  </p>
-                                </PopoverContent>
-                              </Popover>
-                            )}
+                                    <p className="text-sm font-medium">Admitting diagnosis</p>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                      {admission.admitting_diagnosis_text ||
+                                        admission.admitting_diagnosis}
+                                    </p>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
                           </div>
                         </div>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+                          <Badge
+                            variant="outline"
+                            className="w-fit shrink-0 self-start sm:self-auto"
+                          >
+                            Day{' '}
+                            {Math.ceil(
+                              (new Date().getTime() -
+                                new Date(admission.admission_date).getTime()) /
+                                (1000 * 60 * 60 * 24)
+                            )}
+                          </Badge>
+                          <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
+                            <Link href={`/admissions/${admission.id}`}>View</Link>
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-                        <Badge variant="outline" className="shrink-0 w-fit self-start sm:self-auto">
-                          Day {Math.ceil(
-                            (new Date().getTime() - new Date(admission.admission_date).getTime()) / (1000 * 60 * 60 * 24)
-                          )}
-                        </Badge>
-                        <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
-                          <Link href={`/admissions/${admission.id}`}>
-                            View
-                          </Link>
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
-      {/* Bed Status Change Dialog */}
-      {selectedBed && (
-        <BedStatusDialog
-          bed={selectedBed}
-          open={statusDialogOpen}
-          onOpenChange={setStatusDialogOpen}
-          onSave={handleStatusSave}
-          isSaving={updateBed.isPending}
-        />
-      )}
+        {/* Bed Status Change Dialog */}
+        {selectedBed && (
+          <BedStatusDialog
+            bed={selectedBed}
+            open={statusDialogOpen}
+            onOpenChange={setStatusDialogOpen}
+            onSave={handleStatusSave}
+            isSaving={updateBed.isPending}
+          />
+        )}
       </div>
     </PullToRefresh>
   );
 }
 
-function BedCard({ bed, onStatusChange }: { bed: WardBed; onStatusChange?: (bed: WardBed) => void }) {
+function BedCard({
+  bed,
+  onStatusChange,
+}: {
+  bed: WardBed;
+  onStatusChange?: (bed: WardBed) => void;
+}) {
   const statusVariant: 'default' | 'secondary' | 'outline' =
-    bed.status === 'OCCUPIED'
-      ? 'default'
-      : bed.status === 'AVAILABLE'
-        ? 'secondary'
-        : 'outline';
+    bed.status === 'OCCUPIED' ? 'default' : bed.status === 'AVAILABLE' ? 'secondary' : 'outline';
 
   return (
     <Card
-      className="border cursor-pointer hover:bg-muted/50 transition-colors"
+      className="cursor-pointer border transition-colors hover:bg-muted/50"
       data-testid="bed-card"
       onClick={() => onStatusChange?.(bed)}
     >
       <CardContent className="p-3 text-center">
-        <Bed className="h-6 w-6 mx-auto mb-1" />
+        <Bed className="mx-auto mb-1 h-6 w-6" />
         <p className="font-medium">{bed.bed_number}</p>
         <div className="mt-1 flex justify-center">
-          <Badge variant={statusVariant} className="shrink-0 w-fit text-xs">
+          <Badge variant={statusVariant} className="w-fit shrink-0 text-xs">
             {bed.status_display || bed.status}
           </Badge>
         </div>
         {bed.current_patient_name && (
-          <p className="text-xs mt-1 truncate" title={bed.current_patient_name}>
+          <p className="mt-1 truncate text-xs" title={bed.current_patient_name}>
             {bed.current_patient_name}
           </p>
         )}
@@ -681,7 +720,7 @@ function BedStatusDialog({
   open,
   onOpenChange,
   onSave,
-  isSaving
+  isSaving,
 }: {
   bed: WardBed;
   open: boolean;
@@ -703,7 +742,9 @@ function BedStatusDialog({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>Change Bed Status</DialogTitle>
-            <HelpPopover content={`Update the status for bed ${bed?.bed_number}. Occupied beds cannot be changed until the patient is discharged or transferred.`} />
+            <HelpPopover
+              content={`Update the status for bed ${bed?.bed_number}. Occupied beds cannot be changed until the patient is discharged or transferred.`}
+            />
           </div>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -769,7 +810,7 @@ function GenerateBedsButton({ wardId }: { wardId: number }) {
         }
       }}
     >
-      <Plus className="h-4 w-4 mr-2" />
+      <Plus className="mr-2 h-4 w-4" />
       {generateBeds.isPending ? 'Generating...' : 'Generate Beds'}
     </Button>
   );
@@ -777,7 +818,7 @@ function GenerateBedsButton({ wardId }: { wardId: number }) {
 
 function WardDetailSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-10" />
         <Skeleton className="h-4 w-24" />
@@ -792,7 +833,7 @@ function WardDetailSkeleton() {
         ))}
       </div>
       <Skeleton className="h-16" />
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {[...Array(12)].map((_, i) => (
           <Skeleton key={i} className="h-24" />
         ))}

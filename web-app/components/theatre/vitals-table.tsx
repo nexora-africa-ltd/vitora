@@ -51,7 +51,7 @@ export function VitalsTable({ vitals, caseNumber, onVitalDeleted }: VitalsTableP
     return (
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Table2 className="h-4 w-4" />
             Vitals Timeline
             <HelpPopover content="Tabular view of all recorded intra-operative vitals. Cells are highlighted amber (warning) or red (critical) when values exceed clinical thresholds. Delete individual readings with the trash icon." />
@@ -69,7 +69,7 @@ export function VitalsTable({ vitals, caseNumber, onVitalDeleted }: VitalsTableP
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
           <Table2 className="h-4 w-4" />
           Vitals Timeline
           <HelpPopover content="Tabular view of all recorded intra-operative vitals. Cells are highlighted amber (warning) or red (critical) when values exceed clinical thresholds. Delete individual readings with the trash icon." />

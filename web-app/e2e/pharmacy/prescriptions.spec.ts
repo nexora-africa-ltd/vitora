@@ -52,9 +52,7 @@ test.describe('Prescriptions - List View', () => {
     const rxTab = page.getByRole('tab', { name: /prescription/i });
 
     await expect(
-      rxTab.getByText(/\d+/).or(
-        rxTab.locator('[data-testid="pending-count"]')
-      )
+      rxTab.getByText(/\d+/).or(rxTab.locator('[data-testid="pending-count"]'))
     ).toBeVisible();
   });
 
@@ -158,11 +156,10 @@ test.describe('Prescriptions - Filtering', () => {
   });
 
   test('should filter by status', async ({ page }) => {
-    const statusFilter = page.getByRole('combobox', { name: /status/i }).or(
-      page.getByLabel(/status/i)
-    ).or(
-      page.getByTestId('status-filter')
-    );
+    const statusFilter = page
+      .getByRole('combobox', { name: /status/i })
+      .or(page.getByLabel(/status/i))
+      .or(page.getByTestId('status-filter'));
 
     await expect(statusFilter).toBeVisible();
   });
@@ -294,20 +291,21 @@ test.describe('Prescriptions - Create', () => {
   });
 
   test('should have create prescription button', async ({ page }) => {
-    const createButton = page.getByRole('button', { name: /new.prescription|create|add/i }).or(
-      page.getByTestId('create-prescription-button')
-    );
+    const createButton = page
+      .getByRole('button', { name: /new.prescription|create|add/i })
+      .or(page.getByTestId('create-prescription-button'));
 
     await expect(createButton).toBeVisible();
   });
 
   test('should open prescription creation form', async ({ page }) => {
-    await page.getByRole('button', { name: /new.prescription|create|add/i }).first().click();
+    await page
+      .getByRole('button', { name: /new.prescription|create|add/i })
+      .first()
+      .click();
 
     // Should show form/page or patient required message
-    await expect(
-      page.getByText(/prescription/i).first()
-    ).toBeVisible();
+    await expect(page.getByText(/prescription/i).first()).toBeVisible();
   });
 
   test('should display patient information in form', async ({ page }) => {
@@ -323,7 +321,9 @@ test.describe('Prescriptions - Create', () => {
     await goToNewPrescriptionWithPatient(page);
 
     // Clinical notes textarea
-    await expect(page.getByLabel(/clinical.notes|notes/i).or(page.getByPlaceholder(/notes/i))).toBeVisible();
+    await expect(
+      page.getByLabel(/clinical.notes|notes/i).or(page.getByPlaceholder(/notes/i))
+    ).toBeVisible();
   });
 
   test('should have drug selection', async ({ page }) => {
@@ -331,11 +331,10 @@ test.describe('Prescriptions - Create', () => {
 
     // Drug search/selection field
     await expect(
-      page.getByPlaceholder(/search.*drug/i).or(
-        page.getByLabel(/drug/i)
-      ).or(
-        page.getByText(/select.*drug/i)
-      )
+      page
+        .getByPlaceholder(/search.*drug/i)
+        .or(page.getByLabel(/drug/i))
+        .or(page.getByText(/select.*drug/i))
     ).toBeVisible();
   });
 
@@ -372,11 +371,10 @@ test.describe('Prescriptions - Create', () => {
 
     // Route dropdown
     await expect(
-      page.getByLabel(/route/i).or(
-        page.getByRole('combobox', { name: /route/i })
-      ).or(
-        page.getByText(/route/i)
-      )
+      page
+        .getByLabel(/route/i)
+        .or(page.getByRole('combobox', { name: /route/i }))
+        .or(page.getByText(/route/i))
     ).toBeVisible();
   });
 
@@ -384,7 +382,9 @@ test.describe('Prescriptions - Create', () => {
     await goToNewPrescriptionWithPatient(page);
 
     // Instructions textbox - labeled "Special Instructions" - use exact: true to avoid matching textarea
-    await expect(page.getByRole('textbox', { name: 'Special Instructions', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('textbox', { name: 'Special Instructions', exact: true })
+    ).toBeVisible();
   });
 
   test('should have substitutable option', async ({ page }) => {
@@ -398,9 +398,7 @@ test.describe('Prescriptions - Create', () => {
     await goToNewPrescriptionWithPatient(page);
 
     // Add item button
-    await expect(
-      page.getByRole('button', { name: /add.*item|add.*prescription/i })
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /add.*item|add.*prescription/i })).toBeVisible();
   });
 
   test('should select drug from search results', async ({ page }) => {
@@ -426,9 +424,7 @@ test.describe('Prescriptions - Create', () => {
     await addButton.click();
 
     // Should show validation error
-    await expect(
-      page.getByText(/required|select.*drug|please/i).first()
-    ).toBeVisible();
+    await expect(page.getByText(/required|select.*drug|please/i).first()).toBeVisible();
   });
 
   test('should require at least one item to create prescription', async ({ page }) => {
@@ -529,9 +525,9 @@ test.describe('Prescriptions - Dispense Actions', () => {
 
     // Check for direct dispense button (testid version)
     await expect(
-      page.getByTestId('direct-dispense-button').or(
-        page.getByRole('button', { name: 'Dispense' }).first()
-      )
+      page
+        .getByTestId('direct-dispense-button')
+        .or(page.getByRole('button', { name: 'Dispense' }).first())
     ).toBeVisible();
   });
 

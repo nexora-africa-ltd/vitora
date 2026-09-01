@@ -77,7 +77,11 @@ export const MODALITY_LABELS: Record<SessionModality, string> = {
 
 export const RISK_LEVEL_CONFIG: Record<
   RiskLevel,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    className?: string;
+  }
 > = {
   LOW: { label: 'Low Risk', variant: 'outline' },
   MODERATE: { label: 'Moderate Risk', variant: 'secondary' },

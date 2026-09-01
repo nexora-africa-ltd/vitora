@@ -83,10 +83,12 @@ export interface RecentActivity {
   title: string;
   description: string;
   timestamp: string;
-  user?: {
-    id: number;
-    name: string;
-  } | string; // Support both new and legacy format
+  user?:
+    | {
+        id: number;
+        name: string;
+      }
+    | string; // Support both new and legacy format
   resource?: {
     type: string;
     id: number;
@@ -110,7 +112,14 @@ export interface DashboardMetrics {
 export interface DateRangeFilter {
   start: string;
   end: string;
-  preset?: 'today' | 'yesterday' | 'last7days' | 'last30days' | 'thisMonth' | 'lastMonth' | 'custom';
+  preset?:
+    | 'today'
+    | 'yesterday'
+    | 'last7days'
+    | 'last30days'
+    | 'thisMonth'
+    | 'lastMonth'
+    | 'custom';
 }
 
 // =============================================================================

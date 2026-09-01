@@ -85,13 +85,13 @@ export function SeriesPanel({
 
   if (collapsed) {
     return (
-      <div className={cn('w-12 bg-muted/50 flex flex-col items-center gap-2 py-2', className)}>
+      <div className={cn('flex w-12 flex-col items-center gap-2 bg-muted/50 py-2', className)}>
         {series.map((s, idx) => (
           <button
             key={s.series_instance_uid}
             onClick={() => onSeriesSelect(idx)}
             className={cn(
-              'w-8 h-8 rounded flex items-center justify-center text-xs font-medium transition-colors',
+              'flex h-8 w-8 items-center justify-center rounded text-xs font-medium transition-colors',
               selectedSeriesIndex === idx
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted hover:bg-muted-foreground/10'
@@ -106,15 +106,15 @@ export function SeriesPanel({
   }
 
   return (
-    <div className={cn('w-64 bg-muted/30 border-r flex flex-col', className)}>
+    <div className={cn('flex w-64 flex-col border-r bg-muted/30', className)}>
       {/* Header */}
-      <div className="p-3 border-b">
-        <h3 className="font-medium text-sm">Series ({series.length})</h3>
+      <div className="border-b p-3">
+        <h3 className="text-sm font-medium">Series ({series.length})</h3>
       </div>
 
       {/* Series List */}
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-2">
+        <div className="space-y-2 p-2">
           {series.map((s, idx) => {
             const thumbnailUrl = getThumbnailUrl?.(s.thumbnail_path);
             const isSelected = selectedSeriesIndex === idx;
@@ -126,19 +126,19 @@ export function SeriesPanel({
                 className={cn(
                   'w-full rounded-lg p-2 text-left transition-colors',
                   isSelected
-                    ? 'bg-primary/10 border border-primary'
-                    : 'bg-background hover:bg-muted border border-transparent'
+                    ? 'border border-primary bg-primary/10'
+                    : 'border border-transparent bg-background hover:bg-muted'
                 )}
               >
                 <div className="flex gap-2">
                   {/* Thumbnail */}
-                  <div className="w-12 h-12 rounded bg-black flex-shrink-0 overflow-hidden flex items-center justify-center">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded bg-black">
                     {thumbnailUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={thumbnailUrl}
                         alt={`Series ${s.series_number}`}
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
                       getModalityIcon(s.modality)
@@ -146,12 +146,12 @@ export function SeriesPanel({
                   </div>
 
                   {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">
                       {s.series_description || `Series ${s.series_number || idx + 1}`}
                     </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+                    <div className="mt-1 flex items-center gap-1">
+                      <Badge variant="outline" className="h-4 px-1 py-0 text-[10px]">
                         {getModalityLabel(s.modality)}
                       </Badge>
                       <span className="text-[10px] text-muted-foreground">
@@ -159,7 +159,7 @@ export function SeriesPanel({
                       </span>
                     </div>
                     {s.body_part_examined && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                      <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
                         {s.body_part_examined}
                       </p>
                     )}
@@ -173,18 +173,18 @@ export function SeriesPanel({
 
       {/* Instance List (when selected series has multiple instances) */}
       {showInstances && instances && instances.length > 1 && (
-        <div className="border-t max-h-32">
-          <div className="p-2 border-b bg-muted/50">
+        <div className="max-h-32 border-t">
+          <div className="border-b bg-muted/50 p-2">
             <h4 className="text-xs font-medium">Images ({instances.length})</h4>
           </div>
           <ScrollArea className="h-24">
-            <div className="p-2 flex gap-1 flex-wrap">
+            <div className="flex flex-wrap gap-1 p-2">
               {instances.map((instance, idx) => (
                 <button
                   key={instance.sop_instance_uid}
                   onClick={() => onInstanceSelect?.(idx)}
                   className={cn(
-                    'w-8 h-8 rounded text-xs flex items-center justify-center',
+                    'flex h-8 w-8 items-center justify-center rounded text-xs',
                     selectedInstanceIndex === idx
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted hover:bg-muted-foreground/20'

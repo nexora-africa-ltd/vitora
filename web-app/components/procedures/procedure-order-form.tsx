@@ -84,7 +84,7 @@ export function ProcedureOrderForm({
 
   const catalogResults = useMemo(
     () => (procSearchData?.results || []) as ProcedureCatalogEntry[],
-    [procSearchData],
+    [procSearchData]
   );
 
   const { data: catalogGuardData, isLoading: catalogGuardLoading } = useQuery({
@@ -205,23 +205,28 @@ export function ProcedureOrderForm({
             <Alert>
               <AlertTitle>Procedure catalog not seeded for this tenant</AlertTitle>
               <AlertDescription>
-                No active procedure catalog entries were found for your organization. Seed the procedure catalog before placing procedure orders.
+                No active procedure catalog entries were found for your organization. Seed the
+                procedure catalog before placing procedure orders.
               </AlertDescription>
             </Alert>
           )}
           {selectedProcedure ? (
-            <div className="flex items-start justify-between gap-3 p-3 rounded-lg border bg-muted/30">
+            <div className="flex items-start justify-between gap-3 rounded-lg border bg-muted/30 p-3">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Syringe className="h-4 w-4 text-primary shrink-0" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Syringe className="h-4 w-4 shrink-0 text-primary" />
                   <p className="font-medium">{selectedProcedure.name}</p>
                   <span className="font-mono text-xs text-muted-foreground">
                     {selectedProcedure.code}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap text-sm text-muted-foreground">
-                  <Badge variant="outline" className="text-xs">{selectedProcedure.category}</Badge>
-                  <Badge className={`${RISK_LEVEL_COLORS[selectedProcedure.risk_level] || ''} text-xs`}>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <Badge variant="outline" className="text-xs">
+                    {selectedProcedure.category}
+                  </Badge>
+                  <Badge
+                    className={`${RISK_LEVEL_COLORS[selectedProcedure.risk_level] || ''} text-xs`}
+                  >
                     {selectedProcedure.risk_level}
                   </Badge>
                   <span>{selectedProcedure.typical_duration_minutes} min</span>
@@ -242,7 +247,7 @@ export function ProcedureOrderForm({
           ) : (
             <div className="space-y-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by procedure name or code..."
                   value={procSearch}
@@ -251,7 +256,7 @@ export function ProcedureOrderForm({
                 />
               </div>
               {debouncedProcSearch.length >= 2 && (
-                <div className="border rounded-md max-h-64 overflow-y-auto">
+                <div className="max-h-64 overflow-y-auto rounded-md border">
                   {procSearching ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
                       Searching...
@@ -271,18 +276,21 @@ export function ProcedureOrderForm({
                       <button
                         key={proc.id}
                         type="button"
-                        className="w-full text-left px-3 py-2.5 hover:bg-muted/50 border-b last:border-0 transition-colors"
+                        className="w-full border-b px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-muted/50"
                         onClick={() => handleSelectProcedure(proc)}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="font-medium text-sm truncate">{proc.name}</p>
+                            <p className="truncate text-sm font-medium">{proc.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {proc.code} &bull; {proc.category} &bull; {proc.typical_duration_minutes} min
+                              {proc.code} &bull; {proc.category} &bull;{' '}
+                              {proc.typical_duration_minutes} min
                             </p>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <Badge className={`${RISK_LEVEL_COLORS[proc.risk_level] || ''} text-xs`}>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <Badge
+                              className={`${RISK_LEVEL_COLORS[proc.risk_level] || ''} text-xs`}
+                            >
                               {proc.risk_level}
                             </Badge>
                             {proc.base_fee != null && (
@@ -423,14 +431,14 @@ export function ProcedureOrderForm({
           </Button>
         )}
         <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
-          {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isPending
             ? requestMode === 'EXTERNAL_REQUEST'
               ? 'Submitting request...'
               : 'Ordering...'
             : requestMode === 'EXTERNAL_REQUEST'
-            ? 'Create External Request'
-            : 'Place Order'}
+              ? 'Create External Request'
+              : 'Place Order'}
         </Button>
       </div>
     </div>

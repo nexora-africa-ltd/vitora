@@ -40,7 +40,10 @@ export const TOTPSetupSchema = z.object({
 export type TOTPSetupSchemaType = z.infer<typeof TOTPSetupSchema>;
 
 export const TOTPConfirmRequestSchema = z.object({
-  token: z.string().length(6).regex(/^\d{6}$/, 'Token must be 6 digits'),
+  token: z
+    .string()
+    .length(6)
+    .regex(/^\d{6}$/, 'Token must be 6 digits'),
 });
 
 export type TOTPConfirmRequestSchemaType = z.infer<typeof TOTPConfirmRequestSchema>;
@@ -56,17 +59,20 @@ export type TOTPConfirmResponseSchemaType = z.infer<typeof TOTPConfirmResponseSc
 // MFA VERIFICATION SCHEMAS
 // =============================================================================
 
-export const MFAVerifyRequestSchema = z.object({
-  mfa_token: z.string(),
-  token: z.string().length(6).regex(/^\d{6}$/, 'Token must be 6 digits').optional(),
-  backup_code: z.string().optional(),
-}).refine(
-  (data) => data.token || data.backup_code,
-  {
+export const MFAVerifyRequestSchema = z
+  .object({
+    mfa_token: z.string(),
+    token: z
+      .string()
+      .length(6)
+      .regex(/^\d{6}$/, 'Token must be 6 digits')
+      .optional(),
+    backup_code: z.string().optional(),
+  })
+  .refine((data) => data.token || data.backup_code, {
     message: 'Either token or backup_code must be provided',
     path: ['token'],
-  }
-);
+  });
 
 export type MFAVerifyRequestSchemaType = z.infer<typeof MFAVerifyRequestSchema>;
 
@@ -143,10 +149,15 @@ export type MFAVerifyResponseSchemaType = z.infer<typeof MFAVerifyResponseSchema
 // =============================================================================
 
 export const BackupCodesRegenerateRequestSchema = z.object({
-  token: z.string().length(6).regex(/^\d{6}$/, 'Token must be 6 digits'),
+  token: z
+    .string()
+    .length(6)
+    .regex(/^\d{6}$/, 'Token must be 6 digits'),
 });
 
-export type BackupCodesRegenerateRequestSchemaType = z.infer<typeof BackupCodesRegenerateRequestSchema>;
+export type BackupCodesRegenerateRequestSchemaType = z.infer<
+  typeof BackupCodesRegenerateRequestSchema
+>;
 
 export const BackupCodesResponseSchema = z.object({
   backup_codes: z.array(z.string()),
@@ -185,13 +196,17 @@ export const WebAuthnRegisterBeginResponseSchema = z.object({
   options: z.string(), // JSON string of PublicKeyCredentialCreationOptions
 });
 
-export type WebAuthnRegisterBeginResponseSchemaType = z.infer<typeof WebAuthnRegisterBeginResponseSchema>;
+export type WebAuthnRegisterBeginResponseSchemaType = z.infer<
+  typeof WebAuthnRegisterBeginResponseSchema
+>;
 
 export const WebAuthnAuthenticateBeginResponseSchema = z.object({
   options: z.string(), // JSON string of PublicKeyCredentialRequestOptions
 });
 
-export type WebAuthnAuthenticateBeginResponseSchemaType = z.infer<typeof WebAuthnAuthenticateBeginResponseSchema>;
+export type WebAuthnAuthenticateBeginResponseSchemaType = z.infer<
+  typeof WebAuthnAuthenticateBeginResponseSchema
+>;
 
 // =============================================================================
 // LOGIN RESPONSE WITH MFA

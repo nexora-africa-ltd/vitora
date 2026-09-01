@@ -30,12 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/shared/page-header';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useToast } from '@/lib/hooks/use-toast';
 import { CheckinSuccessModal, type CheckinSuccessData } from './checkin-success-modal';
@@ -96,7 +91,7 @@ export function PatientRegistrationSuccess({
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       {/* Header */}
       <PageHeader
         title="Patient Registered"
@@ -107,7 +102,7 @@ export function PatientRegistrationSuccess({
       <Card className="border-green-200 dark:border-green-900">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
               <CheckCircle2 className="h-6 w-6 text-green-600" />
             </div>
             <div>
@@ -120,7 +115,7 @@ export function PatientRegistrationSuccess({
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Patient summary */}
-          <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+          <div className="space-y-2 rounded-lg bg-muted/50 p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Name</span>
               <span className="font-medium">
@@ -139,54 +134,62 @@ export function PatientRegistrationSuccess({
 
           {/* Patient Flow Indicator */}
           <div className="rounded-lg border p-4">
-            <p className="text-sm font-medium mb-3">Recommended Patient Flow</p>
+            <p className="mb-3 text-sm font-medium">Recommended Patient Flow</p>
             {/* Mobile: simplified view showing current + next step */}
-            <div className="flex sm:hidden items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-3 sm:hidden">
               <div className="flex flex-col items-center text-center">
-                <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1">
+                <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 </div>
                 <span className="text-xs font-medium">Registered</span>
-                <Badge variant="default" className="mt-1 text-[10px]">Done</Badge>
+                <Badge variant="default" className="mt-1 text-[10px]">
+                  Done
+                </Badge>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
               <div className="flex flex-col items-center text-center">
-                <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1">
+                <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
                   <Clock className="h-5 w-5 text-amber-600" />
                 </div>
                 <span className="text-xs font-medium">Triage</span>
-                <Badge variant="outline" className="mt-1 text-[10px]">Next</Badge>
+                <Badge variant="outline" className="mt-1 text-[10px]">
+                  Next
+                </Badge>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground/50" />
               <span className="text-xs text-muted-foreground">+2 more</span>
             </div>
             {/* Desktop: full flow */}
-            <div className="hidden sm:flex items-center justify-between">
+            <div className="hidden items-center justify-between sm:flex">
               <div className="flex flex-col items-center text-center">
-                <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1">
+                <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 </div>
                 <span className="text-xs font-medium">Registered</span>
-                <Badge variant="default" className="mt-1 text-[10px]">Complete</Badge>
+                <Badge variant="default" className="mt-1 text-[10px]">
+                  Complete
+                </Badge>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
               <div className="flex flex-col items-center text-center">
-                <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1">
+                <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
                   <Clock className="h-5 w-5 text-amber-600" />
                 </div>
                 <span className="text-xs font-medium">Awaiting Triage</span>
-                <Badge variant="outline" className="mt-1 text-[10px]">Next Step</Badge>
+                <Badge variant="outline" className="mt-1 text-[10px]">
+                  Next Step
+                </Badge>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
               <div className="flex flex-col items-center text-center">
-                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-1">
+                <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                   <Activity className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <span className="text-xs font-medium text-muted-foreground">Vitals Recorded</span>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
               <div className="flex flex-col items-center text-center">
-                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-1">
+                <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                   <FileText className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <span className="text-xs font-medium text-muted-foreground">Consultation</span>
@@ -208,7 +211,9 @@ export function PatientRegistrationSuccess({
                   >
                     <UserPlus className="h-5 w-5 sm:mr-2" />
                     <span className="ml-2 sm:ml-0">
-                      {isCheckingIn ? 'Checking In...' : (
+                      {isCheckingIn ? (
+                        'Checking In...'
+                      ) : (
                         <>
                           <span className="sm:hidden">Check In</span>
                           <span className="hidden sm:inline">Check In to Triage Queue</span>
@@ -245,7 +250,10 @@ export function PatientRegistrationSuccess({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link href={`/patients/${patient.id}`} className="w-full lg:flex-1 xl:w-auto xl:flex-none">
+                  <Link
+                    href={`/patients/${patient.id}`}
+                    className="w-full lg:flex-1 xl:w-auto xl:flex-none"
+                  >
                     <Button
                       variant="ghost"
                       className="h-11 w-full xl:w-11"

@@ -21,12 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -53,7 +48,16 @@ const GENDER_RESTRICTIONS = [
 const wardSchema = z.object({
   name: z.string().min(1, 'Ward name is required'),
   code: z.string().min(1, 'Ward code is required'),
-  ward_type: z.enum(['MEDICAL', 'SURGICAL', 'PEDIATRIC', 'MATERNITY', 'HDU', 'ICU', 'NBU', 'ISOLATION']),
+  ward_type: z.enum([
+    'MEDICAL',
+    'SURGICAL',
+    'PEDIATRIC',
+    'MATERNITY',
+    'HDU',
+    'ICU',
+    'NBU',
+    'ISOLATION',
+  ]),
   floor: z.string().optional(),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
   daily_rate: z.string().min(1, 'Daily rate is required'),
@@ -142,7 +146,7 @@ export default function WardEditPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+      <div className="container mx-auto space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-[520px]" />
       </div>
@@ -153,7 +157,7 @@ export default function WardEditPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <h2 className="text-xl font-semibold">Ward not found</h2>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           The ward you&apos;re looking for doesn&apos;t exist.
         </p>
         <Button onClick={() => router.push('/wards')} className="mt-4">
@@ -164,7 +168,7 @@ export default function WardEditPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
       <PageHeader
         title={`Edit Ward ${ward.name}`}
         helpContent="Update ward details and admission compatibility rules. Changes apply immediately to new admissions."
@@ -187,11 +191,7 @@ export default function WardEditPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Ward Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., Medical Ward A"
-                  {...form.register('name')}
-                />
+                <Input id="name" placeholder="e.g., Medical Ward A" {...form.register('name')} />
                 {form.formState.errors.name && (
                   <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
                 )}
@@ -199,11 +199,7 @@ export default function WardEditPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="code">Ward Code *</Label>
-                <Input
-                  id="code"
-                  placeholder="e.g., MED-A"
-                  {...form.register('code')}
-                />
+                <Input id="code" placeholder="e.g., MED-A" {...form.register('code')} />
                 {form.formState.errors.code && (
                   <p className="text-sm text-destructive">{form.formState.errors.code.message}</p>
                 )}
@@ -227,7 +223,9 @@ export default function WardEditPage() {
                   </SelectContent>
                 </Select>
                 {form.formState.errors.ward_type && (
-                  <p className="text-sm text-destructive">{form.formState.errors.ward_type.message}</p>
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.ward_type.message}
+                  </p>
                 )}
               </div>
 
@@ -242,14 +240,11 @@ export default function WardEditPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="capacity">Bed Capacity *</Label>
-                <Input
-                  id="capacity"
-                  type="number"
-                  min={1}
-                  {...form.register('capacity')}
-                />
+                <Input id="capacity" type="number" min={1} {...form.register('capacity')} />
                 {form.formState.errors.capacity && (
-                  <p className="text-sm text-destructive">{form.formState.errors.capacity.message}</p>
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.capacity.message}
+                  </p>
                 )}
               </div>
 
@@ -261,7 +256,9 @@ export default function WardEditPage() {
                   {...form.register('daily_rate')}
                 />
                 {form.formState.errors.daily_rate && (
-                  <p className="text-sm text-destructive">{form.formState.errors.daily_rate.message}</p>
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.daily_rate.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -308,7 +305,12 @@ export default function WardEditPage() {
                 <Label htmlFor="gender_restriction">Gender Restriction</Label>
                 <Select
                   value={form.watch('gender_restriction') || 'ANY'}
-                  onValueChange={(value) => form.setValue('gender_restriction', value as 'ANY' | 'MALE_ONLY' | 'FEMALE_ONLY')}
+                  onValueChange={(value) =>
+                    form.setValue(
+                      'gender_restriction',
+                      value as 'ANY' | 'MALE_ONLY' | 'FEMALE_ONLY'
+                    )
+                  }
                 >
                   <SelectTrigger id="gender_restriction">
                     <SelectValue placeholder="Select restriction" />
@@ -331,7 +333,9 @@ export default function WardEditPage() {
                   min={0}
                   max={150}
                   placeholder="e.g., 0"
-                  {...form.register('min_age_years', { setValueAs: (v) => v === '' ? null : Number(v) })}
+                  {...form.register('min_age_years', {
+                    setValueAs: (v) => (v === '' ? null : Number(v)),
+                  })}
                 />
               </div>
 
@@ -343,7 +347,9 @@ export default function WardEditPage() {
                   min={0}
                   max={150}
                   placeholder="e.g., 18 for pediatrics"
-                  {...form.register('max_age_years', { setValueAs: (v) => v === '' ? null : Number(v) })}
+                  {...form.register('max_age_years', {
+                    setValueAs: (v) => (v === '' ? null : Number(v)),
+                  })}
                 />
               </div>
             </div>
@@ -359,11 +365,16 @@ export default function WardEditPage() {
                   <Checkbox
                     id="isolation_capable"
                     checked={form.watch('isolation_capable') ?? false}
-                    onCheckedChange={(checked) => form.setValue('isolation_capable', checked === true)}
+                    onCheckedChange={(checked) =>
+                      form.setValue('isolation_capable', checked === true)
+                    }
                   />
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="isolation_capable" className="text-sm font-medium cursor-pointer">
+                      <Label
+                        htmlFor="isolation_capable"
+                        className="cursor-pointer text-sm font-medium"
+                      >
                         Isolation Capable
                       </Label>
                       <HelpPopover content="Can isolate infectious patients." />
@@ -375,11 +386,16 @@ export default function WardEditPage() {
                   <Checkbox
                     id="oxygen_equipped"
                     checked={form.watch('oxygen_equipped') ?? false}
-                    onCheckedChange={(checked) => form.setValue('oxygen_equipped', checked === true)}
+                    onCheckedChange={(checked) =>
+                      form.setValue('oxygen_equipped', checked === true)
+                    }
                   />
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="oxygen_equipped" className="text-sm font-medium cursor-pointer">
+                      <Label
+                        htmlFor="oxygen_equipped"
+                        className="cursor-pointer text-sm font-medium"
+                      >
                         Oxygen Equipped
                       </Label>
                       <HelpPopover content="Bedside oxygen supply." />
@@ -391,11 +407,16 @@ export default function WardEditPage() {
                   <Checkbox
                     id="ventilator_capable"
                     checked={form.watch('ventilator_capable') ?? false}
-                    onCheckedChange={(checked) => form.setValue('ventilator_capable', checked === true)}
+                    onCheckedChange={(checked) =>
+                      form.setValue('ventilator_capable', checked === true)
+                    }
                   />
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="ventilator_capable" className="text-sm font-medium cursor-pointer">
+                      <Label
+                        htmlFor="ventilator_capable"
+                        className="cursor-pointer text-sm font-medium"
+                      >
                         Ventilator Capable
                       </Label>
                       <HelpPopover content="Mechanical ventilation support." />
@@ -408,22 +429,18 @@ export default function WardEditPage() {
         </Card>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push(`/wards/${wardId}`)}
-          >
+          <Button type="button" variant="outline" onClick={() => router.push(`/wards/${wardId}`)}>
             Cancel
           </Button>
           <Button type="submit" disabled={updateWard.isPending}>
             {updateWard.isPending ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Saving...
               </>
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="mr-2 h-4 w-4" />
                 Save Changes
               </>
             )}

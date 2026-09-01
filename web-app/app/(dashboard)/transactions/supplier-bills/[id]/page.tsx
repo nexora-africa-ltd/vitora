@@ -23,7 +23,14 @@ import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -131,11 +138,17 @@ export default function SupplierBillDetailPage() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>
+    );
   }
 
   if (!bill) {
-    return <div className="flex items-center justify-center py-12 text-muted-foreground">Bill not found</div>;
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        Bill not found
+      </div>
+    );
   }
 
   const canApproveBill = canApprove && (bill.status === 'RECEIVED' || bill.status === 'DRAFT');
@@ -151,19 +164,24 @@ export default function SupplierBillDetailPage() {
           <div className="flex flex-col gap-2 sm:flex-row">
             {canApproveBill && (
               <Button onClick={handleApprove} variant="outline">
-                <CheckCircle2 className="h-4 w-4 mr-2" />
+                <CheckCircle2 className="mr-2 h-4 w-4" />
                 Approve
               </Button>
             )}
             {canPay && (
-              <Button onClick={() => { setPaymentAmount(bill.balance); setShowPaymentDialog(true); }}>
-                <DollarSign className="h-4 w-4 mr-2" />
+              <Button
+                onClick={() => {
+                  setPaymentAmount(bill.balance);
+                  setShowPaymentDialog(true);
+                }}
+              >
+                <DollarSign className="mr-2 h-4 w-4" />
                 Record Payment
               </Button>
             )}
             {canCancelBill && (
               <Button onClick={handleCancel} variant="destructive" size="sm">
-                <XCircle className="h-4 w-4 mr-2" />
+                <XCircle className="mr-2 h-4 w-4" />
                 Cancel
               </Button>
             )}
@@ -172,21 +190,21 @@ export default function SupplierBillDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {bill.supplier_name}
             {bill.supplier_invoice_ref && (
               <span className="text-muted-foreground"> • Ref: {bill.supplier_invoice_ref}</span>
             )}
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Issued {new Date(bill.issue_date).toLocaleDateString()}
             {bill.due_date && ` • Due ${new Date(bill.due_date).toLocaleDateString()}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className={`${STATUS_COLORS[bill.status] || ''} shrink-0 w-fit`}>
+          <Badge className={`${STATUS_COLORS[bill.status] || ''} w-fit shrink-0`}>
             {bill.status}
           </Badge>
           <Badge variant="outline" className={MATCH_COLORS[bill.match_status] || ''}>
@@ -201,7 +219,7 @@ export default function SupplierBillDetailPage() {
           <CardTitle className="text-base">3-Way Matching</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <MatchCard
               label="Purchase Order"
               value={bill.po_number}
@@ -222,7 +240,7 @@ export default function SupplierBillDetailPage() {
             />
           </div>
           {bill.match_status === 'VARIANCE' && (
-            <div className="flex items-center gap-2 mt-3 p-2 rounded bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300 text-sm">
+            <div className="mt-3 flex items-center gap-2 rounded bg-yellow-50 p-2 text-sm text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               Amount variance detected between PO, GRN, and bill. Please review line items.
             </div>
@@ -231,26 +249,39 @@ export default function SupplierBillDetailPage() {
       </Card>
 
       {/* Financial Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+            aria-hidden="true"
+          />
           <CardContent className="relative p-4">
             <p className="text-xs text-muted-foreground">Total Amount</p>
             <p className="text-xl font-bold">{formatCurrency(parseFloat(bill.total_amount))}</p>
           </CardContent>
         </Card>
         <Card className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+            aria-hidden="true"
+          />
           <CardContent className="relative p-4">
             <p className="text-xs text-muted-foreground">Paid</p>
-            <p className="text-xl font-bold text-green-600">{formatCurrency(parseFloat(bill.amount_paid))}</p>
+            <p className="text-xl font-bold text-green-600">
+              {formatCurrency(parseFloat(bill.amount_paid))}
+            </p>
           </CardContent>
         </Card>
         <Card className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+            aria-hidden="true"
+          />
           <CardContent className="relative p-4">
             <p className="text-xs text-muted-foreground">Balance Due</p>
-            <p className="text-xl font-bold text-destructive">{formatCurrency(parseFloat(bill.balance))}</p>
+            <p className="text-xl font-bold text-destructive">
+              {formatCurrency(parseFloat(bill.balance))}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -277,8 +308,12 @@ export default function SupplierBillDetailPage() {
                     <TableRow key={item.id}>
                       <TableCell>{item.description}</TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(parseFloat(item.unit_cost))}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(parseFloat(item.total_cost))}</TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(parseFloat(item.unit_cost))}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(parseFloat(item.total_cost))}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -311,7 +346,9 @@ export default function SupplierBillDetailPage() {
                       <TableCell>{new Date(payment.payment_date).toLocaleDateString()}</TableCell>
                       <TableCell>{payment.payment_method.replace('_', ' ')}</TableCell>
                       <TableCell>{payment.reference_number || '—'}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(parseFloat(payment.amount))}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(parseFloat(payment.amount))}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -338,7 +375,7 @@ export default function SupplierBillDetailPage() {
                 onChange={(e) => setPaymentAmount(e.target.value)}
                 placeholder="0.00"
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Balance: {formatCurrency(parseFloat(bill.balance))}
               </p>
             </div>
@@ -402,13 +439,15 @@ function MatchCard({
   linked: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-lg border ${linked ? 'border-green-200 dark:border-green-800' : 'border-dashed'}`}>
+    <div
+      className={`flex items-center gap-3 rounded-lg border p-3 ${linked ? 'border-green-200 dark:border-green-800' : 'border-dashed'}`}
+    >
       {icon}
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium truncate">{value || 'Not linked'}</p>
+        <p className="truncate text-sm font-medium">{value || 'Not linked'}</p>
       </div>
-      {linked && <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto shrink-0" />}
+      {linked && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-green-500" />}
     </div>
   );
 }

@@ -39,20 +39,14 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
   const router = useRouter();
 
   // Fetch imaging orders for this patient
-  const {
-    data: ordersData,
-    isLoading: ordersLoading,
-  } = useQuery({
+  const { data: ordersData, isLoading: ordersLoading } = useQuery({
     queryKey: ['patient-imaging-orders', patientId],
     queryFn: () => imagingApi.listOrders({ patient: patientId, page_size: 10 }),
     staleTime: 30000,
   });
 
   // Fetch DICOM studies for this patient
-  const {
-    data: studiesData,
-    isLoading: studiesLoading,
-  } = useQuery({
+  const { data: studiesData, isLoading: studiesLoading } = useQuery({
     queryKey: ['patient-dicom-studies', patientId],
     queryFn: () => imagingApi.listStudies({ patient: patientId, page_size: 10 }),
     staleTime: 30000,
@@ -78,8 +72,8 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
             ))}
           </div>
         ) : orders.length === 0 && studies.length === 0 ? (
-          <div className="text-center py-8">
-            <ScanLine className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+          <div className="py-8 text-center">
+            <ScanLine className="mx-auto mb-4 h-12 w-12 text-muted-foreground opacity-50" />
             <p className="text-muted-foreground">No imaging records found</p>
           </div>
         ) : (
@@ -97,32 +91,31 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
 
             <TabsContent value="orders" className="space-y-3">
               {orders.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="py-4 text-center text-sm text-muted-foreground">
                   No imaging orders yet
                 </p>
               ) : (
                 orders.map((order: ImagingOrder) => (
                   <div
                     key={order.id}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                     onClick={() => router.push(`/imaging/orders/${order.order_number}`)}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono text-sm font-medium">
-                          {order.order_number}
-                        </span>
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="font-mono text-sm font-medium">{order.order_number}</span>
                         <OrderStatusBadge status={order.status} />
                         <PriorityBadge priority={order.priority} />
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {order.items?.map((item) => item.procedure_name).join(', ') || 'No procedures'}
+                      <p className="truncate text-sm text-muted-foreground">
+                        {order.items?.map((item) => item.procedure_name).join(', ') ||
+                          'No procedures'}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         {formatDate(order.ordered_at)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
+                    <div className="ml-4 flex items-center gap-2">
                       {order.study_instance_uid && (
                         <Button
                           variant="ghost"
@@ -132,7 +125,7 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
                             router.push(`/imaging/studies/${order.study_instance_uid}`);
                           }}
                         >
-                          <Eye className="h-4 w-4 mr-1" />
+                          <Eye className="mr-1 h-4 w-4" />
                           View
                         </Button>
                       )}
@@ -145,7 +138,7 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
                 <Button variant="ghost" className="w-full" asChild>
                   <Link href={`/imaging?patient=${patientId}`}>
                     View All Orders
-                    <ExternalLink className="h-4 w-4 ml-2" />
+                    <ExternalLink className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               )}
@@ -153,20 +146,20 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
 
             <TabsContent value="images" className="space-y-3">
               {studies.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="py-4 text-center text-sm text-muted-foreground">
                   No DICOM images available
                 </p>
               ) : (
                 studies.map((study: DICOMStudy) => (
                   <div
                     key={study.study_instance_uid}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                     onClick={() => router.push(`/imaging/studies/${study.study_instance_uid}`)}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="mb-1 flex items-center gap-2">
                         <ModalityBadge modality={study.modality as ImagingModality} />
-                        <span className="text-sm font-medium truncate">
+                        <span className="truncate text-sm font-medium">
                           {study.study_description || 'Unknown Study'}
                         </span>
                       </div>
@@ -182,7 +175,7 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
                         router.push(`/imaging/studies/${study.study_instance_uid}`);
                       }}
                     >
-                      <Eye className="h-4 w-4 mr-1" />
+                      <Eye className="mr-1 h-4 w-4" />
                       View
                     </Button>
                   </div>

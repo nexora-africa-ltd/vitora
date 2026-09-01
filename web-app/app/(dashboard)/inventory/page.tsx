@@ -108,20 +108,20 @@ export default function InventoryOverviewPage() {
           return (
             <Card
               key={section.href}
-              className="relative overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+              className="relative cursor-pointer overflow-hidden transition-colors hover:border-primary/50"
               onClick={() => router.push(section.href)}
             >
               <div
                 className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
                 aria-hidden="true"
               />
-              <CardContent className="relative p-4 sm:p-5 flex items-start gap-3">
-                <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+              <CardContent className="relative flex items-start gap-3 p-4 sm:p-5">
+                <div className="shrink-0 rounded-lg bg-primary/10 p-2">
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium text-sm">{section.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
+                  <p className="text-sm font-medium">{section.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{section.description}</p>
                 </div>
               </CardContent>
             </Card>

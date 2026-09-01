@@ -14,11 +14,7 @@ export default function ReportDetailPage({ params }: ReportDetailPageProps) {
   const { refresh, isRefreshing } = usePageRefresh();
 
   return (
-    <PullToRefresh
-      onRefresh={refresh}
-      isRefreshing={isRefreshing}
-      className="min-h-full"
-    >
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <DiagnosticReportDetail reportNumber={reportNumber} />
     </PullToRefresh>
   );

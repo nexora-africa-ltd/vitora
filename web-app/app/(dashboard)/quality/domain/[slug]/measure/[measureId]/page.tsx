@@ -92,7 +92,7 @@ export default function MeasureFacilityDrilldownPage() {
     return (
       <div className="space-y-4 sm:space-y-6">
         <PageHeader title="Measure Performance" />
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-20" />
           ))}
@@ -128,12 +128,14 @@ export default function MeasureFacilityDrilldownPage() {
         {measure && (
           <Card>
             <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs font-mono text-muted-foreground">{measure.code}</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">{measure.description || 'No description'}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{measure.code}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {measure.description || 'No description'}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   {measure.target_percentage && (
                     <Badge variant="outline" className="gap-1">
                       <Target className="h-3 w-3" />
@@ -148,9 +150,9 @@ export default function MeasureFacilityDrilldownPage() {
         )}
 
         {/* Summary Stats */}
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <Card>
-            <CardContent className="p-4 flex items-center gap-3">
+            <CardContent className="flex items-center gap-3 p-4">
               <CircularProgress
                 value={avgPerformance}
                 size={48}
@@ -182,9 +184,7 @@ export default function MeasureFacilityDrilldownPage() {
               <p className="text-xs text-muted-foreground">Meeting Target</p>
               <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                 {meetingTarget}
-                <span className="text-sm font-normal text-muted-foreground">
-                  /{totalClinics}
-                </span>
+                <span className="text-sm font-normal text-muted-foreground">/{totalClinics}</span>
               </p>
             </CardContent>
           </Card>
@@ -193,10 +193,11 @@ export default function MeasureFacilityDrilldownPage() {
         {/* Per-Facility Table */}
         {clinicResults.length === 0 ? (
           <Card className="p-6">
-            <div className="flex flex-col items-center text-center gap-2">
+            <div className="flex flex-col items-center gap-2 text-center">
               <Building2 className="h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                No facility-level results for this measure in {year}. Run an evaluation to generate results.
+                No facility-level results for this measure in {year}. Run an evaluation to generate
+                results.
               </p>
             </div>
           </Card>
@@ -212,8 +213,8 @@ export default function MeasureFacilityDrilldownPage() {
                 sortable: true,
                 cell: (item) => (
                   <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="font-medium text-sm">{item.clinic_name}</span>
+                    <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm font-medium">{item.clinic_name}</span>
                   </div>
                 ),
               },
@@ -248,7 +249,7 @@ export default function MeasureFacilityDrilldownPage() {
                   return (
                     <div className="flex items-center gap-2">
                       <span className={`font-semibold ${color}`}>{pct.toFixed(1)}%</span>
-                      <Progress value={pct} className="w-16 h-2 hidden sm:block" />
+                      <Progress value={pct} className="hidden h-2 w-16 sm:block" />
                     </div>
                   );
                 },
@@ -286,26 +287,29 @@ export default function MeasureFacilityDrilldownPage() {
               const pct = parseFloat(item.percentage);
               return (
                 <Card className="p-3">
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div className="mb-1.5 flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium text-sm">{item.clinic_name}</p>
+                      <p className="text-sm font-medium">{item.clinic_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {item.period_type === 'QUARTERLY' ? `Q${item.period}` : `Month ${item.period}`} {item.year}
+                        {item.period_type === 'QUARTERLY'
+                          ? `Q${item.period}`
+                          : `Month ${item.period}`}{' '}
+                        {item.year}
                       </p>
                     </div>
                     {item.meets_target ? (
                       <Badge className="shrink-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        <CheckCircle2 className="mr-1 h-3 w-3" />
                         Met
                       </Badge>
                     ) : (
                       <Badge variant="destructive" className="shrink-0">
-                        <XCircle className="h-3 w-3 mr-1" />
+                        <XCircle className="mr-1 h-3 w-3" />
                         Not Met
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-2">
+                  <div className="mt-2 flex items-center gap-3">
                     <span className="text-lg font-bold">{pct.toFixed(1)}%</span>
                     <span className="text-xs text-muted-foreground">
                       {item.numerator}/{item.denominator}

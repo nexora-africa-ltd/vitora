@@ -7,15 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import {
-  Plus,
-  ScanLine,
-  ExternalLink,
-  Clock,
-  Calendar,
-  ImageIcon,
-  Send,
-} from 'lucide-react';
+import { Plus, ScanLine, ExternalLink, Clock, Calendar, ImageIcon, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -35,16 +27,9 @@ import {
 } from '@/lib/hooks/use-imaging';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateTime } from '@/lib/utils/format';
-import {
-  OrderStatusBadge,
-  PriorityBadge,
-  ModalityBadge,
-} from '@/components/imaging';
+import { OrderStatusBadge, PriorityBadge, ModalityBadge } from '@/components/imaging';
 import { ImagingOrderForm } from '@/components/imaging/imaging-order-form';
-import type {
-  ImagingOrder,
-  ExternalImagingRequest,
-} from '@/lib/types/imaging';
+import type { ImagingOrder, ExternalImagingRequest } from '@/lib/types/imaging';
 
 interface EncounterImagingOrdersProps {
   encounterId: number;
@@ -77,7 +62,7 @@ export function EncounterImagingOrders({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <ScanLine className="h-5 w-5" />
             Imaging Orders
           </CardTitle>
@@ -96,15 +81,13 @@ export function EncounterImagingOrders({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <ScanLine className="h-5 w-5" />
             Imaging Orders
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Failed to load imaging orders.
-          </p>
+          <p className="text-sm text-muted-foreground">Failed to load imaging orders.</p>
         </CardContent>
       </Card>
     );
@@ -124,32 +107,26 @@ export function EncounterImagingOrders({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <ScanLine className="h-5 w-5" />
             Imaging Orders
             {ordersList.length + externalRequestsList.length > 0 && (
               <Badge variant="secondary">{ordersList.length + externalRequestsList.length}</Badge>
             )}
           </CardTitle>
-          <Button
-            size="sm"
-            onClick={() => setShowOrderForm(true)}
-            disabled={disabled}
-          >
-            <Plus className="h-4 w-4 mr-1" />
+          <Button size="sm" onClick={() => setShowOrderForm(true)} disabled={disabled}>
+            <Plus className="mr-1 h-4 w-4" />
             Order Imaging
           </Button>
         </div>
-        <CardDescription>
-          X-ray, ultrasound, CT, MRI and other diagnostic imaging
-        </CardDescription>
+        <CardDescription>X-ray, ultrasound, CT, MRI and other diagnostic imaging</CardDescription>
       </CardHeader>
 
       <CardContent>
         {ordersList.length === 0 && externalRequestsList.length === 0 ? (
           <div className="py-8 text-center">
-            <ImageIcon className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground mb-4">
+            <ImageIcon className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+            <p className="mb-4 text-sm text-muted-foreground">
               No imaging orders for this encounter
             </p>
             <Button
@@ -158,7 +135,7 @@ export function EncounterImagingOrders({
               onClick={() => setShowOrderForm(true)}
               disabled={disabled}
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               Create First Order
             </Button>
           </div>
@@ -207,7 +184,7 @@ export function EncounterImagingOrders({
           <div className="flex flex-col gap-2">
             <Link
               href={`/imaging?encounter=${encounterId}`}
-              className="text-sm text-primary hover:underline flex items-center gap-1"
+              className="flex items-center gap-1 text-sm text-primary hover:underline"
             >
               View all imaging orders
               <ExternalLink className="h-3 w-3" />
@@ -215,7 +192,7 @@ export function EncounterImagingOrders({
             {externalRequestsList.length > 0 && (
               <Link
                 href="/imaging/standalone/external-orders"
-                className="text-sm text-primary hover:underline flex items-center gap-1"
+                className="flex items-center gap-1 text-sm text-primary hover:underline"
               >
                 Review external request queue
                 <ExternalLink className="h-3 w-3" />
@@ -227,7 +204,7 @@ export function EncounterImagingOrders({
 
       {/* New Imaging Order Sheet */}
       <Sheet open={showOrderForm} onOpenChange={setShowOrderForm}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+        <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
           <SheetHeader className="sr-only">
             <SheetTitle>New Imaging Order</SheetTitle>
           </SheetHeader>
@@ -253,11 +230,11 @@ function ImagingOrderCard({ order }: { order: ImagingOrder }) {
   return (
     <Link
       href={`/imaging/orders/${order.order_number}`}
-      className="block p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+      className="block rounded-lg border p-3 transition-colors hover:bg-muted/50"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="space-y-1 flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-sm">{order.order_number}</span>
             <PriorityBadge priority={order.priority} showIcon={false} />
             <OrderStatusBadge status={order.status} />
@@ -265,25 +242,17 @@ function ImagingOrderCard({ order }: { order: ImagingOrder }) {
 
           <div className="flex flex-wrap gap-1">
             {order.items.slice(0, 3).map((item) => (
-              <ModalityBadge
-                key={item.id}
-                modality={item.modality}
-                size="sm"
-              />
+              <ModalityBadge key={item.id} modality={item.modality} size="sm" />
             ))}
             {order.items.length > 3 && (
-              <span className="text-xs text-muted-foreground">
-                +{order.items.length - 3} more
-              </span>
+              <span className="text-xs text-muted-foreground">+{order.items.length - 3} more</span>
             )}
           </div>
 
-          <p className="text-sm text-muted-foreground line-clamp-1">
-            {order.clinical_indication}
-          </p>
+          <p className="line-clamp-1 text-sm text-muted-foreground">{order.clinical_indication}</p>
         </div>
 
-        <div className="text-right shrink-0">
+        <div className="shrink-0 text-right">
           {order.scheduled_datetime ? (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Calendar className="h-3 w-3" />
@@ -357,15 +326,15 @@ export function EncounterImagingOrdersContent({
       {!disabled && (
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setShowOrderForm(true)}>
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="mr-1 h-4 w-4" />
             Order Imaging
           </Button>
         </div>
       )}
 
       {ordersList.length === 0 && externalRequestsList.length === 0 ? (
-        <div className="text-center py-4 text-muted-foreground">
-          <ScanLine className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <div className="py-4 text-center text-muted-foreground">
+          <ScanLine className="mx-auto mb-2 h-8 w-8 opacity-50" />
           <p className="text-sm">No imaging orders for this encounter</p>
         </div>
       ) : (
@@ -411,7 +380,7 @@ export function EncounterImagingOrdersContent({
 
       {/* New Imaging Order Sheet */}
       <Sheet open={showOrderForm} onOpenChange={setShowOrderForm}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+        <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
           <SheetHeader className="sr-only">
             <SheetTitle>New Imaging Order</SheetTitle>
           </SheetHeader>
@@ -442,29 +411,29 @@ function ExternalRequestCard({ request }: { request: ExternalImagingRequest }) {
   };
 
   return (
-    <div className="block p-3 border rounded-lg bg-muted/20">
+    <div className="block rounded-lg border bg-muted/20 p-3">
       <div className="flex items-start justify-between gap-2">
-        <div className="space-y-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-sm">{request.placer_order_number}</span>
             <Badge className={colorByStatus[request.status] || ''}>{request.status}</Badge>
             <Badge variant="outline" className="text-[10px]">
-              <Send className="h-2.5 w-2.5 mr-0.5" /> External
+              <Send className="mr-0.5 h-2.5 w-2.5" /> External
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground line-clamp-1">{request.clinical_indication}</p>
+          <p className="line-clamp-1 text-sm text-muted-foreground">
+            {request.clinical_indication}
+          </p>
           {request.rejection_reason && (
-            <p className="text-xs text-red-600 line-clamp-1">Reason: {request.rejection_reason}</p>
+            <p className="line-clamp-1 text-xs text-red-600">Reason: {request.rejection_reason}</p>
           )}
         </div>
-        <div className="text-xs text-muted-foreground">
-          {formatDateTime(request.created_at)}
-        </div>
+        <div className="text-xs text-muted-foreground">{formatDateTime(request.created_at)}</div>
       </div>
       {request.imaging_order_number && (
         <Link
           href={`/imaging/orders/${request.imaging_order_number}`}
-          className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-2"
+          className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
         >
           View created order
           <ExternalLink className="h-3 w-3" />

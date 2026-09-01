@@ -1,12 +1,6 @@
 'use client';
 
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  useMemo,
-  memo,
-} from 'react';
+import React, { useState, useRef, useEffect, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -25,22 +19,9 @@ import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import { usePeekPanelStore } from '@/lib/stores/peek-panel-store';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ScrollMoreButton } from '@/components/ui/scroll-more-button';
 import { useLogout } from '@/lib/auth/hooks';
@@ -108,14 +89,11 @@ function SidebarLogo({ collapsed }: { collapsed: boolean }) {
   // Show placeholder during SSR/hydration
   if (!mounted) {
     return (
-      <div className={cn(
-        'flex items-center',
-        collapsed ? 'justify-center' : 'w-full'
-      )}>
+      <div className={cn('flex items-center', collapsed ? 'justify-center' : 'w-full')}>
         {collapsed ? (
-          <div className="h-12 w-12 rounded-md bg-muted animate-pulse" />
+          <div className="h-12 w-12 animate-pulse rounded-md bg-muted" />
         ) : (
-          <div className="h-12 w-full rounded bg-muted animate-pulse" />
+          <div className="h-12 w-full animate-pulse rounded bg-muted" />
         )}
       </div>
     );
@@ -147,10 +125,7 @@ function SidebarLogo({ collapsed }: { collapsed: boolean }) {
 // Hooks
 // -----------------------------------------------------------------------------
 
-function useSidebarPersistence(
-  collapsed: boolean,
-  onCollapse: (collapsed: boolean) => void
-) {
+function useSidebarPersistence(collapsed: boolean, onCollapse: (collapsed: boolean) => void) {
   useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
     if (stored !== null) onCollapse(stored === 'true');
@@ -164,11 +139,7 @@ function useSidebarPersistence(
 function useIsActive(href: string, pathname: string, searchParamsString: string) {
   return useMemo(() => {
     if (href === '/') {
-      return (
-        pathname === '/' ||
-        pathname === '/dashboard' ||
-        pathname.startsWith('/dashboard/')
-      );
+      return pathname === '/' || pathname === '/dashboard' || pathname.startsWith('/dashboard/');
     }
     const [hrefPath, hrefQuery] = href.split('?');
 
@@ -199,7 +170,9 @@ const GENDER_SHORT_LABELS: Record<string, string> = {
   O: 'Other',
 };
 
-const STAGE_STATUS_CONFIG: Partial<Record<string, { label: string; description: string; dotClassName: string }>> = {
+const STAGE_STATUS_CONFIG: Partial<
+  Record<string, { label: string; description: string; dotClassName: string }>
+> = {
   REGISTERED: {
     label: 'Registered',
     description: 'Patient has been registered in the system.',
@@ -343,11 +316,16 @@ const STAGE_STATUS_CONFIG: Partial<Record<string, { label: string; description: 
 };
 
 function getStageStatus(stage: string) {
-  return STAGE_STATUS_CONFIG[stage] ?? {
-    label: stage.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase()),
-    description: 'Patient journey stage is currently active.',
-    dotClassName: 'bg-slate-400',
-  };
+  return (
+    STAGE_STATUS_CONFIG[stage] ?? {
+      label: stage
+        .replace(/_/g, ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, (char) => char.toUpperCase()),
+      description: 'Patient journey stage is currently active.',
+      dotClassName: 'bg-slate-400',
+    }
+  );
 }
 
 function StageStatusDot({ stage }: { stage: string }) {
@@ -364,8 +342,18 @@ function StageStatusDot({ stage }: { stage: string }) {
               className="relative inline-flex h-4 w-4 items-center justify-center rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               aria-label={status.label}
             >
-              <span className={cn('absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full opacity-75', pulseClassName)} />
-              <span className={cn('relative inline-flex h-2.5 w-2.5 rounded-full shadow-sm', status.dotClassName)} />
+              <span
+                className={cn(
+                  'absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full opacity-75',
+                  pulseClassName
+                )}
+              />
+              <span
+                className={cn(
+                  'relative inline-flex h-2.5 w-2.5 rounded-full shadow-sm',
+                  status.dotClassName
+                )}
+              />
             </button>
           </PopoverTrigger>
         </TooltipTrigger>
@@ -373,7 +361,12 @@ function StageStatusDot({ stage }: { stage: string }) {
       </Tooltip>
       <PopoverContent align="end" className="w-56 p-3">
         <div className="flex items-start gap-3">
-          <span className={cn('mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 rounded-full', status.dotClassName)} />
+          <span
+            className={cn(
+              'mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 rounded-full',
+              status.dotClassName
+            )}
+          />
           <div className="space-y-1">
             <p className="text-sm font-semibold text-foreground">{status.label}</p>
             <p className="text-xs leading-relaxed text-muted-foreground">{status.description}</p>
@@ -399,19 +392,25 @@ function CurrentPatientCard({ onMobileClose }: { onMobileClose: () => void }) {
     }
   }, [currentPatient?.id, dismissedPatientId]);
 
-  if (!currentPatient || !canAccessModule('patients' as never) || dismissedPatientId === currentPatient.id) {
+  if (
+    !currentPatient ||
+    !canAccessModule('patients' as never) ||
+    dismissedPatientId === currentPatient.id
+  ) {
     return null;
   }
 
   const age = currentPatient.date_of_birth ? calculateAge(currentPatient.date_of_birth) : null;
   const gender = currentPatient.gender
-    ? GENDER_SHORT_LABELS[currentPatient.gender] ?? currentPatient.gender
+    ? (GENDER_SHORT_LABELS[currentPatient.gender] ?? currentPatient.gender)
     : null;
-  const demographics = [currentPatient.mrn, age !== null ? `${age}y` : null, gender].filter(Boolean);
+  const demographics = [currentPatient.mrn, age !== null ? `${age}y` : null, gender].filter(
+    Boolean
+  );
 
   return (
     <section className="px-3 pb-3" aria-label="Current patient" data-testid="current-patient-card">
-      <div className="relative overflow-hidden rounded-2xl border border-cyan-500/15 bg-gradient-to-br from-cyan-500/8 via-card to-card p-3 shadow-sm">
+      <div className="from-cyan-500/8 relative overflow-hidden rounded-2xl border border-cyan-500/15 bg-gradient-to-br via-card to-card p-3 shadow-sm">
         <button
           type="button"
           aria-label="Dismiss current patient card"
@@ -435,8 +434,12 @@ function CurrentPatientCard({ onMobileClose }: { onMobileClose: () => void }) {
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-foreground">{currentPatient.name}</p>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">{demographics.join(' • ')}</p>
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {currentPatient.name}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {demographics.join(' • ')}
+                </p>
               </div>
             </div>
           </div>
@@ -462,9 +465,18 @@ function CurrentPatientCard({ onMobileClose }: { onMobileClose: () => void }) {
           </Button>
 
           <div className="flex items-center gap-2">
-            {currentPatient.encounter_id && (currentPatient.stage === 'AWAITING_TRIAGE' || currentPatient.stage === 'IN_TRIAGE') ? (
-              <Button asChild size="sm" variant="outline" className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30">
-                <Link href={`/triage/assess/${currentPatient.id}/${currentPatient.encounter_id}/vitals`} onClick={onMobileClose}>
+            {currentPatient.encounter_id &&
+            (currentPatient.stage === 'AWAITING_TRIAGE' || currentPatient.stage === 'IN_TRIAGE') ? (
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+              >
+                <Link
+                  href={`/triage/assess/${currentPatient.id}/${currentPatient.encounter_id}/vitals`}
+                  onClick={onMobileClose}
+                >
                   <Activity className="h-3.5 w-3.5" />
                   Triage
                 </Link>
@@ -536,15 +548,19 @@ const NavLink = memo(function NavLink({
         collapsed && 'justify-center px-0'
       )}
     >
-      <div className={cn(
-        'relative flex shrink-0 items-center justify-center rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)]',
-        collapsed ? 'h-10 w-10' : 'h-8 w-8',
-        'group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm'
-      )}>
-        <Icon className={cn(
-          'transition-transform duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] group-hover:scale-110',
-          collapsed ? 'h-6 w-6' : 'h-5 w-5'
-        )} />
+      <div
+        className={cn(
+          'ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] relative flex shrink-0 items-center justify-center rounded-lg transition-all duration-300',
+          collapsed ? 'h-10 w-10' : 'h-8 w-8',
+          'group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm'
+        )}
+      >
+        <Icon
+          className={cn(
+            'ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] transition-transform duration-300 group-hover:scale-110',
+            collapsed ? 'h-6 w-6' : 'h-5 w-5'
+          )}
+        />
         {/* Collapsed: show dot indicator */}
         {collapsed && badgeCount > 0 && (
           <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
@@ -598,9 +614,7 @@ const NavGroup = memo(function NavGroup({
   const hasActiveChild = useMemo(
     () =>
       item.children.some(
-        (child) =>
-          pathname === child.href ||
-          pathname.startsWith(`${child.href}/`)
+        (child) => pathname === child.href || pathname.startsWith(`${child.href}/`)
       ),
     [item.children, pathname]
   );
@@ -624,8 +638,8 @@ const NavGroup = memo(function NavGroup({
                 : 'text-muted-foreground hover:bg-cyan-500/10'
             )}
           >
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm">
-              <Icon className="h-6 w-6 transition-transform duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] group-hover:scale-110" />
+            <div className="ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm">
+              <Icon className="ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] h-6 w-6 transition-transform duration-300 group-hover:scale-110" />
               {groupBadgeCount > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
               )}
@@ -649,14 +663,14 @@ const NavGroup = memo(function NavGroup({
       <CollapsibleTrigger asChild>
         <button
           className={cn(
-            'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(0.4,_0,_0.2,_1)]',
+            'ease-[cubic-bezier(0.4,_0,_0.2,_1)] group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200',
             hasActiveChild
               ? 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-300'
               : 'text-muted-foreground hover:text-cyan-600 dark:hover:text-cyan-300'
           )}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm">
-            <Icon className="h-5 w-5 transition-transform duration-300 ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] group-hover:scale-110" />
+          <div className="ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:bg-cyan-500/15 group-hover:shadow-sm">
+            <Icon className="ease-[cubic-bezier(0.34,_1.56,_0.64,_1)] h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
           </div>
           <span className="flex-1 text-left">{item.label}</span>
           {groupBadgeCount > 0 && !isOpen && (
@@ -664,12 +678,7 @@ const NavGroup = memo(function NavGroup({
               {groupBadgeCount > 99 ? '99+' : groupBadgeCount}
             </span>
           )}
-          <ChevronDown
-            className={cn(
-              'h-4 w-4 transition-transform',
-              isOpen && 'rotate-180'
-            )}
-          />
+          <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
         </button>
       </CollapsibleTrigger>
 
@@ -695,12 +704,7 @@ const NavGroup = memo(function NavGroup({
 // Sidebar
 // -----------------------------------------------------------------------------
 
-export function Sidebar({
-  collapsed,
-  onCollapse,
-  mobileOpen,
-  onMobileClose,
-}: SidebarProps) {
+export function Sidebar({ collapsed, onCollapse, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const logout = useLogout();
@@ -723,7 +727,9 @@ export function Sidebar({
     const scrollArea = navScrollAreaRef.current;
     if (!scrollArea) return;
 
-    const viewport = scrollArea.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+    const viewport = scrollArea.querySelector(
+      '[data-radix-scroll-area-viewport]'
+    ) as HTMLElement | null;
     if (!viewport) return;
 
     // Restore persisted scroll position
@@ -745,14 +751,11 @@ export function Sidebar({
     return () => viewport.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const activeParent = useMemo(
-    () => findParentForPath(pathname),
-    [pathname]
-  );
+  const activeParent = useMemo(() => findParentForPath(pathname), [pathname]);
 
   // Also track which filtered parent labels exist so we don't auto-open removed items
   const filteredParentLabels = useMemo(
-    () => new Set(filteredNavItems.filter(hasChildren).map(i => i.label)),
+    () => new Set(filteredNavItems.filter(hasChildren).map((i) => i.label)),
     [filteredNavItems]
   );
 
@@ -764,7 +767,9 @@ export function Sidebar({
         try {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) return parsed;
-        } catch { /* ignore parse errors */ }
+        } catch {
+          /* ignore parse errors */
+        }
       }
     }
     return activeParent ? [activeParent] : [];
@@ -781,7 +786,11 @@ export function Sidebar({
     // Auto-open the current parent when navigation changes into a new section,
     // but do not force it to stay open (users should be able to collapse it
     // even if a child route is currently active).
-    if (activeParent && filteredParentLabels.has(activeParent) && lastAutoOpenedParentRef.current !== activeParent) {
+    if (
+      activeParent &&
+      filteredParentLabels.has(activeParent) &&
+      lastAutoOpenedParentRef.current !== activeParent
+    ) {
       setOpenMenus((prev) => (prev.includes(activeParent) ? prev : [...prev, activeParent]));
       lastAutoOpenedParentRef.current = activeParent;
     }
@@ -791,7 +800,7 @@ export function Sidebar({
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-dvh border-r bg-card/95 backdrop-blur overscroll-contain',
+          'fixed left-0 top-0 z-50 h-dvh overscroll-contain border-r bg-card/95 backdrop-blur',
           'transition-transform duration-300 ease-out',
           'w-full xl:w-auto',
           effectiveCollapsed ? 'xl:w-20' : 'xl:w-64',
@@ -799,14 +808,14 @@ export function Sidebar({
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="flex h-20 items-center justify-between px-3 mt-2">
+          <div className="mt-2 flex h-20 items-center justify-between px-3">
             <Link href="/" className="flex flex-1 items-center py-2">
               <SidebarLogo collapsed={effectiveCollapsed} />
             </Link>
             <Button
               variant="ghost"
               size="icon"
-              className="xl:hidden shrink-0"
+              className="shrink-0 xl:hidden"
               onClick={onMobileClose}
               aria-label="Close sidebar"
             >
@@ -820,8 +829,8 @@ export function Sidebar({
           {!effectiveCollapsed && (
             <div
               className={cn(
-                "flex shrink-0 justify-end px-3 pb-1",
-                openMenus.length === 0 && "hidden"
+                'flex shrink-0 justify-end px-3 pb-1',
+                openMenus.length === 0 && 'hidden'
               )}
               suppressHydrationWarning
             >
@@ -842,7 +851,7 @@ export function Sidebar({
             </div>
           )}
 
-          <div className="relative flex-1 min-h-0">
+          <div className="relative min-h-0 flex-1">
             {/* Top fade gradient when scrolled */}
             <div
               className={cn(
@@ -852,7 +861,7 @@ export function Sidebar({
             />
             <ScrollArea
               ref={navScrollAreaRef}
-              className="h-full min-h-0 px-3 [&_[data-slot=scroll-area-viewport]]:overscroll-contain [&_[data-slot=scroll-area-viewport]]:touch-pan-y"
+              className="h-full min-h-0 px-3 [&_[data-slot=scroll-area-viewport]]:touch-pan-y [&_[data-slot=scroll-area-viewport]]:overscroll-contain"
             >
               <div className="space-y-1 py-2">
                 {filteredNavItems.map((item) =>
@@ -980,7 +989,7 @@ export function Sidebar({
                     onClick={() => onCollapse(!collapsed)}
                     aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     className={cn(
-                      'hidden xl:inline-flex h-9 items-center justify-center rounded-md text-muted-foreground transition-colors',
+                      'hidden h-9 items-center justify-center rounded-md text-muted-foreground transition-colors xl:inline-flex',
                       'hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300',
                       collapsed ? 'w-full' : 'w-full',
                       collapsed && 'rotate-180'
@@ -989,9 +998,7 @@ export function Sidebar({
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  {collapsed ? 'Expand' : 'Collapse'}
-                </TooltipContent>
+                <TooltipContent side="right">{collapsed ? 'Expand' : 'Collapse'}</TooltipContent>
               </Tooltip>
             </div>
           </div>

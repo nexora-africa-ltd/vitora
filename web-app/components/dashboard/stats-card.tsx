@@ -52,11 +52,14 @@ export function StatsCard({
       variant={href ? 'interactive' : 'elevated'}
       className={cn('relative h-full overflow-hidden border-border/60', href && 'cursor-pointer')}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+        aria-hidden="true"
+      />
       <CardContent className="relative flex h-full flex-col p-3.5 sm:p-5 md:p-6">
         {loading ? (
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-1 flex-col">
+            <div className="mb-4 flex items-center justify-between">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-10 w-10 rounded-lg" />
             </div>
@@ -67,14 +70,28 @@ export function StatsCard({
           </div>
         ) : (
           <>
-            <div className="mb-2 sm:mb-4 flex items-start justify-between gap-2 sm:gap-3">
-              <p className="min-w-0 text-xs sm:text-sm font-medium text-muted-foreground text-pretty">{title}</p>
-              <div className={cn('shrink-0 rounded-lg sm:rounded-xl border p-1.5 sm:p-2.5', iconBgColors[variant])}>
+            <div className="mb-2 flex items-start justify-between gap-2 sm:mb-4 sm:gap-3">
+              <p className="min-w-0 text-pretty text-xs font-medium text-muted-foreground sm:text-sm">
+                {title}
+              </p>
+              <div
+                className={cn(
+                  'shrink-0 rounded-lg border p-1.5 sm:rounded-xl sm:p-2.5',
+                  iconBgColors[variant]
+                )}
+              >
                 <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
               </div>
             </div>
             <div className="mt-auto space-y-1 sm:space-y-1.5">
-              <p className={cn('text-xl font-bold tracking-tight tabular-nums sm:text-2xl md:text-3xl', valueClassName)}>{value}</p>
+              <p
+                className={cn(
+                  'text-xl font-bold tabular-nums tracking-tight sm:text-2xl md:text-3xl',
+                  valueClassName
+                )}
+              >
+                {value}
+              </p>
               {meta && (
                 <div className="min-w-0 text-sm text-muted-foreground">
                   {typeof meta === 'string' ? <span>{meta}</span> : meta}
@@ -83,14 +100,13 @@ export function StatsCard({
               {description && (
                 <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
                   {showTrendIndicator && (
-                    <TrendIndicator
-                      value={0}
-                      direction={trend}
-                      showPercentage={false}
-                      size="sm"
-                    />
+                    <TrendIndicator value={0} direction={trend} showPercentage={false} size="sm" />
                   )}
-                  {typeof description === 'string' ? <span className="min-w-0 text-pretty">{description}</span> : description}
+                  {typeof description === 'string' ? (
+                    <span className="min-w-0 text-pretty">{description}</span>
+                  ) : (
+                    description
+                  )}
                 </div>
               )}
             </div>

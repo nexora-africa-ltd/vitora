@@ -35,6 +35,18 @@ import { calculateAge } from '@/lib/utils/format';
 import type { AIQuickAction, AILabResultItem } from '@/lib/types/ai';
 
 type Attachment = { id: number; file: string; file_name: string; uploaded_at?: string };
+type LabResultDetail = {
+  attachments?: Attachment[];
+  verification_status?: string;
+  status?: string;
+  encounter_id?: number | null;
+  patient_date_of_birth?: string | null;
+  patient_gender?: string | null;
+  is_critical?: boolean;
+  is_critical_result?: boolean;
+  critical_values?: string[];
+  components?: Array<{ name?: string; reference_range?: string; value?: string; unit?: string }>;
+};
 
 // =============================================================================
 // Lab Result Quick Actions for AI Chat Widget
@@ -52,7 +64,7 @@ const LAB_QUICK_ACTIONS: AIQuickAction[] = [
     id: 'lab-clinical-significance',
     label: 'Clinical significance',
     query:
-      'Explain the clinical significance of these lab results in the context of the patient\'s current diagnosis and history. Highlight any values that need urgent attention.',
+      "Explain the clinical significance of these lab results in the context of the patient's current diagnosis and history. Highlight any values that need urgent attention.",
     userMessage: '\uD83D\uDCA1 Assessing clinical significance...',
   },
   {
@@ -82,11 +94,12 @@ export default function LabResultDetailPage() {
   const resultQuery = useQuery({
     queryKey: ['labResultDetail', resultId],
     enabled: Boolean(resultId),
-    queryFn: async (): Promise<{ result: any; attachments: Attachment[] }> => {
+    queryFn: async (): Promise<{ result: LabResultDetail; attachments: Attachment[] }> => {
       const data = await laboratoryApi.getResult(resultId);
+      const result = data as LabResultDetail;
 
-      const inlineAttachments: Attachment[] = Array.isArray((data as any)?.attachments)
-        ? ((data as any).attachments as Attachment[])
+      const inlineAttachments: Attachment[] = Array.isArray(result.attachments)
+        ? result.attachments
         : [];
 
       let resolvedAttachments = inlineAttachments;
@@ -97,7 +110,7 @@ export default function LabResultDetailPage() {
         // Keep inline attachments if present
       }
 
-      return { result: data as any, attachments: resolvedAttachments };
+      return { result, attachments: resolvedAttachments };
     },
   });
 
@@ -122,14 +135,13 @@ export default function LabResultDetailPage() {
   };
 
   const statusText = (result?.verification_status || result?.status || 'UNVERIFIED') as string;
-  const isCritical = Boolean((result as any)?.is_critical || (result as any)?.is_critical_result);
-  const criticalValues: string[] = Array.isArray((result as any)?.critical_values)
-    ? (result as any).critical_values
+  const isCritical = Boolean(result?.is_critical || result?.is_critical_result);
+  const criticalValues: string[] = Array.isArray(result?.critical_values)
+    ? result.critical_values
     : [];
-  const components = useMemo<Array<{ name?: string; reference_range?: string; value?: string; unit?: string }>>(
-    () => Array.isArray((result as any)?.components) ? (result as any).components : [],
-    [result],
-  );
+  const components = useMemo<
+    Array<{ name?: string; reference_range?: string; value?: string; unit?: string }>
+  >(() => (Array.isArray(result?.components) ? result.components : []), [result]);
 
   const referenceRanges = (() => {
     // Ensure these common ranges exist for the E2E assertions.
@@ -178,7 +190,9 @@ export default function LabResultDetailPage() {
   useEffect(() => {
     if (!setQuickActions) return;
     setQuickActions(LAB_QUICK_ACTIONS);
-    return () => { setQuickActions([]); };
+    return () => {
+      setQuickActions([]);
+    };
   }, [setQuickActions]);
 
   // Proactive insights for lab context
@@ -202,7 +216,10 @@ export default function LabResultDetailPage() {
     error: proactiveError,
     noInsightsFound: proactiveNoInsights,
     loadedFromCache: proactiveLoadedFromCache,
-  } = useProactiveInsights(proactivePatientCtx, null, { includeLLM: false, cacheKey: `lab_${resultId}` });
+  } = useProactiveInsights(proactivePatientCtx, null, {
+    includeLLM: false,
+    cacheKey: `lab_${resultId}`,
+  });
 
   return (
     <PullToRefresh
@@ -228,178 +245,185 @@ export default function LabResultDetailPage() {
           <div className="text-sm text-destructive">Unable to load result.</div>
         ) : (
           <>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <CardTitle className="text-base">Status</CardTitle>
-              <div className="flex items-center gap-3">
-                <SignatureBadge
-                  documentType="LabResult"
-                  documentId={resultId}
-                  canSign={statusText === 'VERIFIED'}
-                />
-                <Badge variant={statusText === 'VERIFIED' ? 'default' : 'secondary'}>
-                  {statusText === 'VERIFIED' ? 'Verified' : statusText}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Button onClick={() => router.push(`/laboratory/results/${resultId}/edit`)}>Edit</Button>
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline">
-                    <ShieldCheck className="h-4 w-4 mr-2" />
-                    Verify
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <div className="flex items-center gap-2">
-                      <AlertDialogTitle>Verify result</AlertDialogTitle>
-                      <HelpPopover content="Confirm verification of this result. Verification indicates the result has been reviewed and finalized." />
-                    </div>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleVerify}>Confirm</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              <Button variant="outline" onClick={() => setUploadOpen(true)}>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Attachment
-              </Button>
-            </CardContent>
-          </Card>
-
-          {(isCritical || criticalValues.length > 0) && (
-            <Card className="border-destructive/30 bg-destructive/10">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  Critical
-                </CardTitle>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-3">
+                <CardTitle className="text-base">Status</CardTitle>
+                <div className="flex items-center gap-3">
+                  <SignatureBadge
+                    documentType="LabResult"
+                    documentId={resultId}
+                    canSign={statusText === 'VERIFIED'}
+                  />
+                  <Badge variant={statusText === 'VERIFIED' ? 'default' : 'secondary'}>
+                    {statusText === 'VERIFIED' ? 'Verified' : statusText}
+                  </Badge>
+                </div>
               </CardHeader>
-              <CardContent className="text-sm text-destructive">
-                {criticalValues.length > 0 ? (
-                  <ul className="list-disc pl-5 space-y-1">
-                    {criticalValues.map((v) => (
-                      <li key={v}>{v}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>Critical result flagged.</p>
-                )}
+              <CardContent className="flex flex-wrap gap-2">
+                <Button onClick={() => router.push(`/laboratory/results/${resultId}/edit`)}>
+                  Edit
+                </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline">
+                      <ShieldCheck className="mr-2 h-4 w-4" />
+                      Verify
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <div className="flex items-center gap-2">
+                        <AlertDialogTitle>Verify result</AlertDialogTitle>
+                        <HelpPopover content="Confirm verification of this result. Verification indicates the result has been reviewed and finalized." />
+                      </div>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleVerify}>Confirm</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <Button variant="outline" onClick={() => setUploadOpen(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Attachment
+                </Button>
               </CardContent>
             </Card>
-          )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Reference ranges</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              {referenceRanges.map((r) => (
-                <Badge key={r} variant="outline">
-                  {r}
-                </Badge>
-              ))}
-            </CardContent>
-          </Card>
+            {(isCritical || criticalValues.length > 0) && (
+              <Card className="border-destructive/30 bg-destructive/10">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    Critical
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-destructive">
+                  {criticalValues.length > 0 ? (
+                    <ul className="list-disc space-y-1 pl-5">
+                      {criticalValues.map((v) => (
+                        <li key={v}>{v}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>Critical result flagged.</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-          {components.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Components</CardTitle>
+                <CardTitle className="text-base">Reference ranges</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                {components.map((c, idx) => (
-                  <div key={`${c.name || 'component'}-${idx}`} className="text-sm flex flex-wrap gap-2">
-                    <span className="font-medium">{c.name || 'Component'}</span>
-                    {c.value ? <span>{c.value}</span> : null}
-                    {c.unit ? <span className="text-muted-foreground">{c.unit}</span> : null}
-                    {c.reference_range ? (
-                      <span className="text-muted-foreground">({c.reference_range})</span>
-                    ) : null}
-                  </div>
+              <CardContent className="flex flex-wrap gap-2">
+                {referenceRanges.map((r) => (
+                  <Badge key={r} variant="outline">
+                    {r}
+                  </Badge>
                 ))}
               </CardContent>
             </Card>
-          )}
 
-          {/* AI Lab Interpretation (Phase 5) */}
-          {labResultItems.length > 0 && (
-            <LabInterpretPanel
-              labResultId={resultId}
-              encounterId={result?.encounter_id ?? undefined}
-              patientAge={result?.patient_date_of_birth ? calculateAge(result.patient_date_of_birth) : 0}
-              patientSex={result?.patient_gender === 'F' ? 'female' : 'male'}
-              labResults={labResultItems}
-              autoTrigger={autoTriggerInterpret}
-              onAutoTriggerConsumed={() => setAutoTriggerInterpret(false)}
+            {components.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Components</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {components.map((c, idx) => (
+                    <div
+                      key={`${c.name || 'component'}-${idx}`}
+                      className="flex flex-wrap gap-2 text-sm"
+                    >
+                      <span className="font-medium">{c.name || 'Component'}</span>
+                      {c.value ? <span>{c.value}</span> : null}
+                      {c.unit ? <span className="text-muted-foreground">{c.unit}</span> : null}
+                      {c.reference_range ? (
+                        <span className="text-muted-foreground">({c.reference_range})</span>
+                      ) : null}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* AI Lab Interpretation (Phase 5) */}
+            {labResultItems.length > 0 && (
+              <LabInterpretPanel
+                labResultId={resultId}
+                encounterId={result?.encounter_id ?? undefined}
+                patientAge={
+                  result?.patient_date_of_birth ? calculateAge(result.patient_date_of_birth) : 0
+                }
+                patientSex={result?.patient_gender === 'F' ? 'female' : 'male'}
+                labResults={labResultItems}
+                autoTrigger={autoTriggerInterpret}
+                onAutoTriggerConsumed={() => setAutoTriggerInterpret(false)}
+              />
+            )}
+
+            {/* Proactive AI Insights */}
+            <ProactiveInsightsPanel
+              insights={proactiveInsights}
+              onDismiss={dismissProactiveInsight}
+              onDismissAll={dismissAllProactiveInsights}
+              onGenerate={refreshProactiveInsights}
+              isLoading={proactiveLoading}
+              error={proactiveError}
+              noInsightsFound={proactiveNoInsights}
+              loadedFromCache={proactiveLoadedFromCache}
             />
-          )}
 
-          {/* Proactive AI Insights */}
-          <ProactiveInsightsPanel
-            insights={proactiveInsights}
-            onDismiss={dismissProactiveInsight}
-            onDismissAll={dismissAllProactiveInsights}
-            onGenerate={refreshProactiveInsights}
-            isLoading={proactiveLoading}
-            error={proactiveError}
-            noInsightsFound={proactiveNoInsights}
-            loadedFromCache={proactiveLoadedFromCache}
-          />
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Paperclip className="h-4 w-4" />
-                Attachments
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {attachments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No attachments.</p>
-              ) : (
-                attachments.map((a) => (
-                  <div key={a.id} className="text-sm">
-                    {a.file_name}
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Paperclip className="h-4 w-4" />
+                  Attachments
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {attachments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No attachments.</p>
+                ) : (
+                  attachments.map((a) => (
+                    <div key={a.id} className="text-sm">
+                      {a.file_name}
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
 
-      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Upload Attachment</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="result-attachment">Attachment</Label>
-              <Input
-                id="result-attachment"
-                type="file"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-              />
+        <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload Attachment</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="result-attachment">Attachment</Label>
+                <Input
+                  id="result-attachment"
+                  type="file"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setUploadOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpload} disabled={!file}>
+                  Upload
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setUploadOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleUpload} disabled={!file}>
-                Upload
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
       </div>
     </PullToRefresh>
   );

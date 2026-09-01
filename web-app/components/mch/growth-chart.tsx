@@ -92,7 +92,7 @@ const KENYA_VACCINE_SCHEDULE: { ageMonths: number; label: string; dy: number }[]
 function buildChartData(
   percentileLines: Record<string, { x: number; y: number }[]>,
   measurements: GrowthMeasurementListItem[],
-  indicator: GrowthIndicator,
+  indicator: GrowthIndicator
 ) {
   const isHeightAxis = indicator === 'weight_for_height';
   const map = new Map<number, Record<string, number | null>>();
@@ -156,9 +156,7 @@ function buildChartData(
   }
 
   // Sort ascending so Recharts draws a clean line
-  return Array.from(map.values()).sort(
-    (a, b) => (a.x as number) - (b.x as number),
-  );
+  return Array.from(map.values()).sort((a, b) => (a.x as number) - (b.x as number));
 }
 
 /**
@@ -195,7 +193,7 @@ export function GrowthChart({
     if (indicator === 'head_circumference_for_age') return '0_5' as AgeRange;
     // Weight-for-age only goes to 10y
     if (indicator === 'weight_for_age' && (ageRange === '5_19' || ageRange === 'all')) {
-      return ageRange === '5_19' ? '5_10' as AgeRange : 'all' as AgeRange;
+      return ageRange === '5_19' ? ('5_10' as AgeRange) : ('all' as AgeRange);
     }
     return ageRange;
   }, [indicator, ageRange]);
@@ -207,13 +205,13 @@ export function GrowthChart({
   void apiPercentileLines;
   const percentileLines = useMemo(
     () => generatePercentileLines(indicator, displaySex, effectiveAgeRange),
-    [indicator, displaySex, effectiveAgeRange],
+    [indicator, displaySex, effectiveAgeRange]
   );
 
   // Build merged chart data
   const chartData = useMemo(
     () => buildChartData(percentileLines, measurements, indicator),
-    [percentileLines, measurements, indicator],
+    [percentileLines, measurements, indicator]
   );
 
   const isMuac = indicator === 'muac_for_age';
@@ -224,8 +222,7 @@ export function GrowthChart({
   // height-for-age. Both plot a single shaded "healthy road" between the 3rd
   // and 97th centile (≈ ±2 Z) with the median as a target line.
   const [viewMode, setViewMode] = useState<'who' | 'mch_booklet'>('who');
-  const bookletSupported =
-    indicator === 'weight_for_age' || indicator === 'height_for_age';
+  const bookletSupported = indicator === 'weight_for_age' || indicator === 'height_for_age';
   const booklet = viewMode === 'mch_booklet' && bookletSupported;
 
   // For MUAC we have no WHO LMS bands — synthesise an age span (0–60 months)
@@ -294,11 +291,8 @@ export function GrowthChart({
   const handlePrint = () => {
     if (typeof window === 'undefined') return;
     // Extract the live Recharts <svg> from the on-screen container.
-    const svg = chartContainerRef.current?.querySelector('svg') as
-      | SVGSVGElement
-      | null;
-    const resolvedName =
-      patientName ?? measurements[0]?.patient_name ?? undefined;
+    const svg = chartContainerRef.current?.querySelector('svg') as SVGSVGElement | null;
+    const resolvedName = patientName ?? measurements[0]?.patient_name ?? undefined;
     printGrowthBooklet({
       chartSvgElement: svg,
       indicatorLabel: meta.label,
@@ -315,7 +309,7 @@ export function GrowthChart({
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-lg font-semibold">{meta.label}</h3>
           <Badge variant={displaySex === 'M' ? 'default' : 'secondary'} className="text-xs">
             {displaySex === 'M' ? 'Boys' : 'Girls'} reference
@@ -327,7 +321,7 @@ export function GrowthChart({
           )}
           <HelpPopover content="WHO growth chart showing the child's measurements against international reference standards. The reference bands are sex-specific: switch the Boys/Girls toggle to compare. Green zone is normal (-1 to +1 Z), yellow is mild concern (-2 to -1), orange is moderate (-3 to -2), red is severe (below -3)." />
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           {bookletSupported && (
             <div className="inline-flex rounded-md border bg-muted/30 p-0.5">
               <Button
@@ -391,11 +385,11 @@ export function GrowthChart({
         {booklet ? (
           <>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-green-500/30 border border-green-600" />
+              <div className="h-3 w-3 rounded-full border border-green-600 bg-green-500/30" />
               <span>Healthy road (3rd–97th centile)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-4 h-0.5 bg-green-700" />
+              <div className="h-0.5 w-4 bg-green-700" />
               <span>Median (target)</span>
             </div>
             <div className="flex items-center gap-1">
@@ -406,40 +400,40 @@ export function GrowthChart({
         ) : isMuac ? (
           <>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-500/30 border border-red-500" />
+              <div className="h-3 w-3 rounded-full border border-red-500 bg-red-500/30" />
               <span>SAM (&lt; 11.5 cm)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-yellow-500/30 border border-yellow-500" />
+              <div className="h-3 w-3 rounded-full border border-yellow-500 bg-yellow-500/30" />
               <span>MAM (11.5–12.4 cm)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-green-500/30 border border-green-500" />
+              <div className="h-3 w-3 rounded-full border border-green-500 bg-green-500/30" />
               <span>Normal (≥ 12.5 cm)</span>
             </div>
           </>
         ) : (
           <>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-500/30 border border-red-500" />
+              <div className="h-3 w-3 rounded-full border border-red-500 bg-red-500/30" />
               <span>Severe (&lt; -3 Z)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-orange-500/30 border border-orange-500" />
+              <div className="h-3 w-3 rounded-full border border-orange-500 bg-orange-500/30" />
               <span>Moderate (-3 to -2 Z)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-yellow-500/30 border border-yellow-500" />
+              <div className="h-3 w-3 rounded-full border border-yellow-500 bg-yellow-500/30" />
               <span>Mild (-2 to -1 Z)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-green-500/30 border border-green-500" />
+              <div className="h-3 w-3 rounded-full border border-green-500 bg-green-500/30" />
               <span>Normal (-1 to +1 Z)</span>
             </div>
           </>
         )}
         <div className="flex items-center gap-1">
-          <div className="w-4 h-0.5 bg-blue-600" />
+          <div className="h-0.5 w-4 bg-blue-600" />
           <span>Patient</span>
         </div>
       </div>
@@ -450,10 +444,8 @@ export function GrowthChart({
         className={`hidden md:block ${booklet ? 'mch-booklet-print' : ''}`}
       >
         {booklet && (
-          <div className="hidden print:block mb-3 text-center">
-            <h2 className="text-lg font-bold">
-              Kenya MCH Booklet — {meta.label}
-            </h2>
+          <div className="mb-3 hidden text-center print:block">
+            <h2 className="text-lg font-bold">Kenya MCH Booklet — {meta.label}</h2>
             <p className="text-xs">
               {displaySex === 'M' ? 'Boys' : 'Girls'} · 0–60 months · WHO 3rd–97th centile road
             </p>
@@ -462,7 +454,10 @@ export function GrowthChart({
         {hasData ? (
           <div className="h-[400px] w-full print:h-[14cm]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartRenderData} margin={{ top: 32, right: 30, left: 10, bottom: 10 }}>
+              <ComposedChart
+                data={chartRenderData}
+                margin={{ top: 32, right: 30, left: 10, bottom: 10 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis
                   dataKey="x"
@@ -488,7 +483,11 @@ export function GrowthChart({
                   }}
                   labelStyle={{ color: 'hsl(var(--popover-foreground))', fontWeight: 600 }}
                   itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                  cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '3 3' }}
+                  cursor={{
+                    stroke: 'hsl(var(--muted-foreground))',
+                    strokeWidth: 1,
+                    strokeDasharray: '3 3',
+                  }}
                   formatter={(value: number, name: string) => {
                     const labels: Record<string, string> = {
                       z_neg3: '-3 Z (severe)',
@@ -593,14 +592,24 @@ export function GrowthChart({
                       stroke="#ef4444"
                       strokeWidth={1.5}
                       strokeDasharray="4 4"
-                      label={{ value: 'SAM 11.5', position: 'right', fill: '#ef4444', fontSize: 10 }}
+                      label={{
+                        value: 'SAM 11.5',
+                        position: 'right',
+                        fill: '#ef4444',
+                        fontSize: 10,
+                      }}
                     />
                     <ReferenceLine
                       y={MUAC_MAM_CUTOFF}
                       stroke="#eab308"
                       strokeWidth={1.5}
                       strokeDasharray="4 4"
-                      label={{ value: 'MAM 12.5', position: 'right', fill: '#a16207', fontSize: 10 }}
+                      label={{
+                        value: 'MAM 12.5',
+                        position: 'right',
+                        fill: '#a16207',
+                        fontSize: 10,
+                      }}
                     />
                   </>
                 ) : (
@@ -610,68 +619,68 @@ export function GrowthChart({
                 {/* Z-score reference lines (skipped for MUAC and booklet view) */}
                 {!isMuac && !booklet && (
                   <>
-                <Line
-                  dataKey="z_neg3"
-                  stroke="#ef4444"
-                  strokeWidth={1}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  name="z_neg3"
-                  connectNulls
-                />
-                <Line
-                  dataKey="z_neg2"
-                  stroke="#f97316"
-                  strokeWidth={1}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  name="z_neg2"
-                  connectNulls
-                />
-                <Line
-                  dataKey="z_neg1"
-                  stroke="#eab308"
-                  strokeWidth={1}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  name="z_neg1"
-                  connectNulls
-                />
-                <Line
-                  dataKey="z_0"
-                  stroke="#22c55e"
-                  strokeWidth={2}
-                  dot={false}
-                  name="z_0"
-                  connectNulls
-                />
-                <Line
-                  dataKey="z_pos1"
-                  stroke="#eab308"
-                  strokeWidth={1}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  name="z_pos1"
-                  connectNulls
-                />
-                <Line
-                  dataKey="z_pos2"
-                  stroke="#f97316"
-                  strokeWidth={1}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  name="z_pos2"
-                  connectNulls
-                />
-                <Line
-                  dataKey="z_pos3"
-                  stroke="#ef4444"
-                  strokeWidth={1}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  name="z_pos3"
-                  connectNulls
-                />
+                    <Line
+                      dataKey="z_neg3"
+                      stroke="#ef4444"
+                      strokeWidth={1}
+                      strokeDasharray="4 4"
+                      dot={false}
+                      name="z_neg3"
+                      connectNulls
+                    />
+                    <Line
+                      dataKey="z_neg2"
+                      stroke="#f97316"
+                      strokeWidth={1}
+                      strokeDasharray="4 4"
+                      dot={false}
+                      name="z_neg2"
+                      connectNulls
+                    />
+                    <Line
+                      dataKey="z_neg1"
+                      stroke="#eab308"
+                      strokeWidth={1}
+                      strokeDasharray="4 4"
+                      dot={false}
+                      name="z_neg1"
+                      connectNulls
+                    />
+                    <Line
+                      dataKey="z_0"
+                      stroke="#22c55e"
+                      strokeWidth={2}
+                      dot={false}
+                      name="z_0"
+                      connectNulls
+                    />
+                    <Line
+                      dataKey="z_pos1"
+                      stroke="#eab308"
+                      strokeWidth={1}
+                      strokeDasharray="4 4"
+                      dot={false}
+                      name="z_pos1"
+                      connectNulls
+                    />
+                    <Line
+                      dataKey="z_pos2"
+                      stroke="#f97316"
+                      strokeWidth={1}
+                      strokeDasharray="4 4"
+                      dot={false}
+                      name="z_pos2"
+                      connectNulls
+                    />
+                    <Line
+                      dataKey="z_pos3"
+                      stroke="#ef4444"
+                      strokeWidth={1}
+                      strokeDasharray="4 4"
+                      dot={false}
+                      name="z_pos3"
+                      connectNulls
+                    />
                   </>
                 )}
 
@@ -698,10 +707,10 @@ export function GrowthChart({
       </div>
 
       {/* Mobile: simplified card view */}
-      <div className="md:hidden space-y-3">
+      <div className="space-y-3 md:hidden">
         {measurements.length === 0 ? (
           <Card>
-            <CardContent className="py-6 text-center text-muted-foreground text-sm">
+            <CardContent className="py-6 text-center text-sm text-muted-foreground">
               No measurements recorded yet.
             </CardContent>
           </Card>
@@ -715,14 +724,14 @@ export function GrowthChart({
               return (
                 <Card key={m.id} className={m.has_critical_flag ? 'border-red-200' : ''}>
                   <CardContent className="py-3">
-                    <div className="flex justify-between items-center">
+                    <div className="flex items-center justify-between">
                       <div className="text-sm">
                         <span className="font-medium">{ageMonths} months</span>
                         {m.weight && (
-                          <span className="text-muted-foreground ml-2">{m.weight} kg</span>
+                          <span className="ml-2 text-muted-foreground">{m.weight} kg</span>
                         )}
                         {m.height && (
-                          <span className="text-muted-foreground ml-2">{m.height} cm</span>
+                          <span className="ml-2 text-muted-foreground">{m.height} cm</span>
                         )}
                       </div>
                       {m.nutritional_status && (

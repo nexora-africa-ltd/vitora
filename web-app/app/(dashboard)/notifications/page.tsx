@@ -18,13 +18,13 @@ export default function NotificationsPage() {
   }, [router]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-      <div className="w-16 h-16 rounded-full bg-cyan-500/10 flex items-center justify-center mb-4">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-cyan-500/10">
         <Bell className="h-8 w-8 text-cyan-500" />
       </div>
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mb-4" />
+      <Loader2 className="mb-4 h-6 w-6 animate-spin text-muted-foreground" />
       <p className="text-lg font-medium">Redirecting...</p>
-      <p className="text-sm text-muted-foreground mt-1">
+      <p className="mt-1 text-sm text-muted-foreground">
         Access notifications from the bell icon in the header
       </p>
     </div>

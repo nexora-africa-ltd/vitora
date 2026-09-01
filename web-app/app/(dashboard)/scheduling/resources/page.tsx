@@ -38,23 +38,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Table,
   TableBody,
@@ -84,7 +75,9 @@ function extractModalities(metadata: unknown): ImagingModality[] {
   });
 }
 
-function isRadiologyDepartment(department: { name?: string; code?: string; department_type?: string } | undefined): boolean {
+function isRadiologyDepartment(
+  department: { name?: string; code?: string; department_type?: string } | undefined
+): boolean {
   if (!department) return false;
   if (department.department_type === 'RADIOLOGY') return true;
   const name = (department.name || '').toLowerCase();
@@ -183,12 +176,12 @@ export default function SchedulingResourcesPage() {
     queryFn: () => departmentsApi.list({ page_size: 200, is_active: true }),
   });
 
-  const departments = departmentsData?.results || [];
+  const departments = useMemo(() => departmentsData?.results ?? [], [departmentsData?.results]);
 
   const resources = useMemo(() => data?.results || [], [data?.results]);
   const selectedDepartment = useMemo(
     () => departments.find((department) => department.id.toString() === formDepartment),
-    [departments, formDepartment],
+    [departments, formDepartment]
   );
   const requiresRadiologyModalities =
     formType !== 'PERSON' && isRadiologyDepartment(selectedDepartment);
@@ -199,7 +192,7 @@ export default function SchedulingResourcesPage() {
       ? resources.filter(
           (r) =>
             r.name.toLowerCase().includes(search.toLowerCase()) ||
-            r.code.toLowerCase().includes(search.toLowerCase()),
+            r.code.toLowerCase().includes(search.toLowerCase())
         )
       : resources;
 
@@ -260,7 +253,8 @@ export default function SchedulingResourcesPage() {
       queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
       toast({ title: 'Staff Synced', description: result.message });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to sync staff.', variant: 'destructive' }),
+    onError: () =>
+      toast({ title: 'Error', description: 'Failed to sync staff.', variant: 'destructive' }),
   });
 
   const syncClinicsMutation = useMutation({
@@ -269,7 +263,8 @@ export default function SchedulingResourcesPage() {
       queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
       toast({ title: 'Clinics Synced', description: result.message });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to sync clinics.', variant: 'destructive' }),
+    onError: () =>
+      toast({ title: 'Error', description: 'Failed to sync clinics.', variant: 'destructive' }),
   });
 
   const syncWardsMutation = useMutation({
@@ -278,7 +273,8 @@ export default function SchedulingResourcesPage() {
       queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
       toast({ title: 'Wards Synced', description: result.message });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to sync wards.', variant: 'destructive' }),
+    onError: () =>
+      toast({ title: 'Error', description: 'Failed to sync wards.', variant: 'destructive' }),
   });
 
   const syncEquipmentMutation = useMutation({
@@ -287,7 +283,12 @@ export default function SchedulingResourcesPage() {
       queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
       toast({ title: 'Cold Chain Equipment Synced', description: result.message });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to sync cold chain equipment.', variant: 'destructive' }),
+    onError: () =>
+      toast({
+        title: 'Error',
+        description: 'Failed to sync cold chain equipment.',
+        variant: 'destructive',
+      }),
   });
 
   const syncTheatreEquipmentMutation = useMutation({
@@ -296,10 +297,20 @@ export default function SchedulingResourcesPage() {
       queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
       toast({ title: 'Theatre Equipment Synced', description: result.message });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to sync theatre equipment.', variant: 'destructive' }),
+    onError: () =>
+      toast({
+        title: 'Error',
+        description: 'Failed to sync theatre equipment.',
+        variant: 'destructive',
+      }),
   });
 
-  const isSyncing = syncStaffMutation.isPending || syncClinicsMutation.isPending || syncWardsMutation.isPending || syncEquipmentMutation.isPending || syncTheatreEquipmentMutation.isPending;
+  const isSyncing =
+    syncStaffMutation.isPending ||
+    syncClinicsMutation.isPending ||
+    syncWardsMutation.isPending ||
+    syncEquipmentMutation.isPending ||
+    syncTheatreEquipmentMutation.isPending;
 
   function closeDialog() {
     setShowCreate(false);
@@ -330,7 +341,7 @@ export default function SchedulingResourcesPage() {
       setFormCapacity(full.capacity.toString());
       setFormDescription(full.description);
       setFormModalities(extractModalities(full.metadata));
-      setFormMetadataBase((full.metadata && typeof full.metadata === 'object') ? full.metadata : {});
+      setFormMetadataBase(full.metadata && typeof full.metadata === 'object' ? full.metadata : {});
     });
     setShowCreate(true);
   }
@@ -338,10 +349,13 @@ export default function SchedulingResourcesPage() {
   function handleSubmit() {
     setFormErrors({});
     if (requiresRadiologyModalities && formModalities.length === 0) {
-      setFormErrors({ modalities: 'Select at least one supported imaging modality for radiology resources.' });
+      setFormErrors({
+        modalities: 'Select at least one supported imaging modality for radiology resources.',
+      });
       toast({
         title: 'Supported modalities required',
-        description: 'Radiology rooms and equipment must include at least one supported imaging modality.',
+        description:
+          'Radiology rooms and equipment must include at least one supported imaging modality.',
         variant: 'destructive',
       });
       return;
@@ -358,7 +372,7 @@ export default function SchedulingResourcesPage() {
       name: formName,
       code: formCode,
       resource_type: formType,
-      capacity: formType === 'PERSON' ? 1 : (parseInt(formCapacity, 10) || 1),
+      capacity: formType === 'PERSON' ? 1 : parseInt(formCapacity, 10) || 1,
       description: formDescription,
       department: formDepartment ? parseInt(formDepartment, 10) : null,
       metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
@@ -385,38 +399,47 @@ export default function SchedulingResourcesPage() {
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="outline" disabled={isSyncing}>
                     {isSyncing ? (
-                      <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                      <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
                     ) : (
-                      <RefreshCw className="h-4 w-4 mr-1" />
+                      <RefreshCw className="mr-1 h-4 w-4" />
                     )}
                     <span className="hidden sm:inline">Sync</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => syncStaffMutation.mutate()} disabled={isSyncing}>
-                    <Users className="h-4 w-4 mr-2" />
+                    <Users className="mr-2 h-4 w-4" />
                     Sync Staff Profiles
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => syncClinicsMutation.mutate()} disabled={isSyncing}>
-                    <Building2 className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={() => syncClinicsMutation.mutate()}
+                    disabled={isSyncing}
+                  >
+                    <Building2 className="mr-2 h-4 w-4" />
                     Sync Clinics
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => syncWardsMutation.mutate()} disabled={isSyncing}>
-                    <BedDouble className="h-4 w-4 mr-2" />
+                    <BedDouble className="mr-2 h-4 w-4" />
                     Sync Wards
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => syncEquipmentMutation.mutate()} disabled={isSyncing}>
-                    <Wrench className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={() => syncEquipmentMutation.mutate()}
+                    disabled={isSyncing}
+                  >
+                    <Wrench className="mr-2 h-4 w-4" />
                     Sync Cold Chain Equipment
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => syncTheatreEquipmentMutation.mutate()} disabled={isSyncing}>
-                    <Scissors className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={() => syncTheatreEquipmentMutation.mutate()}
+                    disabled={isSyncing}
+                  >
+                    <Scissors className="mr-2 h-4 w-4" />
                     Sync Theatre Equipment
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button size="sm" onClick={() => setShowCreate(true)}>
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">Add Resource</span>
                 <span className="sm:hidden">Add</span>
               </Button>
@@ -447,7 +470,7 @@ export default function SchedulingResourcesPage() {
               ))}
             </SelectContent>
           </Select>
-          <div className="text-sm text-muted-foreground tabular-nums ml-auto hidden sm:block">
+          <div className="ml-auto hidden text-sm tabular-nums text-muted-foreground sm:block">
             {resources.length} resource{resources.length !== 1 ? 's' : ''}
           </div>
         </div>
@@ -462,9 +485,11 @@ export default function SchedulingResourcesPage() {
         ) : visibleTypes.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Box className="h-12 w-12 text-muted-foreground mb-3" />
+              <Box className="mb-3 h-12 w-12 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                {search ? 'No resources match your search.' : 'No scheduling resources found. Create one to get started.'}
+                {search
+                  ? 'No resources match your search.'
+                  : 'No scheduling resources found. Create one to get started.'}
               </p>
             </CardContent>
           </Card>
@@ -479,16 +504,14 @@ export default function SchedulingResourcesPage() {
                 <Collapsible
                   key={type}
                   open={isOpen}
-                  onOpenChange={(open) =>
-                    setOpenGroups((prev) => ({ ...prev, [type]: open }))
-                  }
+                  onOpenChange={(open) => setOpenGroups((prev) => ({ ...prev, [type]: open }))}
                 >
                   <Card className="overflow-hidden">
-                    <CollapsibleTrigger className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors">
+                    <CollapsibleTrigger className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50">
                       <ChevronRight
                         className={cn(
                           'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
-                          isOpen && 'rotate-90',
+                          isOpen && 'rotate-90'
                         )}
                       />
                       <div className="flex items-center gap-2">
@@ -496,18 +519,18 @@ export default function SchedulingResourcesPage() {
                           {typeIcons[type]}
                           {config.label}
                         </Badge>
-                        <span className="text-sm text-muted-foreground tabular-nums">
+                        <span className="text-sm tabular-nums text-muted-foreground">
                           ({items.length})
                         </span>
                       </div>
-                      <span className="text-xs text-muted-foreground ml-auto hidden sm:block">
+                      <span className="ml-auto hidden text-xs text-muted-foreground sm:block">
                         {config.description}
                       </span>
                     </CollapsibleTrigger>
 
                     <CollapsibleContent>
                       {/* Desktop table */}
-                      <div className="hidden md:block border-t">
+                      <div className="hidden border-t md:block">
                         <div className="overflow-x-auto">
                           <Table>
                             <TableHeader>
@@ -536,13 +559,22 @@ export default function SchedulingResourcesPage() {
                                       )}
                                       {extractModalities(r.metadata).length > 0 && (
                                         <div className="flex items-center gap-1">
-                                          {extractModalities(r.metadata).slice(0, 3).map((modality) => (
-                                            <Badge key={`${r.id}-${modality}`} variant="outline" className="text-[10px] px-1.5 py-0">
-                                              {modality}
-                                            </Badge>
-                                          ))}
+                                          {extractModalities(r.metadata)
+                                            .slice(0, 3)
+                                            .map((modality) => (
+                                              <Badge
+                                                key={`${r.id}-${modality}`}
+                                                variant="outline"
+                                                className="px-1.5 py-0 text-[10px]"
+                                              >
+                                                {modality}
+                                              </Badge>
+                                            ))}
                                           {extractModalities(r.metadata).length > 3 && (
-                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                            <Badge
+                                              variant="outline"
+                                              className="px-1.5 py-0 text-[10px]"
+                                            >
                                               +{extractModalities(r.metadata).length - 3}
                                             </Badge>
                                           )}
@@ -551,7 +583,7 @@ export default function SchedulingResourcesPage() {
                                     </div>
                                   </TableCell>
                                   <TableCell>
-                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                    <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                                       {r.code}
                                     </code>
                                   </TableCell>
@@ -561,7 +593,7 @@ export default function SchedulingResourcesPage() {
                                       variant="ghost"
                                       className={cn(
                                         'h-7 px-2',
-                                        r.is_active ? 'text-green-600' : 'text-muted-foreground',
+                                        r.is_active ? 'text-green-600' : 'text-muted-foreground'
                                       )}
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -572,9 +604,15 @@ export default function SchedulingResourcesPage() {
                                       }}
                                     >
                                       {r.is_active ? (
-                                        <><Power className="h-3.5 w-3.5 mr-1" />Active</>
+                                        <>
+                                          <Power className="mr-1 h-3.5 w-3.5" />
+                                          Active
+                                        </>
                                       ) : (
-                                        <><PowerOff className="h-3.5 w-3.5 mr-1" />Inactive</>
+                                        <>
+                                          <PowerOff className="mr-1 h-3.5 w-3.5" />
+                                          Inactive
+                                        </>
                                       )}
                                     </Button>
                                   </TableCell>
@@ -600,33 +638,39 @@ export default function SchedulingResourcesPage() {
                       </div>
 
                       {/* Mobile cards */}
-                      <div className="md:hidden border-t divide-y">
+                      <div className="divide-y border-t md:hidden">
                         {items.map((r) => (
                           <div
                             key={r.id}
-                            className="flex items-center justify-between gap-2 px-4 py-3 cursor-pointer hover:bg-muted/50"
+                            className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-muted/50"
                             onClick={() => router.push(`/scheduling/resources/${r.id}`)}
                           >
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex min-w-0 items-center gap-2">
                               {typeIcons[r.resource_type]}
                               <div className="min-w-0">
-                                <p className="font-medium truncate text-sm">{r.name}</p>
+                                <p className="truncate text-sm font-medium">{r.name}</p>
                                 <code className="text-xs text-muted-foreground">{r.code}</code>
                                 {extractModalities(r.metadata).length > 0 && (
                                   <div className="mt-1 flex flex-wrap gap-1">
-                                    {extractModalities(r.metadata).slice(0, 2).map((modality) => (
-                                      <Badge key={`${r.id}-mobile-${modality}`} variant="outline" className="text-[10px] px-1.5 py-0">
-                                        {modality}
-                                      </Badge>
-                                    ))}
+                                    {extractModalities(r.metadata)
+                                      .slice(0, 2)
+                                      .map((modality) => (
+                                        <Badge
+                                          key={`${r.id}-mobile-${modality}`}
+                                          variant="outline"
+                                          className="px-1.5 py-0 text-[10px]"
+                                        >
+                                          {modality}
+                                        </Badge>
+                                      ))}
                                   </div>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex shrink-0 items-center gap-1.5">
                               <Badge
                                 variant={r.is_active ? 'default' : 'outline'}
-                                className="shrink-0 w-fit"
+                                className="w-fit shrink-0"
                               >
                                 {r.is_active ? 'Active' : 'Off'}
                               </Badge>
@@ -655,7 +699,12 @@ export default function SchedulingResourcesPage() {
         )}
 
         {/* Create / Edit Dialog */}
-        <Dialog open={showCreate} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <Dialog
+          open={showCreate}
+          onOpenChange={(open) => {
+            if (!open) closeDialog();
+          }}
+        >
           <DialogContent className="max-w-md">
             <DialogHeader>
               <div className="flex items-center gap-2">
@@ -664,7 +713,7 @@ export default function SchedulingResourcesPage() {
               </div>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <Label>Type</Label>
                   <Select value={formType} onValueChange={(v) => setFormType(v as ResourceType)}>
@@ -679,50 +728,71 @@ export default function SchedulingResourcesPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Name <span className="text-destructive">*</span></Label>
+                  <Label>
+                    Name <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     value={formName}
                     onChange={(e) => {
                       setFormName(e.target.value);
-                      if (formErrors.name) setFormErrors((prev) => { const { name: _, ...rest } = prev; return rest; });
+                      if (formErrors.name)
+                        setFormErrors((prev) => {
+                          const { name: _, ...rest } = prev;
+                          return rest;
+                        });
                     }}
                     placeholder={
-                      formType === 'PERSON' ? 'e.g. Dr. Jane Doe' :
-                      formType === 'ASSET' ? 'e.g. MRI Machine 1' :
-                      'e.g. Consultation Room 1'
+                      formType === 'PERSON'
+                        ? 'e.g. Dr. Jane Doe'
+                        : formType === 'ASSET'
+                          ? 'e.g. MRI Machine 1'
+                          : 'e.g. Consultation Room 1'
                     }
                     className={formErrors.name ? 'border-destructive' : ''}
                   />
                   {formErrors.name && (
-                    <p className="text-xs text-destructive mt-1">{formErrors.name}</p>
+                    <p className="mt-1 text-xs text-destructive">{formErrors.name}</p>
                   )}
                 </div>
               </div>
-              <div className={cn('grid gap-3', formType === 'PERSON' ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2')}>
+              <div
+                className={cn(
+                  'grid gap-3',
+                  formType === 'PERSON' ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'
+                )}
+              >
                 <div>
-                  <Label>Code <span className="text-destructive">*</span></Label>
+                  <Label>
+                    Code <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     value={formCode}
                     onChange={(e) => {
                       setFormCode(e.target.value.toUpperCase());
-                      if (formErrors.code) setFormErrors((prev) => { const { code: _, ...rest } = prev; return rest; });
+                      if (formErrors.code)
+                        setFormErrors((prev) => {
+                          const { code: _, ...rest } = prev;
+                          return rest;
+                        });
                     }}
                     placeholder={
-                      formType === 'PERSON' ? 'e.g. STAFF-001' :
-                      formType === 'ASSET' ? 'e.g. MRI-01' :
-                      'e.g. ROOM-101'
+                      formType === 'PERSON'
+                        ? 'e.g. STAFF-001'
+                        : formType === 'ASSET'
+                          ? 'e.g. MRI-01'
+                          : 'e.g. ROOM-101'
                     }
                     className={formErrors.code ? 'border-destructive' : ''}
                   />
                   {formErrors.code && (
-                    <p className="text-xs text-destructive mt-1">{formErrors.code}</p>
+                    <p className="mt-1 text-xs text-destructive">{formErrors.code}</p>
                   )}
                 </div>
                 {formType !== 'PERSON' && (
                   <div>
                     <Label>
                       Capacity
-                      <span className="text-xs text-muted-foreground font-normal ml-1">
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">
                         {formType === 'ASSET' ? '(units available)' : '(concurrent patients)'}
                       </span>
                     </Label>
@@ -738,7 +808,10 @@ export default function SchedulingResourcesPage() {
               {formType !== 'PERSON' && (
                 <div>
                   <Label>Department</Label>
-                  <Select value={formDepartment} onValueChange={(v) => setFormDepartment(v === '_none' ? '' : v)}>
+                  <Select
+                    value={formDepartment}
+                    onValueChange={(v) => setFormDepartment(v === '_none' ? '' : v)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select department..." />
                     </SelectTrigger>
@@ -756,11 +829,14 @@ export default function SchedulingResourcesPage() {
               {formType !== 'PERSON' && (
                 <div>
                   <Label>Supported imaging modalities</Label>
-                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-md border p-3">
+                  <div className="mt-2 grid grid-cols-2 gap-2 rounded-md border p-3 sm:grid-cols-3">
                     {IMAGING_MODALITY_OPTIONS.map((modality) => {
                       const checked = formModalities.includes(modality);
                       return (
-                        <label key={modality} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <label
+                          key={modality}
+                          className="flex cursor-pointer items-center gap-2 text-sm"
+                        >
                           <Checkbox
                             checked={checked}
                             onCheckedChange={(nextChecked) => {
@@ -793,7 +869,7 @@ export default function SchedulingResourcesPage() {
                     </p>
                   )}
                   {formErrors.modalities && (
-                    <p className="text-xs text-destructive mt-1">{formErrors.modalities}</p>
+                    <p className="mt-1 text-xs text-destructive">{formErrors.modalities}</p>
                   )}
                 </div>
               )}
@@ -806,10 +882,12 @@ export default function SchedulingResourcesPage() {
                   rows={2}
                 />
               </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={closeDialog}>
+                  Cancel
+                </Button>
                 <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
-                  {isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                   {editingId ? 'Save Changes' : 'Create Resource'}
                 </Button>
               </div>

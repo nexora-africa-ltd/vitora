@@ -88,7 +88,7 @@ export function MetabaseEmbed({
       <Card>
         <CardContent className="flex flex-col items-center justify-center gap-3 py-12">
           <AlertTriangle className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground text-center max-w-md">
+          <p className="max-w-md text-center text-sm text-muted-foreground">
             {isNotConfigured
               ? 'Metabase embedding is not configured. Contact your administrator to set up the METABASE_EMBEDDING_SECRET.'
               : 'Failed to load the embedded dashboard. Please try again later.'}
@@ -103,11 +103,11 @@ export function MetabaseEmbed({
       <Card>
         <CardContent className="flex flex-col items-center justify-center gap-4 py-12">
           <Settings className="h-8 w-8 text-muted-foreground" />
-          <div className="text-center max-w-md space-y-2">
+          <div className="max-w-md space-y-2 text-center">
             <p className="text-sm font-medium">Metabase is not reachable</p>
             <p className="text-sm text-muted-foreground">
-              Could not load the Metabase embed SDK. The Metabase instance may be
-              offline or the URL may be misconfigured.
+              Could not load the Metabase embed SDK. The Metabase instance may be offline or the URL
+              may be misconfigured.
             </p>
           </div>
         </CardContent>
@@ -117,9 +117,7 @@ export function MetabaseEmbed({
 
   return (
     <div className="space-y-2">
-      {title && (
-        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
-      )}
+      {title && <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>}
 
       {/* Load the Metabase embed SDK script */}
       <Script
@@ -131,7 +129,7 @@ export function MetabaseEmbed({
 
       <div
         ref={containerRef}
-        className="relative rounded-lg border overflow-hidden"
+        className="relative overflow-hidden rounded-lg border"
         style={{ minHeight }}
       >
         {!sdkReady && (

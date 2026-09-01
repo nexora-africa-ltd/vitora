@@ -4,7 +4,15 @@
  * Helper functions for formatting, calculating, and transforming chart data.
  */
 
-import { format, subDays, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, eachMonthOfInterval } from "date-fns";
+import {
+  format,
+  subDays,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  eachMonthOfInterval,
+} from 'date-fns';
 
 /**
  * Format a number for display in charts
@@ -12,30 +20,30 @@ import { format, subDays, subMonths, startOfMonth, endOfMonth, eachDayOfInterval
 export function formatChartNumber(
   value: number,
   options: {
-    type?: "number" | "currency" | "percent" | "compact";
+    type?: 'number' | 'currency' | 'percent' | 'compact';
     decimals?: number;
     currency?: string;
   } = {}
 ): string {
-  const { type = "number", decimals = 0, currency = "KES" } = options;
+  const { type = 'number', decimals = 0, currency = 'KES' } = options;
 
   switch (type) {
-    case "currency":
-      return new Intl.NumberFormat("en-KE", {
-        style: "currency",
+    case 'currency':
+      return new Intl.NumberFormat('en-KE', {
+        style: 'currency',
         currency,
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(value);
-    case "percent":
+    case 'percent':
       return `${value.toFixed(decimals)}%`;
-    case "compact":
-      return new Intl.NumberFormat("en-KE", {
-        notation: "compact",
+    case 'compact':
+      return new Intl.NumberFormat('en-KE', {
+        notation: 'compact',
         maximumFractionDigits: 1,
       }).format(value);
     default:
-      return value.toLocaleString("en-KE", {
+      return value.toLocaleString('en-KE', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       });
@@ -55,64 +63,68 @@ export function calculatePercentageChange(current: number, previous: number): nu
 /**
  * Calculate trend direction
  */
-export type TrendDirection = "up" | "down" | "neutral";
+export type TrendDirection = 'up' | 'down' | 'neutral';
 
-export function getTrendDirection(current: number, previous: number, threshold = 0.1): TrendDirection {
+export function getTrendDirection(
+  current: number,
+  previous: number,
+  threshold = 0.1
+): TrendDirection {
   const change = calculatePercentageChange(current, previous);
-  if (Math.abs(change) < threshold) return "neutral";
-  return change > 0 ? "up" : "down";
+  if (Math.abs(change) < threshold) return 'neutral';
+  return change > 0 ? 'up' : 'down';
 }
 
 /**
  * Generate date labels for a time range
  */
 export function generateDateLabels(
-  range: "7d" | "30d" | "90d" | "12m" | "custom",
+  range: '7d' | '30d' | '90d' | '12m' | 'custom',
   options?: { start?: Date; end?: Date; format?: string }
 ): string[] {
   const now = new Date();
   const formatStr = options?.format;
 
   switch (range) {
-    case "7d": {
+    case '7d': {
       const days = eachDayOfInterval({
         start: subDays(now, 6),
         end: now,
       });
-      return days.map((d) => format(d, formatStr ?? "EEE"));
+      return days.map((d) => format(d, formatStr ?? 'EEE'));
     }
-    case "30d": {
+    case '30d': {
       const days = eachDayOfInterval({
         start: subDays(now, 29),
         end: now,
       });
-      return days.map((d) => format(d, formatStr ?? "MMM d"));
+      return days.map((d) => format(d, formatStr ?? 'MMM d'));
     }
-    case "90d": {
+    case '90d': {
       // Weekly labels for 90 days
       const labels: string[] = [];
       for (let i = 12; i >= 0; i--) {
         const weekStart = subDays(now, i * 7);
-        labels.push(format(weekStart, formatStr ?? "MMM d"));
+        labels.push(format(weekStart, formatStr ?? 'MMM d'));
       }
       return labels;
     }
-    case "12m": {
+    case '12m': {
       const months = eachMonthOfInterval({
         start: subMonths(now, 11),
         end: now,
       });
-      return months.map((m) => format(m, formatStr ?? "MMM"));
+      return months.map((m) => format(m, formatStr ?? 'MMM'));
     }
-    case "custom": {
+    case 'custom': {
       if (!options?.start || !options?.end) {
-        throw new Error("Custom range requires start and end dates");
+        throw new Error('Custom range requires start and end dates');
       }
       const days = eachDayOfInterval({
         start: options.start,
         end: options.end,
       });
-      return days.map((d) => format(d, formatStr ?? "MMM d"));
+      return days.map((d) => format(d, formatStr ?? 'MMM d'));
     }
     default:
       return [];
@@ -122,14 +134,14 @@ export function generateDateLabels(
 /**
  * Aggregate data by time period
  */
-export type AggregationType = "sum" | "average" | "count" | "min" | "max";
+export type AggregationType = 'sum' | 'average' | 'count' | 'min' | 'max';
 
 export function aggregateByPeriod<T extends Record<string, unknown>>(
   data: T[],
   dateKey: keyof T,
   valueKey: keyof T,
-  period: "day" | "week" | "month",
-  aggregation: AggregationType = "sum"
+  period: 'day' | 'week' | 'month',
+  aggregation: AggregationType = 'sum'
 ): Array<{ period: string; value: number }> {
   const groups = new Map<string, number[]>();
 
@@ -138,14 +150,14 @@ export function aggregateByPeriod<T extends Record<string, unknown>>(
     let key: string;
 
     switch (period) {
-      case "day":
-        key = format(date, "yyyy-MM-dd");
+      case 'day':
+        key = format(date, 'yyyy-MM-dd');
         break;
-      case "week":
+      case 'week':
         key = format(date, "yyyy-'W'ww");
         break;
-      case "month":
-        key = format(date, "yyyy-MM");
+      case 'month':
+        key = format(date, 'yyyy-MM');
         break;
     }
 
@@ -160,19 +172,19 @@ export function aggregateByPeriod<T extends Record<string, unknown>>(
     let value: number;
 
     switch (aggregation) {
-      case "sum":
+      case 'sum':
         value = values.reduce((a, b) => a + b, 0);
         break;
-      case "average":
+      case 'average':
         value = values.reduce((a, b) => a + b, 0) / values.length;
         break;
-      case "count":
+      case 'count':
         value = values.length;
         break;
-      case "min":
+      case 'min':
         value = Math.min(...values);
         break;
-      case "max":
+      case 'max':
         value = Math.max(...values);
         break;
     }
@@ -196,14 +208,14 @@ export function fillMissingDates<T extends Record<string, unknown>>(
   const dateMap = new Map<string, T>();
 
   data.forEach((item) => {
-    const dateStr = format(new Date(item[dateKey] as string | number | Date), "yyyy-MM-dd");
+    const dateStr = format(new Date(item[dateKey] as string | number | Date), 'yyyy-MM-dd');
     dateMap.set(dateStr, item);
   });
 
   const allDates = eachDayOfInterval({ start: startDate, end: endDate });
 
   return allDates.map((date) => {
-    const dateStr = format(date, "yyyy-MM-dd");
+    const dateStr = format(date, 'yyyy-MM-dd');
     const existing = dateMap.get(dateStr);
 
     if (existing) return existing;
@@ -218,10 +230,7 @@ export function fillMissingDates<T extends Record<string, unknown>>(
 /**
  * Calculate moving average
  */
-export function calculateMovingAverage(
-  values: number[],
-  windowSize: number
-): number[] {
+export function calculateMovingAverage(values: number[], windowSize: number): number[] {
   if (windowSize <= 0 || windowSize > values.length) {
     return values;
   }
@@ -255,7 +264,8 @@ export function normalizeToPercentage<T extends Record<string, number>>(
 
     valueKeys.forEach((key) => {
       if (total > 0) {
-        (normalized as Record<string, number>)[`${String(key)}_pct`] = ((item[key] || 0) / total) * 100;
+        (normalized as Record<string, number>)[`${String(key)}_pct`] =
+          ((item[key] || 0) / total) * 100;
       } else {
         (normalized as Record<string, number>)[`${String(key)}_pct`] = 0;
       }
@@ -272,19 +282,19 @@ export function getColorForValue(
   value: number,
   thresholds: { warning: number; critical: number },
   options?: { invertScale?: boolean }
-): "success" | "warning" | "critical" {
+): 'success' | 'warning' | 'critical' {
   const { invertScale = false } = options || {};
 
   if (invertScale) {
     // Lower is worse (e.g., SpO2)
-    if (value <= thresholds.critical) return "critical";
-    if (value <= thresholds.warning) return "warning";
-    return "success";
+    if (value <= thresholds.critical) return 'critical';
+    if (value <= thresholds.warning) return 'warning';
+    return 'success';
   } else {
     // Higher is worse (e.g., temperature)
-    if (value >= thresholds.critical) return "critical";
-    if (value >= thresholds.warning) return "warning";
-    return "success";
+    if (value >= thresholds.critical) return 'critical';
+    if (value >= thresholds.warning) return 'warning';
+    return 'success';
   }
 }
 
@@ -357,16 +367,16 @@ export function formatAxisTick(value: number): string {
  */
 export function generateColorScale(
   steps: number,
-  startColor: string = "hsl(var(--chart-2))",
-  endColor: string = "hsl(var(--chart-1))"
+  startColor: string = 'hsl(var(--chart-2))',
+  endColor: string = 'hsl(var(--chart-1))'
 ): string[] {
   // For now, return predefined chart colors
   const chartColors = [
-    "hsl(var(--chart-1))",
-    "hsl(var(--chart-2))",
-    "hsl(var(--chart-3))",
-    "hsl(var(--chart-4))",
-    "hsl(var(--chart-5))",
+    'hsl(var(--chart-1))',
+    'hsl(var(--chart-2))',
+    'hsl(var(--chart-3))',
+    'hsl(var(--chart-4))',
+    'hsl(var(--chart-5))',
   ];
 
   if (steps <= chartColors.length) {
@@ -384,26 +394,27 @@ export function generateColorScale(
 /**
  * Convert time range string to date bounds
  */
-export function getDateRangeBounds(
-  range: "today" | "7d" | "30d" | "90d" | "12m" | "ytd" | "all"
-): { start: Date; end: Date } {
+export function getDateRangeBounds(range: 'today' | '7d' | '30d' | '90d' | '12m' | 'ytd' | 'all'): {
+  start: Date;
+  end: Date;
+} {
   const now = new Date();
   const end = now;
 
   switch (range) {
-    case "today":
+    case 'today':
       return { start: new Date(now.setHours(0, 0, 0, 0)), end: new Date() };
-    case "7d":
+    case '7d':
       return { start: subDays(now, 7), end };
-    case "30d":
+    case '30d':
       return { start: subDays(now, 30), end };
-    case "90d":
+    case '90d':
       return { start: subDays(now, 90), end };
-    case "12m":
+    case '12m':
       return { start: subMonths(now, 12), end };
-    case "ytd":
+    case 'ytd':
       return { start: new Date(now.getFullYear(), 0, 1), end };
-    case "all":
+    case 'all':
       return { start: new Date(2020, 0, 1), end }; // Arbitrary start
     default:
       return { start: subDays(now, 30), end };

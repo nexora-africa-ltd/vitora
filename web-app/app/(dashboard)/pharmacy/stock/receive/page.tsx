@@ -36,11 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
   CommandEmpty,
@@ -66,12 +62,15 @@ const receiveStockSchema = z.object({
   barcode: z.string().optional(),
   quantity_received: z.number().min(1, 'Quantity must be at least 1'),
   manufacture_date: z.string().optional(),
-  expiry_date: z.string().min(1, 'Expiry date is required').refine((date) => {
-    const expiryDate = new Date(date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return expiryDate > today;
-  }, 'Expiry date must be in the future'),
+  expiry_date: z
+    .string()
+    .min(1, 'Expiry date is required')
+    .refine((date) => {
+      const expiryDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return expiryDate > today;
+    }, 'Expiry date must be in the future'),
   received_date: z.string().min(1, 'Received date is required'),
   cost_price: z.number().min(0, 'Cost price must be positive'),
   selling_price: z.number().min(0, 'Selling price must be positive'),
@@ -196,8 +195,12 @@ export default function ReceiveStockPage() {
         helpContent="Quickly add a stock batch without a formal purchase order. For procurement-linked receiving, use Inventory → Formal Goods Receipt instead."
         actions={
           <div className="flex gap-2">
-            <Badge variant="outline" className="w-fit">Inventory: {inventoryModuleEnabled ? 'Enabled' : 'Disabled'}</Badge>
-            <Badge variant="outline" className="w-fit">Pricing: {unifiedPricingEnabled ? `Unified (${pricingSource})` : 'Manual'}</Badge>
+            <Badge variant="outline" className="w-fit">
+              Inventory: {inventoryModuleEnabled ? 'Enabled' : 'Disabled'}
+            </Badge>
+            <Badge variant="outline" className="w-fit">
+              Pricing: {unifiedPricingEnabled ? `Unified (${pricingSource})` : 'Manual'}
+            </Badge>
           </div>
         }
       />
@@ -216,7 +219,12 @@ export default function ReceiveStockPage() {
       ) : null}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6 max-w-2xl mx-auto" role="form" data-testid="stock-receive-form">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="mx-auto max-w-2xl space-y-4 sm:space-y-6"
+          role="form"
+          data-testid="stock-receive-form"
+        >
           {/* Drug & Batch Details */}
           <Card>
             <CardHeader className="pb-3">
@@ -229,7 +237,9 @@ export default function ReceiveStockPage() {
                 name="drug"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Item <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Item <span className="text-destructive">*</span>
+                    </FormLabel>
                     <Popover open={drugOpen} onOpenChange={setDrugOpen}>
                       <FormControl>
                         <PopoverTrigger asChild>
@@ -247,7 +257,10 @@ export default function ReceiveStockPage() {
                           </Button>
                         </PopoverTrigger>
                       </FormControl>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <PopoverContent
+                        className="w-[--radix-popover-trigger-width] p-0"
+                        align="start"
+                      >
                         <Command shouldFilter={false}>
                           <CommandInput
                             placeholder="Search items by name or code..."
@@ -259,7 +272,9 @@ export default function ReceiveStockPage() {
                             {drugsLoading ? (
                               <div className="flex items-center justify-center py-6">
                                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                  Searching...
+                                </span>
                               </div>
                             ) : drugs.length === 0 ? (
                               <CommandEmpty>
@@ -286,9 +301,12 @@ export default function ReceiveStockPage() {
                                       )}
                                     />
                                     <div className="flex flex-col">
-                                      <span>{drug.generic_name} {drug.strength || ''} {drug.form || ''}</span>
+                                      <span>
+                                        {drug.generic_name} {drug.strength || ''} {drug.form || ''}
+                                      </span>
                                       <span className="text-xs text-muted-foreground">
-                                        {drug.code} · {drug.item_type} · Stock: {drug.current_stock ?? 0}
+                                        {drug.code} · {drug.item_type} · Stock:{' '}
+                                        {drug.current_stock ?? 0}
                                       </span>
                                     </div>
                                   </CommandItem>
@@ -299,9 +317,7 @@ export default function ReceiveStockPage() {
                         </Command>
                       </PopoverContent>
                     </Popover>
-                    <FormDescription>
-                      Search items by name, brand, or code
-                    </FormDescription>
+                    <FormDescription>Search items by name, brand, or code</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -314,14 +330,20 @@ export default function ReceiveStockPage() {
                   name="batch_number"
                   render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel>Batch Number <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>
+                        Batch Number <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
-                          <Input
-                            placeholder="e.g., BATCH-2026-001"
-                            disabled={formDisabled}
-                            aria-label="Batch Number"
+                        <Input
+                          placeholder="e.g., BATCH-2026-001"
+                          disabled={formDisabled}
+                          aria-label="Batch Number"
                           aria-invalid={!!fieldState.error}
-                          className={fieldState.error ? 'border-destructive focus-visible:ring-destructive' : ''}
+                          className={
+                            fieldState.error
+                              ? 'border-destructive focus-visible:ring-destructive'
+                              : ''
+                          }
                           {...field}
                         />
                       </FormControl>
@@ -336,15 +358,21 @@ export default function ReceiveStockPage() {
                   name="quantity_received"
                   render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel>Quantity Received <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>
+                        Quantity Received <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
-                          <Input
-                            type="number"
-                            disabled={formDisabled}
-                            placeholder="e.g., 500"
+                        <Input
+                          type="number"
+                          disabled={formDisabled}
+                          placeholder="e.g., 500"
                           aria-label="Quantity"
                           aria-invalid={!!fieldState.error}
-                          className={fieldState.error ? 'border-destructive focus-visible:ring-destructive' : ''}
+                          className={
+                            fieldState.error
+                              ? 'border-destructive focus-visible:ring-destructive'
+                              : ''
+                          }
                           {...field}
                           value={field.value || ''}
                           onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -364,7 +392,7 @@ export default function ReceiveStockPage() {
               <CardTitle className="text-base sm:text-lg">Dates</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="manufacture_date"
@@ -374,7 +402,9 @@ export default function ReceiveStockPage() {
                       <FormControl>
                         <DatePicker
                           value={field.value ? parseISO(field.value) : undefined}
-                          onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                          onChange={(date) =>
+                            field.onChange(date ? format(date, 'yyyy-MM-dd') : '')
+                          }
                           placeholder="Select date"
                           disabled={formDisabled}
                         />
@@ -389,11 +419,15 @@ export default function ReceiveStockPage() {
                   name="expiry_date"
                   render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel>Expiry Date <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>
+                        Expiry Date <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
                         <DatePicker
                           value={field.value ? parseISO(field.value) : undefined}
-                          onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                          onChange={(date) =>
+                            field.onChange(date ? format(date, 'yyyy-MM-dd') : '')
+                          }
                           placeholder="Select date"
                           disabled={formDisabled}
                           allowFuture={true}
@@ -411,11 +445,15 @@ export default function ReceiveStockPage() {
                   name="received_date"
                   render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel>Received Date <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>
+                        Received Date <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
                         <DatePicker
                           value={field.value ? parseISO(field.value) : undefined}
-                          onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                          onChange={(date) =>
+                            field.onChange(date ? format(date, 'yyyy-MM-dd') : '')
+                          }
                           placeholder="Select date"
                           disabled={formDisabled}
                           error={!!fieldState.error}
@@ -430,30 +468,39 @@ export default function ReceiveStockPage() {
           </Card>
 
           {/* Pricing */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base sm:text-lg">Pricing (KES)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-3 text-xs text-muted-foreground">
-                  Price mode: {unifiedPricingEnabled ? `Unified catalog pricing (${pricingSource})` : 'Manual entry allowed'}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base sm:text-lg">Pricing (KES)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Price mode:{' '}
+                {unifiedPricingEnabled
+                  ? `Unified catalog pricing (${pricingSource})`
+                  : 'Manual entry allowed'}
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="cost_price"
                   render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel>Cost Price <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>
+                        Cost Price <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            disabled={formDisabled || unifiedPricingEnabled}
-                            placeholder="e.g., 3.00"
+                        <Input
+                          type="number"
+                          step="0.01"
+                          disabled={formDisabled || unifiedPricingEnabled}
+                          placeholder="e.g., 3.00"
                           aria-label="Cost Price"
                           aria-invalid={!!fieldState.error}
-                          className={fieldState.error ? 'border-destructive focus-visible:ring-destructive' : ''}
+                          className={
+                            fieldState.error
+                              ? 'border-destructive focus-visible:ring-destructive'
+                              : ''
+                          }
                           {...field}
                           value={field.value || ''}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
@@ -469,16 +516,22 @@ export default function ReceiveStockPage() {
                   name="selling_price"
                   render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel>Selling Price <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>
+                        Selling Price <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            disabled={formDisabled || unifiedPricingEnabled}
-                            placeholder="e.g., 5.00"
+                        <Input
+                          type="number"
+                          step="0.01"
+                          disabled={formDisabled || unifiedPricingEnabled}
+                          placeholder="e.g., 5.00"
                           aria-label="Selling Price"
                           aria-invalid={!!fieldState.error}
-                          className={fieldState.error ? 'border-destructive focus-visible:ring-destructive' : ''}
+                          className={
+                            fieldState.error
+                              ? 'border-destructive focus-visible:ring-destructive'
+                              : ''
+                          }
                           {...field}
                           value={field.value || ''}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
@@ -562,7 +615,9 @@ export default function ReceiveStockPage() {
                   name="store_location"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Store <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel>
+                        Store <span className="text-destructive">*</span>
+                      </FormLabel>
                       <Select
                         value={field.value?.toString() || ''}
                         onValueChange={(v) => field.onChange(parseInt(v))}

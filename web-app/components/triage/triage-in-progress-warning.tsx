@@ -78,7 +78,12 @@ export function TriageInProgressWarning({
   const router = useRouter();
 
   // Fetch the existing in-progress assessment for this encounter
-  const { data: assessment, isLoading, refetch, isFetching } = useTriageAssessmentByEncounter(encounterId);
+  const {
+    data: assessment,
+    isLoading,
+    refetch,
+    isFetching,
+  } = useTriageAssessmentByEncounter(encounterId);
 
   const handleBackToQueue = () => {
     router.push('/triage');
@@ -133,13 +138,13 @@ export function TriageInProgressWarning({
             {isInProgress ? (
               <>
                 <strong>{triagerName}</strong> started triaging this patient
-                {startTime && ` ${formatDuration(startTime)} ago`}.
-                You can wait for them to finish, or take over the assessment.
+                {startTime && ` ${formatDuration(startTime)} ago`}. You can wait for them to finish,
+                or take over the assessment.
               </>
             ) : (
               <>
-                This encounter appears to be in triage. You can refresh to check
-                the current status or proceed to take over.
+                This encounter appears to be in triage. You can refresh to check the current status
+                or proceed to take over.
               </>
             )}
           </AlertDescription>
@@ -147,7 +152,7 @@ export function TriageInProgressWarning({
 
         {/* In Progress Details */}
         {isInProgress && (
-          <div className="rounded-lg border p-4 space-y-3">
+          <div className="space-y-3 rounded-lg border p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Triaged By</span>
               <span className="text-sm">{triagerName}</span>
@@ -169,7 +174,7 @@ export function TriageInProgressWarning({
 
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Status</span>
-              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
                 In Progress
               </Badge>
             </div>
@@ -178,16 +183,12 @@ export function TriageInProgressWarning({
 
         {/* Actions */}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isFetching}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+          <Button variant="outline" onClick={handleRefresh} disabled={isFetching}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Refresh Status
           </Button>
           <Button variant="outline" onClick={handleBackToQueue}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Queue
           </Button>
           {onSelectDifferentPatient && (
@@ -197,7 +198,7 @@ export function TriageInProgressWarning({
           )}
           {onTakeOver && (
             <Button onClick={onTakeOver}>
-              <UserCheck className="h-4 w-4 mr-2" />
+              <UserCheck className="mr-2 h-4 w-4" />
               Take Over
             </Button>
           )}

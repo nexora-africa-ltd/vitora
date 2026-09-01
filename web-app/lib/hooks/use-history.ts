@@ -16,8 +16,7 @@ export const historyKeys = {
   patient: (patientId: number) => [...historyKeys.all, 'patient', patientId] as const,
   patientHistory: (patientId: number, params?: HistoryParams) =>
     [...historyKeys.patient(patientId), 'versions', params] as const,
-  patientCount: (patientId: number) =>
-    [...historyKeys.patient(patientId), 'count'] as const,
+  patientCount: (patientId: number) => [...historyKeys.patient(patientId), 'count'] as const,
   encounter: (encounterId: number) => [...historyKeys.all, 'encounter', encounterId] as const,
   encounterHistory: (encounterId: number, params?: HistoryParams) =>
     [...historyKeys.encounter(encounterId), 'versions', params] as const,

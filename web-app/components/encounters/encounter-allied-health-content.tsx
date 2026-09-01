@@ -71,9 +71,11 @@ export function EncounterAlliedHealthContent({
   disabled = false,
 }: EncounterAlliedHealthContentProps) {
   const { data: physioData, isLoading: physioLoading } = useEncounterPhysioOrders(encounterId);
-  const { data: nutritionData, isLoading: nutritionLoading } = useEncounterNutritionConsultations(encounterId);
+  const { data: nutritionData, isLoading: nutritionLoading } =
+    useEncounterNutritionConsultations(encounterId);
   const { data: otData, isLoading: otLoading } = useEncounterOTOrders(encounterId);
-  const { data: counsellingData, isLoading: counsellingLoading } = useEncounterCounsellingReferrals(encounterId);
+  const { data: counsellingData, isLoading: counsellingLoading } =
+    useEncounterCounsellingReferrals(encounterId);
   const { data: swData, isLoading: swLoading } = useEncounterSWReferrals(encounterId);
 
   const physioOrders = physioData?.results || [];
@@ -82,8 +84,14 @@ export function EncounterAlliedHealthContent({
   const counsellingReferrals = counsellingData?.results || [];
   const swReferrals = swData?.results || [];
 
-  const isLoading = physioLoading || nutritionLoading || otLoading || counsellingLoading || swLoading;
-  const totalCount = physioOrders.length + nutritionConsultations.length + otOrders.length + counsellingReferrals.length + swReferrals.length;
+  const isLoading =
+    physioLoading || nutritionLoading || otLoading || counsellingLoading || swLoading;
+  const totalCount =
+    physioOrders.length +
+    nutritionConsultations.length +
+    otOrders.length +
+    counsellingReferrals.length +
+    swReferrals.length;
 
   if (isLoading) {
     return (
@@ -247,11 +255,11 @@ function ReferralSection({
       <div className="flex items-center gap-2 text-sm font-medium">
         {icon}
         {title}
-        <Badge variant="secondary" className="text-xs">{count}</Badge>
+        <Badge variant="secondary" className="text-xs">
+          {count}
+        </Badge>
       </div>
-      <div className="space-y-2 pl-6">
-        {children}
-      </div>
+      <div className="space-y-2 pl-6">{children}</div>
     </div>
   );
 }
@@ -277,17 +285,13 @@ function ReferralCard({
 }) {
   return (
     <Link href={href} className="block">
-      <div className="flex items-start justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-        <div className="space-y-1 min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm truncate">{title}</span>
-            <Badge className={STATUS_COLORS[status] || ''}>
-              {status.replace(/_/g, ' ')}
-            </Badge>
+      <div className="flex items-start justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate text-sm font-medium">{title}</span>
+            <Badge className={STATUS_COLORS[status] || ''}>{status.replace(/_/g, ' ')}</Badge>
             {priority && priority !== 'ROUTINE' && (
-              <Badge className={PRIORITY_COLORS[priority] || ''}>
-                {priority}
-              </Badge>
+              <Badge className={PRIORITY_COLORS[priority] || ''}>{priority}</Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
@@ -301,7 +305,7 @@ function ReferralCard({
             <span className="hidden sm:inline">• {formatRelativeTime(date)}</span>
           </div>
         </div>
-        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />
+        <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       </div>
     </Link>
   );

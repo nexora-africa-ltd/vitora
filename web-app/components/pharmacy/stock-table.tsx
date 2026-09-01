@@ -9,7 +9,16 @@
 
 import { useState } from 'react';
 import { format, isBefore, addDays } from 'date-fns';
-import { ChevronLeft, ChevronRight, AlertTriangle, XCircle, Clock, MoreVertical, Filter, Package } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  XCircle,
+  Clock,
+  MoreVertical,
+  Filter,
+  Package,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -121,7 +130,7 @@ export function StockTable({
   };
 
   // Get unique locations from batches for location filter
-  const uniqueLocations = Array.from(new Set(batches.map(b => b.location).filter(Boolean)));
+  const uniqueLocations = Array.from(new Set(batches.map((b) => b.location).filter(Boolean)));
 
   const handleBatchClick = (batch: StockBatch) => {
     setSelectedBatch(batch);
@@ -164,7 +173,7 @@ export function StockTable({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <XCircle className="h-12 w-12 text-destructive mb-4" />
+        <XCircle className="mb-4 h-12 w-12 text-destructive" />
         <p className="text-destructive">{error.message}</p>
       </div>
     );
@@ -178,13 +187,13 @@ export function StockTable({
 
     return (
       <Card
-        className={`p-4 space-y-3 ${batch.status === 'LOW' ? 'border-amber-500/50' : batch.status === 'EXPIRED' ? 'border-destructive/50' : ''}`}
+        className={`space-y-3 p-4 ${batch.status === 'LOW' ? 'border-amber-500/50' : batch.status === 'EXPIRED' ? 'border-destructive/50' : ''}`}
         onClick={() => handleBatchClick(batch)}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="font-medium truncate">{batch.drug_name}</p>
-            <p className="text-sm text-muted-foreground font-mono">{batch.batch_number}</p>
+            <p className="truncate font-medium">{batch.drug_name}</p>
+            <p className="font-mono text-sm text-muted-foreground">{batch.batch_number}</p>
           </div>
           <Badge className={STATUS_COLORS[batch.status]}>
             {batch.status === 'OUT_OF_STOCK' ? 'OOS' : batch.status}
@@ -203,29 +212,46 @@ export function StockTable({
           <div className="col-span-2">
             <span className="text-muted-foreground">Expires:</span>
             <span className="ml-1 font-medium">{format(expiryDate, 'MMM d, yyyy')}</span>
-            {isExpired && <XCircle className="h-3.5 w-3.5 text-destructive inline ml-1" />}
-            {isExpiringSoon && !isExpired && <Clock className="h-3.5 w-3.5 text-amber-500 inline ml-1" />}
-            <span className="text-muted-foreground ml-2">({batch.days_to_expiry} days)</span>
+            {isExpired && <XCircle className="ml-1 inline h-3.5 w-3.5 text-destructive" />}
+            {isExpiringSoon && !isExpired && (
+              <Clock className="ml-1 inline h-3.5 w-3.5 text-amber-500" />
+            )}
+            <span className="ml-2 text-muted-foreground">({batch.days_to_expiry} days)</span>
           </div>
         </div>
 
         {batch.status !== 'EXPIRED' && batch.status !== 'RECALLED' && (
-          <div className="flex justify-end pt-2 border-t">
+          <div className="flex justify-end border-t pt-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   Actions
-                  <MoreVertical className="h-4 w-4 ml-1" />
+                  <MoreVertical className="ml-1 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch); }}>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAdjustmentAction(batch);
+                  }}
+                >
                   Adjust Stock
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch, 'EXPIRED'); }}>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAdjustmentAction(batch, 'EXPIRED');
+                  }}
+                >
                   Mark as Expired
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch, 'DAMAGED'); }}>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAdjustmentAction(batch, 'DAMAGED');
+                  }}
+                >
                   Mark as Damaged
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -242,8 +268,11 @@ export function StockTable({
       header: 'Batch #',
       cell: (batch: StockBatch) => (
         <button
-          onClick={(e) => { e.stopPropagation(); handleBatchClick(batch); }}
-          className="text-primary hover:text-primary/80 hover:underline font-mono text-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleBatchClick(batch);
+          }}
+          className="font-mono text-sm text-primary hover:text-primary/80 hover:underline"
         >
           {batch.batch_number}
         </button>
@@ -268,8 +297,12 @@ export function StockTable({
         return (
           <div className="flex items-center gap-2">
             <span>{format(expiryDate, 'MMM d, yyyy')}</span>
-            {isExpired && <XCircle className="h-4 w-4 text-destructive" data-testid="expired-indicator" />}
-            {isExpiringSoon && !isExpired && <Clock className="h-4 w-4 text-amber-500" data-testid="expiry-warning" />}
+            {isExpired && (
+              <XCircle className="h-4 w-4 text-destructive" data-testid="expired-indicator" />
+            )}
+            {isExpiringSoon && !isExpired && (
+              <Clock className="h-4 w-4 text-amber-500" data-testid="expiry-warning" />
+            )}
           </div>
         );
       },
@@ -310,7 +343,7 @@ export function StockTable({
     {
       key: 'actions',
       header: 'Actions',
-      cell: (batch: StockBatch) => (
+      cell: (batch: StockBatch) =>
         batch.status !== 'EXPIRED' && batch.status !== 'RECALLED' ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -319,22 +352,41 @@ export function StockTable({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch); }}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAdjustmentAction(batch);
+                }}
+              >
                 Adjust Stock
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch, 'EXPIRED'); }}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAdjustmentAction(batch, 'EXPIRED');
+                }}
+              >
                 Mark as Expired
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch, 'DAMAGED'); }}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAdjustmentAction(batch, 'DAMAGED');
+                }}
+              >
                 Mark as Damaged
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch); }}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAdjustmentAction(batch);
+                }}
+              >
                 Quarantine
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : null
-      ),
+        ) : null,
       className: 'w-[80px]',
     },
   ];
@@ -344,7 +396,7 @@ export function StockTable({
       {/* Filters */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex-1 max-w-sm">
+          <div className="max-w-sm flex-1">
             <Input
               placeholder="Search by batch number..."
               value={searchQuery}
@@ -354,7 +406,11 @@ export function StockTable({
           </div>
           <div className="flex gap-2">
             <Select value={selectedStatus} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-full sm:w-40" aria-label="Filter by status" data-testid="status-filter">
+              <SelectTrigger
+                className="w-full sm:w-40"
+                aria-label="Filter by status"
+                data-testid="status-filter"
+              >
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -378,7 +434,7 @@ export function StockTable({
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 border rounded-lg bg-muted/30">
+          <div className="grid grid-cols-1 gap-3 rounded-lg border bg-muted/30 p-4 sm:grid-cols-2 lg:grid-cols-4">
             {drugs.length > 0 && (
               <Select value={selectedDrug} onValueChange={handleDrugChange}>
                 <SelectTrigger aria-label="Filter by drug" data-testid="drug-filter">
@@ -418,7 +474,7 @@ export function StockTable({
                 onCheckedChange={handleExpiringSoonToggle}
                 data-testid="expiring-filter"
               />
-              <Label htmlFor="expiring-soon" className="text-sm cursor-pointer">
+              <Label htmlFor="expiring-soon" className="cursor-pointer text-sm">
                 Expiring Soon
               </Label>
             </div>
@@ -450,7 +506,7 @@ export function StockTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground text-center sm:text-left">
+          <p className="text-center text-sm text-muted-foreground sm:text-left">
             Page {page} of {totalPages}
           </p>
           <div className="flex items-center justify-center gap-2">

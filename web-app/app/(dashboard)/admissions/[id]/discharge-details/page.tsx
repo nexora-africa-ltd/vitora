@@ -35,7 +35,10 @@ import type { Discharge, DischargeType } from '@/lib/types/inpatient';
 // =============================================================================
 
 function getDischargeTypeBadge(type: DischargeType) {
-  const map: Record<DischargeType, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'warning' | 'success' }> = {
+  const map: Record<
+    DischargeType,
+    { label: string; variant: 'default' | 'secondary' | 'destructive' | 'warning' | 'success' }
+  > = {
     NORMAL: { label: 'Normal', variant: 'success' },
     ROUTINE: { label: 'Routine', variant: 'success' },
     AGAINST_ADVICE: { label: 'Against Medical Advice', variant: 'warning' },
@@ -60,13 +63,21 @@ function ClearanceBadge({ cleared, label }: { cleared: boolean; label: string })
   );
 }
 
-function InfoRow({ label, value, icon }: { label: string; value: React.ReactNode; icon?: React.ReactNode }) {
+function InfoRow({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
   return (
     <div className="flex items-start gap-3 py-2">
-      {icon && <div className="mt-0.5 text-muted-foreground shrink-0">{icon}</div>}
+      {icon && <div className="mt-0.5 shrink-0 text-muted-foreground">{icon}</div>}
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium break-words">{value || '—'}</p>
+        <p className="break-words text-sm font-medium">{value || '—'}</p>
       </div>
     </div>
   );
@@ -109,7 +120,7 @@ export default function DischargeDetailPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <p className="text-xl font-semibold">No discharge record found</p>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           This admission does not have a discharge record yet.
         </p>
         <Button onClick={() => router.push(`/admissions/${admissionId}`)} className="mt-4">
@@ -127,7 +138,8 @@ export default function DischargeDetailPage() {
     if (!defaultTemplate) {
       toast({
         title: 'Using default print layout',
-        description: 'No discharge template configured for this facility. Go to Settings → Facility → Discharge Templates to set one up.',
+        description:
+          'No discharge template configured for this facility. Go to Settings → Facility → Discharge Templates to set one up.',
       });
     }
     printDischargeDocument({
@@ -136,7 +148,14 @@ export default function DischargeDetailPage() {
       patientName: admission.patient_name || '',
       patientMRN: admission.admission_number,
       patientAge: admission.patient_age ? `${admission.patient_age} Years` : undefined,
-      patientSex: admission.patient_gender === 'M' ? 'Male' : admission.patient_gender === 'F' ? 'Female' : admission.patient_gender === 'O' ? 'Other' : undefined,
+      patientSex:
+        admission.patient_gender === 'M'
+          ? 'Male'
+          : admission.patient_gender === 'F'
+            ? 'Female'
+            : admission.patient_gender === 'O'
+              ? 'Other'
+              : undefined,
       admissionNumber: admission.admission_number,
       wardName: admission.ward_name || '',
       admissionDate: admission.admission_date,
@@ -144,7 +163,9 @@ export default function DischargeDetailPage() {
       admittingDiagnosis: discharge.admission_diagnosis,
       facilityName: facility?.name,
       facilityMflCode: facility?.mfl_code,
-      facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
+      facilityLocation: facilityDetail
+        ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}`
+        : undefined,
       facilityLogoUrl: facilityDetail?.effective_logo_url,
       layout: defaultTemplate?.layout,
       showSignatureLines: defaultTemplate?.show_signature_lines,
@@ -153,7 +174,7 @@ export default function DischargeDetailPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="Discharge Details"
         helpContent={`Discharge record for ${admission.patient_name} (${admission.admission_number})`}
@@ -167,29 +188,25 @@ export default function DischargeDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-lg sm:text-xl font-bold truncate">
-            {admission.admission_number}
-          </p>
-          <p className="text-sm text-muted-foreground truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-lg font-bold sm:text-xl">{admission.admission_number}</p>
+          <p className="truncate text-sm text-muted-foreground">
             <span className="font-medium">{admission.patient_name}</span>
             {admission.patient_age ? ` • ${admission.patient_age}y` : ''}
-            {admission.patient_gender ? ` • ${admission.patient_gender === 'M' ? 'Male' : admission.patient_gender === 'F' ? 'Female' : 'Other'}` : ''}
+            {admission.patient_gender
+              ? ` • ${admission.patient_gender === 'M' ? 'Male' : admission.patient_gender === 'F' ? 'Female' : 'Other'}`
+              : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-          <SignatureBadge
-            documentType="Discharge"
-            documentId={discharge.id}
-            canSign={true}
-          />
+        <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
+          <SignatureBadge documentType="Discharge" documentId={discharge.id} canSign={true} />
           {getDischargeTypeBadge(discharge.discharge_type)}
         </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -243,16 +260,21 @@ export default function DischargeDetailPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Admitting Diagnosis</p>
+            <p className="mb-1 text-xs text-muted-foreground">Admitting Diagnosis</p>
             <p className="text-sm">{discharge.admission_diagnosis || '—'}</p>
           </div>
           <Separator />
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Final Diagnosis (Primary)</p>
+            <p className="mb-1 text-xs text-muted-foreground">Final Diagnosis (Primary)</p>
             {diagPrimary ? (
               <div className="flex items-center gap-2">
-                <Badge variant="default" className="text-xs">Primary</Badge>
-                <span className="text-sm">{diagPrimary.code && `${diagPrimary.code} — `}{diagPrimary.description}</span>
+                <Badge variant="default" className="text-xs">
+                  Primary
+                </Badge>
+                <span className="text-sm">
+                  {diagPrimary.code && `${diagPrimary.code} — `}
+                  {diagPrimary.description}
+                </span>
               </div>
             ) : (
               <p className="text-sm">
@@ -264,17 +286,20 @@ export default function DischargeDetailPage() {
             <>
               <Separator />
               <div>
-                <p className="text-xs text-muted-foreground mb-2">Secondary / Complications</p>
+                <p className="mb-2 text-xs text-muted-foreground">Secondary / Complications</p>
                 <div className="space-y-1.5">
                   {diagSecondary.map((d, i) => (
                     <div key={d.id ?? i} className="flex items-center gap-2">
                       <Badge
                         variant="outline"
-                        className={`text-xs shrink-0 ${d.role === 'COMPLICATION' ? 'border-amber-300 text-amber-700' : ''}`}
+                        className={`shrink-0 text-xs ${d.role === 'COMPLICATION' ? 'border-amber-300 text-amber-700' : ''}`}
                       >
                         {d.role_display || d.role}
                       </Badge>
-                      <span className="text-sm">{d.code && `${d.code} — `}{d.description}</span>
+                      <span className="text-sm">
+                        {d.code && `${d.code} — `}
+                        {d.description}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -287,7 +312,7 @@ export default function DischargeDetailPage() {
       {/* Discharge Summary */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <FileText className="h-5 w-5" />
             Discharge Summary
           </CardTitle>
@@ -305,7 +330,7 @@ export default function DischargeDetailPage() {
         </CardHeader>
         <CardContent>
           {discharge.treatment_summary ? (
-            <div className="tibabot-markdown text-sm break-words overflow-hidden">
+            <div className="tibabot-markdown overflow-hidden break-words text-sm">
               <Markdown remarkPlugins={[remarkGfm]}>{discharge.treatment_summary}</Markdown>
             </div>
           ) : (
@@ -317,7 +342,7 @@ export default function DischargeDetailPage() {
       {/* Patient Instructions */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <FileText className="h-5 w-5" />
             Patient Instructions
           </CardTitle>
@@ -325,7 +350,9 @@ export default function DischargeDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handlePrint(discharge.patient_instructions, 'Patient Discharge Instructions')}
+              onClick={() =>
+                handlePrint(discharge.patient_instructions, 'Patient Discharge Instructions')
+              }
               className="gap-1.5 text-xs"
             >
               <Printer className="h-3.5 w-3.5" />
@@ -335,7 +362,7 @@ export default function DischargeDetailPage() {
         </CardHeader>
         <CardContent>
           {discharge.patient_instructions ? (
-            <div className="tibabot-markdown text-sm break-words overflow-hidden">
+            <div className="tibabot-markdown overflow-hidden break-words text-sm">
               <Markdown remarkPlugins={[remarkGfm]}>{discharge.patient_instructions}</Markdown>
             </div>
           ) : (
@@ -348,7 +375,7 @@ export default function DischargeDetailPage() {
       {discharge.discharge_medications && discharge.discharge_medications.length > 0 && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <Pill className="h-5 w-5" />
               Discharge Medications
             </CardTitle>
@@ -361,12 +388,22 @@ export default function DischargeDetailPage() {
                   patientName: admission.patient_name || '',
                   patientIdentifier: admission.admission_number,
                   patientAge: admission.patient_age ? `${admission.patient_age} Years` : undefined,
-                  patientSex: admission.patient_gender === 'M' ? 'Male' : admission.patient_gender === 'F' ? 'Female' : admission.patient_gender === 'O' ? 'Other' : undefined,
+                  patientSex:
+                    admission.patient_gender === 'M'
+                      ? 'Male'
+                      : admission.patient_gender === 'F'
+                        ? 'Female'
+                        : admission.patient_gender === 'O'
+                          ? 'Other'
+                          : undefined,
                   dischargeDate: discharge.discharge_date,
-                  diagnosis: discharge.final_diagnosis_text || discharge.final_diagnosis || undefined,
+                  diagnosis:
+                    discharge.final_diagnosis_text || discharge.final_diagnosis || undefined,
                   facilityName: facility?.name,
                   facilityMflCode: facility?.mfl_code,
-                  facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
+                  facilityLocation: facilityDetail
+                    ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}`
+                    : undefined,
                   facilityLogoUrl: facilityDetail?.effective_logo_url,
                   clinicianName: discharge.discharged_by_username || undefined,
                 });
@@ -381,13 +418,21 @@ export default function DischargeDetailPage() {
             <div className="space-y-3">
               {discharge.discharge_medications.map((med, index) => (
                 <div key={index} className="rounded-lg border p-3">
-                  <p className="font-medium text-sm">{med.drug_name}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5 text-xs text-muted-foreground">
-                    <span>Dosage: <span className="text-foreground">{med.dosage}</span></span>
-                    <span>Frequency: <span className="text-foreground">{med.frequency}</span></span>
-                    <span>Duration: <span className="text-foreground">{med.duration || '—'}</span></span>
+                  <p className="text-sm font-medium">{med.drug_name}</p>
+                  <div className="mt-1.5 grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
+                    <span>
+                      Dosage: <span className="text-foreground">{med.dosage}</span>
+                    </span>
+                    <span>
+                      Frequency: <span className="text-foreground">{med.frequency}</span>
+                    </span>
+                    <span>
+                      Duration: <span className="text-foreground">{med.duration || '—'}</span>
+                    </span>
                     {med.instructions && (
-                      <span>Notes: <span className="text-foreground">{med.instructions}</span></span>
+                      <span>
+                        Notes: <span className="text-foreground">{med.instructions}</span>
+                      </span>
                     )}
                   </div>
                 </div>
@@ -407,26 +452,19 @@ export default function DischargeDetailPage() {
           <CardContent className="space-y-2">
             <InfoRow
               label="Follow-up Date"
-              value={discharge.follow_up_date ? formatDate(discharge.follow_up_date) : 'Not scheduled'}
+              value={
+                discharge.follow_up_date ? formatDate(discharge.follow_up_date) : 'Not scheduled'
+              }
               icon={<Calendar className="h-4 w-4" />}
             />
             {discharge.follow_up_instructions && (
-              <InfoRow
-                label="Follow-up Instructions"
-                value={discharge.follow_up_instructions}
-              />
+              <InfoRow label="Follow-up Instructions" value={discharge.follow_up_instructions} />
             )}
             {discharge.referral_facility && (
-              <InfoRow
-                label="Referral Facility"
-                value={discharge.referral_facility}
-              />
+              <InfoRow label="Referral Facility" value={discharge.referral_facility} />
             )}
             {discharge.referral_reason && (
-              <InfoRow
-                label="Referral Reason"
-                value={discharge.referral_reason}
-              />
+              <InfoRow label="Referral Reason" value={discharge.referral_reason} />
             )}
           </CardContent>
         </Card>
@@ -439,7 +477,10 @@ export default function DischargeDetailPage() {
           <CardContent className="space-y-3">
             <ClearanceBadge cleared={discharge.billing_cleared} label="Billing Clearance" />
             <ClearanceBadge cleared={discharge.pharmacy_cleared} label="Pharmacy Clearance" />
-            <ClearanceBadge cleared={discharge.lab_results_acknowledged} label="Lab Results Acknowledged" />
+            <ClearanceBadge
+              cleared={discharge.lab_results_acknowledged}
+              label="Lab Results Acknowledged"
+            />
           </CardContent>
         </Card>
       </div>
@@ -455,7 +496,10 @@ export default function DischargeDetailPage() {
               label="MCH Registration"
               value={
                 discharge.mch_registration_number ? (
-                  <Link href={`/mch/${discharge.mch_registration}`} className="text-primary underline">
+                  <Link
+                    href={`/mch/${discharge.mch_registration}`}
+                    className="text-primary underline"
+                  >
                     {discharge.mch_registration_number}
                   </Link>
                 ) : (
@@ -465,11 +509,17 @@ export default function DischargeDetailPage() {
             />
             <InfoRow
               label="Continuity Action"
-              value={discharge.maternity_continuity_action_display || discharge.maternity_continuity_action}
+              value={
+                discharge.maternity_continuity_action_display ||
+                discharge.maternity_continuity_action
+              }
             />
             <InfoRow
               label="Status"
-              value={discharge.maternity_continuity_status_display || discharge.maternity_continuity_status}
+              value={
+                discharge.maternity_continuity_status_display ||
+                discharge.maternity_continuity_status
+              }
             />
           </CardContent>
         </Card>
@@ -482,7 +532,7 @@ export default function DischargeDetailPage() {
             <CardTitle className="text-lg">Procedures Performed</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{discharge.procedures_performed}</p>
+            <p className="whitespace-pre-wrap text-sm">{discharge.procedures_performed}</p>
           </CardContent>
         </Card>
       )}
@@ -496,10 +546,10 @@ export default function DischargeDetailPage() {
 
 function DischargeDetailSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-20 w-full rounded-lg" />
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Skeleton key={i} className="h-20 rounded-lg" />
         ))}

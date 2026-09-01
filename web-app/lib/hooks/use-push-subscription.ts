@@ -105,7 +105,11 @@ export function usePushSubscription() {
     'Notification' in window;
 
   // Fetch VAPID public key
-  const { data: vapidData, error: vapidError, isError: isVapidError } = useQuery<VapidKeyResponse>({
+  const {
+    data: vapidData,
+    error: vapidError,
+    isError: isVapidError,
+  } = useQuery<VapidKeyResponse>({
     queryKey: ['vapid-key'],
     queryFn: () => pushApi.getVapidKey(),
     enabled: isSupported,
@@ -226,7 +230,9 @@ export function usePushSubscription() {
           if (!subscription) {
             const domError = err as DOMException;
             if (domError?.name === 'AbortError') {
-              throw new Error('Could not reach browser push service. Check network/VPN and try again.');
+              throw new Error(
+                'Could not reach browser push service. Check network/VPN and try again.'
+              );
             }
             if (domError?.name === 'NotAllowedError') {
               throw new Error('Browser blocked push notifications for this site.');

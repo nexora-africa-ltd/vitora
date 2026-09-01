@@ -116,7 +116,8 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
       queryClient.invalidateQueries({ queryKey: ['mch-registrations'] });
       toast({
         title: 'Delivery Recorded',
-        description: 'Delivery recorded successfully. MCH status has been updated to Delivered and baby patient record has been created.',
+        description:
+          'Delivery recorded successfully. MCH status has been updated to Delivered and baby patient record has been created.',
       });
       setDialogOpen(false);
     },
@@ -163,7 +164,7 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Delivery</h3>
           <HelpPopover content="Record delivery details including type, outcome, baby information, and any complications." />
@@ -176,7 +177,7 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
                 Record Delivery
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Record Delivery</DialogTitle>
               </DialogHeader>
@@ -201,7 +202,10 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
                   </div>
                   <div className="space-y-2">
                     <Label>Delivery Type</Label>
-                    <Select value={deliveryType} onValueChange={(v) => setDeliveryType(v as DeliveryType)}>
+                    <Select
+                      value={deliveryType}
+                      onValueChange={(v) => setDeliveryType(v as DeliveryType)}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -246,7 +250,10 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
                   </div>
                   <div className="space-y-2">
                     <Label>Baby Gender</Label>
-                    <Select value={babyGender} onValueChange={(v) => setBabyGender(v as BabyGender)}>
+                    <Select
+                      value={babyGender}
+                      onValueChange={(v) => setBabyGender(v as BabyGender)}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -346,11 +353,7 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
 
                 <div className="space-y-2">
                   <Label>Notes</Label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={2}
-                  />
+                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
                 </div>
 
                 <div className="flex justify-end gap-2">
@@ -378,52 +381,55 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
         <div className="space-y-4">
           {deliveries.map((delivery) => (
             <Link key={delivery.id} href={`/mch/deliveries/${delivery.id}`} className="block">
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Baby className="h-5 w-5" />
-                    Delivery Record
-                  </CardTitle>
-                  <Badge className={outcomeColors[delivery.delivery_outcome]}>
-                    {delivery.delivery_outcome.replace(/_/g, ' ')}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(delivery.delivery_date)}
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Type:</span>{' '}
-                    {delivery.delivery_type}
+              <Card className="cursor-pointer transition-colors hover:bg-muted/50">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Baby className="h-5 w-5" />
+                      Delivery Record
+                    </CardTitle>
+                    <Badge className={outcomeColors[delivery.delivery_outcome]}>
+                      {delivery.delivery_outcome.replace(/_/g, ' ')}
+                    </Badge>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Gender:</span>{' '}
-                    {delivery.baby_gender === 'M' ? 'Male' : delivery.baby_gender === 'F' ? 'Female' : 'Other'}
-                  </div>
-                  {delivery.birth_weight && (
+                  <p className="text-sm text-muted-foreground">
+                    {formatDate(delivery.delivery_date)}
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
                     <div>
-                      <span className="text-muted-foreground">Weight:</span>{' '}
-                      {delivery.birth_weight} kg
+                      <span className="text-muted-foreground">Type:</span> {delivery.delivery_type}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Gender:</span>{' '}
+                      {delivery.baby_gender === 'M'
+                        ? 'Male'
+                        : delivery.baby_gender === 'F'
+                          ? 'Female'
+                          : 'Other'}
+                    </div>
+                    {delivery.birth_weight && (
+                      <div>
+                        <span className="text-muted-foreground">Weight:</span>{' '}
+                        {delivery.birth_weight} kg
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Alerts */}
+                  {delivery.alerts.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {delivery.alerts.map((alert, i) => (
+                        <Badge key={i} variant="destructive" className="gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          {alert}
+                        </Badge>
+                      ))}
                     </div>
                   )}
-                </div>
-
-                {/* Alerts */}
-                {delivery.alerts.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {delivery.alerts.map((alert, i) => (
-                      <Badge key={i} variant="destructive" className="gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        {alert}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
             </Link>
           ))}
         </div>

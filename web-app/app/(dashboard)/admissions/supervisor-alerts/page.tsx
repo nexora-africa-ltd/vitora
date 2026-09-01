@@ -26,13 +26,13 @@ export default function SupervisorAlertsPage() {
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle>Limited Access</AlertTitle>
           <AlertDescription>
-            Full alert acknowledgment features require supervisor permissions.
-            Contact your administrator if you need access.
+            Full alert acknowledgment features require supervisor permissions. Contact your
+            administrator if you need access.
           </AlertDescription>
         </Alert>
       )}
 
-      <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* Alerts Panel - Full width on mobile, half on xl */}
         <div className="xl:col-span-1">
           <SupervisorAlertsPanel />

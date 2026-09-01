@@ -48,28 +48,34 @@ export function IdleWarningModal({
 
   // Smooth green → amber → red color coding based on percentage remaining
   const timerStroke =
-    progressValue > 75 ? 'stroke-emerald-500' :
-    progressValue > 50 ? 'stroke-lime-500' :
-    progressValue > 30 ? 'stroke-amber-500' :
-    progressValue > 15 ? 'stroke-orange-500' :
-    'stroke-red-500';
+    progressValue > 75
+      ? 'stroke-emerald-500'
+      : progressValue > 50
+        ? 'stroke-lime-500'
+        : progressValue > 30
+          ? 'stroke-amber-500'
+          : progressValue > 15
+            ? 'stroke-orange-500'
+            : 'stroke-red-500';
   const timerText =
-    progressValue > 75 ? 'text-emerald-600 dark:text-emerald-400' :
-    progressValue > 50 ? 'text-lime-600 dark:text-lime-400' :
-    progressValue > 30 ? 'text-amber-600 dark:text-amber-400' :
-    progressValue > 15 ? 'text-orange-600 dark:text-orange-400' :
-    'text-red-600 dark:text-red-400';
+    progressValue > 75
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : progressValue > 50
+        ? 'text-lime-600 dark:text-lime-400'
+        : progressValue > 30
+          ? 'text-amber-600 dark:text-amber-400'
+          : progressValue > 15
+            ? 'text-orange-600 dark:text-orange-400'
+            : 'text-red-600 dark:text-red-400';
 
   return (
     <AlertDialog open={isOpen}>
       <AlertDialogContent className="sm:max-w-md">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-center">
-            Session About to Expire
-          </AlertDialogTitle>
+          <AlertDialogTitle className="text-center">Session About to Expire</AlertDialogTitle>
           <AlertDialogDescription className="text-center">
-            You&apos;ve been inactive for a while. For your security, you&apos;ll be
-            automatically logged out soon.
+            You&apos;ve been inactive for a while. For your security, you&apos;ll be automatically
+            logged out soon.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -83,34 +89,21 @@ export function IdleWarningModal({
             trackClassName="stroke-muted"
           >
             <div className="flex flex-col items-center">
-              <span className={cn(
-                "text-2xl font-mono font-bold tabular-nums",
-                timerText
-              )}>
+              <span className={cn('font-mono text-2xl font-bold tabular-nums', timerText)}>
                 {formatCountdown(secondsRemaining)}
               </span>
             </div>
           </CircularProgress>
-          <p className="text-sm text-muted-foreground">
-            Time remaining before logout
-          </p>
+          <p className="text-sm text-muted-foreground">Time remaining before logout</p>
         </div>
 
         <AlertDialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
-          <Button
-            onClick={onContinue}
-            className="w-full"
-            size="lg"
-          >
+          <Button onClick={onContinue} className="w-full" size="lg">
             <MousePointer className="mr-2 h-4 w-4" />
             Continue Session
           </Button>
           {onLogout && (
-            <Button
-              variant="outline"
-              onClick={onLogout}
-              className="w-full"
-            >
+            <Button variant="outline" onClick={onLogout} className="w-full">
               <LogOut className="mr-2 h-4 w-4" />
               Logout Now
             </Button>

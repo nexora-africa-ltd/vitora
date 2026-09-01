@@ -12,7 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DiagnosisCodeInput, emptyDiagnosisCodeValue, type DiagnosisCodeValue } from './diagnosis-code-input';
+import {
+  DiagnosisCodeInput,
+  emptyDiagnosisCodeValue,
+  type DiagnosisCodeValue,
+} from './diagnosis-code-input';
 import type { DiagnosisRole } from '@/lib/types/inpatient';
 
 export interface DiagnosisEntry {
@@ -52,34 +56,30 @@ const DiagnosisRow = memo(function DiagnosisRow({
 }) {
   const handleCode = useCallback(
     (code: DiagnosisCodeValue) => onCodeChange(index, code),
-    [onCodeChange, index],
+    [onCodeChange, index]
   );
   const handleRole = useCallback(
     (v: string) => onRoleChange(index, v as DiagnosisRole),
-    [onRoleChange, index],
+    [onRoleChange, index]
   );
   const handleRemove = useCallback(() => onRemove(index), [onRemove, index]);
 
   return (
-    <div className="rounded-lg border p-3 space-y-2">
+    <div className="space-y-2 rounded-lg border p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Badge className={`shrink-0 text-xs ${ROLE_COLORS[entry.role]}`}>
-            {entry.role}
-          </Badge>
+          <Badge className={`shrink-0 text-xs ${ROLE_COLORS[entry.role]}`}>{entry.role}</Badge>
           {entry.role === 'PRIMARY' ? (
             <span className="text-xs text-muted-foreground">Principal diagnosis</span>
           ) : (
-            <Select
-              value={entry.role}
-              onValueChange={handleRole}
-              disabled={disabled}
-            >
-              <SelectTrigger className="h-7 w-[130px] text-xs border-0 bg-transparent p-0">
+            <Select value={entry.role} onValueChange={handleRole} disabled={disabled}>
+              <SelectTrigger className="h-7 w-[130px] border-0 bg-transparent p-0 text-xs">
                 <span className="text-xs text-muted-foreground">Change role</span>
               </SelectTrigger>
               <SelectContent>
-                {ROLE_OPTIONS.filter((r) => r.value !== 'PRIMARY' || !hasPrimary || entry.role === 'PRIMARY').map((r) => (
+                {ROLE_OPTIONS.filter(
+                  (r) => r.value !== 'PRIMARY' || !hasPrimary || entry.role === 'PRIMARY'
+                ).map((r) => (
                   <SelectItem key={r.value} value={r.value} className="text-xs">
                     {r.label}
                   </SelectItem>
@@ -136,19 +136,28 @@ export function MultiDiagnosisInput({
     setAddingRole('SECONDARY');
   }, [value, onChange, hasPrimary, addingRole]);
 
-  const handleRemove = useCallback((index: number) => {
-    onChange(value.filter((_, i) => i !== index));
-  }, [value, onChange]);
+  const handleRemove = useCallback(
+    (index: number) => {
+      onChange(value.filter((_, i) => i !== index));
+    },
+    [value, onChange]
+  );
 
-  const handleCodeChange = useCallback((index: number, code: DiagnosisCodeValue) => {
-    const updated = value.map((entry, i) => i === index ? { ...entry, code } : entry);
-    onChange(updated);
-  }, [value, onChange]);
+  const handleCodeChange = useCallback(
+    (index: number, code: DiagnosisCodeValue) => {
+      const updated = value.map((entry, i) => (i === index ? { ...entry, code } : entry));
+      onChange(updated);
+    },
+    [value, onChange]
+  );
 
-  const handleRoleChange = useCallback((index: number, role: DiagnosisRole) => {
-    const updated = value.map((entry, i) => i === index ? { ...entry, role } : entry);
-    onChange(updated);
-  }, [value, onChange]);
+  const handleRoleChange = useCallback(
+    (index: number, role: DiagnosisRole) => {
+      const updated = value.map((entry, i) => (i === index ? { ...entry, role } : entry));
+      onChange(updated);
+    },
+    [value, onChange]
+  );
 
   return (
     <div className="space-y-3">
@@ -175,16 +184,18 @@ export function MultiDiagnosisInput({
             size="sm"
             onClick={handleAdd}
             disabled={disabled}
-            className="gap-1.5 shrink-0"
+            className="shrink-0 gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{!hasPrimary ? 'Add Primary' : 'Add Diagnosis'}</span>
+            <span className="hidden sm:inline">
+              {!hasPrimary ? 'Add Primary' : 'Add Diagnosis'}
+            </span>
           </Button>
         </div>
       </div>
 
       {value.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-3 border border-dashed rounded-lg">
+        <p className="rounded-lg border border-dashed py-3 text-center text-sm text-muted-foreground">
           No diagnoses added. Click &quot;Add Primary&quot; to start.
         </p>
       )}

@@ -316,7 +316,7 @@ export function printGrowthBooklet(options: PrintGrowthBookletOptions): Window |
     `MCH Booklet — ${options.indicatorLabel}`,
     'a4',
     'default',
-    BOOKLET_CSS,
+    BOOKLET_CSS
   );
   return openPrintWindow(html);
 }

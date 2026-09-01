@@ -105,7 +105,9 @@ export function handleChunkLoadError(error: Error): boolean {
   // Check if we should skip reload
   const { skip, reason } = shouldSkipReload();
   if (skip) {
-    console.warn(`[ChunkError] Skipping reload - ${reason}. Please hard refresh (Ctrl+Shift+R or Cmd+Shift+R).`);
+    console.warn(
+      `[ChunkError] Skipping reload - ${reason}. Please hard refresh (Ctrl+Shift+R or Cmd+Shift+R).`
+    );
     // Show user-friendly message for max attempts
     if (reason.includes('Max reload')) {
       showReloadFailedMessage();
@@ -114,19 +116,23 @@ export function handleChunkLoadError(error: Error): boolean {
   }
 
   const attemptNumber = getReloadCount() + 1;
-  console.info(`[ChunkError] Detected stale chunk, clearing cache and reloading page (attempt ${attemptNumber}/${MAX_RELOAD_ATTEMPTS})...`);
+  console.info(
+    `[ChunkError] Detected stale chunk, clearing cache and reloading page (attempt ${attemptNumber}/${MAX_RELOAD_ATTEMPTS})...`
+  );
   markReload();
 
   // Clear caches and reload
-  clearAllCaches().then(() => {
-    // Small delay to let cache clearing complete
-    setTimeout(() => {
+  clearAllCaches()
+    .then(() => {
+      // Small delay to let cache clearing complete
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    })
+    .catch(() => {
+      // If cache clearing fails, still try to reload
       window.location.reload();
-    }, 100);
-  }).catch(() => {
-    // If cache clearing fails, still try to reload
-    window.location.reload();
-  });
+    });
 
   return true;
 }

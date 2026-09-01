@@ -37,8 +37,8 @@ export function PageRefreshProvider({ children }: { children: React.ReactNode })
     const initializeFromCache = () => {
       const queries = queryClient.getQueryCache().getAll();
       const latestUpdate = queries
-        .filter(q => q.state.status === 'success' && q.state.dataUpdatedAt)
-        .map(q => q.state.dataUpdatedAt)
+        .filter((q) => q.state.status === 'success' && q.state.dataUpdatedAt)
+        .map((q) => q.state.dataUpdatedAt)
         .sort((a, b) => b - a)[0];
 
       if (latestUpdate) {
@@ -72,26 +72,25 @@ export function PageRefreshProvider({ children }: { children: React.ReactNode })
       // Invalidate all active queries - this triggers refetch for queries with active observers
       await queryClient.invalidateQueries();
       // Bump refreshKey to trigger PowerSync/offline query re-execution
-      setRefreshKey(k => k + 1);
+      setRefreshKey((k) => k + 1);
       setLastFetchTime(new Date());
     } finally {
       setIsRefreshing(false);
     }
   }, [queryClient, isRefreshing]);
 
-  const value = useMemo<PageRefreshContextValue>(() => ({
-    lastFetchTime,
-    isRefreshing,
-    refresh,
-    reportFetch,
-    refreshKey,
-  }), [lastFetchTime, isRefreshing, refresh, reportFetch, refreshKey]);
-
-  return (
-    <PageRefreshContext.Provider value={value}>
-      {children}
-    </PageRefreshContext.Provider>
+  const value = useMemo<PageRefreshContextValue>(
+    () => ({
+      lastFetchTime,
+      isRefreshing,
+      refresh,
+      reportFetch,
+      refreshKey,
+    }),
+    [lastFetchTime, isRefreshing, refresh, reportFetch, refreshKey]
   );
+
+  return <PageRefreshContext.Provider value={value}>{children}</PageRefreshContext.Provider>;
 }
 
 export function usePageRefresh(): PageRefreshContextValue {

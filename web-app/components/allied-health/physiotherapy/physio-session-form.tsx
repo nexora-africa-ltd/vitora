@@ -11,13 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -94,11 +88,7 @@ function SessionStatusBadge({ status }: { status: string }) {
     NO_SHOW: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
   };
 
-  return (
-    <Badge className={variants[status] || ''}>
-      {status.replace('_', ' ')}
-    </Badge>
-  );
+  return <Badge className={variants[status] || ''}>{status.replace('_', ' ')}</Badge>;
 }
 
 // =============================================================================
@@ -145,7 +135,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
         follow_up_recommendations: session.follow_up_recommendations || '',
         pre_pain_score: session.pre_pain_score ?? 0,
         post_pain_score: session.post_pain_score ?? 0,
-        outcome: session.outcome as typeof sessionOutcomes[number] | undefined,
+        outcome: session.outcome as (typeof sessionOutcomes)[number] | undefined,
         duration_minutes: session.duration_minutes ?? 45,
       });
     }
@@ -223,11 +213,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
   }
 
   if (error || !session) {
-    return (
-      <div className="p-4 text-center text-destructive">
-        Failed to load session
-      </div>
-    );
+    return <div className="p-4 text-center text-destructive">Failed to load session</div>;
   }
 
   return (
@@ -240,7 +226,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
               <CheckCircle className="h-5 w-5" />
               <span className="font-medium">Session completed successfully!</span>
             </div>
-            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+            <p className="mt-1 text-sm text-green-600 dark:text-green-400">
               Invoice item created for billing.
             </p>
           </CardContent>
@@ -256,9 +242,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
                 <FileText className="h-5 w-5" />
                 {session.session_number}
               </CardTitle>
-              <CardDescription>
-                Physiotherapy Session
-              </CardDescription>
+              <CardDescription>Physiotherapy Session</CardDescription>
             </div>
             <SessionStatusBadge status={session.status} />
           </div>
@@ -267,7 +251,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Patient */}
             <div className="flex items-start gap-2">
-              <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <User className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">Patient</div>
                 <div className="text-sm text-muted-foreground">Order #{session.order}</div>
@@ -276,7 +260,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
 
             {/* Date */}
             <div className="flex items-start gap-2">
-              <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <Calendar className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">
                   {format(parseISO(session.scheduled_date), 'MMMM d, yyyy')}
@@ -291,7 +275,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
 
             {/* Therapist */}
             <div className="flex items-start gap-2">
-              <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <User className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">{session.therapist_name || 'Unassigned'}</div>
                 <div className="text-sm text-muted-foreground">Therapist</div>
@@ -300,7 +284,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
 
             {/* Duration/Elapsed */}
             <div className="flex items-start gap-2">
-              <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <Clock className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 {isCompleted && session.duration_minutes ? (
                   <>
@@ -328,11 +312,11 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
       {isScheduled && (
         <div className="flex gap-2">
           <Button onClick={() => setShowStartDialog(true)}>
-            <Play className="h-4 w-4 mr-2" />
+            <Play className="mr-2 h-4 w-4" />
             Start Session
           </Button>
           <Button variant="outline" onClick={() => setShowCancelDialog(true)}>
-            <XCircle className="h-4 w-4 mr-2" />
+            <XCircle className="mr-2 h-4 w-4" />
             Cancel Session
           </Button>
         </div>
@@ -348,7 +332,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
                 <CardTitle className="text-lg">Pain Assessment</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex justify-between text-xs text-muted-foreground mb-2">
+                <div className="mb-2 flex justify-between text-xs text-muted-foreground">
                   <span>0</span>
                   <span>10</span>
                 </div>
@@ -539,8 +523,8 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
                 />
 
                 {isCompleted && session.is_billed && (
-                  <div className="mt-4 p-3 bg-muted rounded-md">
-                    <div className="text-sm font-medium flex items-center gap-2">
+                  <div className="mt-4 rounded-md bg-muted p-3">
+                    <div className="flex items-center gap-2 text-sm font-medium">
                       <CheckCircle className="h-4 w-4 text-green-600" />
                       Billed
                     </div>
@@ -554,18 +538,14 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
               <div className="flex gap-2">
                 <Button type="submit" disabled={completeMutation.isPending}>
                   {completeMutation.isPending ? (
-                    <LoadingSpinner className="h-4 w-4 mr-2" />
+                    <LoadingSpinner className="mr-2 h-4 w-4" />
                   ) : (
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <CheckCircle className="mr-2 h-4 w-4" />
                   )}
                   Complete Session
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCancelDialog(true)}
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
+                <Button type="button" variant="outline" onClick={() => setShowCancelDialog(true)}>
+                  <XCircle className="mr-2 h-4 w-4" />
                   Cancel Session
                 </Button>
               </div>
@@ -596,7 +576,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
                 onValueChange={([val]) => setInitialPainLevel(val ?? 5)}
                 className="mt-2"
               />
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <div className="mt-1 flex justify-between text-xs text-muted-foreground">
                 <span>0 (No pain)</span>
                 <span className="font-medium">{initialPainLevel}</span>
                 <span>10 (Severe)</span>
@@ -608,7 +588,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
               Cancel
             </Button>
             <Button onClick={handleStartSession} disabled={startMutation.isPending}>
-              {startMutation.isPending && <LoadingSpinner className="h-4 w-4 mr-2" />}
+              {startMutation.isPending && <LoadingSpinner className="mr-2 h-4 w-4" />}
               Start Session
             </Button>
           </DialogFooter>
@@ -637,9 +617,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
                 placeholder="Enter cancellation reason..."
                 rows={3}
               />
-              {cancelError && (
-                <p className="text-sm text-destructive mt-1">{cancelError}</p>
-              )}
+              {cancelError && <p className="mt-1 text-sm text-destructive">{cancelError}</p>}
             </div>
           </div>
           <DialogFooter>
@@ -651,7 +629,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
               onClick={handleCancelSession}
               disabled={cancelMutation.isPending}
             >
-              {cancelMutation.isPending && <LoadingSpinner className="h-4 w-4 mr-2" />}
+              {cancelMutation.isPending && <LoadingSpinner className="mr-2 h-4 w-4" />}
               Confirm Cancel
             </Button>
           </DialogFooter>

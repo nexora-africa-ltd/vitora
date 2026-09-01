@@ -17,21 +17,51 @@ export const ReferralTypeSchema = z.enum([
 ]);
 
 export const ReferralTargetServiceSchema = z.enum([
-  'PHYSIOTHERAPY', 'NUTRITION', 'OCCUPATIONAL_THERAPY', 'COUNSELLING', 'SOCIAL_WORK',
-  'DENTAL', 'EYE', 'ENT', 'SURGICAL', 'ORTHO', 'DERM', 'CARDIOLOGY', 'ONCOLOGY',
-  'MENTAL_HEALTH', 'DIALYSIS',
-  'ANC', 'PNC', 'FP', 'CWC',
-  'CCC', 'TB', 'DIABETIC', 'HYPERTENSION',
-  'GENERAL_WARD', 'MEDICAL_WARD', 'SURGICAL_WARD', 'MATERNITY_WARD', 'PEDIATRIC_WARD',
-  'ICU', 'HDU',
-  'PROCEDURE_ROOM', 'OTHER',
+  'PHYSIOTHERAPY',
+  'NUTRITION',
+  'OCCUPATIONAL_THERAPY',
+  'COUNSELLING',
+  'SOCIAL_WORK',
+  'DENTAL',
+  'EYE',
+  'ENT',
+  'SURGICAL',
+  'ORTHO',
+  'DERM',
+  'CARDIOLOGY',
+  'ONCOLOGY',
+  'MENTAL_HEALTH',
+  'DIALYSIS',
+  'ANC',
+  'PNC',
+  'FP',
+  'CWC',
+  'CCC',
+  'TB',
+  'DIABETIC',
+  'HYPERTENSION',
+  'GENERAL_WARD',
+  'MEDICAL_WARD',
+  'SURGICAL_WARD',
+  'MATERNITY_WARD',
+  'PEDIATRIC_WARD',
+  'ICU',
+  'HDU',
+  'PROCEDURE_ROOM',
+  'OTHER',
 ]);
 
 export const ReferralPrioritySchema = z.enum(['ROUTINE', 'URGENT', 'EMERGENCY']);
 
 export const ReferralStatusSchema = z.enum([
-  'DRAFT', 'PENDING', 'ACCEPTED', 'DECLINED', 'IN_PROGRESS',
-  'COMPLETED', 'CANCELLED', 'EXPIRED',
+  'DRAFT',
+  'PENDING',
+  'ACCEPTED',
+  'DECLINED',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+  'EXPIRED',
 ]);
 
 // =============================================================================

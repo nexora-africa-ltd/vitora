@@ -82,7 +82,8 @@ export const INTERVENTION_COMBINATION_RULES: Record<string, InterventionPackage>
     code: 'SHA-16',
     name: 'Renal Care Services',
     allowedCombinations: ['SHA-03', 'SHA-07'],
-    notes: 'SHA-16-001/002/004 must be reported ALONE; SHA-16-003/005/006/007/009 allow SHA-03 | SHA-07',
+    notes:
+      'SHA-16-001/002/004 must be reported ALONE; SHA-16-003/005/006/007/009 allow SHA-03 | SHA-07',
   },
   'SHA-18': {
     code: 'SHA-18',
@@ -101,7 +102,13 @@ export const INTERVENTION_COMBINATION_RULES: Record<string, InterventionPackage>
 export const RENAL_ALONE_SUBCODES = ['SHA-16-001', 'SHA-16-002', 'SHA-16-004'];
 
 /** SHA-16 sub-codes that allow combinations */
-export const RENAL_COMBINABLE_SUBCODES = ['SHA-16-003', 'SHA-16-005', 'SHA-16-006', 'SHA-16-007', 'SHA-16-009'];
+export const RENAL_COMBINABLE_SUBCODES = [
+  'SHA-16-003',
+  'SHA-16-005',
+  'SHA-16-006',
+  'SHA-16-007',
+  'SHA-16-009',
+];
 
 /**
  * Extract the benefit (package) code from a full intervention code.
@@ -130,7 +137,7 @@ export interface CombinationValidationResult {
  */
 export function validateInterventionCombination(
   existingInterventionCodes: string[],
-  newInterventionCode: string,
+  newInterventionCode: string
 ): CombinationValidationResult {
   const newBenefitCode = getBenefitCode(newInterventionCode);
 

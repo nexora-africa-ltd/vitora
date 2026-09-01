@@ -75,7 +75,6 @@ const STATUS_OPTIONS: { value: AlliedHealthSessionStatus | ''; label: string }[]
   { value: 'NO_SHOW', label: 'No Show' },
 ];
 
-
 export default function CounsellingSessionsPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -216,7 +215,7 @@ export default function CounsellingSessionsPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="h-4 w-4" />
               Filters
             </CardTitle>
@@ -338,7 +337,9 @@ export default function CounsellingSessionsPage() {
                       <TableRow
                         key={session.id}
                         className="cursor-pointer"
-                        onClick={() => router.push(`/allied-health/counselling/referrals/${session.referral}`)}
+                        onClick={() =>
+                          router.push(`/allied-health/counselling/referrals/${session.referral}`)
+                        }
                       >
                         <TableCell className="font-mono text-sm">
                           {session.session_number}
@@ -364,13 +365,13 @@ export default function CounsellingSessionsPage() {
                             <DropdownMenuContent align="end">
                               {canStart && (
                                 <DropdownMenuItem onClick={() => handleStart(session.id)}>
-                                  <Play className="h-4 w-4 mr-2" />
+                                  <Play className="mr-2 h-4 w-4" />
                                   Start Session
                                 </DropdownMenuItem>
                               )}
                               {canMarkNoShow && (
                                 <DropdownMenuItem onClick={() => handleNoShow(session.id)}>
-                                  <UserX className="h-4 w-4 mr-2" />
+                                  <UserX className="mr-2 h-4 w-4" />
                                   Mark No-Show
                                 </DropdownMenuItem>
                               )}
@@ -379,7 +380,7 @@ export default function CounsellingSessionsPage() {
                                   onClick={() => handleCancel(session.id)}
                                   className="text-destructive"
                                 >
-                                  <XCircle className="h-4 w-4 mr-2" />
+                                  <XCircle className="mr-2 h-4 w-4" />
                                   Cancel Session
                                 </DropdownMenuItem>
                               )}
@@ -396,7 +397,8 @@ export default function CounsellingSessionsPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t px-4 py-3">
                   <div className="text-sm text-muted-foreground">
-                    Showing {(page - 1) * 20 + 1} - {Math.min(page * 20, totalCount)} of {totalCount}
+                    Showing {(page - 1) * 20 + 1} - {Math.min(page * 20, totalCount)} of{' '}
+                    {totalCount}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button

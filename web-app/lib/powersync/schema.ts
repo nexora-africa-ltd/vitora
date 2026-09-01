@@ -506,33 +506,28 @@ export type ClinicalTemplateRow =
   (typeof powersyncSchema)['types']['clinical_templates_clinicaltemplate'];
 
 /** Convenience type for a triage assessment row. */
-export type TriageAssessmentRow =
-  (typeof powersyncSchema)['types']['triage_triageassessment'];
+export type TriageAssessmentRow = (typeof powersyncSchema)['types']['triage_triageassessment'];
 
 /** Convenience type for a diagnosis row. */
 export type DiagnosisRow = (typeof powersyncSchema)['types']['encounters_diagnosis'];
 
 /** Convenience type for a treatment plan row. */
-export type TreatmentPlanRow =
-  (typeof powersyncSchema)['types']['encounters_treatmentplan'];
+export type TreatmentPlanRow = (typeof powersyncSchema)['types']['encounters_treatmentplan'];
 
 /** Convenience type for a medication row. */
 export type MedicationRow = (typeof powersyncSchema)['types']['encounters_medication'];
 
 /** Convenience type for a prescription row. */
-export type PrescriptionRow =
-  (typeof powersyncSchema)['types']['pharmacy_prescription'];
+export type PrescriptionRow = (typeof powersyncSchema)['types']['pharmacy_prescription'];
 
 /** Convenience type for a prescription item row. */
-export type PrescriptionItemRow =
-  (typeof powersyncSchema)['types']['pharmacy_prescriptionitem'];
+export type PrescriptionItemRow = (typeof powersyncSchema)['types']['pharmacy_prescriptionitem'];
 
 /** Convenience type for a lab order row. */
 export type LabOrderRow = (typeof powersyncSchema)['types']['laboratory_laborder'];
 
 /** Convenience type for a lab order item row. */
-export type LabOrderItemRow =
-  (typeof powersyncSchema)['types']['laboratory_laborderitem'];
+export type LabOrderItemRow = (typeof powersyncSchema)['types']['laboratory_laborderitem'];
 
 /** Convenience type for a lab result row. */
 export type LabResultRow = (typeof powersyncSchema)['types']['laboratory_labresult'];

@@ -178,10 +178,14 @@ export function IntraOpWorkspace({
   const [vitals, setVitals] = useState<IntraOpVital[]>([]);
   const [operativeNote, setOperativeNote] = useState<OperativeNote | null>(null);
   const [consumables, setConsumables] = useState<TheatreConsumable[]>([]);
-  const [storedChecklistSessions, setStoredChecklistSessions] = useState<StoredSurgicalChecklistSessionResult[]>([]);
+  const [storedChecklistSessions, setStoredChecklistSessions] = useState<
+    StoredSurgicalChecklistSessionResult[]
+  >([]);
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
   const [checklistBusy, setChecklistBusy] = useState(false);
-  const [liveChecklistStatus, setLiveChecklistStatus] = useState<Record<string, unknown> | null>(null);
+  const [liveChecklistStatus, setLiveChecklistStatus] = useState<Record<string, unknown> | null>(
+    null
+  );
   const [freshChecklistInsight, setFreshChecklistInsight] = useState(false);
   const [drugSearch, setDrugSearch] = useState('');
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
@@ -200,9 +204,18 @@ export function IntraOpWorkspace({
     staleTime: 30000,
   });
 
-  const timeOutForm = useForm<TimeOutValues>({ resolver: zodResolver(timeOutSchema), defaultValues: timeOutSchema.parse({}) });
-  const signOutForm = useForm<SignOutValues>({ resolver: zodResolver(signOutSchema), defaultValues: signOutSchema.parse({}) });
-  const anesthesiaForm = useForm<AnesthesiaIntraOpValues>({ resolver: zodResolver(anesthesiaIntraOpSchema), defaultValues: anesthesiaIntraOpSchema.parse({}) });
+  const timeOutForm = useForm<TimeOutValues>({
+    resolver: zodResolver(timeOutSchema),
+    defaultValues: timeOutSchema.parse({}),
+  });
+  const signOutForm = useForm<SignOutValues>({
+    resolver: zodResolver(signOutSchema),
+    defaultValues: signOutSchema.parse({}),
+  });
+  const anesthesiaForm = useForm<AnesthesiaIntraOpValues>({
+    resolver: zodResolver(anesthesiaIntraOpSchema),
+    defaultValues: anesthesiaIntraOpSchema.parse({}),
+  });
   const noteForm = useForm<OperativeNoteValues>({
     resolver: zodResolver(operativeNoteSchema),
     defaultValues: {
@@ -225,103 +238,121 @@ export function IntraOpWorkspace({
       post_operative_plan: '',
     },
   });
-  const consumableForm = useForm<ConsumableValues>({ resolver: zodResolver(consumableSchema), defaultValues: { item: 0, quantity_used: 1, unit_cost: 0, lot_number: '', expiry_date: '', is_implant: false, implant_serial_number: '' } });
+  const consumableForm = useForm<ConsumableValues>({
+    resolver: zodResolver(consumableSchema),
+    defaultValues: {
+      item: 0,
+      quantity_used: 1,
+      unit_cost: 0,
+      lot_number: '',
+      expiry_date: '',
+      is_implant: false,
+      implant_serial_number: '',
+    },
+  });
 
-  const loadWorkspace = useCallback(async (showLoading = true) => {
-    if (showLoading) setLoading(true); else setRefreshing(true);
-    try {
-      const [who, anesthesia, intraOpVitals, note, caseConsumables, checklistSessions] = await Promise.all([
-        theatreApi.getWHOChecklist(surgeryCase.case_number).catch(() => null),
-        theatreApi.getAnesthesiaRecord(surgeryCase.case_number).catch(() => null),
-        theatreApi.listIntraOpVitals(surgeryCase.case_number).catch(() => []),
-        theatreApi.getOperativeNote(surgeryCase.case_number).catch(() => null),
-        theatreApi.listConsumables(surgeryCase.case_number).catch(() => []),
-        aiApi.getStoredSurgicalChecklistSessions({ surgery_case_id: surgeryCase.id }).catch(() => []),
-      ]);
+  const loadWorkspace = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) setLoading(true);
+      else setRefreshing(true);
+      try {
+        const [who, anesthesia, intraOpVitals, note, caseConsumables, checklistSessions] =
+          await Promise.all([
+            theatreApi.getWHOChecklist(surgeryCase.case_number).catch(() => null),
+            theatreApi.getAnesthesiaRecord(surgeryCase.case_number).catch(() => null),
+            theatreApi.listIntraOpVitals(surgeryCase.case_number).catch(() => []),
+            theatreApi.getOperativeNote(surgeryCase.case_number).catch(() => null),
+            theatreApi.listConsumables(surgeryCase.case_number).catch(() => []),
+            aiApi
+              .getStoredSurgicalChecklistSessions({ surgery_case_id: surgeryCase.id })
+              .catch(() => []),
+          ]);
 
-      setChecklist(who);
-      setAnesthesiaRecord(anesthesia);
-      setVitals(intraOpVitals);
-      setOperativeNote(note);
-      setConsumables(caseConsumables);
-      setStoredChecklistSessions(checklistSessions);
+        setChecklist(who);
+        setAnesthesiaRecord(anesthesia);
+        setVitals(intraOpVitals);
+        setOperativeNote(note);
+        setConsumables(caseConsumables);
+        setStoredChecklistSessions(checklistSessions);
 
-      timeOutForm.reset({
-        team_members_introduced: who?.team_members_introduced ?? false,
-        patient_name_confirmed: who?.patient_name_confirmed ?? false,
-        procedure_confirmed: who?.procedure_confirmed ?? false,
-        site_confirmed: who?.site_confirmed ?? false,
-        surgeon_critical_steps_discussed: who?.surgeon_critical_steps_discussed ?? false,
-        anesthesia_concerns_discussed: who?.anesthesia_concerns_discussed ?? false,
-        nursing_concerns_discussed: who?.nursing_concerns_discussed ?? false,
-        prophylactic_antibiotics_given: who?.prophylactic_antibiotics_given ?? false,
-        antibiotics_timing_within_60_min: who?.antibiotics_timing_within_60_min ?? false,
-        antibiotics_not_applicable: who?.antibiotics_not_applicable ?? false,
-        essential_imaging_displayed: who?.essential_imaging_displayed ?? false,
-        imaging_not_applicable: who?.imaging_not_applicable ?? false,
-      });
+        timeOutForm.reset({
+          team_members_introduced: who?.team_members_introduced ?? false,
+          patient_name_confirmed: who?.patient_name_confirmed ?? false,
+          procedure_confirmed: who?.procedure_confirmed ?? false,
+          site_confirmed: who?.site_confirmed ?? false,
+          surgeon_critical_steps_discussed: who?.surgeon_critical_steps_discussed ?? false,
+          anesthesia_concerns_discussed: who?.anesthesia_concerns_discussed ?? false,
+          nursing_concerns_discussed: who?.nursing_concerns_discussed ?? false,
+          prophylactic_antibiotics_given: who?.prophylactic_antibiotics_given ?? false,
+          antibiotics_timing_within_60_min: who?.antibiotics_timing_within_60_min ?? false,
+          antibiotics_not_applicable: who?.antibiotics_not_applicable ?? false,
+          essential_imaging_displayed: who?.essential_imaging_displayed ?? false,
+          imaging_not_applicable: who?.imaging_not_applicable ?? false,
+        });
 
-      signOutForm.reset({
-        procedure_name_recorded: who?.procedure_name_recorded ?? false,
-        instrument_count_correct: who?.instrument_count_correct ?? false,
-        sponge_count_correct: who?.sponge_count_correct ?? false,
-        needle_count_correct: who?.needle_count_correct ?? false,
-        specimens_labeled: who?.specimens_labeled ?? false,
-        specimen_count: who?.specimen_count ?? 0,
-        equipment_problems_noted: who?.equipment_problems_noted ?? false,
-        equipment_problems_description: who?.equipment_problems_description ?? '',
-        key_recovery_concerns: who?.key_recovery_concerns ?? '',
-      });
+        signOutForm.reset({
+          procedure_name_recorded: who?.procedure_name_recorded ?? false,
+          instrument_count_correct: who?.instrument_count_correct ?? false,
+          sponge_count_correct: who?.sponge_count_correct ?? false,
+          needle_count_correct: who?.needle_count_correct ?? false,
+          specimens_labeled: who?.specimens_labeled ?? false,
+          specimen_count: who?.specimen_count ?? 0,
+          equipment_problems_noted: who?.equipment_problems_noted ?? false,
+          equipment_problems_description: who?.equipment_problems_description ?? '',
+          key_recovery_concerns: who?.key_recovery_concerns ?? '',
+        });
 
-      anesthesiaForm.reset({
-        induction_time: toDateTimeLocalValue(anesthesia?.induction_time),
-        intubation_time: toDateTimeLocalValue(anesthesia?.intubation_time),
-        extubation_time: toDateTimeLocalValue(anesthesia?.extubation_time),
-        airway_device: anesthesia?.airway_device ?? '',
-        tube_size: anesthesia?.tube_size ?? '',
-        intubation_attempts: anesthesia?.intubation_attempts ?? 0,
-        intubation_difficulty: anesthesia?.intubation_difficulty ?? '',
-        anesthesia_technique: anesthesia?.anesthesia_technique ?? '',
-        induction_agents: anesthesia?.induction_agents ?? '',
-        maintenance_agents: anesthesia?.maintenance_agents ?? '',
-        muscle_relaxants: anesthesia?.muscle_relaxants ?? '',
-        reversal_agents: anesthesia?.reversal_agents ?? '',
-        crystalloid_volume: anesthesia?.crystalloid_volume ?? 0,
-        colloid_volume: anesthesia?.colloid_volume ?? 0,
-        blood_products: anesthesia?.blood_products ?? '',
-        estimated_blood_loss: anesthesia?.estimated_blood_loss ?? 0,
-        urine_output: anesthesia?.urine_output ?? 0,
-        intraop_complications: anesthesia?.intraop_complications ?? '',
-        pacu_handover_notes: anesthesia?.pacu_handover_notes ?? '',
-        pain_management_plan: anesthesia?.pain_management_plan ?? '',
-        post_op_nausea_plan: anesthesia?.post_op_nausea_plan ?? '',
-        other_post_op_orders: anesthesia?.other_post_op_orders ?? '',
-      });
+        anesthesiaForm.reset({
+          induction_time: toDateTimeLocalValue(anesthesia?.induction_time),
+          intubation_time: toDateTimeLocalValue(anesthesia?.intubation_time),
+          extubation_time: toDateTimeLocalValue(anesthesia?.extubation_time),
+          airway_device: anesthesia?.airway_device ?? '',
+          tube_size: anesthesia?.tube_size ?? '',
+          intubation_attempts: anesthesia?.intubation_attempts ?? 0,
+          intubation_difficulty: anesthesia?.intubation_difficulty ?? '',
+          anesthesia_technique: anesthesia?.anesthesia_technique ?? '',
+          induction_agents: anesthesia?.induction_agents ?? '',
+          maintenance_agents: anesthesia?.maintenance_agents ?? '',
+          muscle_relaxants: anesthesia?.muscle_relaxants ?? '',
+          reversal_agents: anesthesia?.reversal_agents ?? '',
+          crystalloid_volume: anesthesia?.crystalloid_volume ?? 0,
+          colloid_volume: anesthesia?.colloid_volume ?? 0,
+          blood_products: anesthesia?.blood_products ?? '',
+          estimated_blood_loss: anesthesia?.estimated_blood_loss ?? 0,
+          urine_output: anesthesia?.urine_output ?? 0,
+          intraop_complications: anesthesia?.intraop_complications ?? '',
+          pacu_handover_notes: anesthesia?.pacu_handover_notes ?? '',
+          pain_management_plan: anesthesia?.pain_management_plan ?? '',
+          post_op_nausea_plan: anesthesia?.post_op_nausea_plan ?? '',
+          other_post_op_orders: anesthesia?.other_post_op_orders ?? '',
+        });
 
-      noteForm.reset({
-        dictated_by: note?.dictated_by ?? surgeryCase.requesting_doctor,
-        incision_time: toDateTimeLocalValue(note?.incision_time),
-        closure_time: toDateTimeLocalValue(note?.closure_time),
-        pre_operative_diagnosis: note?.pre_operative_diagnosis ?? surgeryCase.diagnosis,
-        post_operative_diagnosis: note?.post_operative_diagnosis ?? surgeryCase.diagnosis,
-        procedure_performed: note?.procedure_performed ?? surgeryCase.primary_procedure_name,
-        findings: note?.findings ?? '',
-        technique_description: note?.technique_description ?? '',
-        implants_used: note?.implants_used ?? '',
-        drains_placed: note?.drains_placed ?? '',
-        sutures_used: note?.sutures_used ?? '',
-        estimated_blood_loss: note?.estimated_blood_loss ?? 0,
-        specimens_sent: note?.specimens_sent ?? '',
-        frozen_section: note?.frozen_section ?? false,
-        frozen_section_result: note?.frozen_section_result ?? '',
-        intraoperative_complications: note?.intraoperative_complications ?? '',
-        post_operative_plan: note?.post_operative_plan ?? '',
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [anesthesiaForm, noteForm, signOutForm, surgeryCase, timeOutForm]);
+        noteForm.reset({
+          dictated_by: note?.dictated_by ?? surgeryCase.requesting_doctor,
+          incision_time: toDateTimeLocalValue(note?.incision_time),
+          closure_time: toDateTimeLocalValue(note?.closure_time),
+          pre_operative_diagnosis: note?.pre_operative_diagnosis ?? surgeryCase.diagnosis,
+          post_operative_diagnosis: note?.post_operative_diagnosis ?? surgeryCase.diagnosis,
+          procedure_performed: note?.procedure_performed ?? surgeryCase.primary_procedure_name,
+          findings: note?.findings ?? '',
+          technique_description: note?.technique_description ?? '',
+          implants_used: note?.implants_used ?? '',
+          drains_placed: note?.drains_placed ?? '',
+          sutures_used: note?.sutures_used ?? '',
+          estimated_blood_loss: note?.estimated_blood_loss ?? 0,
+          specimens_sent: note?.specimens_sent ?? '',
+          frozen_section: note?.frozen_section ?? false,
+          frozen_section_result: note?.frozen_section_result ?? '',
+          intraoperative_complications: note?.intraoperative_complications ?? '',
+          post_operative_plan: note?.post_operative_plan ?? '',
+        });
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [anesthesiaForm, noteForm, signOutForm, surgeryCase, timeOutForm]
+  );
 
   useEffect(() => {
     void loadWorkspace(true);
@@ -334,13 +365,26 @@ export function IntraOpWorkspace({
 
   const mappedProcedureKey = surgeryCase.primary_procedure_tibabot_key || '';
   const latestStoredChecklist = storedChecklistSessions[0] ?? null;
-  const latestStoredChecklistData = latestStoredChecklist?.result_data as Record<string, unknown> | undefined;
+  const latestStoredChecklistData = latestStoredChecklist?.result_data as
+    | Record<string, unknown>
+    | undefined;
   const storedSession = latestStoredChecklistData?.session as Record<string, unknown> | undefined;
   const storedProgress = latestStoredChecklistData?.progress as Record<string, unknown> | undefined;
-  const liveSession = (liveChecklistStatus?.session as Record<string, unknown> | undefined) ?? storedSession;
-  const liveProgress = (liveChecklistStatus?.progress as Record<string, unknown> | undefined) ?? storedProgress;
+  const liveSession =
+    (liveChecklistStatus?.session as Record<string, unknown> | undefined) ?? storedSession;
+  const liveProgress =
+    (liveChecklistStatus?.progress as Record<string, unknown> | undefined) ?? storedProgress;
   const checklistItems = Array.isArray(liveSession?.items)
-    ? (liveSession.items as Array<{ id: string; description: string; phase?: string; checked?: boolean; critical?: boolean; responsible?: string | null; checked_by?: string | null; notes?: string | null }>)
+    ? (liveSession.items as Array<{
+        id: string;
+        description: string;
+        phase?: string;
+        checked?: boolean;
+        critical?: boolean;
+        responsible?: string | null;
+        checked_by?: string | null;
+        notes?: string | null;
+      }>)
     : [];
   const currentChecklistSessionId =
     (liveChecklistStatus?.tibabot_session_id as string | undefined) ||
@@ -354,30 +398,47 @@ export function IntraOpWorkspace({
   const checklistPercentComplete =
     typeof liveProgress?.percent_complete === 'number'
       ? liveProgress.percent_complete
-      : latestStoredChecklist?.percent_complete ?? surgeryCase.ai_surgical_summary.checklist.percent_complete ?? 0;
+      : (latestStoredChecklist?.percent_complete ??
+        surgeryCase.ai_surgical_summary.checklist.percent_complete ??
+        0);
   const checklistPhaseComplete =
     typeof liveChecklistStatus?.phase_complete === 'boolean'
       ? liveChecklistStatus.phase_complete
-      : latestStoredChecklist?.phase_complete ?? false;
-  const checklistMessage = typeof liveChecklistStatus?.message === 'string' ? liveChecklistStatus.message : '';
+      : (latestStoredChecklist?.phase_complete ?? false);
+  const checklistMessage =
+    typeof liveChecklistStatus?.message === 'string' ? liveChecklistStatus.message : '';
 
   const saveTimeOut = async (values: TimeOutValues) => {
     try {
       await theatreApi.completeTimeOut(surgeryCase.case_number, values);
-      toast({ title: 'WHO Time-Out saved', description: 'The intra-operative safety pause has been recorded.' });
+      toast({
+        title: 'WHO Time-Out saved',
+        description: 'The intra-operative safety pause has been recorded.',
+      });
       await refreshAll();
     } catch (error) {
-      toast({ title: 'Unable to save Time-Out', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to save Time-Out',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     }
   };
 
   const saveSignOut = async (values: SignOutValues) => {
     try {
       await theatreApi.completeSignOut(surgeryCase.case_number, values);
-      toast({ title: 'WHO Sign-Out saved', description: 'Counts and recovery concerns have been recorded.' });
+      toast({
+        title: 'WHO Sign-Out saved',
+        description: 'Counts and recovery concerns have been recorded.',
+      });
       await refreshAll();
     } catch (error) {
-      toast({ title: 'Unable to save Sign-Out', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to save Sign-Out',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -407,10 +468,17 @@ export function IntraOpWorkspace({
         post_op_nausea_plan: values.post_op_nausea_plan,
         other_post_op_orders: values.other_post_op_orders,
       });
-      toast({ title: 'Anesthesia record updated', description: 'Intra-operative anesthesia details were saved.' });
+      toast({
+        title: 'Anesthesia record updated',
+        description: 'Intra-operative anesthesia details were saved.',
+      });
       await refreshAll();
     } catch (error) {
-      toast({ title: 'Unable to update anesthesia record', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to update anesthesia record',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -426,20 +494,34 @@ export function IntraOpWorkspace({
       } else {
         await theatreApi.createOperativeNote(surgeryCase.case_number, payload);
       }
-      toast({ title: 'Operative note saved', description: 'Operative documentation has been updated.' });
+      toast({
+        title: 'Operative note saved',
+        description: 'Operative documentation has been updated.',
+      });
       await refreshAll();
     } catch (error) {
-      toast({ title: 'Unable to save operative note', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to save operative note',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     }
   };
 
   const signNote = async () => {
     try {
       await theatreApi.signOperativeNote(surgeryCase.case_number);
-      toast({ title: 'Operative note signed', description: 'The operative note now has a digital signature.' });
+      toast({
+        title: 'Operative note signed',
+        description: 'The operative note now has a digital signature.',
+      });
       await refreshAll();
     } catch (error) {
-      toast({ title: 'Unable to sign note', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to sign note',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -448,20 +530,39 @@ export function IntraOpWorkspace({
       const blob = await theatreApi.downloadOperativeNotePdf(surgeryCase.case_number);
       downloadPDF(blob, `operative-note-${surgeryCase.case_number}`);
     } catch (error) {
-      toast({ title: 'Unable to download operative note PDF', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to download operative note PDF',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     }
   };
 
   const saveConsumable = async (values: ConsumableValues) => {
     try {
       await theatreApi.addConsumable(surgeryCase.case_number, values);
-      toast({ title: 'Consumable added', description: 'The intra-operative item log has been updated.' });
-      consumableForm.reset({ item: undefined as never, quantity_used: 1, unit_cost: 0, lot_number: '', expiry_date: '', is_implant: false, implant_serial_number: '' });
+      toast({
+        title: 'Consumable added',
+        description: 'The intra-operative item log has been updated.',
+      });
+      consumableForm.reset({
+        item: undefined as never,
+        quantity_used: 1,
+        unit_cost: 0,
+        lot_number: '',
+        expiry_date: '',
+        is_implant: false,
+        implant_serial_number: '',
+      });
       setDrugSearch('');
       setSelectedDrug(null);
       await refreshAll();
     } catch (error) {
-      toast({ title: 'Unable to add consumable', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to add consumable',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -469,10 +570,17 @@ export function IntraOpWorkspace({
     try {
       setRemovingConsumableId(consumableId);
       await theatreApi.removeConsumable(surgeryCase.case_number, consumableId);
-      toast({ title: 'Consumable removed', description: 'The intra-operative item log has been updated.' });
+      toast({
+        title: 'Consumable removed',
+        description: 'The intra-operative item log has been updated.',
+      });
       await refreshAll();
     } catch (error) {
-      toast({ title: 'Unable to remove consumable', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to remove consumable',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     } finally {
       setRemovingConsumableId(null);
     }
@@ -496,15 +604,23 @@ export function IntraOpWorkspace({
       });
       setLiveChecklistStatus(response as unknown as Record<string, unknown>);
       setCheckedItems([]);
-      toast({ title: 'Surgical checklist session started', description: 'The advisory checklist session is now active.' });
+      toast({
+        title: 'Surgical checklist session started',
+        description: 'The advisory checklist session is now active.',
+      });
       setFreshChecklistInsight(true);
       // Sync stored sessions in background so navigating away preserves state
-      void aiApi.getStoredSurgicalChecklistSessions({ surgery_case_id: surgeryCase.id })
+      void aiApi
+        .getStoredSurgicalChecklistSessions({ surgery_case_id: surgeryCase.id })
         .then(setStoredChecklistSessions)
         .catch(() => {});
       setTimeout(() => setFreshChecklistInsight(false), 4000);
     } catch (error) {
-      toast({ title: 'Unable to start surgical checklist', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to start surgical checklist',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     } finally {
       setChecklistBusy(false);
     }
@@ -522,15 +638,23 @@ export function IntraOpWorkspace({
       });
       setLiveChecklistStatus(response as unknown as Record<string, unknown>);
       setCheckedItems([]);
-      toast({ title: 'Checklist advanced', description: 'The surgical checklist session moved to the next advisory phase.' });
+      toast({
+        title: 'Checklist advanced',
+        description: 'The surgical checklist session moved to the next advisory phase.',
+      });
       setFreshChecklistInsight(true);
       // Sync stored sessions in background so navigating away preserves state
-      void aiApi.getStoredSurgicalChecklistSessions({ surgery_case_id: surgeryCase.id })
+      void aiApi
+        .getStoredSurgicalChecklistSessions({ surgery_case_id: surgeryCase.id })
         .then(setStoredChecklistSessions)
         .catch(() => {});
       setTimeout(() => setFreshChecklistInsight(false), 4000);
     } catch (error) {
-      toast({ title: 'Unable to advance checklist', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to advance checklist',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     } finally {
       setChecklistBusy(false);
     }
@@ -545,9 +669,16 @@ export function IntraOpWorkspace({
       setChecklistBusy(true);
       const response = await aiApi.getSurgicalChecklistStatus(currentChecklistSessionId);
       setLiveChecklistStatus(response as unknown as Record<string, unknown>);
-      toast({ title: 'Checklist status refreshed', description: 'The latest TibaBot checklist progress has been loaded.' });
+      toast({
+        title: 'Checklist status refreshed',
+        description: 'The latest TibaBot checklist progress has been loaded.',
+      });
     } catch (error) {
-      toast({ title: 'Unable to refresh checklist status', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({
+        title: 'Unable to refresh checklist status',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
     } finally {
       setChecklistBusy(false);
     }
@@ -568,7 +699,10 @@ export function IntraOpWorkspace({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Intra-Operative Workflow</h2>
-          <p className="text-sm text-muted-foreground">Manage WHO pauses, anesthesia trends, operative notes, and consumables from one workspace.</p>
+          <p className="text-sm text-muted-foreground">
+            Manage WHO pauses, anesthesia trends, operative notes, and consumables from one
+            workspace.
+          </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void refreshAll()} disabled={refreshing}>
           {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}
@@ -577,9 +711,12 @@ export function IntraOpWorkspace({
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+            aria-hidden="true"
+          />
           <CardHeader className="relative pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <ShieldCheck className="h-4 w-4" />
               Intra-Op Readiness
               <HelpPopover content="Overview of intra-operative safety checks. Tracks completion of WHO Time-Out, Sign-Out, and overall surgical readiness before proceeding." />
@@ -591,7 +728,11 @@ export function IntraOpWorkspace({
                 <p className="text-sm font-medium">WHO Time-Out</p>
                 <p className="text-xs text-muted-foreground">Pause before incision.</p>
               </div>
-              <Badge variant={checklist?.time_out_complete ? 'success' : 'warning'} size="sm" className="w-fit">
+              <Badge
+                variant={checklist?.time_out_complete ? 'success' : 'warning'}
+                size="sm"
+                className="w-fit"
+              >
                 {checklist?.time_out_complete ? 'Complete' : 'Pending'}
               </Badge>
             </div>
@@ -607,9 +748,15 @@ export function IntraOpWorkspace({
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <p className="text-sm font-medium">Consumables logged</p>
-                <p className="text-xs text-muted-foreground">Implants, drugs, and intra-op supplies.</p>
+                <p className="text-xs text-muted-foreground">
+                  Implants, drugs, and intra-op supplies.
+                </p>
               </div>
-              <Badge variant={consumables.length > 0 ? 'info' : 'outline'} size="sm" className="w-fit">
+              <Badge
+                variant={consumables.length > 0 ? 'info' : 'outline'}
+                size="sm"
+                className="w-fit"
+              >
                 {consumables.length}
               </Badge>
             </div>
@@ -618,7 +765,11 @@ export function IntraOpWorkspace({
                 <p className="text-sm font-medium">WHO Sign-Out</p>
                 <p className="text-xs text-muted-foreground">Counts and recovery concerns.</p>
               </div>
-              <Badge variant={checklist?.sign_out_complete ? 'success' : 'warning'} size="sm" className="w-fit">
+              <Badge
+                variant={checklist?.sign_out_complete ? 'success' : 'warning'}
+                size="sm"
+                className="w-fit"
+              >
                 {checklist?.sign_out_complete ? 'Complete' : 'Pending'}
               </Badge>
             </div>
@@ -628,21 +779,33 @@ export function IntraOpWorkspace({
         {/* Intra-op vitals — decomposed into chart, form, table, and timer sub-components */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-base font-semibold">
               <Syringe className="h-4 w-4" />
               Intra-Op Vitals
             </h3>
-            <VitalsTimerBadge lastRecordedAt={vitals.length > 0 ? vitals[vitals.length - 1]!.recorded_at : null} />
+            <VitalsTimerBadge
+              lastRecordedAt={vitals.length > 0 ? vitals[vitals.length - 1]!.recorded_at : null}
+            />
           </div>
           <VitalsChartCard vitals={vitals} />
           <VitalsEntryForm caseNumber={surgeryCase.case_number} onVitalAdded={refreshAll} />
-          <VitalsTable vitals={vitals} caseNumber={surgeryCase.case_number} onVitalDeleted={refreshAll} />
+          <VitalsTable
+            vitals={vitals}
+            caseNumber={surgeryCase.case_number}
+            onVitalDeleted={refreshAll}
+          />
         </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><ClipboardCheck className="h-4 w-4" />WHO Time-Out<HelpPopover content="The WHO Surgical Safety Checklist Time-Out: a mandatory pause before the first incision. Confirms patient identity, procedure, site, and team readiness." /></CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardCheck className="h-4 w-4" />
+              WHO Time-Out
+              <HelpPopover content="The WHO Surgical Safety Checklist Time-Out: a mandatory pause before the first incision. Confirms patient identity, procedure, site, and team readiness." />
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <Form {...timeOutForm}>
               <form className="space-y-4" onSubmit={timeOutForm.handleSubmit(saveTimeOut)}>
@@ -661,7 +824,22 @@ export function IntraOpWorkspace({
                     ['essential_imaging_displayed', 'Essential imaging displayed'],
                     ['imaging_not_applicable', 'Imaging not applicable'],
                   ].map(([name, label]) => (
-                    <FormField key={name} control={timeOutForm.control} name={name as keyof TimeOutValues} render={({ field }) => <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3"><FormControl><Checkbox checked={field.value as boolean} onCheckedChange={(checked) => field.onChange(checked === true)} /></FormControl><FormLabel className="!mt-0">{label}</FormLabel></FormItem>} />
+                    <FormField
+                      key={name}
+                      control={timeOutForm.control}
+                      name={name as keyof TimeOutValues}
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value as boolean}
+                              onCheckedChange={(checked) => field.onChange(checked === true)}
+                            />
+                          </FormControl>
+                          <FormLabel className="!mt-0">{label}</FormLabel>
+                        </FormItem>
+                      )}
+                    />
                   ))}
                 </div>
                 <Button type="submit">Save WHO Time-Out</Button>
@@ -671,7 +849,13 @@ export function IntraOpWorkspace({
         </Card>
 
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><ClipboardCheck className="h-4 w-4" />WHO Sign-Out<HelpPopover content="The WHO Surgical Safety Checklist Sign-Out: completed before the patient leaves the operating room. Verifies instrument, sponge, and needle counts; specimen labelling; and key recovery concerns." /></CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardCheck className="h-4 w-4" />
+              WHO Sign-Out
+              <HelpPopover content="The WHO Surgical Safety Checklist Sign-Out: completed before the patient leaves the operating room. Verifies instrument, sponge, and needle counts; specimen labelling; and key recovery concerns." />
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <Form {...signOutForm}>
               <form className="space-y-4" onSubmit={signOutForm.handleSubmit(saveSignOut)}>
@@ -684,14 +868,65 @@ export function IntraOpWorkspace({
                     ['specimens_labeled', 'Specimens labeled'],
                     ['equipment_problems_noted', 'Equipment problems noted'],
                   ].map(([name, label]) => (
-                    <FormField key={name} control={signOutForm.control} name={name as keyof SignOutValues} render={({ field }) => <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3"><FormControl><Checkbox checked={field.value as boolean} onCheckedChange={(checked) => field.onChange(checked === true)} /></FormControl><FormLabel className="!mt-0">{label}</FormLabel></FormItem>} />
+                    <FormField
+                      key={name}
+                      control={signOutForm.control}
+                      name={name as keyof SignOutValues}
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value as boolean}
+                              onCheckedChange={(checked) => field.onChange(checked === true)}
+                            />
+                          </FormControl>
+                          <FormLabel className="!mt-0">{label}</FormLabel>
+                        </FormItem>
+                      )}
+                    />
                   ))}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField control={signOutForm.control} name="specimen_count" render={({ field }) => <FormItem><FormLabel>Specimen count</FormLabel><FormControl><Input type="number" min={0} {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={signOutForm.control} name="equipment_problems_description" render={({ field }) => <FormItem><FormLabel>Equipment issues</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField
+                    control={signOutForm.control}
+                    name="specimen_count"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Specimen count</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={0} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={signOutForm.control}
+                    name="equipment_problems_description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Equipment issues</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <FormField control={signOutForm.control} name="key_recovery_concerns" render={({ field }) => <FormItem><FormLabel>Recovery concerns</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>} />
+                <FormField
+                  control={signOutForm.control}
+                  name="key_recovery_concerns"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Recovery concerns</FormLabel>
+                      <FormControl>
+                        <Textarea rows={3} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <Button type="submit">Save WHO Sign-Out</Button>
               </form>
             </Form>
@@ -701,46 +936,319 @@ export function IntraOpWorkspace({
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Syringe className="h-4 w-4" />Anesthesia Intra-Op Record<HelpPopover content="Documents intra-operative anesthesia details: induction/intubation times, agents used, fluid management, blood loss, and post-op orders." /></CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Syringe className="h-4 w-4" />
+              Anesthesia Intra-Op Record
+              <HelpPopover content="Documents intra-operative anesthesia details: induction/intubation times, agents used, fluid management, blood loss, and post-op orders." />
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             {!anesthesiaRecord ? (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>No anesthesia record</AlertTitle>
-                <AlertDescription>Start with the Pre-Op workspace to create the anesthesia record before charting intra-op details.</AlertDescription>
+                <AlertDescription>
+                  Start with the Pre-Op workspace to create the anesthesia record before charting
+                  intra-op details.
+                </AlertDescription>
               </Alert>
             ) : (
               <Form {...anesthesiaForm}>
                 <form className="space-y-4" onSubmit={anesthesiaForm.handleSubmit(saveAnesthesia)}>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <FormField control={anesthesiaForm.control} name="induction_time" render={({ field }) => <FormItem><FormLabel>Induction time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="intubation_time" render={({ field }) => <FormItem><FormLabel>Intubation time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="extubation_time" render={({ field }) => <FormItem><FormLabel>Extubation time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="airway_device" render={({ field }) => <FormItem><FormLabel>Airway device</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="tube_size" render={({ field }) => <FormItem><FormLabel>Tube size</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="intubation_attempts" render={({ field }) => <FormItem><FormLabel>Intubation attempts</FormLabel><FormControl><Input type="number" min={0} {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="induction_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Induction time</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="intubation_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Intubation time</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="extubation_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Extubation time</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="airway_device"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Airway device</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="tube_size"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tube size</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="intubation_attempts"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Intubation attempts</FormLabel>
+                          <FormControl>
+                            <Input type="number" min={0} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  <FormField control={anesthesiaForm.control} name="intubation_difficulty" render={({ field }) => <FormItem><FormLabel>Intubation difficulty</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={anesthesiaForm.control} name="anesthesia_technique" render={({ field }) => <FormItem><FormLabel>Technique</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField
+                    control={anesthesiaForm.control}
+                    name="intubation_difficulty"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Intubation difficulty</FormLabel>
+                        <FormControl>
+                          <Textarea rows={2} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={anesthesiaForm.control}
+                    name="anesthesia_technique"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Technique</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <FormField control={anesthesiaForm.control} name="induction_agents" render={({ field }) => <FormItem><FormLabel>Induction agents</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="maintenance_agents" render={({ field }) => <FormItem><FormLabel>Maintenance agents</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="muscle_relaxants" render={({ field }) => <FormItem><FormLabel>Muscle relaxants</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="reversal_agents" render={({ field }) => <FormItem><FormLabel>Reversal agents</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="induction_agents"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Induction agents</FormLabel>
+                          <FormControl>
+                            <Textarea rows={2} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="maintenance_agents"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Maintenance agents</FormLabel>
+                          <FormControl>
+                            <Textarea rows={2} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="muscle_relaxants"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Muscle relaxants</FormLabel>
+                          <FormControl>
+                            <Textarea rows={2} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="reversal_agents"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Reversal agents</FormLabel>
+                          <FormControl>
+                            <Textarea rows={2} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <FormField control={anesthesiaForm.control} name="crystalloid_volume" render={({ field }) => <FormItem><FormLabel>Crystalloid (ml)</FormLabel><FormControl><Input type="number" min={0} {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="colloid_volume" render={({ field }) => <FormItem><FormLabel>Colloid (ml)</FormLabel><FormControl><Input type="number" min={0} {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="estimated_blood_loss" render={({ field }) => <FormItem><FormLabel>EBL (ml)</FormLabel><FormControl><Input type="number" min={0} {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="urine_output" render={({ field }) => <FormItem><FormLabel>Urine output (ml)</FormLabel><FormControl><Input type="number" min={0} {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="crystalloid_volume"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Crystalloid (ml)</FormLabel>
+                          <FormControl>
+                            <Input type="number" min={0} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="colloid_volume"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Colloid (ml)</FormLabel>
+                          <FormControl>
+                            <Input type="number" min={0} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="estimated_blood_loss"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>EBL (ml)</FormLabel>
+                          <FormControl>
+                            <Input type="number" min={0} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="urine_output"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Urine output (ml)</FormLabel>
+                          <FormControl>
+                            <Input type="number" min={0} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  <FormField control={anesthesiaForm.control} name="blood_products" render={({ field }) => <FormItem><FormLabel>Blood products</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={anesthesiaForm.control} name="intraop_complications" render={({ field }) => <FormItem><FormLabel>Intra-op complications</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={anesthesiaForm.control} name="pacu_handover_notes" render={({ field }) => <FormItem><FormLabel>PACU handover notes</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField
+                    control={anesthesiaForm.control}
+                    name="blood_products"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Blood products</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={anesthesiaForm.control}
+                    name="intraop_complications"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Intra-op complications</FormLabel>
+                        <FormControl>
+                          <Textarea rows={2} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={anesthesiaForm.control}
+                    name="pacu_handover_notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>PACU handover notes</FormLabel>
+                        <FormControl>
+                          <Textarea rows={2} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <div className="grid gap-4 sm:grid-cols-3">
-                    <FormField control={anesthesiaForm.control} name="pain_management_plan" render={({ field }) => <FormItem><FormLabel>Pain management plan</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="post_op_nausea_plan" render={({ field }) => <FormItem><FormLabel>Post-op nausea plan</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={anesthesiaForm.control} name="other_post_op_orders" render={({ field }) => <FormItem><FormLabel>Other post-op orders</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="pain_management_plan"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pain management plan</FormLabel>
+                          <FormControl>
+                            <Textarea rows={3} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="post_op_nausea_plan"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Post-op nausea plan</FormLabel>
+                          <FormControl>
+                            <Textarea rows={3} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={anesthesiaForm.control}
+                      name="other_post_op_orders"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Other post-op orders</FormLabel>
+                          <FormControl>
+                            <Textarea rows={3} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   <Button type="submit">Update anesthesia record</Button>
                 </form>
@@ -750,44 +1258,267 @@ export function IntraOpWorkspace({
         </Card>
 
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />Operative Note<HelpPopover content="The surgeon's operative note documenting findings, technique, implants, drains, specimens, and post-operative plan. Can be digitally signed and exported as PDF." /></CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4" />
+              Operative Note
+              <HelpPopover content="The surgeon's operative note documenting findings, technique, implants, drains, specimens, and post-operative plan. Can be digitally signed and exported as PDF." />
+            </CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
             {operativeNote?.signed_at ? (
               <Alert>
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertTitle>Signed operative note</AlertTitle>
-                <AlertDescription>This operative note has been signed and is ready for downstream review.</AlertDescription>
+                <AlertDescription>
+                  This operative note has been signed and is ready for downstream review.
+                </AlertDescription>
               </Alert>
             ) : null}
             <Form {...noteForm}>
               <form className="space-y-4" onSubmit={noteForm.handleSubmit(saveOperativeNote)}>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField control={noteForm.control} name="dictated_by" render={({ field }) => <FormItem><FormLabel>Dictated by user ID</FormLabel><FormControl><Input type="number" min={1} {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={noteForm.control} name="estimated_blood_loss" render={({ field }) => <FormItem><FormLabel>Estimated blood loss (ml)</FormLabel><FormControl><Input type="number" min={0} {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={noteForm.control} name="incision_time" render={({ field }) => <FormItem><FormLabel>Incision time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={noteForm.control} name="closure_time" render={({ field }) => <FormItem><FormLabel>Closure time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField
+                    control={noteForm.control}
+                    name="dictated_by"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dictated by user ID</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={1} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={noteForm.control}
+                    name="estimated_blood_loss"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estimated blood loss (ml)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={0} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={noteForm.control}
+                    name="incision_time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Incision time</FormLabel>
+                        <FormControl>
+                          <Input type="datetime-local" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={noteForm.control}
+                    name="closure_time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Closure time</FormLabel>
+                        <FormControl>
+                          <Input type="datetime-local" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <FormField control={noteForm.control} name="pre_operative_diagnosis" render={({ field }) => <FormItem><FormLabel>Pre-op diagnosis</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={noteForm.control} name="post_operative_diagnosis" render={({ field }) => <FormItem><FormLabel>Post-op diagnosis</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={noteForm.control} name="procedure_performed" render={({ field }) => <FormItem><FormLabel>Procedure performed</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={noteForm.control} name="findings" render={({ field }) => <FormItem><FormLabel>Findings</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={noteForm.control} name="technique_description" render={({ field }) => <FormItem><FormLabel>Technique description</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={noteForm.control} name="intraoperative_complications" render={({ field }) => <FormItem><FormLabel>Intra-operative complications</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>} />
+                <FormField
+                  control={noteForm.control}
+                  name="pre_operative_diagnosis"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pre-op diagnosis</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={noteForm.control}
+                  name="post_operative_diagnosis"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Post-op diagnosis</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={noteForm.control}
+                  name="procedure_performed"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Procedure performed</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={noteForm.control}
+                  name="findings"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Findings</FormLabel>
+                      <FormControl>
+                        <Textarea rows={3} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={noteForm.control}
+                  name="technique_description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Technique description</FormLabel>
+                      <FormControl>
+                        <Textarea rows={4} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={noteForm.control}
+                  name="intraoperative_complications"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Intra-operative complications</FormLabel>
+                      <FormControl>
+                        <Textarea rows={3} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField control={noteForm.control} name="implants_used" render={({ field }) => <FormItem><FormLabel>Implants used</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={noteForm.control} name="drains_placed" render={({ field }) => <FormItem><FormLabel>Drains placed</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={noteForm.control} name="sutures_used" render={({ field }) => <FormItem><FormLabel>Sutures used</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={noteForm.control} name="specimens_sent" render={({ field }) => <FormItem><FormLabel>Specimens sent</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField
+                    control={noteForm.control}
+                    name="implants_used"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Implants used</FormLabel>
+                        <FormControl>
+                          <Textarea rows={2} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={noteForm.control}
+                    name="drains_placed"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Drains placed</FormLabel>
+                        <FormControl>
+                          <Textarea rows={2} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={noteForm.control}
+                    name="sutures_used"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sutures used</FormLabel>
+                        <FormControl>
+                          <Textarea rows={2} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={noteForm.control}
+                    name="specimens_sent"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Specimens sent</FormLabel>
+                        <FormControl>
+                          <Textarea rows={2} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-[180px,1fr]">
-                  <FormField control={noteForm.control} name="frozen_section" render={({ field }) => <FormItem className="mt-2 flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3"><FormControl><Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} /></FormControl><FormLabel className="!mt-0">Frozen section sent</FormLabel></FormItem>} />
-                  <FormField control={noteForm.control} name="frozen_section_result" render={({ field }) => <FormItem><FormLabel>Frozen section result</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField
+                    control={noteForm.control}
+                    name="frozen_section"
+                    render={({ field }) => (
+                      <FormItem className="mt-2 flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={(checked) => field.onChange(checked === true)}
+                          />
+                        </FormControl>
+                        <FormLabel className="!mt-0">Frozen section sent</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={noteForm.control}
+                    name="frozen_section_result"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Frozen section result</FormLabel>
+                        <FormControl>
+                          <Textarea rows={2} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <FormField control={noteForm.control} name="post_operative_plan" render={({ field }) => <FormItem><FormLabel>Post-op plan</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>} />
+                <FormField
+                  control={noteForm.control}
+                  name="post_operative_plan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Post-op plan</FormLabel>
+                      <FormControl>
+                        <Textarea rows={3} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button type="submit">{operativeNote ? 'Update note' : 'Create note'}</Button>
-                  {operativeNote && !operativeNote.signed_at ? <Button type="button" variant="outline" onClick={() => void signNote()}>Sign note</Button> : null}
-                  {operativeNote ? <Button type="button" variant="outline" onClick={() => void downloadNotePdf()}><Download className="mr-2 h-4 w-4" />PDF</Button> : null}
+                  {operativeNote && !operativeNote.signed_at ? (
+                    <Button type="button" variant="outline" onClick={() => void signNote()}>
+                      Sign note
+                    </Button>
+                  ) : null}
+                  {operativeNote ? (
+                    <Button type="button" variant="outline" onClick={() => void downloadNotePdf()}>
+                      <Download className="mr-2 h-4 w-4" />
+                      PDF
+                    </Button>
+                  ) : null}
                 </div>
               </form>
             </Form>
@@ -796,61 +1527,178 @@ export function IntraOpWorkspace({
       </div>
 
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Package className="h-4 w-4" />Consumables & Implants<HelpPopover content="Track surgical consumables, implants, and materials used during the procedure. Records lot numbers, expiry dates, and costs for billing and auditing." /></CardTitle></CardHeader>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Package className="h-4 w-4" />
+            Consumables & Implants
+            <HelpPopover content="Track surgical consumables, implants, and materials used during the procedure. Records lot numbers, expiry dates, and costs for billing and auditing." />
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
           <Form {...consumableForm}>
             <form className="space-y-4" onSubmit={consumableForm.handleSubmit(saveConsumable)}>
               <div className="grid gap-4 xl:grid-cols-[2fr,1fr,1fr,1fr]">
                 <div className="space-y-2">
                   <FormLabel>Item search</FormLabel>
-                  <Input value={drugSearch} onChange={(e) => setDrugSearch(e.target.value)} placeholder="Search drug or implant catalog..." />
+                  <Input
+                    value={drugSearch}
+                    onChange={(e) => setDrugSearch(e.target.value)}
+                    placeholder="Search drug or implant catalog..."
+                  />
                   {debouncedDrugSearch.length >= 2 ? (
                     <div className="max-h-48 overflow-y-auto rounded-lg border">
-                      {drugsLoading ? <div className="px-3 py-4 text-sm text-muted-foreground">Loading items...</div> : drugResults.map((drug) => (
-                        <button
-                          key={drug.id}
-                          type="button"
-                          className="w-full border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50"
-                          onClick={() => {
-                            setSelectedDrug(drug);
-                            consumableForm.setValue('item', drug.id, { shouldDirty: true, shouldValidate: true });
-                            consumableForm.setValue('unit_cost', drug.reference_price ?? 0, { shouldDirty: true });
-                            setDrugSearch(drug.generic_name);
-                          }}
-                        >
-                          <div className="font-medium">{drug.generic_name}</div>
-                          <div className="text-xs text-muted-foreground">{drug.code} {drug.reference_price != null ? `· ${formatCurrency(drug.reference_price)}` : ''}</div>
-                        </button>
-                      ))}
+                      {drugsLoading ? (
+                        <div className="px-3 py-4 text-sm text-muted-foreground">
+                          Loading items...
+                        </div>
+                      ) : (
+                        drugResults.map((drug) => (
+                          <button
+                            key={drug.id}
+                            type="button"
+                            className="w-full border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50"
+                            onClick={() => {
+                              setSelectedDrug(drug);
+                              consumableForm.setValue('item', drug.id, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                              consumableForm.setValue('unit_cost', drug.reference_price ?? 0, {
+                                shouldDirty: true,
+                              });
+                              setDrugSearch(drug.generic_name);
+                            }}
+                          >
+                            <div className="font-medium">{drug.generic_name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {drug.code}{' '}
+                              {drug.reference_price != null
+                                ? `· ${formatCurrency(drug.reference_price)}`
+                                : ''}
+                            </div>
+                          </button>
+                        ))
+                      )}
                     </div>
                   ) : null}
-                  {selectedDrug ? <div className="text-xs text-muted-foreground">Selected: {selectedDrug.generic_name}</div> : null}
+                  {selectedDrug ? (
+                    <div className="text-xs text-muted-foreground">
+                      Selected: {selectedDrug.generic_name}
+                    </div>
+                  ) : null}
                 </div>
-                <FormField control={consumableForm.control} name="quantity_used" render={({ field }) => <FormItem><FormLabel>Qty used</FormLabel><FormControl><Input type="number" min={1} {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={consumableForm.control} name="unit_cost" render={({ field }) => <FormItem><FormLabel>Unit cost</FormLabel><FormControl><Input type="number" min={0} step="0.01" {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={consumableForm.control} name="lot_number" render={({ field }) => <FormItem><FormLabel>Lot number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                <FormField
+                  control={consumableForm.control}
+                  name="quantity_used"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Qty used</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={1} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={consumableForm.control}
+                  name="unit_cost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit cost</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={0} step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={consumableForm.control}
+                  name="lot_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lot number</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
-                <FormField control={consumableForm.control} name="expiry_date" render={({ field }) => <FormItem><FormLabel>Expiry date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={consumableForm.control} name="is_implant" render={({ field }) => <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3 mt-6"><FormControl><Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} /></FormControl><FormLabel className="!mt-0">Implant item</FormLabel></FormItem>} />
-                <FormField control={consumableForm.control} name="implant_serial_number" render={({ field }) => <FormItem><FormLabel>Implant serial</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                <FormField
+                  control={consumableForm.control}
+                  name="expiry_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Expiry date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={consumableForm.control}
+                  name="is_implant"
+                  render={({ field }) => (
+                    <FormItem className="mt-6 flex flex-row items-center gap-3 space-y-0 rounded-lg border p-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => field.onChange(checked === true)}
+                        />
+                      </FormControl>
+                      <FormLabel className="!mt-0">Implant item</FormLabel>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={consumableForm.control}
+                  name="implant_serial_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Implant serial</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
               <Button type="submit">Add consumable</Button>
             </form>
           </Form>
           <Separator />
           {consumables.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No consumables have been logged for this case yet.</div>
+            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              No consumables have been logged for this case yet.
+            </div>
           ) : (
             <div className="space-y-2">
               {consumables.map((consumable) => (
-                <div key={consumable.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                <div
+                  key={consumable.id}
+                  className="flex items-center justify-between rounded-lg border p-3 text-sm"
+                >
                   <div>
                     <p className="font-medium">{consumable.item_name}</p>
-                    <p className="text-xs text-muted-foreground">Qty {consumable.quantity_used}{consumable.lot_number ? ` · Lot ${consumable.lot_number}` : ''}{consumable.is_implant && consumable.implant_serial_number ? ` · Implant ${consumable.implant_serial_number}` : ''}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Qty {consumable.quantity_used}
+                      {consumable.lot_number ? ` · Lot ${consumable.lot_number}` : ''}
+                      {consumable.is_implant && consumable.implant_serial_number
+                        ? ` · Implant ${consumable.implant_serial_number}`
+                        : ''}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="text-right text-xs text-muted-foreground">{formatCurrency(Number(consumable.unit_cost) * consumable.quantity_used)}</div>
+                    <div className="text-right text-xs text-muted-foreground">
+                      {formatCurrency(Number(consumable.unit_cost) * consumable.quantity_used)}
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
@@ -858,7 +1706,11 @@ export function IntraOpWorkspace({
                       onClick={() => void removeConsumable(consumable.id)}
                       disabled={removingConsumableId === consumable.id}
                     >
-                      {removingConsumableId === consumable.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      {removingConsumableId === consumable.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -868,57 +1720,85 @@ export function IntraOpWorkspace({
         </CardContent>
       </Card>
 
-      <Card className={`relative overflow-hidden transition-all duration-700 ${
-        freshChecklistInsight
-          ? 'border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.35)]'
-          : currentChecklistSessionId
-            ? 'border-emerald-500/40'
-            : ''
-      }`}
-        style={freshChecklistInsight ? {
-          animation: 'border-glow 1.5s ease-in-out infinite',
-        } : undefined}
+      <Card
+        className={`relative overflow-hidden transition-all duration-700 ${
+          freshChecklistInsight
+            ? 'border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.35)]'
+            : currentChecklistSessionId
+              ? 'border-emerald-500/40'
+              : ''
+        }`}
+        style={
+          freshChecklistInsight
+            ? {
+                animation: 'border-glow 1.5s ease-in-out infinite',
+              }
+            : undefined
+        }
       >
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
           aria-hidden="true"
         />
         <CardHeader className="relative pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <ClipboardCheck className="h-4 w-4" />
             Surgical AI Checklist Advisory
             <HelpPopover content="AI-powered surgical safety checklist. Evaluates procedure-specific safety steps and provides real-time compliance guidance during the operation." />
             {currentChecklistSessionId ? <Sparkles className="h-4 w-4 text-teal-400" /> : null}
-            <Badge variant={currentChecklistSessionId ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
+            <Badge
+              variant={currentChecklistSessionId ? 'success' : 'outline'}
+              size="sm"
+              className="ml-auto w-fit"
+            >
               {currentChecklistSessionId ? 'Session active' : 'Not started'}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="relative space-y-4">
           {!mappedProcedureKey ? (
-            <p className="text-sm text-muted-foreground">AI checklist advisory is not available for this procedure.</p>
+            <p className="text-sm text-muted-foreground">
+              AI checklist advisory is not available for this procedure.
+            </p>
           ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div>
               <Label>AI procedure key</Label>
-              <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">{mappedProcedureKey || 'Not mapped'}</div>
+              <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">
+                {mappedProcedureKey || 'Not mapped'}
+              </div>
             </div>
             <div>
               <Label>Current phase</Label>
-              <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium capitalize">{checklistCurrentPhase}</div>
+              <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium capitalize">
+                {checklistCurrentPhase}
+              </div>
             </div>
             <div>
               <Label>Completion</Label>
               <div className="flex h-9 items-center gap-2 rounded-md border bg-muted/50 px-3 text-sm font-medium">
                 {checklistPercentComplete}%
-                {checklistPhaseComplete ? <Badge variant="success" size="sm">Phase done</Badge> : null}
+                {checklistPhaseComplete ? (
+                  <Badge variant="success" size="sm">
+                    Phase done
+                  </Badge>
+                ) : null}
               </div>
             </div>
             {!currentChecklistSessionId ? (
               <div className="flex items-end">
-                <Button type="button" className="w-full" onClick={() => void startSurgicalChecklist()} disabled={checklistBusy || !mappedProcedureKey}>
-                  {checklistBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={() => void startSurgicalChecklist()}
+                  disabled={checklistBusy || !mappedProcedureKey}
+                >
+                  {checklistBusy ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <BrainCircuit className="mr-2 h-4 w-4" />
+                  )}
                   Ask TibaBot®
                 </Button>
               </div>
@@ -928,7 +1808,7 @@ export function IntraOpWorkspace({
           {currentChecklistSessionId ? (
             <>
               {checklistMessage ? (
-                <p className="text-sm text-muted-foreground italic">{checklistMessage}</p>
+                <p className="text-sm italic text-muted-foreground">{checklistMessage}</p>
               ) : null}
 
               {checklistItems.length > 0 ? (
@@ -936,37 +1816,71 @@ export function IntraOpWorkspace({
                   {checklistItems.map((item) => {
                     const checked = checkedItems.includes(item.id);
                     return (
-                      <label key={item.id} className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${item.critical ? 'border-amber-500/40' : ''}`}>
+                      <label
+                        key={item.id}
+                        className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${item.critical ? 'border-amber-500/40' : ''}`}
+                      >
                         <Checkbox
                           checked={checked}
                           className="mt-0.5"
                           onCheckedChange={(value) => {
                             const nextChecked = value === true;
                             setCheckedItems((current) =>
-                              nextChecked ? Array.from(new Set([...current, item.id])) : current.filter((entry) => entry !== item.id)
+                              nextChecked
+                                ? Array.from(new Set([...current, item.id]))
+                                : current.filter((entry) => entry !== item.id)
                             );
                           }}
                         />
                         <div className="min-w-0 flex-1">
                           <span>{item.description}</span>
                           <div className="mt-1 flex flex-wrap items-center gap-2">
-                            {item.phase ? <span className="text-xs text-muted-foreground capitalize">{item.phase}</span> : null}
-                            {item.responsible ? <span className="text-xs text-muted-foreground capitalize">{item.phase ? '·' : ''} {item.responsible}</span> : null}
-                            {item.critical ? <Badge variant="warning" size="sm" className="w-fit">Critical</Badge> : null}
-                            {item.checked_by ? <span className="text-xs text-muted-foreground">✓ {item.checked_by}</span> : null}
+                            {item.phase ? (
+                              <span className="text-xs capitalize text-muted-foreground">
+                                {item.phase}
+                              </span>
+                            ) : null}
+                            {item.responsible ? (
+                              <span className="text-xs capitalize text-muted-foreground">
+                                {item.phase ? '·' : ''} {item.responsible}
+                              </span>
+                            ) : null}
+                            {item.critical ? (
+                              <Badge variant="warning" size="sm" className="w-fit">
+                                Critical
+                              </Badge>
+                            ) : null}
+                            {item.checked_by ? (
+                              <span className="text-xs text-muted-foreground">
+                                ✓ {item.checked_by}
+                              </span>
+                            ) : null}
                           </div>
-                          {item.notes ? <p className="mt-1 text-xs text-muted-foreground">{item.notes}</p> : null}
+                          {item.notes ? (
+                            <p className="mt-1 text-xs text-muted-foreground">{item.notes}</p>
+                          ) : null}
                         </div>
                       </label>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No current checklist items are available yet. Refresh status after starting the session.</p>
+                <p className="text-sm text-muted-foreground">
+                  No current checklist items are available yet. Refresh status after starting the
+                  session.
+                </p>
               )}
 
-              <Button type="button" onClick={() => void advanceSurgicalChecklist()} disabled={checklistBusy || checkedItems.length === 0}>
-                {checklistBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+              <Button
+                type="button"
+                onClick={() => void advanceSurgicalChecklist()}
+                disabled={checklistBusy || checkedItems.length === 0}
+              >
+                {checklistBusy ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                )}
                 Advance with selected items
               </Button>
             </>

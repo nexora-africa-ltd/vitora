@@ -57,7 +57,12 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { MODALITY_LABELS, RISK_LEVEL_CONFIG, type SessionModality, type RiskLevel } from '@/lib/types/counselling';
+import {
+  MODALITY_LABELS,
+  RISK_LEVEL_CONFIG,
+  type SessionModality,
+  type RiskLevel,
+} from '@/lib/types/counselling';
 
 // =============================================================================
 // Types
@@ -111,10 +116,26 @@ const QUICK_SCHEDULE_OPTIONS: QuickScheduleOption[] = [
  * Time slot options
  */
 const TIME_SLOTS = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-  '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
-  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-  '17:00', '17:30',
+  '08:00',
+  '08:30',
+  '09:00',
+  '09:30',
+  '10:00',
+  '10:30',
+  '11:00',
+  '11:30',
+  '12:00',
+  '12:30',
+  '13:00',
+  '13:30',
+  '14:00',
+  '14:30',
+  '15:00',
+  '15:30',
+  '16:00',
+  '16:30',
+  '17:00',
+  '17:30',
 ];
 
 /**
@@ -199,9 +220,7 @@ export function FollowUpSchedulerCard({
     },
   });
 
-  const riskConfig = context.currentRiskLevel
-    ? RISK_LEVEL_CONFIG[context.currentRiskLevel]
-    : null;
+  const riskConfig = context.currentRiskLevel ? RISK_LEVEL_CONFIG[context.currentRiskLevel] : null;
 
   const handleQuickSchedule = (days: number) => {
     const date = format(addDays(new Date(), days), 'yyyy-MM-dd');
@@ -229,15 +248,16 @@ export function FollowUpSchedulerCard({
     }
   };
 
-  const sessionsRemaining = context.recommendedSessions && context.completedSessions
-    ? context.recommendedSessions - context.completedSessions
-    : null;
+  const sessionsRemaining =
+    context.recommendedSessions && context.completedSessions
+      ? context.recommendedSessions - context.completedSessions
+      : null;
 
   return (
     <Card className={cn(required && 'border-orange-300 bg-orange-50/50', className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <RefreshCw className="h-4 w-4" />
             Schedule Follow-up
             {required && (
@@ -247,9 +267,7 @@ export function FollowUpSchedulerCard({
             )}
           </CardTitle>
           {riskConfig && context.currentRiskLevel && context.currentRiskLevel !== 'LOW' && (
-            <Badge className={riskConfig.className}>
-              {riskConfig.label}
-            </Badge>
+            <Badge className={riskConfig.className}>{riskConfig.label}</Badge>
           )}
         </div>
         {sessionsRemaining !== null && sessionsRemaining > 0 && (
@@ -288,11 +306,7 @@ export function FollowUpSchedulerCard({
                   <FormItem>
                     <FormLabel>Date *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        min={format(new Date(), 'yyyy-MM-dd')}
-                      />
+                      <Input type="date" {...field} min={format(new Date(), 'yyyy-MM-dd')} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -429,19 +443,15 @@ export function FollowUpSchedulerCard({
             )}
 
             {/* Submit */}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isScheduling || isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isScheduling || isLoading}>
               {isScheduling || isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Scheduling...
                 </>
               ) : (
                 <>
-                  <Calendar className="h-4 w-4 mr-2" />
+                  <Calendar className="mr-2 h-4 w-4" />
                   Schedule Follow-up
                 </>
               )}
@@ -540,9 +550,7 @@ export function FollowUpSchedulerDialog({
   };
 
   const displayError = externalError || error;
-  const riskConfig = context.currentRiskLevel
-    ? RISK_LEVEL_CONFIG[context.currentRiskLevel]
-    : null;
+  const riskConfig = context.currentRiskLevel ? RISK_LEVEL_CONFIG[context.currentRiskLevel] : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -558,16 +566,14 @@ export function FollowUpSchedulerDialog({
         </DialogHeader>
 
         {/* Context Summary */}
-        <div className="rounded-lg border bg-muted/50 p-3 space-y-1">
+        <div className="space-y-1 rounded-lg border bg-muted/50 p-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">{context.referralNumber}</span>
             {riskConfig && context.currentRiskLevel && (
               <Badge className={riskConfig.className}>{riskConfig.label}</Badge>
             )}
           </div>
-          <div className="text-sm text-muted-foreground">
-            {context.counsellingTypeName}
-          </div>
+          <div className="text-sm text-muted-foreground">{context.counsellingTypeName}</div>
           {context.recommendedFrequency && (
             <div className="text-xs text-muted-foreground">
               Recommended: {context.recommendedFrequency}
@@ -604,11 +610,7 @@ export function FollowUpSchedulerDialog({
                   <FormItem>
                     <FormLabel>Date *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        min={format(new Date(), 'yyyy-MM-dd')}
-                      />
+                      <Input type="date" {...field} min={format(new Date(), 'yyyy-MM-dd')} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -654,11 +656,11 @@ export function FollowUpSchedulerDialog({
                         type="button"
                         variant={field.value === modality ? 'default' : 'outline'}
                         size="sm"
-                        className="flex flex-col h-auto py-2"
+                        className="flex h-auto flex-col py-2"
                         onClick={() => field.onChange(modality)}
                       >
                         {MODALITY_ICONS[modality]}
-                        <span className="text-xs mt-1">{MODALITY_LABELS[modality]}</span>
+                        <span className="mt-1 text-xs">{MODALITY_LABELS[modality]}</span>
                       </Button>
                     ))}
                   </div>
@@ -704,18 +706,15 @@ export function FollowUpSchedulerDialog({
           >
             Cancel
           </Button>
-          <Button
-            onClick={form.handleSubmit(handleSubmit)}
-            disabled={isSubmitting || isLoading}
-          >
+          <Button onClick={form.handleSubmit(handleSubmit)} disabled={isSubmitting || isLoading}>
             {isSubmitting || isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Scheduling...
               </>
             ) : (
               <>
-                <Check className="h-4 w-4 mr-2" />
+                <Check className="mr-2 h-4 w-4" />
                 Schedule
               </>
             )}

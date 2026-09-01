@@ -24,14 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  Eye,
-  Calendar,
-  User,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Eye, Calendar, User } from 'lucide-react';
 import {
   ImagingOrder,
   ImagingOrderStatus,
@@ -152,12 +145,11 @@ export function ImagingOrderTable({
               ))}
             </SelectContent>
           </Select>
-
         </div>
       </div>
 
       {/* Table - Scrollable on mobile */}
-      <div className="border rounded-lg overflow-x-auto">
+      <div className="overflow-x-auto rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -172,86 +164,98 @@ export function ImagingOrderTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              // Loading skeleton
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-                </TableRow>
-              ))
-            ) : (
-              orders.map((order) => (
-                <TableRow
-                  key={order.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => router.push(`/imaging/orders/${order.order_number}`)}
-                >
-                  <TableCell className="font-mono text-xs sm:text-sm">
-                    {order.order_number}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-                      <span className="text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{order.patient_name || `Patient #${order.patient}`}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {order.items.slice(0, 2).map((item) => (
-                        <ModalityBadge
-                          key={item.id}
-                          modality={item.modality}
-                          size="sm"
-                        />
-                      ))}
-                      {order.items.length > 2 && (
-                        <span className="text-[10px] sm:text-xs text-muted-foreground">
-                          +{order.items.length - 2}
+            {isLoading
+              ? // Loading skeleton
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-40" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-8 w-8" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              : orders.map((order) => (
+                  <TableRow
+                    key={order.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => router.push(`/imaging/orders/${order.order_number}`)}
+                  >
+                    <TableCell className="font-mono text-xs sm:text-sm">
+                      {order.order_number}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground sm:h-4 sm:w-4" />
+                        <span className="max-w-[100px] truncate text-xs sm:max-w-none sm:text-sm">
+                          {order.patient_name || `Patient #${order.patient}`}
                         </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <PriorityBadge priority={order.priority} />
-                  </TableCell>
-                  <TableCell>
-                    <OrderStatusBadge status={order.status} />
-                  </TableCell>
-                  <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-                    {formatDateTime(order.ordered_at)}
-                  </TableCell>
-                  <TableCell>
-                    {order.scheduled_datetime ? (
-                      <div className="flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
-                        <Calendar className="h-3 w-3" />
-                        {formatDateTime(order.scheduled_datetime)}
                       </div>
-                    ) : (
-                      <span className="text-muted-foreground text-xs sm:text-sm">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/imaging/orders/${order.order_number}`);
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {order.items.slice(0, 2).map((item) => (
+                          <ModalityBadge key={item.id} modality={item.modality} size="sm" />
+                        ))}
+                        {order.items.length > 2 && (
+                          <span className="text-[10px] text-muted-foreground sm:text-xs">
+                            +{order.items.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <PriorityBadge priority={order.priority} />
+                    </TableCell>
+                    <TableCell>
+                      <OrderStatusBadge status={order.status} />
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
+                      {formatDateTime(order.ordered_at)}
+                    </TableCell>
+                    <TableCell>
+                      {order.scheduled_datetime ? (
+                        <div className="flex items-center gap-1 whitespace-nowrap text-xs sm:text-sm">
+                          <Calendar className="h-3 w-3" />
+                          {formatDateTime(order.scheduled_datetime)}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground sm:text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/imaging/orders/${order.order_number}`);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
           </TableBody>
         </Table>
       </div>
@@ -259,7 +263,7 @@ export function ImagingOrderTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
+          <p className="text-center text-xs text-muted-foreground sm:text-left sm:text-sm">
             Showing {startRow}-{endRow} of {totalCount} orders (page {page} of {totalPages})
           </p>
           <div className="flex items-center justify-center gap-2">
@@ -271,7 +275,7 @@ export function ImagingOrderTable({
               className="flex-1 sm:flex-none"
             >
               <ChevronLeft className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">Previous</span>
+              <span className="ml-1 hidden sm:inline">Previous</span>
             </Button>
             <Button
               variant="outline"
@@ -280,7 +284,7 @@ export function ImagingOrderTable({
               disabled={page >= totalPages}
               className="flex-1 sm:flex-none"
             >
-              <span className="hidden sm:inline mr-1">Next</span>
+              <span className="mr-1 hidden sm:inline">Next</span>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

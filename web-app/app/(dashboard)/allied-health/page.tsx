@@ -26,7 +26,7 @@ export default function AlliedHealthDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <LoadingSpinner />
       </div>
     );
@@ -46,8 +46,16 @@ export default function AlliedHealthDashboardPage() {
       href: '/allied-health/physiotherapy',
       icon: Activity,
       stats: [
-        { label: 'clinic queue', value: stats?.clinic_queue_stats?.physio?.waiting_count || 0, variant: 'info' as const },
-        { label: 'pending', value: stats?.physiotherapy.pending_count || 0, variant: 'warning' as const },
+        {
+          label: 'clinic queue',
+          value: stats?.clinic_queue_stats?.physio?.waiting_count || 0,
+          variant: 'info' as const,
+        },
+        {
+          label: 'pending',
+          value: stats?.physiotherapy.pending_count || 0,
+          variant: 'warning' as const,
+        },
         { label: 'sessions today', value: stats?.physiotherapy.today_sessions_count || 0 },
       ],
     },
@@ -56,8 +64,16 @@ export default function AlliedHealthDashboardPage() {
       href: '/allied-health/nutrition',
       icon: Apple,
       stats: [
-        { label: 'clinic queue', value: stats?.clinic_queue_stats?.nutrition?.waiting_count || 0, variant: 'info' as const },
-        { label: 'pending', value: stats?.nutrition.pending_count || 0, variant: 'warning' as const },
+        {
+          label: 'clinic queue',
+          value: stats?.clinic_queue_stats?.nutrition?.waiting_count || 0,
+          variant: 'info' as const,
+        },
+        {
+          label: 'pending',
+          value: stats?.nutrition.pending_count || 0,
+          variant: 'warning' as const,
+        },
         { label: 'consultations', value: stats?.nutrition.consultations_count || 0 },
       ],
     },
@@ -66,8 +82,16 @@ export default function AlliedHealthDashboardPage() {
       href: '/allied-health/occupational-therapy',
       icon: Briefcase,
       stats: [
-        { label: 'clinic queue', value: stats?.clinic_queue_stats?.ot?.waiting_count || 0, variant: 'info' as const },
-        { label: 'pending', value: stats?.occupational_therapy.pending_count || 0, variant: 'warning' as const },
+        {
+          label: 'clinic queue',
+          value: stats?.clinic_queue_stats?.ot?.waiting_count || 0,
+          variant: 'info' as const,
+        },
+        {
+          label: 'pending',
+          value: stats?.occupational_therapy.pending_count || 0,
+          variant: 'warning' as const,
+        },
         { label: 'sessions today', value: stats?.occupational_therapy.today_sessions_count || 0 },
       ],
     },
@@ -76,9 +100,17 @@ export default function AlliedHealthDashboardPage() {
       href: '/allied-health/social-work',
       icon: Users,
       stats: [
-        { label: 'clinic queue', value: stats?.clinic_queue_stats?.social_work?.waiting_count || 0, variant: 'info' as const },
+        {
+          label: 'clinic queue',
+          value: stats?.clinic_queue_stats?.social_work?.waiting_count || 0,
+          variant: 'info' as const,
+        },
         { label: 'open cases', value: stats?.social_work.open_cases_count || 0 },
-        { label: 'urgent', value: stats?.social_work.urgent_count || 0, variant: 'danger' as const },
+        {
+          label: 'urgent',
+          value: stats?.social_work.urgent_count || 0,
+          variant: 'danger' as const,
+        },
       ],
     },
     {
@@ -86,8 +118,18 @@ export default function AlliedHealthDashboardPage() {
       href: '/allied-health/counselling',
       icon: Heart,
       stats: [
-        { label: 'clinic queue', value: (stats?.clinic_queue_stats?.counselling?.waiting_count || 0) + (stats?.clinic_queue_stats?.mental_health?.waiting_count || 0), variant: 'info' as const },
-        { label: 'pending', value: stats?.counselling.pending_count || 0, variant: 'warning' as const },
+        {
+          label: 'clinic queue',
+          value:
+            (stats?.clinic_queue_stats?.counselling?.waiting_count || 0) +
+            (stats?.clinic_queue_stats?.mental_health?.waiting_count || 0),
+          variant: 'info' as const,
+        },
+        {
+          label: 'pending',
+          value: stats?.counselling.pending_count || 0,
+          variant: 'warning' as const,
+        },
         { label: 'follow-ups', value: stats?.counselling.follow_ups_count || 0 },
       ],
     },
@@ -108,12 +150,8 @@ export default function AlliedHealthDashboardPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.todays_sessions?.length || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Across all modules
-            </p>
+            <div className="text-2xl font-bold">{stats?.todays_sessions?.length || 0}</div>
+            <p className="text-xs text-muted-foreground">Across all modules</p>
           </CardContent>
         </Card>
 
@@ -144,9 +182,7 @@ export default function AlliedHealthDashboardPage() {
                 (stats?.occupational_therapy.pending_count || 0) +
                 (stats?.counselling.pending_count || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting approval
-            </p>
+            <p className="text-xs text-muted-foreground">Awaiting approval</p>
           </CardContent>
         </Card>
 
@@ -162,9 +198,7 @@ export default function AlliedHealthDashboardPage() {
                 (stats?.counselling.in_progress_count || 0) +
                 (stats?.social_work.open_cases_count || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Currently ongoing
-            </p>
+            <p className="text-xs text-muted-foreground">Currently ongoing</p>
           </CardContent>
         </Card>
 
@@ -177,9 +211,7 @@ export default function AlliedHealthDashboardPage() {
             <div className="text-2xl font-bold text-destructive">
               {stats?.social_work.urgent_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Require attention
-            </p>
+            <p className="text-xs text-muted-foreground">Require attention</p>
           </CardContent>
         </Card>
       </div>
@@ -187,7 +219,7 @@ export default function AlliedHealthDashboardPage() {
       {/* Module Cards & Today's Sessions */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Module Cards */}
-        <div className="lg:col-span-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2 lg:grid-cols-3">
           {moduleConfigs.map((config) => (
             <ModuleCard key={config.title} {...config} />
           ))}
@@ -195,10 +227,7 @@ export default function AlliedHealthDashboardPage() {
 
         {/* Today's Sessions */}
         <div className="lg:col-span-1">
-          <TodaysSessionsList
-            sessions={stats?.todays_sessions || []}
-            isLoading={isLoading}
-          />
+          <TodaysSessionsList sessions={stats?.todays_sessions || []} isLoading={isLoading} />
         </div>
       </div>
     </div>

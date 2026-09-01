@@ -14,13 +14,30 @@ import { PaginatedResponse } from '@/lib/types';
 
 export type TargetPopulation = 'INFANT' | 'CHILD' | 'ADOLESCENT' | 'ADULT' | 'ALL';
 
-export type VaccineProgram = 'KEPI' | 'ROUTINE' | 'CAMPAIGN' | 'OCCUPATIONAL' | 'TRAVEL' | 'CATCH_UP';
+export type VaccineProgram =
+  | 'KEPI'
+  | 'ROUTINE'
+  | 'CAMPAIGN'
+  | 'OCCUPATIONAL'
+  | 'TRAVEL'
+  | 'CATCH_UP';
 
 export type VaccineRoute = 'IM' | 'SC' | 'ORAL' | 'ID' | '';
 
-export type ImmunizationStatus = 'SCHEDULED' | 'ADMINISTERED' | 'MISSED' | 'CONTRAINDICATED' | 'DEFERRED';
+export type ImmunizationStatus =
+  | 'SCHEDULED'
+  | 'ADMINISTERED'
+  | 'MISSED'
+  | 'CONTRAINDICATED'
+  | 'DEFERRED';
 
-export type AdministrationSite = 'LEFT_ARM' | 'RIGHT_ARM' | 'LEFT_THIGH' | 'RIGHT_THIGH' | 'ORAL' | '';
+export type AdministrationSite =
+  | 'LEFT_ARM'
+  | 'RIGHT_ARM'
+  | 'LEFT_THIGH'
+  | 'RIGHT_THIGH'
+  | 'ORAL'
+  | '';
 
 export type CampaignStatus = 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 
@@ -39,7 +56,13 @@ export type AEFIEventType =
 
 export type AEFISeverity = 'MILD' | 'MODERATE' | 'SEVERE';
 
-export type AEFIOutcome = 'RECOVERED' | 'RECOVERING' | 'NOT_RECOVERED' | 'SEQUELAE' | 'DEATH' | 'UNKNOWN';
+export type AEFIOutcome =
+  | 'RECOVERED'
+  | 'RECOVERING'
+  | 'NOT_RECOVERED'
+  | 'SEQUELAE'
+  | 'DEATH'
+  | 'UNKNOWN';
 
 export type AEFIReportType = 'INITIAL' | 'FOLLOW_UP';
 
@@ -331,8 +354,13 @@ export interface CoverageStats {
 // =============================================================================
 
 export type StockTransactionType =
-  | 'RECEIVE' | 'ISSUE' | 'WASTAGE' | 'ADJUSTMENT'
-  | 'TRANSFER_IN' | 'TRANSFER_OUT' | 'EXPIRED';
+  | 'RECEIVE'
+  | 'ISSUE'
+  | 'WASTAGE'
+  | 'ADJUSTMENT'
+  | 'TRANSFER_IN'
+  | 'TRANSFER_OUT'
+  | 'EXPIRED';
 
 export interface VaccineStockListItem {
   id: number;
@@ -415,10 +443,13 @@ export interface VaccineStockListParams {
 // =============================================================================
 
 export type ColdChainEquipmentType =
-  | 'FRIDGE' | 'FREEZER' | 'COLD_BOX' | 'VACCINE_CARRIER' | 'COLD_ROOM';
+  | 'FRIDGE'
+  | 'FREEZER'
+  | 'COLD_BOX'
+  | 'VACCINE_CARRIER'
+  | 'COLD_ROOM';
 
-export type ColdChainEquipmentStatus =
-  | 'OPERATIONAL' | 'FAULTY' | 'DECOMMISSIONED' | 'UNDER_REPAIR';
+export type ColdChainEquipmentStatus = 'OPERATIONAL' | 'FAULTY' | 'DECOMMISSIONED' | 'UNDER_REPAIR';
 
 export interface ColdChainEquipmentListItem {
   id: number;
@@ -486,8 +517,13 @@ export interface TemperatureLogCreateData {
 // =============================================================================
 
 export type IncidentType =
-  | 'POWER_OUTAGE' | 'COLD_CHAIN_BREAK' | 'EQUIPMENT_FAILURE'
-  | 'STOCK_DAMAGE' | 'THEFT' | 'EXPIRED_STOCK' | 'OTHER';
+  | 'POWER_OUTAGE'
+  | 'COLD_CHAIN_BREAK'
+  | 'EQUIPMENT_FAILURE'
+  | 'STOCK_DAMAGE'
+  | 'THEFT'
+  | 'EXPIRED_STOCK'
+  | 'OTHER';
 
 export type IncidentSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

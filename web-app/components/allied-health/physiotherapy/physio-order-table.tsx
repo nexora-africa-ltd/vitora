@@ -30,7 +30,10 @@ import { OrderStatusBadge, PriorityBadge, SessionCount } from '@/components/alli
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { EmptyState } from '@/components/shared/empty-state';
 import { usePhysioOrders } from '@/lib/hooks/use-physiotherapy';
-import type { PhysiotherapyOrderListItem, PhysiotherapyOrderListParams } from '@/lib/types/physiotherapy';
+import type {
+  PhysiotherapyOrderListItem,
+  PhysiotherapyOrderListParams,
+} from '@/lib/types/physiotherapy';
 import type { AlliedHealthOrderStatus, AlliedHealthPriority } from '@/lib/types/allied-health';
 
 interface PhysioOrderTableProps {
@@ -75,19 +78,17 @@ export function PhysioOrderTable({ initialParams }: PhysioOrderTableProps) {
 
   if (error) {
     return (
-      <div className="p-4 text-center text-destructive">
-        Failed to load orders: {error.message}
-      </div>
+      <div className="p-4 text-center text-destructive">Failed to load orders: {error.message}</div>
     );
   }
 
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <form onSubmit={handleSearch} className="flex flex-1 gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search orders, patients..."
               value={searchTerm}
@@ -128,7 +129,7 @@ export function PhysioOrderTable({ initialParams }: PhysioOrderTableProps) {
           </Select>
 
           <Button onClick={() => router.push('/allied-health/physiotherapy/orders/new')}>
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             New Order
           </Button>
         </div>
@@ -150,7 +151,7 @@ export function PhysioOrderTable({ initialParams }: PhysioOrderTableProps) {
         />
       ) : (
         <>
-          <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -171,15 +172,11 @@ export function PhysioOrderTable({ initialParams }: PhysioOrderTableProps) {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleRowClick(order)}
                   >
-                    <TableCell className="font-mono text-sm">
-                      {order.order_number}
-                    </TableCell>
+                    <TableCell className="font-mono text-sm">{order.order_number}</TableCell>
                     <TableCell>
                       <div>
                         <div className="font-medium">{order.patient_name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {order.patient_mrn}
-                        </div>
+                        <div className="text-sm text-muted-foreground">{order.patient_mrn}</div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -224,9 +221,7 @@ export function PhysioOrderTable({ initialParams }: PhysioOrderTableProps) {
                 variant="outline"
                 size="sm"
                 disabled={!data.previous}
-                onClick={() =>
-                  setParams((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))
-                }
+                onClick={() => setParams((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))}
               >
                 <ChevronLeft className="h-4 w-4" />
                 Previous
@@ -235,9 +230,7 @@ export function PhysioOrderTable({ initialParams }: PhysioOrderTableProps) {
                 variant="outline"
                 size="sm"
                 disabled={!data.next}
-                onClick={() =>
-                  setParams((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))
-                }
+                onClick={() => setParams((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))}
               >
                 Next
                 <ChevronRight className="h-4 w-4" />

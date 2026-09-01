@@ -62,7 +62,10 @@ export const worksheetsApi = {
     });
   },
 
-  async updateTemplate(id: number, data: Partial<WorksheetTemplateCreateData>): Promise<WorksheetTemplate> {
+  async updateTemplate(
+    id: number,
+    data: Partial<WorksheetTemplateCreateData>
+  ): Promise<WorksheetTemplate> {
     const response = await apiClient.patch(`${BASE}/templates/${id}/`, data);
     return parseResponse(WorksheetTemplateSchema, response.data, {
       context: 'worksheetsApi.updateTemplate',
@@ -144,7 +147,10 @@ export const worksheetsApi = {
     });
   },
 
-  async updateLabelTemplate(id: number, data: Partial<LabelTemplateCreateData>): Promise<LabelTemplate> {
+  async updateLabelTemplate(
+    id: number,
+    data: Partial<LabelTemplateCreateData>
+  ): Promise<LabelTemplate> {
     const response = await apiClient.patch(`${BASE}/labels/templates/${id}/`, data);
     return parseResponse(LabelTemplateSchema, response.data, {
       context: 'worksheetsApi.updateLabelTemplate',

@@ -44,12 +44,7 @@ export type {
 
 // Age Groups
 export type { AgeGroup } from './age-groups';
-export {
-  getAgeGroup,
-  getAgeGroupFromYears,
-  isPediatric,
-  isNeonateOrInfant,
-} from './age-groups';
+export { getAgeGroup, getAgeGroupFromYears, isPediatric, isNeonateOrInfant } from './age-groups';
 
 // Thresholds
 export {

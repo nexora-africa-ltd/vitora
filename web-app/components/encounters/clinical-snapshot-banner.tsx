@@ -71,7 +71,7 @@ function StatChip({
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
         isEmpty ? 'bg-muted/50 text-muted-foreground' : colorConfig[color].chip
       )}
     >
@@ -102,15 +102,13 @@ function RenalStatusChip({
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
         colorConfig[chipColor].chip
       )}
     >
       <Activity className="h-3.5 w-3.5" />
       <span className="hidden sm:inline">CKD {stage}</span>
-      {egfr != null && (
-        <span className="font-semibold">{Math.round(egfr)}</span>
-      )}
+      {egfr != null && <span className="font-semibold">{Math.round(egfr)}</span>}
     </div>
   );
 }
@@ -138,8 +136,8 @@ function SnapshotSection({
   return (
     <div
       className={cn(
-        'rounded-md p-3 space-y-2',
-        hasItems ? config.section : 'bg-muted/30 border-l-2 border-l-muted'
+        'space-y-2 rounded-md p-3',
+        hasItems ? config.section : 'border-l-2 border-l-muted bg-muted/30'
       )}
     >
       <div className="flex items-center gap-1.5">
@@ -148,21 +146,21 @@ function SnapshotSection({
         {hasItems && (
           <Badge
             variant="secondary"
-            className={cn('ml-auto text-xs h-5 font-semibold', config.chip)}
+            className={cn('ml-auto h-5 text-xs font-semibold', config.chip)}
           >
             {items.length}
           </Badge>
         )}
       </div>
       {!hasItems ? (
-        <p className="text-sm text-muted-foreground italic">{emptyLabel}</p>
+        <p className="text-sm italic text-muted-foreground">{emptyLabel}</p>
       ) : (
         <ul className="space-y-1">
           {items.map((item, idx) => (
             <li
               key={`${item}-${idx}`}
               className={cn(
-                'text-sm pl-4 relative before:absolute before:left-0.5 before:top-[0.45rem] before:h-1.5 before:w-1.5 before:rounded-full',
+                'relative pl-4 text-sm before:absolute before:left-0.5 before:top-[0.45rem] before:h-1.5 before:w-1.5 before:rounded-full',
                 config.bullet
               )}
             >
@@ -191,9 +189,9 @@ export function ClinicalSnapshotBanner({ encounterId }: { encounterId: number })
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border-2 border-violet-500/20 bg-gradient-to-r from-violet-50/50 to-sky-50/50 dark:from-violet-950/20 dark:to-sky-950/20 p-4">
+      <div className="rounded-lg border-2 border-violet-500/20 bg-gradient-to-r from-violet-50/50 to-sky-50/50 p-4 dark:from-violet-950/20 dark:to-sky-950/20">
         <div className="flex items-center justify-between gap-3">
-          <div className="space-y-2 min-w-0 flex-1">
+          <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-5 w-32" />
             <div className="flex gap-2">
               <Skeleton className="h-6 w-20 rounded-full" />
@@ -213,7 +211,7 @@ export function ClinicalSnapshotBanner({ encounterId }: { encounterId: number })
   return (
     <div
       className={cn(
-        'rounded-lg border-2 overflow-hidden',
+        'overflow-hidden rounded-lg border-2',
         isSevereAllergy
           ? 'border-rose-500/40 bg-gradient-to-r from-rose-50/80 to-amber-50/50 dark:from-rose-950/30 dark:to-amber-950/20'
           : 'border-violet-500/20 bg-gradient-to-r from-violet-50/50 to-sky-50/50 dark:from-violet-950/20 dark:to-sky-950/20'
@@ -222,10 +220,10 @@ export function ClinicalSnapshotBanner({ encounterId }: { encounterId: number })
       <Collapsible open={open} onOpenChange={setOpen}>
         {/* Header - always visible */}
         <div className="flex items-center justify-between gap-3 p-3 sm:p-4">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <div
               className={cn(
-                'p-1.5 rounded-lg',
+                'rounded-lg p-1.5',
                 isSevereAllergy
                   ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400'
                   : 'bg-violet-500/20 text-violet-600 dark:text-violet-400'
@@ -236,11 +234,8 @@ export function ClinicalSnapshotBanner({ encounterId }: { encounterId: number })
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold">Clinical Snapshot</span>
               {isSevereAllergy && (
-                <Badge
-                  variant="destructive"
-                  className="shrink-0 w-fit text-xs animate-pulse"
-                >
-                  <AlertTriangle className="h-3 w-3 mr-1" />
+                <Badge variant="destructive" className="w-fit shrink-0 animate-pulse text-xs">
+                  <AlertTriangle className="mr-1 h-3 w-3" />
                   <span className="hidden sm:inline">Allergy Alert</span>
                   <span className="sm:hidden">Alert</span>
                 </Badge>
@@ -279,9 +274,7 @@ export function ClinicalSnapshotBanner({ encounterId }: { encounterId: number })
                 color="sky"
               />
             )}
-            {snapshot.renal_status && (
-              <RenalStatusChip renalStatus={snapshot.renal_status} />
-            )}
+            {snapshot.renal_status && <RenalStatusChip renalStatus={snapshot.renal_status} />}
           </div>
 
           <CollapsibleTrigger asChild>
@@ -295,21 +288,21 @@ export function ClinicalSnapshotBanner({ encounterId }: { encounterId: number })
 
         {/* Expanded content */}
         <CollapsibleContent>
-          <div className="border-t border-violet-500/10 dark:border-violet-500/20 bg-background/80 backdrop-blur-sm px-3 sm:px-4 py-4 space-y-4">
+          <div className="space-y-4 border-t border-violet-500/10 bg-background/80 px-3 py-4 backdrop-blur-sm dark:border-violet-500/20 sm:px-4">
             {/* Alerts section */}
             {hasAlerts && (
               <div
                 className={cn(
                   'rounded-lg p-3 text-sm',
                   isSevereAllergy
-                    ? 'bg-rose-500/15 border border-rose-500/30'
-                    : 'bg-amber-500/15 border border-amber-500/30'
+                    ? 'border border-rose-500/30 bg-rose-500/15'
+                    : 'border border-amber-500/30 bg-amber-500/15'
                 )}
               >
                 <div className="flex items-start gap-2">
                   <AlertTriangle
                     className={cn(
-                      'h-4 w-4 shrink-0 mt-0.5',
+                      'mt-0.5 h-4 w-4 shrink-0',
                       isSevereAllergy
                         ? 'text-rose-600 dark:text-rose-400'
                         : 'text-amber-600 dark:text-amber-400'
@@ -353,18 +346,13 @@ export function ClinicalSnapshotBanner({ encounterId }: { encounterId: number })
 
             {/* Pending results */}
             {snapshot.pending_results.length > 0 && (
-              <div
-                className={cn(
-                  'rounded-md p-3 space-y-2',
-                  colorConfig.sky.section
-                )}
-              >
+              <div className={cn('space-y-2 rounded-md p-3', colorConfig.sky.section)}>
                 <div className="flex items-center gap-1.5">
                   <FlaskConical className={cn('h-4 w-4', colorConfig.sky.icon)} />
                   <h4 className="text-sm font-medium">Pending Results</h4>
                   <Badge
                     variant="secondary"
-                    className={cn('ml-auto text-xs h-5 font-semibold', colorConfig.sky.chip)}
+                    className={cn('ml-auto h-5 text-xs font-semibold', colorConfig.sky.chip)}
                   >
                     {snapshot.pending_results.length}
                   </Badge>
@@ -374,12 +362,12 @@ export function ClinicalSnapshotBanner({ encounterId }: { encounterId: number })
                     <li
                       key={`${r.test_name}-${r.ordered_date ?? 'unknown'}-${idx}`}
                       className={cn(
-                        'text-sm pl-4 relative before:absolute before:left-0.5 before:top-[0.45rem] before:h-1.5 before:w-1.5 before:rounded-full',
+                        'relative pl-4 text-sm before:absolute before:left-0.5 before:top-[0.45rem] before:h-1.5 before:w-1.5 before:rounded-full',
                         colorConfig.sky.bullet
                       )}
                     >
                       {r.test_name}
-                      <span className="text-muted-foreground ml-1">({r.status})</span>
+                      <span className="ml-1 text-muted-foreground">({r.status})</span>
                     </li>
                   ))}
                 </ul>

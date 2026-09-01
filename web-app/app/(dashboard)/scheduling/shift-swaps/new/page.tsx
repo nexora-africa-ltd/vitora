@@ -18,12 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFacility } from '@/lib/context/facility-context';
 import { shiftsApi, shiftSwapsApi } from '@/lib/api/scheduling';
 import type { ShiftSwapCreateData, ShiftListItem } from '@/lib/types/scheduling';
@@ -131,7 +126,7 @@ export default function NewShiftSwapPage() {
     `${shift.staff_resource_name} — ${format(parseISO(shift.shift_date), 'MMM d')} ${shift.shift_type_display} (${shift.start_time}–${shift.end_time})`;
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
       <PageHeader
         title="New Swap Request"
         helpContent="Request to swap one of your upcoming shifts. You can target a specific colleague or post an open swap for anyone to accept."
@@ -145,15 +140,19 @@ export default function NewShiftSwapPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="shift-select">Select shift to swap *</Label>
-            <Select value={selectedShiftId} onValueChange={(val) => { setSelectedShiftId(val); setTargetShiftId(''); }}>
+            <Select
+              value={selectedShiftId}
+              onValueChange={(val) => {
+                setSelectedShiftId(val);
+                setTargetShiftId('');
+              }}
+            >
               <SelectTrigger id="shift-select">
                 <SelectValue placeholder="Choose a scheduled shift..." />
               </SelectTrigger>
               <SelectContent>
                 {myShifts.length === 0 ? (
-                  <SelectItem value="_none">
-                    No upcoming scheduled shifts
-                  </SelectItem>
+                  <SelectItem value="_none">No upcoming scheduled shifts</SelectItem>
                 ) : (
                   myShifts.map((shift) => (
                     <SelectItem key={shift.id} value={String(shift.id)}>
@@ -184,11 +183,15 @@ export default function NewShiftSwapPage() {
               disabled={!selectedShiftId}
             >
               <SelectTrigger id="target-shift">
-                <SelectValue placeholder={selectedShiftId ? 'Open swap (anyone can accept)' : 'Select your shift first'} />
+                <SelectValue
+                  placeholder={
+                    selectedShiftId ? 'Open swap (anyone can accept)' : 'Select your shift first'
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_clear">
-                  <span className="text-muted-foreground italic">Open swap (anyone)</span>
+                  <span className="italic text-muted-foreground">Open swap (anyone)</span>
                 </SelectItem>
                 {targetShifts.map((shift) => (
                   <SelectItem key={shift.id} value={String(shift.id)}>
@@ -196,9 +199,7 @@ export default function NewShiftSwapPage() {
                   </SelectItem>
                 ))}
                 {targetShifts.length === 0 && selectedShiftId && (
-                  <SelectItem value="_no_results">
-                    No other scheduled shifts found
-                  </SelectItem>
+                  <SelectItem value="_no_results">No other scheduled shifts found</SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -215,7 +216,7 @@ export default function NewShiftSwapPage() {
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 w-fit cursor-default">
+                <div className="flex w-fit cursor-default items-center gap-2">
                   <Switch checked={isPartial} onCheckedChange={setIsPartial} />
                   <span className="text-sm font-medium">
                     {isPartial ? 'Partial Swap' : 'Full Swap'}
@@ -270,17 +271,11 @@ export default function NewShiftSwapPage() {
 
       {/* Actions */}
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <Button
-          variant="outline"
-          onClick={() => router.push('/scheduling/shift-swaps')}
-        >
+        <Button variant="outline" onClick={() => router.push('/scheduling/shift-swaps')}>
           Cancel
         </Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={!selectedShiftId || createMutation.isPending}
-        >
-          <ArrowLeftRight className="h-4 w-4 mr-2" />
+        <Button onClick={handleSubmit} disabled={!selectedShiftId || createMutation.isPending}>
+          <ArrowLeftRight className="mr-2 h-4 w-4" />
           Submit Swap Request
         </Button>
       </div>

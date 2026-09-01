@@ -5,10 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { referralsApi } from '@/lib/api/referrals';
-import type {
-  ReferralCreateData,
-  ReferralListParams,
-} from '@/lib/types/referral';
+import type { ReferralCreateData, ReferralListParams } from '@/lib/types/referral';
 
 // =============================================================================
 // Query Key Factory
@@ -17,12 +14,10 @@ import type {
 export const referralKeys = {
   all: ['referrals'] as const,
   lists: () => [...referralKeys.all, 'list'] as const,
-  list: (params?: ReferralListParams) =>
-    [...referralKeys.lists(), params] as const,
+  list: (params?: ReferralListParams) => [...referralKeys.lists(), params] as const,
   details: () => [...referralKeys.all, 'detail'] as const,
   detail: (id: number) => [...referralKeys.details(), id] as const,
-  forEncounter: (encounterId: number) =>
-    [...referralKeys.all, 'encounter', encounterId] as const,
+  forEncounter: (encounterId: number) => [...referralKeys.all, 'encounter', encounterId] as const,
   pending: (params?: { target_service?: string; referral_type?: string }) =>
     [...referralKeys.all, 'pending', params] as const,
   myReferrals: () => [...referralKeys.all, 'my'] as const,
@@ -61,10 +56,7 @@ export function useEncounterReferrals(encounterId: number | undefined) {
 }
 
 /** List pending referrals */
-export function usePendingReferrals(params?: {
-  target_service?: string;
-  referral_type?: string;
-}) {
+export function usePendingReferrals(params?: { target_service?: string; referral_type?: string }) {
   return useQuery({
     queryKey: referralKeys.pending(params),
     queryFn: () => referralsApi.pending(params),
@@ -80,10 +72,7 @@ export function useMyReferrals() {
 }
 
 /** Referral stats */
-export function useReferralStats(params?: {
-  from_date?: string;
-  to_date?: string;
-}) {
+export function useReferralStats(params?: { from_date?: string; to_date?: string }) {
   return useQuery({
     queryKey: referralKeys.stats(params),
     queryFn: () => referralsApi.stats(params),
@@ -117,8 +106,7 @@ export function useAcceptReferral() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, notes }: { id: number; notes?: string }) =>
-      referralsApi.accept(id, notes),
+    mutationFn: ({ id, notes }: { id: number; notes?: string }) => referralsApi.accept(id, notes),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: referralKeys.all });
       queryClient.setQueryData(referralKeys.detail(data.id), data);

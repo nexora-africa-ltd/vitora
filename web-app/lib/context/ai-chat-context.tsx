@@ -162,21 +162,27 @@ function readStoredMessages(): AIChatMessage[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
     }
-  } catch { /* ignore corrupt data */ }
+  } catch {
+    /* ignore corrupt data */
+  }
   return [];
 }
 
 function writeStoredMessages(messages: AIChatMessage[]): void {
   try {
     sessionStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(messages));
-  } catch { /* quota exceeded */ }
+  } catch {
+    /* quota exceeded */
+  }
 }
 
 function readStoredSessionId(): string | null {
   if (typeof window === 'undefined') return null;
   try {
     return sessionStorage.getItem(SESSION_ID_STORAGE_KEY) || null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function writeStoredSessionId(id: string | null): void {
@@ -186,7 +192,9 @@ function writeStoredSessionId(id: string | null): void {
     } else {
       sessionStorage.removeItem(SESSION_ID_STORAGE_KEY);
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function AIChatProvider({ children }: AIChatProviderProps) {
@@ -301,10 +309,23 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   }, []);
 
   const updateStreamingMessage = useCallback(
-    (id: string, content: string, done?: boolean, model?: string, persistStorage: boolean = true) => {
+    (
+      id: string,
+      content: string,
+      done?: boolean,
+      model?: string,
+      persistStorage: boolean = true
+    ) => {
       setMessages((prev) => {
         const next = prev.map((msg) =>
-          msg.id === id ? { ...msg, content, isStreaming: done ? false : msg.isStreaming, ...(model ? { model } : {}) } : msg
+          msg.id === id
+            ? {
+                ...msg,
+                content,
+                isStreaming: done ? false : msg.isStreaming,
+                ...(model ? { model } : {}),
+              }
+            : msg
         );
         if (persistStorage) {
           writeStoredMessages(next);

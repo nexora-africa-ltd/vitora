@@ -19,13 +19,7 @@ import {
   TableRow,
   TableFooter,
 } from '@/components/ui/table';
-import {
-  ArrowLeft,
-  Download,
-  RefreshCw,
-  TrendingUp,
-  FileSpreadsheet,
-} from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, TrendingUp, FileSpreadsheet } from 'lucide-react';
 import Link from 'next/link';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { formatCurrency } from '@/lib/utils/format';
@@ -35,7 +29,7 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-4">
       <Skeleton className="h-8 w-48" />
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-24" />
         ))}
@@ -53,10 +47,7 @@ export default function RevenueReportsPage() {
     data: report,
     isLoading,
     refetch,
-  } = useRevenueSummary(
-    format(startDate, 'yyyy-MM-dd'),
-    format(endDate, 'yyyy-MM-dd')
-  );
+  } = useRevenueSummary(format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
 
   const handleExport = () => {
     // Generate CSV
@@ -122,11 +113,11 @@ export default function RevenueReportsPage() {
           </p>
         </div>
         <Button variant="outline" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
         <Button variant="outline" onClick={handleExport}>
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="mr-2 h-4 w-4" />
           Export
         </Button>
       </div>
@@ -195,7 +186,7 @@ export default function RevenueReportsPage() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -203,11 +194,9 @@ export default function RevenueReportsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(totalRevenue)}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenue)}</div>
             <div className="flex items-center text-xs text-green-600">
-              <TrendingUp className="h-3 w-3 mr-1" />
+              <TrendingUp className="mr-1 h-3 w-3" />
               For selected period
             </div>
           </CardContent>
@@ -215,9 +204,7 @@ export default function RevenueReportsPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Categories
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Categories</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{categories.length}</div>
@@ -248,9 +235,7 @@ export default function RevenueReportsPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               {categories.length > 0
-                ? [...categories].sort(
-                    (a, b) => b.revenue - a.revenue
-                  )[0]?.category || '-'
+                ? [...categories].sort((a, b) => b.revenue - a.revenue)[0]?.category || '-'
                 : '-'}
             </div>
             <p className="text-xs text-muted-foreground">By revenue</p>
@@ -265,7 +250,7 @@ export default function RevenueReportsPage() {
         </CardHeader>
         <CardContent>
           {categories.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="py-8 text-center text-muted-foreground">
               No revenue data for selected period
             </div>
           ) : (
@@ -282,16 +267,12 @@ export default function RevenueReportsPage() {
                 {categories.map((cat) => {
                   const revenue = cat.revenue;
                   const percentage =
-                    totalRevenue > 0
-                      ? ((revenue / totalRevenue) * 100).toFixed(1)
-                      : '0';
+                    totalRevenue > 0 ? ((revenue / totalRevenue) * 100).toFixed(1) : '0';
                   return (
                     <TableRow key={cat.category}>
                       <TableCell className="font-medium">{cat.category}</TableCell>
                       <TableCell className="text-right">{cat.count}</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(revenue)}
-                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(revenue)}</TableCell>
                       <TableCell className="text-right">{percentage}%</TableCell>
                     </TableRow>
                   );
@@ -331,21 +312,15 @@ export default function RevenueReportsPage() {
             <TableBody>
               {Object.entries(paymentMethods).map(([method, amount]) => {
                 const amountNum =
-                  typeof amount === 'number'
-                    ? amount
-                    : parseFloat(String(amount ?? 0));
+                  typeof amount === 'number' ? amount : parseFloat(String(amount ?? 0));
                 const percentage =
-                  totalRevenue > 0
-                    ? ((amountNum / totalRevenue) * 100).toFixed(1)
-                    : '0';
+                  totalRevenue > 0 ? ((amountNum / totalRevenue) * 100).toFixed(1) : '0';
                 return (
                   <TableRow key={method}>
                     <TableCell className="font-medium capitalize">
                       {method.replace('_', ' ')}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(amountNum)}
-                    </TableCell>
+                    <TableCell className="text-right">{formatCurrency(amountNum)}</TableCell>
                     <TableCell className="text-right">{percentage}%</TableCell>
                   </TableRow>
                 );

@@ -23,7 +23,11 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { qualityApi } from '@/lib/api/quality';
 import { clinicsApi } from '@/lib/api/clinics';
 import { CheckCircle2, XCircle, Minus, Target, TrendingUp, Play, Loader2 } from 'lucide-react';
-import type { QualityMeasure, QualityMeasureResult, QualityMeasureDomain } from '@/lib/types/quality';
+import type {
+  QualityMeasure,
+  QualityMeasureResult,
+  QualityMeasureDomain,
+} from '@/lib/types/quality';
 
 const DOMAIN_LABELS: Record<string, string> = {
   CLINICAL: 'Clinical Quality',
@@ -125,13 +129,14 @@ export default function QualityDomainDetailPage() {
   const totalMeasures = measuresWithPerformance.length;
   const measuredCount = measuresWithPerformance.filter((m) => m.latestResult).length;
   const meetingTarget = measuresWithPerformance.filter((m) => m.latestResult?.meets_target).length;
-  const overallCompliance = measuredCount > 0 ? Math.round((meetingTarget / measuredCount) * 100) : 0;
+  const overallCompliance =
+    measuredCount > 0 ? Math.round((meetingTarget / measuredCount) * 100) : 0;
 
   if (isLoading) {
     return (
       <div className="space-y-4 sm:space-y-6">
         <PageHeader title={domainLabel} />
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-20" />
           ))}
@@ -171,7 +176,7 @@ export default function QualityDomainDetailPage() {
             <p className="text-sm text-muted-foreground">
               Run evaluation against clinic data to calculate measure performance.
             </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <Select value={selectedClinicId} onValueChange={setSelectedClinicId}>
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Select clinic" />
@@ -185,13 +190,17 @@ export default function QualityDomainDetailPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={evalPeriodType} onValueChange={(v) => {
-                setEvalPeriodType(v);
-                // Reset period when switching type
-                if (v === 'QUARTERLY') setEvalPeriod(String(Math.ceil((new Date().getMonth() + 1) / 3)));
-                else if (v === 'MONTHLY') setEvalPeriod(String(new Date().getMonth() + 1));
-                else setEvalPeriod('1');
-              }}>
+              <Select
+                value={evalPeriodType}
+                onValueChange={(v) => {
+                  setEvalPeriodType(v);
+                  // Reset period when switching type
+                  if (v === 'QUARTERLY')
+                    setEvalPeriod(String(Math.ceil((new Date().getMonth() + 1) / 3)));
+                  else if (v === 'MONTHLY') setEvalPeriod(String(new Date().getMonth() + 1));
+                  else setEvalPeriod('1');
+                }}
+              >
                 <SelectTrigger className="w-full sm:w-36">
                   <SelectValue />
                 </SelectTrigger>
@@ -220,8 +229,23 @@ export default function QualityDomainDetailPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
-                      <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                    {[
+                      'Jan',
+                      'Feb',
+                      'Mar',
+                      'Apr',
+                      'May',
+                      'Jun',
+                      'Jul',
+                      'Aug',
+                      'Sep',
+                      'Oct',
+                      'Nov',
+                      'Dec',
+                    ].map((m, i) => (
+                      <SelectItem key={i + 1} value={String(i + 1)}>
+                        {m}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -232,30 +256,28 @@ export default function QualityDomainDetailPage() {
                 disabled={evaluateMutation.isPending}
               >
                 {evaluateMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                 ) : (
-                  <Play className="h-4 w-4 mr-1.5" />
+                  <Play className="mr-1.5 h-4 w-4" />
                 )}
                 {selectedClinicId === 'all' ? 'Evaluate All' : 'Evaluate'}
               </Button>
             </div>
           </div>
           {evaluateMutation.isSuccess && (
-            <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-2">
+            <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">
               {evaluateMutation.data.clinics_evaluated != null
                 ? `Evaluated ${evaluateMutation.data.clinics_evaluated} clinic(s) for ${evalPeriodType === 'QUARTERLY' ? `Q${evalPeriod}` : evalPeriodType === 'MONTHLY' ? `Month ${evalPeriod}` : ''} ${year}.`
                 : `Evaluated ${evaluateMutation.data.total_evaluated} measures for ${evalPeriodType === 'QUARTERLY' ? `Q${evalPeriod}` : evalPeriodType === 'MONTHLY' ? `Month ${evalPeriod}` : ''} ${year}.`}
             </p>
           )}
           {evaluateMutation.isError && (
-            <p className="text-sm text-destructive mt-2">
-              Evaluation failed. Please try again.
-            </p>
+            <p className="mt-2 text-sm text-destructive">Evaluation failed. Please try again.</p>
           )}
         </Card>
 
         {/* Summary Stats */}
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">Active Measures</p>
@@ -267,9 +289,7 @@ export default function QualityDomainDetailPage() {
               <p className="text-xs text-muted-foreground">With Results</p>
               <p className="text-2xl font-bold">
                 {measuredCount}
-                <span className="text-sm font-normal text-muted-foreground">
-                  /{totalMeasures}
-                </span>
+                <span className="text-sm font-normal text-muted-foreground">/{totalMeasures}</span>
               </p>
             </CardContent>
           </Card>
@@ -286,7 +306,7 @@ export default function QualityDomainDetailPage() {
               <p className="text-xs text-muted-foreground">Compliance Rate</p>
               <div className="flex items-center gap-2">
                 <p className="text-2xl font-bold">{overallCompliance}%</p>
-                <Progress value={overallCompliance} className="flex-1 h-2" />
+                <Progress value={overallCompliance} className="h-2 flex-1" />
               </div>
             </CardContent>
           </Card>
@@ -304,9 +324,7 @@ export default function QualityDomainDetailPage() {
               header: 'Code',
               sortable: true,
               sortFn: (a, b) => a.measure.code.localeCompare(b.measure.code),
-              cell: (item) => (
-                <span className="font-mono text-sm">{item.measure.code}</span>
-              ),
+              cell: (item) => <span className="font-mono text-sm">{item.measure.code}</span>,
             },
             {
               key: 'name',
@@ -316,7 +334,7 @@ export default function QualityDomainDetailPage() {
               cell: (item) => (
                 <Link
                   href={`/quality/domain/${slug}/measure/${item.measure.id}`}
-                  className="font-medium text-sm text-primary hover:underline"
+                  className="text-sm font-medium text-primary hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {item.measure.name}
@@ -346,23 +364,18 @@ export default function QualityDomainDetailPage() {
                 (b.latestResult ? parseFloat(b.latestResult.percentage) : -1),
               cell: (item) => {
                 if (!item.latestResult) {
-                  return (
-                    <span className="text-xs text-muted-foreground italic">
-                      No data
-                    </span>
-                  );
+                  return <span className="text-xs italic text-muted-foreground">No data</span>;
                 }
                 const pct = parseFloat(item.latestResult.percentage);
-                const color =
-                  item.latestResult.meets_target
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : pct >= (parseFloat(String(item.measure.low_threshold ?? '0')))
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-destructive';
+                const color = item.latestResult.meets_target
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : pct >= parseFloat(String(item.measure.low_threshold ?? '0'))
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-destructive';
                 return (
                   <div className="flex items-center gap-2">
                     <span className={`font-semibold ${color}`}>{pct.toFixed(1)}%</span>
-                    <Progress value={pct} className="w-16 h-2 hidden sm:block" />
+                    <Progress value={pct} className="hidden h-2 w-16 sm:block" />
                   </div>
                 );
               },
@@ -414,33 +427,31 @@ export default function QualityDomainDetailPage() {
           ]}
           mobileCard={(item) => (
             <Card className="p-3">
-              <div className="flex items-start justify-between gap-2 mb-1.5">
+              <div className="mb-1.5 flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {item.measure.code}
-                  </p>
-                  <p className="font-medium text-sm leading-tight">
-                    {item.measure.name}
-                  </p>
+                  <p className="font-mono text-xs text-muted-foreground">{item.measure.code}</p>
+                  <p className="text-sm font-medium leading-tight">{item.measure.name}</p>
                 </div>
                 {item.latestResult ? (
                   item.latestResult.meets_target ? (
                     <Badge className="shrink-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      <CheckCircle2 className="mr-1 h-3 w-3" />
                       Met
                     </Badge>
                   ) : (
                     <Badge variant="destructive" className="shrink-0">
-                      <XCircle className="h-3 w-3 mr-1" />
+                      <XCircle className="mr-1 h-3 w-3" />
                       Not Met
                     </Badge>
                   )
                 ) : (
-                  <Badge variant="secondary" className="shrink-0">Pending</Badge>
+                  <Badge variant="secondary" className="shrink-0">
+                    Pending
+                  </Badge>
                 )}
               </div>
               {item.latestResult && (
-                <div className="flex items-center gap-3 mt-2">
+                <div className="mt-2 flex items-center gap-3">
                   <span className="text-lg font-bold">
                     {parseFloat(item.latestResult.percentage).toFixed(1)}%
                   </span>

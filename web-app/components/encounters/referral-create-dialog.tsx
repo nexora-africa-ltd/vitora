@@ -18,12 +18,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -133,7 +128,9 @@ export function ReferralCreateDialog({
     ? REFERRAL_SPECIALTY_TO_CLINIC_TYPE[targetService as ReferralTargetService]
     : undefined;
   const requiresSpecialtyClinicRouting = Boolean(
-    targetService && SPECIALTY_CLINIC_SERVICES.includes(targetService as ReferralTargetService) && specialtyClinicType
+    targetService &&
+    SPECIALTY_CLINIC_SERVICES.includes(targetService as ReferralTargetService) &&
+    specialtyClinicType
   );
 
   const { data: specialtyClinicsData, isLoading: isLoadingSpecialtyClinics } = useQuery({
@@ -148,7 +145,7 @@ export function ReferralCreateDialog({
   });
 
   const eligibleClinics = React.useMemo(
-    () => (requiresSpecialtyClinicRouting ? specialtyClinicsData?.results ?? [] : []),
+    () => (requiresSpecialtyClinicRouting ? (specialtyClinicsData?.results ?? []) : []),
     [requiresSpecialtyClinicRouting, specialtyClinicsData?.results]
   );
   const hasMultipleEligibleClinics = eligibleClinics.length > 1;
@@ -221,7 +218,7 @@ export function ReferralCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>Create Referral</DialogTitle>
@@ -310,10 +307,7 @@ export function ReferralCreateDialog({
           {/* Priority */}
           <div className="space-y-2">
             <Label htmlFor="priority">Priority</Label>
-            <Select
-              value={priority}
-              onValueChange={(v) => setPriority(v as ReferralPriority)}
-            >
+            <Select value={priority} onValueChange={(v) => setPriority(v as ReferralPriority)}>
               <SelectTrigger id="priority">
                 <SelectValue />
               </SelectTrigger>
@@ -351,8 +345,8 @@ export function ReferralCreateDialog({
 
           {/* Admission-specific fields */}
           {isAdmission && (
-            <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Admission Details
               </p>
 
@@ -381,8 +375,8 @@ export function ReferralCreateDialog({
 
           {/* External facility fields */}
           {isExternal && (
-            <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 External Facility
               </p>
 
@@ -425,19 +419,10 @@ export function ReferralCreateDialog({
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!canSubmit || createReferral.isPending}
-            >
+            <Button type="submit" size="sm" disabled={!canSubmit || createReferral.isPending}>
               {createReferral.isPending ? 'Creating...' : 'Create Referral'}
             </Button>
           </div>

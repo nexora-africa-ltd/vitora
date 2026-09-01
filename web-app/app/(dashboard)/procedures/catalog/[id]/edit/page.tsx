@@ -13,7 +13,11 @@ export default function EditProcedurePage({ params }: { params: Promise<{ id: st
   const resolvedParams = use(params);
   const procedureId = parseInt(resolvedParams.id);
 
-  const { data: procedure, isLoading, error } = useQuery<ProcedureCatalogDetail>({
+  const {
+    data: procedure,
+    isLoading,
+    error,
+  } = useQuery<ProcedureCatalogDetail>({
     queryKey: ['procedure-catalog-entry', procedureId],
     queryFn: () => proceduresApi.getCatalogEntry(procedureId),
     enabled: Number.isFinite(procedureId),
@@ -47,7 +51,7 @@ export default function EditProcedurePage({ params }: { params: Promise<{ id: st
         title={`Edit: ${procedure.name}`}
         helpContent="Update procedure details, clinical requirements, coding, and billing information."
       />
-      <div className="max-w-4xl mx-auto">
+      <div className="mx-auto max-w-4xl">
         <ProcedureForm procedure={procedure} />
       </div>
     </div>

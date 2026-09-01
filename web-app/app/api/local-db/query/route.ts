@@ -13,10 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   // Only available in desktop mode
   if (process.env.VITORA_DESKTOP !== '1') {
-    return NextResponse.json(
-      { error: 'Local DB only available in desktop mode' },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: 'Local DB only available in desktop mode' }, { status: 404 });
   }
 
   try {
@@ -44,9 +41,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data, count });
   } catch (error) {
     console.error('[LocalDB API] Query error:', error);
-    return NextResponse.json(
-      { error: 'Query failed', details: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Query failed', details: String(error) }, { status: 500 });
   }
 }

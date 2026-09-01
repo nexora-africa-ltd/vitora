@@ -126,9 +126,7 @@ const REACTION_CATEGORIES = [
   },
   {
     label: '5. Haematological',
-    options: [
-      { value: 'UNEXPLAINED_BLEEDING', label: 'Unexplained bleeding' },
-    ],
+    options: [{ value: 'UNEXPLAINED_BLEEDING', label: 'Unexplained bleeding' }],
   },
 ] as const;
 
@@ -149,7 +147,10 @@ function buildATRQueryParams(transfusionId: number, reactionType: string): strin
   const haematological: string[] = [];
   const other: string[] = [];
 
-  const parts = reactionType.split(',').map((s) => s.trim()).filter(Boolean);
+  const parts = reactionType
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   for (const part of parts) {
     if (part.toLowerCase().startsWith('other:')) {
       other.push(part.replace(/^other:\s*/i, ''));
@@ -185,10 +186,17 @@ interface BloodTransfusionChartProps {
   patientAge?: number | null;
 }
 
-export function BloodTransfusionChart({ admissionId, isActive, patientAge }: BloodTransfusionChartProps) {
+export function BloodTransfusionChart({
+  admissionId,
+  isActive,
+  patientAge,
+}: BloodTransfusionChartProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const ageGroup = useMemo(() => (patientAge != null ? getAgeGroupFromYears(patientAge) : null), [patientAge]);
+  const ageGroup = useMemo(
+    () => (patientAge != null ? getAgeGroupFromYears(patientAge) : null),
+    [patientAge]
+  );
   const { data, isLoading } = useBloodTransfusions(admissionId);
   const { data: bloodUnitsData } = useBloodUnits({ ordering: '-collection_date', page_size: 100 });
   const { data: atrReports } = useATRReports(admissionId);
@@ -247,11 +255,19 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
 
   const handleCreateTransfusion = async () => {
     if (!unitNumber.trim() || !amountMl) {
-      toast({ title: 'Validation Error', description: 'Unit number and amount are required', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Unit number and amount are required',
+        variant: 'destructive',
+      });
       return;
     }
     if (!preVitalsValid) {
-      toast({ title: 'Validation Error', description: 'Pre-transfusion baseline vitals (BP, temp, pulse) are required', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Pre-transfusion baseline vitals (BP, temp, pulse) are required',
+        variant: 'destructive',
+      });
       return;
     }
     try {
@@ -285,7 +301,12 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
           });
         } catch {
           // Vitals are mandatory — alert prominently so nurse records them immediately
-          toast({ title: 'Baseline vitals not saved', description: 'Transfusion was started but the pre-transfusion vitals failed to save. Record them now via "Add Observation" → Before Transfusion.', variant: 'destructive' });
+          toast({
+            title: 'Baseline vitals not saved',
+            description:
+              'Transfusion was started but the pre-transfusion vitals failed to save. Record them now via "Add Observation" → Before Transfusion.',
+            variant: 'destructive',
+          });
         }
       }
 
@@ -294,7 +315,11 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
       setNewTransfusionOpen(false);
       resetTransfusionForm();
     } catch {
-      toast({ title: 'Error', description: 'Failed to create transfusion record', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to create transfusion record',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -320,13 +345,21 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
       setObservationOpen(false);
       resetObservationForm();
     } catch {
-      toast({ title: 'Error', description: 'Failed to record observation', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to record observation',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleMarkReaction = async () => {
     if (!selectedTransfusionId || (selectedReactions.size === 0 && !otherReaction.trim())) {
-      toast({ title: 'Validation Error', description: 'Select at least one reaction type', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Select at least one reaction type',
+        variant: 'destructive',
+      });
       return;
     }
     // Build a structured reaction_type string from selected checkboxes
@@ -344,7 +377,11 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
         transfusionId: selectedTransfusionId,
         data: { reaction_type: reactionType, action_taken: actionTaken || undefined },
       });
-      toast({ title: 'Reaction recorded', description: 'Transfusion has been stopped', variant: 'destructive' });
+      toast({
+        title: 'Reaction recorded',
+        description: 'Transfusion has been stopped',
+        variant: 'destructive',
+      });
       setReactionOpen(false);
       setSelectedReactions(new Set());
       setOtherReaction('');
@@ -359,7 +396,11 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
       await completeTransfusion.mutateAsync({ transfusionId });
       toast({ title: 'Transfusion marked as completed' });
     } catch {
-      toast({ title: 'Error', description: 'Failed to complete transfusion', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to complete transfusion',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -391,11 +432,16 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'IN_PROGRESS': return 'warning';
-      case 'COMPLETED': return 'success';
-      case 'STOPPED': return 'destructive';
-      case 'CANCELLED': return 'secondary';
-      default: return 'secondary' as const;
+      case 'IN_PROGRESS':
+        return 'warning';
+      case 'COMPLETED':
+        return 'success';
+      case 'STOPPED':
+        return 'destructive';
+      case 'CANCELLED':
+        return 'secondary';
+      default:
+        return 'secondary' as const;
     }
   };
 
@@ -405,7 +451,7 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Blood Transfusion Chart</h3>
           <HelpPopover content="Track blood transfusions with periodic vital sign monitoring. Record observations before, during, and after transfusion as per the Kenya hospital blood transfusion observation form." />
@@ -414,7 +460,7 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
           <Dialog open={newTransfusionOpen} onOpenChange={setNewTransfusionOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-1.5" />
+                <Plus className="mr-1.5 h-4 w-4" />
                 New Transfusion
               </Button>
             </DialogTrigger>
@@ -439,7 +485,9 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
                       setBloodProduct(mapComponentToTransfusionProduct(selected.component));
                     }}
                   >
-                    <SelectTrigger><SelectValue placeholder="Select an available unit" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an available unit" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__manual__">Manual entry</SelectItem>
                       {unitOptions.map((unit) => (
@@ -452,11 +500,18 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
                 </div>
                 <div className="space-y-2">
                   <Label>Blood Product *</Label>
-                  <Select value={bloodProduct} onValueChange={(v) => setBloodProduct(v as BloodProduct)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={bloodProduct}
+                    onValueChange={(v) => setBloodProduct(v as BloodProduct)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       {BLOOD_PRODUCTS.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -464,26 +519,49 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
                 {bloodProduct === 'OTHER' && (
                   <div className="space-y-2">
                     <Label>Specify Product</Label>
-                    <Input value={bloodProductOther} onChange={(e) => setBloodProductOther(e.target.value)} placeholder="Other blood product" />
+                    <Input
+                      value={bloodProductOther}
+                      onChange={(e) => setBloodProductOther(e.target.value)}
+                      placeholder="Other blood product"
+                    />
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Unit/Bag Number *</Label>
-                    <Input value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="BU-12345" />
+                    <Input
+                      value={unitNumber}
+                      onChange={(e) => setUnitNumber(e.target.value)}
+                      placeholder="BU-12345"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Blood Group</Label>
-                    <Input value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} placeholder="A+" />
+                    <Input
+                      value={bloodGroup}
+                      onChange={(e) => setBloodGroup(e.target.value)}
+                      placeholder="A+"
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Amount (mL) *</Label>
-                  <Input type="number" min="1" value={amountMl} onChange={(e) => setAmountMl(e.target.value)} placeholder="450" />
+                  <Input
+                    type="number"
+                    min="1"
+                    value={amountMl}
+                    onChange={(e) => setAmountMl(e.target.value)}
+                    placeholder="450"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Diagnosis/Indication</Label>
-                  <Textarea value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Indication for transfusion" rows={2} />
+                  <Textarea
+                    value={diagnosis}
+                    onChange={(e) => setDiagnosis(e.target.value)}
+                    placeholder="Indication for transfusion"
+                    rows={2}
+                  />
                 </div>
 
                 <Separator />
@@ -494,31 +572,68 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
                     <div className="space-y-1">
                       <Label className="text-xs">BP (mmHg) *</Label>
                       <div className="flex items-center gap-1">
-                        <Input type="number" placeholder={getVitalPlaceholder('blood_pressure_systolic', ageGroup)} value={preBPSys} onChange={(e) => setPreBPSys(e.target.value)} className="w-20" aria-label="Systolic BP" />
+                        <Input
+                          type="number"
+                          placeholder={getVitalPlaceholder('blood_pressure_systolic', ageGroup)}
+                          value={preBPSys}
+                          onChange={(e) => setPreBPSys(e.target.value)}
+                          className="w-20"
+                          aria-label="Systolic BP"
+                        />
                         <span className="text-muted-foreground">/</span>
-                        <Input type="number" placeholder={getVitalPlaceholder('blood_pressure_diastolic', ageGroup)} value={preBPDia} onChange={(e) => setPreBPDia(e.target.value)} className="w-20" aria-label="Diastolic BP" />
+                        <Input
+                          type="number"
+                          placeholder={getVitalPlaceholder('blood_pressure_diastolic', ageGroup)}
+                          value={preBPDia}
+                          onChange={(e) => setPreBPDia(e.target.value)}
+                          className="w-20"
+                          aria-label="Diastolic BP"
+                        />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Temp (°C) *</Label>
-                      <Input type="number" step="0.1" placeholder={getVitalPlaceholder('temperature', ageGroup)} value={preTemp} onChange={(e) => setPreTemp(e.target.value)} />
+                      <Input
+                        type="number"
+                        step="0.1"
+                        placeholder={getVitalPlaceholder('temperature', ageGroup)}
+                        value={preTemp}
+                        onChange={(e) => setPreTemp(e.target.value)}
+                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Pulse *</Label>
-                      <Input type="number" placeholder={getVitalPlaceholder('pulse', ageGroup)} value={prePulse} onChange={(e) => setPrePulse(e.target.value)} />
+                      <Input
+                        type="number"
+                        placeholder={getVitalPlaceholder('pulse', ageGroup)}
+                        value={prePulse}
+                        onChange={(e) => setPrePulse(e.target.value)}
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Resp Rate</Label>
-                      <Input type="number" placeholder={getVitalPlaceholder('respiratory_rate', ageGroup)} value={preRR} onChange={(e) => setPreRR(e.target.value)} />
+                      <Input
+                        type="number"
+                        placeholder={getVitalPlaceholder('respiratory_rate', ageGroup)}
+                        value={preRR}
+                        onChange={(e) => setPreRR(e.target.value)}
+                      />
                     </div>
                   </div>
                 </div>
               </div>
               <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
-                <Button variant="outline" onClick={() => setNewTransfusionOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateTransfusion} disabled={createTransfusion.isPending || !unitNumber || !amountMl || !preVitalsValid}>
+                <Button variant="outline" onClick={() => setNewTransfusionOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateTransfusion}
+                  disabled={
+                    createTransfusion.isPending || !unitNumber || !amountMl || !preVitalsValid
+                  }
+                >
                   {createTransfusion.isPending ? 'Creating...' : 'Start Transfusion'}
                 </Button>
               </DialogFooter>
@@ -530,7 +645,7 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
       {transfusions.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <Droplets className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <Droplets className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">No blood transfusions recorded.</p>
           </CardContent>
         </Card>
@@ -571,11 +686,18 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Interval *</Label>
-                <Select value={obsInterval} onValueChange={(v) => setObsInterval(v as TransfusionObservationInterval)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={obsInterval}
+                  onValueChange={(v) => setObsInterval(v as TransfusionObservationInterval)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {OBSERVATION_INTERVALS.map((i) => (
-                      <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>
+                      <SelectItem key={i.value} value={i.value}>
+                        {i.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -589,33 +711,70 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
               <div className="space-y-2">
                 <Label>BP (mmHg)</Label>
                 <div className="flex items-center gap-1">
-                  <Input type="number" placeholder={getVitalPlaceholder('blood_pressure_systolic', ageGroup)} value={obsBPSys} onChange={(e) => setObsBPSys(e.target.value)} className="w-20" aria-label="Systolic blood pressure" />
+                  <Input
+                    type="number"
+                    placeholder={getVitalPlaceholder('blood_pressure_systolic', ageGroup)}
+                    value={obsBPSys}
+                    onChange={(e) => setObsBPSys(e.target.value)}
+                    className="w-20"
+                    aria-label="Systolic blood pressure"
+                  />
                   <span className="text-muted-foreground">/</span>
-                  <Input type="number" placeholder={getVitalPlaceholder('blood_pressure_diastolic', ageGroup)} value={obsBPDia} onChange={(e) => setObsBPDia(e.target.value)} className="w-20" aria-label="Diastolic blood pressure" />
+                  <Input
+                    type="number"
+                    placeholder={getVitalPlaceholder('blood_pressure_diastolic', ageGroup)}
+                    value={obsBPDia}
+                    onChange={(e) => setObsBPDia(e.target.value)}
+                    className="w-20"
+                    aria-label="Diastolic blood pressure"
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Temp (°C)</Label>
-                <Input type="number" step="0.1" placeholder={getVitalPlaceholder('temperature', ageGroup)} value={obsTemp} onChange={(e) => setObsTemp(e.target.value)} />
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder={getVitalPlaceholder('temperature', ageGroup)}
+                  value={obsTemp}
+                  onChange={(e) => setObsTemp(e.target.value)}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Pulse</Label>
-                <Input type="number" placeholder={getVitalPlaceholder('pulse', ageGroup)} value={obsPulse} onChange={(e) => setObsPulse(e.target.value)} />
+                <Input
+                  type="number"
+                  placeholder={getVitalPlaceholder('pulse', ageGroup)}
+                  value={obsPulse}
+                  onChange={(e) => setObsPulse(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Resp Rate</Label>
-                <Input type="number" placeholder={getVitalPlaceholder('respiratory_rate', ageGroup)} value={obsRR} onChange={(e) => setObsRR(e.target.value)} />
+                <Input
+                  type="number"
+                  placeholder={getVitalPlaceholder('respiratory_rate', ageGroup)}
+                  value={obsRR}
+                  onChange={(e) => setObsRR(e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Remarks</Label>
-              <Textarea value={obsRemarks} onChange={(e) => setObsRemarks(e.target.value)} placeholder="Observations, symptoms..." rows={2} />
+              <Textarea
+                value={obsRemarks}
+                onChange={(e) => setObsRemarks(e.target.value)}
+                placeholder="Observations, symptoms..."
+                rows={2}
+              />
             </div>
           </div>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
-            <Button variant="outline" onClick={() => setObservationOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setObservationOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleAddObservation} disabled={addObservation.isPending || !obsTime}>
               {addObservation.isPending ? 'Saving...' : 'Save Observation'}
             </Button>
@@ -625,13 +784,13 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
 
       {/* Reaction Dialog */}
       <Dialog open={reactionOpen} onOpenChange={setReactionOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-destructive">Report Transfusion Reaction</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="p-3 rounded-lg bg-destructive/10 text-sm text-destructive">
-              <AlertTriangle className="h-4 w-4 inline mr-1" />
+            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertTriangle className="mr-1 inline h-4 w-4" />
               This will stop the transfusion immediately.
             </div>
 
@@ -640,11 +799,11 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
               {REACTION_CATEGORIES.map((category) => (
                 <div key={category.label} className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">{category.label}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                     {category.options.map((option) => (
                       <label
                         key={option.value}
-                        className={`flex items-center gap-2.5 rounded-md border p-2.5 cursor-pointer transition-colors text-sm ${
+                        className={`flex cursor-pointer items-center gap-2.5 rounded-md border p-2.5 text-sm transition-colors ${
                           selectedReactions.has(option.value)
                             ? 'border-destructive/50 bg-destructive/5'
                             : 'border-border hover:bg-muted/50'
@@ -681,12 +840,25 @@ export function BloodTransfusionChart({ admissionId, isActive, patientAge }: Blo
 
             <div className="space-y-2">
               <Label>Action Taken</Label>
-              <Textarea value={actionTaken} onChange={(e) => setActionTaken(e.target.value)} placeholder="Actions taken in response to the reaction" rows={2} />
+              <Textarea
+                value={actionTaken}
+                onChange={(e) => setActionTaken(e.target.value)}
+                placeholder="Actions taken in response to the reaction"
+                rows={2}
+              />
             </div>
           </div>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
-            <Button variant="outline" onClick={() => setReactionOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleMarkReaction} disabled={markReaction.isPending || (selectedReactions.size === 0 && !otherReaction.trim())}>
+            <Button variant="outline" onClick={() => setReactionOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleMarkReaction}
+              disabled={
+                markReaction.isPending || (selectedReactions.size === 0 && !otherReaction.trim())
+              }
+            >
               {markReaction.isPending ? 'Recording...' : 'Stop & Record Reaction'}
             </Button>
           </DialogFooter>
@@ -731,13 +903,13 @@ function TransfusionCard({
             <p className="text-sm text-muted-foreground">
               Unit: {transfusion.blood_unit_number}
               {transfusion.blood_group && ` • Group: ${transfusion.blood_group}`}
-              {' • '}{transfusion.amount_ml}mL
-              {' • '}{formatDate(transfusion.transfusion_date)}
+              {' • '}
+              {transfusion.amount_ml}mL
+              {' • '}
+              {formatDate(transfusion.transfusion_date)}
             </p>
             {transfusion.diagnosis && (
-              <p className="text-sm text-muted-foreground">
-                Indication: {transfusion.diagnosis}
-              </p>
+              <p className="text-sm text-muted-foreground">Indication: {transfusion.diagnosis}</p>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -746,7 +918,7 @@ function TransfusionCard({
             </Badge>
             {transfusion.reaction_occurred && (
               <Badge variant="destructive">
-                <AlertTriangle className="h-3 w-3 mr-1" />
+                <AlertTriangle className="mr-1 h-3 w-3" />
                 Reaction
               </Badge>
             )}
@@ -757,7 +929,7 @@ function TransfusionCard({
         {/* Observation table */}
         {observations.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="min-w-[500px] w-full text-sm">
+            <table className="w-full min-w-[500px] text-sm">
               <thead>
                 <tr className="border-b text-left">
                   <th className="p-2 font-medium">Interval</th>
@@ -772,13 +944,19 @@ function TransfusionCard({
               <tbody>
                 {observations.map((obs) => (
                   <tr key={obs.id} className="border-b last:border-0">
-                    <td className="p-2 font-medium whitespace-nowrap">{obs.observation_interval_display || obs.observation_interval}</td>
-                    <td className="p-2 whitespace-nowrap">{obs.exact_time}</td>
+                    <td className="whitespace-nowrap p-2 font-medium">
+                      {obs.observation_interval_display || obs.observation_interval}
+                    </td>
+                    <td className="whitespace-nowrap p-2">{obs.exact_time}</td>
                     <td className="p-2">{obs.blood_pressure || '—'}</td>
-                    <td className="p-2">{obs.temperature ? `${Number(obs.temperature).toFixed(1)}°C` : '—'}</td>
+                    <td className="p-2">
+                      {obs.temperature ? `${Number(obs.temperature).toFixed(1)}°C` : '—'}
+                    </td>
                     <td className="p-2">{obs.pulse ?? '—'}</td>
                     <td className="p-2">{obs.respiratory_rate ?? '—'}</td>
-                    <td className="p-2 text-muted-foreground max-w-[200px] truncate">{obs.remarks || '—'}</td>
+                    <td className="max-w-[200px] truncate p-2 text-muted-foreground">
+                      {obs.remarks || '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -788,7 +966,7 @@ function TransfusionCard({
 
         {/* Reaction info */}
         {transfusion.reaction_occurred && (
-          <div className="p-3 rounded-lg bg-destructive/10 space-y-2">
+          <div className="space-y-2 rounded-lg bg-destructive/10 p-3">
             <div className="space-y-1">
               <p className="text-sm font-medium text-destructive">Transfusion Reaction</p>
               <p className="text-sm">Type: {transfusion.reaction_type}</p>
@@ -814,8 +992,12 @@ function TransfusionCard({
                   href={buildATRQueryParams(transfusion.id, transfusion.reaction_type || '')}
                   className="inline-flex items-center gap-1.5"
                 >
-                  <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10">
-                    <FileText className="h-3.5 w-3.5 mr-1" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                  >
+                    <FileText className="mr-1 h-3.5 w-3.5" />
                     Complete PPB ATR Form
                   </Button>
                 </Link>
@@ -828,15 +1010,15 @@ function TransfusionCard({
         {isActive && transfusion.status === 'IN_PROGRESS' && (
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button size="sm" variant="outline" onClick={onAddObservation}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               Add Observation
             </Button>
             <Button size="sm" variant="destructive" onClick={onReportReaction}>
-              <AlertTriangle className="h-4 w-4 mr-1" />
+              <AlertTriangle className="mr-1 h-4 w-4" />
               Report Reaction
             </Button>
             <Button size="sm" variant="default" onClick={onComplete}>
-              <CheckCircle className="h-4 w-4 mr-1" />
+              <CheckCircle className="mr-1 h-4 w-4" />
               Complete
             </Button>
           </div>

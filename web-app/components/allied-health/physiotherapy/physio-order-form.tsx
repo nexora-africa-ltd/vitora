@@ -40,19 +40,10 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  User,
-  AlertCircle,
-  Check,
-  ChevronsUpDown,
-} from 'lucide-react';
+import { User, AlertCircle, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   usePhysioTreatmentTypes,
@@ -102,7 +93,9 @@ const priorityLabels: Record<string, string> = {
 
 const orderSchema = z.object({
   patient_id: z.number({ required_error: 'Patient is required' }).min(1, 'Patient is required'),
-  treatment_type_id: z.number({ required_error: 'Treatment type is required' }).min(1, 'Treatment type is required'),
+  treatment_type_id: z
+    .number({ required_error: 'Treatment type is required' })
+    .min(1, 'Treatment type is required'),
   referral_reason: z.enum(referralReasons).optional(),
   clinical_indication: z
     .string({ required_error: 'Clinical indication is required' })
@@ -154,11 +147,7 @@ interface PhysioOrderFormProps {
 // Main Component
 // =============================================================================
 
-export function PhysioOrderForm({
-  patientId,
-  encounterId,
-  order,
-}: PhysioOrderFormProps) {
+export function PhysioOrderForm({ patientId, encounterId, order }: PhysioOrderFormProps) {
   const router = useRouter();
   const isEditMode = !!order;
   const isCompleted = order?.status === 'COMPLETED';
@@ -171,7 +160,8 @@ export function PhysioOrderForm({
   );
 
   // Treatment type selection state
-  const [selectedTreatmentType, setSelectedTreatmentType] = useState<PhysiotherapyTreatmentType | null>(null);
+  const [selectedTreatmentType, setSelectedTreatmentType] =
+    useState<PhysiotherapyTreatmentType | null>(null);
   const [treatmentTypeOpen, setTreatmentTypeOpen] = useState(false);
 
   // Form state
@@ -191,10 +181,7 @@ export function PhysioOrderForm({
   const createMutation = useCreatePhysioOrder();
   const updateMutation = useUpdatePhysioOrder();
 
-  const treatmentTypes = useMemo(
-    () => treatmentTypesData?.results || [],
-    [treatmentTypesData]
-  );
+  const treatmentTypes = useMemo(() => treatmentTypesData?.results || [], [treatmentTypesData]);
   const patients = patientsData?.results || [];
 
   // Form setup
@@ -203,11 +190,11 @@ export function PhysioOrderForm({
     defaultValues: {
       patient_id: patientId || order?.patient_id || 0,
       treatment_type_id: order?.treatment_type_id || 0,
-      referral_reason: (order?.referral_reason as typeof referralReasons[number]) || undefined,
+      referral_reason: (order?.referral_reason as (typeof referralReasons)[number]) || undefined,
       clinical_indication: order?.clinical_indication || '',
       total_sessions: order?.total_sessions || 1,
       frequency: order?.frequency || '',
-      priority: (order?.priority as typeof priorities[number]) || 'ROUTINE',
+      priority: (order?.priority as (typeof priorities)[number]) || 'ROUTINE',
       treatment_goals: order?.treatment_goals || '',
       precautions: order?.precautions || '',
       contraindications: order?.contraindications || '',
@@ -235,7 +222,7 @@ export function PhysioOrderForm({
   // Pre-select treatment type for edit mode
   useEffect(() => {
     if (order?.treatment_type_id && treatmentTypes.length > 0) {
-      const type = treatmentTypes.find(t => t.id === order.treatment_type_id);
+      const type = treatmentTypes.find((t) => t.id === order.treatment_type_id);
       if (type) {
         setSelectedTreatmentType(type);
       }
@@ -243,27 +230,33 @@ export function PhysioOrderForm({
   }, [order?.treatment_type_id, treatmentTypes]);
 
   // Handle treatment type selection and auto-populate sessions
-  const handleTreatmentTypeSelect = useCallback((treatmentType: PhysiotherapyTreatmentType) => {
-    setSelectedTreatmentType(treatmentType);
-    setTreatmentTypeOpen(false);
-    form.setValue('treatment_type_id', treatmentType.id);
+  const handleTreatmentTypeSelect = useCallback(
+    (treatmentType: PhysiotherapyTreatmentType) => {
+      setSelectedTreatmentType(treatmentType);
+      setTreatmentTypeOpen(false);
+      form.setValue('treatment_type_id', treatmentType.id);
 
-    // Auto-populate recommended sessions if not already set
-    if (!form.getValues('total_sessions') || form.getValues('total_sessions') < 1) {
-      form.setValue('total_sessions', treatmentType.recommended_sessions);
-    } else if (!isEditMode) {
-      // In create mode, always update to recommended
-      form.setValue('total_sessions', treatmentType.recommended_sessions);
-    }
-  }, [form, isEditMode]);
+      // Auto-populate recommended sessions if not already set
+      if (!form.getValues('total_sessions') || form.getValues('total_sessions') < 1) {
+        form.setValue('total_sessions', treatmentType.recommended_sessions);
+      } else if (!isEditMode) {
+        // In create mode, always update to recommended
+        form.setValue('total_sessions', treatmentType.recommended_sessions);
+      }
+    },
+    [form, isEditMode]
+  );
 
   // Handle patient selection
-  const handlePatientSelect = useCallback((id: number) => {
-    setSelectedPatientId(id);
-    form.setValue('patient_id', id);
-    setPatientOpen(false);
-    setPatientSearch('');
-  }, [form]);
+  const handlePatientSelect = useCallback(
+    (id: number) => {
+      setSelectedPatientId(id);
+      form.setValue('patient_id', id);
+      setPatientOpen(false);
+      setPatientSearch('');
+    },
+    [form]
+  );
 
   // Handle form submission
   const handleSubmit = async (data: OrderFormData) => {
@@ -337,9 +330,7 @@ export function PhysioOrderForm({
       {submitError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {submitError}
-          </AlertDescription>
+          <AlertDescription>{submitError}</AlertDescription>
         </Alert>
       )}
 
@@ -347,15 +338,13 @@ export function PhysioOrderForm({
       {encounterId && encounter && (
         <Card>
           <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
               Encounter Context
               <HelpPopover content="This order is linked to a specific clinical encounter." />
             </CardTitle>
           </CardHeader>
           <CardContent className="py-2">
-            <p className="text-sm text-muted-foreground">
-              {encounter.chief_complaint}
-            </p>
+            <p className="text-sm text-muted-foreground">{encounter.chief_complaint}</p>
           </CardContent>
         </Card>
       )}
@@ -365,7 +354,7 @@ export function PhysioOrderForm({
           {/* Patient Selection */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <User className="h-4 w-4 sm:h-5 sm:w-5" />
                 Patient
               </CardTitle>
@@ -382,18 +371,28 @@ export function PhysioOrderForm({
                         // Pre-selected patient (read-only display)
                         <div className="space-y-1">
                           {patientLoading ? (
-                            <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                            <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-2">
                               <LoadingSpinner className="h-4 w-4" />
-                              <span className="text-sm text-muted-foreground">Loading patient...</span>
+                              <span className="text-sm text-muted-foreground">
+                                Loading patient...
+                              </span>
                             </div>
                           ) : selectedPatient ? (
-                            <div className="p-2 border rounded-md bg-muted/50">
-                              <p className="font-medium">{selectedPatient.full_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}</p>
+                            <div className="rounded-md border bg-muted/50 p-2">
+                              <p className="font-medium">
+                                {selectedPatient.full_name ||
+                                  `${selectedPatient.first_name} ${selectedPatient.last_name}`}
+                              </p>
                               <p className="text-sm text-muted-foreground">{selectedPatient.mrn}</p>
-                              <input type="hidden" aria-label="Patient" disabled value={selectedPatient.full_name || ''} />
+                              <input
+                                type="hidden"
+                                aria-label="Patient"
+                                disabled
+                                value={selectedPatient.full_name || ''}
+                              />
                             </div>
                           ) : (
-                            <div className="p-2 border rounded-md bg-muted/50">
+                            <div className="rounded-md border bg-muted/50 p-2">
                               <p className="text-sm text-muted-foreground">Patient #{patientId}</p>
                               <input type="hidden" aria-label="Patient" disabled value="" />
                             </div>
@@ -417,7 +416,10 @@ export function PhysioOrderForm({
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                          <PopoverContent
+                            className="w-[var(--radix-popover-trigger-width)] p-0"
+                            align="start"
+                          >
                             <Command shouldFilter={false}>
                               <CommandInput
                                 placeholder="Search by name or MRN..."
@@ -448,9 +450,12 @@ export function PhysioOrderForm({
                                               : 'opacity-0'
                                           )}
                                         />
-                                        <div className="flex flex-col min-w-0">
-                                          <span className="truncate">{patient.full_name || `${patient.first_name} ${patient.last_name}`}</span>
-                                          <span className="text-xs text-muted-foreground group-data-[selected=true]:text-accent-foreground/70 truncate">
+                                        <div className="flex min-w-0 flex-col">
+                                          <span className="truncate">
+                                            {patient.full_name ||
+                                              `${patient.first_name} ${patient.last_name}`}
+                                          </span>
+                                          <span className="truncate text-xs text-muted-foreground group-data-[selected=true]:text-accent-foreground/70">
                                             {patient.mrn}
                                           </span>
                                         </div>
@@ -466,9 +471,7 @@ export function PhysioOrderForm({
                     </FormControl>
                     <FormMessage />
                     {selectedPatient && selectedPatientId && !patientId && (
-                      <p className="text-sm text-muted-foreground">
-                        {selectedPatient.mrn}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{selectedPatient.mrn}</p>
                     )}
                   </FormItem>
                 )}
@@ -506,7 +509,10 @@ export function PhysioOrderForm({
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                        <PopoverContent
+                          className="w-[var(--radix-popover-trigger-width)] p-0"
+                          align="start"
+                        >
                           <Command>
                             <CommandInput placeholder="Search treatment types..." />
                             <CommandList>
@@ -527,10 +533,11 @@ export function PhysioOrderForm({
                                           : 'opacity-0'
                                       )}
                                     />
-                                    <div className="flex flex-col min-w-0">
+                                    <div className="flex min-w-0 flex-col">
                                       <span className="truncate">{type.name}</span>
-                                      <span className="text-xs text-muted-foreground group-data-[selected=true]:text-accent-foreground/70 truncate">
-                                        {type.category} • {type.recommended_sessions} sessions recommended
+                                      <span className="truncate text-xs text-muted-foreground group-data-[selected=true]:text-accent-foreground/70">
+                                        {type.category} • {type.recommended_sessions} sessions
+                                        recommended
                                       </span>
                                     </div>
                                   </CommandItem>
@@ -548,7 +555,7 @@ export function PhysioOrderForm({
 
               {/* Treatment Type Info (SHA Claimable & Cost) */}
               {selectedTreatmentType && (
-                <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">
                     KES {Number(selectedTreatmentType.cost_per_session).toLocaleString()}/session
                   </Badge>
@@ -562,10 +569,7 @@ export function PhysioOrderForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Referral Reason</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger aria-label="Referral Reason">
                           <SelectValue placeholder="Select reason..." />
@@ -612,11 +616,7 @@ export function PhysioOrderForm({
                   <FormItem>
                     <FormLabel>Diagnosis</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Primary diagnosis..."
-                        aria-label="Diagnosis"
-                        {...field}
-                      />
+                      <Input placeholder="Primary diagnosis..." aria-label="Diagnosis" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -631,7 +631,7 @@ export function PhysioOrderForm({
               <CardTitle className="text-base sm:text-lg">Session Planning</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Total Sessions */}
                 <FormField
                   control={form.control}
@@ -663,11 +663,7 @@ export function PhysioOrderForm({
                     <FormItem>
                       <FormLabel>Frequency</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="e.g., 3x per week"
-                          aria-label="Frequency"
-                          {...field}
-                        />
+                        <Input placeholder="e.g., 3x per week" aria-label="Frequency" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -801,11 +797,7 @@ export function PhysioOrderForm({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="w-full sm:w-auto"
-            >
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending ? (
                 <>
                   <LoadingSpinner className="mr-2 h-4 w-4" />

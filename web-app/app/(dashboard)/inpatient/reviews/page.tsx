@@ -2,7 +2,15 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Clock, CheckCircle, XCircle, AlertTriangle, User, Stethoscope } from 'lucide-react';
+import {
+  FileText,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  User,
+  Stethoscope,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { StatsCard } from '@/components/dashboard/stats-card';
@@ -19,11 +27,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useReviewRequests, useAcknowledgeReviewRequest, useCompleteReviewRequest } from '@/lib/hooks/use-inpatient';
+import {
+  useReviewRequests,
+  useAcknowledgeReviewRequest,
+  useCompleteReviewRequest,
+} from '@/lib/hooks/use-inpatient';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { toast } from 'sonner';
-import type { ReviewRequest, ReviewRequestStatus, ReviewUrgency, ReviewType } from '@/lib/types/inpatient';
+import type {
+  ReviewRequest,
+  ReviewRequestStatus,
+  ReviewUrgency,
+  ReviewType,
+} from '@/lib/types/inpatient';
 
 const statusColors: Record<ReviewRequestStatus, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -70,7 +87,9 @@ export default function ReviewRequestsPage() {
     const results = reviewsData?.results || [];
     const pending = results.filter((r) => r.status === 'PENDING').length;
     const inProgress = results.filter((r) => r.status === 'IN_PROGRESS').length;
-    const statReviews = results.filter((r) => r.urgency === 'STAT' && r.status === 'PENDING').length;
+    const statReviews = results.filter(
+      (r) => r.urgency === 'STAT' && r.status === 'PENDING'
+    ).length;
     const overdue = results.filter((r) => r.is_overdue).length;
     return {
       pending,
@@ -106,25 +125,21 @@ export default function ReviewRequestsPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Review Requests"
           helpContent="Manage consultant review requests, urgent reviews, and pre-discharge assessments. Acknowledge and complete reviews in a timely manner."
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatsCard
             title="Pending"
             value={stats.pending}
             icon={Clock}
             variant={stats.pending > 5 ? 'warning' : 'default'}
           />
-          <StatsCard
-            title="In Progress"
-            value={stats.inProgress}
-            icon={Stethoscope}
-          />
+          <StatsCard title="In Progress" value={stats.inProgress} icon={Stethoscope} />
           <StatsCard
             title="STAT Reviews"
             value={stats.statReviews}
@@ -142,7 +157,7 @@ export default function ReviewRequestsPage() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Status" />
@@ -173,7 +188,7 @@ export default function ReviewRequestsPage() {
         {/* Reviews List */}
         {isLoading ? (
           <Card>
-            <CardContent className="pt-6 space-y-4">
+            <CardContent className="space-y-4 pt-6">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
@@ -212,7 +227,9 @@ export default function ReviewRequestsPage() {
                 sortable: true,
                 cell: (review) => (
                   <span className="text-sm">
-                    {review.review_type_display || reviewTypeLabels[review.review_type] || review.review_type}
+                    {review.review_type_display ||
+                      reviewTypeLabels[review.review_type] ||
+                      review.review_type}
                   </span>
                 ),
               },
@@ -235,9 +252,7 @@ export default function ReviewRequestsPage() {
                     <Badge className={statusColors[review.status]}>
                       {review.status_display || review.status}
                     </Badge>
-                    {review.is_overdue && (
-                      <Badge variant="destructive">Overdue</Badge>
-                    )}
+                    {review.is_overdue && <Badge variant="destructive">Overdue</Badge>}
                   </div>
                 ),
               },
@@ -246,7 +261,8 @@ export default function ReviewRequestsPage() {
                 header: 'Requested',
                 sortable: true,
                 sortType: 'date',
-                sortFn: (a, b) => new Date(a.requested_at).getTime() - new Date(b.requested_at).getTime(),
+                sortFn: (a, b) =>
+                  new Date(a.requested_at).getTime() - new Date(b.requested_at).getTime(),
                 cell: (review) => (
                   <span className="text-sm text-muted-foreground">
                     {formatDateTime(review.requested_at)}
@@ -275,7 +291,7 @@ export default function ReviewRequestsPage() {
                         onClick={(e) => handleComplete(review.id, e)}
                         disabled={completeReview.isPending}
                       >
-                        <CheckCircle className="h-4 w-4 mr-1" />
+                        <CheckCircle className="mr-1 h-4 w-4" />
                         Complete
                       </Button>
                     )}
@@ -286,27 +302,21 @@ export default function ReviewRequestsPage() {
             ]}
             mobileCard={(review) => (
               <Card className="p-4">
-                <div className="flex justify-between items-start mb-2">
+                <div className="mb-2 flex items-start justify-between">
                   <div>
                     <p className="font-medium">{review.patient_name || 'Unknown'}</p>
                     <p className="text-sm text-muted-foreground">{review.admission_number}</p>
                   </div>
-                  <Badge className={urgencyColors[review.urgency]}>
-                    {review.urgency}
-                  </Badge>
+                  <Badge className={urgencyColors[review.urgency]}>{review.urgency}</Badge>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
                   <FileText className="h-4 w-4" />
                   <span>{review.review_type_display || reviewTypeLabels[review.review_type]}</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <div className="flex gap-2">
-                    <Badge className={statusColors[review.status]}>
-                      {review.status}
-                    </Badge>
-                    {review.is_overdue && (
-                      <Badge variant="destructive">Overdue</Badge>
-                    )}
+                    <Badge className={statusColors[review.status]}>{review.status}</Badge>
+                    {review.is_overdue && <Badge variant="destructive">Overdue</Badge>}
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {formatDateTime(review.requested_at)}
@@ -332,7 +342,7 @@ export default function ReviewRequestsPage() {
                         onClick={(e) => handleComplete(review.id, e)}
                         disabled={completeReview.isPending}
                       >
-                        <CheckCircle className="h-4 w-4 mr-1" />
+                        <CheckCircle className="mr-1 h-4 w-4" />
                         Complete
                       </Button>
                     )}

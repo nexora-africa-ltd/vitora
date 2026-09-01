@@ -82,7 +82,7 @@ export default function NewStockCountPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
       <PageHeader
         title="New Stock Count"
         helpContent="Create a new physical stock count. After creation, generate items from current batches, then start the count to begin recording quantities."
@@ -90,9 +90,7 @@ export default function NewStockCountPage() {
 
       {!canInitiate && (
         <Alert variant="destructive">
-          <AlertDescription>
-            You do not have permission to initiate stock counts.
-          </AlertDescription>
+          <AlertDescription>You do not have permission to initiate stock counts.</AlertDescription>
         </Alert>
       )}
 
@@ -150,7 +148,7 @@ export default function NewStockCountPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2 mt-4">
+        <div className="mt-4 flex justify-end gap-2">
           <Button
             type="button"
             variant="outline"

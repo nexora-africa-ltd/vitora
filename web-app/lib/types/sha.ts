@@ -153,12 +153,7 @@ export type SchemeCategory =
 
 // PFMS (Public Finance Management System) Categories
 // For vulnerable populations eligible for government subsidy
-export type PFMSCategory =
-  | 'vulnerable'
-  | 'elderly'
-  | 'disabled'
-  | 'orphan'
-  | 'indigent';
+export type PFMSCategory = 'vulnerable' | 'elderly' | 'disabled' | 'orphan' | 'indigent';
 
 export const PFMS_CATEGORY_LABELS: Record<PFMSCategory, string> = {
   vulnerable: 'Vulnerable Population',
@@ -185,15 +180,17 @@ export interface SHAMember {
    * fields. Consumers that need the ID should normalise via
    * `typeof patient === 'number' ? patient : patient.id`.
    */
-  patient: number | {
-    id: number;
-    mrn?: string;
-    first_name?: string;
-    last_name?: string;
-    date_of_birth?: string | null;
-    gender?: string | null;
-    [key: string]: unknown;
-  };
+  patient:
+    | number
+    | {
+        id: number;
+        mrn?: string;
+        first_name?: string;
+        last_name?: string;
+        date_of_birth?: string | null;
+        gender?: string | null;
+        [key: string]: unknown;
+      };
   patient_name?: string;
   patient_mrn?: string;
   sha_member_number?: string;
@@ -203,9 +200,29 @@ export interface SHAMember {
   coverage_end_date?: string | null;
   is_active?: boolean;
   // Membership type (for dependents tracking)
-  membership_type?: 'PRINCIPAL' | 'SPOUSE' | 'CHILD' | 'PARENT' | 'OTHER' | 'principal' | 'spouse' | 'child' | 'parent' | 'other';
+  membership_type?:
+    | 'PRINCIPAL'
+    | 'SPOUSE'
+    | 'CHILD'
+    | 'PARENT'
+    | 'OTHER'
+    | 'principal'
+    | 'spouse'
+    | 'child'
+    | 'parent'
+    | 'other';
   principal_sha_number?: string;
-  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_VERIFICATION' | 'SUSPENDED' | 'EXPIRED' | 'active' | 'inactive' | 'pending_verification' | 'suspended' | 'expired';
+  status?:
+    | 'ACTIVE'
+    | 'INACTIVE'
+    | 'PENDING_VERIFICATION'
+    | 'SUSPENDED'
+    | 'EXPIRED'
+    | 'active'
+    | 'inactive'
+    | 'pending_verification'
+    | 'suspended'
+    | 'expired';
   national_id?: string;
   eligibility_display?: string;
   eligibility_valid_until?: string | null;
@@ -1000,12 +1017,7 @@ export interface FacilityValidationResponse {
   warnings?: string[];
 }
 
-export type FacilityValidationStatus =
-  | 'idle'
-  | 'validating'
-  | 'valid'
-  | 'invalid'
-  | 'error';
+export type FacilityValidationStatus = 'idle' | 'validating' | 'valid' | 'invalid' | 'error';
 
 // ============================================================================
 // DHA Practitioner/Health Worker Registry Types
@@ -1016,45 +1028,45 @@ export type FacilityValidationStatus =
  * Practitioner membership details from DHA registry
  */
 export interface DHAPractitionerMembership {
-  id: string;                        // e.g., "PUID-0022840-4"
-  status: string;                    // e.g., "Licensed", "Suspended", "Expired"
-  salutation: string;                // e.g., "Dr.", "Mr.", "Ms."
-  full_name: string;                 // Full name as registered
-  gender: string;                    // e.g., "M", "F"
+  id: string; // e.g., "PUID-0022840-4"
+  status: string; // e.g., "Licensed", "Suspended", "Expired"
+  salutation: string; // e.g., "Dr.", "Mr.", "Ms."
+  full_name: string; // Full name as registered
+  gender: string; // e.g., "M", "F"
   first_name: string;
   middle_name: string;
   last_name: string;
-  registration_id: string;           // e.g., "PUID-059839"
-  external_reference_id: string;     // e.g., "24120"
-  licensing_body: string;            // e.g., "Clinical Officers Council", "KMPDB", "NCK"
-  specialty: string;                 // e.g., "CLINICAL OFFICER", "MEDICAL OFFICER"
-  is_active: number;                 // 1 = active, 0 = inactive
-  is_withdrawn: number;              // 1 = withdrawn, 0 = not withdrawn
+  registration_id: string; // e.g., "PUID-059839"
+  external_reference_id: string; // e.g., "24120"
+  licensing_body: string; // e.g., "Clinical Officers Council", "KMPDB", "NCK"
+  specialty: string; // e.g., "CLINICAL OFFICER", "MEDICAL OFFICER"
+  is_active: number; // 1 = active, 0 = inactive
+  is_withdrawn: number; // 1 = withdrawn, 0 = not withdrawn
   withdrawal_reason: string;
   withdrawal_date: string;
-  license_expires_in_days: number;   // Days until license expires
+  license_expires_in_days: number; // Days until license expires
 }
 
 /**
  * Practitioner license record from DHA
  */
 export interface DHAPractitionerLicense {
-  id: string;                        // e.g., "COC-Clinical Officer-2026-620095"
-  external_reference_id: string;     // e.g., "Rb01923/25"
-  license_type: string;              // e.g., "Clinical Officer", "Annual"
-  license_start: string;             // Date string or "None"
-  license_end: string;               // Date string (expiry)
+  id: string; // e.g., "COC-Clinical Officer-2026-620095"
+  external_reference_id: string; // e.g., "Rb01923/25"
+  license_type: string; // e.g., "Clinical Officer", "Annual"
+  license_start: string; // Date string or "None"
+  license_end: string; // Date string (expiry)
 }
 
 /**
  * Professional details from DHA
  */
 export interface DHAPractitionerProfessionalDetails {
-  professional_cadre: string;        // e.g., "CLINICAL OFFICER", "MEDICAL OFFICER"
-  practice_type: string;             // e.g., "Clinical Officer"
+  professional_cadre: string; // e.g., "CLINICAL OFFICER", "MEDICAL OFFICER"
+  practice_type: string; // e.g., "Clinical Officer"
   specialty: string;
   subspecialty: string;
-  discipline_name: string;           // e.g., "Clinical Officer"
+  discipline_name: string; // e.g., "Clinical Officer"
   educational_qualifications: string; // e.g., "DIPLOMA - CLINICAL MEDICINE & SURGERY (KMTC)"
 }
 
@@ -1062,17 +1074,17 @@ export interface DHAPractitionerProfessionalDetails {
  * Contact information from DHA
  */
 export interface DHAPractitionerContacts {
-  phone: string;                     // e.g., "0769005262"
-  email: string;                     // e.g., "example@gmail.com"
-  postal_address: string;            // e.g., "P O BOX 221-20303 OL KALAU"
+  phone: string; // e.g., "0769005262"
+  email: string; // e.g., "example@gmail.com"
+  postal_address: string; // e.g., "P O BOX 221-20303 OL KALAU"
 }
 
 /**
  * Identifier information from DHA
  */
 export interface DHAPractitionerIdentifiers {
-  identification_type: string;       // e.g., "National ID", "Passport"
-  identification_number: string;     // e.g., "1111111"
+  identification_type: string; // e.g., "National ID", "Passport"
+  identification_number: string; // e.g., "1111111"
   client_registry_id: string;
   student_id: string;
 }

@@ -73,14 +73,17 @@ export default function StockTransfersPage() {
           title="Stock Transfers"
           helpContent="Transfer stock between facilities and store locations. Track transfers from request through dispatch to receipt."
           actions={
-            <Button onClick={() => router.push('/inventory/transfers/new')} disabled={!canCreateRoute('/inventory/transfers/new')}>
+            <Button
+              onClick={() => router.push('/inventory/transfers/new')}
+              disabled={!canCreateRoute('/inventory/transfers/new')}
+            >
               Create Transfer
             </Button>
           }
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Total', value: totalCount },
             { label: 'In Transit', value: inTransit },
@@ -94,7 +97,7 @@ export default function StockTransfersPage() {
               />
               <CardContent className="relative p-3 sm:p-4">
                 <p className="text-xs text-muted-foreground">{stat.label}</p>
-                <p className="text-lg sm:text-2xl font-bold">{stat.value}</p>
+                <p className="text-lg font-bold sm:text-2xl">{stat.value}</p>
               </CardContent>
             </Card>
           ))}
@@ -147,9 +150,9 @@ export default function StockTransfersPage() {
                 header: 'Route',
                 cell: (t) => (
                   <div className="flex items-center gap-1 text-sm">
-                    <span className="truncate max-w-[120px]">{t.source_facility_name}</span>
+                    <span className="max-w-[120px] truncate">{t.source_facility_name}</span>
                     <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-                    <span className="truncate max-w-[120px]">{t.destination_facility_name}</span>
+                    <span className="max-w-[120px] truncate">{t.destination_facility_name}</span>
                   </div>
                 ),
               },
@@ -192,13 +195,13 @@ export default function StockTransfersPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-medium">{t.transfer_number}</p>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                    <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                       <span className="truncate">{t.source_facility_name}</span>
                       <ArrowRight className="h-3 w-3 shrink-0" />
                       <span className="truncate">{t.destination_facility_name}</span>
                     </div>
                   </div>
-                  <Badge variant="outline" className={`${statusColors[t.status]} shrink-0 w-fit`}>
+                  <Badge variant="outline" className={`${statusColors[t.status]} w-fit shrink-0`}>
                     {statusLabels[t.status]}
                   </Badge>
                 </div>

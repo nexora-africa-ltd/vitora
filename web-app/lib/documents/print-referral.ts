@@ -6,7 +6,13 @@
 
 import type { ClinicalReferral } from '@/lib/types/referral';
 import type { FacilityInfo, ClinicianInfo, PatientInfo, SignatureInfo } from './types';
-import { buildPrintDocument, openPrintWindow, escapeHtml, formatDate, renderSignatureColumn } from './renderer';
+import {
+  buildPrintDocument,
+  openPrintWindow,
+  escapeHtml,
+  formatDate,
+  renderSignatureColumn,
+} from './renderer';
 
 // =============================================================================
 // REFERRAL LETTER TEMPLATE
@@ -176,13 +182,17 @@ export function printReferralLetter(options: PrintReferralOptions): Window | nul
   html = html.replace(/\{\{priority\}\}/g, escapeHtml(referral.priority_display));
 
   // Destination
-  const destination = referral.external_facility_name
-    || referral.destination_clinic_name
-    || referral.target_service_display;
+  const destination =
+    referral.external_facility_name ||
+    referral.destination_clinic_name ||
+    referral.target_service_display;
   html = html.replace(/\{\{destination\}\}/g, escapeHtml(destination));
 
   // Patient
-  html = html.replace(/\{\{patient_name\}\}/g, escapeHtml(patient?.full_name || referral.patient_name));
+  html = html.replace(
+    /\{\{patient_name\}\}/g,
+    escapeHtml(patient?.full_name || referral.patient_name)
+  );
   html = html.replace(/\{\{patient_mrn\}\}/g, escapeHtml(patient?.mrn || referral.patient_mrn));
 
   // Patient demographics
@@ -231,9 +241,14 @@ export function printReferralLetter(options: PrintReferralOptions): Window | nul
   // Diagnoses
   if (referral.relevant_diagnoses && referral.relevant_diagnoses.length > 0) {
     html = html.replace(/\{\{#has_diagnoses\}\}([\s\S]*?)\{\{\/has_diagnoses\}\}/g, '$1');
-    const diagnosesHtml = '<ul>' + referral.relevant_diagnoses.map(
-      d => `<li><strong>${escapeHtml(d.code)}</strong> – ${escapeHtml(d.description)}</li>`
-    ).join('') + '</ul>';
+    const diagnosesHtml =
+      '<ul>' +
+      referral.relevant_diagnoses
+        .map(
+          (d) => `<li><strong>${escapeHtml(d.code)}</strong> – ${escapeHtml(d.description)}</li>`
+        )
+        .join('') +
+      '</ul>';
     html = html.replace(/\{\{diagnoses_html\}\}/g, diagnosesHtml);
   } else {
     html = html.replace(/\{\{#has_diagnoses\}\}[\s\S]*?\{\{\/has_diagnoses\}\}/g, '');
@@ -244,21 +259,38 @@ export function printReferralLetter(options: PrintReferralOptions): Window | nul
   if (vitals && Object.values(vitals).some(Boolean)) {
     html = html.replace(/\{\{#has_vitals\}\}([\s\S]*?)\{\{\/has_vitals\}\}/g, '$1');
     const vitalsEntries: string[] = [];
-    if (vitals.blood_pressure) vitalsEntries.push(`<div><strong>BP:</strong> ${escapeHtml(vitals.blood_pressure)} mmHg</div>`);
-    if (vitals.pulse) vitalsEntries.push(`<div><strong>Pulse:</strong> ${escapeHtml(vitals.pulse)} bpm</div>`);
-    if (vitals.temperature) vitalsEntries.push(`<div><strong>Temp:</strong> ${escapeHtml(vitals.temperature)}°C</div>`);
-    if (vitals.respiratory_rate) vitalsEntries.push(`<div><strong>RR:</strong> ${escapeHtml(vitals.respiratory_rate)} /min</div>`);
-    if (vitals.spo2) vitalsEntries.push(`<div><strong>SpO2:</strong> ${escapeHtml(vitals.spo2)}%</div>`);
-    if (vitals.weight) vitalsEntries.push(`<div><strong>Weight:</strong> ${escapeHtml(vitals.weight)} kg</div>`);
-    if (vitals.height) vitalsEntries.push(`<div><strong>Height:</strong> ${escapeHtml(vitals.height)} cm</div>`);
+    if (vitals.blood_pressure)
+      vitalsEntries.push(
+        `<div><strong>BP:</strong> ${escapeHtml(vitals.blood_pressure)} mmHg</div>`
+      );
+    if (vitals.pulse)
+      vitalsEntries.push(`<div><strong>Pulse:</strong> ${escapeHtml(vitals.pulse)} bpm</div>`);
+    if (vitals.temperature)
+      vitalsEntries.push(`<div><strong>Temp:</strong> ${escapeHtml(vitals.temperature)}°C</div>`);
+    if (vitals.respiratory_rate)
+      vitalsEntries.push(
+        `<div><strong>RR:</strong> ${escapeHtml(vitals.respiratory_rate)} /min</div>`
+      );
+    if (vitals.spo2)
+      vitalsEntries.push(`<div><strong>SpO2:</strong> ${escapeHtml(vitals.spo2)}%</div>`);
+    if (vitals.weight)
+      vitalsEntries.push(`<div><strong>Weight:</strong> ${escapeHtml(vitals.weight)} kg</div>`);
+    if (vitals.height)
+      vitalsEntries.push(`<div><strong>Height:</strong> ${escapeHtml(vitals.height)} cm</div>`);
     html = html.replace(/\{\{vitals_html\}\}/g, vitalsEntries.join(''));
   } else {
     html = html.replace(/\{\{#has_vitals\}\}[\s\S]*?\{\{\/has_vitals\}\}/g, '');
   }
 
   // Clinician
-  html = html.replace(/\{\{clinician_name\}\}/g, escapeHtml(clinician?.name || referral.referred_by_name));
-  html = html.replace(/\{\{clinician_registration\}\}/g, escapeHtml(clinician?.registration_number || ''));
+  html = html.replace(
+    /\{\{clinician_name\}\}/g,
+    escapeHtml(clinician?.name || referral.referred_by_name)
+  );
+  html = html.replace(
+    /\{\{clinician_registration\}\}/g,
+    escapeHtml(clinician?.registration_number || '')
+  );
 
   // Digital signature
   html = html.replace(/\{\{signature_column\}\}/g, renderSignatureColumn(signature));

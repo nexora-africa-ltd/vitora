@@ -35,11 +35,27 @@ const CONDITION_STATUSES: { value: ConditionStatus; label: string; description: 
 ];
 
 const REVIEW_TYPES: { value: ReviewType; label: string; description: string }[] = [
-  { value: 'WARD_ROUND', label: 'Scheduled Ward Round', description: 'Routine daily or scheduled round' },
-  { value: 'URGENT_REVIEW', label: 'Urgent Review', description: 'Immediate assessment due to patient condition change' },
+  {
+    value: 'WARD_ROUND',
+    label: 'Scheduled Ward Round',
+    description: 'Routine daily or scheduled round',
+  },
+  {
+    value: 'URGENT_REVIEW',
+    label: 'Urgent Review',
+    description: 'Immediate assessment due to patient condition change',
+  },
   { value: 'CONSULTANT_REVIEW', label: 'Consultant Review', description: 'Specialist evaluation' },
-  { value: 'TRANSFER_REVIEW', label: 'Transfer Assessment', description: 'Assessment before or after ward transfer' },
-  { value: 'PRE_DISCHARGE', label: 'Pre-Discharge Assessment', description: 'Discharge readiness evaluation' },
+  {
+    value: 'TRANSFER_REVIEW',
+    label: 'Transfer Assessment',
+    description: 'Assessment before or after ward transfer',
+  },
+  {
+    value: 'PRE_DISCHARGE',
+    label: 'Pre-Discharge Assessment',
+    description: 'Discharge readiness evaluation',
+  },
 ];
 
 const MATERNITY_CONTINUITY_ACTIONS: { value: MaternityContinuityAction; label: string }[] = [
@@ -76,11 +92,21 @@ export default function NewWardRoundPage() {
   const { data: admission, isLoading } = useAdmission(admissionRouteId);
   const admissionId = admission?.id ?? 0;
   const createWardRound = useCreateWardRound();
-  const ageGroup = useMemo(() => (admission?.patient_age != null ? getAgeGroupFromYears(admission.patient_age) : null), [admission?.patient_age]);
+  const ageGroup = useMemo(
+    () => (admission?.patient_age != null ? getAgeGroupFromYears(admission.patient_age) : null),
+    [admission?.patient_age]
+  );
 
   const [conditionStatus, setConditionStatus] = useState<ConditionStatus>('STABLE');
   const [reviewType, setReviewType] = useState<ReviewType>(
-    (initialReviewType && ['WARD_ROUND', 'URGENT_REVIEW', 'CONSULTANT_REVIEW', 'TRANSFER_REVIEW', 'PRE_DISCHARGE'].includes(initialReviewType))
+    initialReviewType &&
+      [
+        'WARD_ROUND',
+        'URGENT_REVIEW',
+        'CONSULTANT_REVIEW',
+        'TRANSFER_REVIEW',
+        'PRE_DISCHARGE',
+      ].includes(initialReviewType)
       ? initialReviewType
       : 'WARD_ROUND'
   );
@@ -90,7 +116,8 @@ export default function NewWardRoundPage() {
   const [objective, setObjective] = useState('');
   const [assessment, setAssessment] = useState('');
   const [plan, setPlan] = useState('');
-  const [maternityContinuityAction, setMaternityContinuityAction] = useState<MaternityContinuityAction>('NONE');
+  const [maternityContinuityAction, setMaternityContinuityAction] =
+    useState<MaternityContinuityAction>('NONE');
   const [maternityContinuityNotes, setMaternityContinuityNotes] = useState('');
 
   // Vitals
@@ -104,7 +131,9 @@ export default function NewWardRoundPage() {
   const [gcsTotal, setGcsTotal] = useState('');
   const [onVasopressors, setOnVasopressors] = useState<'unknown' | 'yes' | 'no'>('unknown');
   const [vasopressorDose, setVasopressorDose] = useState('');
-  const [onMechanicalVentilation, setOnMechanicalVentilation] = useState<'unknown' | 'yes' | 'no'>('unknown');
+  const [onMechanicalVentilation, setOnMechanicalVentilation] = useState<'unknown' | 'yes' | 'no'>(
+    'unknown'
+  );
   const [urineOutput24h, setUrineOutput24h] = useState('');
 
   // Track if form was submitted (to show validation errors)
@@ -119,36 +148,39 @@ export default function NewWardRoundPage() {
   const setQuickActions = chatCtx?.setQuickActions;
 
   // Ward round quick actions — context-aware during charting
-  const WARD_ROUND_QUICK_ACTIONS: AIQuickAction[] = useMemo(() => [
-    {
-      id: 'ward-round-assessment',
-      label: 'Assessment guidance',
-      query:
-        'Based on this patient\'s current vitals, condition status, admission diagnosis, and SOAP notes so far, help me formulate a clinical assessment. What key findings should I document?',
-      userMessage: '📝 Requesting assessment guidance...',
-    },
-    {
-      id: 'ward-round-plan',
-      label: 'Suggest treatment plan',
-      query:
-        'Based on the current clinical picture (vitals, condition status, diagnosis, length of stay), suggest a treatment plan for today\'s ward round. Include medication adjustments, investigations, and disposition considerations.',
-      userMessage: '💊 Generating treatment plan suggestions...',
-    },
-    {
-      id: 'ward-round-deterioration',
-      label: 'Deterioration signs',
-      query:
-        'For this patient\'s current diagnosis and condition, what signs of deterioration should I specifically look for and document? Include early warning score triggers and escalation thresholds.',
-      userMessage: '⚠️ Reviewing deterioration warning signs...',
-    },
-    {
-      id: 'ward-round-icu-risk',
-      label: 'ICU escalation risk',
-      query:
-        'Based on the latest vitals and clinical observations, assess the risk of this patient requiring ICU escalation. Consider SOFA/qSOFA criteria, modified early warning scores, and the admitting diagnosis.',
-      userMessage: '🏥 Assessing ICU escalation risk...',
-    },
-  ], []);
+  const WARD_ROUND_QUICK_ACTIONS: AIQuickAction[] = useMemo(
+    () => [
+      {
+        id: 'ward-round-assessment',
+        label: 'Assessment guidance',
+        query:
+          "Based on this patient's current vitals, condition status, admission diagnosis, and SOAP notes so far, help me formulate a clinical assessment. What key findings should I document?",
+        userMessage: '📝 Requesting assessment guidance...',
+      },
+      {
+        id: 'ward-round-plan',
+        label: 'Suggest treatment plan',
+        query:
+          "Based on the current clinical picture (vitals, condition status, diagnosis, length of stay), suggest a treatment plan for today's ward round. Include medication adjustments, investigations, and disposition considerations.",
+        userMessage: '💊 Generating treatment plan suggestions...',
+      },
+      {
+        id: 'ward-round-deterioration',
+        label: 'Deterioration signs',
+        query:
+          "For this patient's current diagnosis and condition, what signs of deterioration should I specifically look for and document? Include early warning score triggers and escalation thresholds.",
+        userMessage: '⚠️ Reviewing deterioration warning signs...',
+      },
+      {
+        id: 'ward-round-icu-risk',
+        label: 'ICU escalation risk',
+        query:
+          'Based on the latest vitals and clinical observations, assess the risk of this patient requiring ICU escalation. Consider SOFA/qSOFA criteria, modified early warning scores, and the admitting diagnosis.',
+        userMessage: '🏥 Assessing ICU escalation risk...',
+      },
+    ],
+    []
+  );
 
   // Helper: parse BP string to MAP
   function parseBPToMAP(bp: string | undefined | null): number | undefined {
@@ -180,10 +212,10 @@ export default function NewWardRoundPage() {
 
       // Chief complaint = SOAP subjective (in-progress) or admission diagnosis
       const chiefComplaint =
-        subjective.trim()
-        || admission.admitting_diagnosis_text
-        || admission.admitting_diagnosis
-        || undefined;
+        subjective.trim() ||
+        admission.admitting_diagnosis_text ||
+        admission.admitting_diagnosis ||
+        undefined;
 
       setEncounterAwareContext(
         {
@@ -201,9 +233,7 @@ export default function NewWardRoundPage() {
           },
           // Inpatient context
           admission_diagnosis:
-            admission.admitting_diagnosis_text
-            || admission.admitting_diagnosis
-            || undefined,
+            admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined,
           ward_name: admission.ward_name ?? undefined,
           bed_number: admission.bed_number ?? undefined,
           admission_status: admission.admission_status ?? undefined,
@@ -216,12 +246,18 @@ export default function NewWardRoundPage() {
     return () => {
       setEncounterAwareContext(null, null);
     };
-  // Include form fields so context updates as the clinician types —
-  // TibaBot sees the latest in-progress data just like triage assess.
+    // Include form fields so context updates as the clinician types —
+    // TibaBot sees the latest in-progress data just like triage assess.
   }, [
-    admission, setEncounterAwareContext,
-    spo2, pulse, temperature, respiratoryRate, bloodPressure,
-    subjective, conditionStatus,
+    admission,
+    setEncounterAwareContext,
+    spo2,
+    pulse,
+    temperature,
+    respiratoryRate,
+    bloodPressure,
+    subjective,
+    conditionStatus,
   ]);
 
   // Register ward-round-specific quick actions
@@ -282,16 +318,19 @@ export default function NewWardRoundPage() {
         objective: objective.trim(),
         assessment: assessment.trim(),
         plan: plan.trim(),
-        maternity_continuity_action: admission?.mch_registration ? maternityContinuityAction : undefined,
-        maternity_continuity_notes: admission?.mch_registration ? maternityContinuityNotes.trim() || undefined : undefined,
+        maternity_continuity_action: admission?.mch_registration
+          ? maternityContinuityAction
+          : undefined,
+        maternity_continuity_notes: admission?.mch_registration
+          ? maternityContinuityNotes.trim() || undefined
+          : undefined,
         temperature: temperature ? parseFloat(temperature) : undefined,
         pulse: pulse ? parseInt(pulse) : undefined,
         blood_pressure: bloodPressure || undefined,
         respiratory_rate: respiratoryRate ? parseInt(respiratoryRate) : undefined,
         spo2: spo2 ? parseFloat(spo2) : undefined,
         gcs_total: gcsTotal ? parseInt(gcsTotal) : undefined,
-        on_vasopressors:
-          onVasopressors === 'unknown' ? null : onVasopressors === 'yes',
+        on_vasopressors: onVasopressors === 'unknown' ? null : onVasopressors === 'yes',
         vasopressor_dose_mcg_kg_min: vasopressorDose ? parseFloat(vasopressorDose) : undefined,
         on_mechanical_ventilation:
           onMechanicalVentilation === 'unknown' ? null : onMechanicalVentilation === 'yes',
@@ -337,7 +376,7 @@ export default function NewWardRoundPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <p className="text-xl font-semibold">Admission not found</p>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Cannot record a ward round without an active admission.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
@@ -348,7 +387,7 @@ export default function NewWardRoundPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="New Ward Round"
         helpContent={`Document ward round for ${admission.patient_name}. Record vitals, clinical notes in SOAP format, and update patient condition status.`}
@@ -359,9 +398,12 @@ export default function NewWardRoundPage() {
         <Alert className="border-warning/50 bg-warning/5">
           <AlertCircle className="h-4 w-4 text-warning" />
           <AlertDescription>
-            <strong>Fulfilling Review Request:</strong> This ward round is being recorded in response to a{' '}
-            <span className="font-medium">{initialReviewType?.replace('_', ' ').toLowerCase()}</span> request.
-            The review will be marked as completed once saved.
+            <strong>Fulfilling Review Request:</strong> This ward round is being recorded in
+            response to a{' '}
+            <span className="font-medium">
+              {initialReviewType?.replace('_', ' ').toLowerCase()}
+            </span>{' '}
+            request. The review will be marked as completed once saved.
           </AlertDescription>
         </Alert>
       )}
@@ -379,18 +421,24 @@ export default function NewWardRoundPage() {
             </div>
             <div>
               <p className="text-sm text-accent-foreground">Ward / Bed</p>
-              <p className="font-medium">{admission.ward_name} - {admission.bed_number}</p>
+              <p className="font-medium">
+                {admission.ward_name} - {admission.bed_number}
+              </p>
             </div>
             <div>
               <p className="text-sm text-accent-foreground">Diagnosis</p>
-              <p className="font-medium">{admission.admitting_diagnosis_text || admission.admitting_diagnosis}</p>
+              <p className="font-medium">
+                {admission.admitting_diagnosis_text || admission.admitting_diagnosis}
+              </p>
             </div>
             <div>
               <p className="text-sm text-accent-foreground">Days Admitted</p>
               <p className="font-medium">
                 {Math.ceil(
-                  (new Date().getTime() - new Date(admission.admission_date).getTime()) / (1000 * 60 * 60 * 24)
-                )} days
+                  (new Date().getTime() - new Date(admission.admission_date).getTime()) /
+                    (1000 * 60 * 60 * 24)
+                )}{' '}
+                days
               </p>
             </div>
           </div>
@@ -432,13 +480,20 @@ export default function NewWardRoundPage() {
               <HelpPopover content="Capture the next maternity workflow step while the mother is still admitted so ward rounds and discharge stay aligned." />
             </div>
             <CardDescription>
-              This admission is linked to {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Record the intended early PNC workflow here.
+              This admission is linked to{' '}
+              {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Record
+              the intended early PNC workflow here.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="maternity-continuity-action">Postpartum Workflow</Label>
-              <Select value={maternityContinuityAction} onValueChange={(value) => setMaternityContinuityAction(value as MaternityContinuityAction)}>
+              <Select
+                value={maternityContinuityAction}
+                onValueChange={(value) =>
+                  setMaternityContinuityAction(value as MaternityContinuityAction)
+                }
+              >
                 <SelectTrigger id="maternity-continuity-action" className="w-full md:w-[320px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -472,9 +527,7 @@ export default function NewWardRoundPage() {
             <ThermometerSun className="h-5 w-5" />
             <CardTitle className="text-lg">Vital Signs</CardTitle>
           </div>
-          <CardDescription>
-            Record current vital signs (optional but recommended)
-          </CardDescription>
+          <CardDescription>Record current vital signs (optional but recommended)</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-5">
@@ -556,7 +609,10 @@ export default function NewWardRoundPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="on-vasopressors">On Vasopressors</Label>
-              <Select value={onVasopressors} onValueChange={(value) => setOnVasopressors(value as 'unknown' | 'yes' | 'no')}>
+              <Select
+                value={onVasopressors}
+                onValueChange={(value) => setOnVasopressors(value as 'unknown' | 'yes' | 'no')}
+              >
                 <SelectTrigger id="on-vasopressors">
                   <SelectValue />
                 </SelectTrigger>
@@ -581,7 +637,12 @@ export default function NewWardRoundPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="on-mechanical-ventilation">On Mechanical Ventilation</Label>
-              <Select value={onMechanicalVentilation} onValueChange={(value) => setOnMechanicalVentilation(value as 'unknown' | 'yes' | 'no')}>
+              <Select
+                value={onMechanicalVentilation}
+                onValueChange={(value) =>
+                  setOnMechanicalVentilation(value as 'unknown' | 'yes' | 'no')
+                }
+              >
                 <SelectTrigger id="on-mechanical-ventilation">
                   <SelectValue />
                 </SelectTrigger>
@@ -615,13 +676,17 @@ export default function NewWardRoundPage() {
             <span className="text-destructive">*</span>
           </div>
           <CardDescription>
-            Set the overall patient condition for this review. All SOAP fields below must also be completed before saving.
+            Set the overall patient condition for this review. All SOAP fields below must also be
+            completed before saving.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             <RequiredLabel htmlFor="condition-status">Patient Condition</RequiredLabel>
-            <Select value={conditionStatus} onValueChange={(v) => setConditionStatus(v as ConditionStatus)}>
+            <Select
+              value={conditionStatus}
+              onValueChange={(v) => setConditionStatus(v as ConditionStatus)}
+            >
               <SelectTrigger id="condition-status">
                 <SelectValue />
               </SelectTrigger>
@@ -662,7 +727,9 @@ export default function NewWardRoundPage() {
               rows={3}
               className={hasAttemptedSubmit && !hasSubjective ? 'border-destructive' : ''}
             />
-            {hasAttemptedSubmit && !hasSubjective && <p className="text-sm text-destructive">Subjective is required.</p>}
+            {hasAttemptedSubmit && !hasSubjective && (
+              <p className="text-sm text-destructive">Subjective is required.</p>
+            )}
           </div>
 
           {/* Objective */}
@@ -676,7 +743,9 @@ export default function NewWardRoundPage() {
               rows={3}
               className={hasAttemptedSubmit && !hasObjective ? 'border-destructive' : ''}
             />
-            {hasAttemptedSubmit && !hasObjective && <p className="text-sm text-destructive">Objective is required.</p>}
+            {hasAttemptedSubmit && !hasObjective && (
+              <p className="text-sm text-destructive">Objective is required.</p>
+            )}
           </div>
 
           {/* Assessment */}
@@ -690,7 +759,9 @@ export default function NewWardRoundPage() {
               rows={3}
               className={hasAttemptedSubmit && !hasAssessment ? 'border-destructive' : ''}
             />
-            {hasAttemptedSubmit && !hasAssessment && <p className="text-sm text-destructive">Assessment is required.</p>}
+            {hasAttemptedSubmit && !hasAssessment && (
+              <p className="text-sm text-destructive">Assessment is required.</p>
+            )}
           </div>
 
           {/* Plan */}
@@ -704,7 +775,9 @@ export default function NewWardRoundPage() {
               rows={4}
               className={hasAttemptedSubmit && !hasPlan ? 'border-destructive' : ''}
             />
-            {hasAttemptedSubmit && !hasPlan && <p className="text-sm text-destructive">Plan is required.</p>}
+            {hasAttemptedSubmit && !hasPlan && (
+              <p className="text-sm text-destructive">Plan is required.</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -715,7 +788,7 @@ export default function NewWardRoundPage() {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             <strong>Please fix the following errors:</strong>
-            <ul className="list-disc list-inside mt-2">
+            <ul className="mt-2 list-inside list-disc">
               {validationErrors.map((error, idx) => (
                 <li key={idx}>{error}</li>
               ))}
@@ -729,11 +802,8 @@ export default function NewWardRoundPage() {
         <Button variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={createWardRound.isPending || !isFormValid}
-        >
-          <Stethoscope className="h-4 w-4 mr-2" />
+        <Button onClick={handleSubmit} disabled={createWardRound.isPending || !isFormValid}>
+          <Stethoscope className="mr-2 h-4 w-4" />
           {createWardRound.isPending ? 'Saving...' : 'Save Ward Round'}
         </Button>
       </div>
@@ -743,7 +813,7 @@ export default function NewWardRoundPage() {
 
 function WardRoundFormSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-10" />
         <Skeleton className="h-4 w-32" />

@@ -11,13 +11,14 @@ process.env.TS_NODE_PROJECT = 'features/tsconfig.json';
 module.exports = {
   default: {
     // Feature file locations - all modules included
-    paths: ['features/patients/**/*.feature', 'features/pharmacy/**/*.feature', 'features/triage/**/*.feature'],
+    paths: [
+      'features/patients/**/*.feature',
+      'features/pharmacy/**/*.feature',
+      'features/triage/**/*.feature',
+    ],
 
     // Step definitions and support files
-    require: [
-      'features/step-definitions/**/*.ts',
-      'features/support/**/*.ts',
-    ],
+    require: ['features/step-definitions/**/*.ts', 'features/support/**/*.ts'],
 
     // TypeScript support with custom config
     requireModule: ['ts-node/register'],

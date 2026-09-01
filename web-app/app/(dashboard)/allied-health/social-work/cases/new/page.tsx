@@ -29,11 +29,7 @@ export default function NewSWCasePage() {
         helpContent="Create a social work case to track patient support needs. Document presenting issues, safety assessments, and intervention plans."
       />
 
-      <SWCaseForm
-        patientId={patientId}
-        encounterId={encounterId}
-        referralId={referralId}
-      />
+      <SWCaseForm patientId={patientId} encounterId={encounterId} referralId={referralId} />
     </div>
   );
 }

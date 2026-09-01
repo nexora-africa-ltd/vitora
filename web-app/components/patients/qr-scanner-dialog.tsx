@@ -134,7 +134,7 @@ export function QRScannerDialog({ onScan, label, raw, trigger }: QRScannerDialog
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button variant="outline" className="h-11 sm:h-12 w-full sm:w-auto">
+          <Button variant="outline" className="h-11 w-full sm:h-12 sm:w-auto">
             <ScanLine className="mr-2 h-4 w-4" />
             {label ?? 'Scan QR'}
           </Button>
@@ -160,9 +160,7 @@ export function QRScannerDialog({ onScan, label, raw, trigger }: QRScannerDialog
           {!scanning && !error && (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
               <Camera className="h-12 w-12 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Starting camera...
-              </p>
+              <p className="text-sm text-muted-foreground">Starting camera...</p>
             </div>
           )}
 
@@ -173,7 +171,7 @@ export function QRScannerDialog({ onScan, label, raw, trigger }: QRScannerDialog
             </Button>
           )}
 
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-center text-xs text-muted-foreground">
             Point the camera at the patient&apos;s QR code to check them in.
           </p>
         </div>

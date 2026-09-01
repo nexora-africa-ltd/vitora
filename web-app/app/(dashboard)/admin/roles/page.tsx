@@ -10,7 +10,17 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
-import { Plus, Shield, Users, Settings, Search, KeyRound, BadgeCheck, RefreshCcw, Loader2 } from 'lucide-react';
+import {
+  Plus,
+  Shield,
+  Users,
+  Settings,
+  Search,
+  KeyRound,
+  BadgeCheck,
+  RefreshCcw,
+  Loader2,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
@@ -147,11 +157,7 @@ export default function RolesListPage() {
           actions={
             <div className="flex items-center gap-2">
               {isSuperuser && (
-                <Button
-                  variant="outline"
-                  onClick={handleSyncDefaults}
-                  disabled={isSyncing}
-                >
+                <Button variant="outline" onClick={handleSyncDefaults} disabled={isSyncing}>
                   {isSyncing ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -211,10 +217,19 @@ export default function RolesListPage() {
                   name="role-search"
                   placeholder="Search by role name or code…"
                   value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                 />
               </div>
-              <Select value={roleType} onValueChange={(v) => { setRoleType(v); setPage(1); }}>
+              <Select
+                value={roleType}
+                onValueChange={(v) => {
+                  setRoleType(v);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger aria-label="Filter by role category">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
@@ -262,8 +277,8 @@ export default function RolesListPage() {
                     sortFn: (a, b) => a.name.localeCompare(b.name),
                     cell: (role) => (
                       <div className="min-w-0">
-                        <p className="font-medium truncate">{role.name}</p>
-                        <p className="text-sm text-muted-foreground truncate">{role.code}</p>
+                        <p className="truncate font-medium">{role.name}</p>
+                        <p className="truncate text-sm text-muted-foreground">{role.code}</p>
                       </div>
                     ),
                   },
@@ -292,7 +307,9 @@ export default function RolesListPage() {
                     sortable: true,
                     sortType: 'number',
                     sortFn: (a, b) => a.hierarchy_level - b.hierarchy_level,
-                    cell: (role) => <span className="text-muted-foreground">Level {role.hierarchy_level}</span>,
+                    cell: (role) => (
+                      <span className="text-muted-foreground">Level {role.hierarchy_level}</span>
+                    ),
                   },
                   {
                     key: 'status',
@@ -320,13 +337,23 @@ export default function RolesListPage() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between pt-4">
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={!hasPrev}
+                >
                   Previous
                 </Button>
                 <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!hasNext}
+                >
                   Next
                 </Button>
               </div>
@@ -343,8 +370,8 @@ function RoleMobileCard({ role }: { role: Role }) {
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <p className="font-medium truncate">{role.name}</p>
-          <p className="font-mono text-sm text-muted-foreground truncate">{role.code}</p>
+          <p className="truncate font-medium">{role.name}</p>
+          <p className="truncate font-mono text-sm text-muted-foreground">{role.code}</p>
         </div>
         <Badge variant={role.is_active ? 'default' : 'secondary'}>
           {role.is_active ? 'Active' : 'Inactive'}
@@ -354,7 +381,9 @@ function RoleMobileCard({ role }: { role: Role }) {
         <Badge variant={getCategoryBadgeVariant(role.category)}>
           {role.category_display || role.category}
         </Badge>
-        {role.requires_license ? <Badge variant="outline">{role.license_body || 'License required'}</Badge> : null}
+        {role.requires_license ? (
+          <Badge variant="outline">{role.license_body || 'License required'}</Badge>
+        ) : null}
       </div>
       <p className="mt-3 text-sm text-muted-foreground">Hierarchy level {role.hierarchy_level}</p>
     </Card>

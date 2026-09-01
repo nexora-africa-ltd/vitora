@@ -66,31 +66,21 @@ export default function NewStockTransferPage() {
     queryFn: inventoryApi.getBootstrap,
   });
   const canAdjustFromCapabilities = bootstrap?.permissions.can_adjust_stock ?? true;
-
-  if (!canCreateTransfer || !canAdjustFromCapabilities) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Stock Transfer" />
-        <AccessCard className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create stock transfers.
-          </p>
-        </AccessCard>
-      </div>
-    );
-  }
+  const hasTransferAccess = canCreateTransfer && canAdjustFromCapabilities;
 
   // Batch options keyed by drug ID
   const [batchesByDrug, setBatchesByDrug] = useState<
-    Record<number, { id: number; batch_number: string; quantity_available: number; expiry_date: string }[]>
+    Record<
+      number,
+      { id: number; batch_number: string; quantity_available: number; expiry_date: string }[]
+    >
   >({});
 
   // Fetch org facilities for source/destination
   const { data: facilitiesData } = useQuery({
     queryKey: ['org-facilities-list', organization?.id],
     queryFn: () => organizationsApi.listFacilities(organization!.id),
-    enabled: !!organization?.id,
+    enabled: hasTransferAccess && !!organization?.id,
   });
   const facilities = facilitiesData ?? [];
 
@@ -98,6 +88,7 @@ export default function NewStockTransferPage() {
   const { data: storesData } = useQuery({
     queryKey: ['inventory-store-locations-all'],
     queryFn: () => inventoryApi.listStoreLocations({ page_size: 200, is_active: true }),
+    enabled: hasTransferAccess,
   });
   const stores = storesData?.results || [];
 
@@ -105,6 +96,7 @@ export default function NewStockTransferPage() {
   const { data: drugsData } = useQuery({
     queryKey: ['pharmacy-drugs-list'],
     queryFn: () => pharmacyApi.listDrugs({ page_size: 500 }),
+    enabled: hasTransferAccess,
   });
   const drugs = drugsData?.results || [];
 
@@ -136,19 +128,40 @@ export default function NewStockTransferPage() {
           ...prev,
           [drugId]: (batches || [])
             .filter((b: { quantity_available: number }) => b.quantity_available > 0)
-            .map((b: { id: number; batch_number: string; quantity_available: number; expiry_date: string }) => ({
-              id: b.id,
-              batch_number: b.batch_number,
-              quantity_available: b.quantity_available,
-              expiry_date: b.expiry_date,
-            })),
+            .map(
+              (b: {
+                id: number;
+                batch_number: string;
+                quantity_available: number;
+                expiry_date: string;
+              }) => ({
+                id: b.id,
+                batch_number: b.batch_number,
+                quantity_available: b.quantity_available,
+                expiry_date: b.expiry_date,
+              })
+            ),
         }));
       } catch {
         // Silently fail — user can retry
       }
     },
-    [batchesByDrug],
+    [batchesByDrug]
   );
+
+  if (!hasTransferAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Stock Transfer" />
+        <AccessCard className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to create stock transfers.
+          </p>
+        </AccessCard>
+      </div>
+    );
+  }
 
   async function onSubmit(data: TransferFormValues) {
     try {
@@ -177,7 +190,7 @@ export default function NewStockTransferPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto">
+    <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
       <PageHeader
         title="New Stock Transfer"
         helpContent="Create a transfer request to move stock between facilities or store locations. Select drugs and batches from available stock."
@@ -339,8 +352,8 @@ export default function NewStockTransferPage() {
 
                 return (
                   <Card key={field.id} className="border-dashed">
-                    <CardContent className="pt-4 pb-3 px-4">
-                      <div className="flex items-center justify-between mb-3">
+                    <CardContent className="px-4 pb-3 pt-4">
+                      <div className="mb-3 flex items-center justify-between">
                         <p className="text-sm font-medium text-muted-foreground">
                           Item {index + 1}
                         </p>
@@ -429,12 +442,7 @@ export default function NewStockTransferPage() {
                             <FormItem>
                               <FormLabel className="text-xs">Quantity *</FormLabel>
                               <FormControl>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  className="h-9"
-                                  {...qtyField}
-                                />
+                                <Input type="number" min={1} className="h-9" {...qtyField} />
                               </FormControl>
                               <FormMessage className="text-xs" />
                             </FormItem>
@@ -447,11 +455,7 @@ export default function NewStockTransferPage() {
                             <FormItem>
                               <FormLabel className="text-xs">Notes</FormLabel>
                               <FormControl>
-                                <Input
-                                  placeholder="Optional"
-                                  className="h-9"
-                                  {...notesField}
-                                />
+                                <Input placeholder="Optional" className="h-9" {...notesField} />
                               </FormControl>
                               <FormMessage className="text-xs" />
                             </FormItem>

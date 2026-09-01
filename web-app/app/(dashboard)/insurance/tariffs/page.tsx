@@ -8,7 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { useCreateTariff, useInsuranceProviders, usePayerTariffs } from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -29,7 +35,11 @@ export default function InsuranceTariffsPage() {
 
   const handleCreate = async () => {
     if (!provider || !serviceCode || !payerCode || !tariffAmount) {
-      toast({ title: 'Missing fields', description: 'Provider, service code, payer code, and tariff amount are required.', variant: 'destructive' });
+      toast({
+        title: 'Missing fields',
+        description: 'Provider, service code, payer code, and tariff amount are required.',
+        variant: 'destructive',
+      });
       return;
     }
     try {
@@ -50,20 +60,27 @@ export default function InsuranceTariffsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <PageHeader title="Payer Tariffs" helpContent="Maintain payer service code and tariff mappings." />
+      <PageHeader
+        title="Payer Tariffs"
+        helpContent="Maintain payer service code and tariff mappings."
+      />
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Create Tariff</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <Label>Provider</Label>
             <Select value={provider} onValueChange={setProvider}>
-              <SelectTrigger><SelectValue placeholder="Select provider" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
               <SelectContent>
                 {(providersData?.results ?? []).map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -82,14 +99,23 @@ export default function InsuranceTariffsPage() {
           </div>
           <div>
             <Label>Effective From</Label>
-            <Input type="date" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} />
+            <Input
+              type="date"
+              value={effectiveFrom}
+              onChange={(e) => setEffectiveFrom(e.target.value)}
+            />
           </div>
-          <div className="flex items-center gap-2 mt-6">
-            <Checkbox checked={requiresPreauth} onCheckedChange={(v) => setRequiresPreauth(Boolean(v))} />
+          <div className="mt-6 flex items-center gap-2">
+            <Checkbox
+              checked={requiresPreauth}
+              onCheckedChange={(v) => setRequiresPreauth(Boolean(v))}
+            />
             <Label>Requires preauth</Label>
           </div>
-          <div className="md:col-span-2 flex justify-end">
-            <Button onClick={handleCreate} disabled={createTariff.isPending}>{createTariff.isPending ? 'Creating...' : 'Create Tariff'}</Button>
+          <div className="flex justify-end md:col-span-2">
+            <Button onClick={handleCreate} disabled={createTariff.isPending}>
+              {createTariff.isPending ? 'Creating...' : 'Create Tariff'}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -103,8 +129,16 @@ export default function InsuranceTariffsPage() {
           { key: 'provider_name', header: 'Provider', cell: (item) => item.provider_name },
           { key: 'service_code', header: 'Service Code', cell: (item) => item.service_code },
           { key: 'payer_code', header: 'Payer Code', cell: (item) => item.payer_code },
-          { key: 'tariff_amount', header: 'Tariff', cell: (item) => `KES ${Number(item.tariff_amount).toLocaleString()}` },
-          { key: 'requires_preauth', header: 'Preauth', cell: (item) => (item.requires_preauth ? 'Yes' : 'No') },
+          {
+            key: 'tariff_amount',
+            header: 'Tariff',
+            cell: (item) => `KES ${Number(item.tariff_amount).toLocaleString()}`,
+          },
+          {
+            key: 'requires_preauth',
+            header: 'Preauth',
+            cell: (item) => (item.requires_preauth ? 'Yes' : 'No'),
+          },
         ]}
       />
     </div>

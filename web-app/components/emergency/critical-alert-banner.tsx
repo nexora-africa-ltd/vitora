@@ -89,9 +89,9 @@ export function CriticalAlertBanner({
   return (
     <Card className={cn('border-destructive/50', className)}>
       {/* Alert Header */}
-      <CardHeader className="pb-3 bg-destructive/10 border-b border-destructive/20">
+      <CardHeader className="border-b border-destructive/20 bg-destructive/10 pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-destructive text-base font-semibold">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-destructive">
             <AlertTriangle className="h-5 w-5" />
             CRITICAL: {patients.length} RED patient{patients.length > 1 ? 's' : ''} waiting
           </CardTitle>
@@ -120,7 +120,7 @@ export function CriticalAlertBanner({
                 key={patient.id}
                 className={cn(
                   'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between',
-                  'p-3 rounded-md bg-muted/50 border'
+                  'rounded-md border bg-muted/50 p-3'
                 )}
               >
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
@@ -128,7 +128,7 @@ export function CriticalAlertBanner({
                   <Badge variant="outline" className="w-fit text-xs">
                     {patient.mrn}
                   </Badge>
-                  <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+                  <span className="max-w-[200px] truncate text-sm text-muted-foreground">
                     {patient.chief_complaint || 'No complaint recorded'}
                   </span>
                   <Badge variant="destructive" className="w-fit">
@@ -147,7 +147,7 @@ export function CriticalAlertBanner({
                       onClick={() => onViewPatient(patient)}
                       className="shrink-0"
                     >
-                      <Eye className="h-4 w-4 mr-1" />
+                      <Eye className="mr-1 h-4 w-4" />
                       View
                     </Button>
                   )}

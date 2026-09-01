@@ -6,12 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -69,11 +64,7 @@ interface ThresholdFormDialogProps {
   threshold?: OutbreakThreshold;
 }
 
-export function ThresholdFormDialog({
-  open,
-  onOpenChange,
-  threshold,
-}: ThresholdFormDialogProps) {
+export function ThresholdFormDialog({ open, onOpenChange, threshold }: ThresholdFormDialogProps) {
   const isEditMode = !!threshold;
   const queryClient = useQueryClient();
   const [countyOpen, setCountyOpen] = useState(false);
@@ -123,7 +114,9 @@ export function ThresholdFormDialog({
       onOpenChange(false);
     },
     onError: () => {
-      toast.error('Failed to create threshold. A threshold for this disease/county may already exist.');
+      toast.error(
+        'Failed to create threshold. A threshold for this disease/county may already exist.'
+      );
     },
   });
 
@@ -159,9 +152,7 @@ export function ThresholdFormDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <DialogTitle>
-              {isEditMode ? 'Edit Threshold' : 'Add Outbreak Threshold'}
-            </DialogTitle>
+            <DialogTitle>{isEditMode ? 'Edit Threshold' : 'Add Outbreak Threshold'}</DialogTitle>
             <HelpPopover content="Define when an outbreak alert should be triggered. Set the number of cases within a time period that constitutes an outbreak for a disease." />
           </div>
         </DialogHeader>
@@ -224,7 +215,10 @@ export function ThresholdFormDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <PopoverContent
+                        className="w-[--radix-popover-trigger-width] p-0"
+                        align="start"
+                      >
                         <Command>
                           <CommandInput placeholder="Search county..." />
                           <CommandList>
@@ -321,10 +315,7 @@ export function ThresholdFormDialog({
               render={({ field }) => (
                 <FormItem className="flex items-center gap-3">
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                   <FormLabel className="!mt-0">Active</FormLabel>
                 </FormItem>

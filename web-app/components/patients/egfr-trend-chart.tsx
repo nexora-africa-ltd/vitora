@@ -21,7 +21,8 @@ const CKD_BANDS = [
 ];
 
 function getCKDStageColor(stage: string): string {
-  if (stage.startsWith('G1') || stage.startsWith('G2')) return 'text-emerald-600 dark:text-emerald-400';
+  if (stage.startsWith('G1') || stage.startsWith('G2'))
+    return 'text-emerald-600 dark:text-emerald-400';
   if (stage === 'G3a') return 'text-yellow-600 dark:text-yellow-400';
   if (stage === 'G3b') return 'text-amber-600 dark:text-amber-400';
   if (stage.startsWith('G4')) return 'text-orange-600 dark:text-orange-400';
@@ -30,11 +31,16 @@ function getCKDStageColor(stage: string): string {
 }
 
 function getCKDBadgeColor(stage: string): string {
-  if (stage.startsWith('G1') || stage.startsWith('G2')) return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20';
-  if (stage === 'G3a') return 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/20';
-  if (stage === 'G3b') return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20';
-  if (stage.startsWith('G4')) return 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/20';
-  if (stage.startsWith('G5')) return 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/20';
+  if (stage.startsWith('G1') || stage.startsWith('G2'))
+    return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20';
+  if (stage === 'G3a')
+    return 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/20';
+  if (stage === 'G3b')
+    return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20';
+  if (stage.startsWith('G4'))
+    return 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/20';
+  if (stage.startsWith('G5'))
+    return 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/20';
   return 'bg-muted text-muted-foreground';
 }
 
@@ -85,7 +91,7 @@ export function EGFRTrendChart({ patientId }: EGFRTrendChartProps) {
   if (dataPoints.length === 0) return null;
 
   const latest = dataPoints[dataPoints.length - 1]!;
-  const maxEGFR = Math.max(...dataPoints.map(d => d.egfr_ckd_epi), 120);
+  const maxEGFR = Math.max(...dataPoints.map((d) => d.egfr_ckd_epi), 120);
   const chartHeight = 80;
 
   return (
@@ -103,24 +109,36 @@ export function EGFRTrendChart({ patientId }: EGFRTrendChartProps) {
           </div>
           <div className="flex items-center gap-2">
             {trend === 'declining' && (
-              <Badge variant="outline" className="text-xs border-orange-500/30 text-orange-600 dark:text-orange-400 gap-1">
+              <Badge
+                variant="outline"
+                className="gap-1 border-orange-500/30 text-xs text-orange-600 dark:text-orange-400"
+              >
                 <TrendingDown className="h-3 w-3" />
                 Declining
               </Badge>
             )}
             {trend === 'improving' && (
-              <Badge variant="outline" className="text-xs border-emerald-500/30 text-emerald-600 dark:text-emerald-400 gap-1">
+              <Badge
+                variant="outline"
+                className="gap-1 border-emerald-500/30 text-xs text-emerald-600 dark:text-emerald-400"
+              >
                 <TrendingUp className="h-3 w-3" />
                 Improving
               </Badge>
             )}
             {trend === 'stable' && (
-              <Badge variant="outline" className="text-xs border-sky-500/30 text-sky-600 dark:text-sky-400 gap-1">
+              <Badge
+                variant="outline"
+                className="gap-1 border-sky-500/30 text-xs text-sky-600 dark:text-sky-400"
+              >
                 <Minus className="h-3 w-3" />
                 Stable
               </Badge>
             )}
-            <Badge variant="outline" className={cn('text-xs border', getCKDBadgeColor(latest.ckd_stage))}>
+            <Badge
+              variant="outline"
+              className={cn('border text-xs', getCKDBadgeColor(latest.ckd_stage))}
+            >
               CKD {latest.ckd_stage}
             </Badge>
           </div>
@@ -128,12 +146,12 @@ export function EGFRTrendChart({ patientId }: EGFRTrendChartProps) {
       </CardHeader>
       <CardContent className="relative pt-0">
         {/* Current value */}
-        <div className="flex items-baseline gap-1 mb-3">
+        <div className="mb-3 flex items-baseline gap-1">
           <span className={cn('text-2xl font-bold', getCKDStageColor(latest.ckd_stage))}>
             {Math.round(latest.egfr_ckd_epi)}
           </span>
           <span className="text-sm text-muted-foreground">mL/min/1.73m²</span>
-          <span className="text-xs text-muted-foreground ml-2">
+          <span className="ml-2 text-xs text-muted-foreground">
             ({formatDate(latest.created_at)})
           </span>
         </div>
@@ -142,7 +160,7 @@ export function EGFRTrendChart({ patientId }: EGFRTrendChartProps) {
         {dataPoints.length > 1 && (
           <div className="relative" style={{ height: chartHeight }}>
             {/* CKD stage bands background */}
-            {CKD_BANDS.map(band => {
+            {CKD_BANDS.map((band) => {
               const top = ((maxEGFR - band.max) / maxEGFR) * chartHeight;
               const height = ((band.max - band.min) / maxEGFR) * chartHeight;
               if (top > chartHeight || top + height < 0) return null;
@@ -160,7 +178,7 @@ export function EGFRTrendChart({ patientId }: EGFRTrendChartProps) {
 
             {/* SVG sparkline */}
             <svg
-              className="absolute inset-0 w-full h-full"
+              className="absolute inset-0 h-full w-full"
               viewBox={`0 0 ${(dataPoints.length - 1) * 40 + 20} ${chartHeight}`}
               preserveAspectRatio="none"
             >
@@ -171,9 +189,11 @@ export function EGFRTrendChart({ patientId }: EGFRTrendChartProps) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 className={cn(
-                  trend === 'declining' ? 'text-orange-500' :
-                  trend === 'improving' ? 'text-emerald-500' :
-                  'text-sky-500'
+                  trend === 'declining'
+                    ? 'text-orange-500'
+                    : trend === 'improving'
+                      ? 'text-emerald-500'
+                      : 'text-sky-500'
                 )}
                 points={dataPoints
                   .map((d, i) => {
@@ -208,7 +228,7 @@ export function EGFRTrendChart({ patientId }: EGFRTrendChartProps) {
 
         {/* Timeline labels */}
         {dataPoints.length > 1 && (
-          <div className="flex justify-between mt-1 text-[10px] text-muted-foreground">
+          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
             <span>{formatDate(dataPoints[0]!.created_at)}</span>
             <span>{formatDate(dataPoints[dataPoints.length - 1]!.created_at)}</span>
           </div>
@@ -216,8 +236,9 @@ export function EGFRTrendChart({ patientId }: EGFRTrendChartProps) {
 
         {/* Dose adjustment note */}
         {latest.dose_adjustment_band && latest.dose_adjustment_band !== 'normal' && (
-          <div className="mt-3 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded px-2 py-1">
-            Dose adjustment band: <span className="font-medium capitalize">{latest.dose_adjustment_band}</span>
+          <div className="mt-3 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400">
+            Dose adjustment band:{' '}
+            <span className="font-medium capitalize">{latest.dose_adjustment_band}</span>
           </div>
         )}
       </CardContent>

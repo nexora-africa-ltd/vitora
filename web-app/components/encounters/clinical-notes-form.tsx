@@ -3,7 +3,14 @@
 import { useCallback } from 'react';
 import { FileText, Stethoscope, ClipboardList, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -43,7 +50,7 @@ export function ClinicalNotesFormContent({
   data,
   onChange,
   disabled = false,
-  showRequiredIndicators = true
+  showRequiredIndicators = true,
 }: ClinicalNotesFormContentProps) {
   return (
     <div className="space-y-6">
@@ -141,20 +148,23 @@ interface ClinicalNotesFormProps {
 export function useClinicalNotesValidation() {
   const { toast } = useToast();
 
-  const validate = useCallback((data: EncounterFormData): boolean => {
-    const missingFields = validateClinicalNotes(data);
+  const validate = useCallback(
+    (data: EncounterFormData): boolean => {
+      const missingFields = validateClinicalNotes(data);
 
-    if (missingFields.length > 0) {
-      toast({
-        title: 'Required Fields Missing',
-        description: `Please complete the following fields: ${missingFields.join(', ')}`,
-        variant: 'destructive',
-      });
-      return false;
-    }
+      if (missingFields.length > 0) {
+        toast({
+          title: 'Required Fields Missing',
+          description: `Please complete the following fields: ${missingFields.join(', ')}`,
+          variant: 'destructive',
+        });
+        return false;
+      }
 
-    return true;
-  }, [toast]);
+      return true;
+    },
+    [toast]
+  );
 
   return { validate, validateClinicalNotes };
 }
@@ -185,7 +195,7 @@ export function ClinicalNotesForm({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
           <FileText className="h-5 w-5" />
           Clinical Notes
         </CardTitle>
@@ -200,12 +210,14 @@ export function ClinicalNotesForm({
       {/* Navigation Footer */}
       {(onNext || onPrevious) && (
         <CardFooter className="border-t pt-4">
-          <div className="flex justify-between w-full">
+          <div className="flex w-full justify-between">
             {onPrevious ? (
               <Button onClick={onPrevious} variant="secondary">
                 ← Back to Hx
               </Button>
-            ) : <div />}
+            ) : (
+              <div />
+            )}
             {onNext && (
               <Button onClick={handleNext} variant="secondary">
                 Continue to Dx →

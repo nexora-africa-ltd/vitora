@@ -13,17 +13,14 @@ import { createPatient, safeHashes } from '../../support/fixtures';
  * Queue background steps
  */
 
-Given(
-  'I am on the triage queue dashboard',
-  async function (this: VitoraWorld) {
-    this.currentPage = 'triage queue';
+Given('I am on the triage queue dashboard', async function (this: VitoraWorld) {
+  this.currentPage = 'triage queue';
 
-    if (this.page) {
-      await this.page.goto('/triage/queue');
-      await this.page.waitForLoadState('networkidle');
-    }
+  if (this.page) {
+    await this.page.goto('/triage/queue');
+    await this.page.waitForLoadState('networkidle');
   }
-);
+});
 
 Given(
   'the following patients are in the queue:',
@@ -33,17 +30,19 @@ Given(
 
     // In E2E tests, mock the API response
     if (this.page) {
-      await this.page.route('**/api/triage/queue**', async route => {
+      await this.page.route('**/api/triage/queue**', async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(patients.map((p, idx) => ({
-            id: idx + 1,
-            patient_name: p.patient,
-            category: p.category,
-            arrival_time: p.arrival_time,
-            status: 'WAITING',
-          }))),
+          body: JSON.stringify(
+            patients.map((p, idx) => ({
+              id: idx + 1,
+              patient_name: p.patient,
+              category: p.category,
+              arrival_time: p.arrival_time,
+              status: 'WAITING',
+            }))
+          ),
         });
       });
     }
@@ -54,15 +53,12 @@ Given(
  * Queue viewing steps
  */
 
-When(
-  'I view the triage queue',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      await this.page.reload();
-      await this.page.waitForLoadState('networkidle');
-    }
+When('I view the triage queue', async function (this: VitoraWorld) {
+  if (this.page) {
+    await this.page.reload();
+    await this.page.waitForLoadState('networkidle');
   }
-);
+});
 
 Then(
   'the patients should be displayed in this order:',
@@ -102,16 +98,13 @@ Given(
   }
 );
 
-When(
-  'I view their queue card',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const mrn = this.patient?.mrn;
-      const card = this.page.locator(`[data-testid="queue-card"][data-mrn="${mrn}"]`);
-      await expect(card).toBeVisible();
-    }
+When('I view their queue card', async function (this: VitoraWorld) {
+  if (this.page) {
+    const mrn = this.patient?.mrn;
+    const card = this.page.locator(`[data-testid="queue-card"][data-mrn="${mrn}"]`);
+    await expect(card).toBeVisible();
   }
-);
+});
 
 Then(
   'their queue card should show a {string} badge',
@@ -124,48 +117,45 @@ Then(
   }
 );
 
-Then(
-  'the badge should display {string}',
-  async function (this: VitoraWorld, label: string) {
-    if (this.page) {
-      const badge = this.page.locator('[data-testid="category-badge"]').first();
-      const badgeText = await badge.textContent();
-      expect(badgeText).toContain(label);
-    }
+Then('the badge should display {string}', async function (this: VitoraWorld, label: string) {
+  if (this.page) {
+    const badge = this.page.locator('[data-testid="category-badge"]').first();
+    const badgeText = await badge.textContent();
+    expect(badgeText).toContain(label);
   }
-);
+});
 
 /**
  * Wait time steps
  */
 
-Given(
-  'a patient arrived at {string}',
-  async function (this: VitoraWorld, time: string) {
-    this.store('patientArrivalTime', time);
-  }
-);
+Given('a patient arrived at {string}', async function (this: VitoraWorld, time: string) {
+  this.store('patientArrivalTime', time);
+});
 
-Given(
-  'the current time is {string}',
-  async function (this: VitoraWorld, time: string) {
-    this.store('currentTime', time);
+Given('the current time is {string}', async function (this: VitoraWorld, time: string) {
+  this.store('currentTime', time);
 
-    if (this.page) {
-      // Mock the current time
-      const [hours, minutes] = time.replace(/\s*(AM|PM)/, '').split(':').map(Number);
-      const isPM = time.includes('PM') && hours !== 12;
-      const hour24 = isPM ? hours + 12 : hours;
+  if (this.page) {
+    // Mock the current time
+    const [hours, minutes] = time
+      .replace(/\s*(AM|PM)/, '')
+      .split(':')
+      .map(Number);
+    const isPM = time.includes('PM') && hours !== 12;
+    const hour24 = isPM ? hours + 12 : hours;
 
-      await this.page.evaluate(({ hour24, minutes }) => {
+    await this.page.evaluate(
+      ({ hour24, minutes }) => {
         const mockDate = new Date();
         mockDate.setHours(hour24, minutes, 0, 0);
         // @ts-ignore - mocking Date.now
         Date.now = () => mockDate.getTime();
-      }, { hour24, minutes });
-    }
+      },
+      { hour24, minutes }
+    );
   }
-);
+});
 
 Then(
   'their wait time should show {string}',
@@ -193,7 +183,9 @@ Then(
       const waitTimeElement = this.page.locator('[data-testid="wait-time"]').first();
       const waitText = await waitTimeElement.textContent();
       // Remove emoji for comparison
-      expect(waitText?.replace(/[^\w\s]/g, '').trim()).toContain(status.replace(/[^\w\s]/g, '').trim());
+      expect(waitText?.replace(/[^\w\s]/g, '').trim()).toContain(
+        status.replace(/[^\w\s]/g, '').trim()
+      );
     }
   }
 );
@@ -221,58 +213,48 @@ Given(
   }
 );
 
-When(
-  'I select area filter {string}',
-  async function (this: VitoraWorld, area: string) {
-    this.store('selectedAreaFilter', area);
+When('I select area filter {string}', async function (this: VitoraWorld, area: string) {
+  this.store('selectedAreaFilter', area);
 
-    if (this.page) {
-      await this.page.selectOption('[data-testid="area-filter"]', area);
-      await this.page.waitForTimeout(500); // Allow filter to apply
+  if (this.page) {
+    await this.page.selectOption('[data-testid="area-filter"]', area);
+    await this.page.waitForTimeout(500); // Allow filter to apply
+  }
+});
+
+When('I select category filter {string}', async function (this: VitoraWorld, category: string) {
+  this.store('selectedCategoryFilter', category);
+
+  if (this.page) {
+    await this.page.selectOption('[data-testid="category-filter"]', category);
+    await this.page.waitForTimeout(500);
+  }
+});
+
+When('I select status filter {string}', async function (this: VitoraWorld, status: string) {
+  this.store('selectedStatusFilter', status);
+
+  if (this.page) {
+    await this.page.selectOption('[data-testid="status-filter"]', status);
+    await this.page.waitForTimeout(500);
+  }
+});
+
+Then('I should only see patients:', async function (this: VitoraWorld, dataTable: DataTable) {
+  const expectedPatients = safeHashes(dataTable.hashes());
+
+  if (this.page) {
+    const visibleCards = await this.page.locator('[data-testid="queue-card"]:visible').all();
+    expect(visibleCards.length).toBe(expectedPatients.length);
+
+    for (const expected of expectedPatients) {
+      const cardWithName = this.page.locator(
+        `[data-testid="queue-card"]:has-text("${expected.patient}")`
+      );
+      await expect(cardWithName).toBeVisible();
     }
   }
-);
-
-When(
-  'I select category filter {string}',
-  async function (this: VitoraWorld, category: string) {
-    this.store('selectedCategoryFilter', category);
-
-    if (this.page) {
-      await this.page.selectOption('[data-testid="category-filter"]', category);
-      await this.page.waitForTimeout(500);
-    }
-  }
-);
-
-When(
-  'I select status filter {string}',
-  async function (this: VitoraWorld, status: string) {
-    this.store('selectedStatusFilter', status);
-
-    if (this.page) {
-      await this.page.selectOption('[data-testid="status-filter"]', status);
-      await this.page.waitForTimeout(500);
-    }
-  }
-);
-
-Then(
-  'I should only see patients:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const expectedPatients = safeHashes(dataTable.hashes());
-
-    if (this.page) {
-      const visibleCards = await this.page.locator('[data-testid="queue-card"]:visible').all();
-      expect(visibleCards.length).toBe(expectedPatients.length);
-
-      for (const expected of expectedPatients) {
-        const cardWithName = this.page.locator(`[data-testid="queue-card"]:has-text("${expected.patient}")`);
-        await expect(cardWithName).toBeVisible();
-      }
-    }
-  }
-);
+});
 
 Then(
   'I should only see patients with {word} category',
@@ -287,16 +269,13 @@ Then(
   }
 );
 
-Then(
-  'the queue count should show {string}',
-  async function (this: VitoraWorld, count: string) {
-    if (this.page) {
-      const countElement = this.page.locator('[data-testid="queue-count"]');
-      const countText = await countElement.textContent();
-      expect(countText).toContain(count);
-    }
+Then('the queue count should show {string}', async function (this: VitoraWorld, count: string) {
+  if (this.page) {
+    const countElement = this.page.locator('[data-testid="queue-count"]');
+    const countText = await countElement.textContent();
+    expect(countText).toContain(count);
   }
-);
+});
 
 /**
  * Queue actions steps
@@ -335,34 +314,25 @@ Then(
   }
 );
 
-Then(
-  'called_at timestamp should be recorded',
-  async function (this: VitoraWorld) {
-    // Verify via API or store
-    this.store('calledAt', new Date().toISOString());
-    expect(this.retrieve('calledAt')).toBeDefined();
-  }
-);
+Then('called_at timestamp should be recorded', async function (this: VitoraWorld) {
+  // Verify via API or store
+  this.store('calledAt', new Date().toISOString());
+  expect(this.retrieve('calledAt')).toBeDefined();
+});
 
-Then(
-  'called_by should be set to my user',
-  async function (this: VitoraWorld) {
-    this.store('calledBy', this.currentUser?.username);
-    expect(this.retrieve('calledBy')).toBe(this.currentUser?.username);
-  }
-);
+Then('called_by should be set to my user', async function (this: VitoraWorld) {
+  this.store('calledBy', this.currentUser?.username);
+  expect(this.retrieve('calledBy')).toBe(this.currentUser?.username);
+});
 
 /**
  * Status badge steps
  */
 
-Given(
-  'a patient with status {string}',
-  async function (this: VitoraWorld, status: string) {
-    this.store('patientStatus', status);
-    this.patient = createPatient();
-  }
-);
+Given('a patient with status {string}', async function (this: VitoraWorld, status: string) {
+  this.store('patientStatus', status);
+  this.patient = createPatient();
+});
 
 Then(
   'their queue card should show status badge {string} with style {string}',
@@ -381,15 +351,12 @@ Then(
  * View details steps
  */
 
-When(
-  'I click on a patient\'s queue card',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const card = this.page.locator('[data-testid="queue-card"]').first();
-      await card.click();
-    }
+When("I click on a patient's queue card", async function (this: VitoraWorld) {
+  if (this.page) {
+    const card = this.page.locator('[data-testid="queue-card"]').first();
+    await card.click();
   }
-);
+});
 
 Then(
   'I should see the full triage assessment details modal including:',
@@ -401,7 +368,9 @@ Then(
       await expect(modal).toBeVisible();
 
       for (const section of expectedSections) {
-        const sectionElement = modal.locator(`[data-testid="section-${section.section?.toLowerCase().replace(/\s+/g, '-')}"]`);
+        const sectionElement = modal.locator(
+          `[data-testid="section-${section.section?.toLowerCase().replace(/\s+/g, '-')}"]`
+        );
         await expect(sectionElement).toBeVisible();
       }
     }
@@ -412,28 +381,24 @@ Then(
  * Queue statistics steps
  */
 
-Given(
-  'the queue has:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const stats = safeHashes(dataTable.hashes());
-    this.store('queueStats', stats);
-  }
-);
+Given('the queue has:', async function (this: VitoraWorld, dataTable: DataTable) {
+  const stats = safeHashes(dataTable.hashes());
+  this.store('queueStats', stats);
+});
 
-Then(
-  'the queue header should show:',
-  async function (this: VitoraWorld, dataTable: DataTable) {
-    const expectedStats = safeHashes(dataTable.hashes());
+Then('the queue header should show:', async function (this: VitoraWorld, dataTable: DataTable) {
+  const expectedStats = safeHashes(dataTable.hashes());
 
-    if (this.page) {
-      const header = this.page.locator('[data-testid="queue-header"]');
-      for (const stat of expectedStats) {
-        const statElement = header.locator(`[data-testid="stat-${stat.stat?.toLowerCase().replace(/\s+/g, '-')}"]`);
-        await expect(statElement).toContainText(stat.value || '');
-      }
+  if (this.page) {
+    const header = this.page.locator('[data-testid="queue-header"]');
+    for (const stat of expectedStats) {
+      const statElement = header.locator(
+        `[data-testid="stat-${stat.stat?.toLowerCase().replace(/\s+/g, '-')}"]`
+      );
+      await expect(statElement).toContainText(stat.value || '');
     }
   }
-);
+});
 
 Then(
   'the category summary should show colored counts for each category',
@@ -444,7 +409,9 @@ Then(
 
       const categories = ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'];
       for (const cat of categories) {
-        const catElement = categorySummary.locator(`[data-testid="category-count-${cat.toLowerCase()}"]`);
+        const catElement = categorySummary.locator(
+          `[data-testid="category-count-${cat.toLowerCase()}"]`
+        );
         await expect(catElement).toBeVisible();
       }
     }
@@ -455,49 +422,34 @@ Then(
  * Real-time update steps
  */
 
-Given(
-  'I am viewing the triage queue',
-  async function (this: VitoraWorld) {
-    this.currentPage = 'triage queue';
-    if (this.page) {
-      await this.page.goto('/triage/queue');
-    }
+Given('I am viewing the triage queue', async function (this: VitoraWorld) {
+  this.currentPage = 'triage queue';
+  if (this.page) {
+    await this.page.goto('/triage/queue');
   }
-);
+});
 
-When(
-  'another nurse adds a new RED category patient',
-  async function (this: VitoraWorld) {
-    // Simulate WebSocket or polling update
-    this.store('newRedPatient', true);
-  }
-);
+When('another nurse adds a new RED category patient', async function (this: VitoraWorld) {
+  // Simulate WebSocket or polling update
+  this.store('newRedPatient', true);
+});
 
-Then(
-  'the queue should automatically refresh',
-  async function (this: VitoraWorld) {
-    // Verify refresh mechanism
-    expect(true).toBe(true); // Placeholder for real-time testing
-  }
-);
+Then('the queue should automatically refresh', async function (this: VitoraWorld) {
+  // Verify refresh mechanism
+  expect(true).toBe(true); // Placeholder for real-time testing
+});
 
-Then(
-  'the new patient should appear at the top',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const firstCard = this.page.locator('[data-testid="queue-card"]').first();
-      const category = await firstCard.locator('[data-testid="category-badge"]').textContent();
-      expect(category).toContain('RED');
-    }
+Then('the new patient should appear at the top', async function (this: VitoraWorld) {
+  if (this.page) {
+    const firstCard = this.page.locator('[data-testid="queue-card"]').first();
+    const category = await firstCard.locator('[data-testid="category-badge"]').textContent();
+    expect(category).toContain('RED');
   }
-);
+});
 
-Then(
-  'I should see a notification {string}',
-  async function (this: VitoraWorld, message: string) {
-    if (this.page) {
-      const notification = this.page.locator('[data-testid="notification"]');
-      await expect(notification).toContainText(message);
-    }
+Then('I should see a notification {string}', async function (this: VitoraWorld, message: string) {
+  if (this.page) {
+    const notification = this.page.locator('[data-testid="notification"]');
+    await expect(notification).toContainText(message);
   }
-);
+});

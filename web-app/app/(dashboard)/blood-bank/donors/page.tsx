@@ -12,7 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useBloodDonors } from '@/lib/hooks/use-blood-bank';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -51,7 +55,9 @@ export default function BloodDonorsPage() {
       sortFn: (a: BloodDonorListItem, b: BloodDonorListItem) =>
         `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`),
       cell: (item: BloodDonorListItem) => (
-        <p className="font-medium">{item.first_name} {item.last_name}</p>
+        <p className="font-medium">
+          {item.first_name} {item.last_name}
+        </p>
       ),
     },
     {
@@ -59,7 +65,9 @@ export default function BloodDonorsPage() {
       header: 'Blood Group',
       sortable: true,
       cell: (item: BloodDonorListItem) => (
-        <Badge variant="outline" className="font-bold">{item.blood_group}</Badge>
+        <Badge variant="outline" className="font-bold">
+          {item.blood_group}
+        </Badge>
       ),
     },
     {
@@ -75,10 +83,13 @@ export default function BloodDonorsPage() {
       header: 'Eligible',
       sortable: true,
       cell: (item: BloodDonorListItem) => (
-        <Badge className={item.eligible_to_donate
-          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-          : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
-        }>
+        <Badge
+          className={
+            item.eligible_to_donate
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
+          }
+        >
           {item.eligible_to_donate ? 'Yes' : 'No'}
         </Badge>
       ),
@@ -97,14 +108,17 @@ export default function BloodDonorsPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Blood Donors"
           helpContent="Register and manage blood donors. Track eligibility based on donation intervals."
           actions={
             <PermissionGate action="blood_bank.manage">
-              <Button onClick={() => router.push('/blood-bank/donors/new')} disabled={!canCreateRoute('/blood-bank/donors/new')}>
-                <Plus className="h-4 w-4 mr-2" />
+              <Button
+                onClick={() => router.push('/blood-bank/donors/new')}
+                disabled={!canCreateRoute('/blood-bank/donors/new')}
+              >
+                <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Register Donor</span>
                 <span className="sm:hidden">New</span>
               </Button>
@@ -114,8 +128,8 @@ export default function BloodDonorsPage() {
 
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search donors..."
               value={search}

@@ -29,16 +29,24 @@ export default function CDSDashboardPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="p-3 cursor-pointer hover:bg-muted/50" onClick={() => router.push('/cds/rules')}>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Card
+            className="cursor-pointer p-3 hover:bg-muted/50"
+            onClick={() => router.push('/cds/rules')}
+          >
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Shield className="h-3 w-3" />
               Active Rules
             </div>
             <div className="text-2xl font-bold">{dashboard?.active_rules ?? 0}</div>
-            <div className="text-xs text-muted-foreground">{dashboard?.draft_rules ?? 0} drafts</div>
+            <div className="text-xs text-muted-foreground">
+              {dashboard?.draft_rules ?? 0} drafts
+            </div>
           </Card>
-          <Card className="p-3 cursor-pointer hover:bg-muted/50" onClick={() => router.push('/cds/alerts?status=PENDING')}>
+          <Card
+            className="cursor-pointer p-3 hover:bg-muted/50"
+            onClick={() => router.push('/cds/alerts?status=PENDING')}
+          >
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <AlertTriangle className="h-3 w-3" />
               Pending Alerts
@@ -50,7 +58,9 @@ export default function CDSDashboardPage() {
               <Zap className="h-3 w-3" />
               Critical
             </div>
-            <div className="text-2xl font-bold text-destructive">{dashboard?.critical_pending ?? 0}</div>
+            <div className="text-2xl font-bold text-destructive">
+              {dashboard?.critical_pending ?? 0}
+            </div>
           </Card>
           <Card className="p-3">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -59,26 +69,30 @@ export default function CDSDashboardPage() {
             </div>
             <div className="text-2xl font-bold">{dashboard?.alerts_today ?? 0}</div>
             {dashboard?.override_rate != null && (
-              <div className="text-xs text-muted-foreground">{dashboard.override_rate}% override rate</div>
+              <div className="text-xs text-muted-foreground">
+                {dashboard.override_rate}% override rate
+              </div>
             )}
           </Card>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Card className="p-4">
-            <h3 className="font-medium mb-2">CDS Rules</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              Manage clinical decision support rules for drug interactions, vital sign alerts, and critical lab values.
+            <h3 className="mb-2 font-medium">CDS Rules</h3>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Manage clinical decision support rules for drug interactions, vital sign alerts, and
+              critical lab values.
             </p>
             <Button variant="outline" size="sm" onClick={() => router.push('/cds/rules')}>
               View Rules
             </Button>
           </Card>
           <Card className="p-4">
-            <h3 className="font-medium mb-2">CDS Alerts</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              Review and manage triggered clinical alerts. Acknowledge, accept, override, or dismiss alerts.
+            <h3 className="mb-2 font-medium">CDS Alerts</h3>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Review and manage triggered clinical alerts. Acknowledge, accept, override, or dismiss
+              alerts.
             </p>
             <Button variant="outline" size="sm" onClick={() => router.push('/cds/alerts')}>
               View Alerts
@@ -89,7 +103,7 @@ export default function CDSDashboardPage() {
         {/* Alerts by Category */}
         {dashboard?.alerts_by_category && dashboard.alerts_by_category.length > 0 && (
           <Card className="p-4">
-            <h3 className="font-medium mb-3">Pending Alerts by Category</h3>
+            <h3 className="mb-3 font-medium">Pending Alerts by Category</h3>
             <div className="space-y-2">
               {dashboard.alerts_by_category.map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between text-sm">

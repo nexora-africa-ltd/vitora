@@ -4,21 +4,10 @@ import { useState } from 'react';
 import { Bot, Building2, Zap } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { organizationsApi } from '@/lib/api/organizations';
 import type { OrgTokenUsage } from '@/lib/types/organization';
 
@@ -38,10 +27,10 @@ interface RadialGaugeProps {
 }
 
 function getGaugeColor(percent: number): string {
-  if (percent >= 90) return 'hsl(0 72% 51%)';      // red
-  if (percent >= 75) return 'hsl(25 95% 53%)';      // orange
-  if (percent >= 50) return 'hsl(45 93% 47%)';      // amber
-  return 'hsl(142 71% 45%)';                        // green
+  if (percent >= 90) return 'hsl(0 72% 51%)'; // red
+  if (percent >= 75) return 'hsl(25 95% 53%)'; // orange
+  if (percent >= 50) return 'hsl(45 93% 47%)'; // amber
+  return 'hsl(142 71% 45%)'; // green
 }
 
 function RadialGauge({ percent, label, size = 160, unlimited = false }: RadialGaugeProps) {
@@ -132,7 +121,7 @@ function RadialGauge({ percent, label, size = 160, unlimited = false }: RadialGa
         </text>
       </svg>
       {label && (
-        <p className="text-xs font-medium text-muted-foreground text-center truncate max-w-full">
+        <p className="max-w-full truncate text-center text-xs font-medium text-muted-foreground">
           {label}
         </p>
       )}
@@ -167,7 +156,7 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
       <Card>
         <CardHeader>
           <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-4 w-48 mt-1" />
+          <Skeleton className="mt-1 h-4 w-48" />
         </CardHeader>
         <CardContent className="flex justify-center py-6">
           <Skeleton className="h-32 w-32 rounded-full" />
@@ -180,11 +169,12 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
 
   const isUnlimited = data.monthly_ai_tokens === null;
   const hasNoQuota = data.monthly_ai_tokens === 0;
-  const percent = isUnlimited || hasNoQuota
-    ? 0
-    : data.monthly_ai_tokens != null && data.monthly_ai_tokens > 0
-      ? (data.ai_tokens_used / data.monthly_ai_tokens) * 100
-      : 0;
+  const percent =
+    isUnlimited || hasNoQuota
+      ? 0
+      : data.monthly_ai_tokens != null && data.monthly_ai_tokens > 0
+        ? (data.ai_tokens_used / data.monthly_ai_tokens) * 100
+        : 0;
 
   const facilitiesWithUsage = data.facilities.filter((f) => f.tokens_used > 0);
   const displayFacilities =
@@ -199,7 +189,7 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
       <CardHeader className="relative pb-2">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Bot className="h-4 w-4 text-primary" />
               AI Token Usage
             </CardTitle>
@@ -215,13 +205,13 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
             <TooltipProvider delayDuration={300}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 w-fit cursor-default">
+                  <div className="flex w-fit cursor-default items-center gap-2">
                     <Switch
                       checked={facilityView}
                       onCheckedChange={setFacilityView}
                       aria-label="Toggle facility view"
                     />
-                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                    <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
                       {facilityView ? 'By Facility' : 'Organization'}
                     </span>
                   </div>
@@ -239,20 +229,22 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
         {!facilityView ? (
           /* ---- Organization-level gauge ---- */
           <div className="flex flex-col items-center gap-3 py-2">
-            <RadialGauge
-              percent={percent}
-              size={180}
-              unlimited={isUnlimited}
-            />
+            <RadialGauge percent={percent} size={180} unlimited={isUnlimited} />
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-center text-sm">
               <div>
                 <p className="text-xs text-muted-foreground">Used</p>
                 <p className="font-semibold">{formatTokenCount(data.ai_tokens_used)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">{hasNoQuota ? 'Quota' : 'Remaining'}</p>
+                <p className="text-xs text-muted-foreground">
+                  {hasNoQuota ? 'Quota' : 'Remaining'}
+                </p>
                 <p className="font-semibold">
-                  {isUnlimited ? '∞' : hasNoQuota ? '—' : formatTokenCount(data.ai_tokens_remaining ?? 0)}
+                  {isUnlimited
+                    ? '∞'
+                    : hasNoQuota
+                      ? '—'
+                      : formatTokenCount(data.ai_tokens_remaining ?? 0)}
                 </p>
               </div>
             </div>
@@ -266,7 +258,7 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
           /* ---- Per-facility gauges ---- */
           <div className="py-2">
             {displayFacilities.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="py-4 text-center text-sm text-muted-foreground">
                 No facility usage recorded yet.
               </p>
             ) : (
@@ -292,7 +284,7 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
                         size={110}
                         unlimited={isUnlimited}
                       />
-                      <Badge variant="secondary" className="text-[10px] px-1.5">
+                      <Badge variant="secondary" className="px-1.5 text-[10px]">
                         {formatTokenCount(facility.tokens_used)}
                       </Badge>
                     </div>
@@ -301,7 +293,7 @@ export function TokenUsageCard({ organizationId }: TokenUsageCardProps) {
               </div>
             )}
             {data.facilities.length > displayFacilities.length && (
-              <p className="text-[11px] text-muted-foreground text-center mt-3">
+              <p className="mt-3 text-center text-[11px] text-muted-foreground">
                 +{data.facilities.length - displayFacilities.length} more facilities with no usage
               </p>
             )}

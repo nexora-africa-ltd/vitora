@@ -2,12 +2,7 @@
  * Surveillance and IDSR type definitions for Vitora HMIS.
  */
 
-export type IDSRReportStatus =
-  | 'DRAFT'
-  | 'PENDING_REVIEW'
-  | 'APPROVED'
-  | 'SUBMITTED'
-  | 'FAILED';
+export type IDSRReportStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'SUBMITTED' | 'FAILED';
 
 export type NotifiableDiseaseCategory = 'IMMEDIATE' | 'WEEKLY' | 'MONTHLY';
 

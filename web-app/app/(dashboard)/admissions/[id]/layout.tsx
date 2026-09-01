@@ -15,11 +15,7 @@ import { usePatientJourneyStore } from '@/lib/stores/patient-journey';
  * Also syncs the patient journey store from admission status so the sidebar
  * stage dot stays accurate during inpatient workflows.
  */
-export default function AdmissionDetailLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdmissionDetailLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const admissionRouteId = String(params.id);
   const { data: admission } = useAdmission(admissionRouteId);
@@ -37,9 +33,5 @@ export default function AdmissionDetailLayout({
     }
   }, [admission, syncFromAdmission]);
 
-  return (
-    <PatientProvider patientId={admission?.patient ?? null}>
-      {children}
-    </PatientProvider>
-  );
+  return <PatientProvider patientId={admission?.patient ?? null}>{children}</PatientProvider>;
 }

@@ -52,7 +52,8 @@ export const clinicalWorkflowItems: ClinicalWorkflowItem[] = [
     id: 'waiting-for-consult',
     label: 'Waiting for Consult',
     href: '/encounters?tab=queue',
-    description: 'Open the consultation queue to claim patients who are ready for clinician review.',
+    description:
+      'Open the consultation queue to claim patients who are ready for clinician review.',
     icon: ClipboardList,
     moduleKey: 'encounters',
     actionKey: 'encounters.create',
@@ -66,7 +67,8 @@ export const clinicalWorkflowItems: ClinicalWorkflowItem[] = [
     id: 'in-progress',
     label: 'In Progress',
     href: '/encounters?tab=all&status=IN_PROGRESS',
-    description: 'Continue active consultations and keep in-flight reviews moving without hunting by module.',
+    description:
+      'Continue active consultations and keep in-flight reviews moving without hunting by module.',
     icon: Activity,
     moduleKey: 'encounters',
     facilityModule: 'outpatient',
@@ -76,7 +78,8 @@ export const clinicalWorkflowItems: ClinicalWorkflowItem[] = [
     id: 'pending-results',
     label: 'Pending Results',
     href: '/encounters?tab=all&status=RESULTS_PENDING',
-    description: 'Return to encounters waiting on lab or imaging outputs before they can be closed.',
+    description:
+      'Return to encounters waiting on lab or imaging outputs before they can be closed.',
     icon: FlaskConical,
     moduleKey: 'encounters',
     facilityModule: 'outpatient',
@@ -86,7 +89,8 @@ export const clinicalWorkflowItems: ClinicalWorkflowItem[] = [
     id: 'ready-to-close',
     label: 'Ready to Close',
     href: '/encounters?tab=all&status=READY_TO_CLOSE',
-    description: 'Review completed workups and finish encounter closure tasks from a single bucket.',
+    description:
+      'Review completed workups and finish encounter closure tasks from a single bucket.',
     icon: CheckCircle2,
     moduleKey: 'encounters',
     facilityModule: 'outpatient',
@@ -96,7 +100,8 @@ export const clinicalWorkflowItems: ClinicalWorkflowItem[] = [
     id: 'completed-today',
     label: 'Completed Today',
     href: '/encounters?tab=all&status=CLOSED&date=today',
-    description: 'Audit the day’s completed encounters and pick up any follow-up actions before handover.',
+    description:
+      'Audit the day’s completed encounters and pick up any follow-up actions before handover.',
     icon: Clock3,
     moduleKey: 'encounters',
     facilityModule: 'outpatient',
@@ -155,7 +160,10 @@ export function resolveClinicalUtilityItems(ctx: ClinicalNavContext): NavItemTyp
   }
 
   // --- My Prescriptions (Rx I've ordered) ---
-  if (ctx.canAccessModule('pharmacy' as ModuleKey) && ctx.hasModule('pharmacy' as keyof FacilityModules)) {
+  if (
+    ctx.canAccessModule('pharmacy' as ModuleKey) &&
+    ctx.hasModule('pharmacy' as keyof FacilityModules)
+  ) {
     items.push({
       label: 'My Prescriptions',
       href: '/pharmacy/prescriptions',
@@ -166,7 +174,10 @@ export function resolveClinicalUtilityItems(ctx: ClinicalNavContext): NavItemTyp
   }
 
   // --- Referrals ---
-  if (ctx.canAccessModule('encounters' as ModuleKey) && ctx.canPerformAction('encounters.refer' as ActionKey)) {
+  if (
+    ctx.canAccessModule('encounters' as ModuleKey) &&
+    ctx.canPerformAction('encounters.refer' as ActionKey)
+  ) {
     items.push({
       label: 'Referrals',
       href: '/referrals',

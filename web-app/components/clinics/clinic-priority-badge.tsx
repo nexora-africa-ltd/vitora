@@ -66,7 +66,7 @@ export function ClinicPriorityBadge({
   return (
     <Badge
       className={cn(
-        'inline-flex items-center gap-1 font-medium border-0',
+        'inline-flex items-center gap-1 border-0 font-medium',
         priorityColors[clinicalPriority],
         sizeClasses[size]
       )}

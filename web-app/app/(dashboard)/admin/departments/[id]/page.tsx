@@ -36,7 +36,13 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
-import { useDepartment, useUpdateDepartment, useDeleteDepartment, useDepartments, useStaffList } from '@/lib/hooks/use-rbac';
+import {
+  useDepartment,
+  useUpdateDepartment,
+  useDeleteDepartment,
+  useDepartments,
+  useStaffList,
+} from '@/lib/hooks/use-rbac';
 import type { DepartmentType, DepartmentUpdateData } from '@/lib/types/rbac';
 
 const DEPARTMENT_TYPES: { value: DepartmentType; label: string }[] = [
@@ -116,7 +122,7 @@ export default function EditDepartmentPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -155,7 +161,8 @@ export default function EditDepartmentPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Department</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Delete this department permanently. Reassign dependent staff and child departments first to avoid broken references.
+                  Delete this department permanently. Reassign dependent staff and child departments
+                  first to avoid broken references.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -179,7 +186,10 @@ export default function EditDepartmentPage() {
             {department.staff_count} staff assigned
           </p>
         </div>
-        <Badge variant={department.is_active ? 'default' : 'secondary'} className="w-fit shrink-0 self-start sm:self-auto">
+        <Badge
+          variant={department.is_active ? 'default' : 'secondary'}
+          className="w-fit shrink-0 self-start sm:self-auto"
+        >
           {department.is_active ? 'Active' : 'Inactive'}
         </Badge>
       </div>
@@ -188,9 +198,7 @@ export default function EditDepartmentPage() {
         <Card>
           <CardHeader>
             <CardTitle>Department Details</CardTitle>
-            <CardDescription>
-              Update the department information
-            </CardDescription>
+            <CardDescription>Update the department information</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
@@ -238,7 +246,9 @@ export default function EditDepartmentPage() {
                 <Label htmlFor="type">Type *</Label>
                 <Select
                   value={formData.department_type}
-                  onValueChange={(value) => setFormData({ ...formData, department_type: value as DepartmentType })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, department_type: value as DepartmentType })
+                  }
                 >
                   <SelectTrigger id="type">
                     <SelectValue placeholder="Select type" />
@@ -256,7 +266,9 @@ export default function EditDepartmentPage() {
                 <Label htmlFor="parent">Parent Department</Label>
                 <Select
                   value={formData.parent?.toString() || 'none'}
-                  onValueChange={(value) => setFormData({ ...formData, parent: value === 'none' ? null : parseInt(value) })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, parent: value === 'none' ? null : parseInt(value) })
+                  }
                 >
                   <SelectTrigger id="parent">
                     <SelectValue placeholder="Select parent" />
@@ -279,7 +291,9 @@ export default function EditDepartmentPage() {
               <Label htmlFor="head">Department Head</Label>
               <Select
                 value={formData.head?.toString() || 'none'}
-                onValueChange={(value) => setFormData({ ...formData, head: value === 'none' ? null : parseInt(value) })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, head: value === 'none' ? null : parseInt(value) })
+                }
               >
                 <SelectTrigger id="head">
                   <SelectValue placeholder="Select head" />
@@ -300,7 +314,7 @@ export default function EditDepartmentPage() {
                 <Link href="/admin/departments">Cancel</Link>
               </Button>
               <Button type="submit" disabled={updateDepartment.isPending}>
-                {updateDepartment.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {updateDepartment.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Changes
               </Button>
             </div>

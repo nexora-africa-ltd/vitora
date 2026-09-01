@@ -172,11 +172,10 @@ test.describe('Inventory - Filter & Search', () => {
   });
 
   test('should filter batches by status', async ({ page }) => {
-    const statusFilter = page.getByRole('combobox', { name: /status/i }).or(
-      page.getByLabel(/status/i)
-    ).or(
-      page.getByTestId('status-filter')
-    );
+    const statusFilter = page
+      .getByRole('combobox', { name: /status/i })
+      .or(page.getByLabel(/status/i))
+      .or(page.getByTestId('status-filter'));
 
     await expect(statusFilter).toBeVisible();
   });
@@ -202,11 +201,10 @@ test.describe('Inventory - Filter & Search', () => {
   });
 
   test('should filter batches by drug', async ({ page }) => {
-    const drugFilter = page.getByRole('combobox', { name: /drug/i }).or(
-      page.getByLabel(/drug/i)
-    ).or(
-      page.getByTestId('drug-filter')
-    );
+    const drugFilter = page
+      .getByRole('combobox', { name: /drug/i })
+      .or(page.getByLabel(/drug/i))
+      .or(page.getByTestId('drug-filter'));
 
     await expect(drugFilter).toBeVisible();
   });
@@ -233,92 +231,126 @@ test.describe('Inventory - Receive Stock', () => {
   });
 
   test('should have receive stock button', async ({ page }) => {
-    const receiveButton = page.getByRole('button', { name: /receive|add.stock|new.batch/i }).or(
-      page.getByTestId('receive-stock-button')
-    );
+    const receiveButton = page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .or(page.getByTestId('receive-stock-button'));
 
     await expect(receiveButton).toBeVisible();
   });
 
   test('should open receive stock form', async ({ page }) => {
-    const receiveButton = page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first();
+    const receiveButton = page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first();
     await receiveButton.click();
 
     // Should open form/dialog
     await expect(
-      page.getByRole('dialog').or(
-        page.getByRole('form')
-      ).or(
-        page.locator('[data-testid="stock-receive-form"]')
-      )
+      page
+        .getByRole('dialog')
+        .or(page.getByRole('form'))
+        .or(page.locator('[data-testid="stock-receive-form"]'))
     ).toBeVisible();
   });
 
   test('should have drug selection in receive form', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     // Drug selection field
     await expect(page.getByLabel(/drug/i)).toBeVisible();
   });
 
   test('should have batch number field', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     await expect(page.getByLabel(/batch.number/i)).toBeVisible();
   });
 
   test('should have quantity received field', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     await expect(page.getByLabel(/quantity/i)).toBeVisible();
   });
 
   test('should have expiry date field', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     // Expiry date is a date picker - look for the label text and button
     await expect(page.getByText('Expiry Date')).toBeVisible();
   });
 
   test('should have manufacture date field', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     // Manufacture date is a date picker - look for the label text
     await expect(page.getByText('Manufacture Date')).toBeVisible();
   });
 
   test('should have cost price field', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     await expect(page.getByLabel(/cost.price/i)).toBeVisible();
   });
 
   test('should have selling price field', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     await expect(page.getByLabel(/selling.price/i)).toBeVisible();
   });
 
   test('should have supplier field', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     await expect(page.getByLabel(/supplier/i)).toBeVisible();
   });
 
   test('should have purchase order field', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     await expect(page.getByLabel(/purchase.order|po/i)).toBeVisible();
   });
 
   test('should have location/shelf field', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     await expect(page.getByLabel(/location|shelf/i)).toBeVisible();
   });
 
   test('should validate expiry date is in future', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     // Fill required fields first
     await page.getByRole('button', { name: /select.*drug/i }).click();
@@ -334,7 +366,10 @@ test.describe('Inventory - Receive Stock', () => {
   });
 
   test('should receive stock with valid data', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     // Fill form using correct selectors
     await page.getByRole('button', { name: /select.*drug/i }).click();
@@ -354,7 +389,10 @@ test.describe('Inventory - Receive Stock', () => {
   });
 
   test('should prevent duplicate batch numbers for same drug', async ({ page }) => {
-    await page.getByRole('button', { name: /receive|add.stock|new.batch/i }).first().click();
+    await page
+      .getByRole('button', { name: /receive|add.stock|new.batch/i })
+      .first()
+      .click();
 
     // Try to create batch with existing number
     await page.getByRole('button', { name: /select.*drug/i }).click();
@@ -386,9 +424,7 @@ test.describe('Inventory - Batch Details', () => {
 
     // Should show detail view/modal
     await expect(
-      page.getByRole('dialog').or(
-        page.locator('[data-testid="batch-detail"]')
-      )
+      page.getByRole('dialog').or(page.locator('[data-testid="batch-detail"]'))
     ).toBeVisible();
   });
 
@@ -489,9 +525,7 @@ test.describe('Inventory - Stock Adjustment Actions', () => {
 
     // Should open adjustment form
     await expect(
-      page.getByRole('dialog').or(
-        page.locator('[data-testid="adjustment-form"]')
-      )
+      page.getByRole('dialog').or(page.locator('[data-testid="adjustment-form"]'))
     ).toBeVisible();
   });
 });
@@ -521,18 +555,17 @@ test.describe('Inventory - Expiring Stock Warnings', () => {
 
     // Should show "expiring soon" or similar badge
     await expect(
-      expiringRow.getByText(/expiring|37.days/i).or(
-        expiringRow.locator('[data-testid="expiry-warning"]')
-      )
+      expiringRow
+        .getByText(/expiring|37.days/i)
+        .or(expiringRow.locator('[data-testid="expiry-warning"]'))
     ).toBeVisible();
   });
 
   test('should have filter for expiring stock', async ({ page }) => {
-    const expiringSoonFilter = page.getByRole('button', { name: /expiring.soon/i }).or(
-      page.getByRole('checkbox', { name: /expiring/i })
-    ).or(
-      page.getByTestId('expiring-filter')
-    );
+    const expiringSoonFilter = page
+      .getByRole('button', { name: /expiring.soon/i })
+      .or(page.getByRole('checkbox', { name: /expiring/i }))
+      .or(page.getByTestId('expiring-filter'));
 
     await expect(expiringSoonFilter).toBeVisible();
   });
@@ -555,11 +588,10 @@ test.describe('Inventory - Location Tracking', () => {
   });
 
   test('should filter by location', async ({ page }) => {
-    const locationFilter = page.getByRole('combobox', { name: /location/i }).or(
-      page.getByLabel(/location/i)
-    ).or(
-      page.getByTestId('location-filter')
-    );
+    const locationFilter = page
+      .getByRole('combobox', { name: /location/i })
+      .or(page.getByLabel(/location/i))
+      .or(page.getByTestId('location-filter'));
 
     await expect(locationFilter).toBeVisible();
   });

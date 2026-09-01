@@ -24,12 +24,48 @@ interface ChipConfig {
 }
 
 const CHIP_CONFIGS: ChipConfig[] = [
-  { type: '', label: 'All Types', shortLabel: 'All', icon: LayoutList, activeColor: 'bg-primary text-primary-foreground' },
-  { type: 'OPD', label: 'Outpatient', shortLabel: 'OPD', icon: Stethoscope, activeColor: 'bg-blue-600 text-white dark:bg-blue-500' },
-  { type: 'EMERGENCY', label: 'Emergency', shortLabel: 'Emerg', icon: Siren, activeColor: 'bg-red-600 text-white dark:bg-red-500' },
-  { type: 'IPD', label: 'Inpatient', shortLabel: 'IPD', icon: BedDouble, activeColor: 'bg-purple-600 text-white dark:bg-purple-500' },
-  { type: 'ANC', label: 'Antenatal', shortLabel: 'ANC', icon: Baby, activeColor: 'bg-pink-600 text-white dark:bg-pink-500' },
-  { type: 'SCHEDULED_OPD', label: 'Scheduled', shortLabel: 'Sched', icon: CalendarCheck, activeColor: 'bg-teal-600 text-white dark:bg-teal-500' },
+  {
+    type: '',
+    label: 'All Types',
+    shortLabel: 'All',
+    icon: LayoutList,
+    activeColor: 'bg-primary text-primary-foreground',
+  },
+  {
+    type: 'OPD',
+    label: 'Outpatient',
+    shortLabel: 'OPD',
+    icon: Stethoscope,
+    activeColor: 'bg-blue-600 text-white dark:bg-blue-500',
+  },
+  {
+    type: 'EMERGENCY',
+    label: 'Emergency',
+    shortLabel: 'Emerg',
+    icon: Siren,
+    activeColor: 'bg-red-600 text-white dark:bg-red-500',
+  },
+  {
+    type: 'IPD',
+    label: 'Inpatient',
+    shortLabel: 'IPD',
+    icon: BedDouble,
+    activeColor: 'bg-purple-600 text-white dark:bg-purple-500',
+  },
+  {
+    type: 'ANC',
+    label: 'Antenatal',
+    shortLabel: 'ANC',
+    icon: Baby,
+    activeColor: 'bg-pink-600 text-white dark:bg-pink-500',
+  },
+  {
+    type: 'SCHEDULED_OPD',
+    label: 'Scheduled',
+    shortLabel: 'Sched',
+    icon: CalendarCheck,
+    activeColor: 'bg-teal-600 text-white dark:bg-teal-500',
+  },
 ];
 
 interface EncounterTypeChipsProps {
@@ -63,8 +99,8 @@ function ChipWithCount({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors',
-        'border cursor-pointer whitespace-nowrap shrink-0',
+        'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm',
+        'shrink-0 cursor-pointer whitespace-nowrap border',
         isActive
           ? cn(config.activeColor, 'border-transparent shadow-sm')
           : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -80,9 +116,7 @@ function ChipWithCount({
           variant="secondary"
           className={cn(
             'h-5 min-w-[20px] px-1.5 text-xs font-semibold',
-            isActive
-              ? 'bg-white/20 text-inherit'
-              : ''
+            isActive ? 'bg-white/20 text-inherit' : ''
           )}
         >
           {count}
@@ -94,7 +128,7 @@ function ChipWithCount({
 
 export function EncounterTypeChips({ selectedType, onTypeChange }: EncounterTypeChipsProps) {
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+    <div className="scrollbar-none flex items-center gap-2 overflow-x-auto pb-1">
       {CHIP_CONFIGS.map((config) => (
         <ChipWithCount
           key={config.type}

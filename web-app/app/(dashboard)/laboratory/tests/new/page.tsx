@@ -146,7 +146,10 @@ export default function NewTestCatalogPage() {
             : undefined,
       };
       const created = await laboratoryApi.createTest(payload);
-      toast({ title: 'Test created', description: `${created.name} (${created.code}) has been added.` });
+      toast({
+        title: 'Test created',
+        description: `${created.name} (${created.code}) has been added.`,
+      });
       await queryClient.invalidateQueries({ queryKey: ['laboratoryTests'] });
       router.push(`/laboratory/tests/${created.code}`);
     } catch (err) {
@@ -174,7 +177,7 @@ export default function NewTestCatalogPage() {
             <CardHeader>
               <CardTitle className="text-base">Basic Information</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="code"
@@ -297,7 +300,7 @@ export default function NewTestCatalogPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="result_type"
@@ -355,12 +358,12 @@ export default function NewTestCatalogPage() {
 
               {/* Reference Ranges */}
               <div>
-                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-medium">
                   <Ruler className="h-4 w-4" />
                   Reference Ranges
                   <HelpPopover content="Set normal ranges per demographic group. Format: low-high (e.g., 4.5-5.5)." />
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <FormField
                     control={form.control}
                     name="normal_range_male"
@@ -413,7 +416,7 @@ export default function NewTestCatalogPage() {
                 <HelpPopover content="Configure pricing and facility availability. Cost maps to billing invoice items." />
               </div>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               <FormField
                 control={form.control}
                 name="cost"
@@ -507,9 +510,7 @@ export default function NewTestCatalogPage() {
                       <FormControl>
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
-                      <FormLabel className="font-normal">
-                        Requires Pathologist Sign-off
-                      </FormLabel>
+                      <FormLabel className="font-normal">Requires Pathologist Sign-off</FormLabel>
                     </FormItem>
                   )}
                 />
@@ -557,7 +558,7 @@ export default function NewTestCatalogPage() {
               Cancel
             </Button>
             <Button type="submit" disabled={isSaving}>
-              <Save className="h-4 w-4 mr-2" />
+              <Save className="mr-2 h-4 w-4" />
               {isSaving ? 'Creating...' : 'Create Test'}
             </Button>
           </div>

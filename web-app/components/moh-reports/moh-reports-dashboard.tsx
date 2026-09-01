@@ -7,30 +7,37 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  FileText,
-  Plus,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
-  Send,
-  Loader2,
-} from 'lucide-react';
+import { FileText, Plus, CheckCircle2, Clock, AlertTriangle, Send, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import { useMOH705List, useMOH711List, useMOH717List, useGenerateMOH705, useGenerateMOH711, useGenerateMOH717 } from '@/lib/hooks/use-moh-reports';
-import type { MOHReportStatus, MOH705ReportListItem, MOH711ReportListItem, MOH717ReportListItem } from '@/lib/types/moh-reporting';
+import {
+  useMOH705List,
+  useMOH711List,
+  useMOH717List,
+  useGenerateMOH705,
+  useGenerateMOH711,
+  useGenerateMOH717,
+} from '@/lib/hooks/use-moh-reports';
+import type {
+  MOHReportStatus,
+  MOH705ReportListItem,
+  MOH711ReportListItem,
+  MOH717ReportListItem,
+} from '@/lib/types/moh-reporting';
 import { useToast } from '@/lib/hooks/use-toast';
 
 // ---------------------------------------------------------------------------
 // Status badge
 // ---------------------------------------------------------------------------
 
-const statusConfig: Record<MOHReportStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+const statusConfig: Record<
+  MOHReportStatus,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
+> = {
   DRAFT: { label: 'Draft', variant: 'secondary' },
   APPROVED: { label: 'Approved', variant: 'default' },
   SUBMITTED: { label: 'Submitted', variant: 'default' },
@@ -96,8 +103,11 @@ export function MOHReportsDashboard() {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-        <Card className="cursor-pointer hover:border-primary/30 transition-colors" onClick={() => setTab('705')}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <Card
+          className="cursor-pointer transition-colors hover:border-primary/30"
+          onClick={() => setTab('705')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">MOH 705</CardTitle>
           </CardHeader>
@@ -106,7 +116,10 @@ export function MOHReportsDashboard() {
             <p className="text-xs text-muted-foreground">Outpatient Morbidity Reports</p>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:border-primary/30 transition-colors" onClick={() => setTab('711')}>
+        <Card
+          className="cursor-pointer transition-colors hover:border-primary/30"
+          onClick={() => setTab('711')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">MOH 711</CardTitle>
           </CardHeader>
@@ -115,7 +128,10 @@ export function MOHReportsDashboard() {
             <p className="text-xs text-muted-foreground">Integrated RH/HIV/Malaria Reports</p>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:border-primary/30 transition-colors" onClick={() => setTab('717')}>
+        <Card
+          className="cursor-pointer transition-colors hover:border-primary/30"
+          onClick={() => setTab('717')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">MOH 717</CardTitle>
           </CardHeader>
@@ -146,15 +162,11 @@ export function MOHReportsDashboard() {
               <span className="hidden sm:inline">MOH 717</span>
             </TabsTrigger>
           </TabsList>
-          <Button
-            size="sm"
-            onClick={() => handleGenerate(tab)}
-            disabled={isGenerating}
-          >
+          <Button size="sm" onClick={() => handleGenerate(tab)} disabled={isGenerating}>
             {isGenerating ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
             )}
             Generate MOH {tab}
           </Button>
@@ -170,21 +182,58 @@ export function MOHReportsDashboard() {
               keyExtractor={(item) => item.id}
               onRowClick={(item) => router.push(`/reports/moh/705/${item.id}`)}
               columns={[
-                { key: 'period_label', header: 'Period', sortable: true, cell: (r) => r.period_label },
-                { key: 'status', header: 'Status', sortable: true, cell: (r) => (
-                  <div className="flex items-center gap-1.5">
-                    <StatusIcon status={r.status} />
-                    <StatusBadge status={r.status} />
-                  </div>
-                )},
-                { key: 'total_visits', header: 'Visits', sortable: true, sortType: 'number', cell: (r) => r.total_visits.toLocaleString() },
-                { key: 'total_under_5', header: '<5 yrs', sortable: true, sortType: 'number', cell: (r) => r.total_under_5.toLocaleString(), hideOnMobile: true },
-                { key: 'total_5_and_above', header: '≥5 yrs', sortable: true, sortType: 'number', cell: (r) => r.total_5_and_above.toLocaleString(), hideOnMobile: true },
-                { key: 'disease_row_count', header: 'Diseases', sortable: true, sortType: 'number', cell: (r) => r.disease_row_count, hideOnMobile: true },
+                {
+                  key: 'period_label',
+                  header: 'Period',
+                  sortable: true,
+                  cell: (r) => r.period_label,
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  sortable: true,
+                  cell: (r) => (
+                    <div className="flex items-center gap-1.5">
+                      <StatusIcon status={r.status} />
+                      <StatusBadge status={r.status} />
+                    </div>
+                  ),
+                },
+                {
+                  key: 'total_visits',
+                  header: 'Visits',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (r) => r.total_visits.toLocaleString(),
+                },
+                {
+                  key: 'total_under_5',
+                  header: '<5 yrs',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (r) => r.total_under_5.toLocaleString(),
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'total_5_and_above',
+                  header: '≥5 yrs',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (r) => r.total_5_and_above.toLocaleString(),
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'disease_row_count',
+                  header: 'Diseases',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (r) => r.disease_row_count,
+                  hideOnMobile: true,
+                },
               ]}
               mobileCard={(r: MOH705ReportListItem) => (
                 <Card className="p-3">
-                  <div className="flex justify-between items-start">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">{r.period_label}</p>
                       <p className="text-xs text-muted-foreground">{r.total_visits} visits</p>
@@ -207,23 +256,55 @@ export function MOHReportsDashboard() {
               keyExtractor={(item) => item.id}
               onRowClick={(item) => router.push(`/reports/moh/711/${item.id}`)}
               columns={[
-                { key: 'period_label', header: 'Period', sortable: true, cell: (r) => r.period_label },
-                { key: 'status', header: 'Status', sortable: true, cell: (r) => (
-                  <div className="flex items-center gap-1.5">
-                    <StatusIcon status={r.status} />
-                    <StatusBadge status={r.status} />
-                  </div>
-                )},
-                { key: 'deliveries_total', header: 'Deliveries', sortable: true, sortType: 'number', cell: (r) => r.deliveries_total.toLocaleString() },
-                { key: 'malaria_cases_under_5', header: 'Malaria <5', sortable: true, sortType: 'number', cell: (r) => r.malaria_cases_under_5, hideOnMobile: true },
-                { key: 'malaria_cases_5_and_above', header: 'Malaria ≥5', sortable: true, sortType: 'number', cell: (r) => r.malaria_cases_5_and_above, hideOnMobile: true },
+                {
+                  key: 'period_label',
+                  header: 'Period',
+                  sortable: true,
+                  cell: (r) => r.period_label,
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  sortable: true,
+                  cell: (r) => (
+                    <div className="flex items-center gap-1.5">
+                      <StatusIcon status={r.status} />
+                      <StatusBadge status={r.status} />
+                    </div>
+                  ),
+                },
+                {
+                  key: 'deliveries_total',
+                  header: 'Deliveries',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (r) => r.deliveries_total.toLocaleString(),
+                },
+                {
+                  key: 'malaria_cases_under_5',
+                  header: 'Malaria <5',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (r) => r.malaria_cases_under_5,
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'malaria_cases_5_and_above',
+                  header: 'Malaria ≥5',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (r) => r.malaria_cases_5_and_above,
+                  hideOnMobile: true,
+                },
               ]}
               mobileCard={(r: MOH711ReportListItem) => (
                 <Card className="p-3">
-                  <div className="flex justify-between items-start">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">{r.period_label}</p>
-                      <p className="text-xs text-muted-foreground">{r.deliveries_total} deliveries</p>
+                      <p className="text-xs text-muted-foreground">
+                        {r.deliveries_total} deliveries
+                      </p>
                     </div>
                     <StatusBadge status={r.status} />
                   </div>
@@ -243,20 +324,50 @@ export function MOHReportsDashboard() {
               keyExtractor={(item) => item.id}
               onRowClick={(item) => router.push(`/reports/moh/717/${item.id}`)}
               columns={[
-                { key: 'period_label', header: 'Period', sortable: true, cell: (r) => r.period_label },
-                { key: 'status', header: 'Status', sortable: true, cell: (r) => (
-                  <div className="flex items-center gap-1.5">
-                    <StatusIcon status={r.status} />
-                    <StatusBadge status={r.status} />
-                  </div>
-                )},
-                { key: 'opd_total', header: 'OPD', sortable: true, sortType: 'number', cell: (r) => r.opd_total.toLocaleString() },
-                { key: 'admissions_total', header: 'Admissions', sortable: true, sortType: 'number', cell: (r) => r.admissions_total.toLocaleString(), hideOnMobile: true },
-                { key: 'emergency_visits', header: 'Emergency', sortable: true, sortType: 'number', cell: (r) => r.emergency_visits.toLocaleString(), hideOnMobile: true },
+                {
+                  key: 'period_label',
+                  header: 'Period',
+                  sortable: true,
+                  cell: (r) => r.period_label,
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  sortable: true,
+                  cell: (r) => (
+                    <div className="flex items-center gap-1.5">
+                      <StatusIcon status={r.status} />
+                      <StatusBadge status={r.status} />
+                    </div>
+                  ),
+                },
+                {
+                  key: 'opd_total',
+                  header: 'OPD',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (r) => r.opd_total.toLocaleString(),
+                },
+                {
+                  key: 'admissions_total',
+                  header: 'Admissions',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (r) => r.admissions_total.toLocaleString(),
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'emergency_visits',
+                  header: 'Emergency',
+                  sortable: true,
+                  sortType: 'number',
+                  cell: (r) => r.emergency_visits.toLocaleString(),
+                  hideOnMobile: true,
+                },
               ]}
               mobileCard={(r: MOH717ReportListItem) => (
                 <Card className="p-3">
-                  <div className="flex justify-between items-start">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">{r.period_label}</p>
                       <p className="text-xs text-muted-foreground">{r.opd_total} OPD visits</p>

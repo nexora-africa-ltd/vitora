@@ -51,17 +51,19 @@ export default function TriageSettingsPage() {
   const canEdit = hasPermission('triage.change_triageVitalthreshold');
 
   // Fetch thresholds
-  const {
-    data: thresholds,
-    isLoading,
-    refetch,
-  } = useTriageVitalThresholds();
+  const { data: thresholds, isLoading, refetch } = useTriageVitalThresholds();
 
   // Triage room routing settings — wait for facility context
   const hasFacility = !!facility;
-  const { data: triageSettings, isLoading: isSettingsLoading, isError: isSettingsError } = useTriageSettings({ enabled: hasFacility });
+  const {
+    data: triageSettings,
+    isLoading: isSettingsLoading,
+    isError: isSettingsError,
+  } = useTriageSettings({ enabled: hasFacility });
   const { mutateAsync: updateTriageSettings } = useUpdateTriageSettings();
-  const { data: availableRooms } = useAvailableTriageRooms({ enabled: !!triageSettings?.auto_route_to_room });
+  const { data: availableRooms } = useAvailableTriageRooms({
+    enabled: !!triageSettings?.auto_route_to_room,
+  });
   const { data: allDepartments } = useDepartments({ is_active: true, page_size: 100 });
 
   // Mutations
@@ -76,7 +78,7 @@ export default function TriageSettingsPage() {
     async (threshold: Partial<TriageVitalThreshold> & { id: number }) => {
       try {
         // We need to fetch the full threshold and merge
-        const fullThreshold = thresholds?.find(t => t.id === threshold.id);
+        const fullThreshold = thresholds?.find((t) => t.id === threshold.id);
         if (!fullThreshold) {
           throw new Error('Threshold not found');
         }
@@ -242,8 +244,8 @@ export default function TriageSettingsPage() {
                         Auto-route to triage rooms
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Automatically assign patients to a triage room when they check in.
-                        Rooms must have available capacity and an active staff member.
+                        Automatically assign patients to a triage room when they check in. Rooms
+                        must have available capacity and an active staff member.
                       </p>
                     </div>
                     <Switch
@@ -275,11 +277,10 @@ export default function TriageSettingsPage() {
 
                   {/* Triage department selector */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">
-                      Triage Department
-                    </Label>
+                    <Label className="text-sm font-medium">Triage Department</Label>
                     <p className="text-xs text-muted-foreground">
-                      Only rooms (PLACE resources) assigned to this department are considered for triage routing.
+                      Only rooms (PLACE resources) assigned to this department are considered for
+                      triage routing.
                     </p>
                     <Select
                       value={triageSettings.triage_department?.toString() ?? 'none'}
@@ -291,9 +292,10 @@ export default function TriageSettingsPage() {
                           });
                           toast({
                             title: 'Department updated',
-                            description: value === 'none'
-                              ? 'Triage department cleared.'
-                              : 'Triage department updated. Rooms in this department will be used for routing.',
+                            description:
+                              value === 'none'
+                                ? 'Triage department cleared.'
+                                : 'Triage department updated. Rooms in this department will be used for routing.',
                           });
                         } catch {
                           toast({
@@ -320,42 +322,58 @@ export default function TriageSettingsPage() {
                   </div>
 
                   {/* Room overview (when auto-routing is on) */}
-                  {triageSettings.auto_route_to_room && availableRooms && availableRooms.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Active Triage Rooms</Label>
-                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        {availableRooms.map((room) => (
-                          <div
-                            key={room.id}
-                            className={`flex items-center justify-between rounded-lg border p-3 ${
-                              room.is_available
-                                ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
-                                : 'border-muted'
-                            }`}
-                          >
-                            <div>
-                              <p className="text-sm font-medium">{room.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {room.current_load}/{room.capacity} patients
-                              </p>
+                  {triageSettings.auto_route_to_room &&
+                    availableRooms &&
+                    availableRooms.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Active Triage Rooms</Label>
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {availableRooms.map((room) => (
+                            <div
+                              key={room.id}
+                              className={`flex items-center justify-between rounded-lg border p-3 ${
+                                room.is_available
+                                  ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
+                                  : 'border-muted'
+                              }`}
+                            >
+                              <div>
+                                <p className="text-sm font-medium">{room.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {room.current_load}/{room.capacity} patients
+                                </p>
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                {room.has_active_staff ? (
+                                  <Badge variant="default" className="h-5 text-[10px]">
+                                    Staff active
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="h-5 text-[10px] text-muted-foreground"
+                                  >
+                                    No staff
+                                  </Badge>
+                                )}
+                                {room.is_available ? (
+                                  <Badge variant="default" className="h-5 bg-green-600 text-[10px]">
+                                    Available
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="h-5 text-[10px] text-muted-foreground"
+                                  >
+                                    Unavailable
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
-                              {room.has_active_staff ? (
-                                <Badge variant="default" className="text-[10px] h-5">Staff active</Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px] h-5 text-muted-foreground">No staff</Badge>
-                              )}
-                              {room.is_available ? (
-                                <Badge variant="default" className="text-[10px] h-5 bg-green-600">Available</Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px] h-5 text-muted-foreground">Unavailable</Badge>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">

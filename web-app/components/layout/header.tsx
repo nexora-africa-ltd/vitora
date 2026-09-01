@@ -15,19 +15,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatedThemeToggle } from '@/components/ui/animated-theme-toggle';
 import StatusIndicator from '@/components/ui/status-indicator';
 import { useAuth } from '@/lib/auth/context';
 import { useLogout } from '@/lib/auth/hooks';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { useSyncStatus, formatLastSync } from '@/lib/context/sync-context';
-import { usePageRefresh, formatLastFetch, formatLastFetchShort } from '@/lib/context/page-refresh-context';
+import {
+  usePageRefresh,
+  formatLastFetch,
+  formatLastFetchShort,
+} from '@/lib/context/page-refresh-context';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { FacilitySwitcher } from '@/components/layout/facility-switcher';
 import { OrgSwitcher } from '@/components/layout/org-switcher';
@@ -48,7 +47,8 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const { user } = useAuth();
   const logout = useLogout();
   const { isOnline } = useNetworkStatus();
-  const { lastSyncTime, isSyncing, pendingChanges, lastError, triggerSync, powerSyncHealth } = useSyncStatus();
+  const { lastSyncTime, isSyncing, pendingChanges, lastError, triggerSync, powerSyncHealth } =
+    useSyncStatus();
   const { lastFetchTime, isRefreshing, refresh } = usePageRefresh();
   const [isClearingCache, setIsClearingCache] = useState(false);
   const { navigationMode, setNavigationMode, isClinicalNavigationEligible } = useNavigationMode();
@@ -77,10 +77,10 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
     : 'U';
 
   return (
-    <header className="sticky top-0 z-30 w-full h-16 bg-background/95 backdrop-blur border-b">
+    <header className="sticky top-0 z-30 h-16 w-full border-b bg-background/95 backdrop-blur">
       <div className="flex h-full items-center justify-between px-4 md:px-6">
         {/* Left side */}
-        <div className="flex items-center gap-2 lg:gap-4 min-w-0">
+        <div className="flex min-w-0 items-center gap-2 lg:gap-4">
           {/* Mobile menu button - hidden at xl when sidebar always visible */}
           <Button
             variant="ghost"
@@ -107,11 +107,11 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                   onClick={handleSyncClick}
                   disabled={isSyncing || !isOnline}
                   className={cn(
-                    'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-all',
+                    'flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium transition-all',
                     'hover:ring-2 hover:ring-offset-1 focus:outline-none focus:ring-2 focus:ring-offset-1',
                     isOnline
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 hover:ring-green-300 dark:hover:ring-green-700'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 cursor-not-allowed',
+                      ? 'bg-green-100 text-green-700 hover:ring-green-300 dark:bg-green-900/40 dark:text-green-400 dark:hover:ring-green-700'
+                      : 'cursor-not-allowed bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
                     isSyncing && 'opacity-80'
                   )}
                 >
@@ -125,12 +125,16 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                   </span>
                   {/* Full text on xl+ screens */}
                   <span className="hidden xl:inline">
-                    {isSyncing ? 'Syncing...' : isOnline ? formatLastFetch(lastFetchTime) : 'Offline'}
+                    {isSyncing
+                      ? 'Syncing...'
+                      : isOnline
+                        ? formatLastFetch(lastFetchTime)
+                        : 'Offline'}
                   </span>
                   {pendingChanges > 0 && (
                     <Badge
                       variant="secondary"
-                      className="h-4 px-1 text-[10px] bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                      className="h-4 bg-yellow-200 px-1 text-[10px] text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
                     >
                       {pendingChanges}
                     </Badge>
@@ -139,58 +143,49 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
               </TooltipTrigger>
               <TooltipContent
                 side="bottom"
-                className="max-w-xs bg-popover text-popover-foreground border shadow-md"
+                className="max-w-xs border bg-popover text-popover-foreground shadow-md"
               >
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <StatusIndicator
-                      state={isOnline ? 'active' : 'down'}
-                      size="sm"
-                    />
-                    <span className="font-medium">
-                      {isOnline ? 'Connected' : 'No Connection'}
-                    </span>
+                    <StatusIndicator state={isOnline ? 'active' : 'down'} size="sm" />
+                    <span className="font-medium">{isOnline ? 'Connected' : 'No Connection'}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {isOnline
-                      ? 'Changes sync automatically'
-                      : 'Changes will sync when online'}
+                    {isOnline ? 'Changes sync automatically' : 'Changes will sync when online'}
                   </p>
-                  <div className="pt-1.5 border-t border-border text-xs">
+                  <div className="border-t border-border pt-1.5 text-xs">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Last fetch:</span>
                       <span className="font-medium">{formatLastFetch(lastFetchTime)}</span>
                     </div>
-                    <div className="flex justify-between mt-1">
+                    <div className="mt-1 flex justify-between">
                       <span className="text-muted-foreground">Last sync:</span>
                       <span className="font-medium">{formatLastSync(lastSyncTime)}</span>
                     </div>
                     {pendingChanges > 0 && (
-                      <div className="flex justify-between mt-1">
+                      <div className="mt-1 flex justify-between">
                         <span className="text-muted-foreground">Pending:</span>
                         <span className="font-medium text-yellow-600 dark:text-yellow-400">
                           {pendingChanges} change{pendingChanges !== 1 ? 's' : ''}
                         </span>
                       </div>
                     )}
-                    {lastError && (
-                      <div className="mt-1 text-destructive">
-                        Error: {lastError}
-                      </div>
-                    )}
+                    {lastError && <div className="mt-1 text-destructive">Error: {lastError}</div>}
                   </div>
                   {/* PowerSync health */}
-                  <div className="pt-1.5 border-t border-border text-xs">
+                  <div className="border-t border-border pt-1.5 text-xs">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Offline sync:</span>
-                      <span className={cn(
-                        'font-medium',
-                        !powerSyncHealth.configured
-                          ? 'text-muted-foreground'
-                          : powerSyncHealth.connected
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-red-600 dark:text-red-400'
-                      )}>
+                      <span
+                        className={cn(
+                          'font-medium',
+                          !powerSyncHealth.configured
+                            ? 'text-muted-foreground'
+                            : powerSyncHealth.connected
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-red-600 dark:text-red-400'
+                        )}
+                      >
                         {!powerSyncHealth.configured
                           ? 'Not configured'
                           : powerSyncHealth.connected
@@ -199,29 +194,29 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                       </span>
                     </div>
                     {powerSyncHealth.configured && (
-                      <div className="flex justify-between mt-1">
+                      <div className="mt-1 flex justify-between">
                         <span className="text-muted-foreground">Data synced:</span>
-                        <span className={cn(
-                          'font-medium',
-                          powerSyncHealth.hasSynced
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-yellow-600 dark:text-yellow-400'
-                        )}>
+                        <span
+                          className={cn(
+                            'font-medium',
+                            powerSyncHealth.hasSynced
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-yellow-600 dark:text-yellow-400'
+                          )}
+                        >
                           {powerSyncHealth.hasSynced ? 'Yes' : 'No — using API'}
                         </span>
                       </div>
                     )}
                   </div>
                   {isOnline && !isSyncing && (
-                    <div className="pt-1.5 border-t border-border">
-                      <p className="text-xs text-primary font-medium">
-                        Click to sync now
-                      </p>
+                    <div className="border-t border-border pt-1.5">
+                      <p className="text-xs font-medium text-primary">Click to sync now</p>
                     </div>
                   )}
                   {isSyncing && (
-                    <div className="pt-1.5 border-t border-border">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <div className="border-t border-border pt-1.5">
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
                         <RefreshCw className="h-3 w-3 animate-spin" />
                         Syncing in progress...
                       </p>
@@ -241,16 +236,14 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                   size="icon"
                   onClick={handleRefreshClick}
                   disabled={isRefreshing}
-                  className="hidden sm:flex h-9 w-9"
+                  className="hidden h-9 w-9 sm:flex"
                   aria-label="Refresh page data"
                 >
                   <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p className="text-xs">
-                  {isRefreshing ? 'Refreshing...' : 'Refresh page data'}
-                </p>
+                <p className="text-xs">{isRefreshing ? 'Refreshing...' : 'Refresh page data'}</p>
                 {lastFetchTime && !isRefreshing && (
                   <p className="text-xs text-muted-foreground">
                     Last: {formatLastFetch(lastFetchTime)}
@@ -319,7 +312,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     <TooltipProvider delayDuration={300}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="flex items-center gap-2 w-full cursor-default">
+                          <div className="flex w-full cursor-default items-center gap-2">
                             <Stethoscope className="mr-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                             <Switch
                               checked={isClinicalMode}

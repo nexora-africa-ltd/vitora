@@ -32,17 +32,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -94,21 +85,21 @@ function StatCard({
   const cardContent = (
     <Card variant={variant} className={href ? 'cursor-pointer' : ''}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <div className="text-muted-foreground">{icon}</div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <Skeleton className="h-7 sm:h-8 w-20 sm:w-24" />
+          <Skeleton className="h-7 w-20 sm:h-8 sm:w-24" />
         ) : (
           <>
-            <div className="text-xl sm:text-2xl font-bold truncate">{value}</div>
+            <div className="truncate text-xl font-bold sm:text-2xl">{value}</div>
             {trend && (
-              <div className={`flex items-center gap-1 text-xs mt-1 ${
-                trend.isPositive ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <div
+                className={`mt-1 flex items-center gap-1 text-xs ${
+                  trend.isPositive ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
                 {trend.isPositive ? (
                   <ArrowUpRight className="h-3 w-3" />
                 ) : (
@@ -166,7 +157,7 @@ function ClaimsStatusCard({
             <SHALogo size="md" />
             <CardTitle className="text-base">SHA Claims Status</CardTitle>
           </div>
-                    <TooltipProvider>
+          <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
@@ -184,33 +175,33 @@ function ClaimsStatusCard({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
-            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-amber-600 shrink-0" />
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-4">
+          <div className="flex items-center gap-2 rounded-lg bg-amber-50 p-2 dark:bg-amber-950/30 sm:gap-3 sm:p-3">
+            <Clock className="h-6 w-6 shrink-0 text-amber-600 sm:h-8 sm:w-8" />
             <div className="min-w-0">
-              <p className="text-lg sm:text-2xl font-bold">{isLoading ? '-' : pending}</p>
-              <p className="text-xs text-muted-foreground truncate">Pending</p>
+              <p className="text-lg font-bold sm:text-2xl">{isLoading ? '-' : pending}</p>
+              <p className="truncate text-xs text-muted-foreground">Pending</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
-            <AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 shrink-0" />
+          <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-2 dark:bg-blue-950/30 sm:gap-3 sm:p-3">
+            <AlertCircle className="h-6 w-6 shrink-0 text-blue-600 sm:h-8 sm:w-8" />
             <div className="min-w-0">
-              <p className="text-lg sm:text-2xl font-bold">{isLoading ? '-' : submitted}</p>
-              <p className="text-xs text-muted-foreground truncate">Submitted</p>
+              <p className="text-lg font-bold sm:text-2xl">{isLoading ? '-' : submitted}</p>
+              <p className="truncate text-xs text-muted-foreground">Submitted</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
-            <CheckCircle2 className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 shrink-0" />
+          <div className="flex items-center gap-2 rounded-lg bg-green-50 p-2 dark:bg-green-950/30 sm:gap-3 sm:p-3">
+            <CheckCircle2 className="h-6 w-6 shrink-0 text-green-600 sm:h-8 sm:w-8" />
             <div className="min-w-0">
-              <p className="text-lg sm:text-2xl font-bold">{isLoading ? '-' : approved}</p>
-              <p className="text-xs text-muted-foreground truncate">Approved</p>
+              <p className="text-lg font-bold sm:text-2xl">{isLoading ? '-' : approved}</p>
+              <p className="truncate text-xs text-muted-foreground">Approved</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-red-50 dark:bg-red-950/30">
-            <XCircle className="h-6 w-6 sm:h-8 sm:w-8 text-red-600 shrink-0" />
+          <div className="flex items-center gap-2 rounded-lg bg-red-50 p-2 dark:bg-red-950/30 sm:gap-3 sm:p-3">
+            <XCircle className="h-6 w-6 shrink-0 text-red-600 sm:h-8 sm:w-8" />
             <div className="min-w-0">
-              <p className="text-lg sm:text-2xl font-bold">{isLoading ? '-' : rejected}</p>
-              <p className="text-xs text-muted-foreground truncate">Rejected</p>
+              <p className="text-lg font-bold sm:text-2xl">{isLoading ? '-' : rejected}</p>
+              <p className="truncate text-xs text-muted-foreground">Rejected</p>
             </div>
           </div>
         </div>
@@ -252,7 +243,7 @@ function PayerMixCard({
             <Wallet className="h-5 w-5 text-muted-foreground" />
             <CardTitle className="text-base">Payer Mix</CardTitle>
           </div>
-                    <TooltipProvider>
+          <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
@@ -277,16 +268,18 @@ function PayerMixCard({
             ))}
           </div>
         ) : !Array.isArray(data) || data.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
+          <p className="py-4 text-center text-sm text-muted-foreground">
             No payment data for this period
           </p>
         ) : (
           <div className="space-y-3">
             {data.map((item) => (
               <div key={item.method} className="space-y-1">
-                <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
-                  <span className="truncate">{paymentMethodLabels[item.method] || item.method}</span>
-                  <span className="font-medium whitespace-nowrap">
+                <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+                  <span className="truncate">
+                    {paymentMethodLabels[item.method] || item.method}
+                  </span>
+                  <span className="whitespace-nowrap font-medium">
                     {formatCurrency(parseFloat(item.amount))} ({item.percentage}%)
                   </span>
                 </div>
@@ -323,7 +316,7 @@ function OutstandingReceivablesCard({
             <Receipt className="h-5 w-5 text-muted-foreground" />
             <CardTitle className="text-base">Outstanding Receivables</CardTitle>
           </div>
-                    <TooltipProvider>
+          <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
@@ -348,54 +341,56 @@ function OutstandingReceivablesCard({
             ))}
           </div>
         ) : data.length === 0 ? (
-          <div className="flex items-center gap-2 text-green-600 py-4">
+          <div className="flex items-center gap-2 py-4 text-green-600">
             <CheckCircle2 className="h-5 w-5" />
             <span className="text-sm">No outstanding receivables</span>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="-mx-4 overflow-x-auto sm:mx-0">
             <Table className="min-w-[400px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="whitespace-nowrap">Invoice</TableHead>
                   <TableHead className="whitespace-nowrap">Patient</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Balance</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Overdue</TableHead>
+                  <TableHead className="whitespace-nowrap text-right">Balance</TableHead>
+                  <TableHead className="whitespace-nowrap text-right">Overdue</TableHead>
                 </TableRow>
               </TableHeader>
-            <TableBody>
-              {data.slice(0, 5).map((item) => (
-                <TableRow key={item.invoice_number}>
-                  <TableCell className="font-mono text-xs">
-                    <Link
-                      href={`/transactions/invoices?search=${item.invoice_number}`}
-                      className="hover:underline text-blue-600"
-                    >
-                      {item.invoice_number}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-sm truncate max-w-[120px]">{item.patient_name}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(parseFloat(item.balance_due))}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Badge
-                      variant="outline"
-                      className={
-                        item.days_overdue > 30
-                          ? 'bg-red-50 text-red-700 border-red-200'
-                          : item.days_overdue > 7
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : 'bg-blue-50 text-blue-700 border-blue-200'
-                      }
-                    >
-                      {item.days_overdue}d
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              <TableBody>
+                {data.slice(0, 5).map((item) => (
+                  <TableRow key={item.invoice_number}>
+                    <TableCell className="font-mono text-xs">
+                      <Link
+                        href={`/transactions/invoices?search=${item.invoice_number}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {item.invoice_number}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="max-w-[120px] truncate text-sm">
+                      {item.patient_name}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(parseFloat(item.balance_due))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge
+                        variant="outline"
+                        className={
+                          item.days_overdue > 30
+                            ? 'border-red-200 bg-red-50 text-red-700'
+                            : item.days_overdue > 7
+                              ? 'border-amber-200 bg-amber-50 text-amber-700'
+                              : 'border-blue-200 bg-blue-50 text-blue-700'
+                        }
+                      >
+                        {item.days_overdue}d
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </CardContent>
@@ -427,7 +422,9 @@ export default function FinanceOverviewPage() {
   const claims = claimsData?.results || [];
   const pendingClaims = claims.filter((c) => c.status === 'draft' || c.status === 'pending').length;
   const submittedClaims = claims.filter((c) => c.status === 'submitted').length;
-  const approvedClaims = claims.filter((c) => c.status === 'approved' || c.status === 'paid').length;
+  const approvedClaims = claims.filter(
+    (c) => c.status === 'approved' || c.status === 'paid'
+  ).length;
   const rejectedClaims = claims.filter((c) => c.status === 'rejected').length;
 
   // Invoice stats
@@ -477,14 +474,14 @@ export default function FinanceOverviewPage() {
   const todayTransactions = dailyCollection?.invoice_count || 0;
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6">
       {/* Header with Action Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <PageHeader title="Finance Dashboard" />
           <Popover>
             <PopoverTrigger asChild>
-              <button className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-full hover:bg-muted">
+              <button className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                 <HelpCircle className="h-4 w-4" />
                 <span className="sr-only">About this dashboard</span>
               </button>
@@ -496,7 +493,7 @@ export default function FinanceOverviewPage() {
         </div>
         <ReceivePaymentModal
           trigger={
-            <Button size="lg" className="gap-2 w-full sm:w-auto">
+            <Button size="lg" className="w-full gap-2 sm:w-auto">
               <Banknote className="h-5 w-5" />
               <span className="sm:inline">Receive Payment</span>
             </Button>
@@ -505,7 +502,7 @@ export default function FinanceOverviewPage() {
       </div>
 
       {/* Quick Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         <StatCard
           title="Today's Collections"
           value={formatCurrency(todayCollection)}
@@ -558,7 +555,7 @@ export default function FinanceOverviewPage() {
       />
 
       {/* Two Column Layout: Payer Mix + Outstanding Receivables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <PayerMixCard data={payerMix} isLoading={payerMixLoading} />
         <OutstandingReceivablesCard
           data={outstandingBalances.slice(0, 5)}
@@ -572,25 +569,25 @@ export default function FinanceOverviewPage() {
           <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-4">
             <Button variant="outline" asChild className="justify-start text-xs sm:text-sm">
               <Link href="/transactions/invoices">
-                <FileText className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                <FileText className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
                 <span className="truncate">Invoices</span>
               </Link>
             </Button>
             <Button variant="outline" asChild className="justify-start text-xs sm:text-sm">
               <Link href="/transactions/payments">
-                <CreditCard className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                <CreditCard className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
                 <span className="truncate">Payments</span>
               </Link>
             </Button>
             <Button variant="outline" asChild className="justify-start text-xs sm:text-sm">
               <Link href="/transactions/reports">
-                <BarChart3 className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                <BarChart3 className="mr-1 h-4 w-4 shrink-0 sm:mr-2" />
                 <span className="truncate">Reports</span>
               </Link>
             </Button>
             <Button variant="outline" asChild className="justify-start text-xs sm:text-sm">
               <Link href="/insurance">
-                <SHALogo size="sm" className="mr-1 sm:mr-2 shrink-0" />
+                <SHALogo size="sm" className="mr-1 shrink-0 sm:mr-2" />
                 <span className="truncate">Insurance</span>
               </Link>
             </Button>

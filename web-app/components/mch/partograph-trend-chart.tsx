@@ -29,12 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { cn } from '@/lib/utils';
 import type { LabourPartographObservation } from '@/lib/types/mch';
@@ -257,7 +252,7 @@ function observationsToChartData(observations: LabourPartographObservation[]): C
 function computeWHOLines(data: ChartDataPoint[]): ChartDataPoint[] {
   // Find the first data point with dilation >= 4 cm
   const firstActiveIdx = data.findIndex(
-    (d) => d.cervical_dilation != null && d.cervical_dilation >= 4,
+    (d) => d.cervical_dilation != null && d.cervical_dilation >= 4
   );
   if (firstActiveIdx === -1) return data;
 
@@ -306,14 +301,14 @@ function SingleMetricChart({
   if (config.chartType === 'bar') {
     return (
       <Card className="overflow-hidden">
-        <CardHeader className="pb-2 pt-3 px-4">
+        <CardHeader className="px-4 pb-2 pt-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Icon className="h-4 w-4" style={{ color: config.color }} />
               <CardTitle className="text-sm font-medium">{config.label}</CardTitle>
             </div>
             {lastValue != null && (
-              <Badge variant="outline" className="text-xs font-mono">
+              <Badge variant="outline" className="font-mono text-xs">
                 {lastValue} {config.unit}
               </Badge>
             )}
@@ -324,8 +319,20 @@ function SingleMetricChart({
             <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" opacity={0.3} />
               <XAxis dataKey="time" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis domain={config.yDomain} tick={{ fontSize: 10 }} width={30} tickLine={false} axisLine={false} />
-              <ReferenceArea y1={normalLow} y2={normalHigh} fill={config.color} fillOpacity={0.06} strokeOpacity={0} />
+              <YAxis
+                domain={config.yDomain}
+                tick={{ fontSize: 10 }}
+                width={30}
+                tickLine={false}
+                axisLine={false}
+              />
+              <ReferenceArea
+                y1={normalLow}
+                y2={normalHigh}
+                fill={config.color}
+                fillOpacity={0.06}
+                strokeOpacity={0}
+              />
               <RechartsTooltip
                 cursor={false}
                 content={({ active, payload }) => {
@@ -339,13 +346,20 @@ function SingleMetricChart({
                         {config.label}: {d.value} {config.unit}
                       </p>
                       {p?.timestamp && (
-                        <p className="text-xs text-muted-foreground">{new Date(p.timestamp).toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(p.timestamp).toLocaleString()}
+                        </p>
                       )}
                     </div>
                   );
                 }}
               />
-              <Bar dataKey={config.key} fill={config.color} radius={[4, 4, 0, 0]} fillOpacity={0.8} />
+              <Bar
+                dataKey={config.key}
+                fill={config.color}
+                radius={[4, 4, 0, 0]}
+                fillOpacity={0.8}
+              />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -355,14 +369,14 @@ function SingleMetricChart({
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="pb-2 pt-3 px-4">
+      <CardHeader className="px-4 pb-2 pt-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon className="h-4 w-4" style={{ color: config.color }} />
             <CardTitle className="text-sm font-medium">{config.label}</CardTitle>
           </div>
           {lastValue != null && (
-            <Badge variant="outline" className="text-xs font-mono">
+            <Badge variant="outline" className="font-mono text-xs">
               {lastValue} {config.unit}
             </Badge>
           )}
@@ -373,10 +387,32 @@ function SingleMetricChart({
           <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" opacity={0.3} />
             <XAxis dataKey="time" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-            <YAxis domain={config.yDomain} tick={{ fontSize: 10 }} width={30} tickLine={false} axisLine={false} />
-            <ReferenceArea y1={normalLow} y2={normalHigh} fill={config.color} fillOpacity={0.06} strokeOpacity={0} />
-            <ReferenceLine y={normalLow} stroke={config.color} strokeDasharray="3 3" opacity={0.3} />
-            <ReferenceLine y={normalHigh} stroke={config.color} strokeDasharray="3 3" opacity={0.3} />
+            <YAxis
+              domain={config.yDomain}
+              tick={{ fontSize: 10 }}
+              width={30}
+              tickLine={false}
+              axisLine={false}
+            />
+            <ReferenceArea
+              y1={normalLow}
+              y2={normalHigh}
+              fill={config.color}
+              fillOpacity={0.06}
+              strokeOpacity={0}
+            />
+            <ReferenceLine
+              y={normalLow}
+              stroke={config.color}
+              strokeDasharray="3 3"
+              opacity={0.3}
+            />
+            <ReferenceLine
+              y={normalHigh}
+              stroke={config.color}
+              strokeDasharray="3 3"
+              opacity={0.3}
+            />
             <RechartsTooltip
               cursor={false}
               content={({ active, payload }) => {
@@ -390,7 +426,9 @@ function SingleMetricChart({
                       {config.label}: {d.value} {config.unit}
                     </p>
                     {p?.timestamp && (
-                      <p className="text-xs text-muted-foreground">{new Date(p.timestamp).toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(p.timestamp).toLocaleString()}
+                      </p>
                     )}
                   </div>
                 );
@@ -460,7 +498,7 @@ function CombinedChart({
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
+      <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
         No partograph observations recorded
       </div>
     );
@@ -480,15 +518,20 @@ function CombinedChart({
                 if (!active || !payload?.length) return null;
                 const p = payload[0]?.payload as { timestamp?: string } | undefined;
                 return (
-                  <div className="rounded-lg border bg-popover px-3 py-2 text-sm shadow-md space-y-1">
+                  <div className="space-y-1 rounded-lg border bg-popover px-3 py-2 text-sm shadow-md">
                     {p?.timestamp && (
-                      <p className="text-xs text-muted-foreground">{new Date(p.timestamp).toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(p.timestamp).toLocaleString()}
+                      </p>
                     )}
                     {payload.map((entry) => {
                       const config = lineMetrics.find((c) => c.key === entry.dataKey);
                       if (!config || entry.value == null) return null;
                       return (
-                        <p key={entry.dataKey} className={cn('text-xs font-medium', METRIC_COLOR_CLASSES[config.key])}>
+                        <p
+                          key={entry.dataKey}
+                          className={cn('text-xs font-medium', METRIC_COLOR_CLASSES[config.key])}
+                        >
                           {config.shortLabel}: {entry.value} {config.unit}
                         </p>
                       );
@@ -533,15 +576,20 @@ function CombinedChart({
                 if (!active || !payload?.length) return null;
                 const p = payload[0]?.payload as { timestamp?: string } | undefined;
                 return (
-                  <div className="rounded-lg border bg-popover px-3 py-2 text-sm shadow-md space-y-1">
+                  <div className="space-y-1 rounded-lg border bg-popover px-3 py-2 text-sm shadow-md">
                     {p?.timestamp && (
-                      <p className="text-xs text-muted-foreground">{new Date(p.timestamp).toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(p.timestamp).toLocaleString()}
+                      </p>
                     )}
                     {payload.map((entry) => {
                       const config = barMetrics.find((c) => c.key === entry.dataKey);
                       if (!config || entry.value == null) return null;
                       return (
-                        <p key={entry.dataKey} className={cn('text-xs font-medium', METRIC_COLOR_CLASSES[config.key])}>
+                        <p
+                          key={entry.dataKey}
+                          className={cn('text-xs font-medium', METRIC_COLOR_CLASSES[config.key])}
+                        >
                           {config.shortLabel}: {entry.value} {config.unit}
                         </p>
                       );
@@ -592,10 +640,7 @@ export function PartographTrendChart({
 }: PartographTrendChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
-  const chartData = useMemo(
-    () => observationsToChartData(observations),
-    [observations],
-  );
+  const chartData = useMemo(() => observationsToChartData(observations), [observations]);
 
   const availableMetrics = useMemo(() => {
     const withData = new Set<PartographMetricKey>();
@@ -623,9 +668,9 @@ export function PartographTrendChart({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-[180px] rounded-lg bg-muted animate-pulse" />
+              <div key={i} className="h-[180px] animate-pulse rounded-lg bg-muted" />
             ))}
           </div>
         </CardContent>
@@ -643,7 +688,7 @@ export function PartographTrendChart({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+          <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
             No observations recorded yet. Record an observation to see charts.
           </div>
         </CardContent>
@@ -675,20 +720,22 @@ export function PartographTrendChart({
                     ) : (
                       <Grid3X3 className="h-3.5 w-3.5" />
                     )}
-                    <span className="hidden sm:inline text-xs">
+                    <span className="hidden text-xs sm:inline">
                       {viewMode === 'grid' ? 'Combined' : 'Grid'}
                     </span>
                     <ChevronDown className="h-3 w-3 opacity-50" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Switch to {viewMode === 'grid' ? 'combined overlay' : 'individual grid'} view</p>
+                  <p>
+                    Switch to {viewMode === 'grid' ? 'combined overlay' : 'individual grid'} view
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="mt-1 text-xs text-muted-foreground">
           {observations.length} observation{observations.length !== 1 ? 's' : ''} recorded
         </p>
       </CardHeader>
@@ -697,7 +744,7 @@ export function PartographTrendChart({
         {viewMode === 'combined' ? (
           <CombinedChart data={chartData} metrics={availableMetrics} />
         ) : (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {availableMetrics.map((config) => (
               <SingleMetricChart key={config.key} data={chartData} config={config} />
             ))}

@@ -9,14 +9,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import {
-  FileSpreadsheet,
-  Plus,
-  AlertTriangle,
-  Clock,
-  CheckCircle2,
-  Ban,
-} from 'lucide-react';
+import { FileSpreadsheet, Plus, AlertTriangle, Clock, CheckCircle2, Ban } from 'lucide-react';
 
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -89,24 +82,48 @@ export default function SupplierBillsPage() {
           helpContent="Track supplier invoices (accounts payable). Record payments, view aging reports, and verify 3-way matching between PO, GRN, and supplier invoice."
           actions={
             canCreate ? (
-            <Button onClick={() => router.push('/transactions/supplier-bills/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">New Bill</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+              <Button onClick={() => router.push('/transactions/supplier-bills/new')}>
+                <Plus className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">New Bill</span>
+                <span className="sm:hidden">New</span>
+              </Button>
             ) : undefined
           }
         />
 
         {/* Aging Summary Cards */}
         {agingData && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <AgingCard label="Current" amount={agingData.current} icon={<CheckCircle2 className="h-4 w-4 text-green-500" />} />
-            <AgingCard label="1-30 days" amount={agingData.days_30} icon={<Clock className="h-4 w-4 text-blue-500" />} />
-            <AgingCard label="31-60 days" amount={agingData.days_60} icon={<Clock className="h-4 w-4 text-yellow-500" />} />
-            <AgingCard label="61-90 days" amount={agingData.days_90} icon={<AlertTriangle className="h-4 w-4 text-orange-500" />} />
-            <AgingCard label="90+ days" amount={agingData.over_90} icon={<Ban className="h-4 w-4 text-red-500" />} />
-            <AgingCard label="Total Outstanding" amount={agingData.total} icon={<FileSpreadsheet className="h-4 w-4 text-primary" />} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <AgingCard
+              label="Current"
+              amount={agingData.current}
+              icon={<CheckCircle2 className="h-4 w-4 text-green-500" />}
+            />
+            <AgingCard
+              label="1-30 days"
+              amount={agingData.days_30}
+              icon={<Clock className="h-4 w-4 text-blue-500" />}
+            />
+            <AgingCard
+              label="31-60 days"
+              amount={agingData.days_60}
+              icon={<Clock className="h-4 w-4 text-yellow-500" />}
+            />
+            <AgingCard
+              label="61-90 days"
+              amount={agingData.days_90}
+              icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
+            />
+            <AgingCard
+              label="90+ days"
+              amount={agingData.over_90}
+              icon={<Ban className="h-4 w-4 text-red-500" />}
+            />
+            <AgingCard
+              label="Total Outstanding"
+              amount={agingData.total}
+              icon={<FileSpreadsheet className="h-4 w-4 text-primary" />}
+            />
           </div>
         )}
 
@@ -115,10 +132,19 @@ export default function SupplierBillsPage() {
           <Input
             placeholder="Search bills..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="w-full sm:w-64"
           />
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setStatusFilter(v);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -146,9 +172,7 @@ export default function SupplierBillsPage() {
               key: 'bill_number',
               header: 'Bill #',
               sortable: true,
-              cell: (bill) => (
-                <span className="font-medium">{bill.bill_number}</span>
-              ),
+              cell: (bill) => <span className="font-medium">{bill.bill_number}</span>,
             },
             {
               key: 'supplier_name',
@@ -169,7 +193,7 @@ export default function SupplierBillsPage() {
               header: 'Due',
               sortable: true,
               sortType: 'date',
-              cell: (bill) => bill.due_date ? new Date(bill.due_date).toLocaleDateString() : '—',
+              cell: (bill) => (bill.due_date ? new Date(bill.due_date).toLocaleDateString() : '—'),
               hideOnMobile: true,
             },
             {
@@ -192,7 +216,7 @@ export default function SupplierBillsPage() {
               header: 'Status',
               sortable: true,
               cell: (bill) => (
-                <Badge className={`${STATUS_COLORS[bill.status] || ''} shrink-0 w-fit`}>
+                <Badge className={`${STATUS_COLORS[bill.status] || ''} w-fit shrink-0`}>
                   {bill.status}
                 </Badge>
               ),
@@ -202,7 +226,10 @@ export default function SupplierBillsPage() {
               header: 'Match',
               sortable: true,
               cell: (bill) => (
-                <Badge variant="outline" className={`${MATCH_COLORS[bill.match_status] || ''} shrink-0 w-fit`}>
+                <Badge
+                  variant="outline"
+                  className={`${MATCH_COLORS[bill.match_status] || ''} w-fit shrink-0`}
+                >
                   {bill.match_status}
                 </Badge>
               ),
@@ -210,14 +237,14 @@ export default function SupplierBillsPage() {
             },
           ]}
           mobileCard={(bill) => (
-            <div className="flex justify-between items-start gap-2">
+            <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="font-medium truncate">{bill.bill_number}</p>
-                <p className="text-sm text-muted-foreground truncate">{bill.supplier_name}</p>
-                <p className="text-sm mt-1">{formatCurrency(parseFloat(bill.total_amount))}</p>
+                <p className="truncate font-medium">{bill.bill_number}</p>
+                <p className="truncate text-sm text-muted-foreground">{bill.supplier_name}</p>
+                <p className="mt-1 text-sm">{formatCurrency(parseFloat(bill.total_amount))}</p>
               </div>
               <div className="flex flex-col items-end gap-1">
-                <Badge className={`${STATUS_COLORS[bill.status] || ''} shrink-0 w-fit`}>
+                <Badge className={`${STATUS_COLORS[bill.status] || ''} w-fit shrink-0`}>
                   {bill.status}
                 </Badge>
                 {bill.balance !== '0.00' && (
@@ -234,7 +261,7 @@ export default function SupplierBillsPage() {
 
         {/* Pagination */}
         {totalCount > 20 && (
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               {totalCount} bill{totalCount !== 1 ? 's' : ''} total
             </p>
@@ -263,7 +290,15 @@ export default function SupplierBillsPage() {
   );
 }
 
-function AgingCard({ label, amount, icon }: { label: string; amount: string; icon: React.ReactNode }) {
+function AgingCard({
+  label,
+  amount,
+  icon,
+}: {
+  label: string;
+  amount: string;
+  icon: React.ReactNode;
+}) {
   return (
     <Card className="relative overflow-hidden">
       <div
@@ -271,7 +306,7 @@ function AgingCard({ label, amount, icon }: { label: string; amount: string; ico
         aria-hidden="true"
       />
       <CardContent className="relative p-3">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="mb-1 flex items-center gap-2">
           {icon}
           <span className="text-xs text-muted-foreground">{label}</span>
         </div>

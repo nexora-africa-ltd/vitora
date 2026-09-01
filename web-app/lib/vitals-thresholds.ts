@@ -26,10 +26,7 @@ export const WARNING_THRESHOLDS: Record<string, [number | null, number | null]> 
 export type VitalStatus = 'normal' | 'warning' | 'critical';
 
 /** Evaluate whether a value is normal, warning, or critical for a given field. */
-export function getVitalStatus(
-  field: string,
-  value: number | null | undefined
-): VitalStatus {
+export function getVitalStatus(field: string, value: number | null | undefined): VitalStatus {
   if (value == null) return 'normal';
 
   const critical = CRITICAL_THRESHOLDS[field];
@@ -50,10 +47,7 @@ export function getVitalStatus(
 }
 
 /** Human-readable alert message, or null if normal. */
-export function getVitalAlert(
-  field: string,
-  value: number | null | undefined
-): string | null {
+export function getVitalAlert(field: string, value: number | null | undefined): string | null {
   if (value == null) return null;
 
   const status = getVitalStatus(field, value);
@@ -74,32 +68,30 @@ export function getVitalAlert(
 
   const [low, high] = thresholds;
   if (low != null && value < low) {
-    return `${label} ${value} is ${status === 'critical' ? 'critically' : ''} low (threshold <${low})`.replace('  ', ' ');
+    return `${label} ${value} is ${status === 'critical' ? 'critically' : ''} low (threshold <${low})`.replace(
+      '  ',
+      ' '
+    );
   }
   if (high != null && value > high) {
-    return `${label} ${value} is ${status === 'critical' ? 'critically' : ''} high (threshold >${high})`.replace('  ', ' ');
+    return `${label} ${value} is ${status === 'critical' ? 'critically' : ''} high (threshold >${high})`.replace(
+      '  ',
+      ' '
+    );
   }
   return null;
 }
 
 /** Tailwind classes for a table cell based on vital status. */
-export function vitalCellClass(
-  field: string,
-  value: number | null | undefined
-): string {
+export function vitalCellClass(field: string, value: number | null | undefined): string {
   const status = getVitalStatus(field, value);
-  if (status === 'critical')
-    return 'text-red-600 font-semibold bg-red-50 dark:bg-red-950/30';
-  if (status === 'warning')
-    return 'text-amber-600 font-medium bg-amber-50 dark:bg-amber-950/30';
+  if (status === 'critical') return 'text-red-600 font-semibold bg-red-50 dark:bg-red-950/30';
+  if (status === 'warning') return 'text-amber-600 font-medium bg-amber-50 dark:bg-amber-950/30';
   return '';
 }
 
 /** Tailwind border/ring classes for a form input based on vital status. */
-export function vitalInputClass(
-  field: string,
-  value: number | null | undefined
-): string {
+export function vitalInputClass(field: string, value: number | null | undefined): string {
   const status = getVitalStatus(field, value);
   if (status === 'critical')
     return 'border-red-500 ring-1 ring-red-500/40 focus-visible:ring-red-500';

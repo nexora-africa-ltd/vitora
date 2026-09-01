@@ -114,12 +114,15 @@ export default function LaboratoryTestsPage() {
           actions={
             canManage ? (
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => router.push('/laboratory/tests/loinc-mapping')}>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/laboratory/tests/loinc-mapping')}
+                >
                   <Link2 className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">LOINC Mapping</span>
                 </Button>
                 <Button onClick={() => router.push('/laboratory/tests/new')}>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Add Test</span>
                   <span className="sm:hidden">Add</span>
                 </Button>
@@ -140,7 +143,7 @@ export default function LaboratoryTestsPage() {
                 <FlaskConical className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Total Tests</p>
               </div>
-              <p className="text-xl sm:text-2xl font-bold mt-1">{totalTests}</p>
+              <p className="mt-1 text-xl font-bold sm:text-2xl">{totalTests}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
@@ -153,7 +156,7 @@ export default function LaboratoryTestsPage() {
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">In-House</p>
               </div>
-              <p className="text-xl sm:text-2xl font-bold mt-1">{inHouseCount}</p>
+              <p className="mt-1 text-xl font-bold sm:text-2xl">{inHouseCount}</p>
             </CardContent>
           </Card>
         </div>
@@ -168,7 +171,7 @@ export default function LaboratoryTestsPage() {
           <CardContent className="space-y-4">
             {/* Filters */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="space-y-2 flex-1 max-w-md">
+              <div className="max-w-md flex-1 space-y-2">
                 <Label htmlFor="lab-tests-search">Search</Label>
                 <Input
                   id="lab-tests-search"
@@ -177,7 +180,7 @@ export default function LaboratoryTestsPage() {
                   placeholder="Search by name, code, or LOINC..."
                 />
               </div>
-              <div className="space-y-2 w-full sm:w-48">
+              <div className="w-full space-y-2 sm:w-48">
                 <Label htmlFor="category-filter">Category</Label>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger id="category-filter">
@@ -204,19 +207,16 @@ export default function LaboratoryTestsPage() {
               <div className="text-sm text-destructive">{errorMessage}</div>
             ) : catalogEmpty ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FlaskConical className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-1">No tests in catalog</h3>
-                <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+                <FlaskConical className="mb-4 h-12 w-12 text-muted-foreground" />
+                <h3 className="mb-1 text-lg font-medium">No tests in catalog</h3>
+                <p className="mb-4 max-w-sm text-sm text-muted-foreground">
                   {canManage
                     ? 'Seed the catalog with 16 essential Kenya laboratory tests (CBC, HIV, Malaria, Urinalysis, etc.) to get started.'
                     : 'No tests have been configured yet. Ask an administrator to seed the test catalog.'}
                 </p>
                 {canManage && (
-                  <Button
-                    onClick={() => seedMutation.mutate()}
-                    disabled={seedMutation.isPending}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
+                  <Button onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending}>
+                    <Download className="mr-2 h-4 w-4" />
                     {seedMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
                   </Button>
                 )}
@@ -238,7 +238,9 @@ export default function LaboratoryTestsPage() {
                       <div>
                         <span className="font-medium">{t.name}</span>
                         {t.requires_fasting && (
-                          <Badge variant="outline" className="ml-2 text-xs">Fasting</Badge>
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            Fasting
+                          </Badge>
                         )}
                       </div>
                     ),
@@ -275,9 +277,7 @@ export default function LaboratoryTestsPage() {
                     sortable: true,
                     sortType: 'number' as const,
                     hideOnMobile: true,
-                    cell: (t) => (
-                      <div className="text-sm">{formatCurrency(t.cost)}</div>
-                    ),
+                    cell: (t) => <div className="text-sm">{formatCurrency(t.cost)}</div>,
                   },
                   {
                     key: 'turnaround_hours',
@@ -293,7 +293,7 @@ export default function LaboratoryTestsPage() {
                   },
                 ]}
                 mobileCard={(t) => (
-                  <Card className="p-3 space-y-1.5">
+                  <Card className="space-y-1.5 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="font-medium">{t.name}</div>
@@ -308,7 +308,11 @@ export default function LaboratoryTestsPage() {
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>{t.specimen_type}</span>
                       <span>{formatCurrency(t.cost)}</span>
-                      {t.requires_fasting && <Badge variant="outline" className="text-xs">Fasting</Badge>}
+                      {t.requires_fasting && (
+                        <Badge variant="outline" className="text-xs">
+                          Fasting
+                        </Badge>
+                      )}
                     </div>
                   </Card>
                 )}

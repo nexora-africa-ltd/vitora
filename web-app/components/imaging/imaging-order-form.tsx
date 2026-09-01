@@ -28,13 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from '@/lib/hooks';
@@ -125,9 +119,7 @@ export function ImagingOrderForm({
 
     // Check for duplicates
     const exists = items.some(
-      (item) =>
-        item.procedure.id === selectedProcedure.id &&
-        item.laterality === currentLaterality
+      (item) => item.procedure.id === selectedProcedure.id && item.laterality === currentLaterality
     );
 
     if (exists) {
@@ -236,10 +228,10 @@ export function ImagingOrderForm({
           <CardContent className="px-4 sm:px-6">
             <div className="flex items-center gap-3 sm:gap-4">
               <div className="min-w-0">
-                <p className="font-medium text-sm sm:text-base truncate">{patientName || `Patient #${patientId}`}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Encounter #{encounterId}
+                <p className="truncate text-sm font-medium sm:text-base">
+                  {patientName || `Patient #${patientId}`}
                 </p>
+                <p className="text-xs text-muted-foreground sm:text-sm">Encounter #{encounterId}</p>
               </div>
             </div>
           </CardContent>
@@ -250,7 +242,7 @@ export function ImagingOrderForm({
           <CardHeader className="pb-2 sm:pb-3">
             <CardTitle className="text-base sm:text-lg">Order Details</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+          <CardContent className="space-y-3 px-4 sm:space-y-4 sm:px-6">
             <FormField
               control={form.control}
               name="request_mode"
@@ -379,12 +371,12 @@ export function ImagingOrderForm({
               Add the imaging procedures to be performed
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6">
+          <CardContent className="space-y-3 px-3 sm:space-y-4 sm:px-6">
             {/* Add Procedure Form */}
-            <div className="grid gap-3 sm:gap-4 p-3 sm:p-4 border rounded-lg bg-muted/30">
-              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 rounded-lg border bg-muted/30 p-3 sm:gap-4 sm:p-4">
+              <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
                 <div className="space-y-1.5 sm:space-y-2">
-                  <label className="text-xs sm:text-sm font-medium">Procedure *</label>
+                  <label className="text-xs font-medium sm:text-sm">Procedure *</label>
                   <ProcedureSelector
                     value={selectedProcedure || undefined}
                     onSelect={setSelectedProcedure}
@@ -392,7 +384,7 @@ export function ImagingOrderForm({
                   />
                 </div>
                 <div className="space-y-1.5 sm:space-y-2">
-                  <label className="text-xs sm:text-sm font-medium">Laterality</label>
+                  <label className="text-xs font-medium sm:text-sm">Laterality</label>
                   <Select
                     value={currentLaterality}
                     onValueChange={(v) => setCurrentLaterality(v as Laterality)}
@@ -411,7 +403,7 @@ export function ImagingOrderForm({
                 </div>
               </div>
               <div className="space-y-1.5 sm:space-y-2">
-                <label className="text-xs sm:text-sm font-medium">Specific Instructions</label>
+                <label className="text-xs font-medium sm:text-sm">Specific Instructions</label>
                 <Input
                   value={currentInstructions}
                   onChange={(e) => setCurrentInstructions(e.target.value)}
@@ -420,7 +412,7 @@ export function ImagingOrderForm({
                 />
               </div>
               <Button type="button" onClick={addItem} className="w-full sm:w-fit" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 Save and add another
               </Button>
             </div>
@@ -429,20 +421,22 @@ export function ImagingOrderForm({
             {items.length > 0 && (
               <div className="space-y-2">
                 <Separator />
-                <h4 className="font-medium text-xs sm:text-sm pt-2">
+                <h4 className="pt-2 text-xs font-medium sm:text-sm">
                   Selected Procedures ({items.length})
                 </h4>
                 <div className="space-y-2">
                   {items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex flex-col gap-2 p-2.5 sm:p-3 border rounded-lg"
+                      className="flex flex-col gap-2 rounded-lg border p-2.5 sm:p-3"
                     >
-                      <div className="flex items-start gap-2 sm:gap-3 min-w-0">
+                      <div className="flex min-w-0 items-start gap-2 sm:gap-3">
                         <ModalityBadge modality={item.procedure.modality} />
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm sm:text-base truncate">{item.procedure.name}</p>
-                          <div className="flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground">
+                          <p className="truncate text-sm font-medium sm:text-base">
+                            {item.procedure.name}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground sm:gap-x-2 sm:text-sm">
                             <span>{item.procedure.code}</span>
                             {item.laterality !== 'NA' && (
                               <>
@@ -453,7 +447,7 @@ export function ImagingOrderForm({
                             {item.specific_instructions && (
                               <>
                                 <span>•</span>
-                                <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                                <span className="max-w-[150px] truncate sm:max-w-[200px]">
                                   {item.specific_instructions}
                                 </span>
                               </>
@@ -461,9 +455,9 @@ export function ImagingOrderForm({
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between gap-2 pt-1.5 border-t">
+                      <div className="flex items-center justify-between gap-2 border-t pt-1.5">
                         <div>
-                          <p className="font-medium text-sm sm:text-base">
+                          <p className="text-sm font-medium sm:text-base">
                             KES {item.procedure.cost.toLocaleString()}
                           </p>
                         </div>
@@ -482,9 +476,9 @@ export function ImagingOrderForm({
                 </div>
 
                 {/* Total */}
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="font-medium text-sm">Total Cost</span>
-                  <span className="text-base sm:text-lg font-bold">
+                <div className="flex items-center justify-between border-t pt-2">
+                  <span className="text-sm font-medium">Total Cost</span>
+                  <span className="text-base font-bold sm:text-lg">
                     KES {totalCost.toLocaleString()}
                   </span>
                 </div>
@@ -492,7 +486,7 @@ export function ImagingOrderForm({
             )}
 
             {items.length === 0 && (
-              <div className="flex items-center gap-2 p-3 sm:p-4 text-xs sm:text-sm text-muted-foreground border rounded-lg border-dashed">
+              <div className="flex items-center gap-2 rounded-lg border border-dashed p-3 text-xs text-muted-foreground sm:p-4 sm:text-sm">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 No procedures added yet. Use the form above to add imaging procedures.
               </div>
@@ -505,9 +499,15 @@ export function ImagingOrderForm({
           <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting || items.length === 0} className="w-full sm:w-auto">
-            {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {requestMode === 'EXTERNAL_REQUEST' ? 'Create External Request' : 'Create & Submit Order'}
+          <Button
+            type="submit"
+            disabled={isSubmitting || items.length === 0}
+            className="w-full sm:w-auto"
+          >
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {requestMode === 'EXTERNAL_REQUEST'
+              ? 'Create External Request'
+              : 'Create & Submit Order'}
           </Button>
         </div>
       </form>

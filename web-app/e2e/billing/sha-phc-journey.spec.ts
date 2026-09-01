@@ -23,9 +23,24 @@ const PATIENT_NAME = 'Jane Wanjiku Kamau';
 
 /** SHA-12 is "Basic Outpatient Services" — the only prefix ConsentPanel shows. */
 const INTERVENTIONS = {
-  consultation: { code: 'SHA-12-001', name: 'General consultation', price: 500, mech: 'FEE FOR SERVICE' },
-  lab:          { code: 'SHA-12-002', name: 'Rapid diagnostic test (Malaria)', price: 800, mech: 'FEE FOR SERVICE' },
-  pharmacy:     { code: 'SHA-12-003', name: 'Antimalarial (Artemether-Lumefantrine)', price: 600, mech: 'FEE FOR SERVICE' },
+  consultation: {
+    code: 'SHA-12-001',
+    name: 'General consultation',
+    price: 500,
+    mech: 'FEE FOR SERVICE',
+  },
+  lab: {
+    code: 'SHA-12-002',
+    name: 'Rapid diagnostic test (Malaria)',
+    price: 800,
+    mech: 'FEE FOR SERVICE',
+  },
+  pharmacy: {
+    code: 'SHA-12-003',
+    name: 'Antimalarial (Artemether-Lumefantrine)',
+    price: 600,
+    mech: 'FEE FOR SERVICE',
+  },
 } as const;
 
 // =============================================================================
@@ -37,14 +52,30 @@ function buildAuthResponse() {
     access: 'mock-access-token',
     refresh: 'mock-refresh-token',
     user: {
-      id: 1, username: TEST_USER.username, email: 'test@vitora.health',
-      first_name: 'Test', last_name: 'User',
-      is_staff: true, is_superuser: true, role: 'ADMIN', permissions: [],
-      national_id: '12345678', license_number: 'LIC-001',
+      id: 1,
+      username: TEST_USER.username,
+      email: 'test@vitora.health',
+      first_name: 'Test',
+      last_name: 'User',
+      is_staff: true,
+      is_superuser: true,
+      role: 'ADMIN',
+      permissions: [],
+      national_id: '12345678',
+      license_number: 'LIC-001',
       facility: {
-        id: FACILITY_ID, mfl_code: '12345', name: 'Kasarani Dispensary',
-        level: '2', sha_contracted: true,
-        modules: { billing: true, outpatient: true, pharmacy: true, laboratory: true, triage: true },
+        id: FACILITY_ID,
+        mfl_code: '12345',
+        name: 'Kasarani Dispensary',
+        level: '2',
+        sha_contracted: true,
+        modules: {
+          billing: true,
+          outpatient: true,
+          pharmacy: true,
+          laboratory: true,
+          triage: true,
+        },
       },
     },
   };
@@ -52,57 +83,111 @@ function buildAuthResponse() {
 
 function buildFacilityResponse() {
   return {
-    id: FACILITY_ID, organization: 1, organization_name: 'Kasarani Health Services',
-    mfl_code: '12345', name: 'Kasarani Dispensary', level: '2',
-    ownership: 'GOK', county: 1, county_name: 'Nairobi',
-    sub_county: 1, sub_county_name: 'Westlands',
-    is_headquarters: true, branch_code: '', sha_contracted: true,
-    operating_mode: 'FULL_HMIS', is_active: true,
-    ward: null, ward_name: null, logo: null, effective_logo_url: null,
-    sha_contract_expiry: '2027-12-31', sha_facility_code: 'FAC-12345', dhis2_org_unit: '',
-    modules: {}, enabled_module_names: [],
-    dha_license_status: 'ACTIVE', dha_license_number: 'LIC-001',
-    dha_license_expiry: '2027-12-31', dha_operational_status: 'OPERATIONAL',
-    dha_sha_contract_status: 'ACTIVE', dha_facility_type: 'DISPENSARY',
-    dha_keph_level: '2', dha_ownership: 'PUBLIC', dha_regulatory_body: 'KMPDC',
+    id: FACILITY_ID,
+    organization: 1,
+    organization_name: 'Kasarani Health Services',
+    mfl_code: '12345',
+    name: 'Kasarani Dispensary',
+    level: '2',
+    ownership: 'GOK',
+    county: 1,
+    county_name: 'Nairobi',
+    sub_county: 1,
+    sub_county_name: 'Westlands',
+    is_headquarters: true,
+    branch_code: '',
+    sha_contracted: true,
+    operating_mode: 'FULL_HMIS',
+    is_active: true,
+    ward: null,
+    ward_name: null,
+    logo: null,
+    effective_logo_url: null,
+    sha_contract_expiry: '2027-12-31',
+    sha_facility_code: 'FAC-12345',
+    dhis2_org_unit: '',
+    modules: {},
+    enabled_module_names: [],
+    dha_license_status: 'ACTIVE',
+    dha_license_number: 'LIC-001',
+    dha_license_expiry: '2027-12-31',
+    dha_operational_status: 'OPERATIONAL',
+    dha_sha_contract_status: 'ACTIVE',
+    dha_facility_type: 'DISPENSARY',
+    dha_keph_level: '2',
+    dha_ownership: 'PUBLIC',
+    dha_regulatory_body: 'KMPDC',
     has_billing: true,
-    created_at: '2025-01-01T00:00:00Z', updated_at: '2026-07-01T00:00:00Z',
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2026-07-01T00:00:00Z',
   };
 }
 
 function buildClaimResponse(overrides: Record<string, unknown> = {}) {
   return {
-    id: CLAIM_ID, claim_number: 'CLM-20260705-0042',
-    sha_claim_reference: null, sha_reference: null,
-    patient: 1, patient_id: 1,
-    patient_name: PATIENT_NAME, patient_mrn: 'MRN-20260705-0001',
-    sha_member: SHA_MEMBER_ID, sha_member_number: 'SHA-1001',
-    encounter: 1001, encounter_id: 1001,
-    invoice: 2001, invoice_id: 2001, invoice_number: 'INV-20260705-0001',
+    id: CLAIM_ID,
+    claim_number: 'CLM-20260705-0042',
+    sha_claim_reference: null,
+    sha_reference: null,
+    patient: 1,
+    patient_id: 1,
+    patient_name: PATIENT_NAME,
+    patient_mrn: 'MRN-20260705-0001',
+    sha_member: SHA_MEMBER_ID,
+    sha_member_number: 'SHA-1001',
+    encounter: 1001,
+    encounter_id: 1001,
+    invoice: 2001,
+    invoice_id: 2001,
+    invoice_number: 'INV-20260705-0001',
     submitted_by_username: null,
-    claim_type: 'OUTPATIENT', status: 'draft',
-    service_date: '2026-07-05', admission_date: null, discharge_date: null,
+    claim_type: 'OUTPATIENT',
+    status: 'draft',
+    service_date: '2026-07-05',
+    admission_date: null,
+    discharge_date: null,
     primary_diagnosis_code: 'PENDING',
     primary_diagnosis_description: 'Awaiting diagnosis',
     secondary_diagnosis_codes: null,
-    claimed_amount: null, total_amount: '0.00',
-    approved_amount: null, paid_amount: null, rejected_amount: null,
-    patient_copay: null, copay_amount: null,
-    submission_method: null, submitted_at: null, submitted_by: null,
-    adjudication_date: null, adjudication_notes: '', rejection_reason: '',
-    rejection_code: '', rejection_codes: null,
-    payment_date: null, payment_reference: '',
-    preauth_number: null, preauth_date: null, preauth_valid_until: null,
-    claim_flow: 'phc', is_emergency_claim: false,
-    facility_code: '12345', facility_level: 'L2',
-    version: null, parent_claim: null,
-    items_count: null, attachments_count: null,
-    created_at: '2026-07-05T08:00:00Z', updated_at: '2026-07-05T08:00:00Z',
+    claimed_amount: null,
+    total_amount: '0.00',
+    approved_amount: null,
+    paid_amount: null,
+    rejected_amount: null,
+    patient_copay: null,
+    copay_amount: null,
+    submission_method: null,
+    submitted_at: null,
+    submitted_by: null,
+    adjudication_date: null,
+    adjudication_notes: '',
+    rejection_reason: '',
+    rejection_code: '',
+    rejection_codes: null,
+    payment_date: null,
+    payment_reference: '',
+    preauth_number: null,
+    preauth_date: null,
+    preauth_valid_until: null,
+    claim_flow: 'phc',
+    is_emergency_claim: false,
+    facility_code: '12345',
+    facility_level: 'L2',
+    version: null,
+    parent_claim: null,
+    items_count: null,
+    attachments_count: null,
+    created_at: '2026-07-05T08:00:00Z',
+    updated_at: '2026-07-05T08:00:00Z',
     processed_at: null,
-    fhir_bundle_id: null, created_by: 1,
-    dha_external_id: PATIENT_CR_ID, dha_correlation_id: null,
-    last_dha_status: null, last_dha_payload_at: null,
-    dha_visit_started_at: null, consent_obtained: false,
+    fhir_bundle_id: null,
+    created_by: 1,
+    dha_external_id: PATIENT_CR_ID,
+    dha_correlation_id: null,
+    last_dha_status: null,
+    last_dha_payload_at: null,
+    dha_visit_started_at: null,
+    consent_obtained: false,
     claim_interventions: [],
     missing_document_types: [],
     ...overrides,
@@ -164,7 +249,7 @@ async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
           dha_visit_started_at: '2026-07-05T08:35:00Z',
           claim_interventions: [interventionLine(INTERVENTIONS.consultation.code, 1)],
         }
-      : {},
+      : {}
   );
   let nextIntervId = 1;
 
@@ -175,43 +260,82 @@ async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
 
   // ── 1. Auth ──────────────────────────────────────────────────────────────
   await page.route('**/api/auth/login/**', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(buildAuthResponse()) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(buildAuthResponse()),
+    });
   });
   await page.route('**/api/auth/refresh/**', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ access: 'mock-access-token' }) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ access: 'mock-access-token' }),
+    });
   });
   await page.route('**/api/staff/me/**', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ user_info: buildAuthResponse().user }) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ user_info: buildAuthResponse().user }),
+    });
   });
 
   // ── 2. Facilities ────────────────────────────────────────────────────────
   await page.route('**/api/facilities/my-facilities/**', async (route) => {
     await route.fulfill({
-      status: 200, contentType: 'application/json',
-      body: JSON.stringify([{ id: FACILITY_ID, name: 'Kasarani Dispensary', level: '2', mfl_code: '12345', is_active: true, sha_contracted: true }]),
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: FACILITY_ID,
+          name: 'Kasarani Dispensary',
+          level: '2',
+          mfl_code: '12345',
+          is_active: true,
+          sha_contracted: true,
+        },
+      ]),
     });
   });
   await page.route(`**/api/facilities/${FACILITY_ID}/**`, async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(buildFacilityResponse()) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(buildFacilityResponse()),
+    });
   });
 
   // ── 3. Claim detail (dynamic) ────────────────────────────────────────────
   await page.route(`**/api/billing/claims/${CLAIM_ID}/**`, async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(claimState) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(claimState),
+    });
   });
 
   // ── 4. Intervention catalogue search ─────────────────────────────────────
   await page.route('**/api/sha/terminology/interventions/**', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(buildInterventionsResponse()) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(buildInterventionsResponse()),
+    });
   });
 
   // ── 5. Consent ───────────────────────────────────────────────────────────
   await page.route('**/api/sha/consent/latest/**', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false }) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ exists: false }),
+    });
   });
   await page.route('**/api/sha/consent/send-otp/**', async (route) => {
     await route.fulfill({
-      status: 200, contentType: 'application/json',
+      status: 200,
+      contentType: 'application/json',
       body: JSON.stringify({
         consent_id: CONSENT_ID,
         otp_reference: 'OTP-REF-001',
@@ -223,13 +347,15 @@ async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
   });
   await page.route('**/api/sha/consent/validate-otp/**', async (route) => {
     await route.fulfill({
-      status: 200, contentType: 'application/json',
+      status: 200,
+      contentType: 'application/json',
       body: JSON.stringify({ consent_token: CONSENT_TOKEN, id: CONSENT_ID }),
     });
   });
   await page.route('**/api/sha/consent/start-visit/**', async (route) => {
     await route.fulfill({
-      status: 200, contentType: 'application/json',
+      status: 200,
+      contentType: 'application/json',
       body: JSON.stringify({
         id: CONSENT_ID,
         status: 'VALIDATED',
@@ -243,7 +369,8 @@ async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
   // Consent detail (refetched after start-visit successfully validates OTP)
   await page.route(`**/api/sha/consent/${CONSENT_ID}/**`, async (route) => {
     await route.fulfill({
-      status: 200, contentType: 'application/json',
+      status: 200,
+      contentType: 'application/json',
       body: JSON.stringify({
         id: CONSENT_ID,
         patient: 1,
@@ -268,32 +395,51 @@ async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
     const url = route.request().url();
     if (url.includes('patient-eligibility')) {
       await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify({ eligibilityStatus: 'ELIGIBLE', fullName: PATIENT_NAME, schemes: [{ schemeName: 'UHC', status: 'ACTIVE' }] }),
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          eligibilityStatus: 'ELIGIBLE',
+          fullName: PATIENT_NAME,
+          schemes: [{ schemeName: 'UHC', status: 'ACTIVE' }],
+        }),
       });
     } else if (url.includes('facility-search')) {
       await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify({ count: 1, results: [{ code: 'FAC-12345', name: 'Kasarani Dispensary' }] }),
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          count: 1,
+          results: [{ code: 'FAC-12345', name: 'Kasarani Dispensary' }],
+        }),
       });
     } else if (url.includes('practitioner-search')) {
       await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify({ count: 1, results: [{ licence_number: 'LIC-001', name: 'Dr. Test' }] }),
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          count: 1,
+          results: [{ licence_number: 'LIC-001', name: 'Dr. Test' }],
+        }),
       });
     } else if (url.includes('utilization')) {
       await route.fulfill({
-        status: 200, contentType: 'application/json',
+        status: 200,
+        contentType: 'application/json',
         body: JSON.stringify({ utilization: [], remaining_benefits: {} }),
       });
     } else if (url.includes('benefit-interventions')) {
       const interventions = buildInterventionsResponse().results;
       await route.fulfill({
-        status: 200, contentType: 'application/json',
+        status: 200,
+        contentType: 'application/json',
         body: JSON.stringify({ data: { results: interventions }, http_status: 200 }),
       });
     } else {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({}),
+      });
     }
   });
 
@@ -303,8 +449,14 @@ async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
     if (url.includes('/start-visit/')) {
       claimState = { ...claimState, dha_visit_started_at: '2026-07-05T08:35:00Z' };
       await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify({ success: true, message: 'Visit started', status_code: 200, payload: { visit_id: 'VIS-001' } }),
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          message: 'Visit started',
+          status_code: 200,
+          payload: { visit_id: 'VIS-001' },
+        }),
       });
     } else if (url.includes('/virtual-claim-line/')) {
       // Parse the intervention code from the request body
@@ -317,15 +469,25 @@ async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
         claim_interventions: [...existing, interventionLine(code, id)],
       };
       await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify({ success: true, status_code: 200, payload: { claim_line_id: `CL-${String(id).padStart(3, '0')}`, authorization_code: `AUTH-${String(id).padStart(3, '0')}` } }),
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          status_code: 200,
+          payload: {
+            claim_line_id: `CL-${String(id).padStart(3, '0')}`,
+            authorization_code: `AUTH-${String(id).padStart(3, '0')}`,
+          },
+        }),
       });
     } else if (url.includes('/preview/')) {
       const total = claimState.claim_interventions.reduce(
-        (sum, i) => sum + parseFloat(i.tariff_amount || '0'), 0,
+        (sum, i) => sum + parseFloat(i.tariff_amount || '0'),
+        0
       );
       await route.fulfill({
-        status: 200, contentType: 'application/json',
+        status: 200,
+        contentType: 'application/json',
         body: JSON.stringify({
           success: true,
           status_code: 200,
@@ -402,24 +564,40 @@ async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
     } else if (url.includes('/submit/')) {
       claimState = {
         ...claimState,
-        status: 'submitted', submitted_at: '2026-07-05T09:00:00Z',
+        status: 'submitted',
+        submitted_at: '2026-07-05T09:00:00Z',
         sha_claim_reference: 'SHA-REF-001',
         last_dha_status: 'SUBMITTED',
       };
       await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify({ success: true, status_code: 200, payload: { claim_reference: 'SHA-REF-001' }, message: 'Claim submitted' }),
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          status_code: 200,
+          payload: { claim_reference: 'SHA-REF-001' },
+          message: 'Claim submitted',
+        }),
       });
     } else {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, status_code: 200, payload: {} }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, status_code: 200, payload: {} }),
+      });
     }
   });
 
   // ── 7. Capitation validation ─────────────────────────────────────────────
   await page.route('**/api/billing/capitation/validate/**', async (route) => {
     await route.fulfill({
-      status: 200, contentType: 'application/json',
-      body: JSON.stringify({ is_valid: true, provider_name: 'Kasarani Dispensary', provider_code: 'FAC-12345' }),
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        is_valid: true,
+        provider_name: 'Kasarani Dispensary',
+        provider_code: 'FAC-12345',
+      }),
     });
   });
 }
@@ -429,7 +607,9 @@ async function setupMocks(page: Page, options?: { visitStarted?: boolean }) {
 // =============================================================================
 
 test.describe('SHA PHC Claim Journey — Level 2 Facility', () => {
-  test('full journey: PHC badge → consent → open visit → add consultation + lab + pharmacy → submit', async ({ page }) => {
+  test('full journey: PHC badge → consent → open visit → add consultation + lab + pharmacy → submit', async ({
+    page,
+  }) => {
     await setupMocks(page);
     await login(page, TEST_USER.username, TEST_USER.password);
 
@@ -445,7 +625,11 @@ test.describe('SHA PHC Claim Journey — Level 2 Facility', () => {
 
     // ── 3. ConsentPanel: select intervention → send OTP → validate ────
     // Open the Service / Intervention dropdown
-    await page.locator('text=Service / Intervention').locator('..').locator('button[role="combobox"]').click();
+    await page
+      .locator('text=Service / Intervention')
+      .locator('..')
+      .locator('button[role="combobox"]')
+      .click();
 
     // Wait for intervention options to appear in the popover
     const option = page.getByRole('option', { name: INTERVENTIONS.consultation.name });
@@ -473,7 +657,10 @@ test.describe('SHA PHC Claim Journey — Level 2 Facility', () => {
     // ── 5. Add multiple virtual claim lines ───────────────────────────
     // 5a. Add consultation (already sent via consent code, but add as
     //     explicit virtual claim line for the record)
-    await page.locator('#claim-workflow-section').getByRole('button', { name: 'Add intervention' }).click();
+    await page
+      .locator('#claim-workflow-section')
+      .getByRole('button', { name: 'Add intervention' })
+      .click();
     await page.waitForTimeout(500);
     await page.locator('div[role="dialog"]').getByRole('combobox').click();
     await page.getByRole('option').filter({ hasText: INTERVENTIONS.consultation.code }).click();
@@ -481,7 +668,10 @@ test.describe('SHA PHC Claim Journey — Level 2 Facility', () => {
     await page.waitForTimeout(2000);
 
     // 5b. Add lab test
-    await page.locator('#claim-workflow-section').getByRole('button', { name: 'Add intervention' }).click();
+    await page
+      .locator('#claim-workflow-section')
+      .getByRole('button', { name: 'Add intervention' })
+      .click();
     await page.waitForTimeout(500);
     await page.locator('div[role="dialog"]').getByRole('combobox').click();
     await page.getByRole('option').filter({ hasText: INTERVENTIONS.lab.code }).click();
@@ -489,7 +679,10 @@ test.describe('SHA PHC Claim Journey — Level 2 Facility', () => {
     await page.waitForTimeout(2000);
 
     // 5c. Add pharmacy (prescription)
-    await page.locator('#claim-workflow-section').getByRole('button', { name: 'Add intervention' }).click();
+    await page
+      .locator('#claim-workflow-section')
+      .getByRole('button', { name: 'Add intervention' })
+      .click();
     await page.waitForTimeout(500);
     await page.locator('div[role="dialog"]').getByRole('combobox').click();
     await page.getByRole('option').filter({ hasText: INTERVENTIONS.pharmacy.code }).click();
@@ -529,16 +722,26 @@ test.describe('SHA PHC Claim Journey — Level 2 Facility', () => {
     await page.getByRole('button', { name: 'Apply preview lines locally' }).click();
 
     await expect(page.getByRole('heading', { name: 'Preview lines applied' })).toBeVisible();
-    await expect(page.getByText('Created 2 item(s) after replacing 0 existing item(s). Claimed amount is now KES 1300.00.')).toBeVisible();
-    await expect(page.getByText('Preview invoice: INV/DHA/APPLY-001 (linked to local invoice).')).toBeVisible();
+    await expect(
+      page.getByText(
+        'Created 2 item(s) after replacing 0 existing item(s). Claimed amount is now KES 1300.00.'
+      )
+    ).toBeVisible();
+    await expect(
+      page.getByText('Preview invoice: INV/DHA/APPLY-001 (linked to local invoice).')
+    ).toBeVisible();
     await expect(page.getByText('Final Bill auto-generated (attachment #901).')).toBeVisible();
 
     await page.getByRole('button', { name: 'Materialize preview invoice' }).click();
     await expect(page.getByRole('heading', { name: 'Preview invoice materialized' })).toBeVisible();
-    await expect(page.getByText('Invoice INV-20260705-0001 (#2001) is linked to this claim.')).toBeVisible();
+    await expect(
+      page.getByText('Invoice INV-20260705-0001 (#2001) is linked to this claim.')
+    ).toBeVisible();
     await expect(page.getByText('Created 2 item(s) after replacing 0 item(s).')).toBeVisible();
     await expect(
-      page.getByText('Final Bill auto-generated (attachment #901) and refreshed from latest invoice data.')
+      page.getByText(
+        'Final Bill auto-generated (attachment #901) and refreshed from latest invoice data.'
+      )
     ).toBeVisible();
   });
 });

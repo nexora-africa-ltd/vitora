@@ -45,10 +45,26 @@ import { usePatient } from '@/lib/hooks/use-patients';
 // =============================================================================
 
 const referralReasons = [
-  'GBV', 'CHILD_PROTECTION', 'CHILD_ABUSE', 'ELDER_ABUSE', 'HOUSING', 'FINANCIAL',
-  'SUBSTANCE_ABUSE', 'MENTAL_HEALTH', 'FAMILY_SUPPORT', 'CHRONIC_ILLNESS', 'DISABILITY',
-  'END_OF_LIFE', 'REFUGEE', 'TRAFFICKING', 'HOMELESSNESS', 'FOOD_INSECURITY',
-  'LEGAL', 'EMPLOYMENT', 'EDUCATION', 'OTHER',
+  'GBV',
+  'CHILD_PROTECTION',
+  'CHILD_ABUSE',
+  'ELDER_ABUSE',
+  'HOUSING',
+  'FINANCIAL',
+  'SUBSTANCE_ABUSE',
+  'MENTAL_HEALTH',
+  'FAMILY_SUPPORT',
+  'CHRONIC_ILLNESS',
+  'DISABILITY',
+  'END_OF_LIFE',
+  'REFUGEE',
+  'TRAFFICKING',
+  'HOMELESSNESS',
+  'FOOD_INSECURITY',
+  'LEGAL',
+  'EMPLOYMENT',
+  'EDUCATION',
+  'OTHER',
 ] as const;
 
 const urgencyLevels = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
@@ -410,9 +426,9 @@ export function SocialWorkReferralForm({
           <div className="flex justify-end">
             <Button type="submit" disabled={isPending}>
               {isPending ? (
-                <LoadingSpinner className="h-4 w-4 mr-2" />
+                <LoadingSpinner className="mr-2 h-4 w-4" />
               ) : (
-                <Send className="h-4 w-4 mr-2" />
+                <Send className="mr-2 h-4 w-4" />
               )}
               {isEditMode ? 'Update Referral' : 'Create Referral'}
             </Button>

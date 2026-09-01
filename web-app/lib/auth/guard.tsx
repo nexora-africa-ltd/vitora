@@ -26,11 +26,7 @@ interface PermissionGuardProps {
  * - Admin roles (bypass all permission checks)
  * - Permission mapping (simple names to Django format)
  */
-export function PermissionGuard({
-  children,
-  requiredPermission,
-  fallback
-}: PermissionGuardProps) {
+export function PermissionGuard({ children, requiredPermission, fallback }: PermissionGuardProps) {
   const { hasPermission, isAuthenticated } = usePermissions();
 
   // Check required permission (superusers/admins automatically pass)
@@ -208,7 +204,7 @@ function pathStartsWith(pathname: string, prefix: string): boolean {
 function hasRequiredPermission(
   pathname: string,
   rules: RoutePermissionRule[],
-  hasPermission: (permission: string) => boolean,
+  hasPermission: (permission: string) => boolean
 ): boolean {
   for (const rule of rules) {
     if (!pathStartsWith(pathname, rule.prefix)) continue;

@@ -32,10 +32,7 @@ const STATUS_OPTIONS: { value: DiagnosticReportStatus | ''; label: string }[] = 
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
-export function DiagnosticReportList({
-  reports,
-  isLoading,
-}: DiagnosticReportListProps) {
+export function DiagnosticReportList({ reports, isLoading }: DiagnosticReportListProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<DiagnosticReportStatus | ''>('');
@@ -59,10 +56,10 @@ export function DiagnosticReportList({
     <div className="space-y-4">
       {/* Filters */}
       <Card>
-        <CardContent className="pt-4 pb-4">
+        <CardContent className="pb-4 pt-4">
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by report #, patient, or order #..."
                 value={searchQuery}
@@ -72,9 +69,7 @@ export function DiagnosticReportList({
             </div>
             <Select
               value={statusFilter}
-              onValueChange={(v) =>
-                setStatusFilter(v as DiagnosticReportStatus | '')
-              }
+              onValueChange={(v) => setStatusFilter(v as DiagnosticReportStatus | '')}
             >
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="All Statuses" />
@@ -103,9 +98,7 @@ export function DiagnosticReportList({
             key: 'report_number',
             header: 'Report #',
             sortable: true,
-            cell: (r) => (
-              <span className="font-medium text-primary">{r.report_number}</span>
-            ),
+            cell: (r) => <span className="font-medium text-primary">{r.report_number}</span>,
           },
           {
             key: 'lab_order_number',
@@ -152,20 +145,13 @@ export function DiagnosticReportList({
           },
         ]}
         mobileCard={(report) => (
-          <div className="p-3 space-y-2">
+          <div className="space-y-2 p-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="font-medium text-primary truncate">
-                  {report.report_number}
-                </p>
-                <p className="text-sm text-muted-foreground truncate">
-                  {report.patient_name}
-                </p>
+                <p className="truncate font-medium text-primary">{report.report_number}</p>
+                <p className="truncate text-sm text-muted-foreground">{report.patient_name}</p>
               </div>
-              <ReportStatusBadge
-                status={report.status}
-                className="self-start"
-              />
+              <ReportStatusBadge status={report.status} className="self-start" />
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span>{report.lab_order_number}</span>

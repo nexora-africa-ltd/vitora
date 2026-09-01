@@ -13,14 +13,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import {
-  ShieldAlert,
-  AlertTriangle,
-  ShieldOff,
-  Check,
-  CheckCircle,
-  Loader2,
-} from 'lucide-react';
+import { ShieldAlert, AlertTriangle, ShieldOff, Check, CheckCircle, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -34,11 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import SystemBanner from '@/components/ui/system-banner';
-import {
-  useEncounterCDSAlerts,
-  useAcceptCDSAlert,
-  useOverrideCDSAlert,
-} from '@/lib/hooks/use-cds';
+import { useEncounterCDSAlerts, useAcceptCDSAlert, useOverrideCDSAlert } from '@/lib/hooks/use-cds';
 import type { CDSAlertListItem } from '@/lib/types/cds';
 
 // =============================================================================
@@ -66,24 +55,18 @@ function AlertResolutionRow({
       semanticColor={isCritical ? 'destructive' : 'warning'}
       text={alert.message}
       icon={
-        isCritical ? (
-          <ShieldAlert className="h-4 w-4" />
-        ) : (
-          <AlertTriangle className="h-4 w-4" />
-        )
+        isCritical ? <ShieldAlert className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />
       }
       description={
         <div className="space-y-2">
-          {alert.suggestion && (
-            <p className="text-xs">{alert.suggestion}</p>
-          )}
+          {alert.suggestion && <p className="text-xs">{alert.suggestion}</p>}
           <div className="flex items-center gap-2">
             <Button
               size="sm"
               variant="outline"
               onClick={() => onAccept(alert.id)}
               disabled={isActing}
-              className="h-7 px-3 text-xs gap-1.5"
+              className="h-7 gap-1.5 px-3 text-xs"
             >
               <Check className="h-3.5 w-3.5" />
               Accept
@@ -93,7 +76,7 @@ function AlertResolutionRow({
               variant="outline"
               onClick={() => onStartOverride(alert)}
               disabled={isActing}
-              className="h-7 px-3 text-xs gap-1.5"
+              className="h-7 gap-1.5 px-3 text-xs"
             >
               <ShieldOff className="h-3.5 w-3.5" />
               Override
@@ -121,7 +104,7 @@ function OverrideForm({ alert, onConfirm, onCancel, isPending }: OverrideFormPro
   const [reason, setReason] = useState('');
 
   return (
-    <div className="space-y-3 rounded-lg border border-amber-200 dark:border-amber-800 p-3 bg-amber-50/50 dark:bg-amber-950/20">
+    <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
       <div className="flex items-center gap-2">
         <ShieldOff className="h-4 w-4 text-amber-600" />
         <span className="text-sm font-medium">Override: {alert.message}</span>
@@ -153,12 +136,12 @@ function OverrideForm({ alert, onConfirm, onCancel, isPending }: OverrideFormPro
           size="sm"
           onClick={() => onConfirm(alert.id, reason.trim())}
           disabled={reason.trim().length < 10 || isPending}
-          className="text-xs bg-amber-600 hover:bg-amber-700"
+          className="bg-amber-600 text-xs hover:bg-amber-700"
         >
           {isPending ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
           ) : (
-            <ShieldOff className="h-3.5 w-3.5 mr-1" />
+            <ShieldOff className="mr-1 h-3.5 w-3.5" />
           )}
           Override & Document
         </Button>
@@ -211,9 +194,7 @@ export function CDSCriticalDialog({
   const criticalCount = unresolvedAlerts.filter(
     (a) => a.priority.toUpperCase() === 'CRITICAL'
   ).length;
-  const highCount = unresolvedAlerts.filter(
-    (a) => a.priority.toUpperCase() === 'HIGH'
-  ).length;
+  const highCount = unresolvedAlerts.filter((a) => a.priority.toUpperCase() === 'HIGH').length;
 
   const allResolved = unresolvedAlerts.length === 0 && !isLoading;
 
@@ -228,26 +209,22 @@ export function CDSCriticalDialog({
   // Override handler
   const handleOverrideConfirm = useCallback(
     (alertId: number, reason: string) => {
-      overrideAlert.mutate(
-        { alertId, reason },
-        { onSuccess: () => setOverridingAlert(null) }
-      );
+      overrideAlert.mutate({ alertId, reason }, { onSuccess: () => setOverridingAlert(null) });
     },
     [overrideAlert]
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-destructive" />
             <DialogTitle>Unresolved CDS Alerts</DialogTitle>
           </div>
           <DialogDescription>
-            This encounter has unresolved clinical decision support alerts that
-            require your attention before finalizing. Accept or override each
-            alert with a documented rationale.
+            This encounter has unresolved clinical decision support alerts that require your
+            attention before finalizing. Accept or override each alert with a documented rationale.
           </DialogDescription>
         </DialogHeader>
 
@@ -256,25 +233,17 @@ export function CDSCriticalDialog({
           {!allResolved && (
             <div className="flex items-center gap-2">
               {criticalCount > 0 && (
-                <Badge className="bg-red-600 text-white">
-                  {criticalCount} Critical
-                </Badge>
+                <Badge className="bg-red-600 text-white">{criticalCount} Critical</Badge>
               )}
-              {highCount > 0 && (
-                <Badge className="bg-amber-500 text-white">
-                  {highCount} High
-                </Badge>
-              )}
-              <span className="text-xs text-muted-foreground">
-                Resolve all to proceed
-              </span>
+              {highCount > 0 && <Badge className="bg-amber-500 text-white">{highCount} High</Badge>}
+              <span className="text-xs text-muted-foreground">Resolve all to proceed</span>
             </div>
           )}
 
           {/* Loading state */}
           {isLoading && (
             <div className="flex items-center justify-center py-6 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Checking alerts...
             </div>
           )}
@@ -329,9 +298,9 @@ export function CDSCriticalDialog({
             className="bg-green-600 hover:bg-green-700"
           >
             {isFinalizePending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle className="mr-2 h-4 w-4" />
             )}
             Finalize Encounter
           </Button>

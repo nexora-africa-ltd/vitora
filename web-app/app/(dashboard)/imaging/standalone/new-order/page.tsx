@@ -62,15 +62,9 @@ export default function NewStandaloneImagingOrderPage() {
     onError: () => toast.error('Failed to create order'),
   });
 
-  const addItem = () =>
-    setItems([...items, { procedure_code: '', laterality: 'NA' }]);
-  const removeItem = (index: number) =>
-    setItems(items.filter((_, i) => i !== index));
-  const updateItem = (
-    index: number,
-    field: keyof StandaloneImagingOrderItem,
-    value: string,
-  ) => {
+  const addItem = () => setItems([...items, { procedure_code: '', laterality: 'NA' }]);
+  const removeItem = (index: number) => setItems(items.filter((_, i) => i !== index));
+  const updateItem = (index: number, field: keyof StandaloneImagingOrderItem, value: string) => {
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value } as StandaloneImagingOrderItem;
     setItems(updated);
@@ -91,8 +85,7 @@ export default function NewStandaloneImagingOrderPage() {
     const data: StandaloneImagingOrderCreateData = {
       priority: formData.priority,
       clinical_indication: formData.clinical_indication,
-      relevant_clinical_history:
-        formData.relevant_clinical_history || undefined,
+      relevant_clinical_history: formData.relevant_clinical_history || undefined,
       items: validItems,
     };
 
@@ -115,7 +108,7 @@ export default function NewStandaloneImagingOrderPage() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
       <PageHeader
         title="New Standalone Imaging Order"
         helpContent="Create an imaging order without requiring a clinical encounter — for walk-in patients or external referrals."
@@ -143,9 +136,7 @@ export default function NewStandaloneImagingOrderPage() {
                       id="walkin_name"
                       required
                       value={formData.walkin_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, walkin_name: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, walkin_name: e.target.value })}
                     />
                   </div>
                   <div>
@@ -153,9 +144,7 @@ export default function NewStandaloneImagingOrderPage() {
                     <Input
                       id="walkin_phone"
                       value={formData.walkin_phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, walkin_phone: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, walkin_phone: e.target.value })}
                     />
                   </div>
                 </div>
@@ -228,9 +217,7 @@ export default function NewStandaloneImagingOrderPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="clinical_indication">
-                Clinical Indication *
-              </Label>
+              <Label htmlFor="clinical_indication">Clinical Indication *</Label>
               <Textarea
                 id="clinical_indication"
                 required
@@ -246,9 +233,7 @@ export default function NewStandaloneImagingOrderPage() {
               />
             </div>
             <div>
-              <Label htmlFor="relevant_clinical_history">
-                Relevant Clinical History
-              </Label>
+              <Label htmlFor="relevant_clinical_history">Relevant Clinical History</Label>
               <Textarea
                 id="relevant_clinical_history"
                 value={formData.relevant_clinical_history}
@@ -267,20 +252,17 @@ export default function NewStandaloneImagingOrderPage() {
         {/* Procedures */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <ScanLine className="h-4 w-4" />
               Procedures
             </CardTitle>
             <Button type="button" size="sm" variant="outline" onClick={addItem}>
-              <Plus className="h-3 w-3 mr-1" /> Add Procedure
+              <Plus className="mr-1 h-3 w-3" /> Add Procedure
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {items.map((item, index) => (
-              <div
-                key={index}
-                className="space-y-2 p-3 rounded-lg border bg-muted/30"
-              >
+              <div key={index} className="space-y-2 rounded-lg border bg-muted/30 p-3">
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <CatalogCombobox
@@ -325,13 +307,7 @@ export default function NewStandaloneImagingOrderPage() {
                   <Input
                     placeholder="Specific instructions"
                     value={item.specific_instructions || ''}
-                    onChange={(e) =>
-                      updateItem(
-                        index,
-                        'specific_instructions',
-                        e.target.value,
-                      )
-                    }
+                    onChange={(e) => updateItem(index, 'specific_instructions', e.target.value)}
                   />
                 </div>
               </div>
@@ -340,11 +316,7 @@ export default function NewStandaloneImagingOrderPage() {
         </Card>
 
         <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-          >
+          <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
           <Button type="submit" disabled={createMutation.isPending}>

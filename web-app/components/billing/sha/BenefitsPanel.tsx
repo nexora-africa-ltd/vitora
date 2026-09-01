@@ -183,7 +183,19 @@ function getField(item: Record<string, unknown>, ...keys: string[]): string {
  */
 function inferNameFromKeys(item: Record<string, unknown>): string {
   // Skip keys that are clearly not names
-  const skipKeys = new Set(['code', 'interventionCode', 'intervention_code', 'benefitCode', 'benefit_code', 'status', 'active', 'accessPoint', 'access_point', 'paymentMechanism', 'payment_mechanism']);
+  const skipKeys = new Set([
+    'code',
+    'interventionCode',
+    'intervention_code',
+    'benefitCode',
+    'benefit_code',
+    'status',
+    'active',
+    'accessPoint',
+    'access_point',
+    'paymentMechanism',
+    'payment_mechanism',
+  ]);
   for (const [key, val] of Object.entries(item)) {
     if (skipKeys.has(key)) continue;
     if (typeof val === 'string' && val.trim().length > 3 && val.trim().length < 200) {
@@ -198,7 +210,11 @@ function getBenefitCode(item: BenefitPackageItem): string {
 }
 
 function getBenefitName(item: BenefitPackageItem): string {
-  return getField(item, 'parentBenefit', 'parent_benefit', 'name') || getBenefitCode(item) || 'Unknown Benefit';
+  return (
+    getField(item, 'parentBenefit', 'parent_benefit', 'name') ||
+    getBenefitCode(item) ||
+    'Unknown Benefit'
+  );
 }
 
 // ============================================================================
@@ -232,8 +248,7 @@ export function BenefitsPanel({
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
-  const hideCapitationInterventions =
-    facilityBillingConfig?.hide_capitation_interventions ?? false;
+  const hideCapitationInterventions = facilityBillingConfig?.hide_capitation_interventions ?? false;
   const {
     data: benefitsResponse,
     isLoading,
@@ -284,12 +299,14 @@ export function BenefitsPanel({
             <p className="font-medium">{shaError?.title || 'Failed to load benefits'}</p>
             <p>{shaError?.message || (error instanceof Error ? error.message : 'Unknown error')}</p>
             {shaError?.detail && shaError.detail !== shaError.message && (
-              <p className="text-xs break-words">{shaError.detail}</p>
+              <p className="break-words text-xs">{shaError.detail}</p>
             )}
             {(shaError?.code || typeof shaError?.upstreamStatus === 'number') && (
-              <p className="text-xs font-mono opacity-90">
+              <p className="font-mono text-xs opacity-90">
                 {shaError?.code || 'SHA_ERROR'}
-                {typeof shaError?.upstreamStatus === 'number' ? ` (upstream ${shaError.upstreamStatus})` : ''}
+                {typeof shaError?.upstreamStatus === 'number'
+                  ? ` (upstream ${shaError.upstreamStatus})`
+                  : ''}
               </p>
             )}
           </div>
@@ -305,7 +322,12 @@ export function BenefitsPanel({
           <Package className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">
             Benefits, Interventions &amp; Utilizations
-            {benefits.length > 0 && <> ({benefits.length} package{benefits.length !== 1 ? 's' : ''})</>}
+            {benefits.length > 0 && (
+              <>
+                {' '}
+                ({benefits.length} package{benefits.length !== 1 ? 's' : ''})
+              </>
+            )}
           </span>
         </div>
         <Button
@@ -331,17 +353,17 @@ export function BenefitsPanel({
       {benefits.length > 0 && (
         <div className="space-y-1.5">
           {benefits.map((benefit, idx) => (
-              <BenefitAccordion
-                key={getBenefitCode(benefit) || idx}
-                benefit={benefit}
-                crNumber={lookupId}
-                patientPk={patientPk}
-                shaMemberId={shaMemberId}
-                hideCapitationInterventions={hideCapitationInterventions}
-                utilizationEligibilityDisplay={utilizationEligibilityDisplay}
-              />
-            ))}
-          </div>
+            <BenefitAccordion
+              key={getBenefitCode(benefit) || idx}
+              benefit={benefit}
+              crNumber={lookupId}
+              patientPk={patientPk}
+              shaMemberId={shaMemberId}
+              hideCapitationInterventions={hideCapitationInterventions}
+              utilizationEligibilityDisplay={utilizationEligibilityDisplay}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -352,9 +374,7 @@ export function BenefitsPanel({
 
   return (
     <Card className={className}>
-      <CardContent className="py-4">
-        {content}
-      </CardContent>
+      <CardContent className="py-4">{content}</CardContent>
     </Card>
   );
 }
@@ -383,10 +403,7 @@ function BenefitAccordion({
   const name = getBenefitName(benefit);
 
   // Fetch sub-benefits filtered by this parent benefit code
-  const {
-    data: subBenefitsResponse,
-    isLoading,
-  } = useQuery({
+  const { data: subBenefitsResponse, isLoading } = useQuery({
     queryKey: ['sha-sub-benefits', crNumber, code, patientPk],
     queryFn: () =>
       shaApi.ilmSubBenefits({
@@ -399,45 +416,43 @@ function BenefitAccordion({
     staleTime: 5 * 60 * 1000,
   });
 
-  const subBenefits = expanded
-    ? extractItems<SubBenefitItem>(subBenefitsResponse?.data)
-    : [];
+  const subBenefits = expanded ? extractItems<SubBenefitItem>(subBenefitsResponse?.data) : [];
 
   return (
     <div className="rounded-md border bg-muted/20">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-muted/40 transition-colors rounded-md"
+        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40"
       >
         {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         )}
-        <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="text-sm font-medium truncate flex-1">{name}</span>
+        <Layers className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <span className="flex-1 truncate text-sm font-medium">{name}</span>
         {code && (
-          <Badge variant="outline" size="sm" className="font-mono shrink-0">
+          <Badge variant="outline" size="sm" className="shrink-0 font-mono">
             {code}
           </Badge>
         )}
       </button>
 
       {expanded && (
-        <div className="px-3 pb-2 pt-1 border-t border-border/50">
+        <div className="border-t border-border/50 px-3 pb-2 pt-1">
           {isLoading ? (
             <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
               Loading sub-benefits...
             </div>
           ) : subBenefits.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-1">
+            <p className="py-1 text-xs text-muted-foreground">
               No sub-benefits available for this package.
             </p>
           ) : (
             <div className="space-y-1.5">
-              <p className="text-[10px] text-muted-foreground mb-1">
+              <p className="mb-1 text-[10px] text-muted-foreground">
                 {subBenefits.length} sub-benefit{subBenefits.length !== 1 ? 's' : ''}
               </p>
               {subBenefits.map((sub, idx) => (
@@ -479,11 +494,21 @@ function SubBenefitAccordion({
   utilizationEligibilityDisplay: 'dot' | 'inline';
 }) {
   const [expanded, setExpanded] = useState(false);
-  const code = getField(subBenefit as Record<string, unknown>, 'code', 'benefit_code', 'benefitCode');
-  const name = getField(subBenefit as Record<string, unknown>, 'name', 'benefit_name', 'benefitName') || code || 'Unknown Sub-Benefit';
+  const code = getField(
+    subBenefit as Record<string, unknown>,
+    'code',
+    'benefit_code',
+    'benefitCode'
+  );
+  const name =
+    getField(subBenefit as Record<string, unknown>, 'name', 'benefit_name', 'benefitName') ||
+    code ||
+    'Unknown Sub-Benefit';
 
   const [interventions, setInterventions] = useState<InterventionItem[]>([]);
-  const [utilizations, setUtilizations] = useState<Map<string, ParsedUtilizationEntry[]>>(new Map());
+  const [utilizations, setUtilizations] = useState<Map<string, ParsedUtilizationEntry[]>>(
+    new Map()
+  );
   const [loadingUtilCodes, setLoadingUtilCodes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
 
@@ -492,24 +517,37 @@ function SubBenefitAccordion({
     let cancelled = false;
     setLoading(true);
 
-    shaApi.ilmBenefitInterventions({
-      patient_id: crNumber,
-      sub_benefit_code: code,
-      patient_pk: patientPk,
-      sha_member_id: shaMemberId,
-    })
+    shaApi
+      .ilmBenefitInterventions({
+        patient_id: crNumber,
+        sub_benefit_code: code,
+        patient_pk: patientPk,
+        sha_member_id: shaMemberId,
+      })
       .then((resp) => {
         if (cancelled) return;
         const rawItems = extractItems<InterventionItem>(resp.data);
         const filteredItems = rawItems.filter((i) => {
           const item = i as Record<string, unknown>;
-          const hasCode = !!getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode');
-          const hasName = !!getField(item, 'name', 'intervention_name', 'interventionName', 'benefit_name', 'benefitName', 'display_name', 'displayName');
+          const hasCode = !!getField(
+            item,
+            'code',
+            'intervention_code',
+            'interventionCode',
+            'benefitCode'
+          );
+          const hasName = !!getField(
+            item,
+            'name',
+            'intervention_name',
+            'interventionName',
+            'benefit_name',
+            'benefitName',
+            'display_name',
+            'displayName'
+          );
           const paymentMechanism = getField(item, 'paymentMechanism', 'payment_mechanism');
-          if (
-            hideCapitationInterventions &&
-            isCapitationPaymentMechanism(paymentMechanism)
-          ) {
+          if (hideCapitationInterventions && isCapitationPaymentMechanism(paymentMechanism)) {
             return false;
           }
           return hasCode || hasName;
@@ -524,95 +562,108 @@ function SubBenefitAccordion({
         if (!cancelled) setLoading(false);
       });
 
-    return () => { cancelled = true; };
-  }, [
-    expanded,
-    crNumber,
-    code,
-    patientPk,
-    shaMemberId,
-    hideCapitationInterventions,
-  ]);
+    return () => {
+      cancelled = true;
+    };
+  }, [expanded, crNumber, code, patientPk, shaMemberId, hideCapitationInterventions]);
 
-  const loadUtilizationForIntervention = useCallback(async (interventionCode: string) => {
-    if (!interventionCode) return;
-    if (utilizations.has(interventionCode)) return;
-    if (loadingUtilCodes.has(interventionCode)) return;
+  const loadUtilizationForIntervention = useCallback(
+    async (interventionCode: string) => {
+      if (!interventionCode) return;
+      if (utilizations.has(interventionCode)) return;
+      if (loadingUtilCodes.has(interventionCode)) return;
 
-    setLoadingUtilCodes((prev) => new Set(prev).add(interventionCode));
-    try {
-      const utilResp = await shaApi.ilmUtilization({
-        patient_id: crNumber,
-        intervention_code: interventionCode,
-        patient_pk: patientPk,
-        sha_member_id: shaMemberId,
-      });
-      const entries = parseUtilization(utilResp);
-      setUtilizations((prev) => {
-        const next = new Map(prev);
-        next.set(interventionCode, entries);
-        return next;
-      });
-    } catch {
-      // Best effort — leave empty entries when DHA utilization is unavailable.
-      setUtilizations((prev) => {
-        const next = new Map(prev);
-        next.set(interventionCode, []);
-        return next;
-      });
-    } finally {
-      setLoadingUtilCodes((prev) => {
-        const next = new Set(prev);
-        next.delete(interventionCode);
-        return next;
-      });
-    }
-  }, [crNumber, patientPk, shaMemberId, utilizations, loadingUtilCodes]);
+      setLoadingUtilCodes((prev) => new Set(prev).add(interventionCode));
+      try {
+        const utilResp = await shaApi.ilmUtilization({
+          patient_id: crNumber,
+          intervention_code: interventionCode,
+          patient_pk: patientPk,
+          sha_member_id: shaMemberId,
+        });
+        const entries = parseUtilization(utilResp);
+        setUtilizations((prev) => {
+          const next = new Map(prev);
+          next.set(interventionCode, entries);
+          return next;
+        });
+      } catch {
+        // Best effort — leave empty entries when DHA utilization is unavailable.
+        setUtilizations((prev) => {
+          const next = new Map(prev);
+          next.set(interventionCode, []);
+          return next;
+        });
+      } finally {
+        setLoadingUtilCodes((prev) => {
+          const next = new Set(prev);
+          next.delete(interventionCode);
+          return next;
+        });
+      }
+    },
+    [crNumber, patientPk, shaMemberId, utilizations, loadingUtilCodes]
+  );
 
   return (
     <div className="rounded border border-border/50 bg-background">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full px-2.5 py-1.5 text-left hover:bg-muted/30 transition-colors rounded"
+        className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left transition-colors hover:bg-muted/30"
       >
         {expanded ? (
-          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+          <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
         ) : (
-          <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+          <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
         )}
-        <span className="text-xs font-medium truncate flex-1">{name}</span>
+        <span className="flex-1 truncate text-xs font-medium">{name}</span>
         {code && code !== name && (
-          <span className="text-[10px] font-mono text-muted-foreground shrink-0">{code}</span>
+          <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{code}</span>
         )}
       </button>
 
       {expanded && (
-        <div className="px-2.5 pb-2 pt-1 border-t border-border/30">
+        <div className="border-t border-border/30 px-2.5 pb-2 pt-1">
           {loading ? (
             <div className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
               Loading interventions &amp; utilization...
             </div>
           ) : interventions.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-1">
-              No interventions available.
-            </p>
+            <p className="py-1 text-xs text-muted-foreground">No interventions available.</p>
           ) : (
             <div className="space-y-1">
               {interventions.map((intervention, idx) => {
                 const item = intervention as Record<string, unknown>;
-                const displayCode = getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode');
+                const displayCode = getField(
+                  item,
+                  'code',
+                  'intervention_code',
+                  'interventionCode',
+                  'benefitCode'
+                );
                 // Utilization endpoint requires an intervention code (not benefit/sub-benefit code).
-                const utilizationCode = getField(item, 'code', 'intervention_code', 'interventionCode');
+                const utilizationCode = getField(
+                  item,
+                  'code',
+                  'intervention_code',
+                  'interventionCode'
+                );
                 const utilEntries = utilizationCode ? utilizations.get(utilizationCode) : undefined;
                 return (
                   <InterventionRow
                     key={displayCode || idx}
                     intervention={intervention}
                     utilization={utilEntries}
-                    isUtilizationLoading={!!(utilizationCode && loadingUtilCodes.has(utilizationCode))}
-                    onLoadUtilization={utilizationCode ? () => loadUtilizationForIntervention(utilizationCode) : undefined}
+                    isUtilizationLoading={
+                      !!(utilizationCode && loadingUtilCodes.has(utilizationCode))
+                    }
+                    onLoadUtilization={
+                      utilizationCode
+                        ? () => loadUtilizationForIntervention(utilizationCode)
+                        : undefined
+                    }
                     utilizationEligibilityDisplay={utilizationEligibilityDisplay}
                   />
                 );
@@ -644,18 +695,29 @@ function InterventionRow({
 }) {
   const [showUtilizationDetails, setShowUtilizationDetails] = useState(false);
   const item = intervention as Record<string, unknown>;
-  const code = getField(item, 'code', 'intervention_code', 'interventionCode', 'benefitCode', 'benefit_code');
-  const name = getField(
+  const code = getField(
     item,
-    'name',
-    'intervention_name',
-    'interventionName',
-    'benefit_name',
-    'benefitName',
-    'description',
-    'display_name',
-    'displayName',
-  ) || code || inferNameFromKeys(item) || 'Unknown Intervention';
+    'code',
+    'intervention_code',
+    'interventionCode',
+    'benefitCode',
+    'benefit_code'
+  );
+  const name =
+    getField(
+      item,
+      'name',
+      'intervention_name',
+      'interventionName',
+      'benefit_name',
+      'benefitName',
+      'description',
+      'display_name',
+      'displayName'
+    ) ||
+    code ||
+    inferNameFromKeys(item) ||
+    'Unknown Intervention';
   const paymentMech = getField(item, 'paymentMechanism', 'payment_mechanism');
   const tariff = (item.overallTariff ?? item.overall_tariff) as number | undefined;
   const needsPreauth = (item.needsPreauth ?? item.needs_preauth) as boolean | undefined;
@@ -674,25 +736,33 @@ function InterventionRow({
   }, [showUtilizationDetails, onLoadUtilization]);
 
   return (
-    <div className="rounded px-2 py-1.5 hover:bg-muted/20 text-xs space-y-1">
+    <div className="space-y-1 rounded px-2 py-1.5 text-xs hover:bg-muted/20">
       <div className="flex items-center gap-2">
-        <Activity className="h-3 w-3 text-muted-foreground shrink-0" />
-        <span className="truncate flex-1 font-medium">{name}</span>
+        <Activity className="h-3 w-3 shrink-0 text-muted-foreground" />
+        <span className="flex-1 truncate font-medium">{name}</span>
         {code && (
-          <span className="font-mono text-[10px] text-muted-foreground shrink-0">{code}</span>
+          <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{code}</span>
         )}
         {needsPreauth && (
-          <Badge variant="outline" size="sm" className="text-[10px] h-4 shrink-0 border-amber-400 text-amber-600 dark:text-amber-400">
+          <Badge
+            variant="outline"
+            size="sm"
+            className="h-4 shrink-0 border-amber-400 text-[10px] text-amber-600 dark:text-amber-400"
+          >
             Preauth
           </Badge>
         )}
         {paymentMech && (
-          <Badge variant="outline" size="sm" className="text-[10px] h-4 shrink-0">
-            {paymentMech === 'FEE_FOR_SERVICE' ? 'FFS' : paymentMech === 'PER_DIEM' ? 'Per Diem' : paymentMech}
+          <Badge variant="outline" size="sm" className="h-4 shrink-0 text-[10px]">
+            {paymentMech === 'FEE_FOR_SERVICE'
+              ? 'FFS'
+              : paymentMech === 'PER_DIEM'
+                ? 'Per Diem'
+                : paymentMech}
           </Badge>
         )}
         {tariff != null && tariff > 0 && (
-          <span className="text-[10px] font-medium text-muted-foreground shrink-0">
+          <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
             KES {tariff.toLocaleString()}
           </span>
         )}
@@ -734,15 +804,17 @@ function InterventionRow({
                     'inline-block h-1.5 w-1.5 rounded-full',
                     utilEligibilityState === 'ELIGIBLE' && 'bg-green-500',
                     utilEligibilityState === 'INELIGIBLE' && 'bg-red-500',
-                    utilEligibilityState !== 'ELIGIBLE' && utilEligibilityState !== 'INELIGIBLE' && 'bg-amber-500',
+                    utilEligibilityState !== 'ELIGIBLE' &&
+                      utilEligibilityState !== 'INELIGIBLE' &&
+                      'bg-amber-500'
                   )}
                 />
-                {utilizationEligibilityDisplay === 'inline' ? `Eligibility: ${utilEligibility}` : null}
+                {utilizationEligibilityDisplay === 'inline'
+                  ? `Eligibility: ${utilEligibility}`
+                  : null}
               </span>
             )}
-            {hasMultipleUtilRecords && (
-              <span>{utilEntries.length} utilization records</span>
-            )}
+            {hasMultipleUtilRecords && <span>{utilEntries.length} utilization records</span>}
           </>
         ) : (
           <span className="flex items-center gap-1">

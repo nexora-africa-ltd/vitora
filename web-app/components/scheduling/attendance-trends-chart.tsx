@@ -67,7 +67,7 @@ export function AttendanceTrendsChart({ weeks = 12 }: AttendanceTrendsChartProps
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
+          <p className="py-8 text-center text-sm text-muted-foreground">
             No attendance data available yet
           </p>
         </CardContent>
@@ -98,11 +98,7 @@ export function AttendanceTrendsChart({ weeks = 12 }: AttendanceTrendsChartProps
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11 }}
-                className="text-muted-foreground"
-              />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} className="text-muted-foreground" />
               <YAxis
                 yAxisId="hours"
                 tick={{ fontSize: 11 }}
@@ -156,19 +152,41 @@ export function AttendanceTrendsChart({ weeks = 12 }: AttendanceTrendsChartProps
         </div>
         {/* Summary row */}
         <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
-          {chartData.length > 0 && (() => {
-            const total = chartData.reduce((s: number, w: AttendanceTrendWeek & { label: string }) => s + w.hours_worked, 0);
-            const avgRate = chartData.filter((w: AttendanceTrendWeek & { label: string }) => w.shifts_completed > 0)
-              .reduce((s: number, w: AttendanceTrendWeek & { label: string }, _: number, a: (AttendanceTrendWeek & { label: string })[]) => s + w.on_time_rate / a.length, 0);
-            const totalLate = chartData.reduce((s: number, w: AttendanceTrendWeek & { label: string }) => s + w.late_count, 0);
-            return (
-              <>
-                <span>Total: <strong className="text-foreground">{Math.round(total)}h</strong></span>
-                <span>Avg On-Time: <strong className="text-foreground">{Math.round(avgRate)}%</strong></span>
-                <span>Late: <strong className="text-foreground">{totalLate}</strong></span>
-              </>
-            );
-          })()}
+          {chartData.length > 0 &&
+            (() => {
+              const total = chartData.reduce(
+                (s: number, w: AttendanceTrendWeek & { label: string }) => s + w.hours_worked,
+                0
+              );
+              const avgRate = chartData
+                .filter((w: AttendanceTrendWeek & { label: string }) => w.shifts_completed > 0)
+                .reduce(
+                  (
+                    s: number,
+                    w: AttendanceTrendWeek & { label: string },
+                    _: number,
+                    a: (AttendanceTrendWeek & { label: string })[]
+                  ) => s + w.on_time_rate / a.length,
+                  0
+                );
+              const totalLate = chartData.reduce(
+                (s: number, w: AttendanceTrendWeek & { label: string }) => s + w.late_count,
+                0
+              );
+              return (
+                <>
+                  <span>
+                    Total: <strong className="text-foreground">{Math.round(total)}h</strong>
+                  </span>
+                  <span>
+                    Avg On-Time: <strong className="text-foreground">{Math.round(avgRate)}%</strong>
+                  </span>
+                  <span>
+                    Late: <strong className="text-foreground">{totalLate}</strong>
+                  </span>
+                </>
+              );
+            })()}
         </div>
       </CardContent>
     </Card>

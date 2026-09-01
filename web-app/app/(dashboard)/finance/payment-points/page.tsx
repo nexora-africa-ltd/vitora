@@ -90,11 +90,16 @@ type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value'];
 
 function getMethodBadgeColor(method: string) {
   switch (method) {
-    case 'CASH': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300';
-    case 'MPESA': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-    case 'CARD': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
-    case 'BANK_TRANSFER': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
+    case 'CASH':
+      return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300';
+    case 'MPESA':
+      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+    case 'CARD':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+    case 'BANK_TRANSFER':
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
+    default:
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
   }
 }
 
@@ -176,7 +181,7 @@ function PaymentPointFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>{isEdit ? 'Edit Payment Point' : 'New Payment Point'}</DialogTitle>
@@ -188,30 +193,49 @@ function PaymentPointFormDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="pp-name">Name *</Label>
-              <Input id="pp-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Main Cash Register" />
+              <Input
+                id="pp-name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Main Cash Register"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="pp-code">Code *</Label>
-              <Input id="pp-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="CASH-01" />
+              <Input
+                id="pp-code"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value })}
+                placeholder="CASH-01"
+              />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="pp-method">Payment Method *</Label>
-              <Select value={form.method} onValueChange={(v) => setForm({ ...form, method: v as PaymentMethod })}>
+              <Select
+                value={form.method}
+                onValueChange={(v) => setForm({ ...form, method: v as PaymentMethod })}
+              >
                 <SelectTrigger id="pp-method">
                   <SelectValue placeholder="Select method" />
                 </SelectTrigger>
                 <SelectContent>
                   {PAYMENT_METHODS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center gap-2 pt-6">
-              <Switch id="pp-active" checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+              <Switch
+                id="pp-active"
+                checked={form.is_active}
+                onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+              />
               <Label htmlFor="pp-active">Active</Label>
             </div>
           </div>
@@ -220,7 +244,7 @@ function PaymentPointFormDialog({
           {isMpesa && (
             <Card className="border-green-200 dark:border-green-800">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
                   <Smartphone className="h-4 w-4 text-green-600" />
                   M-Pesa Details
                 </CardTitle>
@@ -229,16 +253,31 @@ function PaymentPointFormDialog({
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="pp-till">Till Number</Label>
-                    <Input id="pp-till" value={form.till_number} onChange={(e) => setForm({ ...form, till_number: e.target.value })} placeholder="123456" />
+                    <Input
+                      id="pp-till"
+                      value={form.till_number}
+                      onChange={(e) => setForm({ ...form, till_number: e.target.value })}
+                      placeholder="123456"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pp-paybill">Paybill Number</Label>
-                    <Input id="pp-paybill" value={form.paybill_number} onChange={(e) => setForm({ ...form, paybill_number: e.target.value })} placeholder="888880" />
+                    <Input
+                      id="pp-paybill"
+                      value={form.paybill_number}
+                      onChange={(e) => setForm({ ...form, paybill_number: e.target.value })}
+                      placeholder="888880"
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="pp-paybill-acc">Paybill Account Number</Label>
-                  <Input id="pp-paybill-acc" value={form.paybill_account_number} onChange={(e) => setForm({ ...form, paybill_account_number: e.target.value })} placeholder="Account reference" />
+                  <Input
+                    id="pp-paybill-acc"
+                    value={form.paybill_account_number}
+                    onChange={(e) => setForm({ ...form, paybill_account_number: e.target.value })}
+                    placeholder="Account reference"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -248,7 +287,7 @@ function PaymentPointFormDialog({
           {isBank && (
             <Card className="border-purple-200 dark:border-purple-800">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
                   <Wallet className="h-4 w-4 text-purple-600" />
                   Bank Details
                 </CardTitle>
@@ -257,21 +296,41 @@ function PaymentPointFormDialog({
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="pp-bank">Bank Name</Label>
-                    <Input id="pp-bank" value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} placeholder="KCB Bank" />
+                    <Input
+                      id="pp-bank"
+                      value={form.bank_name}
+                      onChange={(e) => setForm({ ...form, bank_name: e.target.value })}
+                      placeholder="KCB Bank"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pp-branch">Branch</Label>
-                    <Input id="pp-branch" value={form.bank_branch} onChange={(e) => setForm({ ...form, bank_branch: e.target.value })} placeholder="Nairobi Branch" />
+                    <Input
+                      id="pp-branch"
+                      value={form.bank_branch}
+                      onChange={(e) => setForm({ ...form, bank_branch: e.target.value })}
+                      placeholder="Nairobi Branch"
+                    />
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="pp-acc-name">Account Name</Label>
-                    <Input id="pp-acc-name" value={form.bank_account_name} onChange={(e) => setForm({ ...form, bank_account_name: e.target.value })} placeholder="Facility Name" />
+                    <Input
+                      id="pp-acc-name"
+                      value={form.bank_account_name}
+                      onChange={(e) => setForm({ ...form, bank_account_name: e.target.value })}
+                      placeholder="Facility Name"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pp-acc-num">Account Number</Label>
-                    <Input id="pp-acc-num" value={form.bank_account_number} onChange={(e) => setForm({ ...form, bank_account_number: e.target.value })} placeholder="1234567890" />
+                    <Input
+                      id="pp-acc-num"
+                      value={form.bank_account_number}
+                      onChange={(e) => setForm({ ...form, bank_account_number: e.target.value })}
+                      placeholder="1234567890"
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -280,12 +339,20 @@ function PaymentPointFormDialog({
 
           <div className="space-y-2">
             <Label htmlFor="pp-notes">Notes</Label>
-            <Textarea id="pp-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes about this payment point" rows={2} />
+            <Textarea
+              id="pp-notes"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              placeholder="Optional notes about this payment point"
+              rows={2}
+            />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEdit ? 'Save Changes' : 'Create Payment Point'}
@@ -404,15 +471,26 @@ export default function PaymentPointsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <Select value={methodFilter} onValueChange={(v) => { setMethodFilter(v); setPage(1); }}>
-                <SelectTrigger className="w-full sm:w-[220px]" aria-label="Filter by payment method">
+              <Select
+                value={methodFilter}
+                onValueChange={(v) => {
+                  setMethodFilter(v);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger
+                  className="w-full sm:w-[220px]"
+                  aria-label="Filter by payment method"
+                >
                   <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                   <SelectValue placeholder="Filter by method" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Methods</SelectItem>
                   {PAYMENT_METHODS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -433,7 +511,9 @@ export default function PaymentPointsPage() {
             <CardTitle className="flex items-center gap-2">
               <Wallet className="h-5 w-5" />
               Payment Points
-              <Badge variant="secondary" className="ml-1">{data?.count ?? 0}</Badge>
+              <Badge variant="secondary" className="ml-1">
+                {data?.count ?? 0}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -455,7 +535,7 @@ export default function PaymentPointsPage() {
                   <Card className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 space-y-1">
-                        <p className="font-medium truncate">{pp.name}</p>
+                        <p className="truncate font-medium">{pp.name}</p>
                         <p className="font-mono text-sm text-muted-foreground">{pp.code}</p>
                       </div>
                       <Badge variant={pp.is_active ? 'default' : 'secondary'}>
@@ -463,16 +543,39 @@ export default function PaymentPointsPage() {
                       </Badge>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
-                      <Badge className={getMethodBadgeColor(pp.method)}>{getMethodLabel(pp.method)}</Badge>
-                      {pp.till_number && <span className="text-sm text-muted-foreground">Till: {pp.till_number}</span>}
-                      {pp.bank_name && <span className="text-sm text-muted-foreground">{pp.bank_name}</span>}
+                      <Badge className={getMethodBadgeColor(pp.method)}>
+                        {getMethodLabel(pp.method)}
+                      </Badge>
+                      {pp.till_number && (
+                        <span className="text-sm text-muted-foreground">
+                          Till: {pp.till_number}
+                        </span>
+                      )}
+                      {pp.bank_name && (
+                        <span className="text-sm text-muted-foreground">{pp.bank_name}</span>
+                      )}
                     </div>
                     {canManage && (
                       <div className="mt-3 flex gap-2">
-                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openEdit(pp); }}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEdit(pp);
+                          }}
+                        >
                           <Edit className="mr-1 h-3 w-3" /> Edit
                         </Button>
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: pp.id, name: pp.name }); }}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget({ id: pp.id, name: pp.name });
+                          }}
+                        >
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -486,8 +589,10 @@ export default function PaymentPointsPage() {
                     sortable: true,
                     cell: (pp) => (
                       <div className="min-w-0">
-                        <p className="font-medium truncate">{pp.name}</p>
-                        <p className="font-mono text-sm text-muted-foreground truncate">{pp.code}</p>
+                        <p className="truncate font-medium">{pp.name}</p>
+                        <p className="truncate font-mono text-sm text-muted-foreground">
+                          {pp.code}
+                        </p>
                       </div>
                     ),
                   },
@@ -518,7 +623,9 @@ export default function PaymentPointsPage() {
                         return (
                           <span className="text-sm text-muted-foreground">
                             {pp.bank_name ? `${pp.bank_name}` : ''}
-                            {pp.bank_account_number ? ` • ****${pp.bank_account_number.slice(-4)}` : ''}
+                            {pp.bank_account_number
+                              ? ` • ****${pp.bank_account_number.slice(-4)}`
+                              : ''}
                           </span>
                         );
                       }
@@ -536,21 +643,40 @@ export default function PaymentPointsPage() {
                       </Badge>
                     ),
                   },
-                  ...(canManage ? [{
-                    key: 'actions' as const,
-                    header: '',
-                    className: 'w-[100px] text-right',
-                    cell: (pp: PaymentPoint) => (
-                      <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(pp); }}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: pp.id, name: pp.name }); }}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ),
-                  }] : []),
+                  ...(canManage
+                    ? [
+                        {
+                          key: 'actions' as const,
+                          header: '',
+                          className: 'w-[100px] text-right',
+                          cell: (pp: PaymentPoint) => (
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEdit(pp);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteTarget({ id: pp.id, name: pp.name });
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ),
+                        },
+                      ]
+                    : []),
                 ]}
               />
             )}
@@ -559,13 +685,23 @@ export default function PaymentPointsPage() {
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!hasPrev}
+            >
               Previous
             </Button>
             <span className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </span>
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNext}
+            >
               Next
             </Button>
           </div>
@@ -589,12 +725,16 @@ export default function PaymentPointsPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete payment point?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete &ldquo;{deleteTarget?.name}&rdquo;. Existing payments linked to this point will keep their reference, but new payments cannot use it.
+                This will permanently delete &ldquo;{deleteTarget?.name}&rdquo;. Existing payments
+                linked to this point will keep their reference, but new payments cannot use it.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>

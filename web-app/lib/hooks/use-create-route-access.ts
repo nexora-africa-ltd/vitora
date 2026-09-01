@@ -43,17 +43,35 @@ const CREATE_ROUTE_PERMISSIONS: { prefix: string; permissions: string | string[]
   { prefix: '/wards/new', permissions: ['inpatient.add_ward', 'core.add_ward'] },
   { prefix: '/admissions/new', permissions: 'inpatient.add_admission' },
   { prefix: '/admissions/handover/new', permissions: 'inpatient.add_shifthandover' },
-  { prefix: '/admissions/recommendations/new', permissions: 'inpatient.add_admissionrecommendation' },
+  {
+    prefix: '/admissions/recommendations/new',
+    permissions: 'inpatient.add_admissionrecommendation',
+  },
   { prefix: '/insurance/providers/new', permissions: 'insurance.add_insuranceprovider' },
   { prefix: '/insurance/claims/new', permissions: 'insurance.add_insuranceclaim' },
   { prefix: '/insurance/enrollments/new', permissions: 'insurance.add_insuranceenrollment' },
   { prefix: '/allied-health/social-work/cases/new', permissions: 'social_work.add_socialworkcase' },
-  { prefix: '/allied-health/social-work/referrals/new', permissions: 'social_work.add_socialworkreferral' },
+  {
+    prefix: '/allied-health/social-work/referrals/new',
+    permissions: 'social_work.add_socialworkreferral',
+  },
   { prefix: '/allied-health/social-work/cases/', permissions: 'social_work.add_casenote' },
-  { prefix: '/allied-health/counselling/referrals/new', permissions: 'counselling.add_counsellingreferral' },
-  { prefix: '/allied-health/physiotherapy/orders/new', permissions: 'physiotherapy.add_physiotherapyorder' },
-  { prefix: '/allied-health/occupational-therapy/orders/new', permissions: 'occupational_therapy.add_occupationaltherapyorder' },
-  { prefix: '/allied-health/nutrition/consultations/new', permissions: 'nutrition.add_nutritionconsultation' },
+  {
+    prefix: '/allied-health/counselling/referrals/new',
+    permissions: 'counselling.add_counsellingreferral',
+  },
+  {
+    prefix: '/allied-health/physiotherapy/orders/new',
+    permissions: 'physiotherapy.add_physiotherapyorder',
+  },
+  {
+    prefix: '/allied-health/occupational-therapy/orders/new',
+    permissions: 'occupational_therapy.add_occupationaltherapyorder',
+  },
+  {
+    prefix: '/allied-health/nutrition/consultations/new',
+    permissions: 'nutrition.add_nutritionconsultation',
+  },
   { prefix: '/allied-health/nutrition/diet-plans/new', permissions: 'nutrition.add_dietplan' },
   { prefix: '/laboratory/orders/new', permissions: 'laboratory.add_laborder' },
   { prefix: '/laboratory/tests/new', permissions: 'laboratory.add_testcatalog' },
@@ -82,6 +100,6 @@ export function useCreateRouteAccess() {
       if (typeof rule.permissions === 'string') return hasPermission(rule.permissions);
       return rule.permissions.some((permission) => hasPermission(permission));
     },
-    [hasPermission],
+    [hasPermission]
   );
 }

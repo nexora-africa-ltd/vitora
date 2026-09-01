@@ -60,8 +60,8 @@ interface PatientAssignment {
   patientName: string;
   patientMrn: string;
   recommendationId?: number;
-  diagnosisCode?: string;   // ICD-10 code (max 10 chars)
-  diagnosisText?: string;   // Text description
+  diagnosisCode?: string; // ICD-10 code (max 10 chars)
+  diagnosisText?: string; // Text description
   urgency: string;
   wardId?: number;
   bedId?: number;
@@ -86,7 +86,9 @@ export default function BulkAssignmentPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatients, setSelectedPatients] = useState<Set<number>>(new Set());
   const [assignments, setAssignments] = useState<Map<number, PatientAssignment>>(new Map());
-  const [compatibilityResults, setCompatibilityResults] = useState<PatientCompatibilityResult[]>([]);
+  const [compatibilityResults, setCompatibilityResults] = useState<PatientCompatibilityResult[]>(
+    []
+  );
   const [activeWardId, setActiveWardId] = useState<number | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,7 +114,7 @@ export default function BulkAssignmentPage() {
   // Get beds for active ward
   const { data: bedsData } = useWardBeds(activeWardId ?? undefined);
   const availableBeds = useMemo(() => {
-    const bedsList = Array.isArray(bedsData) ? bedsData : bedsData?.results ?? [];
+    const bedsList = Array.isArray(bedsData) ? bedsData : (bedsData?.results ?? []);
     return bedsList.filter((b: Bed) => b.status === 'AVAILABLE');
   }, [bedsData]);
 
@@ -166,7 +168,7 @@ export default function BulkAssignmentPage() {
           patientName: patientResult.patient_name || 'Unknown',
           patientMrn: patientResult.patient_mrn || '',
           recommendationId: rec?.id,
-          diagnosisCode: rec?.provisional_diagnosis,  // ICD-10 code
+          diagnosisCode: rec?.provisional_diagnosis, // ICD-10 code
           diagnosisText: rec?.provisional_diagnosis_text || rec?.provisional_diagnosis,
           urgency: rec?.urgency || 'ROUTINE',
           status: 'pending',
@@ -233,7 +235,7 @@ export default function BulkAssignmentPage() {
           bed: assignment.bedId!,
           payer_type: 'CASH',
           admission_date: new Date().toISOString(),
-          admitting_diagnosis: assignment.diagnosisCode || 'R69',  // R69 = "Illness, unspecified" as fallback
+          admitting_diagnosis: assignment.diagnosisCode || 'R69', // R69 = "Illness, unspecified" as fallback
           admitting_diagnosis_text: assignment.diagnosisText || 'Pending assessment',
           admitting_officer: user.id,
         });
@@ -274,7 +276,7 @@ export default function BulkAssignmentPage() {
 
   if (recommendationsLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <Skeleton className="h-10 w-64" />
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
@@ -286,7 +288,7 @@ export default function BulkAssignmentPage() {
   }
 
   return (
-    <div className="container mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-4 sm:space-y-6 sm:py-6">
       <PageHeader
         title="Bulk Bed Assignment"
         helpContent="Quickly assign multiple patients to compatible wards and beds during emergency or surge scenarios. Select patients, check compatibility, then assign beds."
@@ -301,8 +303,8 @@ export default function BulkAssignmentPage() {
       <Alert>
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          <span className="font-medium">Emergency Mode:</span> Use this tool for mass casualty or surge scenarios.
-          Compatibility checks are performed but can be overridden.
+          <span className="font-medium">Emergency Mode:</span> Use this tool for mass casualty or
+          surge scenarios. Compatibility checks are performed but can be overridden.
         </AlertDescription>
       </Alert>
 
@@ -321,7 +323,7 @@ export default function BulkAssignmentPage() {
               </Button>
               {selectedPatients.size > 0 && (
                 <Button variant="ghost" size="sm" onClick={clearSelection}>
-                  <X className="h-4 w-4 mr-1" />
+                  <X className="mr-1 h-4 w-4" />
                   Clear
                 </Button>
               )}
@@ -331,7 +333,7 @@ export default function BulkAssignmentPage() {
         <CardContent className="space-y-4">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search patients by name or MRN..."
               value={searchQuery}
@@ -343,11 +345,11 @@ export default function BulkAssignmentPage() {
           {/* Patient list */}
           {filteredRecommendations.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <Users className="mx-auto mb-2 h-12 w-12 opacity-50" />
               <p>No pending admission recommendations</p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="max-h-64 space-y-2 overflow-y-auto">
               {filteredRecommendations.map((rec: AdmissionRecommendation) => {
                 const patientId = rec.patient_id;
                 if (!patientId) return null;
@@ -355,18 +357,23 @@ export default function BulkAssignmentPage() {
                 return (
                   <div
                     key={rec.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                      isSelected ? 'bg-primary/5 border-primary/30' : 'hover:bg-muted/50'
+                    className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
+                      isSelected ? 'border-primary/30 bg-primary/5' : 'hover:bg-muted/50'
                     }`}
                   >
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => togglePatient(patientId)}
                     />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{rec.patient_name || 'Unknown Patient'}</p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {rec.patient_mrn} • {rec.provisional_diagnosis_text || rec.provisional_diagnosis || 'No diagnosis'}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">
+                        {rec.patient_name || 'Unknown Patient'}
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {rec.patient_mrn} •{' '}
+                        {rec.provisional_diagnosis_text ||
+                          rec.provisional_diagnosis ||
+                          'No diagnosis'}
                       </p>
                     </div>
                     <Badge
@@ -393,7 +400,7 @@ export default function BulkAssignmentPage() {
               disabled={bulkCheck.isPending}
               className="w-full sm:w-auto"
             >
-              {bulkCheck.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {bulkCheck.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Check Compatibility ({selectedPatients.size} patients)
             </Button>
           )}
@@ -422,9 +429,9 @@ export default function BulkAssignmentPage() {
                 </div>
               </div>
               {/* Progress Bar */}
-              <div className="w-full bg-muted rounded-full h-2">
+              <div className="h-2 w-full rounded-full bg-muted">
                 <div
-                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                  className="h-2 rounded-full bg-green-600 transition-all duration-300"
                   style={{ width: `${(assignedCount / assignments.size) * 100}%` }}
                 />
               </div>
@@ -443,20 +450,21 @@ export default function BulkAssignmentPage() {
                 };
                 const urgencyColors = {
                   EMERGENCY: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-                  URGENT: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+                  URGENT:
+                    'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
                   ROUTINE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
                 };
 
                 return (
                   <div
                     key={assignment.patientId}
-                    className={`rounded-lg border-2 p-3 sm:p-4 transition-colors ${statusColors[assignment.status]}`}
+                    className={`rounded-lg border-2 p-3 transition-colors sm:p-4 ${statusColors[assignment.status]}`}
                   >
                     {/* Patient Header Row */}
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-3">
-                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex min-w-0 flex-1 items-start gap-2">
                         {/* Status Icon */}
-                        <div className="shrink-0 mt-0.5">
+                        <div className="mt-0.5 shrink-0">
                           {assignment.status === 'pending' && (
                             <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30" />
                           )}
@@ -472,31 +480,38 @@ export default function BulkAssignmentPage() {
                         </div>
                         {/* Patient Info */}
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold truncate">{assignment.patientName}</p>
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="truncate font-semibold">{assignment.patientName}</p>
+                          <p className="truncate text-sm text-muted-foreground">
                             {assignment.patientMrn}
                           </p>
                           {assignment.diagnosisText && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                              {assignment.diagnosisCode && <span className="font-mono">{assignment.diagnosisCode}: </span>}
+                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                              {assignment.diagnosisCode && (
+                                <span className="font-mono">{assignment.diagnosisCode}: </span>
+                              )}
                               {assignment.diagnosisText}
                             </p>
                           )}
                         </div>
                       </div>
                       {/* Badges */}
-                      <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                        <Badge className={`text-xs ${urgencyColors[assignment.urgency as keyof typeof urgencyColors] || urgencyColors.ROUTINE}`}>
-                          {assignment.urgency === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                      <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
+                        <Badge
+                          className={`text-xs ${urgencyColors[assignment.urgency as keyof typeof urgencyColors] || urgencyColors.ROUTINE}`}
+                        >
+                          {assignment.urgency === 'EMERGENCY' && (
+                            <AlertTriangle className="mr-1 h-3 w-3" />
+                          )}
                           {assignment.urgency}
                         </Badge>
                         {hasCompatibleWards ? (
-                          <Badge variant="outline" className="text-xs shrink-0">
-                            <Building2 className="h-3 w-3 mr-1" />
-                            {assignment.compatibleWards?.length} ward{(assignment.compatibleWards?.length || 0) > 1 ? 's' : ''}
+                          <Badge variant="outline" className="shrink-0 text-xs">
+                            <Building2 className="mr-1 h-3 w-3" />
+                            {assignment.compatibleWards?.length} ward
+                            {(assignment.compatibleWards?.length || 0) > 1 ? 's' : ''}
                           </Badge>
                         ) : (
-                          <Badge variant="destructive" className="text-xs shrink-0">
+                          <Badge variant="destructive" className="shrink-0 text-xs">
                             No wards
                           </Badge>
                         )}
@@ -515,8 +530,8 @@ export default function BulkAssignmentPage() {
                     {hasCompatibleWards && (
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                         {/* Ward Selection */}
-                        <div className="flex-1 min-w-0">
-                          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                        <div className="min-w-0 flex-1">
+                          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                             Ward
                           </label>
                           <Select
@@ -533,8 +548,8 @@ export default function BulkAssignmentPage() {
                                   <div className="flex items-center gap-2">
                                     <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                                     <span className="truncate">{w.ward_name}</span>
-                                    <Badge variant="secondary" className="text-xs ml-auto shrink-0">
-                                      <BedDouble className="h-3 w-3 mr-1" />
+                                    <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
+                                      <BedDouble className="mr-1 h-3 w-3" />
                                       {w.available_beds}
                                     </Badge>
                                   </div>
@@ -546,7 +561,7 @@ export default function BulkAssignmentPage() {
 
                         {/* Bed Selection */}
                         <div className="w-full sm:w-40">
-                          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                             Bed
                           </label>
                           <Select
@@ -555,13 +570,15 @@ export default function BulkAssignmentPage() {
                             disabled={!assignment.wardId || assignment.status === 'admitted'}
                           >
                             <SelectTrigger className="w-full">
-                              <SelectValue placeholder={
-                                !assignment.wardId
-                                  ? 'Select ward first'
-                                  : assignment.wardId !== activeWardId
-                                    ? 'Loading...'
-                                    : 'Select bed...'
-                              } />
+                              <SelectValue
+                                placeholder={
+                                  !assignment.wardId
+                                    ? 'Select ward first'
+                                    : assignment.wardId !== activeWardId
+                                      ? 'Loading...'
+                                      : 'Select bed...'
+                                }
+                              />
                             </SelectTrigger>
                             <SelectContent className="max-h-60">
                               {assignment.wardId === activeWardId && availableBeds.length > 0 ? (
@@ -578,7 +595,7 @@ export default function BulkAssignmentPage() {
                                   No beds available
                                 </div>
                               ) : assignment.wardId ? (
-                                <div className="px-2 py-1.5 text-sm text-muted-foreground flex items-center gap-2">
+                                <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground">
                                   <Loader2 className="h-3 w-3 animate-spin" />
                                   Loading beds...
                                 </div>
@@ -588,7 +605,7 @@ export default function BulkAssignmentPage() {
                         </div>
 
                         {/* Status indicator on larger screens */}
-                        <div className="hidden sm:flex items-center justify-center w-10 shrink-0">
+                        <div className="hidden w-10 shrink-0 items-center justify-center sm:flex">
                           {assignment.status === 'assigned' && (
                             <CheckCircle2 className="h-5 w-5 text-green-600" />
                           )}
@@ -604,7 +621,8 @@ export default function BulkAssignmentPage() {
                       <Alert className="py-2">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription className="text-sm">
-                          No compatible wards found for this patient. Check ward constraints or override manually.
+                          No compatible wards found for this patient. Check ward constraints or
+                          override manually.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -615,9 +633,10 @@ export default function BulkAssignmentPage() {
 
             {/* Submit Button */}
             {assignedCount > 0 && (
-              <div className="pt-4 border-t flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{assignedCount}</span> patient{assignedCount > 1 ? 's' : ''} ready for admission
+                  <span className="font-medium text-foreground">{assignedCount}</span> patient
+                  {assignedCount > 1 ? 's' : ''} ready for admission
                 </p>
                 <Button
                   onClick={() => setConfirmDialogOpen(true)}
@@ -625,7 +644,7 @@ export default function BulkAssignmentPage() {
                   size="lg"
                   className="w-full sm:w-auto"
                 >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
                   Admit {assignedCount} Patient{assignedCount > 1 ? 's' : ''}
                 </Button>
               </div>
@@ -633,8 +652,10 @@ export default function BulkAssignmentPage() {
 
             {/* No assignments ready message */}
             {assignedCount === 0 && assignments.size > 0 && (
-              <div className="text-center py-4 text-muted-foreground">
-                <p className="text-sm">Select a ward and bed for each patient to enable bulk admission.</p>
+              <div className="py-4 text-center text-muted-foreground">
+                <p className="text-sm">
+                  Select a ward and bed for each patient to enable bulk admission.
+                </p>
               </div>
             )}
           </CardContent>
@@ -650,14 +671,15 @@ export default function BulkAssignmentPage() {
               <HelpPopover content="This will create admission records for all assigned patients." />
             </div>
           </DialogHeader>
-          <div className="py-2 space-y-4">
+          <div className="space-y-4 py-2">
             <p className="text-muted-foreground">
-              You are about to admit <span className="font-semibold text-foreground">{assignedCount}</span> patient
+              You are about to admit{' '}
+              <span className="font-semibold text-foreground">{assignedCount}</span> patient
               {assignedCount > 1 ? 's' : ''} to their assigned wards and beds.
             </p>
 
             {/* Summary of assignments */}
-            <div className="max-h-48 overflow-y-auto space-y-2">
+            <div className="max-h-48 space-y-2 overflow-y-auto">
               {Array.from(assignments.values())
                 .filter((a) => a.status === 'assigned')
                 .map((a) => {
@@ -666,12 +688,12 @@ export default function BulkAssignmentPage() {
                   return (
                     <div
                       key={a.patientId}
-                      className="flex items-center gap-3 p-2 rounded-md bg-muted/50 text-sm"
+                      className="flex items-center gap-3 rounded-md bg-muted/50 p-2 text-sm"
                     >
-                      <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{a.patientName}</p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="truncate font-medium">{a.patientName}</p>
+                        <p className="truncate text-xs text-muted-foreground">
                           {ward?.ward_name || 'Ward'} → Bed {bed?.bed_number || a.bedId}
                         </p>
                       </div>
@@ -701,8 +723,8 @@ export default function BulkAssignmentPage() {
               disabled={isSubmitting}
               className="w-full sm:w-auto"
             >
-              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              <CheckCircle2 className="h-4 w-4 mr-2" />
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <CheckCircle2 className="mr-2 h-4 w-4" />
               Confirm & Admit All
             </Button>
           </DialogFooter>

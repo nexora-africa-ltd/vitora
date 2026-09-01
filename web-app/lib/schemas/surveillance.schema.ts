@@ -3,11 +3,7 @@
  */
 import { z } from 'zod';
 
-export const NotifiableDiseaseCategorySchema = z.enum([
-  'IMMEDIATE',
-  'WEEKLY',
-  'MONTHLY',
-]);
+export const NotifiableDiseaseCategorySchema = z.enum(['IMMEDIATE', 'WEEKLY', 'MONTHLY']);
 
 export const NotifiableDiseaseListItemSchema = z.object({
   id: z.number(),
@@ -18,12 +14,7 @@ export const NotifiableDiseaseListItemSchema = z.object({
   is_active: z.boolean(),
 });
 
-export const NotifiableCaseSeveritySchema = z.enum([
-  'MILD',
-  'MODERATE',
-  'SEVERE',
-  'CRITICAL',
-]);
+export const NotifiableCaseSeveritySchema = z.enum(['MILD', 'MODERATE', 'SEVERE', 'CRITICAL']);
 
 export const NotifiableCaseOutcomeSchema = z.enum([
   'ACTIVE',
@@ -103,7 +94,6 @@ export const PaginatedNotifiableCaseSchema = z.object({
   previous: z.string().nullable(),
   results: z.array(NotifiableCaseListSchema),
 });
-
 
 export const SurveillanceAlertTypeSchema = z.enum([
   'NEW_CASE',

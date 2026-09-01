@@ -58,7 +58,7 @@ export function Breadcrumb() {
   if (segments.length === 0) {
     return (
       <div className="flex items-center text-sm text-muted-foreground">
-        <Home className="h-4 w-4 mr-2" />
+        <Home className="mr-2 h-4 w-4" />
         <span className="font-medium text-foreground">Dashboard</span>
       </div>
     );
@@ -69,23 +69,21 @@ export function Breadcrumb() {
   return (
     <nav aria-label="Breadcrumb" className="min-w-0 max-w-full">
       {/* Mobile & Medium: show only the current page */}
-      <div className="lg:hidden text-sm font-medium text-foreground truncate">
-        {currentLabel}
-      </div>
+      <div className="truncate text-sm font-medium text-foreground lg:hidden">{currentLabel}</div>
 
       {/* Large screens: show full breadcrumb */}
-      <div className="hidden lg:flex items-center text-sm min-w-0 max-w-full overflow-x-auto whitespace-nowrap">
+      <div className="hidden min-w-0 max-w-full items-center overflow-x-auto whitespace-nowrap text-sm lg:flex">
         <Link
           href="/"
-          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+          className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
         >
           <Home className="h-4 w-4" />
           <span className="sr-only">Dashboard</span>
         </Link>
 
         {items.map((item, index) => (
-          <div key={item.href} className="flex items-center shrink-0">
-            <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground shrink-0" />
+          <div key={item.href} className="flex shrink-0 items-center">
+            <ChevronRight className="mx-2 h-4 w-4 shrink-0 text-muted-foreground" />
             {index === items.length - 1 ? (
               <span className="font-medium text-foreground" title={item.label}>
                 {item.label}
@@ -94,8 +92,8 @@ export function Breadcrumb() {
               <Link
                 href={item.href}
                 className={cn(
-                  'text-muted-foreground hover:text-foreground transition-colors',
-                  'hover:underline underline-offset-4'
+                  'text-muted-foreground transition-colors hover:text-foreground',
+                  'underline-offset-4 hover:underline'
                 )}
               >
                 {item.label}

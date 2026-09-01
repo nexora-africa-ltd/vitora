@@ -25,11 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import type { DuplicateMatch } from '@/lib/types/patient';
 
@@ -73,29 +69,30 @@ function PatientMatchCard({
   onSelect: () => void;
 }) {
   return (
-    <Card className={cn(
-      'transition-colors',
-      isExactMatch ? 'border-destructive/50 bg-destructive/5' : 'hover:bg-muted/50'
-    )}>
+    <Card
+      className={cn(
+        'transition-colors',
+        isExactMatch ? 'border-destructive/50 bg-destructive/5' : 'hover:bg-muted/50'
+      )}
+    >
       <CardContent className="p-3 sm:p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {/* Patient Info */}
-          <div className="flex items-start gap-3 min-w-0">
-            <div className={cn(
-              'h-10 w-10 rounded-full flex items-center justify-center shrink-0',
-              isExactMatch ? 'bg-destructive/10' : 'bg-primary/10'
-            )}>
-              <User className={cn(
-                'h-5 w-5',
-                isExactMatch ? 'text-destructive' : 'text-primary'
-              )} />
+          <div className="flex min-w-0 items-start gap-3">
+            <div
+              className={cn(
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+                isExactMatch ? 'bg-destructive/10' : 'bg-primary/10'
+              )}
+            >
+              <User className={cn('h-5 w-5', isExactMatch ? 'text-destructive' : 'text-primary')} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold truncate">{match.full_name}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate font-semibold">{match.full_name}</span>
                 <MatchConfidenceBadge confidence={match.match_confidence} />
               </div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground mt-1">
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                 <span className="font-mono text-xs">{match.mrn}</span>
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5" />
@@ -105,9 +102,7 @@ function PatientMatchCard({
                   {match.gender === 'M' ? 'Male' : match.gender === 'F' ? 'Female' : 'Other'}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {match.match_reason}
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{match.match_reason}</p>
             </div>
           </div>
 
@@ -119,18 +114,13 @@ function PatientMatchCard({
               className="flex-1 sm:flex-none"
               onClick={onSelect}
             >
-              <UserCheck className="h-4 w-4 mr-1.5" />
+              <UserCheck className="mr-1.5 h-4 w-4" />
               <span className="sm:hidden">Select</span>
               <span className="hidden sm:inline">Check-in</span>
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex-1 sm:flex-none"
-              asChild
-            >
+            <Button variant="ghost" size="sm" className="flex-1 sm:flex-none" asChild>
               <Link href={`/patients/${match.id}`} target="_blank">
-                <ExternalLink className="h-4 w-4 mr-1.5" />
+                <ExternalLink className="mr-1.5 h-4 w-4" />
                 <span className="sm:hidden">View</span>
                 <span className="hidden sm:inline">View Record</span>
               </Link>
@@ -191,18 +181,20 @@ export function DuplicatePatientAlert({
               <Button variant="ghost" size="sm" className="w-full">
                 {isExpanded ? (
                   <>
-                    <ChevronUp className="h-4 w-4 mr-1.5" />
-                    Hide {additionalMatches.length} more match{additionalMatches.length > 1 ? 'es' : ''}
+                    <ChevronUp className="mr-1.5 h-4 w-4" />
+                    Hide {additionalMatches.length} more match
+                    {additionalMatches.length > 1 ? 'es' : ''}
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="h-4 w-4 mr-1.5" />
-                    Show {additionalMatches.length} more match{additionalMatches.length > 1 ? 'es' : ''}
+                    <ChevronDown className="mr-1.5 h-4 w-4" />
+                    Show {additionalMatches.length} more match
+                    {additionalMatches.length > 1 ? 'es' : ''}
                   </>
                 )}
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-2 mt-2">
+            <CollapsibleContent className="mt-2 space-y-2">
               {additionalMatches.map((match) => (
                 <PatientMatchCard
                   key={match.id}
@@ -217,20 +209,15 @@ export function DuplicatePatientAlert({
 
         {/* Continue as New Option */}
         {showContinueOption && !isExactIdMatch && (
-          <div className="pt-3 border-t">
+          <div className="border-t pt-3">
             <div className="flex items-start gap-2">
-              <Shield className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-              <div className="flex-1 min-w-0">
+              <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1">
                 <p className="text-sm text-muted-foreground">
-                  If this is a <strong>different person</strong> with the same name/DOB,
-                  you can continue with the registration.
+                  If this is a <strong>different person</strong> with the same name/DOB, you can
+                  continue with the registration.
                 </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={onContinueAsNew}
-                >
+                <Button variant="outline" size="sm" className="mt-2" onClick={onContinueAsNew}>
                   Continue as Different Person
                 </Button>
               </div>
@@ -240,10 +227,10 @@ export function DuplicatePatientAlert({
 
         {/* Exact ID match - block registration */}
         {isExactIdMatch && (
-          <div className="pt-3 border-t">
+          <div className="border-t pt-3">
             <p className="text-sm text-destructive">
-              You cannot register a new patient with this identification number.
-              Please select the existing patient above or use a different ID.
+              You cannot register a new patient with this identification number. Please select the
+              existing patient above or use a different ID.
             </p>
           </div>
         )}

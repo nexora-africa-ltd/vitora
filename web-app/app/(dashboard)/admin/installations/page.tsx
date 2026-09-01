@@ -105,7 +105,7 @@ export default function InstallationsPage() {
 
   if (!isSuperuser) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <p className="text-muted-foreground">Superuser access required.</p>
       </div>
     );
@@ -163,11 +163,14 @@ export default function InstallationsPage() {
                       onValueChange={setFacilityId}
                       placeholder={orgId ? 'Select facility...' : 'Select organization first'}
                       searchPlaceholder="Search facilities..."
-                      emptyMessage={orgId ? 'No facilities found.' : 'Select an organization first.'}
+                      emptyMessage={
+                        orgId ? 'No facilities found.' : 'Select an organization first.'
+                      }
                       disabled={!orgId}
                     />
                     <p className="text-xs text-muted-foreground">
-                      The hub will be locked to this facility. Each hub is a single physical install.
+                      The hub will be locked to this facility. Each hub is a single physical
+                      install.
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -200,7 +203,7 @@ export default function InstallationsPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Card>
             <CardContent className="p-3 text-center">
               <p className="text-2xl font-bold">{stats.total}</p>
@@ -292,19 +295,20 @@ export default function InstallationsPage() {
             const Icon = statusIcons[item.status];
             return (
               <Card className="p-3">
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium">{item.name || item.installation_id || 'Unnamed'}</p>
                     <p className="text-xs text-muted-foreground">{item.org_name}</p>
                   </div>
-                  <Badge className={`${statusColors[item.status]} gap-1 shrink-0`}>
+                  <Badge className={`${statusColors[item.status]} shrink-0 gap-1`}>
                     <Icon className="h-3 w-3" />
                     {item.status}
                   </Badge>
                 </div>
                 {item.last_check_in && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Last check-in: {formatDistanceToNow(new Date(item.last_check_in), { addSuffix: true })}
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Last check-in:{' '}
+                    {formatDistanceToNow(new Date(item.last_check_in), { addSuffix: true })}
                   </p>
                 )}
               </Card>

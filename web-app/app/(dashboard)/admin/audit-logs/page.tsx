@@ -7,7 +7,18 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Search, Filter, Clock, User, Shield, PencilLine, Trash2, PlusCircle, Network } from 'lucide-react';
+import {
+  FileText,
+  Search,
+  Filter,
+  Clock,
+  User,
+  Shield,
+  PencilLine,
+  Trash2,
+  PlusCircle,
+  Network,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -56,7 +67,7 @@ function getActionBadgeVariant(action: string) {
 function formatActionLabel(action: string): string {
   return action
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
 
@@ -159,10 +170,19 @@ export default function AuditLogsPage() {
                   name="audit-log-search"
                   placeholder="Search by user, action, or resource…"
                   value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                 />
               </div>
-              <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); setPage(1); }}>
+              <Select
+                value={actionFilter}
+                onValueChange={(v) => {
+                  setActionFilter(v);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger aria-label="Filter audit logs by action">
                   <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                   <SelectValue placeholder="Filter by action" />
@@ -214,7 +234,9 @@ export default function AuditLogsPage() {
                         <p className="text-sm font-medium">
                           {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
                         </p>
-                        <p className="text-xs text-muted-foreground">{formatTimestamp(log.timestamp)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatTimestamp(log.timestamp)}
+                        </p>
                       </div>
                     ),
                   },
@@ -222,11 +244,16 @@ export default function AuditLogsPage() {
                     key: 'user',
                     header: 'User',
                     sortable: true,
-                    sortFn: (a, b) => (a.user_name || a.username || '').localeCompare(b.user_name || b.username || ''),
+                    sortFn: (a, b) =>
+                      (a.user_name || a.username || '').localeCompare(
+                        b.user_name || b.username || ''
+                      ),
                     cell: (log) => (
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex min-w-0 items-center gap-2">
                         <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="truncate font-medium">{log.user_name || log.username || 'System'}</span>
+                        <span className="truncate font-medium">
+                          {log.user_name || log.username || 'System'}
+                        </span>
                       </div>
                     ),
                   },
@@ -249,7 +276,9 @@ export default function AuditLogsPage() {
                     cell: (log) => (
                       <div className="min-w-0">
                         <p>{log.resource_name || log.resource_type}</p>
-                        <p className="text-xs text-muted-foreground">ID: {log.resource_id ?? '—'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          ID: {log.resource_id ?? '—'}
+                        </p>
                       </div>
                     ),
                   },
@@ -278,13 +307,23 @@ export default function AuditLogsPage() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between pt-4">
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={!hasPrev}
+                >
                   Previous
                 </Button>
                 <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!hasNext}
+                >
                   Next
                 </Button>
               </div>
@@ -301,12 +340,10 @@ function AuditLogMobileCard({ log }: { log: (typeof logsPlaceholder)[number] }) 
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <p className="font-medium truncate">{log.user_name || log.username || 'System'}</p>
+          <p className="truncate font-medium">{log.user_name || log.username || 'System'}</p>
           <p className="text-sm text-muted-foreground">{formatTimestamp(log.timestamp)}</p>
         </div>
-        <Badge variant={getActionBadgeVariant(log.action)}>
-          {formatActionLabel(log.action)}
-        </Badge>
+        <Badge variant={getActionBadgeVariant(log.action)}>{formatActionLabel(log.action)}</Badge>
       </div>
       <div className="mt-3 space-y-1 text-sm text-muted-foreground">
         <p>{log.resource_name || log.resource_type}</p>

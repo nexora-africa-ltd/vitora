@@ -88,7 +88,15 @@ async function setupImagingMocks(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          results: [mockProcedure(), mockProcedure({ id: 2, code: 'US-ABDOM', name: 'Abdominal Ultrasound', modality: 'US' })],
+          results: [
+            mockProcedure(),
+            mockProcedure({
+              id: 2,
+              code: 'US-ABDOM',
+              name: 'Abdominal Ultrasound',
+              modality: 'US',
+            }),
+          ],
         }),
       });
     } else if (url.includes('/XR-CHEST-PA/')) {
@@ -107,8 +115,20 @@ async function setupImagingMocks(page: Page) {
           previous: null,
           results: [
             mockProcedure(),
-            mockProcedure({ id: 2, code: 'US-ABDOM', name: 'Abdominal Ultrasound', modality: 'US', cost: 2500 }),
-            mockProcedure({ id: 3, code: 'CT-HEAD', name: 'CT Head without Contrast', modality: 'CT', cost: 8000 }),
+            mockProcedure({
+              id: 2,
+              code: 'US-ABDOM',
+              name: 'Abdominal Ultrasound',
+              modality: 'US',
+              cost: 2500,
+            }),
+            mockProcedure({
+              id: 3,
+              code: 'CT-HEAD',
+              name: 'CT Head without Contrast',
+              modality: 'CT',
+              cost: 8000,
+            }),
           ],
         }),
       });
@@ -253,9 +273,7 @@ test.describe('Imaging Module - Main Page', () => {
     await login(page, TEST_USER.username, TEST_USER.password);
     await page.goto('/imaging');
 
-    await expect(
-      page.getByRole('button', { name: /new imaging order/i })
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /new imaging order/i })).toBeVisible();
   });
 
   test('displays orders in table', async ({ page }) => {
@@ -429,7 +447,9 @@ test.describe('Imaging Module - Order Creation', () => {
     await page.goto('/imaging/orders/new');
 
     await expect(page.getByRole('heading', { name: 'Select patient and encounter' })).toBeVisible();
-    await expect(page.getByText('Select both a patient and encounter before placing an imaging order.')).toBeVisible();
+    await expect(
+      page.getByText('Select both a patient and encounter before placing an imaging order.')
+    ).toBeVisible();
   });
 
   test('can select priority', async ({ page }) => {

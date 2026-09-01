@@ -49,23 +49,33 @@ export default function ConsumptionRecordsPage() {
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div>
-            <Label htmlFor="period-after" className="text-xs">Period From</Label>
+            <Label htmlFor="period-after" className="text-xs">
+              Period From
+            </Label>
             <Input
               id="period-after"
               type="date"
               className="w-40"
               value={periodAfter}
-              onChange={(e) => { setPeriodAfter(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setPeriodAfter(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
           <div>
-            <Label htmlFor="period-before" className="text-xs">Period To</Label>
+            <Label htmlFor="period-before" className="text-xs">
+              Period To
+            </Label>
             <Input
               id="period-before"
               type="date"
               className="w-40"
               value={periodBefore}
-              onChange={(e) => { setPeriodBefore(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setPeriodBefore(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
         </div>
@@ -113,7 +123,11 @@ export default function ConsumptionRecordsPage() {
                   header: 'Dispensed',
                   sortable: true,
                   sortType: 'number' as const,
-                  cell: (r) => <span className="font-mono">{Number(r.quantity_dispensed).toLocaleString()}</span>,
+                  cell: (r) => (
+                    <span className="font-mono">
+                      {Number(r.quantity_dispensed).toLocaleString()}
+                    </span>
+                  ),
                   hideOnMobile: true,
                 },
                 {
@@ -121,7 +135,11 @@ export default function ConsumptionRecordsPage() {
                   header: 'Transferred',
                   sortable: true,
                   sortType: 'number' as const,
-                  cell: (r) => <span className="font-mono">{Number(r.quantity_transferred).toLocaleString()}</span>,
+                  cell: (r) => (
+                    <span className="font-mono">
+                      {Number(r.quantity_transferred).toLocaleString()}
+                    </span>
+                  ),
                   hideOnMobile: true,
                 },
                 {
@@ -129,7 +147,11 @@ export default function ConsumptionRecordsPage() {
                   header: 'Adjusted',
                   sortable: true,
                   sortType: 'number' as const,
-                  cell: (r) => <span className="font-mono">{Number(r.quantity_adjusted).toLocaleString()}</span>,
+                  cell: (r) => (
+                    <span className="font-mono">
+                      {Number(r.quantity_adjusted).toLocaleString()}
+                    </span>
+                  ),
                   hideOnMobile: true,
                 },
                 {
@@ -138,7 +160,9 @@ export default function ConsumptionRecordsPage() {
                   sortable: true,
                   sortType: 'number' as const,
                   cell: (r) => (
-                    <span className="font-mono font-medium">{Number(r.total_consumption).toLocaleString()}</span>
+                    <span className="font-mono font-medium">
+                      {Number(r.total_consumption).toLocaleString()}
+                    </span>
                   ),
                 },
                 {
@@ -147,7 +171,9 @@ export default function ConsumptionRecordsPage() {
                   sortable: true,
                   sortType: 'number' as const,
                   cell: (r) => (
-                    <span className="font-mono">{Number(r.average_daily_consumption).toFixed(2)}</span>
+                    <span className="font-mono">
+                      {Number(r.average_daily_consumption).toFixed(2)}
+                    </span>
                   ),
                   hideOnMobile: true,
                 },
@@ -156,19 +182,36 @@ export default function ConsumptionRecordsPage() {
                 <Card className="p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{r.drug_name}</p>
+                      <p className="truncate font-medium">{r.drug_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(r.period_start).toLocaleDateString()} – {new Date(r.period_end).toLocaleDateString()}
+                        {new Date(r.period_start).toLocaleDateString()} –{' '}
+                        {new Date(r.period_end).toLocaleDateString()}
                       </p>
                     </div>
                     <Badge variant="outline" className="shrink-0">
                       {Number(r.total_consumption).toLocaleString()}
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-2 text-xs text-muted-foreground">
-                    <div>Disp: <span className="font-mono">{Number(r.quantity_dispensed).toLocaleString()}</span></div>
-                    <div>Trans: <span className="font-mono">{Number(r.quantity_transferred).toLocaleString()}</span></div>
-                    <div>Avg: <span className="font-mono">{Number(r.average_daily_consumption).toFixed(2)}</span>/d</div>
+                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                    <div>
+                      Disp:{' '}
+                      <span className="font-mono">
+                        {Number(r.quantity_dispensed).toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      Trans:{' '}
+                      <span className="font-mono">
+                        {Number(r.quantity_transferred).toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      Avg:{' '}
+                      <span className="font-mono">
+                        {Number(r.average_daily_consumption).toFixed(2)}
+                      </span>
+                      /d
+                    </div>
                   </div>
                 </Card>
               )}
@@ -181,14 +224,14 @@ export default function ConsumptionRecordsPage() {
                 </p>
                 <div className="flex gap-2">
                   <button
-                    className="px-3 py-1 rounded border disabled:opacity-50"
+                    className="rounded border px-3 py-1 disabled:opacity-50"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
                     Previous
                   </button>
                   <button
-                    className="px-3 py-1 rounded border disabled:opacity-50"
+                    className="rounded border px-3 py-1 disabled:opacity-50"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >

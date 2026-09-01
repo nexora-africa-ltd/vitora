@@ -61,7 +61,7 @@ export default function ImagingEquipmentPage() {
           actions={
             canManageEquipment ? (
               <Button size="sm" onClick={() => router.push('/imaging/equipment/new')}>
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 Add Equipment
               </Button>
             ) : undefined
@@ -70,8 +70,8 @@ export default function ImagingEquipmentPage() {
 
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name, AE title, serial..."
               value={search}
@@ -82,7 +82,13 @@ export default function ImagingEquipmentPage() {
               className="pl-9"
             />
           </div>
-          <Select value={modality} onValueChange={(v) => { setModality(v); setPage(1); }}>
+          <Select
+            value={modality}
+            onValueChange={(v) => {
+              setModality(v);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Modality" />
             </SelectTrigger>
@@ -111,9 +117,9 @@ export default function ImagingEquipmentPage() {
               sortable: true,
               cell: (item) => (
                 <div className="flex items-center gap-2">
-                  <Cpu className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Cpu className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{item.name}</p>
+                    <p className="truncate font-medium">{item.name}</p>
                     {item.ae_title && (
                       <p className="text-xs text-muted-foreground">AET: {item.ae_title}</p>
                     )}
@@ -125,9 +131,7 @@ export default function ImagingEquipmentPage() {
               key: 'modality',
               header: 'Modality',
               sortable: true,
-              cell: (item) => (
-                <ModalityBadge modality={item.modality as ImagingModality} />
-              ),
+              cell: (item) => <ModalityBadge modality={item.modality as ImagingModality} />,
             },
             {
               key: 'manufacturer',
@@ -177,7 +181,10 @@ export default function ImagingEquipmentPage() {
               cell: (item) => (
                 <div className="flex items-center gap-1.5">
                   {item.auto_registered && (
-                    <Bot className="h-3.5 w-3.5 text-muted-foreground" aria-label="Auto-registered" />
+                    <Bot
+                      className="h-3.5 w-3.5 text-muted-foreground"
+                      aria-label="Auto-registered"
+                    />
                   )}
                   <Badge variant={item.is_active ? 'default' : 'secondary'}>
                     {item.is_active ? 'Active' : 'Inactive'}
@@ -197,10 +204,10 @@ export default function ImagingEquipmentPage() {
           mobileCard={(item) => (
             <Card className="p-3">
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Cpu className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex min-w-0 items-center gap-2">
+                  <Cpu className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{item.name}</p>
+                    <p className="truncate font-medium">{item.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {[item.manufacturer, item.model_name].filter(Boolean).join(' ')}
                     </p>
@@ -211,11 +218,11 @@ export default function ImagingEquipmentPage() {
                   <ModalityBadge modality={item.modality as ImagingModality} />
                 </div>
               </div>
-              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+              <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                 {item.room && <span>Room: {item.room}</span>}
                 <span>{item.studies_count} studies</span>
                 {item.is_calibration_overdue && (
-                  <Badge variant="destructive" className="gap-1 text-[10px] h-4">
+                  <Badge variant="destructive" className="h-4 gap-1 text-[10px]">
                     <AlertTriangle className="h-2.5 w-2.5" />
                     Overdue
                   </Badge>
@@ -236,7 +243,7 @@ export default function ImagingEquipmentPage() {
             >
               Previous
             </Button>
-            <span className="text-sm self-center text-muted-foreground">
+            <span className="self-center text-sm text-muted-foreground">
               Page {page} of {Math.ceil(data.count / 25)}
             </span>
             <Button

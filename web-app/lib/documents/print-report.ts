@@ -6,13 +6,7 @@
  */
 
 import type { RadiologyReport } from '@/lib/types/imaging';
-import type {
-  FacilityInfo,
-  PatientInfo,
-  SignatureInfo,
-  LayoutType,
-  RenderContext,
-} from './types';
+import type { FacilityInfo, PatientInfo, SignatureInfo, LayoutType, RenderContext } from './types';
 import {
   radiologyReportSchema,
   radiologyReportDefaults,
@@ -359,13 +353,13 @@ function buildTemplateData(data: PrintRadiologyReportData): Record<string, unkno
   // Signature info
   const hasDigitalSignature = Boolean(data.signature && data.signature.is_valid !== false);
   const signatureStatus = data.signature
-    ? (data.signature.is_valid !== false ? '✓ Digitally Signed' : '⚠ Signature Invalid')
+    ? data.signature.is_valid !== false
+      ? '✓ Digitally Signed'
+      : '⚠ Signature Invalid'
     : report.signed_at
       ? 'Finalized (not digitally signed)'
       : '⚠ Draft - not finalized';
-  const signatureDatetime = report.signed_at
-    ? formatDateTime(report.signed_at)
-    : '';
+  const signatureDatetime = report.signed_at ? formatDateTime(report.signed_at) : '';
 
   // Build amendment items HTML
   let amendmentItemsHtml = '';
@@ -425,7 +419,9 @@ function buildTemplateData(data: PrintRadiologyReportData): Record<string, unkno
     signature: {
       name: data.signature?.signer_full_name || report.reported_by_name || '',
       credentials: radiologyReportDefaults.radiologist_credentials,
-      datetime: data.signature?.signed_at ? formatDateTime(data.signature.signed_at) : signatureDatetime,
+      datetime: data.signature?.signed_at
+        ? formatDateTime(data.signature.signed_at)
+        : signatureDatetime,
       status: signatureStatus,
     },
     system: {

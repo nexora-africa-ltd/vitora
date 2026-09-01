@@ -21,18 +21,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Play,
   CheckCircle2,
@@ -84,11 +74,14 @@ interface LabQueueViewProps {
   defaultStatus?: QueueStatus | '';
 }
 
-const STATUS_CONFIG: Record<QueueStatus, {
-  label: string;
-  variant: 'default' | 'secondary' | 'destructive' | 'outline';
-  icon: React.ComponentType<{ className?: string }>;
-}> = {
+const STATUS_CONFIG: Record<
+  QueueStatus,
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    icon: React.ComponentType<{ className?: string }>;
+  }
+> = {
   PENDING: { label: 'Pending', variant: 'outline', icon: Clock },
   COLLECTED: { label: 'Collected', variant: 'secondary', icon: Beaker },
   PROCESSING: { label: 'Processing', variant: 'default', icon: Play },
@@ -102,10 +95,13 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; className: string }>
   STAT: { label: 'STAT', className: 'text-destructive font-bold' },
 };
 
-const SPECIMEN_STATUS_CONFIG: Record<SpecimenStatus, {
-  label: string;
-  variant: 'default' | 'secondary' | 'destructive' | 'outline';
-}> = {
+const SPECIMEN_STATUS_CONFIG: Record<
+  SpecimenStatus,
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+  }
+> = {
   PENDING: { label: 'Pending', variant: 'outline' },
   COLLECTED: { label: 'Collected', variant: 'secondary' },
   RECEIVED: { label: 'Received', variant: 'secondary' },
@@ -365,10 +361,13 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
   }, [statusFilter, quickSearch]);
 
   // Count by status for summary cards
-  const statusCounts = (queue || []).reduce((acc, item) => {
-    acc[item.queue_status] = (acc[item.queue_status] || 0) + 1;
-    return acc;
-  }, {} as Record<QueueStatus, number>);
+  const statusCounts = (queue || []).reduce(
+    (acc, item) => {
+      acc[item.queue_status] = (acc[item.queue_status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<QueueStatus, number>
+  );
 
   // Count overdue items
   const overdueCount = (queue || []).filter((item) => item.is_overdue).length;
@@ -390,41 +389,40 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
     <TooltipProvider>
       <div className="space-y-6">
         {/* Status Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          {Object.entries(STATUS_CONFIG)
-            .map(([status, config]) => {
-              const StatusIcon = config.icon;
-              const count = statusCounts[status as QueueStatus] || 0;
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
+          {Object.entries(STATUS_CONFIG).map(([status, config]) => {
+            const StatusIcon = config.icon;
+            const count = statusCounts[status as QueueStatus] || 0;
 
-              return (
-                <Card
-                  key={status}
-                  className={cn(
-                    'cursor-pointer transition-colors hover:bg-muted/50',
-                    statusFilter === status && 'border-primary bg-primary/5'
-                  )}
-                  onClick={() =>
-                    setStatusFilter(statusFilter === status ? '' : (status as QueueStatus))
-                  }
-                >
-                  <CardContent className="pt-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-2xl font-bold">{count}</p>
-                        <p className="text-xs text-muted-foreground">{config.label}</p>
-                      </div>
-                      <StatusIcon
-                        className={cn(
-                          'h-8 w-8 opacity-50',
-                          config.variant === 'default' && 'text-green-500',
-                          config.variant === 'secondary' && 'text-blue-500'
-                        )}
-                      />
+            return (
+              <Card
+                key={status}
+                className={cn(
+                  'cursor-pointer transition-colors hover:bg-muted/50',
+                  statusFilter === status && 'border-primary bg-primary/5'
+                )}
+                onClick={() =>
+                  setStatusFilter(statusFilter === status ? '' : (status as QueueStatus))
+                }
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-2xl font-bold">{count}</p>
+                      <p className="text-xs text-muted-foreground">{config.label}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    <StatusIcon
+                      className={cn(
+                        'h-8 w-8 opacity-50',
+                        config.variant === 'default' && 'text-green-500',
+                        config.variant === 'secondary' && 'text-blue-500'
+                      )}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
 
           {/* Overdue Card */}
           <Card
@@ -450,7 +448,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
         {/* Queue Table */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <CardTitle>Lab Queue</CardTitle>
@@ -460,7 +458,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   {filteredQueue.length} item(s) in queue
                 </p>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2">
                 {/* Quick Search */}
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -468,7 +466,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     placeholder="Quick search..."
                     value={quickSearch}
                     onChange={(e) => setQuickSearch(e.target.value)}
-                    className="pl-8 w-full sm:w-48 lg:w-56 xl:w-64"
+                    className="w-full pl-8 sm:w-48 lg:w-56 xl:w-64"
                   />
                 </div>
 
@@ -504,13 +502,13 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                 ))}
               </div>
             ) : !filteredQueue || filteredQueue.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Beaker className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <div className="py-8 text-center text-muted-foreground">
+                <Beaker className="mx-auto mb-3 h-12 w-12 opacity-50" />
                 <p>No items in queue</p>
               </div>
             ) : (
-                <ResponsiveTable
-                  data={paginatedQueue}
+              <ResponsiveTable
+                data={paginatedQueue}
                 keyExtractor={(item) => item.id}
                 onRowClick={(item) => {
                   setSelectedQueueEntry(item);
@@ -560,7 +558,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                           {item.specimen?.status ? (
                             <Badge
                               variant={SPECIMEN_STATUS_CONFIG[item.specimen.status].variant}
-                              className="shrink-0 w-fit"
+                              className="w-fit shrink-0"
                             >
                               {SPECIMEN_STATUS_CONFIG[item.specimen.status].label}
                             </Badge>
@@ -601,7 +599,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                       const status = STATUS_CONFIG[item.queue_status] || STATUS_CONFIG.PENDING;
                       const StatusIcon = status.icon;
                       return (
-                        <Badge variant={status.variant} className="gap-1 shrink-0 w-fit">
+                        <Badge variant={status.variant} className="w-fit shrink-0 gap-1">
                           <StatusIcon className="h-3 w-3" />
                           {status.label}
                         </Badge>
@@ -619,13 +617,13 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-muted-foreground h-auto p-1"
+                          className="h-auto p-1 text-muted-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             openAssignDialog(item);
                           }}
                         >
-                          <UserPlus className="h-3 w-3 mr-1" />
+                          <UserPlus className="mr-1 h-3 w-3" />
                           Assign
                         </Button>
                       ),
@@ -657,7 +655,9 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() => router.push(`/laboratory/orders/${item.order_number}`)}
+                                onClick={() =>
+                                  router.push(`/laboratory/orders/${item.order_number}`)
+                                }
                               >
                                 View Order
                               </DropdownMenuItem>
@@ -666,7 +666,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
 
                               {item.queue_status === 'PENDING' && (
                                 <DropdownMenuItem onClick={() => openCollectDialog(item)}>
-                                  <Syringe className="h-4 w-4 mr-2" />
+                                  <Syringe className="mr-2 h-4 w-4" />
                                   Collect Sample
                                 </DropdownMenuItem>
                               )}
@@ -675,7 +675,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                 <DropdownMenuItem
                                   onClick={() => handleStartProcessing(item.queue_number)}
                                 >
-                                  <Play className="h-4 w-4 mr-2" />
+                                  <Play className="mr-2 h-4 w-4" />
                                   Start Processing
                                 </DropdownMenuItem>
                               )}
@@ -687,13 +687,13 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                       router.push(`/laboratory/orders/${item.order_number}/results`)
                                     }
                                   >
-                                    <Beaker className="h-4 w-4 mr-2" />
+                                    <Beaker className="mr-2 h-4 w-4" />
                                     Enter Results
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => handleSubmitForReview(item.queue_number)}
                                   >
-                                    <Send className="h-4 w-4 mr-2" />
+                                    <Send className="mr-2 h-4 w-4" />
                                     Submit for Review
                                   </DropdownMenuItem>
                                 </>
@@ -703,40 +703,45 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                 <DropdownMenuItem
                                   onClick={() => handleReleaseResults(item.queue_number)}
                                 >
-                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  <CheckCircle2 className="mr-2 h-4 w-4" />
                                   Release Results
                                 </DropdownMenuItem>
                               )}
 
-                              {['COLLECTED', 'PROCESSING', 'REVIEW'].includes(item.queue_status) && (
+                              {['COLLECTED', 'PROCESSING', 'REVIEW'].includes(
+                                item.queue_status
+                              ) && (
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => openNotesDialog(item)}>
-                                    <FileText className="h-4 w-4 mr-2" />
+                                    <FileText className="mr-2 h-4 w-4" />
                                     {item.technician_notes ? 'Edit Notes' : 'Add Notes'}
                                   </DropdownMenuItem>
                                 </>
                               )}
 
-                              {['PENDING', 'COLLECTED', 'PROCESSING'].includes(item.queue_status) && (
+                              {['PENDING', 'COLLECTED', 'PROCESSING'].includes(
+                                item.queue_status
+                              ) && (
                                 <DropdownMenuItem onClick={() => openAssignDialog(item)}>
-                                  <UserPlus className="h-4 w-4 mr-2" />
+                                  <UserPlus className="mr-2 h-4 w-4" />
                                   {item.assigned_technician ? 'Reassign' : 'Assign Technician'}
                                 </DropdownMenuItem>
                               )}
 
-                              {!['RELEASED'].includes(item.queue_status) && !item.rejection_reason && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => openRejectDialog(item)}
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Reject Sample
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                              {!['RELEASED'].includes(item.queue_status) &&
+                                !item.rejection_reason && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => openRejectDialog(item)}
+                                    >
+                                      <XCircle className="mr-2 h-4 w-4" />
+                                      Reject Sample
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -751,16 +756,21 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   const specimenStatus = item.specimen?.status;
                   const collectedAt = item.specimen?.collected_at || item.collected_at;
                   return (
-                    <Card className="p-3 space-y-2">
+                    <Card className="space-y-2 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="font-medium truncate">
+                          <p className="truncate font-medium">
                             {item.patient_name}
                             <span className="text-muted-foreground"> • {item.patient_mrn}</span>
                           </p>
-                          <p className="text-xs text-muted-foreground font-mono">{item.queue_number}</p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {item.queue_number}
+                          </p>
                         </div>
-                        <Badge className="shrink-0 w-fit self-start sm:self-auto" variant={status.variant}>
+                        <Badge
+                          className="w-fit shrink-0 self-start sm:self-auto"
+                          variant={status.variant}
+                        >
                           {status.label}
                         </Badge>
                       </div>
@@ -774,7 +784,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center justify-between gap-3">
                             {specimenBarcode ? (
-                              <span className="font-mono text-xs text-muted-foreground truncate">
+                              <span className="truncate font-mono text-xs text-muted-foreground">
                                 {specimenBarcode}
                               </span>
                             ) : (
@@ -783,7 +793,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                             {specimenStatus ? (
                               <Badge
                                 variant={SPECIMEN_STATUS_CONFIG[specimenStatus].variant}
-                                className="shrink-0 w-fit self-start sm:self-auto"
+                                className="w-fit shrink-0 self-start sm:self-auto"
                               >
                                 {SPECIMEN_STATUS_CONFIG[specimenStatus].label}
                               </Badge>
@@ -804,8 +814,8 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     </Card>
                   );
                 }}
-                />
-              )}
+              />
+            )}
 
             {filteredQueue.length > 0 && (
               <div className="mt-4 flex items-center justify-between">
@@ -857,8 +867,11 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                 {/* Status badge */}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Status:</span>
-                  <Badge variant={STATUS_CONFIG[selectedQueueEntry.queue_status]?.variant || 'secondary'}>
-                    {STATUS_CONFIG[selectedQueueEntry.queue_status]?.label || selectedQueueEntry.queue_status}
+                  <Badge
+                    variant={STATUS_CONFIG[selectedQueueEntry.queue_status]?.variant || 'secondary'}
+                  >
+                    {STATUS_CONFIG[selectedQueueEntry.queue_status]?.label ||
+                      selectedQueueEntry.queue_status}
                   </Badge>
                 </div>
 
@@ -871,7 +884,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                 </div>
 
                 {/* Specimen */}
-                <div className="border-t pt-3 space-y-2">
+                <div className="space-y-2 border-t pt-3">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Barcode:</span>
                     <span className="font-mono">
@@ -887,7 +900,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                           SPECIMEN_STATUS_CONFIG[selectedQueueEntry.specimen.status]?.variant ||
                           'outline'
                         }
-                        className="shrink-0 w-fit self-start sm:self-auto"
+                        className="w-fit shrink-0 self-start sm:self-auto"
                       >
                         {SPECIMEN_STATUS_CONFIG[selectedQueueEntry.specimen.status]?.label ||
                           selectedQueueEntry.specimen.status}
@@ -911,12 +924,14 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   {selectedQueueEntry.specimen?.storage_location ? (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Storage:</span>
-                      <span className="truncate">{selectedQueueEntry.specimen.storage_location}</span>
+                      <span className="truncate">
+                        {selectedQueueEntry.specimen.storage_location}
+                      </span>
                     </div>
                   ) : null}
                 </div>
 
-                <div className="border-t pt-3 space-y-2">
+                <div className="space-y-2 border-t pt-3">
                   {/* View Order */}
                   <Button
                     className="w-full justify-start"
@@ -926,7 +941,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                       router.push(`/laboratory/orders/${selectedQueueEntry.order_number}`);
                     }}
                   >
-                    <Eye className="h-4 w-4 mr-2" />
+                    <Eye className="mr-2 h-4 w-4" />
                     View Order Details
                   </Button>
 
@@ -940,7 +955,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         openCollectDialog(selectedQueueEntry);
                       }}
                     >
-                      <Syringe className="h-4 w-4 mr-2" />
+                      <Syringe className="mr-2 h-4 w-4" />
                       Collect Sample
                     </ActionButton>
                   )}
@@ -955,7 +970,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         handleStartProcessing(selectedQueueEntry.queue_number);
                       }}
                     >
-                      <Play className="h-4 w-4 mr-2" />
+                      <Play className="mr-2 h-4 w-4" />
                       Start Processing
                     </ActionButton>
                   )}
@@ -968,10 +983,12 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         className="w-full justify-start"
                         onClick={() => {
                           setActionsDialogOpen(false);
-                          router.push(`/laboratory/orders/${selectedQueueEntry.order_number}/results`);
+                          router.push(
+                            `/laboratory/orders/${selectedQueueEntry.order_number}/results`
+                          );
                         }}
                       >
-                        <Beaker className="h-4 w-4 mr-2" />
+                        <Beaker className="mr-2 h-4 w-4" />
                         Enter Results
                       </ActionButton>
                       <ActionButton
@@ -983,7 +1000,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                           handleSubmitForReview(selectedQueueEntry.queue_number);
                         }}
                       >
-                        <Send className="h-4 w-4 mr-2" />
+                        <Send className="mr-2 h-4 w-4" />
                         Submit for Review
                       </ActionButton>
                     </>
@@ -999,13 +1016,15 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         handleReleaseResults(selectedQueueEntry.queue_number);
                       }}
                     >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
                       Release Results
                     </ActionButton>
                   )}
 
                   {/* Notes - available for most statuses */}
-                  {['COLLECTED', 'PROCESSING', 'REVIEW'].includes(selectedQueueEntry.queue_status) && (
+                  {['COLLECTED', 'PROCESSING', 'REVIEW'].includes(
+                    selectedQueueEntry.queue_status
+                  ) && (
                     <Button
                       className="w-full justify-start"
                       variant="outline"
@@ -1014,13 +1033,15 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         openNotesDialog(selectedQueueEntry);
                       }}
                     >
-                      <FileText className="h-4 w-4 mr-2" />
+                      <FileText className="mr-2 h-4 w-4" />
                       Add/Edit Notes
                     </Button>
                   )}
 
                   {/* Reject - available until released */}
-                  {['PENDING', 'COLLECTED', 'PROCESSING'].includes(selectedQueueEntry.queue_status) && (
+                  {['PENDING', 'COLLECTED', 'PROCESSING'].includes(
+                    selectedQueueEntry.queue_status
+                  ) && (
                     <ActionButton
                       action="laboratory.reject_sample"
                       className="w-full justify-start"
@@ -1030,7 +1051,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         openRejectDialog(selectedQueueEntry);
                       }}
                     >
-                      <XCircle className="h-4 w-4 mr-2" />
+                      <XCircle className="mr-2 h-4 w-4" />
                       Reject Sample
                     </ActionButton>
                   )}
@@ -1124,7 +1145,12 @@ function TATDisplay({ item }: TATDisplayProps) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className={cn('text-sm', is_overdue ? 'text-red-600 font-medium' : 'text-muted-foreground')}>
+          <div
+            className={cn(
+              'text-sm',
+              is_overdue ? 'font-medium text-red-600' : 'text-muted-foreground'
+            )}
+          >
             <div className="flex items-center gap-1">
               {is_overdue && <AlertTriangle className="h-3 w-3" />}
               <Timer className="h-3 w-3" />
@@ -1135,7 +1161,7 @@ function TATDisplay({ item }: TATDisplayProps) {
         <TooltipContent>
           <p>Elapsed: {elapsed_hours.toFixed(1)} hours</p>
           <p className="text-xs text-muted-foreground">Expected: {expected_tat_hours || 24}h</p>
-          {is_overdue && <p className="text-xs text-red-500 font-medium">OVERDUE</p>}
+          {is_overdue && <p className="text-xs font-medium text-red-500">OVERDUE</p>}
         </TooltipContent>
       </Tooltip>
     );

@@ -39,7 +39,7 @@ export default function ForecastingPage() {
         {sections.map((s) => (
           <Card
             key={s.href}
-            className="cursor-pointer hover:border-primary/40 transition-colors"
+            className="cursor-pointer transition-colors hover:border-primary/40"
             onClick={() => router.push(s.href)}
           >
             <CardContent className="flex items-start gap-4 p-4 sm:p-6">
@@ -48,7 +48,7 @@ export default function ForecastingPage() {
               </div>
               <div>
                 <p className="font-medium">{s.title}</p>
-                <p className="text-sm text-muted-foreground mt-1">{s.description}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{s.description}</p>
               </div>
             </CardContent>
           </Card>

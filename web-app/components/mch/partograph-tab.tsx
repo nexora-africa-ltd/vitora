@@ -2,7 +2,16 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Activity, Plus, Waves, HeartPulse, Baby, Loader2, Printer, AlertTriangle } from 'lucide-react';
+import {
+  Activity,
+  Plus,
+  Waves,
+  HeartPulse,
+  Baby,
+  Loader2,
+  Printer,
+  AlertTriangle,
+} from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,17 +58,33 @@ import type {
 
 type ObservationType = 'routine' | 'intervention';
 
-const observationTypeOptions: { value: ObservationType; label: string; shortLabel: string; description: string }[] = [
-  { value: 'routine', label: 'Routine Observation', shortLabel: 'Routine', description: 'FHR, dilation, contractions, maternal vitals, urine' },
-  { value: 'intervention', label: 'Intervention', shortLabel: 'Intervention', description: 'Medications, oxytocin, procedures' },
+const observationTypeOptions: {
+  value: ObservationType;
+  label: string;
+  shortLabel: string;
+  description: string;
+}[] = [
+  {
+    value: 'routine',
+    label: 'Routine Observation',
+    shortLabel: 'Routine',
+    description: 'FHR, dilation, contractions, maternal vitals, urine',
+  },
+  {
+    value: 'intervention',
+    label: 'Intervention',
+    shortLabel: 'Intervention',
+    description: 'Medications, oxytocin, procedures',
+  },
 ];
 
-const contractionIntensityOptions: { value: '' | 'MILD' | 'MODERATE' | 'STRONG'; label: string }[] = [
-  { value: '', label: 'Not recorded' },
-  { value: 'MILD', label: 'Mild' },
-  { value: 'MODERATE', label: 'Moderate' },
-  { value: 'STRONG', label: 'Strong' },
-];
+const contractionIntensityOptions: { value: '' | 'MILD' | 'MODERATE' | 'STRONG'; label: string }[] =
+  [
+    { value: '', label: 'Not recorded' },
+    { value: 'MILD', label: 'Mild' },
+    { value: 'MODERATE', label: 'Moderate' },
+    { value: 'STRONG', label: 'Strong' },
+  ];
 
 interface PartographTabProps {
   registrationId: number;
@@ -124,7 +149,9 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
   const [descentFifths, setDescentFifths] = useState('');
   const [contractionsPer10Min, setContractionsPer10Min] = useState('');
   const [contractionDuration, setContractionDuration] = useState('');
-  const [contractionIntensity, setContractionIntensity] = useState<'' | 'MILD' | 'MODERATE' | 'STRONG'>('');
+  const [contractionIntensity, setContractionIntensity] = useState<
+    '' | 'MILD' | 'MODERATE' | 'STRONG'
+  >('');
   const [moulding, setMoulding] = useState<MouldingGrade>('');
   const [maternalPulse, setMaternalPulse] = useState('');
   const [maternalBloodPressure, setMaternalBloodPressure] = useState('');
@@ -138,7 +165,8 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
 
   const { data, isLoading, error } = useLabourPartographs(registrationId);
   const partographs = data?.results ?? [];
-  const activePartograph = partographs.find((item) => item.status === 'ACTIVE') ?? partographs[0] ?? null;
+  const activePartograph =
+    partographs.find((item) => item.status === 'ACTIVE') ?? partographs[0] ?? null;
 
   const observationsQuery = useLabourPartographObservations(activePartograph?.id);
   const observations = observationsQuery.data?.results ?? [];
@@ -148,12 +176,18 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
   const createObservation = useCreateLabourPartographObservation();
 
   const latestObservation = observations.at(-1) ?? activePartograph?.latest_observation ?? null;
-  const latestDilation = latestObservation?.cervical_dilation_cm ? Number(latestObservation.cervical_dilation_cm) : 0;
+  const latestDilation = latestObservation?.cervical_dilation_cm
+    ? Number(latestObservation.cervical_dilation_cm)
+    : 0;
   const showDeliveryPrompt = latestDilation >= 8 && registration.status === 'ACTIVE';
 
   const resetPartographForm = () => {
     setParity(registration.parity != null ? String(registration.parity) : '');
-    setGestationWeeks(registration.current_gestation_weeks != null ? String(registration.current_gestation_weeks) : '');
+    setGestationWeeks(
+      registration.current_gestation_weeks != null
+        ? String(registration.current_gestation_weeks)
+        : ''
+    );
     setMembraneStatus('');
     setLiquor('');
     setPartographNotes('');
@@ -211,7 +245,9 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
         cervical_dilation_cm: cervicalDilation || undefined,
         descent_fifths: descentFifths ? parseInt(descentFifths) : undefined,
         contractions_per_10_min: contractionsPer10Min ? parseInt(contractionsPer10Min) : undefined,
-        contraction_duration_seconds: contractionDuration ? parseInt(contractionDuration) : undefined,
+        contraction_duration_seconds: contractionDuration
+          ? parseInt(contractionDuration)
+          : undefined,
         contraction_intensity: contractionIntensity || undefined,
         moulding: moulding || undefined,
         maternal_pulse: maternalPulse ? parseInt(maternalPulse) : undefined,
@@ -228,7 +264,11 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
       setObservationDialogOpen(false);
       resetObservationForm();
     } catch {
-      toast({ title: 'Error', description: 'Failed to record observation.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to record observation.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -259,8 +299,8 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
     const isPreDelivery = registration.status === 'ACTIVE';
     return (
       <Card>
-        <CardContent className="py-10 text-center space-y-4">
-          <Waves className="h-12 w-12 mx-auto text-muted-foreground" />
+        <CardContent className="space-y-4 py-10 text-center">
+          <Waves className="mx-auto h-12 w-12 text-muted-foreground" />
           <div className="space-y-1">
             <p className="font-medium">
               {isPreDelivery ? 'No labour partograph started' : 'No partograph recorded'}
@@ -272,80 +312,109 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
             </p>
           </div>
           {isPreDelivery && (
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Start Partograph
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Start Labour Partograph</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Parity</Label>
-                    <Input type="number" min="0" value={parity} onChange={(e) => setParity(e.target.value)} />
-                    {registration.parity != null && (
-                      <p className="text-xs text-muted-foreground">From ANC registration (editable)</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Gestation Weeks</Label>
-                    <Input type="number" min="20" max="45" value={gestationWeeks} onChange={(e) => setGestationWeeks(e.target.value)} />
-                    {registration.current_gestation_weeks != null && (
-                      <p className="text-xs text-muted-foreground">From ANC registration (editable)</p>
-                    )}
-                  </div>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Membranes</Label>
-                    <Select value={membraneStatus} onValueChange={(value) => setMembraneStatus(value as MembraneStatus)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {membraneOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Liquor</Label>
-                    <Select value={liquor} onValueChange={(value) => setLiquor(value as LiquorStatus)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select liquor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {liquorOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Notes</Label>
-                  <Textarea rows={3} value={partographNotes} onChange={(e) => setPartographNotes(e.target.value)} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreatePartograph} disabled={createPartograph.isPending}>
-                  {createPartograph.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
                   Start Partograph
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Start Labour Partograph</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Parity</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={parity}
+                        onChange={(e) => setParity(e.target.value)}
+                      />
+                      {registration.parity != null && (
+                        <p className="text-xs text-muted-foreground">
+                          From ANC registration (editable)
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Gestation Weeks</Label>
+                      <Input
+                        type="number"
+                        min="20"
+                        max="45"
+                        value={gestationWeeks}
+                        onChange={(e) => setGestationWeeks(e.target.value)}
+                      />
+                      {registration.current_gestation_weeks != null && (
+                        <p className="text-xs text-muted-foreground">
+                          From ANC registration (editable)
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Membranes</Label>
+                      <Select
+                        value={membraneStatus}
+                        onValueChange={(value) => setMembraneStatus(value as MembraneStatus)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {membraneOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Liquor</Label>
+                      <Select
+                        value={liquor}
+                        onValueChange={(value) => setLiquor(value as LiquorStatus)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select liquor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {liquorOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea
+                      rows={3}
+                      value={partographNotes}
+                      onChange={(e) => setPartographNotes(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreatePartograph} disabled={createPartograph.isPending}>
+                    {createPartograph.isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Start Partograph
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           )}
         </CardContent>
       </Card>
@@ -374,7 +443,11 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
             onClick={handlePrint}
             disabled={isPrinting || observationsQuery.isLoading}
           >
-            {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+            {isPrinting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Printer className="h-4 w-4" />
+            )}
             <span className="sm:hidden">Print</span>
             <span className="hidden sm:inline">Print / Export</span>
           </Button>
@@ -384,33 +457,53 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                 size="sm"
                 className="gap-2"
                 disabled={!['ACTIVE', 'DELIVERED'].includes(registration.status)}
-                title={!['ACTIVE', 'DELIVERED'].includes(registration.status) ? 'Cannot record observations after delivery is completed' : undefined}
+                title={
+                  !['ACTIVE', 'DELIVERED'].includes(registration.status)
+                    ? 'Cannot record observations after delivery is completed'
+                    : undefined
+                }
               >
                 <Plus className="h-4 w-4" />
                 Record Observation
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Record Labour Observation</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Observation Type</Label>
-                    <Select value={observationType} onValueChange={(value) => setObservationType(value as ObservationType)}>
+                    <Select
+                      value={observationType}
+                      onValueChange={(value) => setObservationType(value as ObservationType)}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue>
-                          <span className="sm:hidden">{observationTypeOptions.find((o) => o.value === observationType)?.shortLabel}</span>
-                          <span className="hidden sm:inline">{observationTypeOptions.find((o) => o.value === observationType)?.label}</span>
+                          <span className="sm:hidden">
+                            {
+                              observationTypeOptions.find((o) => o.value === observationType)
+                                ?.shortLabel
+                            }
+                          </span>
+                          <span className="hidden sm:inline">
+                            {observationTypeOptions.find((o) => o.value === observationType)?.label}
+                          </span>
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="min-w-[250px]">
                         {observationTypeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value} textValue={option.label}>
+                          <SelectItem
+                            key={option.value}
+                            value={option.value}
+                            textValue={option.label}
+                          >
                             <div>
                               <span className="font-medium">{option.label}</span>
-                              <span className="block text-xs text-muted-foreground">{option.description}</span>
+                              <span className="block text-xs text-muted-foreground">
+                                {option.description}
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
@@ -419,7 +512,11 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                   </div>
                   <div className="space-y-2">
                     <Label>Observation Time</Label>
-                    <Input type="datetime-local" value={observationTime} onChange={(e) => setObservationTime(e.target.value)} />
+                    <Input
+                      type="datetime-local"
+                      value={observationTime}
+                      onChange={(e) => setObservationTime(e.target.value)}
+                    />
                   </div>
                 </div>
 
@@ -427,24 +524,47 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                 {observationType === 'routine' && (
                   <>
                     <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fetal & Cervical Progress</p>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Fetal & Cervical Progress
+                      </p>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       <div className="space-y-2">
                         <Label>Fetal Heart Rate</Label>
-                        <Input type="number" value={fetalHeartRate} onChange={(e) => setFetalHeartRate(e.target.value)} placeholder="BPM" />
+                        <Input
+                          type="number"
+                          value={fetalHeartRate}
+                          onChange={(e) => setFetalHeartRate(e.target.value)}
+                          placeholder="BPM"
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Cervical Dilation (cm)</Label>
-                        <Input type="number" step="0.1" min="0" max="10" value={cervicalDilation} onChange={(e) => setCervicalDilation(e.target.value)} />
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="10"
+                          value={cervicalDilation}
+                          onChange={(e) => setCervicalDilation(e.target.value)}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Descent (fifths)</Label>
-                        <Input type="number" min="0" max="5" value={descentFifths} onChange={(e) => setDescentFifths(e.target.value)} />
+                        <Input
+                          type="number"
+                          min="0"
+                          max="5"
+                          value={descentFifths}
+                          onChange={(e) => setDescentFifths(e.target.value)}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Moulding</Label>
-                        <Select value={moulding} onValueChange={(value) => setMoulding(value as MouldingGrade)}>
+                        <Select
+                          value={moulding}
+                          onValueChange={(value) => setMoulding(value as MouldingGrade)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select moulding" />
                           </SelectTrigger>
@@ -460,20 +580,35 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                     </div>
 
                     <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Contractions</p>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Contractions
+                      </p>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div className="space-y-2">
                         <Label>Per 10 min</Label>
-                        <Input type="number" value={contractionsPer10Min} onChange={(e) => setContractionsPer10Min(e.target.value)} />
+                        <Input
+                          type="number"
+                          value={contractionsPer10Min}
+                          onChange={(e) => setContractionsPer10Min(e.target.value)}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Duration (sec)</Label>
-                        <Input type="number" value={contractionDuration} onChange={(e) => setContractionDuration(e.target.value)} />
+                        <Input
+                          type="number"
+                          value={contractionDuration}
+                          onChange={(e) => setContractionDuration(e.target.value)}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Intensity</Label>
-                        <Select value={contractionIntensity} onValueChange={(value) => setContractionIntensity(value as '' | 'MILD' | 'MODERATE' | 'STRONG')}>
+                        <Select
+                          value={contractionIntensity}
+                          onValueChange={(value) =>
+                            setContractionIntensity(value as '' | 'MILD' | 'MODERATE' | 'STRONG')
+                          }
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select intensity" />
                           </SelectTrigger>
@@ -489,34 +624,58 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                     </div>
 
                     <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Maternal Vitals</p>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Maternal Vitals
+                      </p>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       <div className="space-y-2">
                         <Label>Maternal Pulse</Label>
-                        <Input type="number" value={maternalPulse} onChange={(e) => setMaternalPulse(e.target.value)} />
+                        <Input
+                          type="number"
+                          value={maternalPulse}
+                          onChange={(e) => setMaternalPulse(e.target.value)}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Blood Pressure</Label>
-                        <Input value={maternalBloodPressure} onChange={(e) => setMaternalBloodPressure(e.target.value)} placeholder="120/80" />
+                        <Input
+                          value={maternalBloodPressure}
+                          onChange={(e) => setMaternalBloodPressure(e.target.value)}
+                          placeholder="120/80"
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Temperature (°C)</Label>
-                        <Input type="number" step="0.1" value={maternalTemperature} onChange={(e) => setMaternalTemperature(e.target.value)} />
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={maternalTemperature}
+                          onChange={(e) => setMaternalTemperature(e.target.value)}
+                        />
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Urine Assessment</p>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Urine Assessment
+                      </p>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div className="space-y-2">
                         <Label>Volume (mL)</Label>
-                        <Input type="number" value={urineVolume} onChange={(e) => setUrineVolume(e.target.value)} />
+                        <Input
+                          type="number"
+                          value={urineVolume}
+                          onChange={(e) => setUrineVolume(e.target.value)}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Protein</Label>
-                        <Select value={urineProtein} onValueChange={(value) => setUrineProtein(value as UrineResult)}>
+                        <Select
+                          value={urineProtein}
+                          onValueChange={(value) => setUrineProtein(value as UrineResult)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select result" />
                           </SelectTrigger>
@@ -531,7 +690,10 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                       </div>
                       <div className="space-y-2">
                         <Label>Acetone</Label>
-                        <Select value={urineAcetone} onValueChange={(value) => setUrineAcetone(value as UrineResult)}>
+                        <Select
+                          value={urineAcetone}
+                          onValueChange={(value) => setUrineAcetone(value as UrineResult)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select result" />
                           </SelectTrigger>
@@ -552,21 +714,37 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                 {observationType === 'intervention' && (
                   <>
                     <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Intervention Details</p>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Intervention Details
+                      </p>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Oxytocin (drops/min)</Label>
-                        <Input type="number" value={oxytocinDrops} onChange={(e) => setOxytocinDrops(e.target.value)} />
+                        <Input
+                          type="number"
+                          value={oxytocinDrops}
+                          onChange={(e) => setOxytocinDrops(e.target.value)}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Fetal Heart Rate (post-intervention)</Label>
-                        <Input type="number" value={fetalHeartRate} onChange={(e) => setFetalHeartRate(e.target.value)} placeholder="BPM" />
+                        <Input
+                          type="number"
+                          value={fetalHeartRate}
+                          onChange={(e) => setFetalHeartRate(e.target.value)}
+                          placeholder="BPM"
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Medications / Procedures</Label>
-                      <Textarea rows={3} value={medications} onChange={(e) => setMedications(e.target.value)} placeholder="e.g. ARM performed, epidural given, IV fluids started..." />
+                      <Textarea
+                        rows={3}
+                        value={medications}
+                        onChange={(e) => setMedications(e.target.value)}
+                        placeholder="e.g. ARM performed, epidural given, IV fluids started..."
+                      />
                     </div>
                   </>
                 )}
@@ -576,7 +754,11 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Oxytocin (drops/min)</Label>
-                      <Input type="number" value={oxytocinDrops} onChange={(e) => setOxytocinDrops(e.target.value)} />
+                      <Input
+                        type="number"
+                        value={oxytocinDrops}
+                        onChange={(e) => setOxytocinDrops(e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Medications</Label>
@@ -587,13 +769,19 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
 
                 <div className="space-y-2">
                   <Label>Notes</Label>
-                  <Textarea rows={2} value={observationNotes} onChange={(e) => setObservationNotes(e.target.value)} />
+                  <Textarea
+                    rows={2}
+                    value={observationNotes}
+                    onChange={(e) => setObservationNotes(e.target.value)}
+                  />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setObservationDialogOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setObservationDialogOpen(false)}>
+                  Cancel
+                </Button>
                 <Button onClick={handleCreateObservation} disabled={createObservation.isPending}>
-                  {createObservation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {createObservation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Save Observation
                 </Button>
               </DialogFooter>
@@ -603,27 +791,63 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard title="Fetal Heart Rate" icon={Baby} value={latestObservation?.fetal_heart_rate ? `${latestObservation.fetal_heart_rate} BPM` : '—'} />
-        <SummaryCard title="Cervical Dilation" icon={Waves} value={latestObservation?.cervical_dilation_cm ? `${latestObservation.cervical_dilation_cm} cm` : '—'} />
-        <SummaryCard title="Contractions" icon={Activity} value={latestObservation?.contractions_per_10_min ? `${latestObservation.contractions_per_10_min}/10 min` : '—'} />
-        <SummaryCard title="Maternal Pulse" icon={HeartPulse} value={latestObservation?.maternal_pulse ? `${latestObservation.maternal_pulse} BPM` : '—'} />
+        <SummaryCard
+          title="Fetal Heart Rate"
+          icon={Baby}
+          value={
+            latestObservation?.fetal_heart_rate ? `${latestObservation.fetal_heart_rate} BPM` : '—'
+          }
+        />
+        <SummaryCard
+          title="Cervical Dilation"
+          icon={Waves}
+          value={
+            latestObservation?.cervical_dilation_cm
+              ? `${latestObservation.cervical_dilation_cm} cm`
+              : '—'
+          }
+        />
+        <SummaryCard
+          title="Contractions"
+          icon={Activity}
+          value={
+            latestObservation?.contractions_per_10_min
+              ? `${latestObservation.contractions_per_10_min}/10 min`
+              : '—'
+          }
+        />
+        <SummaryCard
+          title="Maternal Pulse"
+          icon={HeartPulse}
+          value={
+            latestObservation?.maternal_pulse ? `${latestObservation.maternal_pulse} BPM` : '—'
+          }
+        />
       </div>
 
       {showDeliveryPrompt && (
         <Card className="border-emerald-400 bg-emerald-50/70">
-          <CardContent className="py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <CardContent className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-emerald-600 shrink-0" />
+              <AlertTriangle className="h-5 w-5 shrink-0 text-emerald-600" />
               <div>
                 <p className="text-sm font-medium text-emerald-800">
-                  {latestDilation >= 10 ? 'Fully dilated — ready for delivery' : `Advanced labour: ${latestDilation} cm dilation`}
+                  {latestDilation >= 10
+                    ? 'Fully dilated — ready for delivery'
+                    : `Advanced labour: ${latestDilation} cm dilation`}
                 </p>
-                <p className="text-xs text-emerald-600">Record delivery details in the Delivery tab when ready.</p>
+                <p className="text-xs text-emerald-600">
+                  Record delivery details in the Delivery tab when ready.
+                </p>
               </div>
             </div>
             <Link href={`/mch/${registrationId}?tab=delivery`}>
-              <Button size="sm" variant="outline" className="border-emerald-400 text-emerald-700 hover:bg-emerald-100 w-full sm:w-auto">
-                <Baby className="h-4 w-4 mr-1" />
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full border-emerald-400 text-emerald-700 hover:bg-emerald-100 sm:w-auto"
+              >
+                <Baby className="mr-1 h-4 w-4" />
                 Record Delivery
               </Button>
             </Link>
@@ -633,9 +857,13 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
 
       {latestObservation?.alerts?.length ? (
         <Card className="border-orange-300 bg-orange-50/70">
-          <CardContent className="py-3 flex flex-wrap gap-2">
+          <CardContent className="flex flex-wrap gap-2 py-3">
             {latestObservation.alerts.map((alert) => (
-              <Badge key={alert} variant="outline" className="border-orange-400 text-orange-700 bg-white">
+              <Badge
+                key={alert}
+                variant="outline"
+                className="border-orange-400 bg-white text-orange-700"
+              >
                 {alert}
               </Badge>
             ))}
@@ -643,10 +871,7 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
         </Card>
       ) : null}
 
-      <PartographTrendChart
-        observations={observations}
-        isLoading={observationsQuery.isLoading}
-      />
+      <PartographTrendChart observations={observations} isLoading={observationsQuery.isLoading} />
 
       <Card>
         <CardHeader>
@@ -659,7 +884,7 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
             <p className="text-sm text-muted-foreground">No observations recorded yet.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full text-sm">
+              <table className="w-full min-w-[900px] text-sm">
                 <thead>
                   <tr className="border-b text-left">
                     <th className="p-2 font-medium">Time</th>
@@ -672,31 +897,46 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                   </tr>
                 </thead>
                 <tbody>
-                  {observations.slice().reverse().map((observation) => (
-                    <tr key={observation.id} className="border-b last:border-0 align-top">
-                      <td className="p-2 whitespace-nowrap">{formatDateTime(observation.observation_time)}</td>
-                      <td className="p-2">{observation.fetal_heart_rate ?? '—'}</td>
-                      <td className="p-2">{observation.cervical_dilation_cm ? `${observation.cervical_dilation_cm} cm` : '—'}</td>
-                      <td className="p-2">
-                        {observation.contractions_per_10_min != null
-                          ? `${observation.contractions_per_10_min} x ${observation.contraction_duration_seconds ?? 0}s`
-                          : '—'}
-                      </td>
-                      <td className="p-2">{observation.maternal_pulse ?? '—'}</td>
-                      <td className="p-2">
-                        {observation.urine_volume_ml != null ? `${observation.urine_volume_ml} mL` : '—'}
-                      </td>
-                      <td className="p-2">
-                        {observation.alerts.length ? (
-                          <div className="flex flex-wrap gap-1">
-                            {observation.alerts.map((alert) => (
-                              <Badge key={alert} variant="outline" className="text-xs">{alert}</Badge>
-                            ))}
-                          </div>
-                        ) : '—'}
-                      </td>
-                    </tr>
-                  ))}
+                  {observations
+                    .slice()
+                    .reverse()
+                    .map((observation) => (
+                      <tr key={observation.id} className="border-b align-top last:border-0">
+                        <td className="whitespace-nowrap p-2">
+                          {formatDateTime(observation.observation_time)}
+                        </td>
+                        <td className="p-2">{observation.fetal_heart_rate ?? '—'}</td>
+                        <td className="p-2">
+                          {observation.cervical_dilation_cm
+                            ? `${observation.cervical_dilation_cm} cm`
+                            : '—'}
+                        </td>
+                        <td className="p-2">
+                          {observation.contractions_per_10_min != null
+                            ? `${observation.contractions_per_10_min} x ${observation.contraction_duration_seconds ?? 0}s`
+                            : '—'}
+                        </td>
+                        <td className="p-2">{observation.maternal_pulse ?? '—'}</td>
+                        <td className="p-2">
+                          {observation.urine_volume_ml != null
+                            ? `${observation.urine_volume_ml} mL`
+                            : '—'}
+                        </td>
+                        <td className="p-2">
+                          {observation.alerts.length ? (
+                            <div className="flex flex-wrap gap-1">
+                              {observation.alerts.map((alert) => (
+                                <Badge key={alert} variant="outline" className="text-xs">
+                                  {alert}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
@@ -707,10 +947,18 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
   );
 }
 
-function SummaryCard({ title, value, icon: Icon }: { title: string; value: string; icon: typeof Activity }) {
+function SummaryCard({
+  title,
+  value,
+  icon: Icon,
+}: {
+  title: string;
+  value: string;
+  icon: typeof Activity;
+}) {
   return (
     <Card>
-      <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>

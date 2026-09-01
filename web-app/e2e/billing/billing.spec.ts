@@ -71,9 +71,30 @@ const mockInvoice = {
 const mockServices = {
   count: 3,
   results: [
-    { id: 1, code: 'CONS-001', name: 'General Consultation', unit_price: '500.00', category: 1, category_name: 'Consultation' },
-    { id: 2, code: 'LAB-001', name: 'Complete Blood Count', unit_price: '1000.00', category: 2, category_name: 'Laboratory' },
-    { id: 3, code: 'LAB-002', name: 'Urinalysis', unit_price: '500.00', category: 2, category_name: 'Laboratory' },
+    {
+      id: 1,
+      code: 'CONS-001',
+      name: 'General Consultation',
+      unit_price: '500.00',
+      category: 1,
+      category_name: 'Consultation',
+    },
+    {
+      id: 2,
+      code: 'LAB-001',
+      name: 'Complete Blood Count',
+      unit_price: '1000.00',
+      category: 2,
+      category_name: 'Laboratory',
+    },
+    {
+      id: 3,
+      code: 'LAB-002',
+      name: 'Urinalysis',
+      unit_price: '500.00',
+      category: 2,
+      category_name: 'Laboratory',
+    },
   ],
 };
 
@@ -412,7 +433,9 @@ test.describe('KE-CSH-001: Payment Processing', () => {
 
     // Should show STK flow states
     await expect(page.getByText('Initiating...')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /check your phone/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /check your phone/i })).toBeVisible({
+      timeout: 10000,
+    });
 
     // Wait for success
     await expect(page.getByText('Payment Successful!')).toBeVisible({ timeout: 10000 });
@@ -588,7 +611,9 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
     await page.click('button:has-text("Create Invoice")');
 
     // Wait for navigation or check for success toast
-    await page.waitForResponse(resp => resp.url().includes('/api/billing/invoices/') && resp.status() === 201);
+    await page.waitForResponse(
+      (resp) => resp.url().includes('/api/billing/invoices/') && resp.status() === 201
+    );
   });
 
   test('should add line items to invoice', async ({ page }) => {
@@ -620,10 +645,15 @@ test.describe('KE-CSH-002: Invoice Generation', () => {
     await page.waitForSelector('input[placeholder="Search services..."]');
 
     // Click on General Consultation in the command list (use force click to bypass overlay)
-    await page.locator('[cmdk-item]').filter({ hasText: 'General Consultation' }).click({ force: true });
+    await page
+      .locator('[cmdk-item]')
+      .filter({ hasText: 'General Consultation' })
+      .click({ force: true });
 
     // Should show the selected service in the trigger button (it's a truncated span)
-    await expect(page.getByRole('dialog').locator('button[role="combobox"]')).toContainText('General Consultation');
+    await expect(page.getByRole('dialog').locator('button[role="combobox"]')).toContainText(
+      'General Consultation'
+    );
   });
 
   test('should remove line item from invoice', async ({ page }) => {

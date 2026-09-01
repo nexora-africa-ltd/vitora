@@ -21,10 +21,7 @@ function handleGlobalError(error: unknown): void {
         transformError instanceof Error ? transformError.message : String(transformError);
       apiError = {
         message: error.message || 'Failed to parse API error response',
-        status:
-          typeof error.response?.status === 'number'
-            ? error.response.status
-            : 0,
+        status: typeof error.response?.status === 'number' ? error.response.status : 0,
         code: error.code || 'ERROR_TRANSFORM_FAILED',
         details: { transformError: [transformMessage] },
       };
@@ -43,9 +40,7 @@ function handleGlobalError(error: unknown): void {
       method: error.config?.method?.toUpperCase(),
       url: error.config?.url,
       details:
-        apiError.details && Object.keys(apiError.details).length > 0
-          ? apiError.details
-          : undefined,
+        apiError.details && Object.keys(apiError.details).length > 0 ? apiError.details : undefined,
     };
 
     const compactPayload = Object.fromEntries(
@@ -70,7 +65,9 @@ function handleGlobalError(error: unknown): void {
     }
   } else if (error instanceof ZodError) {
     const context = (error as ZodError & { context?: string }).context;
-    const issues = error.issues.map((i) => `${i.path.join('.') || 'root'}: ${i.message}`).join(', ');
+    const issues = error.issues
+      .map((i) => `${i.path.join('.') || 'root'}: ${i.message}`)
+      .join(', ');
     console.warn(`[Query Error] Validation failed (${context || 'unknown'}):`, issues);
     // Log first few issues in detail for debugging
     if (error.issues.length > 0) {
@@ -161,7 +158,8 @@ export const queryKeys = {
     list: (params: object) => [...queryKeys.patients.lists(), params] as const,
     details: () => [...queryKeys.patients.all, 'detail'] as const,
     detail: (id: number) => [...queryKeys.patients.details(), id] as const,
-    emergencyContacts: (id: number) => [...queryKeys.patients.detail(id), 'emergency-contacts'] as const,
+    emergencyContacts: (id: number) =>
+      [...queryKeys.patients.detail(id), 'emergency-contacts'] as const,
     encounters: (id: number) => [...queryKeys.patients.detail(id), 'encounters'] as const,
   },
 
@@ -180,7 +178,8 @@ export const queryKeys = {
   locations: {
     all: ['locations'] as const,
     counties: () => [...queryKeys.locations.all, 'counties'] as const,
-    subCounties: (countyId: number) => [...queryKeys.locations.all, 'sub-counties', countyId] as const,
+    subCounties: (countyId: number) =>
+      [...queryKeys.locations.all, 'sub-counties', countyId] as const,
     wards: (subCountyId: number) => [...queryKeys.locations.all, 'wards', subCountyId] as const,
   },
 

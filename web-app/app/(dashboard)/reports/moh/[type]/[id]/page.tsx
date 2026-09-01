@@ -6,15 +6,15 @@
  */
 
 import { useParams } from 'next/navigation';
-import { useMOH705Detail, useMOH711Detail, useMOH717Detail, useApproveMOH705 } from '@/lib/hooks/use-moh-reports';
+import {
+  useMOH705Detail,
+  useMOH711Detail,
+  useMOH717Detail,
+  useApproveMOH705,
+} from '@/lib/hooks/use-moh-reports';
 import { mohReportsApi } from '@/lib/api/moh-reports';
 import { useState } from 'react';
-import {
-  CheckCircle2,
-  Send,
-  Eye,
-  Loader2,
-} from 'lucide-react';
+import { CheckCircle2, Send, Eye, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,7 +105,7 @@ export default function MOHReportDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-[400px] w-full" />
       </div>
@@ -123,27 +123,35 @@ export default function MOHReportDetailPage() {
   const title = `MOH ${reportType} — ${report.period_label}`;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title={title}
         helpContent={`View and manage this MOH ${reportType} report. Approve the report, preview the DHIS2 payload, then submit to KHIS.`}
         actions={
           <div className="flex flex-col gap-2 sm:flex-row">
             {report.can_edit && (
-              <Button variant="outline" onClick={handleApprove} disabled={approveMutation.isPending}>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
+              <Button
+                variant="outline"
+                onClick={handleApprove}
+                disabled={approveMutation.isPending}
+              >
+                <CheckCircle2 className="mr-2 h-4 w-4" />
                 Approve
               </Button>
             )}
             {is705 && (
               <Button variant="outline" onClick={handlePreview}>
-                <Eye className="h-4 w-4 mr-2" />
+                <Eye className="mr-2 h-4 w-4" />
                 DHIS2 Preview
               </Button>
             )}
             {report.status === 'APPROVED' && (
               <Button onClick={handleSubmitDHIS2} disabled={submitting}>
-                {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                {submitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
                 Submit to DHIS2
               </Button>
             )}
@@ -152,16 +160,14 @@ export default function MOHReportDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium">
-            {report.facility_name}
-          </p>
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="text-sm font-medium">{report.facility_name}</p>
           <p className="text-xs text-muted-foreground">
             Period: {report.period_start} — {report.period_end}
           </p>
         </div>
-        <Badge className={`${statusColors[report.status]} shrink-0 w-fit self-start sm:self-auto`}>
+        <Badge className={`${statusColors[report.status]} w-fit shrink-0 self-start sm:self-auto`}>
           {report.status}
         </Badge>
       </div>
@@ -178,7 +184,7 @@ export default function MOHReportDetailPage() {
             <CardTitle className="text-base">DHIS2 Payload Preview</CardTitle>
           </CardHeader>
           <CardContent>
-            <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto max-h-[400px]">
+            <pre className="max-h-[400px] overflow-x-auto rounded-md bg-muted p-3 text-xs">
               {JSON.stringify(previewPayload, null, 2)}
             </pre>
           </CardContent>
@@ -197,7 +203,7 @@ import type { MOH705Report, MOH711Report, MOH717Report } from '@/lib/types/moh-r
 function MOH705Detail({ report }: { report: MOH705Report }) {
   return (
     <>
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         <StatCard label="Total Visits" value={report.total_visits} />
         <StatCard label="Under 5" value={report.total_under_5} />
         <StatCard label="5 and Above" value={report.total_5_and_above} />
@@ -210,24 +216,26 @@ function MOH705Detail({ report }: { report: MOH705Report }) {
           </CardHeader>
           <CardContent className="px-0 sm:px-6">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[400px]">
+              <table className="w-full min-w-[400px] text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
                     <th className="pb-2 pr-4 font-medium">Chapter</th>
                     <th className="pb-2 pr-4 font-medium">Category</th>
-                    <th className="pb-2 pr-4 font-medium text-right">&lt;5</th>
-                    <th className="pb-2 pr-4 font-medium text-right">≥5</th>
-                    <th className="pb-2 font-medium text-right">Total</th>
+                    <th className="pb-2 pr-4 text-right font-medium">&lt;5</th>
+                    <th className="pb-2 pr-4 text-right font-medium">≥5</th>
+                    <th className="pb-2 text-right font-medium">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {report.disease_rows.map((row) => (
                     <tr key={row.id} className="border-b last:border-0">
                       <td className="py-2 pr-4 tabular-nums">{row.icd10_chapter}</td>
-                      <td className="py-2 pr-4 truncate max-w-[200px]">{row.category_name}</td>
+                      <td className="max-w-[200px] truncate py-2 pr-4">{row.category_name}</td>
                       <td className="py-2 pr-4 text-right tabular-nums">{row.cases_under_5}</td>
                       <td className="py-2 pr-4 text-right tabular-nums">{row.cases_5_and_above}</td>
-                      <td className="py-2 text-right tabular-nums font-medium">{row.total_cases}</td>
+                      <td className="py-2 text-right font-medium tabular-nums">
+                        {row.total_cases}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -244,7 +252,9 @@ function MOH711Detail({ report }: { report: MOH711Report }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">Reproductive Health</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Reproductive Health</CardTitle>
+        </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <StatCard label="ANC Visits" value={report.anc_visits} />
           <StatCard label="Deliveries" value={report.deliveries_total} />
@@ -255,7 +265,9 @@ function MOH711Detail({ report }: { report: MOH711Report }) {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">Malaria</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Malaria</CardTitle>
+        </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <StatCard label="Under 5" value={report.malaria_cases_under_5} />
           <StatCard label="5 and Above" value={report.malaria_cases_5_and_above} />
@@ -263,7 +275,9 @@ function MOH711Detail({ report }: { report: MOH711Report }) {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">Immunisation</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Immunisation</CardTitle>
+        </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <StatCard label="BCG" value={report.bcg_given} />
           <StatCard label="OPV" value={report.opv_given} />
@@ -280,7 +294,9 @@ function MOH717Detail({ report }: { report: MOH717Report }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">OPD</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">OPD</CardTitle>
+        </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <StatCard label="New Visits" value={report.opd_new_visits} />
           <StatCard label="Revisits" value={report.opd_revisits} />
@@ -288,7 +304,9 @@ function MOH717Detail({ report }: { report: MOH717Report }) {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">Inpatient</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Inpatient</CardTitle>
+        </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <StatCard label="Admissions" value={report.admissions_total} />
           <StatCard label="Discharges" value={report.discharges_total} />
@@ -297,7 +315,9 @@ function MOH717Detail({ report }: { report: MOH717Report }) {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">Other</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Other</CardTitle>
+        </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <StatCard label="Deliveries" value={report.deliveries_total} />
           <StatCard label="C-Section" value={report.deliveries_caesarean} />

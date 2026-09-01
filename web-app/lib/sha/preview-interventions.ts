@@ -41,11 +41,11 @@ export function extractPreviewActiveInterventions(payload: unknown): {
       }
 
       const interventionName = String(
-        row.intervention_name || row.name || row.intervention_description || '',
+        row.intervention_name || row.name || row.intervention_description || ''
       ).trim();
 
       const paymentMechanism = String(
-        row.intervention_payment_mechanism || row.payment_mechanism || '',
+        row.intervention_payment_mechanism || row.payment_mechanism || ''
       )
         .trim()
         .toUpperCase();
@@ -55,9 +55,9 @@ export function extractPreviewActiveInterventions(payload: unknown): {
         intervention_name: interventionName || interventionCode,
         access_point: accessPoint,
         is_per_diem:
-          row.is_per_diem === true
-          || row.is_per_diem === 'true'
-          || paymentMechanism.includes('PER DIEM'),
+          row.is_per_diem === true ||
+          row.is_per_diem === 'true' ||
+          paymentMechanism.includes('PER DIEM'),
       };
     })
     .filter((row): row is PreviewActiveIntervention => row !== null);

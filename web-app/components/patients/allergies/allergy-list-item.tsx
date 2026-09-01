@@ -42,8 +42,7 @@ const severityColors: Record<AllergySeverity, string> = {
   mild: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   moderate: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
   severe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  life_threatening:
-    'bg-red-200 text-red-900 dark:bg-red-900/50 dark:text-red-300 font-semibold',
+  life_threatening: 'bg-red-200 text-red-900 dark:bg-red-900/50 dark:text-red-300 font-semibold',
 };
 
 // Substance type icons
@@ -81,24 +80,24 @@ export function AllergyListItemRow({
   return (
     <>
       <div
-        className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border ${
+        className={`flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between ${
           allergy.is_high_risk ? 'border-destructive/30 bg-destructive/5' : 'bg-muted/30'
         }`}
       >
-        <div className="flex items-start gap-3 min-w-0">
+        <div className="flex min-w-0 items-start gap-3">
           {/* High risk indicator */}
           {allergy.is_high_risk && (
-            <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
           )}
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium truncate">{allergy.substance}</span>
-              <Badge variant="outline" className="text-xs shrink-0">
+              <span className="truncate font-medium">{allergy.substance}</span>
+              <Badge variant="outline" className="shrink-0 text-xs">
                 {substanceTypeLabels[allergy.substance_type] ?? allergy.substance_type}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Reaction: {allergy.reaction_type.replace(/_/g, ' ')}
               {allergy.onset_date && (
                 <span className="hidden sm:inline">
@@ -109,7 +108,7 @@ export function AllergyListItemRow({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0 self-end sm:self-auto">
+        <div className="flex shrink-0 items-center gap-2 self-end sm:gap-3 sm:self-auto">
           {/* Severity badge */}
           <Badge className={`${badgeColor} shrink-0`}>{allergy.severity_display}</Badge>
 
@@ -124,15 +123,12 @@ export function AllergyListItemRow({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-                  <Pencil className="h-4 w-4 mr-2" />
+                  <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
                 {isActive && (
-                  <DropdownMenuItem
-                    onClick={handleResolve}
-                    disabled={resolveAllergy.isPending}
-                  >
-                    <Check className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem onClick={handleResolve} disabled={resolveAllergy.isPending}>
+                    <Check className="mr-2 h-4 w-4" />
                     Mark Resolved
                   </DropdownMenuItem>
                 )}
@@ -141,7 +137,7 @@ export function AllergyListItemRow({
                   onClick={() => setShowDeleteDialog(true)}
                   className="text-destructive focus:text-destructive"
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>

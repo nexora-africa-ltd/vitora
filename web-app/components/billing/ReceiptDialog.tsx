@@ -29,43 +29,32 @@ interface ReceiptDialogProps {
   isLoading?: boolean;
 }
 
-export function ReceiptDialog({
-  open,
-  onClose,
-  receipt,
-  isLoading = false,
-}: ReceiptDialogProps) {
+export function ReceiptDialog({ open, onClose, receipt, isLoading = false }: ReceiptDialogProps) {
   if (!receipt && !isLoading) {
     return null;
   }
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
+      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-600" />
             Payment Receipt
           </DialogTitle>
-          <DialogDescription>
-            Receipt generated successfully
-          </DialogDescription>
+          <DialogDescription>Receipt generated successfully</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6 overflow-y-auto">
+        <ScrollArea className="-mx-6 flex-1 overflow-y-auto px-6">
           {/* Use ReceiptView as the single source of truth */}
-          <ReceiptView
-            receipt={receipt}
-            isLoading={isLoading}
-            showActionButtons={false}
-          />
+          <ReceiptView receipt={receipt} isLoading={isLoading} showActionButtons={false} />
         </ScrollArea>
 
         {/* Dialog-specific close button */}
         {!isLoading && receipt && (
           <div className="flex justify-end pt-4">
             <Button variant="default" onClick={onClose}>
-              <X className="h-4 w-4 mr-2" />
+              <X className="mr-2 h-4 w-4" />
               Close
             </Button>
           </div>

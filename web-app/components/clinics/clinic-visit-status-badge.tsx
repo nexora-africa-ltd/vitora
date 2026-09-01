@@ -15,7 +15,10 @@ interface ClinicVisitStatusBadgeProps {
   className?: string;
 }
 
-const STATUS_STYLES: Record<ClinicVisitStatus, { className: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+const STATUS_STYLES: Record<
+  ClinicVisitStatus,
+  { className: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
+> = {
   REGISTERED: { className: '', variant: 'secondary' },
   WAITING: { className: '', variant: 'secondary' },
   CALLED: { className: 'bg-blue-500 hover:bg-blue-500/90', variant: 'default' },
@@ -48,10 +51,7 @@ export function ClinicVisitStatusBadge({
   const label = statusDisplay ?? STATUS_LABELS[status] ?? status;
 
   return (
-    <Badge
-      variant={config.variant}
-      className={cn(config.className, className)}
-    >
+    <Badge variant={config.variant} className={cn(config.className, className)}>
       {label}
     </Badge>
   );

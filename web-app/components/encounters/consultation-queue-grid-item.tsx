@@ -12,21 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Phone,
-  Play,
-  Clock,
-  AlertTriangle,
-  UserCheck,
-  Lock,
-  Loader2,
-} from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Phone, Play, Clock, AlertTriangle, UserCheck, Lock, Loader2 } from 'lucide-react';
 import type { ConsultationQueueItem as QueueItemType } from '@/lib/types/encounter';
 
 // =============================================================================
@@ -152,63 +139,70 @@ export function ConsultationQueueGridItem({
         <div className="flex items-start gap-3">
           <Avatar
             className={cn(
-              'h-10 w-10 ring-2 ring-offset-2 ring-offset-background shrink-0',
+              'h-10 w-10 shrink-0 ring-2 ring-offset-2 ring-offset-background',
               getGenderRingClass(item.patient_gender)
             )}
           >
-            <AvatarFallback className={cn('text-xs font-medium', getGenderBgClass(item.patient_gender))}>
+            <AvatarFallback
+              className={cn('text-xs font-medium', getGenderBgClass(item.patient_gender))}
+            >
               {getInitials(item.patient_name)}
             </AvatarFallback>
           </Avatar>
 
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <h3 className="font-medium text-sm leading-tight truncate">
-                {item.patient_name}
-              </h3>
-              {isUrgent && (
-                <AlertTriangle className="h-3.5 w-3.5 text-orange-500 shrink-0" />
-              )}
+              <h3 className="truncate text-sm font-medium leading-tight">{item.patient_name}</h3>
+              {isUrgent && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-orange-500" />}
             </div>
-            <p className="text-xs text-muted-foreground font-mono">
-              {item.patient_mrn}
-            </p>
+            <p className="font-mono text-xs text-muted-foreground">{item.patient_mrn}</p>
 
             {/* Badges */}
-            <div className="flex flex-wrap items-center gap-1 mt-1.5">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1">
               {/* Triage Badge */}
               {isBypassed ? (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
                   Bypassed
                 </Badge>
               ) : isDirect ? (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
                   Direct
                 </Badge>
               ) : item.triage_category ? (
-                <Badge className={cn(getTriageBadgeStyles(item.triage_category), 'text-[10px] px-1.5 py-0')}>
+                <Badge
+                  className={cn(
+                    getTriageBadgeStyles(item.triage_category),
+                    'px-1.5 py-0 text-[10px]'
+                  )}
+                >
                   {item.triage_category}
                 </Badge>
               ) : null}
 
               {/* Called Badge */}
               {isCalled && (
-                <Badge variant="outline" className="border-blue-500 text-blue-600 text-[10px] px-1.5 py-0">
+                <Badge
+                  variant="outline"
+                  className="border-blue-500 px-1.5 py-0 text-[10px] text-blue-600"
+                >
                   Called
                 </Badge>
               )}
 
               {/* Claimed Badge */}
               {isClaimedByMe && (
-                <Badge variant="info" className="text-[10px] px-1.5 py-0 gap-0.5">
+                <Badge variant="info" className="gap-0.5 px-1.5 py-0 text-[10px]">
                   <UserCheck className="h-2.5 w-2.5" />
                   <span>Yours</span>
                 </Badge>
               )}
               {isClaimedByOther && (
-                <Badge variant="outline" className="border-amber-500 text-amber-600 text-[10px] px-1.5 py-0 gap-0.5">
+                <Badge
+                  variant="outline"
+                  className="gap-0.5 border-amber-500 px-1.5 py-0 text-[10px] text-amber-600"
+                >
                   <Lock className="h-2.5 w-2.5" />
-                  <span className="truncate max-w-[50px]">
+                  <span className="max-w-[50px] truncate">
                     {item.assigned_clinician_name?.split(' ')[0] || 'Other'}
                   </span>
                 </Badge>
@@ -218,17 +212,17 @@ export function ConsultationQueueGridItem({
         </div>
 
         {/* Chief Complaint - truncated */}
-        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-          {item.chief_complaint}
-        </p>
+        <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{item.chief_complaint}</p>
 
         {/* Footer: Wait Time + Actions */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t">
+        <div className="mt-3 flex items-center justify-between border-t pt-3">
           {/* Wait Time */}
-          <div className={cn(
-            'flex items-center gap-1 text-xs',
-            isUrgent ? 'text-orange-600 font-medium' : 'text-muted-foreground'
-          )}>
+          <div
+            className={cn(
+              'flex items-center gap-1 text-xs',
+              isUrgent ? 'font-medium text-orange-600' : 'text-muted-foreground'
+            )}
+          >
             <Clock className="h-3 w-3" />
             {formatWaitTime(item.wait_time_minutes)}
           </div>

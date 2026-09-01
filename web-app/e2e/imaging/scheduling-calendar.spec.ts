@@ -162,8 +162,8 @@ async function setupSchedulingMocks(page: Page) {
     if (modality) {
       calendarData = {
         ...calendarData,
-        resources: calendarData.resources.filter(
-          (r) => r.resource.metadata.modalities.includes(modality)
+        resources: calendarData.resources.filter((r) =>
+          r.resource.metadata.modalities.includes(modality)
         ),
       };
     }

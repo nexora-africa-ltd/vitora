@@ -13,10 +13,7 @@ import { defineBddConfig, cucumberReporter } from 'playwright-bdd';
  */
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
-  steps: [
-    'features/step-definitions/**/*.ts',
-    'features/support/*.ts',
-  ],
+  steps: ['features/step-definitions/**/*.ts', 'features/support/*.ts'],
   // Generate step files if missing
   missingSteps: 'fail-on-gen', // Options: 'fail-on-gen' | 'skip-scenario' | 'generate'
 });

@@ -52,7 +52,7 @@ function deriveSteps(claim: Claim): Step[] {
   })();
 
   const order = ['created', 'submitted', 'acknowledged', 'processed', 'paid'] as const;
-  type Key = typeof order[number];
+  type Key = (typeof order)[number];
   const currentIdx = order.indexOf(currentKey as Key);
 
   const stateFor = (key: Key, idx: number, hasTimestamp: boolean): StepState => {
@@ -113,7 +113,7 @@ function StepIcon({ state }: { state: StepState }) {
       );
     case 'current':
       return (
-        <div className={cn(base, 'border-primary bg-primary/10 text-primary animate-pulse')}>
+        <div className={cn(base, 'animate-pulse border-primary bg-primary/10 text-primary')}>
           <Circle className="h-2 w-2 fill-current" />
         </div>
       );
@@ -132,14 +132,18 @@ export function ClaimStatusTimeline({ claim }: ClaimStatusTimelineProps) {
   return (
     <div className="w-full">
       {/* Desktop: horizontal pipeline */}
-      <ol className="hidden sm:flex items-start justify-between gap-1">
+      <ol className="hidden items-start justify-between gap-1 sm:flex">
         {steps.map((step, idx) => (
-          <li key={step.key} className="flex-1 flex flex-col items-center text-center min-w-0">
-            <div className="flex items-center w-full">
+          <li key={step.key} className="flex min-w-0 flex-1 flex-col items-center text-center">
+            <div className="flex w-full items-center">
               <div
                 className={cn(
                   'h-0.5 flex-1',
-                  idx === 0 ? 'invisible' : steps[idx - 1]?.state === 'done' ? 'bg-emerald-500' : 'bg-muted',
+                  idx === 0
+                    ? 'invisible'
+                    : steps[idx - 1]?.state === 'done'
+                      ? 'bg-emerald-500'
+                      : 'bg-muted'
                 )}
               />
               <StepIcon state={step.state} />
@@ -150,7 +154,7 @@ export function ClaimStatusTimeline({ claim }: ClaimStatusTimelineProps) {
                     ? 'invisible'
                     : step.state === 'done'
                       ? 'bg-emerald-500'
-                      : 'bg-muted',
+                      : 'bg-muted'
                 )}
               />
             </div>
@@ -160,12 +164,12 @@ export function ClaimStatusTimeline({ claim }: ClaimStatusTimelineProps) {
                 step.state === 'done' && 'text-foreground',
                 step.state === 'current' && 'text-primary',
                 step.state === 'failed' && 'text-destructive',
-                step.state === 'pending' && 'text-muted-foreground',
+                step.state === 'pending' && 'text-muted-foreground'
               )}
             >
               {step.label}
             </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5 truncate w-full">
+            <p className="mt-0.5 w-full truncate text-[10px] text-muted-foreground">
               {fmt(step.at) ?? '—'}
             </p>
           </li>
@@ -173,7 +177,7 @@ export function ClaimStatusTimeline({ claim }: ClaimStatusTimelineProps) {
       </ol>
 
       {/* Mobile: vertical pipeline */}
-      <ol className="sm:hidden flex flex-col gap-3">
+      <ol className="flex flex-col gap-3 sm:hidden">
         {steps.map((step, idx) => (
           <li key={step.key} className="flex items-start gap-3">
             <div className="flex flex-col items-center">
@@ -181,8 +185,8 @@ export function ClaimStatusTimeline({ claim }: ClaimStatusTimelineProps) {
               {idx < steps.length - 1 && (
                 <div
                   className={cn(
-                    'w-0.5 flex-1 mt-1 min-h-[16px]',
-                    step.state === 'done' ? 'bg-emerald-500' : 'bg-muted',
+                    'mt-1 min-h-[16px] w-0.5 flex-1',
+                    step.state === 'done' ? 'bg-emerald-500' : 'bg-muted'
                   )}
                 />
               )}
@@ -193,7 +197,7 @@ export function ClaimStatusTimeline({ claim }: ClaimStatusTimelineProps) {
                   'text-sm font-medium',
                   step.state === 'failed' && 'text-destructive',
                   step.state === 'current' && 'text-primary',
-                  step.state === 'pending' && 'text-muted-foreground',
+                  step.state === 'pending' && 'text-muted-foreground'
                 )}
               >
                 {step.label}

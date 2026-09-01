@@ -48,15 +48,12 @@ const KETA_CATEGORIES = {
  * Badge rendering steps
  */
 
-Given(
-  'the application is loaded',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      await this.page.goto('/');
-      await this.page.waitForLoadState('domcontentloaded');
-    }
+Given('the application is loaded', async function (this: VitoraWorld) {
+  if (this.page) {
+    await this.page.goto('/');
+    await this.page.waitForLoadState('domcontentloaded');
   }
-);
+});
 
 Given(
   'a patient has triage category {string}',
@@ -65,13 +62,10 @@ Given(
   }
 );
 
-When(
-  'the category badge is rendered',
-  async function (this: VitoraWorld) {
-    // Badge would be rendered as a component
-    this.store('badgeRendered', true);
-  }
-);
+When('the category badge is rendered', async function (this: VitoraWorld) {
+  // Badge would be rendered as a component
+  this.store('badgeRendered', true);
+});
 
 When(
   'the category badge is rendered with size {string}',
@@ -81,21 +75,15 @@ When(
   }
 );
 
-When(
-  'the badge is rendered with size {string}',
-  async function (this: VitoraWorld, size: string) {
-    this.store('badgeSize', size);
-    this.store('badgeRendered', true);
-  }
-);
+When('the badge is rendered with size {string}', async function (this: VitoraWorld, size: string) {
+  this.store('badgeSize', size);
+  this.store('badgeRendered', true);
+});
 
-When(
-  'the badge is rendered with icons enabled',
-  async function (this: VitoraWorld) {
-    this.store('iconsEnabled', true);
-    this.store('badgeRendered', true);
-  }
-);
+When('the badge is rendered with icons enabled', async function (this: VitoraWorld) {
+  this.store('iconsEnabled', true);
+  this.store('badgeRendered', true);
+});
 
 /**
  * Badge appearance assertions
@@ -158,19 +146,16 @@ Then(
   }
 );
 
-Then(
-  'font size should be {string}',
-  async function (this: VitoraWorld, expectedFontSize: string) {
-    const size = this.retrieve('badgeSize') as string;
-    const sizeToFont: Record<string, string> = {
-      sm: '12px',
-      default: '14px',
-      lg: '16px',
-      xl: '18px',
-    };
-    expect(sizeToFont[size]).toBe(expectedFontSize);
-  }
-);
+Then('font size should be {string}', async function (this: VitoraWorld, expectedFontSize: string) {
+  const size = this.retrieve('badgeSize') as string;
+  const sizeToFont: Record<string, string> = {
+    sm: '12px',
+    default: '14px',
+    lg: '16px',
+    xl: '18px',
+  };
+  expect(sizeToFont[size]).toBe(expectedFontSize);
+});
 
 /**
  * Icon assertions
@@ -195,19 +180,13 @@ Then(
  * Accessibility assertions
  */
 
-Given(
-  'a badge with tooltip is displayed',
-  async function (this: VitoraWorld) {
-    this.store('badgeWithTooltip', true);
-  }
-);
+Given('a badge with tooltip is displayed', async function (this: VitoraWorld) {
+  this.store('badgeWithTooltip', true);
+});
 
-When(
-  'the badge is rendered',
-  async function (this: VitoraWorld) {
-    this.store('badgeRendered', true);
-  }
-);
+When('the badge is rendered', async function (this: VitoraWorld) {
+  this.store('badgeRendered', true);
+});
 
 Then(
   'it should have aria-label {string}',
@@ -220,116 +199,83 @@ Then(
   }
 );
 
-Then(
-  'it should have role {string}',
-  async function (this: VitoraWorld, expectedRole: string) {
-    if (this.page) {
-      const badge = this.page.locator('[data-testid="category-badge"]');
-      const role = await badge.getAttribute('role');
-      expect(role).toBe(expectedRole);
-    }
+Then('it should have role {string}', async function (this: VitoraWorld, expectedRole: string) {
+  if (this.page) {
+    const badge = this.page.locator('[data-testid="category-badge"]');
+    const role = await badge.getAttribute('role');
+    expect(role).toBe(expectedRole);
   }
-);
+});
 
-Given(
-  'color-blind mode is enabled',
-  async function (this: VitoraWorld) {
-    this.store('colorBlindMode', true);
+Given('color-blind mode is enabled', async function (this: VitoraWorld) {
+  this.store('colorBlindMode', true);
 
-    if (this.page) {
-      await this.page.evaluate(() => {
-        localStorage.setItem('colorBlindMode', 'true');
-      });
-    }
+  if (this.page) {
+    await this.page.evaluate(() => {
+      localStorage.setItem('colorBlindMode', 'true');
+    });
   }
-);
+});
 
-When(
-  'category badges are displayed',
-  async function (this: VitoraWorld) {
-    this.store('badgesDisplayed', true);
-  }
-);
+When('category badges are displayed', async function (this: VitoraWorld) {
+  this.store('badgesDisplayed', true);
+});
 
-Then(
-  'each badge should include a pattern or icon',
-  async function (this: VitoraWorld) {
-    const colorBlindMode = this.retrieve('colorBlindMode');
-    expect(colorBlindMode).toBe(true);
-    // In color-blind mode, icons are always shown
-  }
-);
+Then('each badge should include a pattern or icon', async function (this: VitoraWorld) {
+  const colorBlindMode = this.retrieve('colorBlindMode');
+  expect(colorBlindMode).toBe(true);
+  // In color-blind mode, icons are always shown
+});
 
-Then(
-  'categories are distinguishable without color alone',
-  async function (this: VitoraWorld) {
-    // Each category has a unique icon in color-blind mode
-    expect(true).toBe(true);
-  }
-);
+Then('categories are distinguishable without color alone', async function (this: VitoraWorld) {
+  // Each category has a unique icon in color-blind mode
+  expect(true).toBe(true);
+});
 
-When(
-  'I focus the badge with keyboard',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      await this.page.keyboard.press('Tab');
-    }
+When('I focus the badge with keyboard', async function (this: VitoraWorld) {
+  if (this.page) {
+    await this.page.keyboard.press('Tab');
   }
-);
+});
 
-Then(
-  'the tooltip should appear',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const tooltip = this.page.locator('[role="tooltip"]');
-      await expect(tooltip).toBeVisible();
-    }
+Then('the tooltip should appear', async function (this: VitoraWorld) {
+  if (this.page) {
+    const tooltip = this.page.locator('[role="tooltip"]');
+    await expect(tooltip).toBeVisible();
   }
-);
+});
 
-Then(
-  'I should be able to dismiss it with Escape',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      await this.page.keyboard.press('Escape');
-      const tooltip = this.page.locator('[role="tooltip"]');
-      await expect(tooltip).not.toBeVisible();
-    }
+Then('I should be able to dismiss it with Escape', async function (this: VitoraWorld) {
+  if (this.page) {
+    await this.page.keyboard.press('Escape');
+    const tooltip = this.page.locator('[role="tooltip"]');
+    await expect(tooltip).not.toBeVisible();
   }
-);
+});
 
 /**
  * Interactive states
  */
 
-When(
-  'I hover over the category badge',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      await this.page.locator('[data-testid="category-badge"]').hover();
-    }
+When('I hover over the category badge', async function (this: VitoraWorld) {
+  if (this.page) {
+    await this.page.locator('[data-testid="category-badge"]').hover();
   }
-);
+});
 
-Then(
-  'a tooltip should appear showing:',
-  async function (this: VitoraWorld, docString: string) {
-    if (this.page) {
-      const tooltip = this.page.locator('[role="tooltip"]');
-      await expect(tooltip).toBeVisible();
-      const tooltipText = await tooltip.textContent();
-      // Check key parts of the tooltip
-      expect(tooltipText).toBeDefined();
-    }
+Then('a tooltip should appear showing:', async function (this: VitoraWorld, docString: string) {
+  if (this.page) {
+    const tooltip = this.page.locator('[role="tooltip"]');
+    await expect(tooltip).toBeVisible();
+    const tooltipText = await tooltip.textContent();
+    // Check key parts of the tooltip
+    expect(tooltipText).toBeDefined();
   }
-);
+});
 
-Given(
-  'a badge is configured as clickable',
-  async function (this: VitoraWorld) {
-    this.store('badgeClickable', true);
-  }
-);
+Given('a badge is configured as clickable', async function (this: VitoraWorld) {
+  this.store('badgeClickable', true);
+});
 
 Given(
   'patient {string} has triage category {string}',
@@ -340,34 +286,25 @@ Given(
   }
 );
 
-When(
-  'I click on the category badge',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      await this.page.locator('[data-testid="category-badge"]').click();
-    }
+When('I click on the category badge', async function (this: VitoraWorld) {
+  if (this.page) {
+    await this.page.locator('[data-testid="category-badge"]').click();
   }
-);
+});
 
-Then(
-  'I should be navigated to the triage assessment details',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      await expect(this.page).toHaveURL(/\/triage\/assessment\//);
-    }
+Then('I should be navigated to the triage assessment details', async function (this: VitoraWorld) {
+  if (this.page) {
+    await expect(this.page).toHaveURL(/\/triage\/assessment\//);
   }
-);
+});
 
 /**
  * Animation states
  */
 
-When(
-  'the badge is first rendered',
-  async function (this: VitoraWorld) {
-    this.store('badgeFirstRender', true);
-  }
-);
+When('the badge is first rendered', async function (this: VitoraWorld) {
+  this.store('badgeFirstRender', true);
+});
 
 Then(
   'the badge should have a subtle pulse animation for the first 5 seconds',
@@ -377,7 +314,7 @@ Then(
     if (category === 'RED') {
       if (this.page) {
         const badge = this.page.locator('[data-testid="category-badge"]');
-        const hasAnimation = await badge.evaluate(el => {
+        const hasAnimation = await badge.evaluate((el) => {
           const style = window.getComputedStyle(el);
           return style.animationName !== 'none';
         });
@@ -388,19 +325,13 @@ Then(
   }
 );
 
-Given(
-  'a triage assessment was just completed',
-  async function (this: VitoraWorld) {
-    this.store('triageJustCompleted', true);
-  }
-);
+Given('a triage assessment was just completed', async function (this: VitoraWorld) {
+  this.store('triageJustCompleted', true);
+});
 
-When(
-  'the badge appears in the queue',
-  async function (this: VitoraWorld) {
-    this.store('badgeInQueue', true);
-  }
-);
+When('the badge appears in the queue', async function (this: VitoraWorld) {
+  this.store('badgeInQueue', true);
+});
 
 Then(
   'it should have a brief glow animation to indicate it is newly added',
@@ -414,36 +345,27 @@ Then(
  * Dark mode
  */
 
-Given(
-  'dark mode is enabled',
-  async function (this: VitoraWorld) {
-    this.store('darkMode', true);
+Given('dark mode is enabled', async function (this: VitoraWorld) {
+  this.store('darkMode', true);
 
-    if (this.page) {
-      await this.page.evaluate(() => {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-      });
-    }
+  if (this.page) {
+    await this.page.evaluate(() => {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    });
   }
-);
+});
 
-Then(
-  'the badge should use {string}',
-  async function (this: VitoraWorld, darkBgColor: string) {
-    // Dark mode uses brighter colors for visibility
-    const cleanColor = darkBgColor.split('(')[0].trim();
-    expect(cleanColor).toMatch(/^#[A-Fa-f0-9]{6}$/);
-  }
-);
+Then('the badge should use {string}', async function (this: VitoraWorld, darkBgColor: string) {
+  // Dark mode uses brighter colors for visibility
+  const cleanColor = darkBgColor.split('(')[0].trim();
+  expect(cleanColor).toMatch(/^#[A-Fa-f0-9]{6}$/);
+});
 
-Then(
-  'maintain sufficient contrast',
-  async function (this: VitoraWorld) {
-    // All dark mode colors maintain 4.5:1 contrast
-    expect(true).toBe(true);
-  }
-);
+Then('maintain sufficient contrast', async function (this: VitoraWorld) {
+  // All dark mode colors maintain 4.5:1 contrast
+  expect(true).toBe(true);
+});
 
 /**
  * Edge cases
@@ -456,66 +378,45 @@ Given(
   }
 );
 
-Then(
-  'the badge should have a gray background',
-  async function (this: VitoraWorld) {
-    // Unknown categories show gray
-    const category = this.retrieve('triageCategory');
-    const validCategories = ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'];
-    expect(validCategories).not.toContain(category);
-  }
-);
+Then('the badge should have a gray background', async function (this: VitoraWorld) {
+  // Unknown categories show gray
+  const category = this.retrieve('triageCategory');
+  const validCategories = ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'];
+  expect(validCategories).not.toContain(category);
+});
 
-Then(
-  'an error should be logged',
-  async function (this: VitoraWorld) {
-    // Error logging verification
-    if (this.page) {
-      const logs = await this.page.evaluate(() => {
-        return (window as unknown as { __consoleErrors?: string[] }).__consoleErrors || [];
-      });
-      // Verify console error was captured or error boundary triggered
-    }
+Then('an error should be logged', async function (this: VitoraWorld) {
+  // Error logging verification
+  if (this.page) {
+    const logs = await this.page.evaluate(() => {
+      return (window as unknown as { __consoleErrors?: string[] }).__consoleErrors || [];
+    });
+    // Verify console error was captured or error boundary triggered
   }
-);
+});
 
-Given(
-  'triage data is being fetched',
-  async function (this: VitoraWorld) {
-    this.store('triageLoading', true);
-  }
-);
+Given('triage data is being fetched', async function (this: VitoraWorld) {
+  this.store('triageLoading', true);
+});
 
-When(
-  'the badge component mounts',
-  async function (this: VitoraWorld) {
-    this.store('badgeMounted', true);
-  }
-);
+When('the badge component mounts', async function (this: VitoraWorld) {
+  this.store('badgeMounted', true);
+});
 
-Then(
-  'it should show a skeleton loader with appropriate size',
-  async function (this: VitoraWorld) {
-    if (this.page) {
-      const skeleton = this.page.locator('[data-testid="badge-skeleton"]');
-      // Skeleton may or may not be visible depending on load state
-    }
+Then('it should show a skeleton loader with appropriate size', async function (this: VitoraWorld) {
+  if (this.page) {
+    const skeleton = this.page.locator('[data-testid="badge-skeleton"]');
+    // Skeleton may or may not be visible depending on load state
   }
-);
+});
 
-Given(
-  'a patient has no triage category assigned',
-  async function (this: VitoraWorld) {
-    this.store('triageCategory', null);
-  }
-);
+Given('a patient has no triage category assigned', async function (this: VitoraWorld) {
+  this.store('triageCategory', null);
+});
 
-When(
-  'the badge component is rendered',
-  async function (this: VitoraWorld) {
-    this.store('badgeRendered', true);
-  }
-);
+When('the badge component is rendered', async function (this: VitoraWorld) {
+  this.store('badgeRendered', true);
+});
 
 Then(
   'it should display {string} with a gray muted style',

@@ -51,7 +51,8 @@ export default function SchedulingDashboardPage() {
   });
   const { data: upcomingData } = useQuery({
     queryKey: ['scheduling-appointments-upcoming'],
-    queryFn: () => appointmentsApi.list({ status: 'CONFIRMED', page_size: 5, ordering: 'scheduled_start' }),
+    queryFn: () =>
+      appointmentsApi.list({ status: 'CONFIRMED', page_size: 5, ordering: 'scheduled_start' }),
   });
   const { data: resourcesDateAppointmentsData } = useQuery({
     queryKey: ['scheduling-appointments-by-date', resourcesDate],
@@ -79,7 +80,7 @@ export default function SchedulingDashboardPage() {
   const todayAppts = useMemo(() => todayData?.results || [], [todayData]);
   const resourcesDateAppts = useMemo(
     () => resourcesDateAppointmentsData?.results || [],
-    [resourcesDateAppointmentsData],
+    [resourcesDateAppointmentsData]
   );
   const upcomingAppts = useMemo(() => upcomingData?.results || [], [upcomingData]);
   const allResources = useMemo(() => resourcesData?.results || [], [resourcesData]);
@@ -99,7 +100,12 @@ export default function SchedulingDashboardPage() {
     const staff = allResources.filter((r) => r.resource_type === 'PERSON');
     const places = allResources.filter((r) => r.resource_type === 'PLACE');
     const assets = allResources.filter((r) => r.resource_type === 'ASSET');
-    return { staff: staff.length, places: places.length, assets: assets.length, total: allResources.length };
+    return {
+      staff: staff.length,
+      places: places.length,
+      assets: assets.length,
+      total: allResources.length,
+    };
   }, [allResources]);
 
   const occupiedRoomNames = useMemo(() => {
@@ -117,7 +123,7 @@ export default function SchedulingDashboardPage() {
     return new Set(
       resourcesDateAppts
         .filter((appointment) => activeStatuses.has(appointment.status))
-        .map((appointment) => appointment.resource),
+        .map((appointment) => appointment.resource)
     );
   }, [resourcesDateAppts]);
 
@@ -130,7 +136,7 @@ export default function SchedulingDashboardPage() {
           actions={
             canCreateAppointment ? (
               <Button size="sm" onClick={() => router.push('/scheduling/appointments/new')}>
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">New Appointment</span>
                 <span className="sm:hidden">New</span>
               </Button>
@@ -156,14 +162,29 @@ export default function SchedulingDashboardPage() {
           </TabsList>
 
           {/* ── Appointments Tab ── */}
-          <TabsContent value="appointments" className="space-y-4 mt-4">
+          <TabsContent value="appointments" className="mt-4 space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <StatCard icon={CalendarDays} label="Today" value={apptStats.total} color="blue" />
               <StatCard icon={Clock} label="Confirmed" value={apptStats.confirmed} color="cyan" />
-              <StatCard icon={Users} label="In Progress" value={apptStats.inProgress} color="amber" />
-              <StatCard icon={CheckCircle} label="Completed" value={apptStats.completed} color="green" />
+              <StatCard
+                icon={Users}
+                label="In Progress"
+                value={apptStats.inProgress}
+                color="amber"
+              />
+              <StatCard
+                icon={CheckCircle}
+                label="Completed"
+                value={apptStats.completed}
+                color="green"
+              />
               <StatCard icon={XCircle} label="Cancelled" value={apptStats.cancelled} color="red" />
-              <StatCard icon={AlertTriangle} label="No-Show" value={apptStats.noShow} color="orange" />
+              <StatCard
+                icon={AlertTriangle}
+                label="No-Show"
+                value={apptStats.noShow}
+                color="orange"
+              />
             </div>
 
             {/* Quick Nav */}
@@ -192,9 +213,13 @@ export default function SchedulingDashboardPage() {
             {upcomingAppts.length > 0 && (
               <Card>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium text-sm">Upcoming Confirmed</h3>
-                    <Button variant="ghost" size="sm" onClick={() => router.push('/scheduling/appointments?status=CONFIRMED')}>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-medium">Upcoming Confirmed</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => router.push('/scheduling/appointments?status=CONFIRMED')}
+                    >
                       View All
                     </Button>
                   </div>
@@ -202,16 +227,17 @@ export default function SchedulingDashboardPage() {
                     {upcomingAppts.map((apt) => (
                       <div
                         key={apt.id}
-                        className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                        className="flex cursor-pointer items-center justify-between rounded-md p-2 hover:bg-muted/50"
                         onClick={() => router.push(`/scheduling/appointments/${apt.id}`)}
                       >
                         <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{apt.patient_name}</p>
+                          <p className="truncate text-sm font-medium">{apt.patient_name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {apt.resource_name} &bull; {formatDate(apt.scheduled_start, 'MMM d, h:mm a')}
+                            {apt.resource_name} &bull;{' '}
+                            {formatDate(apt.scheduled_start, 'MMM d, h:mm a')}
                           </p>
                         </div>
-                        <Badge variant="outline" className="shrink-0 ml-2">
+                        <Badge variant="outline" className="ml-2 shrink-0">
                           {apt.appointment_type}
                         </Badge>
                       </div>
@@ -223,15 +249,35 @@ export default function SchedulingDashboardPage() {
           </TabsContent>
 
           {/* ── Staff Tab ── */}
-          <TabsContent value="staff" className="space-y-4 mt-4">
+          <TabsContent value="staff" className="mt-4 space-y-4">
             {onDutySummary && (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                <StatCard icon={Users} label="Total Today" value={onDutySummary.total} color="blue" />
-                <StatCard icon={UserCheck} label="Clocked In" value={onDutySummary.clocked_in} color="green" />
+                <StatCard
+                  icon={Users}
+                  label="Total Today"
+                  value={onDutySummary.total}
+                  color="blue"
+                />
+                <StatCard
+                  icon={UserCheck}
+                  label="Clocked In"
+                  value={onDutySummary.clocked_in}
+                  color="green"
+                />
                 <StatCard icon={Timer} label="Late" value={onDutySummary.late} color="amber" />
                 <StatCard icon={UserX} label="Absent" value={onDutySummary.absent} color="red" />
-                <StatCard icon={Clock} label="Upcoming" value={onDutySummary.upcoming} color="cyan" />
-                <StatCard icon={CheckCircle} label="Completed" value={onDutySummary.completed} color="green" />
+                <StatCard
+                  icon={Clock}
+                  label="Upcoming"
+                  value={onDutySummary.upcoming}
+                  color="cyan"
+                />
+                <StatCard
+                  icon={CheckCircle}
+                  label="Completed"
+                  value={onDutySummary.completed}
+                  color="green"
+                />
               </div>
             )}
 
@@ -241,7 +287,9 @@ export default function SchedulingDashboardPage() {
               entries={onDutyData?.clocked_in || []}
               badgeColor="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
               emptyMessage="No staff currently clocked in."
-              onRowClick={(entry) => router.push(`/scheduling/resources/${entry.staff_resource_id}`)}
+              onRowClick={(entry) =>
+                router.push(`/scheduling/resources/${entry.staff_resource_id}`)
+              }
             />
 
             {/* Late staff */}
@@ -251,7 +299,9 @@ export default function SchedulingDashboardPage() {
                 entries={onDutyData?.late || []}
                 badgeColor="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300"
                 showOverdue
-                onRowClick={(entry) => router.push(`/scheduling/resources/${entry.staff_resource_id}`)}
+                onRowClick={(entry) =>
+                  router.push(`/scheduling/resources/${entry.staff_resource_id}`)
+                }
               />
             )}
 
@@ -261,7 +311,9 @@ export default function SchedulingDashboardPage() {
                 title="Absent"
                 entries={onDutyData?.absent || []}
                 badgeColor="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                onRowClick={(entry) => router.push(`/scheduling/resources/${entry.staff_resource_id}`)}
+                onRowClick={(entry) =>
+                  router.push(`/scheduling/resources/${entry.staff_resource_id}`)
+                }
               />
             )}
 
@@ -272,7 +324,9 @@ export default function SchedulingDashboardPage() {
               badgeColor="bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300"
               showStartsIn
               emptyMessage="No upcoming shifts."
-              onRowClick={(entry) => router.push(`/scheduling/resources/${entry.staff_resource_id}`)}
+              onRowClick={(entry) =>
+                router.push(`/scheduling/resources/${entry.staff_resource_id}`)
+              }
             />
 
             <div className="flex justify-end">
@@ -283,12 +337,27 @@ export default function SchedulingDashboardPage() {
           </TabsContent>
 
           {/* ── Resources Tab ── */}
-          <TabsContent value="resources" className="space-y-4 mt-4">
+          <TabsContent value="resources" className="mt-4 space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <StatCard icon={Users} label="Staff" value={resourceCounts.staff} color="blue" />
-              <StatCard icon={MapPin} label="Rooms / Places" value={resourceCounts.places} color="cyan" />
-              <StatCard icon={Wrench} label="Equipment" value={resourceCounts.assets} color="amber" />
-              <StatCard icon={CheckCircle} label="Total Active" value={resourceCounts.total} color="green" />
+              <StatCard
+                icon={MapPin}
+                label="Rooms / Places"
+                value={resourceCounts.places}
+                color="cyan"
+              />
+              <StatCard
+                icon={Wrench}
+                label="Equipment"
+                value={resourceCounts.assets}
+                color="amber"
+              />
+              <StatCard
+                icon={CheckCircle}
+                label="Total Active"
+                value={resourceCounts.total}
+                color="green"
+              />
             </div>
 
             <Card>
@@ -327,7 +396,11 @@ export default function SchedulingDashboardPage() {
             />
 
             <div className="flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => router.push('/scheduling/resources')}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/scheduling/resources')}
+              >
                 Manage All Resources
               </Button>
             </div>
@@ -372,7 +445,7 @@ function StatCard({
           <Icon className={`h-4 w-4 ${colorMap[color] || ''}`} />
           <span className="text-xs text-muted-foreground">{label}</span>
         </div>
-        <p className="text-2xl font-bold mt-1">{value}</p>
+        <p className="mt-1 text-2xl font-bold">{value}</p>
       </CardContent>
     </Card>
   );
@@ -390,8 +463,8 @@ function NavCard({
   onClick: () => void;
 }) {
   return (
-    <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={onClick}>
-      <CardContent className="p-4 flex items-center gap-3">
+    <Card className="cursor-pointer transition-colors hover:border-primary/40" onClick={onClick}>
+      <CardContent className="flex items-center gap-3 p-4">
         <Icon className="h-8 w-8 text-primary" />
         <div>
           <p className="font-medium">{title}</p>
@@ -421,7 +494,7 @@ function StaffSection({
 }) {
   return (
     <Card>
-      <CardHeader className="pb-2 px-4 pt-4">
+      <CardHeader className="px-4 pb-2 pt-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
           <Badge className={`text-xs ${badgeColor}`}>{entries.length}</Badge>
@@ -435,11 +508,11 @@ function StaffSection({
             {entries.map((entry) => (
               <div
                 key={entry.shift_id}
-                className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 cursor-pointer text-sm"
+                className="flex cursor-pointer items-center justify-between rounded-md p-2 text-sm hover:bg-muted/50"
                 onClick={() => onRowClick(entry)}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{entry.staff_name}</p>
+                  <p className="truncate font-medium">{entry.staff_name}</p>
                   <p className="text-xs text-muted-foreground">
                     {entry.shift_type?.replace(/_/g, ' ')}
                     {entry.department && ` · ${entry.department}`}
@@ -447,15 +520,15 @@ function StaffSection({
                     {entry.clinic_name && ` · ${entry.clinic_name}`}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 ml-2">
+                <div className="ml-2 flex shrink-0 items-center gap-2">
                   {entry.on_break && (
-                    <Badge variant="outline" className="text-xs gap-1">
+                    <Badge variant="outline" className="gap-1 text-xs">
                       <Coffee className="h-3 w-3" />
                       Break
                     </Badge>
                   )}
                   {showOverdue && entry.minutes_overdue && (
-                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 text-xs">
+                    <Badge className="bg-amber-100 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-300">
                       {entry.minutes_overdue}min late
                     </Badge>
                   )}
@@ -490,26 +563,26 @@ function RoomOverviewCard({
 }) {
   const occupied = resources.filter((r) => occupiedRoomNames.has(r.name));
   const scheduled = resources.filter(
-    (r) => !occupiedRoomNames.has(r.name) && scheduledRoomIds.has(r.id),
+    (r) => !occupiedRoomNames.has(r.name) && scheduledRoomIds.has(r.id)
   );
   const available = resources.filter(
-    (r) => !occupiedRoomNames.has(r.name) && !scheduledRoomIds.has(r.id),
+    (r) => !occupiedRoomNames.has(r.name) && !scheduledRoomIds.has(r.id)
   );
   return (
     <Card>
-      <CardHeader className="pb-2 px-4 pt-4">
+      <CardHeader className="px-4 pb-2 pt-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <MapPin className="h-4 w-4" /> Rooms &amp; Places
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs">
+            <Badge className="bg-green-100 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
               {available.length} available
             </Badge>
-            <Badge className="bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300 text-xs">
+            <Badge className="bg-cyan-100 text-xs text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300">
               {scheduled.length} scheduled
             </Badge>
-            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 text-xs">
+            <Badge className="bg-amber-100 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-300">
               {occupied.length} occupied
             </Badge>
           </div>
@@ -519,29 +592,29 @@ function RoomOverviewCard({
         {resources.length === 0 ? (
           <p className="text-xs text-muted-foreground">No rooms or places configured.</p>
         ) : (
-          <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {resources.map((r) => {
               const isOccupied = occupiedRoomNames.has(r.name);
               const isScheduled = !isOccupied && scheduledRoomIds.has(r.id);
               return (
                 <div
                   key={r.id}
-                  className="flex items-center justify-between p-2 rounded-md border hover:bg-muted/50 cursor-pointer"
+                  className="flex cursor-pointer items-center justify-between rounded-md border p-2 hover:bg-muted/50"
                   onClick={() => onRowClick(r)}
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{r.name}</p>
+                    <p className="truncate text-sm font-medium">{r.name}</p>
                     {r.department_name && (
                       <p className="text-xs text-muted-foreground">{r.department_name}</p>
                     )}
                   </div>
                   <Badge
-                    className={`text-xs shrink-0 ml-2 ${
+                    className={`ml-2 shrink-0 text-xs ${
                       isOccupied
                         ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
                         : isScheduled
-                        ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
-                        : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                          ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
+                          : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
                     }`}
                   >
                     {isOccupied ? 'Occupied' : isScheduled ? 'Scheduled' : 'Available'}
@@ -569,29 +642,33 @@ function ResourceListCard({
 }) {
   return (
     <Card>
-      <CardHeader className="pb-2 px-4 pt-4">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
+      <CardHeader className="px-4 pb-2 pt-4">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <Icon className="h-4 w-4" /> {title}
-          <Badge variant="outline" className="text-xs ml-auto">{resources.length}</Badge>
+          <Badge variant="outline" className="ml-auto text-xs">
+            {resources.length}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-4">
         {resources.length === 0 ? (
           <p className="text-xs text-muted-foreground">No equipment resources configured.</p>
         ) : (
-          <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {resources.map((r) => (
               <div
                 key={r.id}
-                className="flex items-center justify-between p-2 rounded-md border hover:bg-muted/50 cursor-pointer"
+                className="flex cursor-pointer items-center justify-between rounded-md border p-2 hover:bg-muted/50"
                 onClick={() => onRowClick(r)}
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{r.name}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{r.code}</p>
+                  <p className="truncate text-sm font-medium">{r.name}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{r.code}</p>
                 </div>
                 {r.department_name && (
-                  <Badge variant="outline" className="text-xs shrink-0 ml-2">{r.department_name}</Badge>
+                  <Badge variant="outline" className="ml-2 shrink-0 text-xs">
+                    {r.department_name}
+                  </Badge>
                 )}
               </div>
             ))}

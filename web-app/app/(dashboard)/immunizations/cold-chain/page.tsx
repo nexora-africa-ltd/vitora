@@ -3,12 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import {
-  Loader2,
-  Plus,
-  Thermometer,
-  AlertTriangle,
-} from 'lucide-react';
+import { Loader2, Plus, Thermometer, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -16,12 +11,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -127,7 +117,9 @@ export default function ColdChainPage() {
 
   // Stats
   const operationalCount = equipment.filter((e) => e.status === 'OPERATIONAL').length;
-  const faultyCount = equipment.filter((e) => e.status === 'FAULTY' || e.status === 'UNDER_REPAIR').length;
+  const faultyCount = equipment.filter(
+    (e) => e.status === 'FAULTY' || e.status === 'UNDER_REPAIR'
+  ).length;
 
   // Create equipment mutation
   const createMutation = useMutation({
@@ -211,7 +203,7 @@ export default function ColdChainPage() {
           helpContent="Monitor cold chain equipment (fridges, freezers, cold boxes). Log temperatures, track excursions, and ensure vaccine storage meets WHO/KEPI standards (+2°C to +8°C for most vaccines)."
           actions={
             <Button size="sm" onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">Add Equipment</span>
               <span className="sm:hidden">Add</span>
             </Button>
@@ -220,24 +212,30 @@ export default function ColdChainPage() {
 
         {/* Summary stats */}
         {equipment.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
-              <CardContent className="relative pt-3 pb-3">
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
+              <CardContent className="relative pb-3 pt-3">
                 <p className="text-2xl font-bold">{equipment.length}</p>
                 <p className="text-xs text-muted-foreground">Total Equipment</p>
               </CardContent>
             </Card>
             <Card className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
-              <CardContent className="relative pt-3 pb-3">
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
+              <CardContent className="relative pb-3 pt-3">
                 <p className="text-2xl font-bold text-green-600">{operationalCount}</p>
                 <p className="text-xs text-muted-foreground">Operational</p>
               </CardContent>
             </Card>
             {faultyCount > 0 && (
               <Card className="border-red-200">
-                <CardContent className="pt-3 pb-3">
+                <CardContent className="pb-3 pt-3">
                   <p className="text-2xl font-bold text-destructive">{faultyCount}</p>
                   <p className="text-xs text-muted-foreground">Faulty / Under Repair</p>
                 </CardContent>
@@ -245,7 +243,7 @@ export default function ColdChainPage() {
             )}
             {excursions.length > 0 && (
               <Card className="border-orange-200">
-                <CardContent className="pt-3 pb-3">
+                <CardContent className="pb-3 pt-3">
                   <div className="flex items-center gap-1">
                     <AlertTriangle className="h-4 w-4 text-orange-500" />
                     <p className="text-2xl font-bold text-orange-600">{excursions.length}</p>
@@ -261,7 +259,9 @@ export default function ColdChainPage() {
         <div className="flex gap-2">
           <Select
             value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v === '_all' ? '' : (v as ColdChainEquipmentStatus))}
+            onValueChange={(v) =>
+              setStatusFilter(v === '_all' ? '' : (v as ColdChainEquipmentStatus))
+            }
           >
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Status" />
@@ -293,7 +293,9 @@ export default function ColdChainPage() {
               cell: (e) => (
                 <div>
                   <p className="font-medium">{e.name}</p>
-                  <p className="text-xs text-muted-foreground">{equipmentTypeLabels[e.equipment_type]} • {e.serial_number || 'No S/N'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {equipmentTypeLabels[e.equipment_type]} • {e.serial_number || 'No S/N'}
+                  </p>
                 </div>
               ),
             },
@@ -308,7 +310,7 @@ export default function ColdChainPage() {
               key: 'temp_range',
               header: 'Temp Range',
               cell: (e) => (
-                <span className="text-sm font-mono">
+                <span className="font-mono text-sm">
                   {e.min_temp}°C – {e.max_temp}°C
                 </span>
               ),
@@ -319,7 +321,7 @@ export default function ColdChainPage() {
               header: 'Status',
               sortable: true,
               cell: (e) => (
-                <Badge className={`${statusColors[e.status]} shrink-0 w-fit`}>
+                <Badge className={`${statusColors[e.status]} w-fit shrink-0`}>
                   {e.status.replace('_', ' ')}
                 </Badge>
               ),
@@ -335,20 +337,23 @@ export default function ColdChainPage() {
             },
           ]}
           mobileCard={(e: ColdChainEquipmentListItem) => (
-            <Card className="p-3 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => router.push(`/immunizations/cold-chain/${e.id}`)}>
-              <div className="flex justify-between items-start">
+            <Card
+              className="cursor-pointer p-3 transition-colors hover:bg-muted/50"
+              onClick={() => router.push(`/immunizations/cold-chain/${e.id}`)}
+            >
+              <div className="flex items-start justify-between">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{e.name}</p>
+                  <p className="truncate font-medium">{e.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {equipmentTypeLabels[e.equipment_type]} • {e.serial_number || 'No S/N'}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {e.min_temp}°C – {e.max_temp}°C
                     {e.location ? ` • ${e.location}` : ''}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <Badge className={`${statusColors[e.status]} shrink-0 w-fit text-xs`}>
+                  <Badge className={`${statusColors[e.status]} w-fit shrink-0 text-xs`}>
                     {e.status.replace('_', ' ')}
                   </Badge>
                   <Button size="sm" variant="ghost" onClick={() => openTempDialog(e.id, e.name)}>
@@ -369,71 +374,114 @@ export default function ColdChainPage() {
                 <HelpPopover content="Register a fridge, freezer, cold box, or cold room. Set the acceptable temperature range for monitoring." />
               </div>
             </DialogHeader>
-            <div className="space-y-3 sm:space-y-4 pt-2">
+            <div className="space-y-3 pt-2 sm:space-y-4">
               <div>
-                <Label>Name <span className="text-destructive">*</span></Label>
+                <Label>
+                  Name <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onBlur={() => setTouched((t) => ({ ...t, name: true }))}
                   placeholder="e.g. Main Vaccine Fridge"
-                  className={touched.name && !name ? 'border-destructive focus-visible:ring-destructive' : ''}
+                  className={
+                    touched.name && !name ? 'border-destructive focus-visible:ring-destructive' : ''
+                  }
                 />
-                {touched.name && !name && <p className="text-xs text-destructive mt-1">Name is required</p>}
+                {touched.name && !name && (
+                  <p className="mt-1 text-xs text-destructive">Name is required</p>
+                )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 <div>
-                  <Label>Type <span className="text-destructive">*</span></Label>
-                  <Select value={equipmentType} onValueChange={(v) => setEquipmentType(v as ColdChainEquipmentType)}>
+                  <Label>
+                    Type <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={equipmentType}
+                    onValueChange={(v) => setEquipmentType(v as ColdChainEquipmentType)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {EQUIPMENT_TYPE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Serial Number <span className="text-destructive">*</span></Label>
+                  <Label>
+                    Serial Number <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     value={serialNumber}
                     onChange={(e) => setSerialNumber(e.target.value)}
                     onBlur={() => setTouched((t) => ({ ...t, serialNumber: true }))}
                     placeholder="e.g. VF-2024-0031"
-                    className={touched.serialNumber && !serialNumber ? 'border-destructive focus-visible:ring-destructive' : ''}
+                    className={
+                      touched.serialNumber && !serialNumber
+                        ? 'border-destructive focus-visible:ring-destructive'
+                        : ''
+                    }
                   />
-                  {touched.serialNumber && !serialNumber && <p className="text-xs text-destructive mt-1">Serial number is required</p>}
+                  {touched.serialNumber && !serialNumber && (
+                    <p className="mt-1 text-xs text-destructive">Serial number is required</p>
+                  )}
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 <div>
                   <Label>Manufacturer</Label>
-                  <Input value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} placeholder="Optional" />
+                  <Input
+                    value={manufacturer}
+                    onChange={(e) => setManufacturer(e.target.value)}
+                    placeholder="Optional"
+                  />
                 </div>
                 <div>
                   <Label>Location</Label>
-                  <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Pharmacy Store" />
+                  <Input
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="e.g. Pharmacy Store"
+                  />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 <div>
                   <Label>Min Temp (°C)</Label>
-                  <Input type="number" step="0.1" value={minTemp} onChange={(e) => setMinTemp(e.target.value)} />
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={minTemp}
+                    onChange={(e) => setMinTemp(e.target.value)}
+                  />
                 </div>
                 <div>
                   <Label>Max Temp (°C)</Label>
-                  <Input type="number" step="0.1" value={maxTemp} onChange={(e) => setMaxTemp(e.target.value)} />
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={maxTemp}
+                    onChange={(e) => setMaxTemp(e.target.value)}
+                  />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 <div>
                   <Label>Power Source</Label>
-                  <Input value={powerSource} onChange={(e) => setPowerSource(e.target.value)} placeholder="e.g. Mains + Solar" />
+                  <Input
+                    value={powerSource}
+                    onChange={(e) => setPowerSource(e.target.value)}
+                    placeholder="e.g. Mains + Solar"
+                  />
                 </div>
                 <div className="flex items-end pb-1">
-                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
                     <input
                       type="checkbox"
                       checked={hasBackupPower}
@@ -444,13 +492,15 @@ export default function ColdChainPage() {
                   </label>
                 </div>
               </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
                 <Button
                   onClick={() => createMutation.mutate()}
                   disabled={!name || !serialNumber || createMutation.isPending}
                 >
-                  {createMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {createMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                   Add Equipment
                 </Button>
               </div>
@@ -467,13 +517,15 @@ export default function ColdChainPage() {
                 <HelpPopover content="Record a temperature reading for this equipment. An excursion alert is triggered automatically if the reading falls outside the acceptable range." />
               </div>
             </DialogHeader>
-            <div className="space-y-3 sm:space-y-4 pt-2">
+            <div className="space-y-3 pt-2 sm:space-y-4">
               <p className="text-sm text-muted-foreground">
                 Equipment: <span className="font-medium text-foreground">{tempEquipmentName}</span>
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 <div>
-                  <Label>Temperature (°C) <span className="text-destructive">*</span></Label>
+                  <Label>
+                    Temperature (°C) <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     type="number"
                     step="0.1"
@@ -481,12 +533,20 @@ export default function ColdChainPage() {
                     onChange={(e) => setTemperature(e.target.value)}
                     onBlur={() => setTempTouched((t) => ({ ...t, temperature: true }))}
                     placeholder="e.g. 4.5"
-                    className={tempTouched.temperature && !temperature ? 'border-destructive focus-visible:ring-destructive' : ''}
+                    className={
+                      tempTouched.temperature && !temperature
+                        ? 'border-destructive focus-visible:ring-destructive'
+                        : ''
+                    }
                   />
-                  {tempTouched.temperature && !temperature && <p className="text-xs text-destructive mt-1">Temperature is required</p>}
+                  {tempTouched.temperature && !temperature && (
+                    <p className="mt-1 text-xs text-destructive">Temperature is required</p>
+                  )}
                 </div>
                 <div>
-                  <Label>Recorded At <span className="text-destructive">*</span></Label>
+                  <Label>
+                    Recorded At <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     type="datetime-local"
                     value={recordedAt}
@@ -503,13 +563,15 @@ export default function ColdChainPage() {
                   rows={2}
                 />
               </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                <Button variant="outline" onClick={() => setTempDialogOpen(false)}>Cancel</Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={() => setTempDialogOpen(false)}>
+                  Cancel
+                </Button>
                 <Button
                   onClick={() => logTempMutation.mutate()}
                   disabled={!temperature || logTempMutation.isPending}
                 >
-                  {logTempMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {logTempMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                   Log Reading
                 </Button>
               </div>

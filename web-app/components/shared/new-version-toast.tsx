@@ -19,13 +19,7 @@ import { cn } from '@/lib/utils';
 const TOAST_DURATION_S = 30;
 
 /* ---------- Circular countdown ring ---------- */
-function CountdownRing({
-  durationS,
-  onComplete,
-}: {
-  durationS: number;
-  onComplete: () => void;
-}) {
+function CountdownRing({ durationS, onComplete }: { durationS: number; onComplete: () => void }) {
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef(Date.now());
   const rafRef = useRef<number>(0);
@@ -53,13 +47,23 @@ function CountdownRing({
   const offset = circ * (1 - progress);
 
   return (
-    <div className="relative flex items-center justify-center shrink-0" aria-hidden="true">
+    <div className="relative flex shrink-0 items-center justify-center" aria-hidden="true">
       <svg width="36" height="36" viewBox="0 0 36 36" className="-rotate-90">
         {/* Track */}
-        <circle cx="18" cy="18" r={r} fill="none" stroke="currentColor" strokeWidth="2.5" className="text-muted/30" />
+        <circle
+          cx="18"
+          cy="18"
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          className="text-muted/30"
+        />
         {/* Progress — depletes as time passes */}
         <circle
-          cx="18" cy="18" r={r}
+          cx="18"
+          cy="18"
+          r={r}
           fill="none"
           stroke="currentColor"
           strokeWidth="2.5"
@@ -99,29 +103,31 @@ function VersionToastContent({ id, onRefresh, onDismiss, pendingCount }: Version
     <div
       className={cn(
         'relative flex w-full items-start gap-2.5 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-xl',
-        'p-3 pr-7 sm:p-4 sm:pr-8 sm:gap-3',
+        'p-3 pr-7 sm:gap-3 sm:p-4 sm:pr-8',
         'border-emerald-500/40 ring-1 ring-emerald-500/10',
-        'mb-14 sm:mb-0', // clear floating buttons on mobile
+        'mb-14 sm:mb-0' // clear floating buttons on mobile
       )}
     >
       {/* Accent gradient top bar */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500 via-cyan-400 to-emerald-500" />
 
       {/* Countdown ring — hidden on very small screens */}
-      <div className="hidden sm:flex mt-0.5">
+      <div className="mt-0.5 hidden sm:flex">
         <CountdownRing durationS={TOAST_DURATION_S} onComplete={handleDismiss} />
       </div>
 
       {/* Icon on mobile (replaces ring) */}
-      <Rocket className="sm:hidden mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+      <Rocket className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500 sm:hidden" />
 
       {/* Text */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] sm:text-base font-semibold leading-tight">New version available</p>
-        <p className="text-[11px] sm:text-sm text-muted-foreground leading-snug mt-0.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-semibold leading-tight sm:text-base">
+          New version available
+        </p>
+        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground sm:text-sm">
           Refresh to get the latest updates
           {pendingCount > 0 && (
-            <span className="text-amber-500 block mt-0.5">
+            <span className="mt-0.5 block text-amber-500">
               {pendingCount} unsaved item{pendingCount !== 1 ? 's' : ''} will be preserved
             </span>
           )}
@@ -132,7 +138,7 @@ function VersionToastContent({ id, onRefresh, onDismiss, pendingCount }: Version
           <Button
             size="sm"
             onClick={handleRefresh}
-            className="gap-1.5 h-7 text-xs bg-emerald-600 hover:bg-emerald-700"
+            className="h-7 gap-1.5 bg-emerald-600 text-xs hover:bg-emerald-700"
           >
             <RefreshCw className="h-3 w-3" />
             Refresh now
@@ -151,17 +157,15 @@ function VersionToastContent({ id, onRefresh, onDismiss, pendingCount }: Version
       {/* Close X */}
       <button
         onClick={handleDismiss}
-        className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+        className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground/50 transition-colors hover:bg-muted/50 hover:text-foreground"
         aria-label="Dismiss"
       >
         <X className="h-3.5 w-3.5" />
       </button>
 
       {/* Mobile countdown — thin bar at bottom */}
-      <div className="sm:hidden absolute inset-x-0 bottom-0 h-[3px] bg-muted/30 overflow-hidden rounded-b-xl">
-        <div
-          className="h-full bg-emerald-500 origin-left animate-shrinkBar rounded-full"
-        />
+      <div className="absolute inset-x-0 bottom-0 h-[3px] overflow-hidden rounded-b-xl bg-muted/30 sm:hidden">
+        <div className="h-full origin-left animate-shrinkBar rounded-full bg-emerald-500" />
       </div>
     </div>
   );
@@ -190,7 +194,7 @@ export function NewVersionToast() {
           // Sonner duration handles auto-remove from DOM after countdown
           duration: (TOAST_DURATION_S + 1) * 1000,
           id: 'new-version-toast',
-        },
+        }
       );
     }
 

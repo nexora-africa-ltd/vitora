@@ -20,17 +20,20 @@ const oversightHighlights = [
   {
     icon: Siren,
     title: 'Escalate critical overrides',
-    description: 'Keep unresolved capacity and placement exceptions visible until a supervisor reviews them.',
+    description:
+      'Keep unresolved capacity and placement exceptions visible until a supervisor reviews them.',
   },
   {
     icon: Activity,
     title: 'Watch repeat patterns',
-    description: 'Use ward and violation trends to spot operational strain before it becomes routine.',
+    description:
+      'Use ward and violation trends to spot operational strain before it becomes routine.',
   },
   {
     icon: ClipboardCheck,
     title: 'Stay audit ready',
-    description: 'Document acknowledgement notes so exception handling remains defensible during compliance review.',
+    description:
+      'Document acknowledgement notes so exception handling remains defensible during compliance review.',
   },
 ];
 
@@ -44,7 +47,7 @@ export default function SupervisorAlertsPage() {
   const isSupervisor = useIsSupervisor();
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="Supervisor Alerts"
         helpContent="Review and acknowledge critical constraint violations that were overridden during patient admissions. Monitor override metrics to identify patterns."
@@ -57,7 +60,10 @@ export default function SupervisorAlertsPage() {
         />
         <div className="relative space-y-5">
           <div className="space-y-4">
-            <Badge variant="outline" className="w-fit border-primary/30 bg-background/80 px-3 py-1 text-xs uppercase tracking-[0.24em] text-muted-foreground">
+            <Badge
+              variant="outline"
+              className="w-fit border-primary/30 bg-background/80 px-3 py-1 text-xs uppercase tracking-[0.24em] text-muted-foreground"
+            >
               Inpatient Oversight
             </Badge>
             <div className="space-y-3">
@@ -70,7 +76,9 @@ export default function SupervisorAlertsPage() {
                     Keep high-risk admission overrides visible, owned, and explainable.
                   </h2>
                   <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-                    This workspace combines live exception review with override trend monitoring so supervisors can clear urgent issues quickly and still spot the systemic patterns behind them.
+                    This workspace combines live exception review with override trend monitoring so
+                    supervisors can clear urgent issues quickly and still spot the systemic patterns
+                    behind them.
                   </p>
                 </div>
               </div>
@@ -99,8 +107,8 @@ export default function SupervisorAlertsPage() {
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle>Limited Access</AlertTitle>
           <AlertDescription>
-            Full alert acknowledgment features require supervisor permissions.
-            Contact your administrator if you need access.
+            Full alert acknowledgment features require supervisor permissions. Contact your
+            administrator if you need access.
           </AlertDescription>
         </Alert>
       )}
@@ -121,7 +129,9 @@ export default function SupervisorAlertsPage() {
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <LockKeyhole className="h-5 w-5" />
                 </div>
-                <p className="text-base font-semibold tracking-tight text-foreground sm:text-xl">Supervisor review checklist</p>
+                <p className="text-base font-semibold tracking-tight text-foreground sm:text-xl">
+                  Supervisor review checklist
+                </p>
                 <HelpPopover content="Use the alert feed for urgent acknowledgement, then confirm the reason, ward context, and review note are all clear enough for follow-up." />
               </div>
 
@@ -141,7 +151,8 @@ export default function SupervisorAlertsPage() {
 
               <div className="mt-5 flex items-start gap-2 rounded-2xl border border-destructive/20 bg-destructive/5 px-3 py-3 text-sm text-muted-foreground">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                Repeated override patterns usually signal a ward configuration, staffing, or escalation process problem rather than isolated admission decisions.
+                Repeated override patterns usually signal a ward configuration, staffing, or
+                escalation process problem rather than isolated admission decisions.
               </div>
             </div>
           </CardContent>

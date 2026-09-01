@@ -21,11 +21,12 @@ const patientVolumeConfig = createChartConfig(['registrations', 'encounters'], {
 export function PatientVolumeChart({ data, showLegend = true }: PatientVolumeChartProps) {
   // Format dates for display - must be before early return
   const formattedData = useMemo(
-    () => (data ?? []).map((item) => ({
-      ...item,
-      // Use day number format for better x-axis display
-      formattedDate: format(parseISO(item.date), 'd MMM'),
-    })),
+    () =>
+      (data ?? []).map((item) => ({
+        ...item,
+        // Use day number format for better x-axis display
+        formattedDate: format(parseISO(item.date), 'd MMM'),
+      })),
     [data]
   );
 
@@ -41,7 +42,7 @@ export function PatientVolumeChart({ data, showLegend = true }: PatientVolumeCha
   }
 
   return (
-    <div className="h-[250px] w-full min-h-[250px] min-w-0">
+    <div className="h-[250px] min-h-[250px] w-full min-w-0">
       <AreaChart
         data={formattedData}
         config={patientVolumeConfig}

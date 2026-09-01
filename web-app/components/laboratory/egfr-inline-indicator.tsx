@@ -35,7 +35,7 @@ export function EGFRInlineIndicator({ patientId, encounterId }: EGFRInlineIndica
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-muted">
+      <div className="flex items-center gap-2 rounded-lg border border-muted bg-muted/30 p-3">
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         <span className="text-sm text-muted-foreground">Computing eGFR...</span>
       </div>
@@ -45,8 +45,8 @@ export function EGFRInlineIndicator({ patientId, encounterId }: EGFRInlineIndica
   if (!latest) return null;
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-      <Calculator className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+    <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
+      <Calculator className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-medium text-foreground">eGFR:</span>
         <span className="font-bold">{latest.egfr_ckd_epi} mL/min</span>
@@ -55,7 +55,7 @@ export function EGFRInlineIndicator({ patientId, encounterId }: EGFRInlineIndica
         </Badge>
         <span className="text-muted-foreground">• {latest.category}</span>
         {latest.dose_adjustment_band !== 'normal' && (
-          <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+          <Badge variant="outline" className="border-amber-300 text-xs text-amber-600">
             Dose: {latest.dose_adjustment_band}
           </Badge>
         )}

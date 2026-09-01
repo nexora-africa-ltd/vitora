@@ -79,7 +79,9 @@ export default function WalkInPatientsPage() {
       cell: (item: WalkInPatient) => (
         <div className="flex items-center gap-2">
           <User className="h-4 w-4 text-muted-foreground" />
-          <span>{item.first_name} {item.last_name}</span>
+          <span>
+            {item.first_name} {item.last_name}
+          </span>
         </div>
       ),
     },
@@ -98,15 +100,16 @@ export default function WalkInPatientsPage() {
     {
       key: 'linked',
       header: 'Linked',
-      cell: (item: WalkInPatient) => (
+      cell: (item: WalkInPatient) =>
         item.linked_patient ? (
           <Badge variant="outline" className="text-green-600">
-            <LinkIcon className="h-3 w-3 mr-1" /> Linked
+            <LinkIcon className="mr-1 h-3 w-3" /> Linked
           </Badge>
         ) : (
-          <Badge variant="outline" className="text-muted-foreground">Walk-in</Badge>
-        )
-      ),
+          <Badge variant="outline" className="text-muted-foreground">
+            Walk-in
+          </Badge>
+        ),
     },
     {
       key: 'created_at',
@@ -127,7 +130,7 @@ export default function WalkInPatientsPage() {
             disabled={promoteMutation.isPending}
             onClick={() => promoteMutation.mutate(item.id)}
           >
-            <UserPlus className="h-3.5 w-3.5 mr-1" /> Promote
+            <UserPlus className="mr-1 h-3.5 w-3.5" /> Promote
           </Button>
         ),
     },
@@ -143,7 +146,7 @@ export default function WalkInPatientsPage() {
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
               <DialogTrigger asChild>
                 <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" /> Register
+                  <Plus className="mr-1 h-4 w-4" /> Register
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">

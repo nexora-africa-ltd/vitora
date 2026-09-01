@@ -115,7 +115,9 @@ export const eventsApi = {
   /**
    * Log multiple events at once (useful for offline sync)
    */
-  async logBatch(events: Omit<FrontendEvent, 'id' | 'server_timestamp'>[]): Promise<BatchLogResponse> {
+  async logBatch(
+    events: Omit<FrontendEvent, 'id' | 'server_timestamp'>[]
+  ): Promise<BatchLogResponse> {
     const response = await apiClient.post<BatchLogResponse>('/api/core/events/batch/', { events });
     return parseResponse(BatchLogResponseSchema, response.data, {
       context: 'eventsApi.logBatch',

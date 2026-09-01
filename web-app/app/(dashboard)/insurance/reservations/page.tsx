@@ -9,7 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import { useInsuranceClaims, useReserveClaimBalance, useVisitAuthorizations } from '@/lib/hooks/use-insurance';
+import {
+  useInsuranceClaims,
+  useReserveClaimBalance,
+  useVisitAuthorizations,
+} from '@/lib/hooks/use-insurance';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { InsuranceClaim, InsuranceVisitAuthorization } from '@/lib/types/insurance';
@@ -48,10 +52,16 @@ export default function InsuranceReservationsPage() {
     const sessions = authorizationsData?.results ?? [];
 
     sessions
-      .filter((session) => session.status === 'validated' || session.workflow_step === 'authorization_validated')
+      .filter(
+        (session) =>
+          session.status === 'validated' || session.workflow_step === 'authorization_validated'
+      )
       .forEach((session) => {
         const existing = map.get(session.enrollment);
-        if (!existing || new Date(session.updated_at).getTime() > new Date(existing.updated_at).getTime()) {
+        if (
+          !existing ||
+          new Date(session.updated_at).getTime() > new Date(existing.updated_at).getTime()
+        ) {
           map.set(session.enrollment, session);
         }
       });
@@ -60,10 +70,12 @@ export default function InsuranceReservationsPage() {
   }, [authorizationsData?.results]);
 
   const getDraft = (claim: InsuranceClaim): ReservationDraft => {
-    return draftByClaimId[claim.id] ?? {
-      invoice_number: claim.claim_number,
-      amount: claim.total_amount,
-    };
+    return (
+      draftByClaimId[claim.id] ?? {
+        invoice_number: claim.claim_number,
+        amount: claim.total_amount,
+      }
+    );
   };
 
   const updateDraft = (claim: InsuranceClaim, patch: Partial<ReservationDraft>) => {
@@ -151,15 +163,19 @@ export default function InsuranceReservationsPage() {
             header: 'Claim',
             cell: (item) => (
               <div>
-                <p className="font-medium font-mono text-sm">{item.claim_number}</p>
-                <p className="text-xs text-muted-foreground">{item.patient_name} - {item.member_number}</p>
+                <p className="font-mono text-sm font-medium">{item.claim_number}</p>
+                <p className="text-xs text-muted-foreground">
+                  {item.patient_name} - {item.member_number}
+                </p>
               </div>
             ),
           },
           {
             key: 'amount',
             header: 'Claim Amount',
-            cell: (item) => <span className="text-sm font-medium">{formatCurrency(item.total_amount)}</span>,
+            cell: (item) => (
+              <span className="text-sm font-medium">{formatCurrency(item.total_amount)}</span>
+            ),
           },
           {
             key: 'authorization',
@@ -169,7 +185,9 @@ export default function InsuranceReservationsPage() {
               if (!authorization) {
                 return <Badge variant="outline">Missing validated session</Badge>;
               }
-              return <Badge className="bg-green-100 text-green-800">Session #{authorization.id}</Badge>;
+              return (
+                <Badge className="bg-green-100 text-green-800">Session #{authorization.id}</Badge>
+              );
             },
           },
           {
@@ -180,7 +198,7 @@ export default function InsuranceReservationsPage() {
               const hasAuthorization = validatedAuthByEnrollment.has(item.patient_insurance);
 
               return (
-                <div className="grid grid-cols-1 sm:grid-cols-[180px_140px_auto] gap-2 w-full max-w-[520px]">
+                <div className="grid w-full max-w-[520px] grid-cols-1 gap-2 sm:grid-cols-[180px_140px_auto]">
                   <Input
                     value={draft.invoice_number}
                     placeholder="Invoice number"
@@ -206,7 +224,11 @@ export default function InsuranceReservationsPage() {
             key: 'open',
             header: 'Open',
             cell: (item) => (
-              <Button variant="outline" size="sm" onClick={() => router.push(`/insurance/claims/${item.id}`)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/insurance/claims/${item.id}`)}
+              >
                 Claim
               </Button>
             ),
@@ -217,12 +239,24 @@ export default function InsuranceReservationsPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
+          <p className="text-sm text-muted-foreground">
+            Page {page} of {totalPages}
+          </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
               Previous
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
               Next
             </Button>
           </div>

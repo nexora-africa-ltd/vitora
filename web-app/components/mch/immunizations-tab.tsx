@@ -45,10 +45,17 @@ export function ImmunizationsTab({ patientId }: ImmunizationsTabProps) {
     mutationFn: () => immunizationsApi.generateSchedule(patientId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['immunizations', patientId] });
-      toast({ title: 'Schedule Generated', description: 'Immunization schedule has been created.' });
+      toast({
+        title: 'Schedule Generated',
+        description: 'Immunization schedule has been created.',
+      });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to generate schedule.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to generate schedule.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -70,7 +77,7 @@ export function ImmunizationsTab({ patientId }: ImmunizationsTabProps) {
       acc[key].push(record);
       return acc;
     },
-    {} as Record<string, typeof records>,
+    {} as Record<string, typeof records>
   );
 
   const overdueCount = records.filter((r) => r.is_overdue).length;
@@ -78,7 +85,7 @@ export function ImmunizationsTab({ patientId }: ImmunizationsTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Immunizations</h3>
           <HelpPopover content="KEPI vaccination schedule tracking. Vaccines are auto-scheduled based on the child's date of birth per Kenya's Expanded Programme on Immunization." />
@@ -104,7 +111,7 @@ export function ImmunizationsTab({ patientId }: ImmunizationsTabProps) {
             size="sm"
             onClick={() => window.open(`/mch/immunizations?patient=${patientId}`, '_blank')}
           >
-            <Syringe className="h-4 w-4 mr-1" />
+            <Syringe className="mr-1 h-4 w-4" />
             <span className="hidden sm:inline">Full View</span>
           </Button>
         </div>
@@ -141,15 +148,10 @@ export function ImmunizationsTab({ patientId }: ImmunizationsTabProps) {
               <CardContent className="py-2">
                 <div className="space-y-2">
                   {recs.map((record) => (
-                    <div
-                      key={record.id}
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
+                    <div key={record.id} className="flex items-center justify-between text-sm">
+                      <div className="flex min-w-0 items-center gap-2">
                         <span>{statusIcons[record.status]}</span>
-                        <span className="text-muted-foreground">
-                          Dose {record.dose_number}
-                        </span>
+                        <span className="text-muted-foreground">Dose {record.dose_number}</span>
                         <span className="text-muted-foreground">•</span>
                         <span>
                           {record.administered_date
@@ -157,9 +159,7 @@ export function ImmunizationsTab({ patientId }: ImmunizationsTabProps) {
                             : `Due ${formatDate(record.scheduled_date)}`}
                         </span>
                       </div>
-                      <Badge
-                        className={`${statusColors[record.status]} shrink-0 text-xs`}
-                      >
+                      <Badge className={`${statusColors[record.status]} shrink-0 text-xs`}>
                         {record.status.replace(/_/g, ' ')}
                       </Badge>
                     </div>

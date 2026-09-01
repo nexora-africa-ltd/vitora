@@ -185,22 +185,18 @@ export function useBenefitInterventions({
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
-  const hideCapitationInterventions =
-    facilityBillingConfig?.hide_capitation_interventions ?? false;
+  const hideCapitationInterventions = facilityBillingConfig?.hide_capitation_interventions ?? false;
 
   // ---- State ----
   const [selectedBenefitPkgCode, setSelectedBenefitPkgCode] = useState('');
   const [selectedInterventionCode, setSelectedInterventionCode] = useState('');
-  const [interventionOptionsRaw, setInterventionOptionsRaw] = useState<
-    Record<string, unknown>[]
-  >([]);
+  const [interventionOptionsRaw, setInterventionOptionsRaw] = useState<Record<string, unknown>[]>(
+    []
+  );
   const [interventionsLoading, setInterventionsLoading] = useState(false);
 
   // ---- Step 1: Fetch benefit packages ----
-  const {
-    data: benefitPackagesData,
-    isLoading: benefitPackagesLoading,
-  } = useQuery({
+  const { data: benefitPackagesData, isLoading: benefitPackagesLoading } = useQuery({
     queryKey: ['sha-benefit-packages-cascade', normalizedCrId],
     queryFn: () =>
       shaApi.ilmBenefits({
@@ -218,18 +214,12 @@ export function useBenefitInterventions({
     const items = extractItems<Record<string, unknown>>(benefitPackagesData?.data);
     return items
       .filter((pkg) => {
-        const code = getField(
-          pkg,
-          'parentBenefitCode',
-          'parent_benefit_code',
-          'code',
-        );
+        const code = getField(pkg, 'parentBenefitCode', 'parent_benefit_code', 'code');
         return !!code;
       })
       .map((pkg) => ({
         code: getField(pkg, 'parentBenefitCode', 'parent_benefit_code', 'code'),
-        name:
-          getField(pkg, 'parentBenefit', 'parent_benefit', 'name') || 'Unknown',
+        name: getField(pkg, 'parentBenefit', 'parent_benefit', 'name') || 'Unknown',
       }));
   }, [benefitPackagesData]);
 
@@ -239,12 +229,8 @@ export function useBenefitInterventions({
       .filter((i) => {
         const code = getField(i, 'code', 'interventionCode', 'intervention_code');
         const name = getField(i, 'name', 'interventionName', 'intervention_name');
-        const paymentMechanism =
-          getField(i, 'paymentMechanism', 'payment_mechanism') || undefined;
-        if (
-          hideCapitationInterventions &&
-          isCapitationPaymentMechanism(paymentMechanism)
-        ) {
+        const paymentMechanism = getField(i, 'paymentMechanism', 'payment_mechanism') || undefined;
+        if (hideCapitationInterventions && isCapitationPaymentMechanism(paymentMechanism)) {
           return false;
         }
         return !!code || !!name;
@@ -252,26 +238,26 @@ export function useBenefitInterventions({
       .map((i) => ({
         ...(() => {
           const rawData =
-            (i.raw_data && typeof i.raw_data === 'object' ? i.raw_data : null)
-            || (i.extras && typeof i.extras === 'object' ? i.extras : null);
+            (i.raw_data && typeof i.raw_data === 'object' ? i.raw_data : null) ||
+            (i.extras && typeof i.extras === 'object' ? i.extras : null);
           const nested = rawData as Record<string, unknown> | null;
           return {
             requiredPreauthDocumentTypes: getStringArrayField(
               i,
-              'requiredPreauthDocumentTypes',
+              'requiredPreauthDocumentTypes'
             ).concat(getStringArrayField(nested || {}, 'requiredPreauthDocumentTypes')),
             required_preauth_document_types: getStringArrayField(
               i,
-              'required_preauth_document_types',
+              'required_preauth_document_types'
             ).concat(getStringArrayField(nested || {}, 'required_preauth_document_types')),
             required_document_types: getStringArrayField(i, 'required_document_types').concat(
-              getStringArrayField(nested || {}, 'required_document_types'),
+              getStringArrayField(nested || {}, 'required_document_types')
             ),
             applicable_document_types: getStringArrayField(i, 'applicable_document_types').concat(
-              getStringArrayField(nested || {}, 'applicable_document_types'),
+              getStringArrayField(nested || {}, 'applicable_document_types')
             ),
             applicableDocumentTypes: getStringArrayField(i, 'applicableDocumentTypes').concat(
-              getStringArrayField(nested || {}, 'applicableDocumentTypes'),
+              getStringArrayField(nested || {}, 'applicableDocumentTypes')
             ),
           };
         })(),
@@ -293,44 +279,74 @@ export function useBenefitInterventions({
           }
           return undefined;
         })(),
-        paymentMechanism:
-          getField(i, 'paymentMechanism', 'payment_mechanism') || undefined,
-        accessPoint:
-          getField(i, 'accessPoint', 'access_point') || undefined,
+        paymentMechanism: getField(i, 'paymentMechanism', 'payment_mechanism') || undefined,
+        accessPoint: getField(i, 'accessPoint', 'access_point') || undefined,
         schemes: getStringArrayField(i, 'schemes').concat(
-          getStringArrayField((i.raw_data as Record<string, unknown>) || {}, 'schemes'),
+          getStringArrayField((i.raw_data as Record<string, unknown>) || {}, 'schemes')
         ),
         fund: getStringField(i, 'fund'),
         interventionFund: getStringField(i, 'interventionFund', 'intervention_fund'),
         supportedScheme: getStringField(i, 'supportedScheme', 'supported_scheme'),
-        benefitCode:
-          getField(i, 'benefitCode', 'benefit_code') || undefined,
-        needsPreauth: getBooleanField(i, 'needsPreauth', 'needs_preauth', 'requires_preauthorization'),
+        benefitCode: getField(i, 'benefitCode', 'benefit_code') || undefined,
+        needsPreauth: getBooleanField(
+          i,
+          'needsPreauth',
+          'needs_preauth',
+          'requires_preauthorization'
+        ),
         needsManualPreauthApproval: getBooleanField(
           i,
           'needsManualPreauthApproval',
-          'needs_manual_preauth_approval',
+          'needs_manual_preauth_approval'
         ),
         needsDoctorAuthorization: getBooleanField(
           i,
           'needsDoctorAuthorization',
-          'needs_doctor_authorization',
+          'needs_doctor_authorization'
         ),
-        isSurgicalPreauth: getBooleanField(i, 'isSurgicalPreauth', 'is_surgical_preauth', 'requiresSurgicalPreauth', 'requires_surgical_preauth'),
-        isRenalPreauth: getBooleanField(i, 'isRenalPreauth', 'is_renal_preauth', 'requiresRenalPreauth', 'requires_renal_preauth'),
-        isOncologyPreauth: getBooleanField(i, 'isOncologyPreauth', 'is_oncology_preauth', 'requiresOncologyPreauth', 'requires_oncology_preauth'),
-        isImagingPreauth: getBooleanField(i, 'isImagingPreauth', 'is_imaging_preauth', 'requiresImagingPreauth', 'requires_imaging_preauth', 'requiresRadiologyPreauth', 'requires_radiology_preauth'),
-        isOpticalPreauth: getBooleanField(i, 'isOpticalPreauth', 'is_optical_preauth', 'requiresOpticalPreauth', 'requires_optical_preauth'),
+        isSurgicalPreauth: getBooleanField(
+          i,
+          'isSurgicalPreauth',
+          'is_surgical_preauth',
+          'requiresSurgicalPreauth',
+          'requires_surgical_preauth'
+        ),
+        isRenalPreauth: getBooleanField(
+          i,
+          'isRenalPreauth',
+          'is_renal_preauth',
+          'requiresRenalPreauth',
+          'requires_renal_preauth'
+        ),
+        isOncologyPreauth: getBooleanField(
+          i,
+          'isOncologyPreauth',
+          'is_oncology_preauth',
+          'requiresOncologyPreauth',
+          'requires_oncology_preauth'
+        ),
+        isImagingPreauth: getBooleanField(
+          i,
+          'isImagingPreauth',
+          'is_imaging_preauth',
+          'requiresImagingPreauth',
+          'requires_imaging_preauth',
+          'requiresRadiologyPreauth',
+          'requires_radiology_preauth'
+        ),
+        isOpticalPreauth: getBooleanField(
+          i,
+          'isOpticalPreauth',
+          'is_optical_preauth',
+          'requiresOpticalPreauth',
+          'requires_optical_preauth'
+        ),
       }));
   }, [hideCapitationInterventions, interventionOptionsRaw]);
 
   const selectedIntervention = useMemo<InterventionOption | null>(() => {
     if (!selectedInterventionCode) return null;
-    return (
-      interventionOptions.find(
-        (opt) => opt.code === selectedInterventionCode,
-      ) ?? null
-    );
+    return interventionOptions.find((opt) => opt.code === selectedInterventionCode) ?? null;
   }, [selectedInterventionCode, interventionOptions]);
 
   // ---- Step 2: When package changes, fetch interventions ----
@@ -356,12 +372,7 @@ export function useBenefitInterventions({
 
         for (const sub of subItems) {
           if (cancelled) return;
-          const subKey = getField(
-            sub,
-            'code',
-            'subBenefitCode',
-            'sub_benefit_code',
-          );
+          const subKey = getField(sub, 'code', 'subBenefitCode', 'sub_benefit_code');
           if (!subKey) continue;
 
           try {
@@ -369,9 +380,7 @@ export function useBenefitInterventions({
               patient_id: normalizedCrId,
               sub_benefit_code: subKey,
             });
-            const interventions = extractItems<Record<string, unknown>>(
-              intResponse?.data,
-            );
+            const interventions = extractItems<Record<string, unknown>>(intResponse?.data);
             if (interventions.length > 0) {
               allInterventions.push(...interventions);
             }

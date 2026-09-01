@@ -10,18 +10,10 @@ import { useInvoice } from '@/lib/hooks/billing';
  * (InvoiceDetail, PaymentForm, SHAClaimForm, etc.) share a single
  * cached patient fetch and have access to usePatientContext().
  */
-export default function InvoiceDetailLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function InvoiceDetailLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const invoiceId = String(params.id);
   const { data: invoice } = useInvoice(invoiceId);
 
-  return (
-    <PatientProvider patientId={invoice?.patient ?? null}>
-      {children}
-    </PatientProvider>
-  );
+  return <PatientProvider patientId={invoice?.patient ?? null}>{children}</PatientProvider>;
 }

@@ -82,22 +82,24 @@ export function PatientEncounters({ patientId }: PatientEncountersProps) {
             onClick={() => handleSelectEncounter(encounter)}
             className="w-full text-left"
           >
-            <Card className="hover:shadow-md hover:border-teal-500/30 transition-all cursor-pointer">
+            <Card className="cursor-pointer transition-all hover:border-teal-500/30 hover:shadow-md">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="h-10 w-10 rounded-full bg-teal-500/10 flex items-center justify-center shrink-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-500/10">
                       <Stethoscope className="h-5 w-5 text-teal-600 dark:text-teal-400" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium">{type?.label || encounter.encounter_type}</h4>
-                        <Badge className={status?.color || ''}>{status?.label || encounter.status}</Badge>
+                        <Badge className={status?.color || ''}>
+                          {status?.label || encounter.status}
+                        </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                         {encounter.chief_complaint}
                       </p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                      <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {formatDate(encounter.encounter_date)}
@@ -121,7 +123,10 @@ export function PatientEncounters({ patientId }: PatientEncountersProps) {
           title={`${ENCOUNTER_TYPES.find((t) => t.value === peekEncounter.encounter_type)?.label || peekEncounter.encounter_type} — ${formatDate(peekEncounter.encounter_date)}`}
           subtitle={peekEncounter.chief_complaint}
           icon={Stethoscope}
-          fullPageHref={buildEncounterHref(peekEncounter.id, getEncounterFocusFromStatus(peekEncounter.status))}
+          fullPageHref={buildEncounterHref(
+            peekEncounter.id,
+            getEncounterFocusFromStatus(peekEncounter.status)
+          )}
         >
           <EncounterPeekContent encounterId={peekEncounter.id} />
         </FloatingPeekPanel>

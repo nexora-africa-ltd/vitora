@@ -4,7 +4,17 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, SquareDashedTopSolid, Beaker, FileText, ClipboardClock, Shield, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Plus,
+  SquareDashedTopSolid,
+  Beaker,
+  FileText,
+  ClipboardClock,
+  Shield,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { LabOrderTable } from '@/components/laboratory/lab-order-table';
 import { LabQueueView } from '@/components/laboratory/lab-queue-view';
 import { PageHeader } from '@/components/shared/page-header';
@@ -40,9 +50,7 @@ export default function LaboratoryPage() {
 
   const pageSize = 20;
   const allOrders = data?.results || [];
-  const isClientPaginationFallback = allOrders.length > pageSize
-    && !data?.next
-    && !data?.previous;
+  const isClientPaginationFallback = allOrders.length > pageSize && !data?.next && !data?.previous;
   const orders = isClientPaginationFallback
     ? allOrders.slice((page - 1) * pageSize, page * pageSize)
     : allOrders;
@@ -58,7 +66,11 @@ export default function LaboratoryPage() {
           title="Laboratory"
           helpContent="Manage lab orders, record results, and track the lab queue. Pull down to refresh on mobile, or use the refresh button in the header."
           actions={
-            <Button onClick={() => router.push('/laboratory/orders/new')} disabled={!canCreateRoute('/laboratory/orders/new')} className="gap-2 w-full sm:w-auto">
+            <Button
+              onClick={() => router.push('/laboratory/orders/new')}
+              disabled={!canCreateRoute('/laboratory/orders/new')}
+              className="w-full gap-2 sm:w-auto"
+            >
               <Plus className="h-4 w-4" />
               New Lab Order
             </Button>
@@ -67,7 +79,7 @@ export default function LaboratoryPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="orders" className="space-y-4">
-          <TabsList className="w-full grid grid-cols-4">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="orders" className="gap-1.5 px-2 sm:px-4">
               <SquareDashedTopSolid className="h-5 w-5 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Lab Orders</span>
@@ -131,9 +143,8 @@ function PendingVerificationView() {
   });
 
   const allCompletedOrders = pendingResults?.results || [];
-  const isClientPaginationFallback = allCompletedOrders.length > pageSize
-    && !pendingResults?.next
-    && !pendingResults?.previous;
+  const isClientPaginationFallback =
+    allCompletedOrders.length > pageSize && !pendingResults?.next && !pendingResults?.previous;
   const pagedCompletedOrders = isClientPaginationFallback
     ? allCompletedOrders.slice((page - 1) * pageSize, page * pageSize)
     : allCompletedOrders;
@@ -142,20 +153,19 @@ function PendingVerificationView() {
     ? page < Math.ceil(allCompletedOrders.length / pageSize)
     : Boolean(pendingResults?.next);
   const hasPreviousPage = isClientPaginationFallback ? page > 1 : Boolean(pendingResults?.previous);
-  const totalCount = pendingResults?.count || (isClientPaginationFallback ? allCompletedOrders.length : 0);
+  const totalCount =
+    pendingResults?.count || (isClientPaginationFallback ? allCompletedOrders.length : 0);
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   // Filter orders where any result is unverified
-  const ordersWithUnverified = pagedCompletedOrders.filter(
-    order => order.items?.some(
-      item => item.result && item.result.verification_status === 'UNVERIFIED'
-    )
+  const ordersWithUnverified = pagedCompletedOrders.filter((order) =>
+    order.items?.some((item) => item.result && item.result.verification_status === 'UNVERIFIED')
   );
 
   if (isLoading) {
     return (
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+      <div className="py-8 text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
         <p className="mt-2 text-muted-foreground">Loading...</p>
       </div>
     );
@@ -163,8 +173,8 @@ function PendingVerificationView() {
 
   if (ordersWithUnverified.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+      <div className="py-12 text-center text-muted-foreground">
+        <FileText className="mx-auto mb-3 h-12 w-12 opacity-50" />
         <p>No results pending verification</p>
       </div>
     );
@@ -175,10 +185,10 @@ function PendingVerificationView() {
       <p className="text-sm text-muted-foreground">
         {ordersWithUnverified.length} order(s) with results pending verification
       </p>
-      {ordersWithUnverified.map(order => (
+      {ordersWithUnverified.map((order) => (
         <div
           key={order.id}
-          className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer"
+          className="cursor-pointer rounded-lg border p-4 hover:bg-muted/50"
           onClick={() => router.push(`/laboratory/orders/${order.order_number}`)}
         >
           <div className="flex items-center justify-between">
@@ -206,7 +216,7 @@ function PendingVerificationView() {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={!hasPreviousPage}
           >
-            <ChevronLeft className="h-4 w-4 mr-1" />
+            <ChevronLeft className="mr-1 h-4 w-4" />
             Previous
           </Button>
           <Button
@@ -216,7 +226,7 @@ function PendingVerificationView() {
             disabled={!hasNextPage}
           >
             Next
-            <ChevronRight className="h-4 w-4 ml-1" />
+            <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -239,7 +249,7 @@ function ValidationsQuickView() {
         </div>
         <Button
           onClick={() => router.push('/laboratory/validations')}
-          className="gap-2 w-full sm:w-auto"
+          className="w-full gap-2 sm:w-auto"
         >
           <Shield className="h-4 w-4" />
           Open Validation Dashboard
@@ -248,24 +258,24 @@ function ValidationsQuickView() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="p-4 border rounded-lg bg-muted/30">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <div className="mb-2 flex items-center gap-2">
             <Shield className="h-5 w-5 text-blue-600" />
             <span className="font-medium">Technical Review</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Verifies analytical accuracy: specimen quality, equipment calibration,
-            QC results, and procedural compliance.
+            Verifies analytical accuracy: specimen quality, equipment calibration, QC results, and
+            procedural compliance.
           </p>
         </div>
-        <div className="p-4 border rounded-lg bg-muted/30">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <div className="mb-2 flex items-center gap-2">
             <FileText className="h-5 w-5 text-green-600" />
             <span className="font-medium">Clinical (Pathologist) Review</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Verifies clinical relevance: consistency with patient history,
-            delta checks, and need for interpretation or repeat testing.
+            Verifies clinical relevance: consistency with patient history, delta checks, and need
+            for interpretation or repeat testing.
           </p>
         </div>
       </div>

@@ -49,7 +49,7 @@ export function KPICard({
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">{title}</p>
           <div className="flex items-baseline gap-1">
-            <span className={cn("text-2xl font-bold", valueClassName || valueColorStyles[variant])}>
+            <span className={cn('text-2xl font-bold', valueClassName || valueColorStyles[variant])}>
               {value}
             </span>
             {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
@@ -82,9 +82,12 @@ export function KPICard({
       <Link href={href}>
         <Card
           variant="interactive"
-          className={cn('relative overflow-hidden min-h-[9rem]', variantStyles[variant], className)}
+          className={cn('relative min-h-[9rem] overflow-hidden', variantStyles[variant], className)}
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+            aria-hidden="true"
+          />
           {cardContent}
         </Card>
       </Link>
@@ -92,8 +95,13 @@ export function KPICard({
   }
 
   return (
-    <Card className={cn('relative overflow-hidden min-h-[7rem]', variantStyles[variant], className)}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+    <Card
+      className={cn('relative min-h-[7rem] overflow-hidden', variantStyles[variant], className)}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+        aria-hidden="true"
+      />
       {cardContent}
     </Card>
   );

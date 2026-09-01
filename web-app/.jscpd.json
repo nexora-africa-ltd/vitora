@@ -2,11 +2,7 @@
   "threshold": 3,
   "minLines": 10,
   "minTokens": 70,
-  "reporters": [
-    "console",
-    "json",
-    "html"
-  ],
+  "reporters": ["console", "json", "html"],
   "output": "./reports/jscpd",
   "ignore": [
     "**/node_modules/**",
@@ -41,15 +37,8 @@
     "**/*.yaml",
     "**/*.yml",
     "**/test-results/**"
-
   ],
-  "formats": [
-    "javascript",
-    "typescript",
-    "python",
-    "jsx",
-    "tsx"
-  ],
+  "formats": ["javascript", "typescript", "python", "jsx", "tsx"],
   "absolute": true,
   "skipLocal": false
 }

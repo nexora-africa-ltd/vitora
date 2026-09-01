@@ -162,36 +162,36 @@ function CriticalAlertItem({ alert }: { alert: AIICUCriticalAlert }) {
   return (
     <div
       className={cn(
-        'rounded-md p-2.5 border text-sm',
+        'rounded-md border p-2.5 text-sm',
         alert.severity === 'critical'
-          ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
-          : 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800'
+          ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30'
+          : 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/30'
       )}
     >
       <div className="flex items-start gap-2">
         <AlertTriangle
           className={cn(
-            'h-4 w-4 mt-0.5 shrink-0',
+            'mt-0.5 h-4 w-4 shrink-0',
             alert.severity === 'critical'
               ? 'text-red-600 dark:text-red-400'
               : 'text-yellow-600 dark:text-yellow-400'
           )}
         />
         <div className="min-w-0 space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge
               variant="secondary"
-              className={cn('text-xs px-1.5 py-0 shrink-0', SEVERITY_BADGE_STYLES[alert.severity])}
+              className={cn('shrink-0 px-1.5 py-0 text-xs', SEVERITY_BADGE_STYLES[alert.severity])}
             >
               {alert.severity}
             </Badge>
-            <span className="font-medium text-xs uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {alert.alert_type.replace(/_/g, ' ')}
             </span>
           </div>
           <p className="text-sm">{alert.message}</p>
           {alert.recommendation && (
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="mt-1 text-xs text-muted-foreground">
               <span className="font-medium">Action:</span> {alert.recommendation}
             </p>
           )}
@@ -214,18 +214,15 @@ function SOFABreakdownChart({ breakdown }: { breakdown: AISOFAScoreBreakdown }) 
     <div className="space-y-2">
       {organs.map((organ) => (
         <div key={organ.key} className="flex items-center gap-2 text-sm">
-          <span className="w-28 text-muted-foreground truncate">{organ.label}</span>
+          <span className="w-28 truncate text-muted-foreground">{organ.label}</span>
           <div className="flex-1">
-            <Progress
-              value={(Number(organ.score) / 4) * 100}
-              className="h-2"
-            />
+            <Progress value={(Number(organ.score) / 4) * 100} className="h-2" />
           </div>
           <span
             className={cn(
               'w-5 text-right font-mono text-xs',
               Number(organ.score) >= 3
-                ? 'text-red-600 dark:text-red-400 font-bold'
+                ? 'font-bold text-red-600 dark:text-red-400'
                 : Number(organ.score) >= 2
                   ? 'text-orange-600 dark:text-orange-400'
                   : 'text-muted-foreground'
@@ -257,15 +254,15 @@ function EscalationBanner({ escalation }: { escalation: AIICUEscalation }) {
   const urgency = escalation.urgency || 'routine';
 
   return (
-    <div className={cn('rounded-lg p-3 border', urgencyColors[urgency])}>
+    <div className={cn('rounded-lg border p-3', urgencyColors[urgency])}>
       <div className="flex items-start gap-2">
-        <TrendingUp className={cn('h-5 w-5 mt-0.5 shrink-0', urgencyTextColors[urgency])} />
+        <TrendingUp className={cn('mt-0.5 h-5 w-5 shrink-0', urgencyTextColors[urgency])} />
         <div className="min-w-0">
-          <p className={cn('font-semibold text-sm', urgencyTextColors[urgency])}>
+          <p className={cn('text-sm font-semibold', urgencyTextColors[urgency])}>
             ICU Escalation Recommended — {urgency.charAt(0).toUpperCase() + urgency.slice(1)}
           </p>
           {escalation.reasoning && (
-            <p className="text-xs text-muted-foreground mt-1">{escalation.reasoning}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{escalation.reasoning}</p>
           )}
         </div>
       </div>
@@ -353,9 +350,9 @@ export function ICURiskAssessmentPanel({
   const [manualOnVasopressors, setManualOnVasopressors] = React.useState<'unknown' | 'yes' | 'no'>(
     'unknown'
   );
-  const [manualOnMechanicalVentilation, setManualOnMechanicalVentilation] = React.useState<'unknown' | 'yes' | 'no'>(
-    'unknown'
-  );
+  const [manualOnMechanicalVentilation, setManualOnMechanicalVentilation] = React.useState<
+    'unknown' | 'yes' | 'no'
+  >('unknown');
 
   const parseManualNumber = React.useCallback((value: string): number | undefined => {
     const trimmed = value.trim();
@@ -421,8 +418,8 @@ export function ICURiskAssessmentPanel({
   const { data: storedResults } = useStoredICURiskResults(admissionId);
   const latestStored = React.useMemo(() => {
     if (!storedResults || storedResults.length === 0) return undefined;
-    return [...storedResults].sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    return [...storedResults].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )[0];
   }, [storedResults]);
 
@@ -436,10 +433,8 @@ export function ICURiskAssessmentPanel({
         : {};
     const raw = {
       ...(rawResult as Record<string, unknown>),
-      risk_level:
-        (rawResult as Record<string, unknown>).risk_level ?? latestStored.risk_level,
-      risk_score:
-        (rawResult as Record<string, unknown>).risk_score ?? latestStored.risk_score,
+      risk_level: (rawResult as Record<string, unknown>).risk_level ?? latestStored.risk_level,
+      risk_score: (rawResult as Record<string, unknown>).risk_score ?? latestStored.risk_score,
     } as Record<string, unknown>;
 
     let sofaScore = raw.sofa_score as number | null | undefined;
@@ -482,8 +477,10 @@ export function ICURiskAssessmentPanel({
   // Show success toast when prediction completes
   React.useEffect(() => {
     if (prediction && prediction.risk_level && !prediction.error) {
-      const riskLabel = prediction.risk_level.charAt(0).toUpperCase() + prediction.risk_level.slice(1);
-      const score = prediction.risk_score != null ? ` — ${Math.round(prediction.risk_score * 100)}%` : '';
+      const riskLabel =
+        prediction.risk_level.charAt(0).toUpperCase() + prediction.risk_level.slice(1);
+      const score =
+        prediction.risk_score != null ? ` — ${Math.round(prediction.risk_score * 100)}%` : '';
       toast.success('ICU risk assessment complete', {
         description: `${riskLabel} risk${score}`,
       });
@@ -533,8 +530,7 @@ export function ICURiskAssessmentPanel({
         : manualOnMechanicalVentilation === 'yes',
   };
 
-  const hasManualOverrides =
-    Object.values(manualOverrides).some((value) => value !== undefined);
+  const hasManualOverrides = Object.values(manualOverrides).some((value) => value !== undefined);
 
   React.useEffect(() => {
     if (!manualEntryOpen) return;
@@ -612,9 +608,7 @@ export function ICURiskAssessmentPanel({
       ? { respiratory_rate: manualOverrides.respiratory_rate }
       : {}),
     ...(manualOverrides.systolic_bp != null ? { systolic_bp: manualOverrides.systolic_bp } : {}),
-    ...(manualOverrides.diastolic_bp != null
-      ? { diastolic_bp: manualOverrides.diastolic_bp }
-      : {}),
+    ...(manualOverrides.diastolic_bp != null ? { diastolic_bp: manualOverrides.diastolic_bp } : {}),
   };
 
   const effectiveLabs = {
@@ -690,10 +684,14 @@ export function ICURiskAssessmentPanel({
     };
 
     // Vitals
-    if (effectiveVitals?.temperature != null) currentPatientData.temperature = effectiveVitals.temperature;
-    if (effectiveVitals?.heart_rate != null) currentPatientData.heart_rate = effectiveVitals.heart_rate;
-    if (effectiveVitals?.systolic_bp != null) currentPatientData.systolic_bp = effectiveVitals.systolic_bp;
-    if (effectiveVitals?.diastolic_bp != null) currentPatientData.diastolic_bp = effectiveVitals.diastolic_bp;
+    if (effectiveVitals?.temperature != null)
+      currentPatientData.temperature = effectiveVitals.temperature;
+    if (effectiveVitals?.heart_rate != null)
+      currentPatientData.heart_rate = effectiveVitals.heart_rate;
+    if (effectiveVitals?.systolic_bp != null)
+      currentPatientData.systolic_bp = effectiveVitals.systolic_bp;
+    if (effectiveVitals?.diastolic_bp != null)
+      currentPatientData.diastolic_bp = effectiveVitals.diastolic_bp;
     if (effectiveVitals?.respiratory_rate != null) {
       currentPatientData.respiratory_rate = effectiveVitals.respiratory_rate;
     }
@@ -701,8 +699,9 @@ export function ICURiskAssessmentPanel({
 
     // Compute MAP if BP available
     if (effectiveVitals?.systolic_bp != null && effectiveVitals?.diastolic_bp != null) {
-      currentPatientData.mean_arterial_pressure =
-        Math.round((effectiveVitals.systolic_bp + 2 * effectiveVitals.diastolic_bp) / 3);
+      currentPatientData.mean_arterial_pressure = Math.round(
+        (effectiveVitals.systolic_bp + 2 * effectiveVitals.diastolic_bp) / 3
+      );
     }
 
     // Labs
@@ -718,7 +717,8 @@ export function ICURiskAssessmentPanel({
     // Clinical context
     if (effectiveGcs != null) currentPatientData.gcs = effectiveGcs;
     if (urineOutputMlDay != null) currentPatientData.urine_output_ml_day = urineOutputMlDay;
-    if (effectiveOnVasopressors != null) currentPatientData.on_vasopressors = effectiveOnVasopressors;
+    if (effectiveOnVasopressors != null)
+      currentPatientData.on_vasopressors = effectiveOnVasopressors;
     if (effectiveOnMechanicalVentilation != null) {
       currentPatientData.on_mechanical_ventilation = effectiveOnMechanicalVentilation;
     }
@@ -759,7 +759,8 @@ export function ICURiskAssessmentPanel({
       const mainValidation = AIICUPredictRequestSchema.safeParse(lastRequestCandidate);
       if (!mainValidation.success) {
         toast.error('Cannot re-run last assessment', {
-          description: 'The saved request is no longer valid. Complete required fields and run again.',
+          description:
+            'The saved request is no longer valid. Complete required fields and run again.',
         });
         return;
       }
@@ -781,7 +782,8 @@ export function ICURiskAssessmentPanel({
     ? RISK_LEVEL_CONFIG[displayPrediction.risk_level] || RISK_LEVEL_CONFIG.low
     : null;
 
-  const hasPrediction = displayPrediction && displayPrediction.risk_level && !displayPrediction.error;
+  const hasPrediction =
+    displayPrediction && displayPrediction.risk_level && !displayPrediction.error;
   const probabilitySource = stratifyPrediction ?? displayPrediction;
   const alertCount = displayPrediction?.critical_alerts?.length ?? 0;
 
@@ -795,11 +797,11 @@ export function ICURiskAssessmentPanel({
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <HeartPulse className="h-4 w-4 text-red-500" />
             <span className="sm:hidden">ICU Risk</span>
             <span className="hidden sm:inline">ICU Risk Assessment</span>
-            <Badge variant="outline" className="text-xs font-normal gap-1">
+            <Badge variant="outline" className="gap-1 text-xs font-normal">
               <BrainCircuit className="h-3 w-3" />
               Advisory
             </Badge>
@@ -811,37 +813,47 @@ export function ICURiskAssessmentPanel({
         {/* Run Assessment Button */}
         {!hasPrediction && (
           <div className="flex flex-col items-center gap-3 py-2">
-            <p className="text-sm text-muted-foreground text-center">
-              {!hasEnoughData
-                ? (
-                  <>
-                    Complete minimum practical SOFA fields before running ICU risk assessment:{' '}
-                    <span className="font-medium text-foreground">
-                      {missingRequired.map((f) => FIELD_LABELS[f]).join(', ')}
-                    </span>
-                  </>
-                )
-                : 'Run AI analysis to assess ICU risk, compute SOFA/qSOFA scores, and identify escalation needs.'}
+            <p className="text-center text-sm text-muted-foreground">
+              {!hasEnoughData ? (
+                <>
+                  Complete minimum practical SOFA fields before running ICU risk assessment:{' '}
+                  <span className="font-medium text-foreground">
+                    {missingRequired.map((f) => FIELD_LABELS[f]).join(', ')}
+                  </span>
+                </>
+              ) : (
+                'Run AI analysis to assess ICU risk, compute SOFA/qSOFA scores, and identify escalation needs.'
+              )}
             </p>
             {hasEnoughData && missingAdvisory.length > 0 && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
-                <Info className="inline h-3 w-3 mr-1 -mt-0.5" />
-                Accuracy improves with additional context: {missingAdvisory.map((f) => FIELD_LABELS[f]).join(', ')}.
-                Some missing labs may be assumed as normal defaults by the backend.
+              <p className="text-center text-xs text-amber-600 dark:text-amber-400">
+                <Info className="-mt-0.5 mr-1 inline h-3 w-3" />
+                Accuracy improves with additional context:{' '}
+                {missingAdvisory.map((f) => FIELD_LABELS[f]).join(', ')}. Some missing labs may be
+                assumed as normal defaults by the backend.
               </p>
             )}
             {!hasEnoughData && (
-              <Collapsible open={manualEntryOpen} onOpenChange={setManualEntryOpen} className="w-full">
+              <Collapsible
+                open={manualEntryOpen}
+                onOpenChange={setManualEntryOpen}
+                className="w-full"
+              >
                 <CollapsibleTrigger asChild>
                   <Button type="button" size="sm" variant="secondary" className="gap-2">
-                    {manualEntryOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    {manualEntryOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
                     Enter Manually
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="w-full rounded-md border bg-muted/20 p-3 mt-2 space-y-3">
+                <CollapsibleContent className="mt-2 w-full space-y-3 rounded-md border bg-muted/20 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">
-                      Manual values are used for this ICU assessment run and do not overwrite charted records.
+                      Manual values are used for this ICU assessment run and do not overwrite
+                      charted records.
                     </p>
                     <Button
                       type="button"
@@ -853,7 +865,7 @@ export function ICURiskAssessmentPanel({
                       Clear Inputs
                     </Button>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-left">
+                  <div className="grid gap-3 text-left sm:grid-cols-2 lg:grid-cols-3">
                     <div className="space-y-1">
                       <Label htmlFor={`${panelId}-manual-rr`}>Respiratory Rate</Label>
                       <Input
@@ -862,7 +874,7 @@ export function ICURiskAssessmentPanel({
                         value={manualRespiratoryRate}
                         onChange={(e) => setManualRespiratoryRate(e.target.value)}
                         placeholder="22"
-                        className={manualRespiratoryRate ? 'text-green-700 font-medium' : undefined}
+                        className={manualRespiratoryRate ? 'font-medium text-green-700' : undefined}
                       />
                     </div>
                     <div className="space-y-1">
@@ -873,7 +885,7 @@ export function ICURiskAssessmentPanel({
                         value={manualSystolicBp}
                         onChange={(e) => setManualSystolicBp(e.target.value)}
                         placeholder="100"
-                        className={manualSystolicBp ? 'text-green-700 font-medium' : undefined}
+                        className={manualSystolicBp ? 'font-medium text-green-700' : undefined}
                       />
                     </div>
                     <div className="space-y-1">
@@ -884,7 +896,7 @@ export function ICURiskAssessmentPanel({
                         value={manualDiastolicBp}
                         onChange={(e) => setManualDiastolicBp(e.target.value)}
                         placeholder="60"
-                        className={manualDiastolicBp ? 'text-green-700 font-medium' : undefined}
+                        className={manualDiastolicBp ? 'font-medium text-green-700' : undefined}
                       />
                     </div>
                     <div className="space-y-1">
@@ -896,7 +908,7 @@ export function ICURiskAssessmentPanel({
                         value={manualWbc}
                         onChange={(e) => setManualWbc(e.target.value)}
                         placeholder="12.5"
-                        className={manualWbc ? 'text-green-700 font-medium' : undefined}
+                        className={manualWbc ? 'font-medium text-green-700' : undefined}
                       />
                     </div>
                     <div className="space-y-1">
@@ -908,7 +920,7 @@ export function ICURiskAssessmentPanel({
                         value={manualLactate}
                         onChange={(e) => setManualLactate(e.target.value)}
                         placeholder="2.0"
-                        className={manualLactate ? 'text-green-700 font-medium' : undefined}
+                        className={manualLactate ? 'font-medium text-green-700' : undefined}
                       />
                     </div>
                     <div className="space-y-1">
@@ -919,7 +931,7 @@ export function ICURiskAssessmentPanel({
                         value={manualPlatelets}
                         onChange={(e) => setManualPlatelets(e.target.value)}
                         placeholder="150"
-                        className={manualPlatelets ? 'text-green-700 font-medium' : undefined}
+                        className={manualPlatelets ? 'font-medium text-green-700' : undefined}
                       />
                     </div>
                     <div className="space-y-1">
@@ -931,7 +943,7 @@ export function ICURiskAssessmentPanel({
                         value={manualBilirubin}
                         onChange={(e) => setManualBilirubin(e.target.value)}
                         placeholder="1.2"
-                        className={manualBilirubin ? 'text-green-700 font-medium' : undefined}
+                        className={manualBilirubin ? 'font-medium text-green-700' : undefined}
                       />
                     </div>
                     <div className="space-y-1">
@@ -943,7 +955,7 @@ export function ICURiskAssessmentPanel({
                         value={manualCreatinine}
                         onChange={(e) => setManualCreatinine(e.target.value)}
                         placeholder="1.0"
-                        className={manualCreatinine ? 'text-green-700 font-medium' : undefined}
+                        className={manualCreatinine ? 'font-medium text-green-700' : undefined}
                       />
                     </div>
                     <div className="space-y-1">
@@ -956,7 +968,7 @@ export function ICURiskAssessmentPanel({
                         value={manualGcs}
                         onChange={(e) => setManualGcs(e.target.value)}
                         placeholder="15"
-                        className={manualGcs ? 'text-green-700 font-medium' : undefined}
+                        className={manualGcs ? 'font-medium text-green-700' : undefined}
                       />
                     </div>
                     <div className="space-y-1">
@@ -967,15 +979,24 @@ export function ICURiskAssessmentPanel({
                         value={manualPFRatio}
                         onChange={(e) => setManualPFRatio(e.target.value)}
                         placeholder="320"
-                        className={manualPFRatio ? 'text-green-700 font-medium' : undefined}
+                        className={manualPFRatio ? 'font-medium text-green-700' : undefined}
                       />
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor={`${panelId}-manual-vent`}>Mechanical Ventilation</Label>
-                      <Select value={manualOnMechanicalVentilation} onValueChange={(value) => setManualOnMechanicalVentilation(value as 'unknown' | 'yes' | 'no')}>
+                      <Select
+                        value={manualOnMechanicalVentilation}
+                        onValueChange={(value) =>
+                          setManualOnMechanicalVentilation(value as 'unknown' | 'yes' | 'no')
+                        }
+                      >
                         <SelectTrigger
                           id={`${panelId}-manual-vent`}
-                          className={manualOnMechanicalVentilation !== 'unknown' ? 'text-green-700 font-medium' : undefined}
+                          className={
+                            manualOnMechanicalVentilation !== 'unknown'
+                              ? 'font-medium text-green-700'
+                              : undefined
+                          }
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -988,10 +1009,19 @@ export function ICURiskAssessmentPanel({
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor={`${panelId}-manual-pressors`}>On Vasopressors</Label>
-                      <Select value={manualOnVasopressors} onValueChange={(value) => setManualOnVasopressors(value as 'unknown' | 'yes' | 'no')}>
+                      <Select
+                        value={manualOnVasopressors}
+                        onValueChange={(value) =>
+                          setManualOnVasopressors(value as 'unknown' | 'yes' | 'no')
+                        }
+                      >
                         <SelectTrigger
                           id={`${panelId}-manual-pressors`}
-                          className={manualOnVasopressors !== 'unknown' ? 'text-green-700 font-medium' : undefined}
+                          className={
+                            manualOnVasopressors !== 'unknown'
+                              ? 'font-medium text-green-700'
+                              : undefined
+                          }
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -1036,9 +1066,9 @@ export function ICURiskAssessmentPanel({
           <div className="space-y-4">
             {/* Defaulted Labs Warning */}
             {displayPrediction.defaulted_labs && displayPrediction.defaulted_labs.length > 0 && (
-              <div className="rounded-md p-2.5 border bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-sm">
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-sm dark:border-amber-800 dark:bg-amber-950/30">
                 <div className="flex items-start gap-2">
-                  <Info className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <p className="text-amber-700 dark:text-amber-300">
                     <span className="font-medium">Normal values assumed</span> for{' '}
                     {displayPrediction.defaulted_labs.map((f) => FIELD_LABELS[f] ?? f).join(', ')}.
@@ -1050,20 +1080,14 @@ export function ICURiskAssessmentPanel({
 
             {/* Risk Level Banner */}
             <div
-              className={cn(
-                'rounded-lg p-3 border',
-                riskConfig.bgColor,
-                riskConfig.borderColor
-              )}
+              className={cn('rounded-lg border p-3', riskConfig.bgColor, riskConfig.borderColor)}
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex items-start gap-2 min-w-0">
-                  <ShieldAlert className={cn('h-5 w-5 mt-0.5 shrink-0', riskConfig.color)} />
+                <div className="flex min-w-0 items-start gap-2">
+                  <ShieldAlert className={cn('mt-0.5 h-5 w-5 shrink-0', riskConfig.color)} />
                   <div className="min-w-0">
-                    <p className={cn('font-semibold', riskConfig.color)}>
-                      {riskConfig.label}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className={cn('font-semibold', riskConfig.color)}>{riskConfig.label}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       Risk Score: {Math.round(displayPrediction.risk_score * 100)}%
                       {displayPrediction.sofa_score != null && (
                         <> &bull; SOFA: {displayPrediction.sofa_score}/24</>
@@ -1099,7 +1123,7 @@ export function ICURiskAssessmentPanel({
             {/* Critical Alerts */}
             {alertCount > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium flex items-center gap-1.5">
+                <h4 className="flex items-center gap-1.5 text-sm font-medium">
                   <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
                   Critical Alerts ({alertCount})
                 </h4>
@@ -1112,11 +1136,11 @@ export function ICURiskAssessmentPanel({
             )}
 
             {/* Advisory Disclaimer */}
-            <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
-              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-2 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
-                AI-generated assessment. SOFA/qSOFA scores and escalation recommendations
-                are advisory only. Use clinical judgment to validate.
+                AI-generated assessment. SOFA/qSOFA scores and escalation recommendations are
+                advisory only. Use clinical judgment to validate.
               </span>
             </div>
 
@@ -1128,9 +1152,7 @@ export function ICURiskAssessmentPanel({
               onClick={() => setShowDetails(!showDetails)}
               className="w-full justify-between text-muted-foreground hover:text-foreground"
             >
-              <span className="text-sm">
-                {showDetails ? 'Hide' : 'Show'} Details
-              </span>
+              <span className="text-sm">{showDetails ? 'Hide' : 'Show'} Details</span>
               {showDetails ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
@@ -1140,7 +1162,7 @@ export function ICURiskAssessmentPanel({
 
             {showDetails && (
               <Tabs defaultValue="scores" className="space-y-3">
-                <TabsList className="w-full grid grid-cols-3 h-auto">
+                <TabsList className="grid h-auto w-full grid-cols-3">
                   <TabsTrigger value="scores" className="text-xs sm:text-sm">
                     Scores
                   </TabsTrigger>
@@ -1158,9 +1180,9 @@ export function ICURiskAssessmentPanel({
                   {/* SOFA Breakdown */}
                   {displayPrediction.sofa_breakdown && (
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium flex items-center gap-1.5">
+                      <h4 className="flex items-center gap-1.5 text-sm font-medium">
                         SOFA Breakdown
-                        <span className="text-xs text-muted-foreground font-normal">
+                        <span className="text-xs font-normal text-muted-foreground">
                           (Total: {displayPrediction.sofa_score}/24)
                         </span>
                       </h4>
@@ -1169,27 +1191,28 @@ export function ICURiskAssessmentPanel({
                   )}
 
                   {/* qSOFA Criteria */}
-                  {displayPrediction.qsofa_criteria && displayPrediction.qsofa_criteria.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium flex items-center gap-1.5">
-                        qSOFA Criteria Met
-                        <span className="text-xs text-muted-foreground font-normal">
-                          ({displayPrediction.qsofa_score}/3)
-                        </span>
-                      </h4>
-                      <ul className="space-y-1 pl-1">
-                        {displayPrediction.qsofa_criteria.map((criteria, i) => (
-                          <li
-                            key={i}
-                            className="flex items-center gap-2 text-sm text-muted-foreground"
-                          >
-                            <div className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
-                            {criteria}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  {displayPrediction.qsofa_criteria &&
+                    displayPrediction.qsofa_criteria.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="flex items-center gap-1.5 text-sm font-medium">
+                          qSOFA Criteria Met
+                          <span className="text-xs font-normal text-muted-foreground">
+                            ({displayPrediction.qsofa_score}/3)
+                          </span>
+                        </h4>
+                        <ul className="space-y-1 pl-1">
+                          {displayPrediction.qsofa_criteria.map((criteria, i) => (
+                            <li
+                              key={i}
+                              className="flex items-center gap-2 text-sm text-muted-foreground"
+                            >
+                              <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                              {criteria}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                 </TabsContent>
 
                 {/* Probabilities Tab */}
@@ -1212,7 +1235,7 @@ export function ICURiskAssessmentPanel({
                       />
                     </>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-2">
+                    <p className="py-2 text-center text-sm text-muted-foreground">
                       Run ICU Assessment to see individual condition probabilities.
                     </p>
                   )}
@@ -1220,17 +1243,18 @@ export function ICURiskAssessmentPanel({
 
                 {/* Actions Tab */}
                 <TabsContent value="actions" className="space-y-3 pt-1">
-                  {displayPrediction.recommendations && displayPrediction.recommendations.length > 0 ? (
+                  {displayPrediction.recommendations &&
+                  displayPrediction.recommendations.length > 0 ? (
                     <div className="space-y-2">
                       <h4 className="text-sm font-medium">Recommendations</h4>
-                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 pl-1">
+                      <ul className="list-inside list-disc space-y-1 pl-1 text-sm text-muted-foreground">
                         {displayPrediction.recommendations.map((rec, i) => (
                           <li key={i}>{rec}</li>
                         ))}
                       </ul>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-2">
+                    <p className="py-2 text-center text-sm text-muted-foreground">
                       No specific recommendations at this time.
                     </p>
                   )}
@@ -1239,7 +1263,7 @@ export function ICURiskAssessmentPanel({
             )}
 
             {/* Re-run Buttons */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-1">
+            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
               <AIFeedbackButtons
                 messageId={`icu-predict-${panelId}`}
                 serviceType="icu_predictor"
@@ -1254,26 +1278,26 @@ export function ICURiskAssessmentPanel({
                 }}
               />
               <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={
-                  disabled ||
-                  isPending ||
-                  isStratifyPending ||
-                  (!hasEnoughData && !hasSavedLastRequest)
-                }
-                onClick={handleRerun}
-                className="gap-1.5 text-xs"
-              >
-                {isPending || isStratifyPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <HeartPulse className="h-3.5 w-3.5" />
-                )}
-                Re-run Last Assessment
-              </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={
+                    disabled ||
+                    isPending ||
+                    isStratifyPending ||
+                    (!hasEnoughData && !hasSavedLastRequest)
+                  }
+                  onClick={handleRerun}
+                  className="gap-1.5 text-xs"
+                >
+                  {isPending || isStratifyPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <HeartPulse className="h-3.5 w-3.5" />
+                  )}
+                  Re-run Last Assessment
+                </Button>
               </div>
             </div>
           </div>
@@ -1281,8 +1305,8 @@ export function ICURiskAssessmentPanel({
 
         {/* Error State (TibaBot unavailable but returned gracefully) */}
         {displayPrediction && !hasPrediction && displayPrediction.error && (
-          <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-yellow-500" />
+          <div className="flex items-start gap-2 rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-500" />
             <div>
               <p>{displayPrediction.error}</p>
               <Button
@@ -1306,8 +1330,8 @@ export function ICURiskAssessmentPanel({
 
         {/* Network error */}
         {isError && !displayPrediction && (
-          <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
+          <div className="flex items-start gap-2 rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
             <div>
               <p>Failed to connect to AI service. Please try again.</p>
               <Button

@@ -13,14 +13,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Trash2,
-  MessageSquare,
-  Plus,
-  Loader2,
-  PanelRightClose,
-  List,
-} from 'lucide-react';
+import { Trash2, MessageSquare, Plus, Loader2, PanelRightClose, List } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { AIChatPanel } from '@/components/shared/ai-chat-panel';
 import { Button } from '@/components/ui/button';
@@ -84,7 +77,7 @@ function SessionList({
       </div>
       <Separator />
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+        <div className="space-y-1 p-2">
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -92,19 +85,15 @@ function SessionList({
           )}
 
           {!isLoading && sessions.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-8">
-              No sessions yet
-            </p>
+            <p className="py-8 text-center text-xs text-muted-foreground">No sessions yet</p>
           )}
 
           {sessions.map((session) => (
             <div
               key={session.id}
               className={cn(
-                'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer transition-colors',
-                activeSessionId === session.id
-                  ? 'bg-primary/10 text-primary'
-                  : 'hover:bg-muted'
+                'group flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                activeSessionId === session.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
               )}
               onClick={() => onSelect(session)}
             >
@@ -112,7 +101,7 @@ function SessionList({
               <span className="flex-1 truncate">{session.title}</span>
               <button
                 type="button"
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                className="opacity-0 transition-opacity group-hover:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(session.id);
@@ -204,7 +193,7 @@ export default function AIPage() {
         updateStreamingMessage(
           assistantMsgId,
           "Sorry, I couldn't process your request. Please try again.",
-          true,
+          true
         );
       }
     },
@@ -243,10 +232,17 @@ export default function AIPage() {
       updateStreamingMessage(
         assistantMsgId,
         "Sorry, I couldn't analyze this patient's data. Please try again.",
-        true,
+        true
       );
     }
-  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext, verbosity]);
+  }, [
+    addMessage,
+    updateStreamingMessage,
+    assistMutation,
+    patientContext,
+    encounterContext,
+    verbosity,
+  ]);
 
   // Session management
   const handleSelectSession = useCallback(
@@ -287,71 +283,40 @@ export default function AIPage() {
 
   return (
     <FeatureGate feature="ai_assistant" fallback={<UpgradeBanner feature="AI Assistant" />}>
-    <div className="space-y-4 sm:space-y-6">
-      <PageHeader
-        title="AI Assistant"
-        helpContent="Chat with TibaBot for clinical questions, differential diagnoses, ICD-10 lookups, and encounter-aware clinical analysis. All responses are advisory only."
-        actions={
-          <div className="flex items-center gap-2">
-            {/* Mobile: open session sheet */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="md:hidden"
-              onClick={() => setSessionSheetOpen(true)}
-            >
-              <List className="h-4 w-4 mr-1.5" />
-              <span>Sessions</span>
-            </Button>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="AI Assistant"
+          helpContent="Chat with TibaBot for clinical questions, differential diagnoses, ICD-10 lookups, and encounter-aware clinical analysis. All responses are advisory only."
+          actions={
+            <div className="flex items-center gap-2">
+              {/* Mobile: open session sheet */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="md:hidden"
+                onClick={() => setSessionSheetOpen(true)}
+              >
+                <List className="mr-1.5 h-4 w-4" />
+                <span>Sessions</span>
+              </Button>
 
-            {/* Minimize to floating widget */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMinimizeToWidget}
-              title="Minimize to floating widget"
-            >
-              <PanelRightClose className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">Minimize</span>
-            </Button>
-          </div>
-        }
-      />
+              {/* Minimize to floating widget */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMinimizeToWidget}
+                title="Minimize to floating widget"
+              >
+                <PanelRightClose className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Minimize</span>
+              </Button>
+            </div>
+          }
+        />
 
-      <div className="flex gap-4 h-[calc(100vh-12rem)]">
-        {/* Desktop session sidebar (md+) */}
-        <Card className="hidden md:flex flex-col w-64 shrink-0">
-          <SessionList
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            isLoading={sessionsLoading}
-            onSelect={handleSelectSession}
-            onDelete={handleDeleteSession}
-            onNewSession={handleNewSession}
-          />
-        </Card>
-
-        {/* Chat area */}
-        <Card className="flex-1 flex flex-col overflow-hidden">
-          <AIChatPanel
-            showHeader={false}
-            onSendMessage={handleSendMessage}
-            onAskAboutPatient={handleAskAboutPatient}
-            isSending={chatMutation.isPending || assistMutation.isPending}
-          />
-        </Card>
-      </div>
-
-      {/* Mobile session bottom sheet */}
-      <Sheet open={sessionSheetOpen} onOpenChange={setSessionSheetOpen}>
-        <SheetContent side="bottom" className="h-[70vh] flex flex-col p-0 rounded-t-2xl">
-          <SheetHeader className="px-4 pt-4 pb-0">
-            <SheetTitle>Chat Sessions</SheetTitle>
-            <SheetDescription>
-              Switch between conversations or start a new one.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex h-[calc(100vh-12rem)] gap-4">
+          {/* Desktop session sidebar (md+) */}
+          <Card className="hidden w-64 shrink-0 flex-col md:flex">
             <SessionList
               sessions={sessions}
               activeSessionId={activeSessionId}
@@ -360,10 +325,39 @@ export default function AIPage() {
               onDelete={handleDeleteSession}
               onNewSession={handleNewSession}
             />
-          </div>
-        </SheetContent>
-      </Sheet>
-    </div>
+          </Card>
+
+          {/* Chat area */}
+          <Card className="flex flex-1 flex-col overflow-hidden">
+            <AIChatPanel
+              showHeader={false}
+              onSendMessage={handleSendMessage}
+              onAskAboutPatient={handleAskAboutPatient}
+              isSending={chatMutation.isPending || assistMutation.isPending}
+            />
+          </Card>
+        </div>
+
+        {/* Mobile session bottom sheet */}
+        <Sheet open={sessionSheetOpen} onOpenChange={setSessionSheetOpen}>
+          <SheetContent side="bottom" className="flex h-[70vh] flex-col rounded-t-2xl p-0">
+            <SheetHeader className="px-4 pb-0 pt-4">
+              <SheetTitle>Chat Sessions</SheetTitle>
+              <SheetDescription>Switch between conversations or start a new one.</SheetDescription>
+            </SheetHeader>
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <SessionList
+                sessions={sessions}
+                activeSessionId={activeSessionId}
+                isLoading={sessionsLoading}
+                onSelect={handleSelectSession}
+                onDelete={handleDeleteSession}
+                onNewSession={handleNewSession}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
     </FeatureGate>
   );
 }

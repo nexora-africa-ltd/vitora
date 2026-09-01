@@ -81,17 +81,17 @@ export function CompatibilityOverrideDialog({
           {/* Violations List */}
           <ul className="space-y-2">
             {violations.map((v, i) => (
-              <li key={i} className="flex items-start gap-2 p-2 rounded-md bg-muted/50">
+              <li key={i} className="flex items-start gap-2 rounded-md bg-muted/50 p-2">
                 <Badge
                   variant={v.severity === 'CRITICAL' ? 'destructive' : 'secondary'}
-                  className="shrink-0 mt-0.5"
+                  className="mt-0.5 shrink-0"
                 >
                   {v.severity}
                 </Badge>
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <span className="text-sm">{v.message}</span>
                   {v.code && (
-                    <span className="text-xs text-muted-foreground block mt-0.5">
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
                       Code: {v.code}
                     </span>
                   )}
@@ -102,9 +102,10 @@ export function CompatibilityOverrideDialog({
 
           {/* Critical Warning */}
           {hasCriticalViolation && (
-            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
-              <p className="text-sm text-destructive font-medium">
-                This admission has critical violations. Ensure you have clinical justification before proceeding.
+            <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3">
+              <p className="text-sm font-medium text-destructive">
+                This admission has critical violations. Ensure you have clinical justification
+                before proceeding.
               </p>
             </div>
           )}

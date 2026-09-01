@@ -70,7 +70,9 @@ export function ContactPicker({
     if (!patientDateOfBirth) return false;
     const dob = new Date(patientDateOfBirth);
     const now = new Date();
-    const age = now.getFullYear() - dob.getFullYear() -
+    const age =
+      now.getFullYear() -
+      dob.getFullYear() -
       (now < new Date(now.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
     return age < 18;
   })();
@@ -126,7 +128,9 @@ export function ContactPicker({
         if (!cancelled) setLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beneficiaryCrId]);
 
@@ -142,7 +146,7 @@ export function ContactPicker({
   if (error) {
     if (!defaultMaskedPhone) {
       return (
-        <div className={cn('text-xs text-muted-foreground py-1', className)}>
+        <div className={cn('py-1 text-xs text-muted-foreground', className)}>
           Alternative contacts not found. OTP will be sent to default number.
         </div>
       );
@@ -155,13 +159,16 @@ export function ContactPicker({
         </p>
         <RadioGroup value={selectedContactId} onValueChange={onSelect} className="space-y-1.5">
           <div
-            className="flex items-center space-x-2 rounded-md border px-3 py-2 hover:bg-muted/50 cursor-pointer"
+            className="flex cursor-pointer items-center space-x-2 rounded-md border px-3 py-2 hover:bg-muted/50"
             onClick={() => onSelect(DEFAULT_OTP_RECIPIENT)}
           >
             <RadioGroupItem value={DEFAULT_OTP_RECIPIENT} id="contact-default-error" />
-            <Label htmlFor="contact-default-error" className="flex items-center gap-2 cursor-pointer flex-1">
+            <Label
+              htmlFor="contact-default-error"
+              className="flex flex-1 cursor-pointer items-center gap-2"
+            >
               <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-xs font-mono">
+              <span className="font-mono text-xs">
                 {defaultMaskedPhone || 'Default number unavailable'}
               </span>
             </Label>
@@ -174,7 +181,7 @@ export function ContactPicker({
   if (contacts.length === 0) {
     if (!defaultMaskedPhone) {
       return (
-        <div className={cn('text-xs text-muted-foreground py-1', className)}>
+        <div className={cn('py-1 text-xs text-muted-foreground', className)}>
           Alternative contacts not found. OTP will be sent to default number.
         </div>
       );
@@ -185,16 +192,19 @@ export function ContactPicker({
         <Label className="text-xs font-medium">Confirm OTP recipient</Label>
         <RadioGroup value={selectedContactId} onValueChange={onSelect} className="space-y-1.5">
           <div
-            className="flex items-center space-x-2 rounded-md border px-3 py-2 hover:bg-muted/50 cursor-pointer"
+            className="flex cursor-pointer items-center space-x-2 rounded-md border px-3 py-2 hover:bg-muted/50"
             onClick={() => onSelect(DEFAULT_OTP_RECIPIENT)}
           >
             <RadioGroupItem value={DEFAULT_OTP_RECIPIENT} id="contact-default-empty" />
-            <Label htmlFor="contact-default-empty" className="flex items-center gap-2 cursor-pointer flex-1">
+            <Label
+              htmlFor="contact-default-empty"
+              className="flex flex-1 cursor-pointer items-center gap-2"
+            >
               <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-xs font-mono">
+              <span className="font-mono text-xs">
                 {defaultMaskedPhone || 'Default number unavailable'}
               </span>
-              <span className="text-[10px] text-muted-foreground ml-auto">DEFAULT</span>
+              <span className="ml-auto text-[10px] text-muted-foreground">DEFAULT</span>
             </Label>
           </div>
         </RadioGroup>
@@ -223,29 +233,25 @@ export function ContactPicker({
           Patient is a minor — select the parent/guardian contact for consent.
         </p>
       )}
-      <RadioGroup
-        value={selectedContactId}
-        onValueChange={onSelect}
-        className="space-y-1.5"
-      >
+      <RadioGroup value={selectedContactId} onValueChange={onSelect} className="space-y-1.5">
         {contacts.map((contact) => (
           <div
             key={contact.id}
-            className="flex items-center space-x-2 rounded-md border px-3 py-2 hover:bg-muted/50 cursor-pointer"
+            className="flex cursor-pointer items-center space-x-2 rounded-md border px-3 py-2 hover:bg-muted/50"
             onClick={() => onSelect(contact.id)}
           >
             <RadioGroupItem value={contact.id} id={`contact-${contact.id}`} />
             <Label
               htmlFor={`contact-${contact.id}`}
-              className="flex items-center gap-2 cursor-pointer flex-1"
+              className="flex flex-1 cursor-pointer items-center gap-2"
             >
               {contact.contact_type === 'PHONE' ? (
                 <Phone className="h-3.5 w-3.5 text-muted-foreground" />
               ) : (
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
               )}
-              <span className="text-xs font-mono">{contact.value}</span>
-              <span className="text-[10px] text-muted-foreground ml-auto">
+              <span className="font-mono text-xs">{contact.value}</span>
+              <span className="ml-auto text-[10px] text-muted-foreground">
                 {contact.contact_type}
               </span>
             </Label>

@@ -70,7 +70,10 @@ export default function NewOrganizationPage() {
     },
   });
 
-  const handleChange = (field: keyof OrganizationCreateData, value: string | number | undefined) => {
+  const handleChange = (
+    field: keyof OrganizationCreateData,
+    value: string | number | undefined
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (formErrors[field]) {
       setFormErrors((prev) => {
@@ -124,7 +127,7 @@ export default function NewOrganizationPage() {
         {/* Identity */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Building2 className="h-4 w-4 text-muted-foreground" />
               Organization Details
             </CardTitle>
@@ -192,7 +195,7 @@ export default function NewOrganizationPage() {
         {/* Location */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               HQ Location
             </CardTitle>
@@ -229,7 +232,9 @@ export default function NewOrganizationPage() {
                 disabled={!countyId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={countyId ? 'Select sub-county' : 'Select county first'} />
+                  <SelectValue
+                    placeholder={countyId ? 'Select sub-county' : 'Select county first'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {(subCounties ?? []).map((sc) => (
@@ -246,7 +251,7 @@ export default function NewOrganizationPage() {
         {/* Subscription */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Shield className="h-4 w-4 text-muted-foreground" />
               Subscription & Limits
             </CardTitle>
@@ -256,7 +261,9 @@ export default function NewOrganizationPage() {
               <Label>Subscription Plan</Label>
               <Select
                 value={formData.subscription_plan?.toString() ?? ''}
-                onValueChange={(v) => handleChange('subscription_plan', v ? parseInt(v) : undefined)}
+                onValueChange={(v) =>
+                  handleChange('subscription_plan', v ? parseInt(v) : undefined)
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a plan" />

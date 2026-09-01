@@ -7,15 +7,7 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
 import { ImagingOrderStatus, STATUS_LABELS } from '@/lib/types/imaging';
-import {
-  Clock,
-  FileText,
-  CheckCircle2,
-  XCircle,
-  Calendar,
-  Loader2,
-  Send,
-} from 'lucide-react';
+import { Clock, FileText, CheckCircle2, XCircle, Calendar, Loader2, Send } from 'lucide-react';
 
 interface OrderStatusBadgeProps {
   status: ImagingOrderStatus;
@@ -26,14 +18,7 @@ interface OrderStatusBadgeProps {
 const STATUS_CONFIG: Record<
   ImagingOrderStatus,
   {
-    variant:
-      | 'default'
-      | 'secondary'
-      | 'destructive'
-      | 'outline'
-      | 'success'
-      | 'warning'
-      | 'info';
+    variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info';
     className: string;
     icon: React.ElementType;
   }
@@ -75,28 +60,16 @@ const STATUS_CONFIG: Record<
   },
 };
 
-export function OrderStatusBadge({
-  status,
-  className,
-  showIcon = true,
-}: OrderStatusBadgeProps) {
+export function OrderStatusBadge({ status, className, showIcon = true }: OrderStatusBadgeProps) {
   const config = STATUS_CONFIG[status];
   const Icon = config.icon;
 
   return (
     <Badge
       variant={config.variant}
-      className={cn(
-        'gap-1 font-medium',
-        config.className,
-        className
-      )}
+      className={cn('gap-1 font-medium', config.className, className)}
     >
-      {showIcon && (
-        <Icon
-          className={cn('h-3 w-3', status === 'IN_PROGRESS' && 'animate-spin')}
-        />
-      )}
+      {showIcon && <Icon className={cn('h-3 w-3', status === 'IN_PROGRESS' && 'animate-spin')} />}
       {STATUS_LABELS[status]}
     </Badge>
   );

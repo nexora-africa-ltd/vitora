@@ -15,22 +15,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
-import type {
-  ClientRegistryClient,
-  CRLookupStatus,
-} from '@/lib/types/sha';
+import type { ClientRegistryClient, CRLookupStatus } from '@/lib/types/sha';
 
 // ============================================================================
 // Types
@@ -63,7 +52,9 @@ export function CRLookupSection({
   setCrClient,
   disabled = false,
 }: CRLookupSectionProps) {
-  const [identifierType, setIdentifierType] = useState<'national_id' | 'huduma_number' | 'passport_number'>('national_id');
+  const [identifierType, setIdentifierType] = useState<
+    'national_id' | 'huduma_number' | 'passport_number'
+  >('national_id');
   const [identifierValue, setIdentifierValue] = useState('');
   const [errorMessage, setErrorMessage] = useState<string>();
 
@@ -90,9 +81,7 @@ export function CRLookupSection({
       }
     } catch (error) {
       console.error('Client Registry lookup failed:', error);
-      setErrorMessage(
-        error instanceof Error ? error.message : 'An unexpected error occurred'
-      );
+      setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred');
       setCrStatus('error');
     }
   }, [identifierValue, identifierType, setCrStatus, setCrClient, onClientFound]);
@@ -160,7 +149,12 @@ export function CRLookupSection({
           <Button
             type="button"
             onClick={handleLookup}
-            disabled={disabled || crStatus === 'searching' || !identifierValue || identifierValue.trim().length < 3}
+            disabled={
+              disabled ||
+              crStatus === 'searching' ||
+              !identifierValue ||
+              identifierValue.trim().length < 3
+            }
             variant={crStatus === 'found' ? 'outline' : 'default'}
             className={cn(
               'w-full sm:w-auto',
@@ -168,11 +162,11 @@ export function CRLookupSection({
             )}
           >
             {crStatus === 'searching' ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : crStatus === 'found' ? (
-              <CheckCircle2 className="h-4 w-4 mr-2" />
+              <CheckCircle2 className="mr-2 h-4 w-4" />
             ) : (
-              <Search className="h-4 w-4 mr-2" />
+              <Search className="mr-2 h-4 w-4" />
             )}
             {crStatus === 'found' ? 'Verified' : 'Verify'}
           </Button>
@@ -180,36 +174,35 @@ export function CRLookupSection({
 
         {/* Status Messages */}
         {crStatus === 'searching' && (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>Searching Client Registry...</span>
           </div>
         )}
 
         {crStatus === 'found' && crClient && (
-          <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
+            <div className="mb-3 flex items-center gap-2">
               <UserCheck className="h-5 w-5 text-green-600" />
-              <span className="font-medium text-green-700 dark:text-green-300">
-                Client Found
-              </span>
-              <Badge variant="outline" className="ml-auto text-green-600 border-green-600">
+              <span className="font-medium text-green-700 dark:text-green-300">Client Found</span>
+              <Badge variant="outline" className="ml-auto border-green-600 text-green-600">
                 {crClient.client_number}
               </Badge>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+            <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
               <div>
-                <Label className="text-muted-foreground text-xs">Name</Label>
+                <Label className="text-xs text-muted-foreground">Name</Label>
                 <p className="font-medium">
-                  {crClient.first_name} {crClient.middle_name && `${crClient.middle_name} `}{crClient.last_name}
+                  {crClient.first_name} {crClient.middle_name && `${crClient.middle_name} `}
+                  {crClient.last_name}
                 </p>
               </div>
               <div>
-                <Label className="text-muted-foreground text-xs">Date of Birth</Label>
+                <Label className="text-xs text-muted-foreground">Date of Birth</Label>
                 <p className="font-medium">{crClient.date_of_birth}</p>
               </div>
               <div>
-                <Label className="text-muted-foreground text-xs">Gender</Label>
+                <Label className="text-xs text-muted-foreground">Gender</Label>
                 <p className="font-medium">
                   {crClient.gender === 'M' ? 'Male' : crClient.gender === 'F' ? 'Female' : 'Other'}
                 </p>
@@ -229,8 +222,8 @@ export function CRLookupSection({
             <UserPlus className="h-4 w-4 text-yellow-600" />
             <AlertTitle className="text-yellow-700">Not Found in Client Registry</AlertTitle>
             <AlertDescription className="text-yellow-600">
-              No matching record found. You can proceed to register the patient manually.
-              They will be registered in the Client Registry when saved.
+              No matching record found. You can proceed to register the patient manually. They will
+              be registered in the Client Registry when saved.
             </AlertDescription>
           </Alert>
         )}
@@ -240,11 +233,11 @@ export function CRLookupSection({
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Lookup Failed</AlertTitle>
             <AlertDescription>
-              {errorMessage || 'Unable to connect to Client Registry. You can proceed with manual entry.'}
+              {errorMessage ||
+                'Unable to connect to Client Registry. You can proceed with manual entry.'}
             </AlertDescription>
           </Alert>
         )}
-
       </CardContent>
     </Card>
   );
@@ -338,11 +331,11 @@ export function CRVerifiedBadge({ crNumber, className }: CRVerifiedBadgeProps) {
     <Badge
       variant="outline"
       className={cn(
-        'bg-green-50 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700',
+        'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-300',
         className
       )}
     >
-      <CheckCircle2 className="h-3 w-3 mr-1" />
+      <CheckCircle2 className="mr-1 h-3 w-3" />
       CR: {crNumber}
     </Badge>
   );

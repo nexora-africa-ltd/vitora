@@ -71,20 +71,60 @@ interface LabResultsEntryProps {
 }
 
 const RESULT_FLAGS: { value: ResultFlag; label: string; color: string }[] = [
-  { value: 'NORMAL', label: 'Normal', color: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' },
-  { value: 'LOW', label: 'Low', color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400' },
-  { value: 'HIGH', label: 'High', color: 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400' },
-  { value: 'CRITICAL_LOW', label: 'Critical Low', color: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' },
-  { value: 'CRITICAL_HIGH', label: 'Critical High', color: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' },
-  { value: 'ABNORMAL', label: 'Abnormal', color: 'bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400' },
-  { value: 'POSITIVE', label: 'Positive', color: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400' },
-  { value: 'NEGATIVE', label: 'Negative', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
+  {
+    value: 'NORMAL',
+    label: 'Normal',
+    color: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400',
+  },
+  {
+    value: 'LOW',
+    label: 'Low',
+    color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400',
+  },
+  {
+    value: 'HIGH',
+    label: 'High',
+    color: 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400',
+  },
+  {
+    value: 'CRITICAL_LOW',
+    label: 'Critical Low',
+    color: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400',
+  },
+  {
+    value: 'CRITICAL_HIGH',
+    label: 'Critical High',
+    color: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400',
+  },
+  {
+    value: 'ABNORMAL',
+    label: 'Abnormal',
+    color: 'bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400',
+  },
+  {
+    value: 'POSITIVE',
+    label: 'Positive',
+    color: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400',
+  },
+  {
+    value: 'NEGATIVE',
+    label: 'Negative',
+    color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
+  },
 ];
 
 // Common lab result units used in Kenya
 
-
-export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded, patientGender, patientAge, patientId, encounterId }: LabResultsEntryProps) {
+export function LabResultsEntry({
+  orderNumber,
+  items,
+  onComplete,
+  onResultAdded,
+  patientGender,
+  patientAge,
+  patientId,
+  encounterId,
+}: LabResultsEntryProps) {
   const { toast } = useToast();
   const { canPerformAction } = usePermissions();
   const canInterpret = canPerformAction('laboratory.interpret_results');
@@ -93,12 +133,13 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
   // A panel is only a "true header" if it actually has children in the response.
   // Legacy orders (created before panel explosion) have is_panel=true but no children —
   // treat those as regular resultable items.
-  const hasChildren = (item: LabOrderItem) =>
-    items.some(child => child.panel_parent === item.id);
+  const hasChildren = (item: LabOrderItem) => items.some((child) => child.panel_parent === item.id);
   const isEffectivePanel = (item: LabOrderItem) => item.is_panel && hasChildren(item);
 
   const [activeItemId, setActiveItemId] = useState<number | null>(
-    items.find(item => !item.has_result && !isEffectivePanel(item))?.id || items.find(item => !isEffectivePanel(item))?.id || null
+    items.find((item) => !item.has_result && !isEffectivePanel(item))?.id ||
+      items.find((item) => !isEffectivePanel(item))?.id ||
+      null
   );
 
   // Get order details for the WebSocket connection
@@ -107,38 +148,35 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
   // Real-time WebSocket for multi-user awareness
   // This will notify if another user is also entering results for this order
   // Pass orderNumber and encounterId for proper cache invalidation
-  const { isConnected: isWsConnected } = useLabOrderSocket(
-    orderData?.id ?? null,
-    {
-      orderNumber,
-      encounterId: orderData?.encounter ?? undefined,
-      onMessage: (message) => {
-        if (message.event === 'result_entered') {
-          // Another user entered a result - show notification
-          toast({
-            title: 'Result Updated',
-            description: 'Another user has entered a result for this order.',
-          });
-          // The React Query cache will be automatically invalidated by the hook
-        } else if (message.event === 'result_verified') {
-          const data = message.data as LabResultVerifiedEvent;
-          toast({
-            title: 'Result Verified',
-            description: `${data.test_name} has been verified by ${data.verified_by}.`,
-          });
-        }
-      },
-    }
-  );
+  const { isConnected: isWsConnected } = useLabOrderSocket(orderData?.id ?? null, {
+    orderNumber,
+    encounterId: orderData?.encounter ?? undefined,
+    onMessage: (message) => {
+      if (message.event === 'result_entered') {
+        // Another user entered a result - show notification
+        toast({
+          title: 'Result Updated',
+          description: 'Another user has entered a result for this order.',
+        });
+        // The React Query cache will be automatically invalidated by the hook
+      } else if (message.event === 'result_verified') {
+        const data = message.data as LabResultVerifiedEvent;
+        toast({
+          title: 'Result Verified',
+          description: `${data.test_name} has been verified by ${data.verified_by}.`,
+        });
+      }
+    },
+  });
 
   const addResult = useAddLabResult();
   const verifyResult = useVerifyLabResult();
 
-  const activeItem = items.find(item => item.id === activeItemId);
+  const activeItem = items.find((item) => item.id === activeItemId);
   // For counting: only non-panel-parent items (children + standalone) need results
-  const resultableItems = items.filter(item => !isEffectivePanel(item));
-  const pendingItems = resultableItems.filter(item => !item.has_result);
-  const completedItems = resultableItems.filter(item => item.has_result);
+  const resultableItems = items.filter((item) => !isEffectivePanel(item));
+  const pendingItems = resultableItems.filter((item) => !item.has_result);
+  const completedItems = resultableItems.filter((item) => item.has_result);
 
   // Fetch test catalog detail for active item to get reference ranges and units
   const activeTestCode = activeItem?.test_code;
@@ -183,26 +221,29 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
   }, []);
 
   // Auto-compute result flag from numeric value and reference range
-  const autoComputeFlag = useCallback((value: number | undefined, rangeText: string): ResultFlag | '' => {
-    if (value === undefined || value === null || !rangeText) return '';
-    const parsed = parseRange(rangeText);
-    if (!parsed) return '';
-    const [low, high] = parsed;
-    const criticalLow = low - (high - low) * 0.2;
-    const criticalHigh = high + (high - low) * 0.2;
-    if (value < criticalLow) return 'CRITICAL_LOW';
-    if (value > criticalHigh) return 'CRITICAL_HIGH';
-    if (value < low) return 'LOW';
-    if (value > high) return 'HIGH';
-    return 'NORMAL';
-  }, [parseRange]);
+  const autoComputeFlag = useCallback(
+    (value: number | undefined, rangeText: string): ResultFlag | '' => {
+      if (value === undefined || value === null || !rangeText) return '';
+      const parsed = parseRange(rangeText);
+      if (!parsed) return '';
+      const [low, high] = parsed;
+      const criticalLow = low - (high - low) * 0.2;
+      const criticalHigh = high + (high - low) * 0.2;
+      if (value < criticalLow) return 'CRITICAL_LOW';
+      if (value > criticalHigh) return 'CRITICAL_HIGH';
+      if (value < low) return 'LOW';
+      if (value > high) return 'HIGH';
+      return 'NORMAL';
+    },
+    [parseRange]
+  );
 
   // Update activeItemId when items change (e.g., after a result is added)
   useEffect(() => {
     // If current active item now has a result, move to next pending
-    const currentItem = items.find(item => item.id === activeItemId);
+    const currentItem = items.find((item) => item.id === activeItemId);
     if (currentItem?.has_result) {
-      const nextPending = items.find(item => !item.has_result && !item.is_panel);
+      const nextPending = items.find((item) => !item.has_result && !item.is_panel);
       if (nextPending) {
         setActiveItemId(nextPending.id);
       }
@@ -330,7 +371,9 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
       form.reset();
 
       // Check if there are more pending items (using updated items from parent)
-      const currentPendingCount = items.filter(item => !item.has_result && !item.is_panel && item.id !== activeItem.id).length;
+      const currentPendingCount = items.filter(
+        (item) => !item.has_result && !item.is_panel && item.id !== activeItem.id
+      ).length;
 
       if (currentPendingCount === 0) {
         toast({
@@ -395,7 +438,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Test List Sidebar */}
       <Card className="lg:col-span-1">
         <CardHeader>
@@ -408,80 +451,104 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
           </p>
         </CardHeader>
         <CardContent className="space-y-2">
-          {items.filter(item => !item.panel_parent).map((item) => (
-            <div key={item.id}>
-              {/* Panel header or standalone item */}
-              <div
-                className={cn(
-                  'p-3 rounded-lg transition-colors border',
-                  !isEffectivePanel(item) && 'cursor-pointer',
-                  activeItemId === item.id && !isEffectivePanel(item) && 'border-primary bg-primary/5',
-                  !isEffectivePanel(item) && item.has_result && 'bg-green-50 dark:bg-green-950/30',
-                  !isEffectivePanel(item) && item.result?.is_critical_result && 'bg-red-50 dark:bg-red-950/30 border-red-200',
-                  !isEffectivePanel(item) && activeItemId !== item.id && 'hover:bg-muted/50',
-                  isEffectivePanel(item) && 'bg-muted/30 border-muted cursor-default',
-                )}
-                onClick={() => !isEffectivePanel(item) && setActiveItemId(item.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={cn('font-medium text-sm text-foreground', isEffectivePanel(item) && 'font-semibold')}>{item.test_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.test_code}{isEffectivePanel(item) ? ' (Panel)' : ''}
-                      {item.loinc_code && <span className="ml-1 font-mono opacity-70">• {item.loinc_code}</span>}
-                    </p>
-                  </div>
-                  {!isEffectivePanel(item) && (
-                    item.has_result ? (
-                      <div className="flex items-center gap-1">
-                        {item.result?.is_critical_result && (
-                          <AlertTriangle className="h-4 w-4 text-red-500" />
-                        )}
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      </div>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">Pending</Badge>
-                    )
+          {items
+            .filter((item) => !item.panel_parent)
+            .map((item) => (
+              <div key={item.id}>
+                {/* Panel header or standalone item */}
+                <div
+                  className={cn(
+                    'rounded-lg border p-3 transition-colors',
+                    !isEffectivePanel(item) && 'cursor-pointer',
+                    activeItemId === item.id &&
+                      !isEffectivePanel(item) &&
+                      'border-primary bg-primary/5',
+                    !isEffectivePanel(item) &&
+                      item.has_result &&
+                      'bg-green-50 dark:bg-green-950/30',
+                    !isEffectivePanel(item) &&
+                      item.result?.is_critical_result &&
+                      'border-red-200 bg-red-50 dark:bg-red-950/30',
+                    !isEffectivePanel(item) && activeItemId !== item.id && 'hover:bg-muted/50',
+                    isEffectivePanel(item) && 'cursor-default border-muted bg-muted/30'
                   )}
-                </div>
-              </div>
-              {/* Panel children (indented) */}
-              {isEffectivePanel(item) && (
-                <div className="ml-4 mt-1 space-y-1">
-                  {items.filter(child => child.panel_parent === item.id).map((child) => (
-                    <div
-                      key={child.id}
-                      className={cn(
-                        'p-2 rounded-md cursor-pointer transition-colors border text-sm',
-                        activeItemId === child.id && 'border-primary bg-primary/5',
-                        child.has_result && 'bg-green-50 dark:bg-green-950/30',
-                        child.result?.is_critical_result && 'bg-red-50 dark:bg-red-950/30 border-red-200',
-                        activeItemId !== child.id && 'hover:bg-muted/50'
-                      )}
-                      onClick={() => setActiveItemId(child.id)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-foreground">{child.test_name}</p>
-                          <p className="text-xs text-muted-foreground">{child.test_code}</p>
-                        </div>
-                        {child.has_result ? (
-                          <div className="flex items-center gap-1">
-                            {child.result?.is_critical_result && (
-                              <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                            )}
-                            <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                          </div>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px]">Pending</Badge>
+                  onClick={() => !isEffectivePanel(item) && setActiveItemId(item.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p
+                        className={cn(
+                          'text-sm font-medium text-foreground',
+                          isEffectivePanel(item) && 'font-semibold'
                         )}
-                      </div>
+                      >
+                        {item.test_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.test_code}
+                        {isEffectivePanel(item) ? ' (Panel)' : ''}
+                        {item.loinc_code && (
+                          <span className="ml-1 font-mono opacity-70">• {item.loinc_code}</span>
+                        )}
+                      </p>
                     </div>
-                  ))}
+                    {!isEffectivePanel(item) &&
+                      (item.has_result ? (
+                        <div className="flex items-center gap-1">
+                          {item.result?.is_critical_result && (
+                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                          )}
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">
+                          Pending
+                        </Badge>
+                      ))}
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+                {/* Panel children (indented) */}
+                {isEffectivePanel(item) && (
+                  <div className="ml-4 mt-1 space-y-1">
+                    {items
+                      .filter((child) => child.panel_parent === item.id)
+                      .map((child) => (
+                        <div
+                          key={child.id}
+                          className={cn(
+                            'cursor-pointer rounded-md border p-2 text-sm transition-colors',
+                            activeItemId === child.id && 'border-primary bg-primary/5',
+                            child.has_result && 'bg-green-50 dark:bg-green-950/30',
+                            child.result?.is_critical_result &&
+                              'border-red-200 bg-red-50 dark:bg-red-950/30',
+                            activeItemId !== child.id && 'hover:bg-muted/50'
+                          )}
+                          onClick={() => setActiveItemId(child.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-foreground">{child.test_name}</p>
+                              <p className="text-xs text-muted-foreground">{child.test_code}</p>
+                            </div>
+                            {child.has_result ? (
+                              <div className="flex items-center gap-1">
+                                {child.result?.is_critical_result && (
+                                  <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                                )}
+                                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                              </div>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">
+                                Pending
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            ))}
         </CardContent>
       </Card>
 
@@ -498,7 +565,9 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
             <p className="text-sm text-muted-foreground">
               {activeItem.test_code}
               {activeItem.loinc_code && (
-                <span className="ml-2 font-mono text-xs opacity-70">LOINC: {activeItem.loinc_code}</span>
+                <span className="ml-2 font-mono text-xs opacity-70">
+                  LOINC: {activeItem.loinc_code}
+                </span>
               )}
             </p>
           ) : null}
@@ -509,7 +578,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Result Value */}
                 {effectiveResultType === 'NUMERIC' && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <FormField
                       control={form.control}
                       name="numeric_value"
@@ -522,9 +591,11 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                               step="0.01"
                               placeholder="Enter value"
                               value={field.value ?? ''}
-                              onChange={(e) => field.onChange(
-                                e.target.value ? parseFloat(e.target.value) : undefined
-                              )}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value ? parseFloat(e.target.value) : undefined
+                                )
+                              }
                             />
                           </FormControl>
                           <FormMessage />
@@ -606,7 +677,9 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                           </FormControl>
                           <SelectContent>
                             {availableResultOptions.map((option) => (
-                              <SelectItem key={option} value={option}>{option}</SelectItem>
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -648,10 +721,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Result Flag</FormLabel>
-                      <Select
-                        onValueChange={handleFlagChange}
-                        value={field.value}
-                      >
+                      <Select onValueChange={handleFlagChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select flag" />
@@ -661,7 +731,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                           {RESULT_FLAGS.map((flag) => (
                             <SelectItem key={flag.value} value={flag.value}>
                               <div className="flex items-center gap-2">
-                                <div className={cn('w-2 h-2 rounded-full', flag.color)} />
+                                <div className={cn('h-2 w-2 rounded-full', flag.color)} />
                                 {flag.label}
                               </div>
                             </SelectItem>
@@ -675,31 +745,45 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
 
                 {/* Catalog Reference Info (auto-populated) */}
                 {catalogTest && !activeItem.has_result && (
-                  <div className="p-3 bg-muted/50 border rounded-lg text-sm">
-                    <div className="flex items-center gap-4 flex-wrap">
+                  <div className="rounded-lg border bg-muted/50 p-3 text-sm">
+                    <div className="flex flex-wrap items-center gap-4">
                       <span className="text-muted-foreground">
-                        Type: <span className="font-medium text-foreground">{catalogTest.result_type}</span>
+                        Type:{' '}
+                        <span className="font-medium text-foreground">
+                          {catalogTest.result_type}
+                        </span>
                       </span>
                       {catalogTest.result_unit && (
                         <span className="text-muted-foreground">
-                          Unit: <span className="font-medium text-foreground">{catalogTest.result_unit}</span>
+                          Unit:{' '}
+                          <span className="font-medium text-foreground">
+                            {catalogTest.result_unit}
+                          </span>
                         </span>
                       )}
                       {referenceRangeText && (
                         <span className="text-muted-foreground">
-                          Reference: <span className="font-medium text-foreground">{referenceRangeText} {catalogTest.result_unit || ''}</span>
+                          Reference:{' '}
+                          <span className="font-medium text-foreground">
+                            {referenceRangeText} {catalogTest.result_unit || ''}
+                          </span>
                         </span>
                       )}
                       {catalogTest.requires_fasting && (
-                        <Badge variant="outline" className="text-xs">Fasting Required</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Fasting Required
+                        </Badge>
                       )}
                       {catalogTest.loinc_code && (
                         <span className="text-muted-foreground">
-                          LOINC: <span className="font-mono font-medium text-foreground">{catalogTest.loinc_code}</span>
+                          LOINC:{' '}
+                          <span className="font-mono font-medium text-foreground">
+                            {catalogTest.loinc_code}
+                          </span>
                         </span>
                       )}
                       {catalogTest.special_instructions && (
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                           Note: {catalogTest.special_instructions}
                         </span>
                       )}
@@ -709,12 +793,13 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
 
                 {/* Critical Alert */}
                 {resultFlag?.includes('CRITICAL') && (
-                  <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
                     <AlertTriangle className="h-5 w-5 text-destructive" />
                     <div>
                       <p className="font-medium text-destructive">Critical Value Alert</p>
                       <p className="text-sm text-destructive/80">
-                        This result will trigger an immediate notification to the ordering clinician.
+                        This result will trigger an immediate notification to the ordering
+                        clinician.
                       </p>
                     </div>
                   </div>
@@ -743,40 +828,40 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
 
                 {/* Method & Equipment — only for lab scientists and pathologists */}
                 {(canVerify || canInterpret) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="method"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Method (Optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Testing method" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="method"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Method (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Testing method" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="equipment"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Equipment (Optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Analyzer used" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                    <FormField
+                      control={form.control}
+                      name="equipment"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Equipment (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Analyzer used" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 )}
 
                 <div className="flex justify-end gap-3">
                   <Button type="submit" disabled={addResult.isPending}>
-                    <Save className="h-4 w-4 mr-2" />
+                    <Save className="mr-2 h-4 w-4" />
                     {addResult.isPending ? 'Saving...' : 'Save Result'}
                   </Button>
                 </div>
@@ -784,51 +869,68 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
             </Form>
           ) : activeItem?.has_result ? (
             <div className="space-y-4">
-              <div className="p-4 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-lg">
-                <div className="flex items-center gap-2 mb-3">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/40">
+                <div className="mb-3 flex items-center gap-2">
                   <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <span className="font-medium text-green-700 dark:text-green-300">Result Recorded</span>
+                  <span className="font-medium text-green-700 dark:text-green-300">
+                    Result Recorded
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                   <div>
-                    <p className="text-muted-foreground text-xs mb-1">Value</p>
+                    <p className="mb-1 text-xs text-muted-foreground">Value</p>
                     <p className="font-semibold text-foreground">
                       {activeItem.result?.numeric_value ??
-                       activeItem.result?.text_value ??
-                       activeItem.result?.option_value ?? '-'}
+                        activeItem.result?.text_value ??
+                        activeItem.result?.option_value ??
+                        '-'}
                       {activeItem.result?.result_unit && (
-                        <span className="text-muted-foreground ml-1">{activeItem.result.result_unit}</span>
+                        <span className="ml-1 text-muted-foreground">
+                          {activeItem.result.result_unit}
+                        </span>
                       )}
                     </p>
                   </div>
                   {activeItem.result?.reference_range_text && (
                     <div>
-                      <p className="text-muted-foreground text-xs mb-1">Reference</p>
-                      <p className="font-medium text-foreground">{activeItem.result.reference_range_text}</p>
+                      <p className="mb-1 text-xs text-muted-foreground">Reference</p>
+                      <p className="font-medium text-foreground">
+                        {activeItem.result.reference_range_text}
+                      </p>
                     </div>
                   )}
                   <div>
-                    <p className="text-muted-foreground text-xs mb-1">Flag</p>
+                    <p className="mb-1 text-xs text-muted-foreground">Flag</p>
                     <Badge
                       variant={
-                        activeItem.result?.result_flag?.includes('CRITICAL') ? 'destructive' :
-                        ['LOW', 'HIGH', 'ABNORMAL'].includes(activeItem.result?.result_flag || '') ? 'secondary' :
-                        'outline'
+                        activeItem.result?.result_flag?.includes('CRITICAL')
+                          ? 'destructive'
+                          : ['LOW', 'HIGH', 'ABNORMAL'].includes(
+                                activeItem.result?.result_flag || ''
+                              )
+                            ? 'secondary'
+                            : 'outline'
                       }
                     >
                       {activeItem.result?.result_flag || 'NORMAL'}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs mb-1">Status</p>
-                    <Badge variant={activeItem.result?.verification_status === 'VERIFIED' ? 'default' : 'outline'}>
+                    <p className="mb-1 text-xs text-muted-foreground">Status</p>
+                    <Badge
+                      variant={
+                        activeItem.result?.verification_status === 'VERIFIED'
+                          ? 'default'
+                          : 'outline'
+                      }
+                    >
                       {activeItem.result?.verification_status || 'UNVERIFIED'}
                     </Badge>
                   </div>
                 </div>
                 {activeItem.result?.interpretation && (
-                  <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
-                    <p className="text-muted-foreground text-xs mb-1">Interpretation</p>
+                  <div className="mt-3 border-t border-green-200 pt-3 dark:border-green-800">
+                    <p className="mb-1 text-xs text-muted-foreground">Interpretation</p>
                     <p className="text-sm text-foreground">{activeItem.result.interpretation}</p>
                   </div>
                 )}
@@ -848,16 +950,14 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
 
               {/* eGFR Inline Indicator — auto-shows when creatinine result is filed */}
               {activeItem.result?.numeric_value != null &&
-                (activeItem.test_code === 'CREA' || activeItem.test_name?.toLowerCase().includes('creatinine')) && (
-                <EGFRInlineIndicator
-                  patientId={patientId}
-                  encounterId={encounterId}
-                />
-              )}
+                (activeItem.test_code === 'CREA' ||
+                  activeItem.test_name?.toLowerCase().includes('creatinine')) && (
+                  <EGFRInlineIndicator patientId={patientId} encounterId={encounterId} />
+                )}
 
               {/* Legacy verify button - shown only if two-stage is disabled or already verified */}
               {activeItem.result?.verification_status !== 'VERIFIED' && (
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2 border-t">
+                <div className="flex flex-col gap-2 border-t pt-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-muted-foreground">
                     Or use quick verification (auto-completes required review stages)
                   </p>
@@ -867,14 +967,14 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded,
                     disabled={verifyResult.isPending}
                     className="w-full sm:w-auto"
                   >
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <CheckCircle className="mr-2 h-4 w-4" />
                     {verifyResult.isPending ? 'Verifying...' : 'Quick Verify'}
                   </Button>
                 </div>
               )}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="py-8 text-center text-muted-foreground">
               Select a test from the list to enter results
             </div>
           )}

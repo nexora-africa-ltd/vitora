@@ -36,7 +36,7 @@ export function PatientCounsellingReferrals({ patientId }: PatientCounsellingRef
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Heart className="h-4 w-4" />
             Counselling Referrals
           </CardTitle>
@@ -56,7 +56,7 @@ export function PatientCounsellingReferrals({ patientId }: PatientCounsellingRef
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Heart className="h-4 w-4" />
             Counselling Referrals
           </CardTitle>
@@ -76,14 +76,16 @@ export function PatientCounsellingReferrals({ patientId }: PatientCounsellingRef
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Heart className="h-4 w-4" />
             Counselling Referrals
-            <Badge variant="secondary" className="ml-2">{referrals.length}</Badge>
+            <Badge variant="secondary" className="ml-2">
+              {referrals.length}
+            </Badge>
           </CardTitle>
           <Link
             href={`/allied-health/counselling/referrals?patient_id=${patientId}`}
-            className="text-xs text-primary hover:underline flex items-center gap-1"
+            className="flex items-center gap-1 text-xs text-primary hover:underline"
           >
             View All <ExternalLink className="h-3 w-3" />
           </Link>
@@ -96,10 +98,10 @@ export function PatientCounsellingReferrals({ patientId }: PatientCounsellingRef
             href={`/allied-health/counselling/referrals/${referral.id}`}
             className="block"
           >
-            <div className="flex items-start justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-              <div className="space-y-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-sm truncate">
+            <div className="flex items-start justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="truncate text-sm font-medium">
                     {referral.reason_display || referral.reason || 'Counselling'}
                   </span>
                   <Badge className={ORDER_STATUS_COLORS[referral.status] || ''}>
@@ -115,14 +117,16 @@ export function PatientCounsellingReferrals({ patientId }: PatientCounsellingRef
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" />
                   <span>{formatDate(referral.created_at)}</span>
-                  <span className="hidden sm:inline">• {formatRelativeTime(referral.created_at)}</span>
+                  <span className="hidden sm:inline">
+                    • {formatRelativeTime(referral.created_at)}
+                  </span>
                 </div>
               </div>
             </div>
           </Link>
         ))}
         {referrals.length > 5 && (
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-center text-xs text-muted-foreground">
             +{referrals.length - 5} more referrals
           </p>
         )}
@@ -135,14 +139,14 @@ function ReferralsSkeleton() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
           <Heart className="h-4 w-4" />
           Counselling Referrals
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="p-3 rounded-lg border">
+          <div key={i} className="rounded-lg border p-3">
             <div className="space-y-2">
               <Skeleton className="h-4 w-40" />
               <Skeleton className="h-3 w-32" />

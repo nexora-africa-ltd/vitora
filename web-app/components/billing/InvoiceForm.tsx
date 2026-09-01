@@ -34,7 +34,13 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Plus, Trash2, Loader2, FileText, Clock } from 'lucide-react';
 import { ShiftGate } from '@/components/shared/shift-gate';
 import { format, addDays } from 'date-fns';
-import type { Invoice, InvoiceCreateData, InvoicePaymentType, Service, ProformaCreateData } from '@/lib/types/billing';
+import type {
+  Invoice,
+  InvoiceCreateData,
+  InvoicePaymentType,
+  Service,
+  ProformaCreateData,
+} from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
 
 // ============================================================================
@@ -140,7 +146,9 @@ export function InvoiceForm({
     defaultValues: {
       patient: invoice?.patient || initialPatient || 0,
       encounter: invoice?.encounter || undefined,
-      due_date: invoice?.due_date ? new Date(invoice.due_date) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      due_date: invoice?.due_date
+        ? new Date(invoice.due_date)
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       notes: invoice?.notes || '',
       payment_type: (invoice?.payment_type?.toUpperCase() as InvoicePaymentType) || 'CASH',
       invoice_type: invoice?.status === 'PROFORMA' ? 'proforma' : defaultType,
@@ -225,7 +233,7 @@ export function InvoiceForm({
                           <RadioGroupItem value="invoice" id="type-invoice" />
                           <Label
                             htmlFor="type-invoice"
-                            className="flex items-center gap-2 cursor-pointer"
+                            className="flex cursor-pointer items-center gap-2"
                           >
                             <FileText className="h-4 w-4" />
                             Invoice
@@ -235,7 +243,7 @@ export function InvoiceForm({
                           <RadioGroupItem value="proforma" id="type-proforma" />
                           <Label
                             htmlFor="type-proforma"
-                            className="flex items-center gap-2 cursor-pointer"
+                            className="flex cursor-pointer items-center gap-2"
                           >
                             <Clock className="h-4 w-4 text-purple-600" />
                             Proforma Invoice
@@ -244,9 +252,9 @@ export function InvoiceForm({
                       </RadioGroup>
                     </FormControl>
                     {isProforma && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Proforma invoices are quotations that can be converted to real invoices later.
-                        They have a validity period and cannot receive payments directly.
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Proforma invoices are quotations that can be converted to real invoices
+                        later. They have a validity period and cannot receive payments directly.
                       </p>
                     )}
                     <FormMessage />
@@ -270,10 +278,7 @@ export function InvoiceForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>How will this invoice be paid? *</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
+                    <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select payment type" />
@@ -288,8 +293,9 @@ export function InvoiceForm({
                       </SelectContent>
                     </Select>
                     {field.value === 'INSURANCE' && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Insurance invoices can be submitted to SHA for reimbursement after finalization.
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Insurance invoices can be submitted to SHA for reimbursement after
+                        finalization.
                       </p>
                     )}
                     <FormMessage />
@@ -303,9 +309,11 @@ export function InvoiceForm({
         {/* Patient & Due Date */}
         <Card>
           <CardHeader className="pb-2 sm:pb-3">
-            <CardTitle className="text-base sm:text-lg">{isProforma ? 'Proforma Details' : 'Invoice Details'}</CardTitle>
+            <CardTitle className="text-base sm:text-lg">
+              {isProforma ? 'Proforma Details' : 'Invoice Details'}
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 px-4 sm:px-6">
+          <CardContent className="grid grid-cols-1 gap-3 px-4 sm:grid-cols-2 sm:gap-4 sm:px-6">
             {/* Patient */}
             <FormField
               control={form.control}
@@ -394,10 +402,7 @@ export function InvoiceForm({
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Add any additional notes..."
-                      {...field}
-                    />
+                    <Textarea placeholder="Add any additional notes..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -408,7 +413,7 @@ export function InvoiceForm({
 
         {/* Line Items */}
         <Card>
-          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2 sm:pb-3">
+          <CardHeader className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:pb-3">
             <CardTitle className="text-base sm:text-lg">Line Items</CardTitle>
             <Button
               type="button"
@@ -417,7 +422,7 @@ export function InvoiceForm({
               className="w-full sm:w-auto"
               onClick={() => append({ service_id: 0, quantity: 1, unit_price: 0 })}
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               Add Item
             </Button>
           </CardHeader>
@@ -434,7 +439,7 @@ export function InvoiceForm({
               {fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end p-3 sm:p-0 border sm:border-0 rounded-lg sm:rounded-none"
+                  className="flex flex-col gap-2 rounded-lg border p-3 sm:grid sm:grid-cols-12 sm:items-end sm:gap-2 sm:rounded-none sm:border-0 sm:p-0"
                 >
                   {/* Service */}
                   <div className="sm:col-span-5">
@@ -443,12 +448,12 @@ export function InvoiceForm({
                       name={`items.${index}.service_id`}
                       render={({ field: serviceField }) => (
                         <FormItem>
-                          <FormLabel className={index === 0 ? '' : 'sm:hidden'}>{lineItemLabel}</FormLabel>
+                          <FormLabel className={index === 0 ? '' : 'sm:hidden'}>
+                            {lineItemLabel}
+                          </FormLabel>
                           <Select
                             value={serviceField.value?.toString() || ''}
-                            onValueChange={(value) =>
-                              handleServiceChange(index, parseInt(value))
-                            }
+                            onValueChange={(value) => handleServiceChange(index, parseInt(value))}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -457,10 +462,7 @@ export function InvoiceForm({
                             </FormControl>
                             <SelectContent>
                               {services.map((service) => (
-                                <SelectItem
-                                  key={service.id}
-                                  value={service.id.toString()}
-                                >
+                                <SelectItem key={service.id} value={service.id.toString()}>
                                   {service.name} - {formatCurrency(parseFloat(service.unit_price))}
                                 </SelectItem>
                               ))}
@@ -486,9 +488,7 @@ export function InvoiceForm({
                                 type="number"
                                 min="1"
                                 {...qtyField}
-                                onChange={(e) =>
-                                  qtyField.onChange(parseInt(e.target.value) || 1)
-                                }
+                                onChange={(e) => qtyField.onChange(parseInt(e.target.value) || 1)}
                               />
                             </FormControl>
                             <FormMessage />
@@ -503,7 +503,9 @@ export function InvoiceForm({
                         name={`items.${index}.unit_price`}
                         render={({ field: priceField }) => (
                           <FormItem>
-                            <FormLabel className={index === 0 ? '' : 'sm:hidden'}>Unit Price</FormLabel>
+                            <FormLabel className={index === 0 ? '' : 'sm:hidden'}>
+                              Unit Price
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -524,17 +526,17 @@ export function InvoiceForm({
                   </div>
 
                   {/* Remove Button */}
-                  <div className="sm:col-span-2 flex justify-end">
+                  <div className="flex justify-end sm:col-span-2">
                     {fields.length > 1 && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-destructive hover:text-destructive/80 gap-1 sm:p-2"
+                        className="gap-1 text-destructive hover:text-destructive/80 sm:p-2"
                         onClick={() => remove(index)}
                       >
                         <Trash2 className="h-4 w-4" />
-                        <span className="sm:hidden text-xs">Remove</span>
+                        <span className="text-xs sm:hidden">Remove</span>
                       </Button>
                     )}
                   </div>
@@ -543,11 +545,9 @@ export function InvoiceForm({
             </div>
 
             {/* Total */}
-            <div className="flex justify-between sm:justify-end mt-4 sm:mt-6 pt-3 sm:pt-4 border-t">
-              <span className="text-sm sm:text-base text-muted-foreground sm:mr-4">Subtotal:</span>
-              <span className="text-lg sm:text-xl font-bold">
-                {formatCurrency(subtotal)}
-              </span>
+            <div className="mt-4 flex justify-between border-t pt-3 sm:mt-6 sm:justify-end sm:pt-4">
+              <span className="text-sm text-muted-foreground sm:mr-4 sm:text-base">Subtotal:</span>
+              <span className="text-lg font-bold sm:text-xl">{formatCurrency(subtotal)}</span>
             </div>
           </CardContent>
         </Card>
@@ -558,24 +558,24 @@ export function InvoiceForm({
             Cancel
           </Button>
           <ShiftGate>
-          <Button
-            type="submit"
-            disabled={isLoading || (isProforma && !onSubmitProforma)}
-            className={`w-full sm:w-auto ${isProforma ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
-          >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isProforma ? (
-              <>
-                <Clock className="mr-2 h-4 w-4" />
-                {isEditing ? 'Update Proforma' : 'Create Proforma'}
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                {isEditing ? 'Update Invoice' : 'Create Invoice'}
-              </>
-            )}
-          </Button>
+            <Button
+              type="submit"
+              disabled={isLoading || (isProforma && !onSubmitProforma)}
+              className={`w-full sm:w-auto ${isProforma ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isProforma ? (
+                <>
+                  <Clock className="mr-2 h-4 w-4" />
+                  {isEditing ? 'Update Proforma' : 'Create Proforma'}
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  {isEditing ? 'Update Invoice' : 'Create Invoice'}
+                </>
+              )}
+            </Button>
           </ShiftGate>
         </div>
       </form>
@@ -631,7 +631,8 @@ export function SimpleInvoiceForm({ patientId, encounterId }: SimpleInvoiceFormP
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>No Active Encounter</AlertTitle>
           <AlertDescription>
-            An encounter is required to create an invoice. SHA claims will be rejected without an active encounter.
+            An encounter is required to create an invoice. SHA claims will be rejected without an
+            active encounter.
           </AlertDescription>
         </Alert>
       )}
@@ -651,11 +652,7 @@ export function SimpleInvoiceForm({ patientId, encounterId }: SimpleInvoiceFormP
       </div>
 
       {/* Simplified form fields would go here */}
-      <Button
-        type="submit"
-        disabled={!hasEncounter}
-        aria-label="Create Invoice"
-      >
+      <Button type="submit" disabled={!hasEncounter} aria-label="Create Invoice">
         Create Invoice
       </Button>
     </div>

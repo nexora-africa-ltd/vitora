@@ -43,9 +43,7 @@ export function GrowthMeasurementForm({
   const showHcField = ageYears < 5;
   const showMuacField = ageYears < 5;
 
-  const [measurementDate, setMeasurementDate] = useState(
-    new Date().toISOString().split('T')[0],
-  );
+  const [measurementDate, setMeasurementDate] = useState(new Date().toISOString().split('T')[0]);
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
   const [headCircumference, setHeadCircumference] = useState('');
@@ -53,8 +51,7 @@ export function GrowthMeasurementForm({
   const [notes, setNotes] = useState('');
 
   const createMutation = useMutation({
-    mutationFn: (data: GrowthMeasurementCreateData) =>
-      growthMeasurementsApi.create(data),
+    mutationFn: (data: GrowthMeasurementCreateData) => growthMeasurementsApi.create(data),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['growth-measurements', patientId] });
       queryClient.invalidateQueries({ queryKey: ['growth-chart-data', patientId] });
@@ -107,9 +104,7 @@ export function GrowthMeasurementForm({
       measurement_date: measurementDate,
       weight: weight ? parseFloat(weight) : undefined,
       height: height ? parseFloat(height) : undefined,
-      head_circumference: headCircumference
-        ? parseFloat(headCircumference)
-        : undefined,
+      head_circumference: headCircumference ? parseFloat(headCircumference) : undefined,
       muac: muac ? parseFloat(muac) : undefined,
       notes,
     });
@@ -120,10 +115,13 @@ export function GrowthMeasurementForm({
       <CardHeader>
         <div className="flex items-center gap-2">
           <CardTitle className="text-base">Record Growth Measurement</CardTitle>
-          <HelpPopover content={showMuacField
-            ? "Enter the child's measurements. Z-scores are automatically calculated against WHO growth standards. MUAC is measured for children 6-59 months: SAM < 11.5cm, MAM 11.5-12.4cm."
-            : "Enter the child's measurements. Z-scores are automatically calculated against WHO growth reference data (5-19 years). BMI-for-age and height-for-age are the primary indicators for school-age children."
-          } />
+          <HelpPopover
+            content={
+              showMuacField
+                ? "Enter the child's measurements. Z-scores are automatically calculated against WHO growth standards. MUAC is measured for children 6-59 months: SAM < 11.5cm, MAM 11.5-12.4cm."
+                : "Enter the child's measurements. Z-scores are automatically calculated against WHO growth reference data (5-19 years). BMI-for-age and height-for-age are the primary indicators for school-age children."
+            }
+          />
         </div>
       </CardHeader>
       <CardContent>
@@ -218,9 +216,7 @@ export function GrowthMeasurementForm({
               </Button>
             )}
             <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Record Measurement
             </Button>
           </div>

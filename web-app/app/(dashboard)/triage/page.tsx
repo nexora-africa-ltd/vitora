@@ -257,7 +257,7 @@ export default function TriageQueuePage() {
       isRefreshing={activeTab === 'queue' ? isWaitingLoading : isHistoryLoading}
       className="min-h-full"
     >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+      <div className="container mx-auto space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
         {/* Page Header */}
         <PageHeader
           title="Triage"
@@ -287,7 +287,7 @@ export default function TriageQueuePage() {
         />
 
         {/* KPI Stats Cards — visible on all tabs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <KPICard
             id="waiting-triage"
             title="In Queue"
@@ -322,7 +322,7 @@ export default function TriageQueuePage() {
             value={waitTimeStats?.completion_time?.avg_minutes ?? 0}
             unit="min"
             description={
-              <span className="flex items-center gap-1.5 flex-wrap">
+              <span className="flex flex-wrap items-center gap-1.5">
                 <span>Arrival → done</span>
                 {(waitTimeStats?.completion_time?.count ?? 0) > 0 && (
                   <span className="text-muted-foreground">
@@ -359,7 +359,7 @@ export default function TriageQueuePage() {
           onValueChange={(v) => setActiveTab(v as 'queue' | 'history')}
           className="space-y-4"
         >
-          <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
+          <TabsList className="grid w-full grid-cols-2 sm:inline-flex sm:w-auto">
             <TabsTrigger value="queue" className="gap-2">
               <UserPlus className="h-4 w-4" />
               <span className="sm:hidden">Queue</span>
@@ -380,12 +380,12 @@ export default function TriageQueuePage() {
           {/* ================================================================
               QUEUE TAB
               ================================================================ */}
-          <TabsContent value="queue" className="space-y-4 sm:space-y-6 mt-0">
+          <TabsContent value="queue" className="mt-0 space-y-4 sm:space-y-6">
             {/* Patients Awaiting Triage */}
             <Card>
-              <CardHeader className="px-4 sm:px-6 pb-3">
+              <CardHeader className="px-4 pb-3 sm:px-6">
                 <div className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                  <UserPlus className="h-4 w-4 text-muted-foreground sm:h-5 sm:w-5" />
                   <CardTitle className="text-base sm:text-lg">Patients Awaiting Triage</CardTitle>
                   <HelpPopover content="Patients who have checked in and are waiting to be triaged. Click 'Start Triage' to begin assessment. This list auto-refreshes every 15 seconds." />
                 </div>
@@ -394,14 +394,16 @@ export default function TriageQueuePage() {
                 {isWaitingLoading ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-20 sm:h-16 w-full" />
+                      <Skeleton key={i} className="h-20 w-full sm:h-16" />
                     ))}
                   </div>
                 ) : waitingData?.results?.length === 0 ? (
-                  <div className="text-center py-6 sm:py-8 text-muted-foreground">
-                    <UserPlus className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 opacity-50" />
-                    <p className="font-medium text-sm sm:text-base">No patients waiting for triage</p>
-                    <p className="text-xs sm:text-sm mt-1">
+                  <div className="py-6 text-center text-muted-foreground sm:py-8">
+                    <UserPlus className="mx-auto mb-3 h-10 w-10 opacity-50 sm:h-12 sm:w-12" />
+                    <p className="text-sm font-medium sm:text-base">
+                      No patients waiting for triage
+                    </p>
+                    <p className="mt-1 text-xs sm:text-sm">
                       Patients will appear here after registration/check-in
                     </p>
                     <Button
@@ -421,22 +423,24 @@ export default function TriageQueuePage() {
                       return (
                         <div
                           key={entry.id}
-                          className={`p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
+                          className={`rounded-lg border p-3 transition-colors hover:bg-muted/50 sm:p-4 ${
                             isInProgress ? 'border-primary/50 bg-primary/5' : ''
                           }`}
                         >
                           {/* Mobile: Vertical stack layout */}
-                          <div className="sm:hidden space-y-2">
+                          <div className="space-y-2 sm:hidden">
                             {/* Row 1: Name + Priority */}
                             <div className="flex items-start justify-between gap-2">
-                              <span className="font-medium text-sm leading-tight">
+                              <span className="text-sm font-medium leading-tight">
                                 {entry.patient_name}
                               </span>
-                              <div className="flex items-center gap-1 shrink-0">
+                              <div className="flex shrink-0 items-center gap-1">
                                 {entry.priority_hint && entry.priority_hint !== 'NORMAL' && (
                                   <Badge
                                     variant={
-                                      entry.priority_hint === 'EMERGENCY' ? 'destructive' : 'secondary'
+                                      entry.priority_hint === 'EMERGENCY'
+                                        ? 'destructive'
+                                        : 'secondary'
                                     }
                                     size="sm"
                                   >
@@ -447,7 +451,7 @@ export default function TriageQueuePage() {
                             </div>
 
                             {/* Row 2: MRN + Stage + Room */}
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className="flex flex-wrap items-center gap-1.5">
                               <Badge variant="outline" size="sm">
                                 {entry.patient_mrn}
                               </Badge>
@@ -481,7 +485,7 @@ export default function TriageQueuePage() {
 
                             {/* Row 4: Reason (if any) */}
                             {entry.reason_for_visit && (
-                              <p className="text-xs text-muted-foreground line-clamp-1">
+                              <p className="line-clamp-1 text-xs text-muted-foreground">
                                 {entry.reason_for_visit}
                               </p>
                             )}
@@ -496,22 +500,23 @@ export default function TriageQueuePage() {
                                   }
                                 >
                                   <SelectTrigger className="h-9 w-auto min-w-[100px] text-xs">
-                                    <DoorOpen className="h-3 w-3 mr-1 shrink-0" />
+                                    <DoorOpen className="mr-1 h-3 w-3 shrink-0" />
                                     <SelectValue placeholder="Room" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {availableRooms.map((room) => (
-                                      <SelectItem
-                                        key={room.id}
-                                        value={room.id.toString()}
-                                      >
-                                        <span className={`flex items-center gap-1.5 ${!room.is_available && room.id !== entry.triage_room ? 'opacity-50' : ''}`}>
+                                      <SelectItem key={room.id} value={room.id.toString()}>
+                                        <span
+                                          className={`flex items-center gap-1.5 ${!room.is_available && room.id !== entry.triage_room ? 'opacity-50' : ''}`}
+                                        >
                                           {room.name}
                                           <span className="text-muted-foreground">
                                             ({room.current_load}/{room.capacity})
                                           </span>
                                           {!room.has_active_staff && (
-                                            <span className="text-destructive text-[10px]">No staff</span>
+                                            <span className="text-[10px] text-destructive">
+                                              No staff
+                                            </span>
                                           )}
                                         </span>
                                       </SelectItem>
@@ -522,14 +527,14 @@ export default function TriageQueuePage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 h-9"
+                                className="h-9 flex-1"
                                 onClick={() => handleCancelWaiting(entry.id, 'Patient left')}
                               >
                                 Cancel
                               </Button>
                               <Button
                                 size="sm"
-                                className="flex-1 h-9"
+                                className="h-9 flex-1"
                                 variant={isInProgress ? 'secondary' : 'default'}
                                 onClick={() =>
                                   handleStartTriage(entry.id, entry.patient, entry.encounter)
@@ -541,9 +546,9 @@ export default function TriageQueuePage() {
                           </div>
 
                           {/* Desktop: Horizontal layout */}
-                          <div className="hidden sm:flex sm:items-center sm:justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
+                          <div className="hidden gap-4 sm:flex sm:items-center sm:justify-between">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <span className="font-medium">{entry.patient_name}</span>
                                 <Badge variant="outline" size="sm">
                                   {entry.patient_mrn}
@@ -555,7 +560,9 @@ export default function TriageQueuePage() {
                                 {entry.priority_hint && entry.priority_hint !== 'NORMAL' && (
                                   <Badge
                                     variant={
-                                      entry.priority_hint === 'EMERGENCY' ? 'destructive' : 'secondary'
+                                      entry.priority_hint === 'EMERGENCY'
+                                        ? 'destructive'
+                                        : 'secondary'
                                     }
                                     size="sm"
                                   >
@@ -569,7 +576,7 @@ export default function TriageQueuePage() {
                                   </Badge>
                                 )}
                               </div>
-                              <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                              <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
                                 <span>
                                   {entry.patient_gender === 'M'
                                     ? 'Male'
@@ -583,11 +590,13 @@ export default function TriageQueuePage() {
                                   {entry.wait_time_minutes} min
                                 </span>
                                 {entry.reason_for_visit && (
-                                  <span className="truncate max-w-[200px]">{entry.reason_for_visit}</span>
+                                  <span className="max-w-[200px] truncate">
+                                    {entry.reason_for_visit}
+                                  </span>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex shrink-0 items-center gap-2">
                               {availableRooms && availableRooms.length > 0 && (
                                 <Select
                                   value={entry.triage_room?.toString() ?? ''}
@@ -596,22 +605,23 @@ export default function TriageQueuePage() {
                                   }
                                 >
                                   <SelectTrigger className="h-8 w-auto min-w-[120px] text-xs">
-                                    <DoorOpen className="h-3 w-3 mr-1 shrink-0" />
+                                    <DoorOpen className="mr-1 h-3 w-3 shrink-0" />
                                     <SelectValue placeholder="Assign Room" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {availableRooms.map((room) => (
-                                      <SelectItem
-                                        key={room.id}
-                                        value={room.id.toString()}
-                                      >
-                                        <span className={`flex items-center gap-1.5 ${!room.is_available && room.id !== entry.triage_room ? 'opacity-50' : ''}`}>
+                                      <SelectItem key={room.id} value={room.id.toString()}>
+                                        <span
+                                          className={`flex items-center gap-1.5 ${!room.is_available && room.id !== entry.triage_room ? 'opacity-50' : ''}`}
+                                        >
                                           {room.name}
                                           <span className="text-muted-foreground">
                                             ({room.current_load}/{room.capacity})
                                           </span>
                                           {!room.has_active_staff && (
-                                            <span className="text-destructive text-[10px]">No staff</span>
+                                            <span className="text-[10px] text-destructive">
+                                              No staff
+                                            </span>
                                           )}
                                         </span>
                                       </SelectItem>
@@ -649,14 +659,14 @@ export default function TriageQueuePage() {
           {/* ================================================================
               HISTORY TAB
               ================================================================ */}
-          <TabsContent value="history" className="space-y-4 mt-0">
+          <TabsContent value="history" className="mt-0 space-y-4">
             {/* Filters */}
             <Card>
               <CardContent className="p-3 sm:p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   {/* Search Input */}
-                  <div className="relative flex-1 min-w-0">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <div className="relative min-w-0 flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       placeholder="Search by name or MRN..."
                       value={searchInput}
@@ -664,7 +674,7 @@ export default function TriageQueuePage() {
                         setSearchInput(e.target.value);
                         handleFilterChange();
                       }}
-                      className="pl-9 pr-8 h-9"
+                      className="h-9 pl-9 pr-8"
                     />
                     {searchInput && (
                       <button
@@ -689,7 +699,7 @@ export default function TriageQueuePage() {
                       handleFilterChange();
                     }}
                   >
-                    <SelectTrigger className="w-full sm:w-[140px] h-9">
+                    <SelectTrigger className="h-9 w-full sm:w-[140px]">
                       <SelectValue placeholder="Date range" />
                     </SelectTrigger>
                     <SelectContent>
@@ -709,38 +719,38 @@ export default function TriageQueuePage() {
                       handleFilterChange();
                     }}
                   >
-                    <SelectTrigger className="w-full sm:w-[140px] h-9">
+                    <SelectTrigger className="h-9 w-full sm:w-[140px]">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All categories</SelectItem>
                       <SelectItem value="RED">
                         <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-red-500" />
+                          <span className="h-2 w-2 rounded-full bg-red-500" />
                           Emergency
                         </span>
                       </SelectItem>
                       <SelectItem value="ORANGE">
                         <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-orange-500" />
+                          <span className="h-2 w-2 rounded-full bg-orange-500" />
                           Very Urgent
                         </span>
                       </SelectItem>
                       <SelectItem value="YELLOW">
                         <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                          <span className="h-2 w-2 rounded-full bg-yellow-500" />
                           Urgent
                         </span>
                       </SelectItem>
                       <SelectItem value="GREEN">
                         <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-green-500" />
+                          <span className="h-2 w-2 rounded-full bg-green-500" />
                           Standard
                         </span>
                       </SelectItem>
                       <SelectItem value="BLUE">
                         <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-blue-500" />
+                          <span className="h-2 w-2 rounded-full bg-blue-500" />
                           Non-Urgent
                         </span>
                       </SelectItem>
@@ -752,10 +762,10 @@ export default function TriageQueuePage() {
 
             {/* History Results */}
             <Card>
-              <CardHeader className="px-4 sm:px-6 pb-3">
+              <CardHeader className="px-4 pb-3 sm:px-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <History className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                    <History className="h-4 w-4 text-muted-foreground sm:h-5 sm:w-5" />
                     <CardTitle className="text-base sm:text-lg">Completed Triages</CardTitle>
                     <HelpPopover content="Past triage assessments. Click on a row to view details. Use filters to narrow results by patient name, date, or triage category." />
                   </div>
@@ -770,14 +780,14 @@ export default function TriageQueuePage() {
                 {isHistoryLoading ? (
                   <div className="space-y-3">
                     {[1, 2, 3, 4, 5].map((i) => (
-                      <Skeleton key={i} className="h-16 sm:h-14 w-full" />
+                      <Skeleton key={i} className="h-16 w-full sm:h-14" />
                     ))}
                   </div>
                 ) : !historyData?.results?.length ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <History className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 opacity-50" />
-                    <p className="font-medium text-sm sm:text-base">No triages found</p>
-                    <p className="text-xs sm:text-sm mt-1">
+                  <div className="py-8 text-center text-muted-foreground">
+                    <History className="mx-auto mb-3 h-10 w-10 opacity-50 sm:h-12 sm:w-12" />
+                    <p className="text-sm font-medium sm:text-base">No triages found</p>
+                    <p className="mt-1 text-xs sm:text-sm">
                       {searchInput || categoryFilter !== 'all'
                         ? 'Try adjusting your filters'
                         : 'Completed triages will appear here'}
@@ -789,13 +799,13 @@ export default function TriageQueuePage() {
                       <div
                         key={assessment.id}
                         onClick={() => handleViewTriage(assessment)}
-                        className="p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                        className="cursor-pointer rounded-lg border p-3 transition-colors hover:bg-muted/50 sm:p-4"
                       >
                         {/* Mobile layout */}
-                        <div className="sm:hidden space-y-2">
+                        <div className="space-y-2 sm:hidden">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <p className="font-medium text-sm truncate">
+                              <p className="truncate text-sm font-medium">
                                 {assessment.patient_name || 'Unknown Patient'}
                               </p>
                               <p className="text-xs text-muted-foreground">
@@ -813,17 +823,17 @@ export default function TriageQueuePage() {
                             )}
                           </div>
                           {assessment.chief_complaint && (
-                            <p className="text-xs text-muted-foreground line-clamp-1">
+                            <p className="line-clamp-1 text-xs text-muted-foreground">
                               {assessment.chief_complaint}
                             </p>
                           )}
                         </div>
 
                         {/* Desktop layout */}
-                        <div className="hidden sm:flex sm:items-center sm:justify-between gap-4">
-                          <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <div className="hidden gap-4 sm:flex sm:items-center sm:justify-between">
+                          <div className="flex min-w-0 flex-1 items-center gap-4">
                             <div className="min-w-0">
-                              <p className="font-medium truncate">
+                              <p className="truncate font-medium">
                                 {assessment.patient_name || 'Unknown Patient'}
                               </p>
                               <p className="text-sm text-muted-foreground">
@@ -831,18 +841,18 @@ export default function TriageQueuePage() {
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4 shrink-0">
-                            <div className="text-right text-sm text-muted-foreground hidden lg:block">
+                          <div className="flex shrink-0 items-center gap-4">
+                            <div className="hidden text-right text-sm text-muted-foreground lg:block">
                               <p>{format(new Date(assessment.triage_start_time), 'MMM d, yyyy')}</p>
                               <p>{format(new Date(assessment.triage_start_time), 'h:mm a')}</p>
                             </div>
-                            <div className="text-right text-sm text-muted-foreground hidden md:block lg:hidden">
+                            <div className="hidden text-right text-sm text-muted-foreground md:block lg:hidden">
                               <p>
                                 {format(new Date(assessment.triage_start_time), 'MMM d, h:mm a')}
                               </p>
                             </div>
                             {assessment.triaged_by_name && (
-                              <span className="text-sm text-muted-foreground hidden xl:block max-w-[120px] truncate">
+                              <span className="hidden max-w-[120px] truncate text-sm text-muted-foreground xl:block">
                                 {assessment.triaged_by_name}
                               </span>
                             )}
@@ -856,7 +866,7 @@ export default function TriageQueuePage() {
 
                 {/* Pagination */}
                 {historyTotalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <div className="mt-4 flex items-center justify-between border-t pt-4">
                     <p className="text-sm text-muted-foreground">
                       Page {historyPage} of {historyTotalPages}
                     </p>
@@ -868,7 +878,7 @@ export default function TriageQueuePage() {
                         disabled={historyPage === 1}
                       >
                         <ChevronLeft className="h-4 w-4" />
-                        <span className="hidden sm:inline ml-1">Previous</span>
+                        <span className="ml-1 hidden sm:inline">Previous</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -876,7 +886,7 @@ export default function TriageQueuePage() {
                         onClick={() => setHistoryPage((p) => Math.min(historyTotalPages, p + 1))}
                         disabled={historyPage >= historyTotalPages}
                       >
-                        <span className="hidden sm:inline mr-1">Next</span>
+                        <span className="mr-1 hidden sm:inline">Next</span>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>

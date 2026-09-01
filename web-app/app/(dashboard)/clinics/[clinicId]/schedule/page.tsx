@@ -147,7 +147,11 @@ export default function ClinicSchedulePage() {
 
   // Fetch data
   const { data: clinic, isLoading: clinicLoading } = useClinic(clinicId);
-  const { data: schedule, isLoading: scheduleLoading, refetch: refetchSchedule } = useClinicSchedule(clinicId);
+  const {
+    data: schedule,
+    isLoading: scheduleLoading,
+    refetch: refetchSchedule,
+  } = useClinicSchedule(clinicId);
 
   // Mutations
   const { mutateAsync: addSchedule, isPending: addingSchedule } = useAddSchedule();
@@ -279,8 +283,8 @@ export default function ClinicSchedulePage() {
   if (!clinic) {
     return (
       <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-        <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
-        <h3 className="text-base sm:text-lg font-semibold mb-2">Clinic not found</h3>
+        <AlertCircle className="mb-4 h-10 w-10 text-muted-foreground sm:h-12 sm:w-12" />
+        <h3 className="mb-2 text-base font-semibold sm:text-lg">Clinic not found</h3>
         <Button asChild size="sm">
           <Link href="/clinics">Back to Clinics</Link>
         </Button>
@@ -291,238 +295,197 @@ export default function ClinicSchedulePage() {
   const isDialogOpen = addScheduleOpen || !!editSchedule;
 
   return (
-    <PullToRefresh onRefresh={async () => { await refetchSchedule(); }} isRefreshing={false}>
-    <div className="space-y-4 sm:space-y-6">
-      <PageHeader
-        title={`${clinic.name} - Schedule`}
-        helpContent="Manage operating hours and session capacity for each day."
-        actions={
-          <Button size="sm" onClick={() => setAddScheduleOpen(true)}>
-            <Plus className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Add Schedule</span>
-          </Button>
-        }
-      />
-      {/* Navigation */}
-      <ClinicNavigation clinicId={clinicId} />
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Active Days</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold">{weeklyStats.activeDays}</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Days per week</p>
-          </CardContent>
-        </Card>
+    <PullToRefresh
+      onRefresh={async () => {
+        await refetchSchedule();
+      }}
+      isRefreshing={false}
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title={`${clinic.name} - Schedule`}
+          helpContent="Manage operating hours and session capacity for each day."
+          actions={
+            <Button size="sm" onClick={() => setAddScheduleOpen(true)}>
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Schedule</span>
+            </Button>
+          }
+        />
+        {/* Navigation */}
+        <ClinicNavigation clinicId={clinicId} />
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Active Days</CardTitle>
+              <Calendar className="hidden h-4 w-4 text-muted-foreground sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold sm:text-2xl">{weeklyStats.activeDays}</div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Days per week</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Weekly Hrs</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500 hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold text-blue-600">
-              {weeklyStats.totalHours.toFixed(1)}h
-            </div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Operating hours</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Capacity</CardTitle>
-            <Users className="h-4 w-4 text-green-500 hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold text-green-600">{weeklyStats.totalCapacity}</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Max/week</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Avg/Day</CardTitle>
-            <Users className="h-4 w-4 text-purple-500 hidden sm:block" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6 pt-0">
-            <div className="text-xl sm:text-2xl font-bold text-purple-600">
-              {weeklyStats.activeDays > 0 ? Math.round(weeklyStats.totalCapacity / weeklyStats.activeDays) : 0}
-            </div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Patients/day</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Weekly Schedule Overview */}
-      <Card>
-        <CardHeader className="p-3 sm:p-6">
-          <CardTitle className="text-base sm:text-lg">Weekly Overview</CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 sm:p-6 pt-0">
-          <div className="grid grid-cols-7 gap-1 sm:gap-2">
-            {DAYS_OF_WEEK.map((day) => {
-              const scheduleItem = sortedSchedule.find((s) => s.day_of_week === day.value);
-              const isActive = scheduleItem?.is_active ?? false;
-
-              return (
-                <div
-                  key={day.value}
-                  className={cn(
-                    'rounded-lg border p-1.5 sm:p-3 text-center',
-                    scheduleItem
-                      ? isActive
-                        ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900'
-                        : 'bg-gray-50 border-gray-200 dark:bg-gray-900/20 dark:border-gray-800'
-                      : 'bg-muted/50 border-dashed'
-                  )}
-                >
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">{day.short}</p>
-                  {scheduleItem ? (
-                    <>
-                      <p className={cn('text-xs sm:text-sm font-semibold', !isActive && 'text-muted-foreground')}>
-                        {formatTime(scheduleItem.start_time).split(' ')[0]}
-                      </p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">to</p>
-                      <p className={cn('text-xs sm:text-sm font-semibold', !isActive && 'text-muted-foreground')}>
-                        {formatTime(scheduleItem.end_time).split(' ')[0]}
-                      </p>
-                      {!isActive && (
-                        <Badge variant="secondary" className="mt-1 text-[10px] sm:text-xs hidden sm:inline-flex">
-                          Off
-                        </Badge>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-xs sm:text-sm text-muted-foreground py-1 sm:py-3">--</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Schedule Table */}
-      <Card>
-        <CardHeader className="p-3 sm:p-6">
-          <CardTitle className="text-base sm:text-lg">Schedule Details</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 sm:p-6 sm:pt-0">
-          {scheduleLoading ? (
-            <Skeleton className="h-64 sm:h-96 mx-3 sm:mx-0" />
-          ) : sortedSchedule.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-              <Calendar className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
-              <h3 className="text-base sm:text-lg font-semibold mb-2">No schedule</h3>
-              <p className="text-sm text-muted-foreground text-center mb-4 px-4">
-                Add operating hours for each day.
-              </p>
-              <Button size="sm" onClick={() => setAddScheduleOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Schedule
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Mobile Cards */}
-              <div className="sm:hidden space-y-3 px-3 pb-3">
-                {sortedSchedule.map((scheduleItem) => (
-                  <div key={scheduleItem.id} className="rounded-lg border p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{scheduleItem.day_display}</span>
-                        {scheduleItem.is_active ? (
-                          <Badge variant="outline" className="text-xs text-green-600 border-green-600">Active</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs text-gray-500">Off</Badge>
-                        )}
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(scheduleItem)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600" onClick={() => setDeleteScheduleId(scheduleItem.id)}>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <div className="mt-2 text-sm text-muted-foreground">
-                      {formatTime(scheduleItem.start_time)} - {formatTime(scheduleItem.end_time)} • {scheduleItem.max_patients} max
-                    </div>
-                  </div>
-                ))}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Weekly Hrs</CardTitle>
+              <Clock className="hidden h-4 w-4 text-blue-500 sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-blue-600 sm:text-2xl">
+                {weeklyStats.totalHours.toFixed(1)}h
               </div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Operating hours</p>
+            </CardContent>
+          </Card>
 
-              {/* Desktop Table */}
-              <div className="hidden sm:block overflow-x-auto rounded-md border mx-3 sm:mx-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Day</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Start Time</TableHead>
-                    <TableHead>End Time</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead className="text-right">Max Patients</TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedSchedule.map((scheduleItem) => (
-                    <TableRow key={scheduleItem.id}>
-                      <TableCell>
-                        <span className="font-medium">{scheduleItem.day_display}</span>
-                      </TableCell>
-                      <TableCell>
-                        {scheduleItem.is_active ? (
-                          <Badge variant="outline" className="text-green-600 border-green-600">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-gray-500 border-gray-500">
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Inactive
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Capacity</CardTitle>
+              <Users className="hidden h-4 w-4 text-green-500 sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-green-600 sm:text-2xl">
+                {weeklyStats.totalCapacity}
+              </div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Max/week</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs font-medium sm:text-sm">Avg/Day</CardTitle>
+              <Users className="hidden h-4 w-4 text-purple-500 sm:block" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6">
+              <div className="text-xl font-bold text-purple-600 sm:text-2xl">
+                {weeklyStats.activeDays > 0
+                  ? Math.round(weeklyStats.totalCapacity / weeklyStats.activeDays)
+                  : 0}
+              </div>
+              <p className="hidden text-xs text-muted-foreground sm:block">Patients/day</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Weekly Schedule Overview */}
+        <Card>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Weekly Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 pt-0 sm:p-6">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+              {DAYS_OF_WEEK.map((day) => {
+                const scheduleItem = sortedSchedule.find((s) => s.day_of_week === day.value);
+                const isActive = scheduleItem?.is_active ?? false;
+
+                return (
+                  <div
+                    key={day.value}
+                    className={cn(
+                      'rounded-lg border p-1.5 text-center sm:p-3',
+                      scheduleItem
+                        ? isActive
+                          ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/20'
+                          : 'border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/20'
+                        : 'border-dashed bg-muted/50'
+                    )}
+                  >
+                    <p className="text-[10px] font-medium text-muted-foreground sm:text-xs">
+                      {day.short}
+                    </p>
+                    {scheduleItem ? (
+                      <>
+                        <p
+                          className={cn(
+                            'text-xs font-semibold sm:text-sm',
+                            !isActive && 'text-muted-foreground'
+                          )}
+                        >
+                          {formatTime(scheduleItem.start_time).split(' ')[0]}
+                        </p>
+                        <p className="hidden text-[10px] text-muted-foreground sm:block sm:text-xs">
+                          to
+                        </p>
+                        <p
+                          className={cn(
+                            'text-xs font-semibold sm:text-sm',
+                            !isActive && 'text-muted-foreground'
+                          )}
+                        >
+                          {formatTime(scheduleItem.end_time).split(' ')[0]}
+                        </p>
+                        {!isActive && (
+                          <Badge
+                            variant="secondary"
+                            className="mt-1 hidden text-[10px] sm:inline-flex sm:text-xs"
+                          >
+                            Off
                           </Badge>
                         )}
-                      </TableCell>
-                      <TableCell>{formatTime(scheduleItem.start_time)}</TableCell>
-                      <TableCell>{formatTime(scheduleItem.end_time)}</TableCell>
-                      <TableCell>
-                        {calculateDuration(scheduleItem.start_time, scheduleItem.end_time)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {scheduleItem.max_patients}
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {scheduleItem.notes || '--'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
+                      </>
+                    ) : (
+                      <p className="py-1 text-xs text-muted-foreground sm:py-3 sm:text-sm">--</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Schedule Table */}
+        <Card>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Schedule Details</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 sm:p-6 sm:pt-0">
+            {scheduleLoading ? (
+              <Skeleton className="mx-3 h-64 sm:mx-0 sm:h-96" />
+            ) : sortedSchedule.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+                <Calendar className="mb-4 h-10 w-10 text-muted-foreground sm:h-12 sm:w-12" />
+                <h3 className="mb-2 text-base font-semibold sm:text-lg">No schedule</h3>
+                <p className="mb-4 px-4 text-center text-sm text-muted-foreground">
+                  Add operating hours for each day.
+                </p>
+                <Button size="sm" onClick={() => setAddScheduleOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Schedule
+                </Button>
+              </div>
+            ) : (
+              <>
+                {/* Mobile Cards */}
+                <div className="space-y-3 px-3 pb-3 sm:hidden">
+                  {sortedSchedule.map((scheduleItem) => (
+                    <div key={scheduleItem.id} className="rounded-lg border p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{scheduleItem.day_display}</span>
+                          {scheduleItem.is_active ? (
+                            <Badge
+                              variant="outline"
+                              className="border-green-600 text-xs text-green-600"
+                            >
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-gray-500">
+                              Off
+                            </Badge>
+                          )}
+                        </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEditDialog(scheduleItem)}>
-                              <Edit className="h-4 w-4 mr-2" />
+                              <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
@@ -530,170 +493,249 @@ export default function ClinicSchedulePage() {
                               className="text-red-600"
                               onClick={() => setDeleteScheduleId(scheduleItem.id)}
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
+                              <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        {formatTime(scheduleItem.start_time)} - {formatTime(scheduleItem.end_time)}{' '}
+                        • {scheduleItem.max_patients} max
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                </div>
 
-      {/* Add/Edit Schedule Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent>
-          <DialogHeader>
-            <div className="flex items-center gap-2">
-              <DialogTitle>{editSchedule ? 'Edit Schedule' : 'Add Schedule'}</DialogTitle>
-              <HelpPopover content={editSchedule
-                ? `Update the schedule for ${editSchedule.day_display}`
-                : 'Add operating hours for a day of the week'} />
-            </div>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {!editSchedule && (
-              <div className="space-y-2">
-                <Label htmlFor="day_of_week">Day of Week</Label>
-                <Select
-                  value={String(scheduleData.day_of_week)}
-                  onValueChange={(v) =>
-                    setScheduleData((prev) => ({ ...prev, day_of_week: Number(v) }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select day" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DAYS_OF_WEEK.filter((day) => !scheduledDays.has(day.value)).map((day) => (
-                      <SelectItem
-                        key={day.value}
-                        value={String(day.value)}
-                      >
-                        {day.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                {/* Desktop Table */}
+                <div className="mx-3 hidden overflow-x-auto rounded-md border sm:mx-0 sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Day</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Start Time</TableHead>
+                        <TableHead>End Time</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead className="text-right">Max Patients</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedSchedule.map((scheduleItem) => (
+                        <TableRow key={scheduleItem.id}>
+                          <TableCell>
+                            <span className="font-medium">{scheduleItem.day_display}</span>
+                          </TableCell>
+                          <TableCell>
+                            {scheduleItem.is_active ? (
+                              <Badge variant="outline" className="border-green-600 text-green-600">
+                                <CheckCircle className="mr-1 h-3 w-3" />
+                                Active
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-gray-500 text-gray-500">
+                                <XCircle className="mr-1 h-3 w-3" />
+                                Inactive
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>{formatTime(scheduleItem.start_time)}</TableCell>
+                          <TableCell>{formatTime(scheduleItem.end_time)}</TableCell>
+                          <TableCell>
+                            {calculateDuration(scheduleItem.start_time, scheduleItem.end_time)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {scheduleItem.max_patients}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-muted-foreground">
+                              {scheduleItem.notes || '--'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditDialog(scheduleItem)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-red-600"
+                                  onClick={() => setDeleteScheduleId(scheduleItem.id)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
+          </CardContent>
+        </Card>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="start_time">Start Time</Label>
-                <Input
-                  id="start_time"
-                  type="time"
-                  value={scheduleData.start_time}
-                  onChange={(e) =>
-                    setScheduleData((prev) => ({ ...prev, start_time: e.target.value }))
+        {/* Add/Edit Schedule Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={(open) => !open && closeDialog()}>
+          <DialogContent>
+            <DialogHeader>
+              <div className="flex items-center gap-2">
+                <DialogTitle>{editSchedule ? 'Edit Schedule' : 'Add Schedule'}</DialogTitle>
+                <HelpPopover
+                  content={
+                    editSchedule
+                      ? `Update the schedule for ${editSchedule.day_display}`
+                      : 'Add operating hours for a day of the week'
                   }
                 />
               </div>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {!editSchedule && (
+                <div className="space-y-2">
+                  <Label htmlFor="day_of_week">Day of Week</Label>
+                  <Select
+                    value={String(scheduleData.day_of_week)}
+                    onValueChange={(v) =>
+                      setScheduleData((prev) => ({ ...prev, day_of_week: Number(v) }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAYS_OF_WEEK.filter((day) => !scheduledDays.has(day.value)).map((day) => (
+                        <SelectItem key={day.value} value={String(day.value)}>
+                          {day.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="start_time">Start Time</Label>
+                  <Input
+                    id="start_time"
+                    type="time"
+                    value={scheduleData.start_time}
+                    onChange={(e) =>
+                      setScheduleData((prev) => ({ ...prev, start_time: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="end_time">End Time</Label>
+                  <Input
+                    id="end_time"
+                    type="time"
+                    value={scheduleData.end_time}
+                    onChange={(e) =>
+                      setScheduleData((prev) => ({ ...prev, end_time: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="end_time">End Time</Label>
+                <Label htmlFor="max_patients">Maximum Patients</Label>
                 <Input
-                  id="end_time"
-                  type="time"
-                  value={scheduleData.end_time}
+                  id="max_patients"
+                  type="number"
+                  min="1"
+                  value={scheduleData.max_patients}
                   onChange={(e) =>
-                    setScheduleData((prev) => ({ ...prev, end_time: e.target.value }))
+                    setScheduleData((prev) => ({ ...prev, max_patients: Number(e.target.value) }))
                   }
                 />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="max_patients">Maximum Patients</Label>
-              <Input
-                id="max_patients"
-                type="number"
-                min="1"
-                value={scheduleData.max_patients}
-                onChange={(e) =>
-                  setScheduleData((prev) => ({ ...prev, max_patients: Number(e.target.value) }))
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                Maximum number of patients that can be scheduled for this day
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="is_active">Active</Label>
                 <p className="text-xs text-muted-foreground">
-                  Inactive schedules won&apos;t accept new patients
+                  Maximum number of patients that can be scheduled for this day
                 </p>
               </div>
-              <Switch
-                id="is_active"
-                checked={scheduleData.is_active}
-                onCheckedChange={(checked) =>
-                  setScheduleData((prev) => ({ ...prev, is_active: checked }))
-                }
-              />
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Input
-                id="notes"
-                placeholder="Optional notes..."
-                value={scheduleData.notes}
-                onChange={(e) => setScheduleData((prev) => ({ ...prev, notes: e.target.value }))}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>
-              Cancel
-            </Button>
-            <Button
-              onClick={editSchedule ? handleUpdateSchedule : handleAddSchedule}
-              disabled={addingSchedule || updatingSchedule}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {editSchedule
-                ? updatingSchedule
-                  ? 'Saving...'
-                  : 'Save Changes'
-                : addingSchedule
-                  ? 'Adding...'
-                  : 'Add Schedule'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_active">Active</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Inactive schedules won&apos;t accept new patients
+                  </p>
+                </div>
+                <Switch
+                  id="is_active"
+                  checked={scheduleData.is_active}
+                  onCheckedChange={(checked) =>
+                    setScheduleData((prev) => ({ ...prev, is_active: checked }))
+                  }
+                />
+              </div>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteScheduleId} onOpenChange={() => setDeleteScheduleId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Schedule?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this schedule entry.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteSchedule}
-              disabled={deletingSchedule}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deletingSchedule ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Input
+                  id="notes"
+                  placeholder="Optional notes..."
+                  value={scheduleData.notes}
+                  onChange={(e) => setScheduleData((prev) => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={closeDialog}>
+                Cancel
+              </Button>
+              <Button
+                onClick={editSchedule ? handleUpdateSchedule : handleAddSchedule}
+                disabled={addingSchedule || updatingSchedule}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {editSchedule
+                  ? updatingSchedule
+                    ? 'Saving...'
+                    : 'Save Changes'
+                  : addingSchedule
+                    ? 'Adding...'
+                    : 'Add Schedule'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteScheduleId} onOpenChange={() => setDeleteScheduleId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Schedule?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete this schedule entry.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteSchedule}
+                disabled={deletingSchedule}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {deletingSchedule ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </PullToRefresh>
   );
 }

@@ -55,7 +55,14 @@ import {
 
 const PAGE_SIZE = 20;
 
-const statusConfig: Record<InvitationStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: typeof CheckCircle2 }> = {
+const statusConfig: Record<
+  InvitationStatus,
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    icon: typeof CheckCircle2;
+  }
+> = {
   PENDING: { label: 'Pending', variant: 'default', icon: Clock },
   ACCEPTED: { label: 'Accepted', variant: 'secondary', icon: CheckCircle2 },
   EXPIRED: { label: 'Expired', variant: 'outline', icon: AlertCircle },
@@ -100,18 +107,19 @@ export default function InvitationsPage() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['invitations', { page, search, status: statusFilter }],
-    queryFn: () => invitationsApi.list({
-      page,
-      page_size: PAGE_SIZE,
-      search: search || undefined,
-      status: statusFilter !== 'all' ? statusFilter : undefined,
-    }),
+    queryFn: () =>
+      invitationsApi.list({
+        page,
+        page_size: PAGE_SIZE,
+        search: search || undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+      }),
   });
 
   const invitations = data?.results ?? [];
-  const pendingCount = invitations.filter(i => i.status === 'PENDING').length;
-  const acceptedCount = invitations.filter(i => i.status === 'ACCEPTED').length;
-  const expiredCount = invitations.filter(i => i.status === 'EXPIRED').length;
+  const pendingCount = invitations.filter((i) => i.status === 'PENDING').length;
+  const acceptedCount = invitations.filter((i) => i.status === 'ACCEPTED').length;
+  const expiredCount = invitations.filter((i) => i.status === 'EXPIRED').length;
 
   const handleRefresh = async () => {
     await refresh();
@@ -212,17 +220,26 @@ export default function InvitationsPage() {
 
         <Card>
           <CardContent className="pt-6">
-            <div className="grid gap-4 sm:grid-cols-[1fr_160px] sm:items-center mb-4">
+            <div className="mb-4 grid gap-4 sm:grid-cols-[1fr_160px] sm:items-center">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by email…"
                   value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                   className="pl-9"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as InvitationStatus | 'all'); setPage(1); }}>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setStatusFilter(v as InvitationStatus | 'all');
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
@@ -250,9 +267,12 @@ export default function InvitationsPage() {
                   cell: (item) => (
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <p className="font-medium truncate">{item.email}</p>
+                        <p className="truncate font-medium">{item.email}</p>
                         {item.is_cross_org && (
-                          <Badge variant="outline" className="gap-1 shrink-0 text-[10px] px-1.5 h-5 border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400">
+                          <Badge
+                            variant="outline"
+                            className="h-5 shrink-0 gap-1 border-blue-300 px-1.5 text-[10px] text-blue-700 dark:border-blue-700 dark:text-blue-400"
+                          >
                             <ArrowLeftRight className="h-2.5 w-2.5" />
                             Cross-org
                           </Badge>
@@ -271,7 +291,7 @@ export default function InvitationsPage() {
                   hideOnMobile: true,
                   cell: (item) => (
                     <div className="flex items-center gap-1.5 text-sm">
-                      <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <Building2 className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                       <span className="truncate">{item.organization_name}</span>
                     </div>
                   ),
@@ -281,12 +301,15 @@ export default function InvitationsPage() {
                   header: 'Role',
                   sortable: true,
                   hideOnMobile: true,
-                  cell: (item) => item.role_name ? (
-                    <div className="flex items-center gap-1.5 text-sm">
-                      <Shield className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                      {item.role_name}
-                    </div>
-                  ) : <span className="text-muted-foreground">—</span>,
+                  cell: (item) =>
+                    item.role_name ? (
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <Shield className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        {item.role_name}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    ),
                 },
                 {
                   key: 'status',
@@ -296,7 +319,7 @@ export default function InvitationsPage() {
                     const config = statusConfig[item.status];
                     const StatusIcon = config.icon;
                     return (
-                      <Badge variant={config.variant} className="gap-1 shrink-0 w-fit">
+                      <Badge variant={config.variant} className="w-fit shrink-0 gap-1">
                         <StatusIcon className="h-3 w-3" />
                         {config.label}
                       </Badge>
@@ -311,7 +334,9 @@ export default function InvitationsPage() {
                   hideOnMobile: true,
                   cell: (item) => (
                     <span className="text-sm text-muted-foreground">
-                      {item.status === 'PENDING' ? formatRelativeExpiry(item.expires_at) : formatDate(item.expires_at)}
+                      {item.status === 'PENDING'
+                        ? formatRelativeExpiry(item.expires_at)
+                        : formatDate(item.expires_at)}
                     </span>
                   ),
                 },
@@ -319,26 +344,34 @@ export default function InvitationsPage() {
                   key: 'actions',
                   header: '',
                   cell: (item) => (
-                    <div className="flex gap-1 justify-end">
+                    <div className="flex justify-end gap-1">
                       {item.status === 'PENDING' && (
                         <>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={(e) => { e.stopPropagation(); handleResend(item); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleResend(item);
+                            }}
                             disabled={isActioning === item.id}
                           >
-                            <RotateCw className={`h-3.5 w-3.5 mr-1 ${isActioning === item.id ? 'animate-spin' : ''}`} />
+                            <RotateCw
+                              className={`mr-1 h-3.5 w-3.5 ${isActioning === item.id ? 'animate-spin' : ''}`}
+                            />
                             <span className="hidden sm:inline">Resend</span>
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="text-destructive hover:text-destructive"
-                            onClick={(e) => { e.stopPropagation(); setRevokeTarget(item); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRevokeTarget(item);
+                            }}
                             disabled={isActioning === item.id}
                           >
-                            <XCircle className="h-3.5 w-3.5 mr-1" />
+                            <XCircle className="mr-1 h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Revoke</span>
                           </Button>
                         </>
@@ -352,18 +385,21 @@ export default function InvitationsPage() {
                 const StatusIcon = config.icon;
                 return (
                   <Card className="p-3">
-                    <div className="flex justify-between items-start gap-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="font-medium truncate">{item.email}</p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="truncate font-medium">{item.email}</p>
                           {item.is_cross_org && (
-                            <Badge variant="outline" className="gap-1 shrink-0 text-[10px] px-1.5 h-5 border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400">
+                            <Badge
+                              variant="outline"
+                              className="h-5 shrink-0 gap-1 border-blue-300 px-1.5 text-[10px] text-blue-700 dark:border-blue-700 dark:text-blue-400"
+                            >
                               <ArrowLeftRight className="h-2.5 w-2.5" />
                               Cross-org
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           {item.organization_name}
                           {item.role_name && ` • ${item.role_name}`}
                         </p>
@@ -371,31 +407,33 @@ export default function InvitationsPage() {
                           <p className="text-xs text-muted-foreground">{item.job_title}</p>
                         )}
                       </div>
-                      <Badge variant={config.variant} className="gap-1 shrink-0">
+                      <Badge variant={config.variant} className="shrink-0 gap-1">
                         <StatusIcon className="h-3 w-3" />
                         {config.label}
                       </Badge>
                     </div>
                     {item.status === 'PENDING' && (
-                      <div className="flex gap-2 mt-3 pt-2 border-t">
+                      <div className="mt-3 flex gap-2 border-t pt-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1 h-8"
+                          className="h-8 flex-1"
                           onClick={() => handleResend(item)}
                           disabled={isActioning === item.id}
                         >
-                          <RotateCw className={`h-3.5 w-3.5 mr-1 ${isActioning === item.id ? 'animate-spin' : ''}`} />
+                          <RotateCw
+                            className={`mr-1 h-3.5 w-3.5 ${isActioning === item.id ? 'animate-spin' : ''}`}
+                          />
                           Resend
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1 h-8 text-destructive hover:text-destructive"
+                          className="h-8 flex-1 text-destructive hover:text-destructive"
                           onClick={() => setRevokeTarget(item)}
                           disabled={isActioning === item.id}
                         >
-                          <XCircle className="h-3.5 w-3.5 mr-1" />
+                          <XCircle className="mr-1 h-3.5 w-3.5" />
                           Revoke
                         </Button>
                       </div>
@@ -407,7 +445,7 @@ export default function InvitationsPage() {
 
             {/* Pagination */}
             {data && data.count > PAGE_SIZE && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="mt-4 flex items-center justify-between border-t pt-4">
                 <p className="text-sm text-muted-foreground">
                   Page {page} of {Math.ceil(data.count / PAGE_SIZE)}
                 </p>
@@ -416,7 +454,7 @@ export default function InvitationsPage() {
                     variant="outline"
                     size="sm"
                     disabled={page <= 1}
-                    onClick={() => setPage(p => p - 1)}
+                    onClick={() => setPage((p) => p - 1)}
                   >
                     Previous
                   </Button>
@@ -424,7 +462,7 @@ export default function InvitationsPage() {
                     variant="outline"
                     size="sm"
                     disabled={!data.next}
-                    onClick={() => setPage(p => p + 1)}
+                    onClick={() => setPage((p) => p + 1)}
                   >
                     Next
                   </Button>
@@ -441,8 +479,8 @@ export default function InvitationsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke Invitation</AlertDialogTitle>
             <AlertDialogDescription>
-              This will cancel the invitation to <strong>{revokeTarget?.email}</strong>.
-              They will no longer be able to create an account using this link.
+              This will cancel the invitation to <strong>{revokeTarget?.email}</strong>. They will
+              no longer be able to create an account using this link.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

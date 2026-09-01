@@ -1,10 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Loader2,
-  Plus,
-} from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -47,7 +44,11 @@ export function TeamAssignmentDialog({
   onOpenChange: (open: boolean) => void;
   /** User IDs of already-assigned team members (excluded from search results). */
   excludeUserIds?: number[];
-  onSubmit: (data: { staffUserId: number; role: (typeof TEAM_ROLES)[number]; notes: string }) => void;
+  onSubmit: (data: {
+    staffUserId: number;
+    role: (typeof TEAM_ROLES)[number];
+    notes: string;
+  }) => void;
   submitting: boolean;
 }) {
   const [selectedUserId, setSelectedUserId] = useState<number | undefined>(undefined);
@@ -88,7 +89,10 @@ export function TeamAssignmentDialog({
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Role</label>
-            <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as (typeof TEAM_ROLES)[number])}>
+            <Select
+              value={selectedRole}
+              onValueChange={(value) => setSelectedRole(value as (typeof TEAM_ROLES)[number])}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
@@ -127,7 +131,11 @@ export function TeamAssignmentDialog({
             }}
             disabled={!selectedUserId || !selectedRole || submitting}
           >
-            {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+            {submitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="mr-2 h-4 w-4" />
+            )}
             Assign Member
           </Button>
         </DialogFooter>
@@ -151,7 +159,7 @@ export function getTeamAssignmentErrorMessage(error: unknown, fallback: string):
     }
     if (typeof data === 'object' && data !== null) {
       const values = Object.values(data as Record<string, unknown>)
-        .flatMap((value) => Array.isArray(value) ? value : [value])
+        .flatMap((value) => (Array.isArray(value) ? value : [value]))
         .filter((value): value is string => typeof value === 'string');
       if (values.length > 0) {
         return values[0] ?? fallback;

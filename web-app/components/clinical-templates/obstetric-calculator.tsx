@@ -9,7 +9,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
-import { Calculator, Calendar, Baby, Clock, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Calculator,
+  Calendar,
+  Baby,
+  Clock,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -158,21 +166,12 @@ export function ObstetricCalculator({
     return (
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full justify-between"
-          >
+          <Button type="button" variant="outline" size="sm" className="w-full justify-between">
             <span className="flex items-center gap-2">
               <Calculator className="h-4 w-4" />
               Obstetric Calculator
             </span>
-            {isOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
+            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
@@ -199,7 +198,7 @@ export function ObstetricCalculator({
   return (
     <Card className="border-dashed">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
           <Calculator className="h-4 w-4" />
           Obstetric Calculator
         </CardTitle>
@@ -281,7 +280,9 @@ function CalculatorContent({
 
       {/* Date Input */}
       <div className="space-y-2">
-        <Label>{inputMode === 'lmp' ? 'Last Menstrual Period (LMP)' : 'Expected Date of Delivery (EDD)'}</Label>
+        <Label>
+          {inputMode === 'lmp' ? 'Last Menstrual Period (LMP)' : 'Expected Date of Delivery (EDD)'}
+        </Label>
         <DatePicker
           value={
             inputMode === 'lmp'
@@ -302,18 +303,18 @@ function CalculatorContent({
 
       {/* Results */}
       {calculation && (
-        <div className="space-y-3 pt-2 border-t">
+        <div className="space-y-3 border-t pt-2">
           {/* Summary Cards */}
           <div className={cn('grid gap-2', compact ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4')}>
             <div className="rounded-lg border p-2 text-center">
-              <Calendar className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+              <Calendar className="mx-auto mb-1 h-4 w-4 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">EDD</p>
-              <p className="font-medium text-sm">{formatObstetricDate(calculation.edd)}</p>
+              <p className="text-sm font-medium">{formatObstetricDate(calculation.edd)}</p>
             </div>
             <div className="rounded-lg border p-2 text-center">
-              <Baby className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+              <Baby className="mx-auto mb-1 h-4 w-4 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">Gestational Age</p>
-              <p className="font-medium text-sm">{calculation.gestationalAgeDisplay}</p>
+              <p className="text-sm font-medium">{calculation.gestationalAgeDisplay}</p>
             </div>
             <div className="rounded-lg border p-2 text-center">
               <Badge className={cn('text-xs', getTrimesterColor(calculation.trimester))}>
@@ -321,9 +322,9 @@ function CalculatorContent({
               </Badge>
             </div>
             <div className="rounded-lg border p-2 text-center">
-              <Clock className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+              <Clock className="mx-auto mb-1 h-4 w-4 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">Weeks Left</p>
-              <p className="font-medium text-sm">{calculation.weeksRemaining}</p>
+              <p className="text-sm font-medium">{calculation.weeksRemaining}</p>
             </div>
           </div>
 
@@ -347,7 +348,10 @@ function CalculatorContent({
               <p className="font-medium text-foreground">Key Milestones:</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                 <span>End 1st Trimester: {format(milestones.endFirstTrimester, 'dd MMM')}</span>
-                <span>Anatomy Scan: {format(milestones.anatomyScanStart, 'dd MMM')} - {format(milestones.anatomyScanEnd, 'dd MMM')}</span>
+                <span>
+                  Anatomy Scan: {format(milestones.anatomyScanStart, 'dd MMM')} -{' '}
+                  {format(milestones.anatomyScanEnd, 'dd MMM')}
+                </span>
                 <span>Viability (24w): {format(milestones.viability, 'dd MMM')}</span>
                 <span>Term (37w): {format(milestones.term, 'dd MMM')}</span>
               </div>

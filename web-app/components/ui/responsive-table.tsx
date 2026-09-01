@@ -42,9 +42,7 @@ interface ResponsiveTableProps<T> {
 
 function SortIcon({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
   if (!active) return <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />;
-  return direction === 'asc'
-    ? <ArrowUp className="h-3 w-3" />
-    : <ArrowDown className="h-3 w-3" />;
+  return direction === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
 }
 
 export function ResponsiveTable<T>({
@@ -110,25 +108,21 @@ export function ResponsiveTable<T>({
       return String(aVal ?? '').localeCompare(String(bVal ?? '')) * dir;
     });
     return sorted;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, sortColumn, sortDirection, columns]);
 
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-3">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-16 bg-muted rounded-lg" />
+          <div key={i} className="h-16 rounded-lg bg-muted" />
         ))}
       </div>
     );
   }
 
   if (!Array.isArray(data) || data.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        {emptyMessage}
-      </div>
-    );
+    return <div className="py-12 text-center text-muted-foreground">{emptyMessage}</div>;
   }
 
   const visibleColumns = columns.filter((col) => !col.hideOnMobile);
@@ -136,7 +130,7 @@ export function ResponsiveTable<T>({
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden md:block overflow-x-auto">
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
@@ -155,7 +149,7 @@ export function ResponsiveTable<T>({
                       <button
                         type="button"
                         className={cn(
-                          'inline-flex items-center gap-1 hover:text-foreground transition-colors',
+                          'inline-flex items-center gap-1 transition-colors hover:text-foreground',
                           column.className?.includes('text-right') && 'ml-auto'
                         )}
                         onClick={() => toggleSort(column)}
@@ -185,10 +179,7 @@ export function ResponsiveTable<T>({
                     onClick={() => onRowClick?.(item)}
                   >
                     {columns.map((column) => (
-                      <td
-                        key={String(column.key)}
-                        className={cn('p-4', column.className)}
-                      >
+                      <td key={String(column.key)} className={cn('p-4', column.className)}>
                         {column.cell
                           ? column.cell(item)
                           : String(getValue(item, String(column.key)) ?? '—')}
@@ -210,7 +201,7 @@ export function ResponsiveTable<T>({
       </div>
 
       {/* Mobile Cards */}
-      <div className="md:hidden space-y-3">
+      <div className="space-y-3 md:hidden">
         {sortedData.map((item, index) => {
           if (mobileCard) {
             return (
@@ -229,21 +220,16 @@ export function ResponsiveTable<T>({
             <div
               key={keyExtractor(item)}
               className={cn(
-                'rounded-lg border p-4 space-y-2',
-                onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors',
+                'space-y-2 rounded-lg border p-4',
+                onRowClick && 'cursor-pointer transition-colors hover:bg-muted/50',
                 rowClassName?.(item)
               )}
               onClick={() => onRowClick?.(item)}
             >
               {visibleColumns.map((column) => (
-                <div
-                  key={String(column.key)}
-                  className="flex justify-between gap-4"
-                >
-                  <span className="text-sm text-muted-foreground shrink-0">
-                    {column.header}:
-                  </span>
-                  <span className="text-sm text-right">
+                <div key={String(column.key)} className="flex justify-between gap-4">
+                  <span className="shrink-0 text-sm text-muted-foreground">{column.header}:</span>
+                  <span className="text-right text-sm">
                     {column.cell
                       ? column.cell(item)
                       : String(getValue(item, String(column.key)) ?? '—')}

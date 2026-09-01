@@ -44,8 +44,8 @@ const DICOMViewer = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-[600px] bg-black rounded-lg">
-        <Skeleton className="w-32 h-32 rounded-full" />
+      <div className="flex h-[600px] items-center justify-center rounded-lg bg-black">
+        <Skeleton className="h-32 w-32 rounded-full" />
       </div>
     ),
   }
@@ -129,9 +129,9 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
         />
         <Card>
           <CardContent className="py-12 text-center">
-            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-destructive" />
+            <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive" />
             <p className="text-lg font-medium">Failed to load DICOM study</p>
-            <p className="text-muted-foreground mt-2">
+            <p className="mt-2 text-muted-foreground">
               The study may have been deleted or you don't have permission to view it.
             </p>
             <Button
@@ -157,7 +157,9 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleDownload} disabled={downloading}>
               <Download className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">{downloading ? 'Downloading...' : 'Download'}</span>
+              <span className="hidden sm:inline">
+                {downloading ? 'Downloading...' : 'Download'}
+              </span>
             </Button>
             <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
               <Share2 className="h-4 w-4 sm:mr-2" />
@@ -178,20 +180,20 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
       />
 
       {/* Study Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <div className="text-sm font-medium truncate flex items-center gap-2">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex items-center gap-2 truncate text-sm font-medium">
             {study.patient_name}
             <ModalityBadge modality={study.modality as ImagingModality} />
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {formatDate(study.study_date)}
             {study.number_of_series > 0 && ` • ${study.number_of_series} series`}
             {study.number_of_instances > 0 && ` • ${study.number_of_instances} images`}
           </p>
         </div>
         {study.accession_number && (
-          <Badge variant="outline" className="shrink-0 w-fit self-start sm:self-auto">
+          <Badge variant="outline" className="w-fit shrink-0 self-start sm:self-auto">
             {study.accession_number}
           </Badge>
         )}
@@ -228,7 +230,7 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
             {/* Patient Information */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <User className="h-4 w-4" />
                   Patient Information
                 </CardTitle>
@@ -236,10 +238,7 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
               <CardContent className="space-y-3">
                 <InfoRow label="Patient Name" value={study.patient_name} />
                 {study.referring_physician_name && (
-                  <InfoRow
-                    label="Referring Physician"
-                    value={study.referring_physician_name}
-                  />
+                  <InfoRow label="Referring Physician" value={study.referring_physician_name} />
                 )}
               </CardContent>
             </Card>
@@ -247,7 +246,7 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
             {/* Study Information */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <FileText className="h-4 w-4" />
                   Study Information
                 </CardTitle>
@@ -257,7 +256,10 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
                 {study.study_time && (
                   <InfoRow label="Study Time" value={formatTime(study.study_time)} />
                 )}
-                <InfoRow label="Modality" value={MODALITY_LABELS[study.modality as ImagingModality] || study.modality} />
+                <InfoRow
+                  label="Modality"
+                  value={MODALITY_LABELS[study.modality as ImagingModality] || study.modality}
+                />
                 {study.study_description && (
                   <InfoRow label="Description" value={study.study_description} />
                 )}
@@ -271,7 +273,7 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
             {study.institution_name && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <Building2 className="h-4 w-4" />
                     Institution
                   </CardTitle>
@@ -285,7 +287,7 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
             {/* Storage Information */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <Layers className="h-4 w-4" />
                   Storage Information
                 </CardTitle>
@@ -297,18 +299,14 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
                   label="Total Size"
                   value={study.total_file_size ? formatBytes(study.total_file_size) : '-'}
                 />
-                <InfoRow
-                  label="Study Instance UID"
-                  value={study.study_instance_uid}
-                  mono
-                />
+                <InfoRow label="Study Instance UID" value={study.study_instance_uid} mono />
               </CardContent>
             </Card>
 
             {/* Series List */}
             <Card className="md:col-span-2">
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <Layers className="h-4 w-4" />
                   Series ({study.series.length})
                 </CardTitle>
@@ -318,30 +316,29 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
                   {study.series.map((series, idx) => (
                     <div key={series.series_instance_uid} className="py-3 first:pt-0 last:pb-0">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded bg-black flex items-center justify-center flex-shrink-0">
+                        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded bg-black">
                           {series.thumbnail_path ? (
                             <Image
                               src={imagingApi.getThumbnailUrl(series.thumbnail_path) || ''}
                               alt={`Series ${series.series_number}`}
                               width={48}
                               height={48}
-                              className="w-full h-full object-cover rounded"
+                              className="h-full w-full rounded object-cover"
                             />
                           ) : (
                             <ImageIcon className="h-5 w-5 text-muted-foreground" />
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">
-                            {series.series_description || `Series ${series.series_number || idx + 1}`}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">
+                            {series.series_description ||
+                              `Series ${series.series_number || idx + 1}`}
                           </p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Badge variant="outline" className="text-xs">
                               {series.modality}
                             </Badge>
-                            {series.body_part_examined && (
-                              <span>{series.body_part_examined}</span>
-                            )}
+                            {series.body_part_examined && <span>{series.body_part_examined}</span>}
                             <span>{series.number_of_instances} images</span>
                             {series.total_file_size && (
                               <span>{formatBytes(series.total_file_size)}</span>
@@ -359,7 +356,7 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
             {study.imaging_order && (
               <Card className="md:col-span-2">
                 <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <ExternalLink className="h-4 w-4" />
                     Linked Imaging Order
                   </CardTitle>
@@ -382,19 +379,11 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
 }
 
 // Helper component for info rows
-function InfoRow({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function InfoRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
-      <span className="text-sm text-muted-foreground sm:w-40 flex-shrink-0">{label}</span>
-      <span className={cn('text-sm break-all', mono && 'font-mono text-xs')}>{value}</span>
+    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-4">
+      <span className="flex-shrink-0 text-sm text-muted-foreground sm:w-40">{label}</span>
+      <span className={cn('break-all text-sm', mono && 'font-mono text-xs')}>{value}</span>
     </div>
   );
 }

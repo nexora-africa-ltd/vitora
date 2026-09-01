@@ -35,11 +35,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -92,9 +88,7 @@ import {
   filterValidationErrorsByActiveInterventions,
   toActiveInterventionCodeSet,
 } from '@/lib/sha/missing-docs';
-import {
-  extractPreviewActiveInterventions,
-} from '@/lib/sha/preview-interventions';
+import { extractPreviewActiveInterventions } from '@/lib/sha/preview-interventions';
 import { format, parseISO } from 'date-fns';
 import { ClaimPreviewPanel } from './ClaimPreviewPanel';
 
@@ -216,7 +210,7 @@ function diagnosisCodeForPayload(value: DiagnosisCodeValue): string {
 
 function derivePractitionerFields(
   clinician: ClinicianInfo | null | undefined,
-  user: ReturnType<typeof useAuth>['user'],
+  user: ReturnType<typeof useAuth>['user']
 ): PractitionerFields {
   const source = clinician?.national_id || clinician?.license_number ? clinician : user;
   if (!source) return {};
@@ -284,14 +278,19 @@ function formatErr(e: unknown): string {
   return err?.message ?? 'Request failed';
 }
 
-function formatReconciliationSummary(summary: {
-  reconciled?: boolean;
-  reason?: string;
-  created?: number;
-  updated?: number;
-  restored?: number;
-  retired?: number;
-} | null | undefined): string {
+function formatReconciliationSummary(
+  summary:
+    | {
+        reconciled?: boolean;
+        reason?: string;
+        created?: number;
+        updated?: number;
+        restored?: number;
+        retired?: number;
+      }
+    | null
+    | undefined
+): string {
   if (!summary) return '';
   if (!summary.reconciled) {
     return summary.reason === 'missing_interventions_field'
@@ -307,7 +306,8 @@ function formatReconciliationSummary(summary: {
 }
 
 function extractInterventionCombinationError(e: unknown): string | null {
-  const data = (e as { response?: { data?: { error?: unknown; message?: unknown } } })?.response?.data;
+  const data = (e as { response?: { data?: { error?: unknown; message?: unknown } } })?.response
+    ?.data;
   const rawError =
     typeof data?.error === 'string'
       ? data.error
@@ -329,7 +329,9 @@ function extractInterventionCombinationError(e: unknown): string | null {
 
     const all = ediRec['_All__'] || ediRec['_all__'] || ediRec['all'];
     if (Array.isArray(all)) {
-      const messages = all.filter((msg): msg is string => typeof msg === 'string' && msg.trim().length > 0);
+      const messages = all.filter(
+        (msg): msg is string => typeof msg === 'string' && msg.trim().length > 0
+      );
       if (messages.length > 0) return messages.join('; ');
     }
 
@@ -337,7 +339,9 @@ function extractInterventionCombinationError(e: unknown): string | null {
       const val = ediRec[key];
       if (typeof val === 'string' && val.trim()) return val;
       if (Array.isArray(val)) {
-        const messages = val.filter((msg): msg is string => typeof msg === 'string' && msg.trim().length > 0);
+        const messages = val.filter(
+          (msg): msg is string => typeof msg === 'string' && msg.trim().length > 0
+        );
         if (messages.length > 0) return messages.join('; ');
       }
     }
@@ -445,10 +449,7 @@ export function ClaimILMPanel({
 
   // ---- Derived context from claim + auth ----
   const visitStarted = !!claim.dha_visit_started_at;
-  const patientCrId =
-    claim.dha_external_id ||
-    toCrId(claim.sha_member_number ?? '') ||
-    '';
+  const patientCrId = claim.dha_external_id || toCrId(claim.sha_member_number ?? '') || '';
 
   // ---- Shared cascading benefit-package → intervention fetch ----
   const {
@@ -470,12 +471,12 @@ export function ClaimILMPanel({
   const dhaInvoiceNumber = (claim.dha_invoice_number || previewDhaInvoiceNumber || '').trim();
   const localActiveInterventions = useMemo(
     () => (claim.claim_interventions ?? []).filter((i) => i.status === 'active'),
-    [claim.claim_interventions],
+    [claim.claim_interventions]
   );
 
   const practitionerFields = useMemo(
     () => derivePractitionerFields(claim.encounter_clinician, user),
-    [claim.encounter_clinician, user],
+    [claim.encounter_clinician, user]
   );
   const hasPractitioner = !!practitionerFields.practitioner_identification_number;
 
@@ -490,7 +491,9 @@ export function ClaimILMPanel({
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<IlmCallResult | null>(null);
   const [previewResult, setPreviewResult] = useState<IlmCallResult | null>(null);
-  const [applyPreviewResult, setApplyPreviewResult] = useState<IlmApplyPreviewLinesResponse | null>(null);
+  const [applyPreviewResult, setApplyPreviewResult] = useState<IlmApplyPreviewLinesResponse | null>(
+    null
+  );
   const [materializePreviewResult, setMaterializePreviewResult] =
     useState<IlmMaterializePreviewInvoiceResponse | null>(null);
   const [replacePreviewLines, setReplacePreviewLines] = useState(true);
@@ -502,21 +505,20 @@ export function ClaimILMPanel({
 
   const previewInterventionsState = useMemo(
     () => extractPreviewActiveInterventions(previewResult?.payload),
-    [previewResult?.payload],
+    [previewResult?.payload]
   );
   const activeInterventions = useMemo(
-    () => (
+    () =>
       previewInterventionsState.available
         ? previewInterventionsState.interventions
         : blockLocalInterventionFallback
           ? []
-        : localActiveInterventions
-    ),
-    [blockLocalInterventionFallback, localActiveInterventions, previewInterventionsState],
+          : localActiveInterventions,
+    [blockLocalInterventionFallback, localActiveInterventions, previewInterventionsState]
   );
   const interventionCodes = useMemo(
     () => activeInterventions.map((i) => i.intervention_code),
-    [activeInterventions],
+    [activeInterventions]
   );
 
   // ---- Combination-aware benefit-package filtering ----
@@ -526,26 +528,34 @@ export function ClaimILMPanel({
   // (primary has allowedCombinations === 'ALONE').
   const primaryBenefitCode = useMemo(
     () => (interventionCodes.length > 0 ? getBenefitCode(interventionCodes[0]!) : null),
-    [interventionCodes],
+    [interventionCodes]
   );
   const combinableBenefitCodes = useMemo(
     () => (primaryBenefitCode ? getAllowedCombinations(primaryBenefitCode) : null),
-    [primaryBenefitCode],
+    [primaryBenefitCode]
   );
   const aloneClaim = useMemo(
     () => (primaryBenefitCode ? isAlonePackage(primaryBenefitCode) : false),
-    [primaryBenefitCode],
+    [primaryBenefitCode]
   );
   const allowedBenefitPackageOptions = useMemo(() => {
     if (!primaryBenefitCode) return null; // no restriction
     if (combinableBenefitCodes === null) return null;
     return benefitPackageOptions.filter((pkg) => combinableBenefitCodes.includes(pkg.code));
   }, [benefitPackageOptions, primaryBenefitCode, combinableBenefitCodes]);
-  const effectiveBenefitPackageOptions =
-    allowedBenefitPackageOptions ?? benefitPackageOptions;
+  const effectiveBenefitPackageOptions = allowedBenefitPackageOptions ?? benefitPackageOptions;
 
-  const { data: latestConsentToken, isLoading: latestConsentLoading, isFetching: latestConsentFetching } = useQuery({
-    queryKey: ['sha-latest-consent-for-workflow', claim.sha_member, claim.encounter, claim.updated_at],
+  const {
+    data: latestConsentToken,
+    isLoading: latestConsentLoading,
+    isFetching: latestConsentFetching,
+  } = useQuery({
+    queryKey: [
+      'sha-latest-consent-for-workflow',
+      claim.sha_member,
+      claim.encounter,
+      claim.updated_at,
+    ],
     enabled: typeof claim.sha_member === 'number' && !!flow?.requiresConsent,
     queryFn: async () => {
       try {
@@ -567,7 +577,7 @@ export function ClaimILMPanel({
 
   const validatedConsentToken = useMemo(
     () => String(latestConsentToken?.consent_token || '').trim(),
-    [latestConsentToken?.consent_token],
+    [latestConsentToken?.consent_token]
   );
   const tokenLookupInFlight = requiresConsent && (latestConsentLoading || latestConsentFetching);
 
@@ -753,13 +763,7 @@ export function ClaimILMPanel({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [
-    visitStarted,
-    consentCredential,
-    patientCrId,
-    consentInterventionCode,
-    interventionCodes,
-  ]);
+  }, [visitStarted, consentCredential, patientCrId, consentInterventionCode, interventionCodes]);
 
   // Outpatient discharge state
   // OTP is pre-populated from the consent credential captured at start-visit
@@ -792,7 +796,7 @@ export function ClaimILMPanel({
   // into what will be sent.
   const effectiveInterventionCode = useMemo(
     () => consentInterventionCode || interventionCodes[0] || manualInterventionCode || '',
-    [consentInterventionCode, interventionCodes, manualInterventionCode],
+    [consentInterventionCode, interventionCodes, manualInterventionCode]
   );
 
   // Service type derived from active interventions on the claim, falling back
@@ -816,17 +820,16 @@ export function ClaimILMPanel({
   const [newInterventionCode, setNewInterventionCode] = useState('');
   const [addInterventionInlineError, setAddInterventionInlineError] = useState<string | null>(null);
   const [addDiagnosisOpen, setAddDiagnosisOpen] = useState(false);
-  const [newDiagnosisCodeInput, setNewDiagnosisCodeInput] = useState<DiagnosisCodeValue>(
-    emptyDiagnosisCodeValue(),
-  );
+  const [newDiagnosisCodeInput, setNewDiagnosisCodeInput] =
+    useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
   const [diagnosisAnchorCode, setDiagnosisAnchorCode] = useState('');
   const selectedNewDiagnosisCode = useMemo(
     () => diagnosisCodeForPayload(newDiagnosisCodeInput),
-    [newDiagnosisCodeInput],
+    [newDiagnosisCodeInput]
   );
   const diagnosisUsesIcd10Fallback = useMemo(
     () => !newDiagnosisCodeInput.icd11Code && !!newDiagnosisCodeInput.icd10Display,
-    [newDiagnosisCodeInput.icd10Display, newDiagnosisCodeInput.icd11Code],
+    [newDiagnosisCodeInput.icd10Display, newDiagnosisCodeInput.icd11Code]
   );
 
   const {
@@ -860,10 +863,13 @@ export function ClaimILMPanel({
   const dhaAttachmentsSynced = attachmentSyncStatus?.all_matched ?? false;
 
   const preSubmitChecklist = useMemo<PreSubmitChecklistItem[]>(() => {
-    const preSubmitErrors = filterValidationErrorsByActiveInterventions(preSubmitValidation?.errors ?? [], {
-      activeInterventionCodes: toActiveInterventionCodeSet(activeInterventions),
-      previewPayload: previewResult?.payload,
-    });
+    const preSubmitErrors = filterValidationErrorsByActiveInterventions(
+      preSubmitValidation?.errors ?? [],
+      {
+        activeInterventionCodes: toActiveInterventionCodeSet(activeInterventions),
+        previewPayload: previewResult?.payload,
+      }
+    );
     const hasError = (matcher: (error: string) => boolean) => preSubmitErrors.some(matcher);
 
     return [
@@ -931,7 +937,9 @@ export function ClaimILMPanel({
   useEffect(() => {
     if (!visitStarted || preSubmitChecklist.length === 0) return;
     const autoFixableIds = new Set(['items', 'attachments', 'amount', 'preview']);
-    const currentMap = Object.fromEntries(preSubmitChecklist.map((item) => [item.id, item.complete]));
+    const currentMap = Object.fromEntries(
+      preSubmitChecklist.map((item) => [item.id, item.complete])
+    );
     const previousMap = previousChecklistStateRef.current;
 
     if (previousMap) {
@@ -949,9 +957,9 @@ export function ClaimILMPanel({
   }, [preSubmitChecklist, visitStarted]);
 
   const allChecklistItemsComplete = preSubmitChecklist.every((item) => item.complete);
-  const preSubmitChecklistBlocking = visitStarted && (
-    preSubmitValidationLoading || (preSubmitValidation ? !allChecklistItemsComplete : false)
-  );
+  const preSubmitChecklistBlocking =
+    visitStarted &&
+    (preSubmitValidationLoading || (preSubmitValidation ? !allChecklistItemsComplete : false));
 
   const refreshPreSubmitChecklist = useCallback(() => {
     void refetchPreSubmitValidation();
@@ -960,7 +968,7 @@ export function ClaimILMPanel({
 
   const addInterventionValidation = useMemo(
     () => validateInterventionCombination(interventionCodes, newInterventionCode),
-    [interventionCodes, newInterventionCode],
+    [interventionCodes, newInterventionCode]
   );
 
   const addInterventionSelectOptions = useMemo(
@@ -975,12 +983,12 @@ export function ClaimILMPanel({
           .filter(Boolean)
           .join(' · '),
       })),
-    [interventionOptions],
+    [interventionOptions]
   );
 
   // ---- Capitation provider validation (PHC flow only) ----
   const [capitationWarning, setCapitationWarning] = useState<CapitationValidationResult | null>(
-    null,
+    null
   );
   useEffect(() => {
     if (!useVirtualLine || !claim.sha_member) return;
@@ -1011,7 +1019,10 @@ export function ClaimILMPanel({
       const msg = formatErr(e);
       const lower = msg.toLowerCase();
       // DHA rejects OTP for patients registered with biometrics — guide to biometric path
-      if (lower.includes('restricted to biometric') || lower.includes('biometric') && (lower.includes('required') || lower.includes('restrict'))) {
+      if (
+        lower.includes('restricted to biometric') ||
+        (lower.includes('biometric') && (lower.includes('required') || lower.includes('restrict')))
+      ) {
         setError(
           'This patient requires biometric consent. DHA does not allow OTP for this patient. ' +
             'Use the "Biometric consent" button below to capture their fingerprint.'
@@ -1022,7 +1033,9 @@ export function ClaimILMPanel({
       const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
       if (code === 'visit_already_opened') {
         setVisitAlreadyActiveNotice(true);
-        setError('Visit already active on DHA. Use the existing session or restart it only if needed.');
+        setError(
+          'Visit already active on DHA. Use the existing session or restart it only if needed.'
+        );
         toast.info('Visit already active on DHA. Continuing with existing session.');
         onChange?.();
       } else if (code === 'consent_token_expired') {
@@ -1043,7 +1056,7 @@ export function ClaimILMPanel({
   const handleRestartVisitSession = useCallback(async () => {
     if (typeof window !== 'undefined') {
       const confirmed = window.confirm(
-        'Restart DHA visit session? This will expire the current encounter token and require fresh consent.',
+        'Restart DHA visit session? This will expire the current encounter token and require fresh consent.'
       );
       if (!confirmed) return;
     }
@@ -1062,7 +1075,9 @@ export function ClaimILMPanel({
       setDischargeOtpRefreshed(false);
       onConsentExpired?.();
       onChange?.();
-      toast.success(result.message || 'DHA visit session restarted. Please re-consent the patient.');
+      toast.success(
+        result.message || 'DHA visit session restarted. Please re-consent the patient.'
+      );
     } catch (e: unknown) {
       setError(formatErr(e));
       toast.error('Failed to restart DHA visit session.');
@@ -1108,7 +1123,9 @@ export function ClaimILMPanel({
       if (reusedByStatus || reusedByMessage) {
         setStartOtp('');
         setReuseExistingConsentStart(true);
-        toast.success(serverMessage || 'Existing active consent was reused. Refreshing visit status...');
+        toast.success(
+          serverMessage || 'Existing active consent was reused. Refreshing visit status...'
+        );
         await openVisitRef.current({ forceReuseExistingConsent: true });
         onChange?.();
         return;
@@ -1125,7 +1142,13 @@ export function ClaimILMPanel({
     } finally {
       setBusy(null);
     }
-  }, [claim.sha_member, interventionCodes, consentInterventionCode, manualInterventionCode, onChange]);
+  }, [
+    claim.sha_member,
+    interventionCodes,
+    consentInterventionCode,
+    manualInterventionCode,
+    onChange,
+  ]);
 
   const handleStartBiometric = useCallback(async () => {
     setBiometricBusy(true);
@@ -1165,7 +1188,11 @@ export function ClaimILMPanel({
       credential.otp = startOtp;
     } else if (consentCredential?.otp) {
       credential.otp = consentCredential.otp;
-    } else if (options?.forceReuseExistingConsent || reuseExistingConsentStart || tokenIsCurrentlyUsable) {
+    } else if (
+      options?.forceReuseExistingConsent ||
+      reuseExistingConsentStart ||
+      tokenIsCurrentlyUsable
+    ) {
       reuseExistingConsent = true;
     }
     if (Object.keys(credential).length === 0 && !reuseExistingConsent) {
@@ -1189,9 +1216,9 @@ export function ClaimILMPanel({
       return;
     }
     const inpatientAdmissionDate =
-      (typeof claim.admission_date === 'string' && claim.admission_date.trim())
-      || (typeof claim.service_date === 'string' && claim.service_date.trim())
-      || undefined;
+      (typeof claim.admission_date === 'string' && claim.admission_date.trim()) ||
+      (typeof claim.service_date === 'string' && claim.service_date.trim()) ||
+      undefined;
     await run('startVisit', () =>
       shaApi.ilmStartVisit(claimId, {
         ...credential,
@@ -1203,7 +1230,7 @@ export function ClaimILMPanel({
           ? { admission_date: inpatientAdmissionDate }
           : {}),
         ...(hasPractitioner ? practitionerFields : {}),
-      }),
+      })
     );
   }
 
@@ -1285,7 +1312,7 @@ export function ClaimILMPanel({
       const result = await shaApi.ilmApplyPreviewLines(
         claimId,
         payload as Record<string, unknown>,
-        replacePreviewLines,
+        replacePreviewLines
       );
       setApplyPreviewResult(result);
       if (!claim.dha_invoice_number && result.detected_invoice_number) {
@@ -1353,7 +1380,7 @@ export function ClaimILMPanel({
         discharge_reason: dischargeReason,
         ...(dischargeNotes ? { notes: dischargeNotes } : {}),
         ...practitionerFields,
-      }),
+      })
     );
   }
 
@@ -1373,7 +1400,7 @@ export function ClaimILMPanel({
       }
       if (!addInterventionValidation.valid) {
         throw new Error(
-          addInterventionValidation.reason ?? 'This intervention combination is not allowed.',
+          addInterventionValidation.reason ?? 'This intervention combination is not allowed.'
         );
       }
       const fn = useVirtualLine
@@ -1407,7 +1434,9 @@ export function ClaimILMPanel({
   async function addDiagnosis() {
     if (!selectedNewDiagnosisCode || !diagnosisAnchorCode) return;
     if (diagnosisUsesIcd10Fallback) {
-      setError('DHA diagnosis endpoint requires ICD-11. Select an ICD-11 diagnosis code before adding.');
+      setError(
+        'DHA diagnosis endpoint requires ICD-11. Select an ICD-11 diagnosis code before adding.'
+      );
       return;
     }
     await run('addDiagnosis', () =>
@@ -1415,7 +1444,7 @@ export function ClaimILMPanel({
         icd_code: selectedNewDiagnosisCode,
         intervention_code: diagnosisAnchorCode,
         ...practitionerFields,
-      }),
+      })
     );
     setAddDiagnosisOpen(false);
     setNewDiagnosisCodeInput(emptyDiagnosisCodeValue());
@@ -1452,14 +1481,7 @@ export function ClaimILMPanel({
       }
       // Non-blocking background refresh
     }
-  }, [
-    busy,
-    claimId,
-    onConsentExpired,
-    onPreviewContext,
-    refetchPreSubmitValidation,
-    visitStarted,
-  ]);
+  }, [busy, claimId, onConsentExpired, onPreviewContext, refetchPreSubmitValidation, visitStarted]);
 
   useEffect(() => {
     if (!visitStarted || !previewResult?.payload) return;
@@ -1474,7 +1496,7 @@ export function ClaimILMPanel({
       shaApi.ilmClose(claimId, {
         cancel_reason_type: cancelReason,
         cancel_reason_text: cancelText,
-      }),
+      })
     );
     setCancelOpen(false);
     setCancelText('');
@@ -1490,9 +1512,11 @@ export function ClaimILMPanel({
     {
       label: 'Patient consent',
       ok: requiresConsent ? hasConsentOrOtp : true,
-        hint: requiresConsent
-          ? hasConsentOrOtp
-          ? validatedConsentToken ? 'Token validated' : 'OTP entered — will validate on visit start'
+      hint: requiresConsent
+        ? hasConsentOrOtp
+          ? validatedConsentToken
+            ? 'Token validated'
+            : 'OTP entered — will validate on visit start'
           : undefined
         : 'Not required for emergency flow',
     },
@@ -1504,11 +1528,12 @@ export function ClaimILMPanel({
     {
       label: `Active interventions`,
       ok: activeInterventions.length > 0 || !!effectiveInterventionCode,
-      hint: activeInterventions.length > 0
-        ? `${activeInterventions.length} on claim`
-        : effectiveInterventionCode
-          ? `Will use ${effectiveInterventionCode}`
-          : 'Add at least one intervention first',
+      hint:
+        activeInterventions.length > 0
+          ? `${activeInterventions.length} on claim`
+          : effectiveInterventionCode
+            ? `Will use ${effectiveInterventionCode}`
+            : 'Add at least one intervention first',
     },
     {
       label: 'Practitioner licence',
@@ -1537,9 +1562,7 @@ export function ClaimILMPanel({
     !!(startOtp || startAuthGuid || reuseExistingConsentStart || tokenIsCurrentlyUsable) &&
     !!effectiveInterventionCode;
 
-  const panelTitle = flow
-    ? `DHA HIE Workflow - ${flow.badgeLabel}`
-    : 'DHA HIE Workflow';
+  const panelTitle = flow ? `DHA HIE Workflow - ${flow.badgeLabel}` : 'DHA HIE Workflow';
 
   const isStartingVisit = busy !== null && busy === 'startVisit';
   const previewLoading = busy === 'preview';
@@ -1595,12 +1618,18 @@ export function ClaimILMPanel({
           : 'Submit outpatient claim';
 
   const primaryLifecycleDisabled =
-    busy !== null
-    || (previewDone && !applyPreviewDone && !previewResult?.payload)
-    || (previewDone && applyPreviewDone && !materializePreviewDone && (!previewResult?.payload && !applyPreviewResult?.success))
-    || (lifecycleReadyToSubmit && isInpatientFlow)
-    || (lifecycleReadyToSubmit && !isInpatientFlow && preSubmitChecklistBlocking)
-    || (lifecycleReadyToSubmit && !isInpatientFlow && (!dhaInvoiceNumber || (!dischargeOtp && !startAuthGuid)));
+    busy !== null ||
+    (previewDone && !applyPreviewDone && !previewResult?.payload) ||
+    (previewDone &&
+      applyPreviewDone &&
+      !materializePreviewDone &&
+      !previewResult?.payload &&
+      !applyPreviewResult?.success) ||
+    (lifecycleReadyToSubmit && isInpatientFlow) ||
+    (lifecycleReadyToSubmit && !isInpatientFlow && preSubmitChecklistBlocking) ||
+    (lifecycleReadyToSubmit &&
+      !isInpatientFlow &&
+      (!dhaInvoiceNumber || (!dischargeOtp && !startAuthGuid)));
 
   // =============================================================================
   // Render
@@ -1612,9 +1641,7 @@ export function ClaimILMPanel({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="text-base">{panelTitle}</CardTitle>
-            {flow && (
-              <p className="text-xs text-muted-foreground mt-0.5">{flow.description}</p>
-            )}
+            {flow && <p className="mt-0.5 text-xs text-muted-foreground">{flow.description}</p>}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Badge variant="outline" className={`text-[10px] ${tokenStatus.badgeClass}`}>
                 Token: {tokenStatus.label}
@@ -1629,9 +1656,9 @@ export function ClaimILMPanel({
                   disabled={restartSessionBusy || busy !== null}
                 >
                   {restartSessionBusy ? (
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                   ) : (
-                    <RefreshCw className="h-3 w-3 mr-1" />
+                    <RefreshCw className="mr-1 h-3 w-3" />
                   )}
                   Restart DHA session
                 </Button>
@@ -1645,7 +1672,10 @@ export function ClaimILMPanel({
       <CardContent className="space-y-5">
         {/* Capitation warning (PHC) */}
         {capitationWarning && !capitationWarning.is_valid && (
-          <Alert variant="destructive" className="border-amber-500 bg-amber-50 dark:bg-amber-900/20">
+          <Alert
+            variant="destructive"
+            className="border-amber-500 bg-amber-50 dark:bg-amber-900/20"
+          >
             <AlertTriangle className="h-4 w-4 text-amber-600" />
             <AlertTitle className="text-amber-800 dark:text-amber-200">
               Provider mismatch
@@ -1661,8 +1691,8 @@ export function ClaimILMPanel({
           <Alert>
             <AlertTitle className="text-sm">Per-diem billing</AlertTitle>
             <AlertDescription className="text-xs">
-              Line items are computed automatically from accrued admission days at discharge.
-              Use the Interventions list on the Overview tab to transfer between wards.
+              Line items are computed automatically from accrued admission days at discharge. Use
+              the Interventions list on the Overview tab to transfer between wards.
             </AlertDescription>
           </Alert>
         )}
@@ -1679,8 +1709,8 @@ export function ClaimILMPanel({
           <Alert>
             <AlertTitle className="text-sm">Visit already active</AlertTitle>
             <AlertDescription className="text-xs">
-              DHA already has an active visit for this claim. Continue with interventions, preview, and submit.
-              Restart the DHA session only if you need to force a fresh consent cycle.
+              DHA already has an active visit for this claim. Continue with interventions, preview,
+              and submit. Restart the DHA session only if you need to force a fresh consent cycle.
             </AlertDescription>
           </Alert>
         )}
@@ -1699,98 +1729,118 @@ export function ClaimILMPanel({
                 manually. DHA requires a valid, facility-eligible, FEE-FOR-SERVICE
                 intervention on start_visit. Capitation and inactive codes are
                 filtered out server-side. */}
-            {activeInterventions.length === 0 && !consentInterventionCode && !manualInterventionCode && (
-              <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
-                <Label className="text-xs font-medium text-amber-900 dark:text-amber-100">
-                  Select intervention for this visit
-                </Label>
-                <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                  Consent didn&apos;t include one. Pick a benefit package and intervention your facility is entitled to bill.
-                </p>
-                {benefitPackagesLoading ? (
-                  <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-background">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span className="text-xs text-muted-foreground">Loading benefit packages…</span>
-                  </div>
-                ) : benefitPackageOptions.length > 0 ? (
-                  <>
-                    <div className="space-y-1">
-                      <Label htmlFor="ilm-manual-package" className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                        Benefit Package
-                      </Label>
-                      <Select
-                        value={selectedBenefitPkgCode}
-                        onValueChange={(value) => {
-                          setSelectedBenefitPkgCode(value);
-                          setManualInterventionCode('');
-                          if (error === 'Select an intervention below before opening the visit.') {
-                            setError(null);
-                          }
-                        }}
-                      >
-                        <SelectTrigger id="ilm-manual-package" className="bg-background">
-                          <SelectValue placeholder="Select benefit package…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {benefitPackageOptions.map((pkg) => (
-                            <SelectItem key={pkg.code} value={pkg.code}>
-                              {pkg.code} — {pkg.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {selectedBenefitPkgCode && (
-                      <div className="space-y-1">
-                        <Label htmlFor="ilm-manual-intervention" className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                          Intervention
-                        </Label>
-                        {interventionsLoading ? (
-                          <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-background">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            <span className="text-xs text-muted-foreground">Loading interventions…</span>
-                          </div>
-                        ) : interventionOptions.length > 0 ? (
-                          <Select
-                            value={manualInterventionCode}
-                            onValueChange={(value) => {
-                              setManualInterventionCode(value);
-                              if (error === 'Select an intervention below before opening the visit.') {
-                                setError(null);
-                              }
-                            }}
-                          >
-                            <SelectTrigger id="ilm-manual-intervention" className="bg-background">
-                              <SelectValue placeholder="Choose an intervention…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {interventionOptions.map((opt) => (
-                                <SelectItem key={opt.code} value={opt.code}>
-                                  <span className="font-mono text-xs">{opt.code}</span>
-                                  {' — '}
-                                  {opt.name}
-                                  {opt.category ? ` · ${opt.category}` : ''}
-                                  {opt.price ? ` · KES ${Number(opt.price).toLocaleString()}` : ''}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <p className="text-xs text-muted-foreground py-2">
-                            No interventions found for this package.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-xs text-amber-700 dark:text-amber-300 py-1">
-                    No eligible benefit packages found for this patient. DHA may not recognise their enrollment.
+            {activeInterventions.length === 0 &&
+              !consentInterventionCode &&
+              !manualInterventionCode && (
+                <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                  <Label className="text-xs font-medium text-amber-900 dark:text-amber-100">
+                    Select intervention for this visit
+                  </Label>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                    Consent didn&apos;t include one. Pick a benefit package and intervention your
+                    facility is entitled to bill.
                   </p>
-                )}
-              </div>
-            )}
+                  {benefitPackagesLoading ? (
+                    <div className="flex h-9 items-center gap-2 rounded-md border bg-background px-3">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span className="text-xs text-muted-foreground">
+                        Loading benefit packages…
+                      </span>
+                    </div>
+                  ) : benefitPackageOptions.length > 0 ? (
+                    <>
+                      <div className="space-y-1">
+                        <Label
+                          htmlFor="ilm-manual-package"
+                          className="text-xs font-medium text-amber-800 dark:text-amber-200"
+                        >
+                          Benefit Package
+                        </Label>
+                        <Select
+                          value={selectedBenefitPkgCode}
+                          onValueChange={(value) => {
+                            setSelectedBenefitPkgCode(value);
+                            setManualInterventionCode('');
+                            if (
+                              error === 'Select an intervention below before opening the visit.'
+                            ) {
+                              setError(null);
+                            }
+                          }}
+                        >
+                          <SelectTrigger id="ilm-manual-package" className="bg-background">
+                            <SelectValue placeholder="Select benefit package…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {benefitPackageOptions.map((pkg) => (
+                              <SelectItem key={pkg.code} value={pkg.code}>
+                                {pkg.code} — {pkg.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {selectedBenefitPkgCode && (
+                        <div className="space-y-1">
+                          <Label
+                            htmlFor="ilm-manual-intervention"
+                            className="text-xs font-medium text-amber-800 dark:text-amber-200"
+                          >
+                            Intervention
+                          </Label>
+                          {interventionsLoading ? (
+                            <div className="flex h-9 items-center gap-2 rounded-md border bg-background px-3">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <span className="text-xs text-muted-foreground">
+                                Loading interventions…
+                              </span>
+                            </div>
+                          ) : interventionOptions.length > 0 ? (
+                            <Select
+                              value={manualInterventionCode}
+                              onValueChange={(value) => {
+                                setManualInterventionCode(value);
+                                if (
+                                  error === 'Select an intervention below before opening the visit.'
+                                ) {
+                                  setError(null);
+                                }
+                              }}
+                            >
+                              <SelectTrigger id="ilm-manual-intervention" className="bg-background">
+                                <SelectValue placeholder="Choose an intervention…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {interventionOptions.map((opt) => (
+                                  <SelectItem key={opt.code} value={opt.code}>
+                                    <span className="font-mono text-xs">{opt.code}</span>
+                                    {' — '}
+                                    {opt.name}
+                                    {opt.category ? ` · ${opt.category}` : ''}
+                                    {opt.price
+                                      ? ` · KES ${Number(opt.price).toLocaleString()}`
+                                      : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p className="py-2 text-xs text-muted-foreground">
+                              No interventions found for this package.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="py-1 text-xs text-amber-700 dark:text-amber-300">
+                      No eligible benefit packages found for this patient. DHA may not recognise
+                      their enrollment.
+                    </p>
+                  )}
+                </div>
+              )}
 
             {/*
               DHA start_visit requires either:
@@ -1859,7 +1909,9 @@ export function ClaimILMPanel({
                     {startOtpServerMessage && (
                       <Alert>
                         <AlertTitle className="text-sm">Consent update</AlertTitle>
-                        <AlertDescription className="text-xs">{startOtpServerMessage}</AlertDescription>
+                        <AlertDescription className="text-xs">
+                          {startOtpServerMessage}
+                        </AlertDescription>
                       </Alert>
                     )}
                     <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -1882,7 +1934,9 @@ export function ClaimILMPanel({
                       {startOtp || tokenIsCurrentlyUsable ? (
                         <Button
                           onClick={openVisit}
-                          disabled={!canAttemptVisit || openVisitBlockedByActiveNotice || busy !== null}
+                          disabled={
+                            !canAttemptVisit || openVisitBlockedByActiveNotice || busy !== null
+                          }
                           className="w-full sm:w-auto"
                         >
                           {isStartingVisit ? (
@@ -1911,12 +1965,14 @@ export function ClaimILMPanel({
                     </div>
                     {!startOtp && !tokenIsCurrentlyUsable && (
                       <p className="text-[11px] text-muted-foreground">
-                        Ask the patient for the OTP sent to their phone. If they didn&apos;t receive it or it expired, click &quot;Send OTP&quot;.
+                        Ask the patient for the OTP sent to their phone. If they didn&apos;t receive
+                        it or it expired, click &quot;Send OTP&quot;.
                       </p>
                     )}
                     {!startOtp && tokenIsCurrentlyUsable && (
                       <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                        Existing validated consent found. Click &quot;Validate &amp; Open Visit&quot; to continue without re-entering OTP.
+                        Existing validated consent found. Click &quot;Validate &amp; Open
+                        Visit&quot; to continue without re-entering OTP.
                       </p>
                     )}
                     <div className="relative py-1">
@@ -1947,7 +2003,10 @@ export function ClaimILMPanel({
 
             {/* Emergency (ECCIF) — no consent required */}
             {!requiresConsent && (
-              <Button onClick={openVisit} disabled={!canOpenVisit || openVisitBlockedByActiveNotice || busy !== null}>
+              <Button
+                onClick={openVisit}
+                disabled={!canOpenVisit || openVisitBlockedByActiveNotice || busy !== null}
+              >
                 {isStartingVisit ? (
                   <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                 ) : (
@@ -1961,16 +2020,25 @@ export function ClaimILMPanel({
               <p className="text-xs text-muted-foreground">
                 Will submit {activeInterventions.length} intervention
                 {activeInterventions.length === 1 ? '' : 's'} ({serviceType.toLowerCase()})
-                {hasPractitioner ? `, on behalf of ${practitionerFields.practitioner_regulation_body}-${practitionerFields.practitioner_identification_number}` : ''}.
+                {hasPractitioner
+                  ? `, on behalf of ${practitionerFields.practitioner_regulation_body}-${practitionerFields.practitioner_identification_number}`
+                  : ''}
+                .
               </p>
             )}
             {activeInterventions.length === 0 && effectiveInterventionCode && (
               <p className="text-xs text-muted-foreground">
-                Will submit intervention <span className="font-mono">{effectiveInterventionCode}</span>
-                {' '}({serviceType.toLowerCase()})
+                Will submit intervention{' '}
+                <span className="font-mono">{effectiveInterventionCode}</span> (
+                {serviceType.toLowerCase()})
                 {consentInterventionCode === effectiveInterventionCode ? ' — from consent' : ''}
-                {manualInterventionCode === effectiveInterventionCode && !consentInterventionCode ? ' — manually selected' : ''}
-                {hasPractitioner ? `, on behalf of ${practitionerFields.practitioner_regulation_body}-${practitionerFields.practitioner_identification_number}` : ''}.
+                {manualInterventionCode === effectiveInterventionCode && !consentInterventionCode
+                  ? ' — manually selected'
+                  : ''}
+                {hasPractitioner
+                  ? `, on behalf of ${practitionerFields.practitioner_regulation_body}-${practitionerFields.practitioner_identification_number}`
+                  : ''}
+                .
               </p>
             )}
           </section>
@@ -1985,17 +2053,22 @@ export function ClaimILMPanel({
             <div className="rounded-md border bg-muted/20 px-3 py-2">
               <p className="text-xs text-muted-foreground">
                 {activeInterventions.length} active intervention
-                {activeInterventions.length === 1 ? '' : 's'}. Continue directly to lifecycle actions unless you need to adjust claim details.
+                {activeInterventions.length === 1 ? '' : 's'}. Continue directly to lifecycle
+                actions unless you need to adjust claim details.
               </p>
               <p className="text-[11px] text-muted-foreground/80">
-                Source: {interventionSyncing
+                Source:{' '}
+                {interventionSyncing
                   ? 'Syncing DHA preview...'
                   : previewInterventionsState.available
                     ? 'DHA preview'
                     : 'local claim fallback'}
               </p>
               <p className="text-[11px] text-muted-foreground/80">
-                Last synced from DHA: {lastInterventionSyncAt ? format(lastInterventionSyncAt, 'dd MMM HH:mm:ss') : 'Not yet synced'}
+                Last synced from DHA:{' '}
+                {lastInterventionSyncAt
+                  ? format(lastInterventionSyncAt, 'dd MMM HH:mm:ss')
+                  : 'Not yet synced'}
               </p>
             </div>
             <Collapsible>
@@ -2039,19 +2112,20 @@ export function ClaimILMPanel({
           <section className="space-y-3">
             <StepHeader index={3} title="Lifecycle" />
 
-      <PreSubmitChecklistBox
-        loading={
-          preSubmitValidationLoading || attachmentSyncStatusLoading
-        }
-        items={preSubmitChecklist}
-        autoFixedIds={autoFixedChecklistIds}
-        onRefresh={refreshPreSubmitChecklist}
-      />
+            <PreSubmitChecklistBox
+              loading={preSubmitValidationLoading || attachmentSyncStatusLoading}
+              items={preSubmitChecklist}
+              autoFixedIds={autoFixedChecklistIds}
+              onRefresh={refreshPreSubmitChecklist}
+            />
 
-            <div className="rounded-md border p-3 space-y-3">
+            <div className="space-y-3 rounded-md border p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">Primary next action</p>
-                <Badge variant="outline" className={lifecycleReadyToSubmit ? 'border-emerald-400 text-emerald-700' : ''}>
+                <Badge
+                  variant="outline"
+                  className={lifecycleReadyToSubmit ? 'border-emerald-400 text-emerald-700' : ''}
+                >
                   {lifecycleReadyToSubmit ? 'Ready to submit' : 'In progress'}
                 </Badge>
               </div>
@@ -2092,7 +2166,8 @@ export function ClaimILMPanel({
               </div>
               {!lifecycleReadyToSubmit && (
                 <p className="text-[11px] text-muted-foreground">
-                  Run lifecycle actions in order: Preview -&gt; Apply preview lines -&gt; Materialize preview invoice.
+                  Run lifecycle actions in order: Preview -&gt; Apply preview lines -&gt;
+                  Materialize preview invoice.
                 </p>
               )}
             </div>
@@ -2154,9 +2229,14 @@ export function ClaimILMPanel({
                     <Button
                       size="sm"
                       variant="outline"
-                      className={workflowButtonClass(materializePreviewLoading, materializePreviewDone)}
+                      className={workflowButtonClass(
+                        materializePreviewLoading,
+                        materializePreviewDone
+                      )}
                       onClick={materializePreviewInvoice}
-                      disabled={busy !== null || (!previewResult?.payload && !applyPreviewResult?.success)}
+                      disabled={
+                        busy !== null || (!previewResult?.payload && !applyPreviewResult?.success)
+                      }
                     >
                       {materializePreviewLoading ? (
                         <Loader2 className="mr-2 h-3 w-3 animate-spin" />
@@ -2175,7 +2255,9 @@ export function ClaimILMPanel({
             <div className="grid gap-2 text-xs sm:grid-cols-2">
               <div className="rounded border p-2">
                 <p className="text-muted-foreground">DHA invoice</p>
-                <p className="font-medium">{dhaInvoiceNumber || 'Not available yet (run preview)'}</p>
+                <p className="font-medium">
+                  {dhaInvoiceNumber || 'Not available yet (run preview)'}
+                </p>
               </div>
               <div className="rounded border p-2">
                 <p className="text-muted-foreground">Local invoice</p>
@@ -2198,7 +2280,7 @@ export function ClaimILMPanel({
             {applyPreviewResult?.success && (
               <Alert>
                 <AlertTitle className="text-sm">Preview lines applied</AlertTitle>
-                <AlertDescription className="text-xs space-y-1">
+                <AlertDescription className="space-y-1 text-xs">
                   <p>
                     Created {applyPreviewResult.created_item_count} item(s)
                     {applyPreviewResult.replace_existing
@@ -2212,24 +2294,29 @@ export function ClaimILMPanel({
                       {applyPreviewResult.invoice_linked ? ' (linked to local invoice)' : ''}.
                     </p>
                   )}
-                  {(applyPreviewResult.final_bill_created || applyPreviewResult.final_bill_updated) && (
+                  {(applyPreviewResult.final_bill_created ||
+                    applyPreviewResult.final_bill_updated) && (
                     <p>
                       Final Bill auto-generated
                       {applyPreviewResult.final_bill_attachment_id
                         ? ` (attachment #${applyPreviewResult.final_bill_attachment_id})`
                         : ''}
-                      {applyPreviewResult.final_bill_updated ? ' and refreshed from latest invoice data.' : '.'}
+                      {applyPreviewResult.final_bill_updated
+                        ? ' and refreshed from latest invoice data.'
+                        : '.'}
                     </p>
                   )}
                   {applyPreviewResult.final_bill_skipped_reason && (
                     <p>
-                      Final Bill auto-generation skipped: {applyPreviewResult.final_bill_skipped_reason}.
+                      Final Bill auto-generation skipped:{' '}
+                      {applyPreviewResult.final_bill_skipped_reason}.
                     </p>
                   )}
                   {typeof applyPreviewResult.allocation_pending_count === 'number' && (
                     <p>
-                      {applyPreviewResult.allocation_pending_count} line(s) still need payer-allocation
-                      review in invoice details (for fields not prefilled during materialization).
+                      {applyPreviewResult.allocation_pending_count} line(s) still need
+                      payer-allocation review in invoice details (for fields not prefilled during
+                      materialization).
                     </p>
                   )}
                   {applyPreviewResult.unmatched_tariff_codes.length > 0 && (
@@ -2238,9 +2325,7 @@ export function ClaimILMPanel({
                     </p>
                   )}
                   {applyPreviewResult.parse_errors.length > 0 && (
-                    <p>
-                      Skipped lines: {applyPreviewResult.parse_errors.join(' | ')}
-                    </p>
+                    <p>Skipped lines: {applyPreviewResult.parse_errors.join(' | ')}</p>
                   )}
                 </AlertDescription>
               </Alert>
@@ -2249,13 +2334,12 @@ export function ClaimILMPanel({
             {materializePreviewResult?.success && (
               <Alert>
                 <AlertTitle className="text-sm">Preview invoice materialized</AlertTitle>
-                <AlertDescription className="text-xs space-y-1">
+                <AlertDescription className="space-y-1 text-xs">
                   <p>
                     Invoice {materializePreviewResult.invoice_number || 'N/A'}
                     {materializePreviewResult.invoice_id
                       ? ` (#${materializePreviewResult.invoice_id})`
-                      : ''}
-                    {' '}
+                      : ''}{' '}
                     {materializePreviewResult.linked_existing_invoice
                       ? 'linked from an existing claim.'
                       : 'is linked to this claim.'}
@@ -2279,7 +2363,8 @@ export function ClaimILMPanel({
                   )}
                   {materializePreviewResult.final_bill_skipped_reason && (
                     <p>
-                      Final Bill auto-generation skipped: {materializePreviewResult.final_bill_skipped_reason}.
+                      Final Bill auto-generation skipped:{' '}
+                      {materializePreviewResult.final_bill_skipped_reason}.
                     </p>
                   )}
                 </AlertDescription>
@@ -2307,9 +2392,7 @@ export function ClaimILMPanel({
                 setDischargeReason={setDischargeReason}
                 dischargeNotes={dischargeNotes}
                 setDischargeNotes={setDischargeNotes}
-                otpPrefilledFromConsent={
-                  !!consentCredential?.otp && !dischargeOtpRefreshed
-                }
+                otpPrefilledFromConsent={!!consentCredential?.otp && !dischargeOtpRefreshed}
                 preSubmitChecklistBlocking={preSubmitChecklistBlocking}
                 busy={busy}
                 onRequestFreshOtp={requestFreshDischargeOtp}
@@ -2324,7 +2407,7 @@ export function ClaimILMPanel({
         ==================================================================== */}
         <Collapsible>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground -ml-2">
+            <Button variant="ghost" size="sm" className="-ml-2 text-xs text-muted-foreground">
               <ChevronRight className="mr-1 h-3 w-3 transition-transform data-[state=open]:rotate-90" />
               More actions
             </Button>
@@ -2374,7 +2457,7 @@ export function ClaimILMPanel({
           }
         }}
       >
-        <DialogContent className="sm:max-w-xl overflow-visible">
+        <DialogContent className="overflow-visible sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Add intervention</DialogTitle>
             <DialogDescription>
@@ -2387,7 +2470,7 @@ export function ClaimILMPanel({
             <div className="space-y-1">
               <Label className="text-xs">Benefit Package</Label>
               {benefitPackagesLoading ? (
-                <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-background">
+                <div className="flex h-9 items-center gap-2 rounded-md border bg-background px-3">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   <span className="text-xs text-muted-foreground">Loading packages…</span>
                 </div>
@@ -2406,19 +2489,23 @@ export function ClaimILMPanel({
                   </SelectTrigger>
                   <SelectContent className="max-h-64">
                     {effectiveBenefitPackageOptions.map((pkg) => (
-                      <SelectItem key={pkg.code} value={pkg.code} className="whitespace-normal leading-snug">
+                      <SelectItem
+                        key={pkg.code}
+                        value={pkg.code}
+                        className="whitespace-normal leading-snug"
+                      >
                         {pkg.code} — {pkg.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : aloneClaim ? (
-                <p className="text-xs text-amber-600 py-2">
-                  This claim&apos;s primary intervention must be reported alone and cannot be combined
-                  with any other benefit package.
+                <p className="py-2 text-xs text-amber-600">
+                  This claim&apos;s primary intervention must be reported alone and cannot be
+                  combined with any other benefit package.
                 </p>
               ) : (
-                <p className="text-xs text-muted-foreground py-2">
+                <p className="py-2 text-xs text-muted-foreground">
                   No compatible benefit packages are available to combine with the existing
                   interventions on this claim.
                 </p>
@@ -2429,7 +2516,7 @@ export function ClaimILMPanel({
             <div className="space-y-1">
               <Label className="text-xs">Intervention</Label>
               {interventionsLoading ? (
-                <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-background">
+                <div className="flex h-9 items-center gap-2 rounded-md border bg-background px-3">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   <span className="text-xs text-muted-foreground">Loading interventions…</span>
                 </div>
@@ -2448,20 +2535,19 @@ export function ClaimILMPanel({
                   maxVisibleOptions={100}
                 />
               ) : (
-                <p className="text-xs text-muted-foreground py-2">
+                <p className="py-2 text-xs text-muted-foreground">
                   {addDialogPkgCode
                     ? 'No interventions found for this package.'
                     : 'Select a benefit package above to see available interventions.'}
                 </p>
               )}
             </div>
-            <CombinationGuard
-              newCode={newInterventionCode}
-              existing={interventionCodes}
-            />
+            <CombinationGuard newCode={newInterventionCode} existing={interventionCodes} />
             {addInterventionInlineError && (
               <Alert variant="destructive" className="py-2">
-                <AlertDescription className="text-xs">{addInterventionInlineError}</AlertDescription>
+                <AlertDescription className="text-xs">
+                  {addInterventionInlineError}
+                </AlertDescription>
               </Alert>
             )}
           </div>
@@ -2544,13 +2630,16 @@ export function ClaimILMPanel({
             >
               Cancel
             </Button>
-              <Button
-                onClick={addDiagnosis}
-                disabled={!selectedNewDiagnosisCode || !diagnosisAnchorCode || diagnosisUsesIcd10Fallback || busy !== null}
-              >
-              {busy === 'addDiagnosis' && (
-                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-              )}
+            <Button
+              onClick={addDiagnosis}
+              disabled={
+                !selectedNewDiagnosisCode ||
+                !diagnosisAnchorCode ||
+                diagnosisUsesIcd10Fallback ||
+                busy !== null
+              }
+            >
+              {busy === 'addDiagnosis' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
               Add
             </Button>
           </DialogFooter>
@@ -2602,11 +2691,7 @@ export function ClaimILMPanel({
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCancelOpen(false)}
-              disabled={busy !== null}
-            >
+            <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={busy !== null}>
               Keep claim
             </Button>
             <Button variant="destructive" onClick={cancelClaim} disabled={busy !== null}>
@@ -2684,9 +2769,7 @@ function PrereqGrid({
           )}
           <div className="min-w-0">
             <p className="font-medium leading-tight">{p.label}</p>
-            {p.hint && (
-              <p className="truncate text-[11px] text-muted-foreground">{p.hint}</p>
-            )}
+            {p.hint && <p className="truncate text-[11px] text-muted-foreground">{p.hint}</p>}
           </div>
         </div>
       ))}
@@ -2714,7 +2797,7 @@ function PreSubmitChecklistBox({
   const documentBlockers = documentItems.filter((item) => !item.complete);
 
   return (
-    <div className="rounded-md border bg-muted/20 p-3 space-y-4">
+    <div className="space-y-4 rounded-md border bg-muted/20 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium">Claim readiness</p>
         <div className="inline-flex items-center gap-2">
@@ -2757,9 +2840,13 @@ function PreSubmitChecklistBox({
                     </div>
                   </div>
                   {item.mode === 'auto' ? (
-                    <Badge variant="outline" className="h-5 text-[10px]">Auto-fix ready</Badge>
+                    <Badge variant="outline" className="h-5 text-[10px]">
+                      Auto-fix ready
+                    </Badge>
                   ) : (
-                    <Badge variant="outline" className="h-5 text-[10px]">Manual action</Badge>
+                    <Badge variant="outline" className="h-5 text-[10px]">
+                      Manual action
+                    </Badge>
                   )}
                 </div>
               );
@@ -2787,9 +2874,13 @@ function PreSubmitChecklistBox({
                     </div>
                   </div>
                   {item.mode === 'auto' ? (
-                    <Badge variant="outline" className="h-5 text-[10px]">Auto-fix ready</Badge>
+                    <Badge variant="outline" className="h-5 text-[10px]">
+                      Auto-fix ready
+                    </Badge>
                   ) : (
-                    <Badge variant="outline" className="h-5 text-[10px]">Manual action</Badge>
+                    <Badge variant="outline" className="h-5 text-[10px]">
+                      Manual action
+                    </Badge>
                   )}
                 </div>
               );
@@ -2807,35 +2898,43 @@ function PreSubmitChecklistBox({
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-1.5 pt-1">
           {items.map((item) => {
-          const autoFixed = autoFixedIds.includes(item.id);
-          return (
-            <div key={item.id} className="flex items-start justify-between gap-2 text-xs">
-              <div className="flex items-start gap-2">
-                {item.complete ? (
-                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-                )}
-                <div>
-                  <p>{item.label}</p>
-                  {item.detail ? (
-                    <p className="text-[11px] text-muted-foreground">{item.detail}</p>
-                  ) : null}
+            const autoFixed = autoFixedIds.includes(item.id);
+            return (
+              <div key={item.id} className="flex items-start justify-between gap-2 text-xs">
+                <div className="flex items-start gap-2">
+                  {item.complete ? (
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  ) : (
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  )}
+                  <div>
+                    <p>{item.label}</p>
+                    {item.detail ? (
+                      <p className="text-[11px] text-muted-foreground">{item.detail}</p>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-              {item.complete ? (
-                autoFixed ? (
-                  <Badge variant="outline" className="h-5 text-[10px]">Auto-fixed</Badge>
+                {item.complete ? (
+                  autoFixed ? (
+                    <Badge variant="outline" className="h-5 text-[10px]">
+                      Auto-fixed
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="h-5 text-[10px]">
+                      Complete
+                    </Badge>
+                  )
+                ) : item.mode === 'auto' ? (
+                  <Badge variant="outline" className="h-5 text-[10px]">
+                    Auto-fix ready
+                  </Badge>
                 ) : (
-                  <Badge variant="outline" className="h-5 text-[10px]">Complete</Badge>
-                )
-              ) : item.mode === 'auto' ? (
-                <Badge variant="outline" className="h-5 text-[10px]">Auto-fix ready</Badge>
-              ) : (
-                <Badge variant="outline" className="h-5 text-[10px]">Manual action</Badge>
-              )}
-            </div>
-          );
+                  <Badge variant="outline" className="h-5 text-[10px]">
+                    Manual action
+                  </Badge>
+                )}
+              </div>
+            );
           })}
         </CollapsibleContent>
       </Collapsible>
@@ -2843,13 +2942,7 @@ function PreSubmitChecklistBox({
   );
 }
 
-function CombinationGuard({
-  newCode,
-  existing,
-}: {
-  newCode: string;
-  existing: string[];
-}) {
+function CombinationGuard({ newCode, existing }: { newCode: string; existing: string[] }) {
   if (!newCode && existing.length === 0) return null;
 
   if (newCode && existing.length > 0) {
@@ -2937,9 +3030,7 @@ function OutpatientSubmitBlock(props: OutpatientSubmitBlockProps) {
     return (
       <Alert>
         <AlertTitle className="text-sm">Cannot submit yet</AlertTitle>
-        <AlertDescription className="text-xs">
-          Missing: {missing.join(', ')}.
-        </AlertDescription>
+        <AlertDescription className="text-xs">Missing: {missing.join(', ')}.</AlertDescription>
       </Alert>
     );
   }
@@ -3002,9 +3093,7 @@ function OutpatientSubmitBlock(props: OutpatientSubmitBlockProps) {
           <Select
             value={dischargeReason}
             onValueChange={(v) =>
-              setDischargeReason(
-                v as (typeof OUTPATIENT_DISCHARGE_REASONS)[number]['value'],
-              )
+              setDischargeReason(v as (typeof OUTPATIENT_DISCHARGE_REASONS)[number]['value'])
             }
           >
             <SelectTrigger id="discharge-reason">
@@ -3060,9 +3149,7 @@ function OutpatientSubmitBlock(props: OutpatientSubmitBlockProps) {
           disabled={busy !== null}
           className="text-xs text-muted-foreground"
         >
-          {busy === 'sendDischargeOtp' && (
-            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-          )}
+          {busy === 'sendDischargeOtp' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
           Request fresh OTP
         </Button>
       </div>

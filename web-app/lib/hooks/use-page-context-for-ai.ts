@@ -38,7 +38,11 @@ const DYNAMIC_ROUTE_PATTERNS: { pattern: RegExp; title: string; module: string }
   { pattern: /^\/imaging\/orders\/\d+/, title: 'Imaging Order Detail', module: 'imaging' },
   { pattern: /^\/imaging\/studies\/\d+/, title: 'DICOM Study Detail', module: 'imaging' },
   { pattern: /^\/admissions\/\d+\/ward-round\/new/, title: 'New Ward Round', module: 'inpatient' },
-  { pattern: /^\/admissions\/\d+\/ward-round\/\d+/, title: 'Ward Round Detail', module: 'inpatient' },
+  {
+    pattern: /^\/admissions\/\d+\/ward-round\/\d+/,
+    title: 'Ward Round Detail',
+    module: 'inpatient',
+  },
   { pattern: /^\/admissions\/\d+\/ward-round/, title: 'Ward Rounds', module: 'inpatient' },
   { pattern: /^\/admissions\/\d+\/kardex/, title: 'Nursing Kardex', module: 'inpatient' },
   { pattern: /^\/admissions\/\d+/, title: 'Admission Detail', module: 'inpatient' },
@@ -48,14 +52,26 @@ const DYNAMIC_ROUTE_PATTERNS: { pattern: RegExp; title: string; module: string }
   { pattern: /^\/transactions\/payments\/\d+/, title: 'Payment Detail', module: 'finance' },
   { pattern: /^\/transactions\/proformas\/\d+/, title: 'Proforma Detail', module: 'finance' },
   { pattern: /^\/transactions\/sha-claims\/\d+/, title: 'SHA Claim Detail', module: 'finance' },
-  { pattern: /^\/surveillance\/cases\/\d+/, title: 'Notifiable Case Detail', module: 'surveillance' },
+  {
+    pattern: /^\/surveillance\/cases\/\d+/,
+    title: 'Notifiable Case Detail',
+    module: 'surveillance',
+  },
   { pattern: /^\/surveillance\/alerts\/\d+/, title: 'Alert Detail', module: 'surveillance' },
-  { pattern: /^\/surveillance\/ihr\/\d+/, title: 'IHR Notification Detail', module: 'surveillance' },
+  {
+    pattern: /^\/surveillance\/ihr\/\d+/,
+    title: 'IHR Notification Detail',
+    module: 'surveillance',
+  },
   { pattern: /^\/mch\/\d+/, title: 'MCH Registration Detail', module: 'mch' },
   { pattern: /^\/admin\/staff\/\d+/, title: 'Staff Detail', module: 'admin' },
   { pattern: /^\/admin\/roles\/\d+/, title: 'Role Detail', module: 'admin' },
   { pattern: /^\/cds\/rules\/\d+/, title: 'CDS Rule Detail', module: 'cds' },
-  { pattern: /^\/allied-health\/\w+\/\d+/, title: 'Allied Health Session Detail', module: 'allied-health' },
+  {
+    pattern: /^\/allied-health\/\w+\/\d+/,
+    title: 'Allied Health Session Detail',
+    module: 'allied-health',
+  },
 ];
 
 /**
@@ -131,9 +147,7 @@ export function resolvePageContext(pathname: string): AIPageContext {
 
   if (prefixMatches.length > 0) {
     const best = prefixMatches[0]!;
-    const title = best.parentLabel
-      ? `${best.parentLabel} — ${best.item.label}`
-      : best.item.label;
+    const title = best.parentLabel ? `${best.parentLabel} — ${best.item.label}` : best.item.label;
     return {
       route: pathname,
       page_title: title,
@@ -166,7 +180,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
       id: 'lab-interpret-general',
       label: 'Interpret lab results',
       query:
-        'Help me interpret the lab results I\'m looking at. What are the key findings and clinical significance?',
+        "Help me interpret the lab results I'm looking at. What are the key findings and clinical significance?",
       userMessage: 'Requesting lab result interpretation...',
       contextRequired: false,
     },
@@ -191,8 +205,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
     {
       id: 'inpatient-discharge-criteria',
       label: 'Discharge criteria',
-      query:
-        'What are the general discharge readiness criteria I should assess for this patient?',
+      query: 'What are the general discharge readiness criteria I should assess for this patient?',
       userMessage: 'Checking discharge readiness criteria...',
       contextRequired: false,
     },
@@ -225,8 +238,7 @@ const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
     {
       id: 'pharmacy-dosing',
       label: 'Dosing guidance',
-      query:
-        'What are the standard adult dosing guidelines for commonly prescribed medications?',
+      query: 'What are the standard adult dosing guidelines for commonly prescribed medications?',
       userMessage: 'Looking up dosing guidance...',
       contextRequired: false,
     },

@@ -171,7 +171,12 @@ export interface PatientLocalRecord {
  * Pass optional county/sub_county/ward names from JOINed queries.
  */
 export function transformPatientRow(
-  row: PatientRow & { id: string; county_name?: string; sub_county_name?: string; ward_name?: string }
+  row: PatientRow & {
+    id: string;
+    county_name?: string;
+    sub_county_name?: string;
+    ward_name?: string;
+  }
 ): PatientLocalRecord {
   return {
     id: toNumericId(row.id),
@@ -243,7 +248,12 @@ export interface EncounterLocalRecord {
 }
 
 export function transformEncounterRow(
-  row: EncounterRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string }
+  row: EncounterRow & {
+    id: string;
+    patient_first_name?: string;
+    patient_last_name?: string;
+    patient_mrn?: string;
+  }
 ): EncounterLocalRecord {
   return {
     id: toNumericId(row.id),
@@ -267,9 +277,10 @@ export function transformEncounterRow(
     created_by: toNumericId(row.created_by_id as string),
     created_at: (row.created_at as string) || '',
     updated_at: (row.updated_at as string) || '',
-    patient_name: row.patient_first_name && row.patient_last_name
-      ? `${row.patient_first_name} ${row.patient_last_name}`
-      : undefined,
+    patient_name:
+      row.patient_first_name && row.patient_last_name
+        ? `${row.patient_first_name} ${row.patient_last_name}`
+        : undefined,
     patient_mrn: (row.patient_mrn as string) || undefined,
   };
 }
@@ -314,7 +325,12 @@ export interface TriageAssessmentLocalRecord {
 }
 
 export function transformTriageRow(
-  row: TriageAssessmentRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string }
+  row: TriageAssessmentRow & {
+    id: string;
+    patient_first_name?: string;
+    patient_last_name?: string;
+    patient_mrn?: string;
+  }
 ): TriageAssessmentLocalRecord {
   return {
     id: toNumericId(row.id),
@@ -346,9 +362,10 @@ export function transformTriageRow(
     triaged_by: toNumericId(row.triaged_by_id as string),
     created_at: (row.created_at as string) || '',
     updated_at: (row.updated_at as string) || '',
-    patient_name: row.patient_first_name && row.patient_last_name
-      ? `${row.patient_first_name} ${row.patient_last_name}`
-      : undefined,
+    patient_name:
+      row.patient_first_name && row.patient_last_name
+        ? `${row.patient_first_name} ${row.patient_last_name}`
+        : undefined,
     patient_mrn: (row.patient_mrn as string) || undefined,
   };
 }
@@ -429,7 +446,12 @@ export interface PrescriptionLocalRecord {
 }
 
 export function transformPrescriptionRow(
-  row: PrescriptionRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string }
+  row: PrescriptionRow & {
+    id: string;
+    patient_first_name?: string;
+    patient_last_name?: string;
+    patient_mrn?: string;
+  }
 ): PrescriptionLocalRecord {
   return {
     id: toNumericId(row.id),
@@ -446,9 +468,10 @@ export function transformPrescriptionRow(
     clinical_notes: (row.clinical_notes as string) || undefined,
     created_at: (row.created_at as string) || '',
     updated_at: (row.updated_at as string) || '',
-    patient_name: row.patient_first_name && row.patient_last_name
-      ? `${row.patient_first_name} ${row.patient_last_name}`
-      : undefined,
+    patient_name:
+      row.patient_first_name && row.patient_last_name
+        ? `${row.patient_first_name} ${row.patient_last_name}`
+        : undefined,
     patient_mrn: (row.patient_mrn as string) || undefined,
   };
 }
@@ -483,7 +506,12 @@ export interface LabOrderLocalRecord {
 }
 
 export function transformLabOrderRow(
-  row: LabOrderRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string }
+  row: LabOrderRow & {
+    id: string;
+    patient_first_name?: string;
+    patient_last_name?: string;
+    patient_mrn?: string;
+  }
 ): LabOrderLocalRecord {
   return {
     id: toNumericId(row.id),
@@ -505,9 +533,10 @@ export function transformLabOrderRow(
     completed_at: (row.completed_at as string) || undefined,
     created_at: (row.created_at as string) || '',
     updated_at: (row.updated_at as string) || '',
-    patient_name: row.patient_first_name && row.patient_last_name
-      ? `${row.patient_first_name} ${row.patient_last_name}`
-      : undefined,
+    patient_name:
+      row.patient_first_name && row.patient_last_name
+        ? `${row.patient_first_name} ${row.patient_last_name}`
+        : undefined,
     patient_mrn: (row.patient_mrn as string) || undefined,
   };
 }
@@ -543,7 +572,12 @@ export interface InvoiceLocalRecord {
 }
 
 export function transformInvoiceRow(
-  row: InvoiceRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string }
+  row: InvoiceRow & {
+    id: string;
+    patient_first_name?: string;
+    patient_last_name?: string;
+    patient_mrn?: string;
+  }
 ): InvoiceLocalRecord {
   return {
     id: toNumericId(row.id),
@@ -566,9 +600,10 @@ export function transformInvoiceRow(
     notes: (row.notes as string) || undefined,
     created_at: (row.created_at as string) || '',
     updated_at: (row.updated_at as string) || '',
-    patient_name: row.patient_first_name && row.patient_last_name
-      ? `${row.patient_first_name} ${row.patient_last_name}`
-      : undefined,
+    patient_name:
+      row.patient_first_name && row.patient_last_name
+        ? `${row.patient_first_name} ${row.patient_last_name}`
+        : undefined,
     patient_mrn: (row.patient_mrn as string) || undefined,
   };
 }
@@ -603,8 +638,16 @@ export function transformTreatmentPlanRow(
 ): TreatmentPlanLocalRecord {
   let medicationsJson: unknown = [];
   let proceduresJson: unknown = [];
-  try { medicationsJson = row.medications_json ? JSON.parse(row.medications_json as string) : []; } catch { /* keep default */ }
-  try { proceduresJson = row.procedures_json ? JSON.parse(row.procedures_json as string) : []; } catch { /* keep default */ }
+  try {
+    medicationsJson = row.medications_json ? JSON.parse(row.medications_json as string) : [];
+  } catch {
+    /* keep default */
+  }
+  try {
+    proceduresJson = row.procedures_json ? JSON.parse(row.procedures_json as string) : [];
+  } catch {
+    /* keep default */
+  }
 
   return {
     id: toNumericId(row.id),
@@ -648,9 +691,7 @@ export interface MedicationLocalRecord {
   updated_at: string;
 }
 
-export function transformMedicationRow(
-  row: MedicationRow & { id: string }
-): MedicationLocalRecord {
+export function transformMedicationRow(row: MedicationRow & { id: string }): MedicationLocalRecord {
   return {
     id: toNumericId(row.id),
     treatment_plan: toNumericId(row.treatment_plan_id as string),

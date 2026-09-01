@@ -47,29 +47,29 @@
     --popover-foreground: 222.2 84% 4.9%;
 
     /* Brand Colors */
-    --primary: 346 100% 12%;              /* Deep Burgundy #3D000F */
+    --primary: 346 100% 12%; /* Deep Burgundy #3D000F */
     --primary-foreground: 210 40% 98%;
-    --secondary: 196 53% 23%;             /* Teal #1A4D5C */
+    --secondary: 196 53% 23%; /* Teal #1A4D5C */
     --secondary-foreground: 210 40% 98%;
-    --accent: 32 33% 65%;                 /* Warm Gold #D4A574 */
+    --accent: 32 33% 65%; /* Warm Gold #D4A574 */
     --accent-foreground: 222.2 47.4% 11.2%;
 
     /* UI Colors */
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --destructive: 0 84.2% 60.2%;         /* Error red */
+    --destructive: 0 84.2% 60.2%; /* Error red */
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 346 100% 12%;                 /* Matches primary */
+    --ring: 346 100% 12%; /* Matches primary */
     --radius: 0.5rem;
 
     /* Semantic Colors */
-    --success: 145 46% 34%;               /* #2E7D4A */
+    --success: 145 46% 34%; /* #2E7D4A */
     --success-foreground: 0 0% 100%;
-    --warning: 40 96% 53%;                /* #E6A023 - matches mobile warning.main */
+    --warning: 40 96% 53%; /* #E6A023 - matches mobile warning.main */
     --warning-foreground: 30 15% 25%;
-    --critical: 0 65% 47%;                /* #C62828 - matches mobile error.main */
+    --critical: 0 65% 47%; /* #C62828 - matches mobile error.main */
     --critical-foreground: 0 0% 100%;
 
     /* Chart Colors */
@@ -200,11 +200,11 @@
     --popover-foreground: 210 40% 98%;
 
     /* Brand Colors - Dark Mode (slightly lighter for visibility) */
-    --primary: 346 100% 20%;              /* Lighter burgundy */
+    --primary: 346 100% 20%; /* Lighter burgundy */
     --primary-foreground: 210 40% 98%;
-    --secondary: 196 53% 35%;             /* Lighter teal */
+    --secondary: 196 53% 35%; /* Lighter teal */
     --secondary-foreground: 210 40% 98%;
-    --accent: 32 33% 55%;                 /* Slightly dimmed gold */
+    --accent: 32 33% 55%; /* Slightly dimmed gold */
     --accent-foreground: 210 40% 98%;
 
     /* UI Colors - Dark Mode */
@@ -350,7 +350,9 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 }
 
@@ -370,7 +372,7 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30 rounded-full;
+    @apply rounded-full bg-muted-foreground/30;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
@@ -467,18 +469,18 @@
   header,
   footer,
   [data-sidebar],
-  [role="banner"],
-  [role="navigation"] {
+  [role='banner'],
+  [role='navigation'] {
     display: none !important;
   }
 
   /* Hide ALL fixed/floating overlays (FABs, chat widgets, bottom nav, peek panels) */
-  [class*="fixed"] {
+  [class*='fixed'] {
     display: none !important;
   }
 
   /* Hide help popover trigger icons (interactive-only, no value on paper) */
-  [aria-label="Help"] {
+  [aria-label='Help'] {
     display: none !important;
   }
 
@@ -520,7 +522,7 @@
   }
 
   /* Cards → clean bordered sections */
-  .print-report [data-slot="card"] {
+  .print-report [data-slot='card'] {
     border: 1px solid #ccc !important;
     border-radius: 4px !important;
     box-shadow: none !important;
@@ -529,7 +531,7 @@
   }
 
   /* Remove decorative gradients */
-  .print-report .pointer-events-none[aria-hidden="true"] {
+  .print-report .pointer-events-none[aria-hidden='true'] {
     display: none !important;
   }
 
@@ -543,7 +545,7 @@
   }
 
   /* Badges → bordered text */
-  .print-report [data-slot="badge"] {
+  .print-report [data-slot='badge'] {
     border: 1px solid #999 !important;
     background: white !important;
     color: black !important;
@@ -551,7 +553,7 @@
   }
 
   /* Hide trend indicator arrows (interactive-only, clutters print) */
-  .print-report [class*="TrendIndicator"],
+  .print-report [class*='TrendIndicator'],
   .print-report .print-hide-trend {
     display: none !important;
   }
@@ -597,13 +599,13 @@
 
   /* AEFI: hide buttons inside the form */
   .print-aefi-form button,
-  .print-aefi-form [role="dialog"] {
+  .print-aefi-form [role='dialog'] {
     display: none !important;
   }
 
   /* AEFI form title */
   .print-aefi-form::before {
-    content: "MINISTRY OF HEALTH — AEFI REPORTING FORM";
+    content: 'MINISTRY OF HEALTH — AEFI REPORTING FORM';
     display: block;
     text-align: center;
     font-size: 14pt;
@@ -614,7 +616,7 @@
   }
 
   /* Cards → bordered sections with no shadow */
-  .print-aefi-form [data-slot="card"],
+  .print-aefi-form [data-slot='card'],
   .print-aefi-form .rounded-lg {
     border: 1px solid #333 !important;
     border-radius: 0 !important;
@@ -625,7 +627,7 @@
   }
 
   /* Badges in print → bordered text */
-  .print-aefi-form [data-slot="badge"],
+  .print-aefi-form [data-slot='badge'],
   .print-aefi-form .inline-flex {
     border: 1px solid #666 !important;
     background: white !important;
@@ -677,7 +679,8 @@
 
 /* Critical alert animation */
 @keyframes pulse-slow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -691,7 +694,8 @@
 
 /* AI insight freshly-generated border glow */
 @keyframes border-glow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 8px rgba(52, 211, 153, 0.25);
     border-color: rgba(52, 211, 153, 0.6);
   }
@@ -763,10 +767,18 @@
   line-height: 1.3;
 }
 
-.tibabot-markdown h1 { font-size: 1.15em; }
-.tibabot-markdown h2 { font-size: 1.1em; }
-.tibabot-markdown h3 { font-size: 1.05em; }
-.tibabot-markdown h4 { font-size: 1em; }
+.tibabot-markdown h1 {
+  font-size: 1.15em;
+}
+.tibabot-markdown h2 {
+  font-size: 1.1em;
+}
+.tibabot-markdown h3 {
+  font-size: 1.05em;
+}
+.tibabot-markdown h4 {
+  font-size: 1em;
+}
 
 .tibabot-markdown blockquote {
   border-left: 3px solid currentColor;

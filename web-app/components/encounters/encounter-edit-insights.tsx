@@ -18,7 +18,10 @@ function calculateAge(dob: string | null | undefined): number {
   return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
 }
 
-function parseBPToMAP(systolic: number | null | undefined, diastolic: number | null | undefined): number | undefined {
+function parseBPToMAP(
+  systolic: number | null | undefined,
+  diastolic: number | null | undefined
+): number | undefined {
   if (!systolic || !diastolic) return undefined;
   return Math.round(diastolic + (systolic - diastolic) / 3);
 }
@@ -40,9 +43,21 @@ export function EncounterEditInsights({ className }: EncounterEditInsightsProps)
     return {
       patient_age: calculateAge(encounter.patient_date_of_birth),
       patient_sex: encounter.patient_gender ?? 'O',
-      allergies: encounter.allergies?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [],
-      comorbidities: encounter.chronic_conditions?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [],
-      current_medications: encounter.current_medications?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [],
+      allergies:
+        encounter.allergies
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [],
+      comorbidities:
+        encounter.chronic_conditions
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [],
+      current_medications:
+        encounter.current_medications
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [],
     };
   }, [encounter]);
 
@@ -51,13 +66,23 @@ export function EncounterEditInsights({ className }: EncounterEditInsightsProps)
     return {
       chief_complaint: session?.chief_complaint ?? encounter?.chief_complaint ?? undefined,
       vitals: {
-        spo2: vitals?.spo2 != null ? Number(vitals.spo2) : (encounter?.spo2 != null ? Number(encounter.spo2) : undefined),
+        spo2:
+          vitals?.spo2 != null
+            ? Number(vitals.spo2)
+            : encounter?.spo2 != null
+              ? Number(encounter.spo2)
+              : undefined,
         pulse: vitals?.pulse ?? encounter?.pulse ?? undefined,
-        temperature: vitals?.temperature != null ? Number(vitals.temperature) : (encounter?.temperature != null ? Number(encounter.temperature) : undefined),
+        temperature:
+          vitals?.temperature != null
+            ? Number(vitals.temperature)
+            : encounter?.temperature != null
+              ? Number(encounter.temperature)
+              : undefined,
         rr: vitals?.respiratory_rate ?? encounter?.respiratory_rate ?? undefined,
         map: parseBPToMAP(
           vitals?.blood_pressure_systolic ?? null,
-          vitals?.blood_pressure_diastolic ?? null,
+          vitals?.blood_pressure_diastolic ?? null
         ),
       },
     };

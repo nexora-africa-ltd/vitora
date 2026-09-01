@@ -3,13 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Eye,
-  ShieldOff,
-} from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, Eye, ShieldOff } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +22,10 @@ import { cdsApi } from '@/lib/api/cds';
 import { formatDateTime } from '@/lib/utils/format';
 import { toast } from 'sonner';
 
-const STATUS_BADGE_VARIANTS: Record<string, 'warning' | 'info' | 'success' | 'destructive' | 'secondary' | 'outline'> = {
+const STATUS_BADGE_VARIANTS: Record<
+  string,
+  'warning' | 'info' | 'success' | 'destructive' | 'secondary' | 'outline'
+> = {
   PENDING: 'warning',
   ACKNOWLEDGED: 'info',
   ACCEPTED: 'success',
@@ -37,7 +34,10 @@ const STATUS_BADGE_VARIANTS: Record<string, 'warning' | 'info' | 'success' | 'de
   AUTO_RESOLVED: 'outline',
 };
 
-const PRIORITY_BADGE_VARIANTS: Record<string, 'destructive' | 'warning' | 'info' | 'secondary' | 'outline'> = {
+const PRIORITY_BADGE_VARIANTS: Record<
+  string,
+  'destructive' | 'warning' | 'info' | 'secondary' | 'outline'
+> = {
   CRITICAL: 'destructive',
   HIGH: 'warning',
   MEDIUM: 'info',
@@ -77,13 +77,19 @@ export default function CDSAlertDetailPage() {
 
   const acknowledgeMutation = useMutation({
     mutationFn: () => cdsApi.acknowledgeAlert(alertId),
-    onSuccess: () => { invalidateAlertQueries(); toast.success('Alert acknowledged'); },
+    onSuccess: () => {
+      invalidateAlertQueries();
+      toast.success('Alert acknowledged');
+    },
     onError: () => toast.error('Failed to acknowledge alert'),
   });
 
   const acceptMutation = useMutation({
     mutationFn: () => cdsApi.acceptAlert(alertId),
-    onSuccess: () => { invalidateAlertQueries(); toast.success('Recommendation accepted'); },
+    onSuccess: () => {
+      invalidateAlertQueries();
+      toast.success('Recommendation accepted');
+    },
     onError: () => toast.error('Failed to accept'),
   });
 
@@ -100,7 +106,10 @@ export default function CDSAlertDetailPage() {
 
   const dismissMutation = useMutation({
     mutationFn: () => cdsApi.dismissAlert(alertId),
-    onSuccess: () => { invalidateAlertQueries(); toast.success('Alert dismissed'); },
+    onSuccess: () => {
+      invalidateAlertQueries();
+      toast.success('Alert dismissed');
+    },
     onError: () => toast.error('Failed to dismiss'),
   });
 
@@ -110,8 +119,8 @@ export default function CDSAlertDetailPage() {
         <PageHeader title="CDS Alert" />
         <Card className="p-6">
           <div className="animate-pulse space-y-3">
-            <div className="h-4 bg-muted rounded w-1/3" />
-            <div className="h-4 bg-muted rounded w-2/3" />
+            <div className="h-4 w-1/3 rounded bg-muted" />
+            <div className="h-4 w-2/3 rounded bg-muted" />
           </div>
         </Card>
       </div>
@@ -144,19 +153,19 @@ export default function CDSAlertDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {alert.patient_name}
             <span className="text-muted-foreground"> • {alert.patient_mrn}</span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {alert.rule_name} • {CATEGORY_LABELS[alert.category] ?? alert.category}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <Badge variant={PRIORITY_BADGE_VARIANTS[alert.priority] ?? 'secondary'}>
-            {alert.is_critical && <AlertTriangle className="h-3 w-3 mr-1" />}
+            {alert.is_critical && <AlertTriangle className="mr-1 h-3 w-3" />}
             {alert.priority}
           </Badge>
           <Badge variant={STATUS_BADGE_VARIANTS[alert.status] ?? 'secondary'}>
@@ -166,13 +175,17 @@ export default function CDSAlertDetailPage() {
       </div>
 
       {/* Alert Message */}
-      <Card className={`border-l-4 ${
-        alert.is_critical ? 'border-l-destructive bg-destructive/5' :
-        alert.priority === 'HIGH' ? 'border-l-orange-500 bg-orange-50/50 dark:bg-orange-950/20' :
-        'border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20'
-      }`}>
+      <Card
+        className={`border-l-4 ${
+          alert.is_critical
+            ? 'border-l-destructive bg-destructive/5'
+            : alert.priority === 'HIGH'
+              ? 'border-l-orange-500 bg-orange-50/50 dark:bg-orange-950/20'
+              : 'border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20'
+        }`}
+      >
         <CardContent className="pt-4">
-          <p className="font-medium text-sm">{alert.message}</p>
+          <p className="text-sm font-medium">{alert.message}</p>
           {alert.suggestion && (
             <p className="mt-2 text-sm text-muted-foreground">
               <strong>Suggestion:</strong> {alert.suggestion}
@@ -190,21 +203,17 @@ export default function CDSAlertDetailPage() {
             onClick={() => acknowledgeMutation.mutate()}
             disabled={anyPending}
           >
-            <Eye className="h-4 w-4 mr-1" />
+            <Eye className="mr-1 h-4 w-4" />
             Acknowledge
           </Button>
-          <Button
-            size="sm"
-            onClick={() => acceptMutation.mutate()}
-            disabled={anyPending}
-          >
-            <CheckCircle2 className="h-4 w-4 mr-1" />
+          <Button size="sm" onClick={() => acceptMutation.mutate()} disabled={anyPending}>
+            <CheckCircle2 className="mr-1 h-4 w-4" />
             Accept Recommendation
           </Button>
           <Dialog open={overrideDialogOpen} onOpenChange={setOverrideDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="destructive" size="sm" disabled={anyPending}>
-                <ShieldOff className="h-4 w-4 mr-1" />
+                <ShieldOff className="mr-1 h-4 w-4" />
                 Override
               </Button>
             </DialogTrigger>
@@ -226,7 +235,9 @@ export default function CDSAlertDetailPage() {
                   />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setOverrideDialogOpen(false)}>Cancel</Button>
+                  <Button variant="outline" onClick={() => setOverrideDialogOpen(false)}>
+                    Cancel
+                  </Button>
                   <Button
                     variant="destructive"
                     disabled={overrideReason.length < 10 || overrideMutation.isPending}
@@ -244,7 +255,7 @@ export default function CDSAlertDetailPage() {
             onClick={() => dismissMutation.mutate()}
             disabled={anyPending}
           >
-            <XCircle className="h-4 w-4 mr-1" />
+            <XCircle className="mr-1 h-4 w-4" />
             Dismiss
           </Button>
         </div>
@@ -253,11 +264,13 @@ export default function CDSAlertDetailPage() {
       {/* Override Reason (if overridden) */}
       {alert.status === 'OVERRIDDEN' && alert.override_reason && (
         <Card className="border-l-4 border-l-destructive">
-          <CardHeader><CardTitle className="text-base">Override Reason</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Override Reason</CardTitle>
+          </CardHeader>
           <CardContent>
             <p className="text-sm">{alert.override_reason}</p>
             {alert.resolved_by_name && (
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Overridden by {alert.resolved_by_name}
                 {alert.resolved_at && <> on {formatDateTime(alert.resolved_at)}</>}
               </p>
@@ -269,9 +282,11 @@ export default function CDSAlertDetailPage() {
       {/* Details */}
       {alert.details && Object.keys(alert.details).length > 0 && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Evaluation Details</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Evaluation Details</CardTitle>
+          </CardHeader>
           <CardContent>
-            <pre className="text-xs bg-muted/50 p-2 rounded overflow-x-auto">
+            <pre className="overflow-x-auto rounded bg-muted/50 p-2 text-xs">
               {JSON.stringify(alert.details, null, 2)}
             </pre>
           </CardContent>
@@ -279,7 +294,7 @@ export default function CDSAlertDetailPage() {
       )}
 
       {/* Metadata */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Card className="p-3">
           <div className="text-xs text-muted-foreground">Evidence Level</div>
           <div className="text-sm font-medium">Level {alert.evidence_level}</div>
@@ -292,7 +307,9 @@ export default function CDSAlertDetailPage() {
           <div className="text-xs text-muted-foreground">Created</div>
           <div className="text-sm font-medium">{formatDateTime(alert.created_at)}</div>
           {alert.age_hours != null && (
-            <div className="text-xs text-muted-foreground">{alert.age_hours.toFixed(1)} hours ago</div>
+            <div className="text-xs text-muted-foreground">
+              {alert.age_hours.toFixed(1)} hours ago
+            </div>
           )}
         </Card>
         {alert.resolved_at && (

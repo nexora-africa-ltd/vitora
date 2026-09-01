@@ -37,13 +37,7 @@ import type {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -64,12 +58,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { BillingSettingsTab } from '@/components/settings/billing-settings';
@@ -250,7 +239,9 @@ function formToPayload(form: FormState): FacilityBillingConfigUpdateData {
 function hasMpesaCredsInForm(f: FormState, savedOnServer = false): boolean {
   const hasCore = !!(f.mpesa_consumer_key && f.mpesa_consumer_secret) || savedOnServer;
   if (f.mpesa_environment === 'production') {
-    return hasCore && !!(f.mpesa_shortcode || savedOnServer) && !!(f.mpesa_passkey || savedOnServer);
+    return (
+      hasCore && !!(f.mpesa_shortcode || savedOnServer) && !!(f.mpesa_passkey || savedOnServer)
+    );
   }
   return hasCore;
 }
@@ -265,8 +256,10 @@ function validate(form: FormState, credsSavedOnServer = false): FormErrors {
 
   // --- General tab ---
   if (!form.default_payment_type) errors.default_payment_type = 'Required';
-  if (!form.default_due_days || form.default_due_days < 1) errors.default_due_days = 'Must be at least 1 day';
-  if (form.tax_rate === '' || isNaN(Number(form.tax_rate))) errors.tax_rate = 'Must be a valid number';
+  if (!form.default_due_days || form.default_due_days < 1)
+    errors.default_due_days = 'Must be at least 1 day';
+  if (form.tax_rate === '' || isNaN(Number(form.tax_rate)))
+    errors.tax_rate = 'Must be a valid number';
 
   // --- M-Pesa credentials ---
   // When credentials are already saved on the server, blank form fields mean
@@ -286,9 +279,10 @@ function validate(form: FormState, credsSavedOnServer = false): FormErrors {
       : secretFields;
     for (const k of requiredFields) {
       if (!form[k]) {
-        errors[k] = isProduction && [...prodOnlySecretFields, ...nonSecretFields].includes(k)
-          ? 'Required for production environment'
-          : 'Required when configuring M-Pesa credentials';
+        errors[k] =
+          isProduction && [...prodOnlySecretFields, ...nonSecretFields].includes(k)
+            ? 'Required for production environment'
+            : 'Required when configuring M-Pesa credentials';
       }
     }
   } else if (filledAny && credsSavedOnServer) {
@@ -329,7 +323,10 @@ function getAutomationValidationError(rules: AutomationRuleForm[]): string | nul
     if (rule.unit_price_override.trim() && Number(rule.unit_price_override) < 0) {
       return `Automation rule ${row} has an invalid unit price override.`;
     }
-    if (rule.recurrence === 'recurring' && (!rule.repeat_every_days || rule.repeat_every_days < 1)) {
+    if (
+      rule.recurrence === 'recurring' &&
+      (!rule.repeat_every_days || rule.repeat_every_days < 1)
+    ) {
       return `Automation rule ${row} recurring interval must be at least 1 day.`;
     }
   }
@@ -342,13 +339,13 @@ function getAutomationValidationError(rules: AutomationRuleForm[]): string | nul
 
 /** Required asterisk */
 function Req() {
-  return <span className="text-destructive ml-0.5">*</span>;
+  return <span className="ml-0.5 text-destructive">*</span>;
 }
 
 /** Field error message */
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
-  return <p className="text-xs text-destructive mt-1">{msg}</p>;
+  return <p className="mt-1 text-xs text-destructive">{msg}</p>;
 }
 
 // ---------------------------------------------------------------------------
@@ -414,19 +411,32 @@ export default function PaymentsConfigPage() {
   const hasMpesaCreds = configQuery.data?.has_mpesa_credentials ?? false;
   const hasShaCreds = configQuery.data?.has_sha_credentials ?? false;
 
-  const errors = useMemo<FormErrors>(() => (form ? validate(form, hasMpesaCreds) : {}), [form, hasMpesaCreds]);
+  const errors = useMemo<FormErrors>(
+    () => (form ? validate(form, hasMpesaCreds) : {}),
+    [form, hasMpesaCreds]
+  );
   const servicesById = useMemo(() => {
     return new Map((servicesQuery.data ?? []).map((service) => [service.id, service]));
   }, [servicesQuery.data]);
   const automationValidationError = useMemo(
     () => (form ? getAutomationValidationError(form.automation_rules) : null),
-    [form],
+    [form]
   );
   const hasErrors = Object.keys(errors).length > 0;
 
   // Which tabs have errors?
-  const generalTabHasErrors = !!(errors.default_payment_type || errors.default_due_days || errors.tax_rate);
-  const mpesaTabHasErrors = !!(errors.mpesa_consumer_key || errors.mpesa_consumer_secret || errors.mpesa_passkey || errors.mpesa_shortcode || errors.mpesa_callback_url);
+  const generalTabHasErrors = !!(
+    errors.default_payment_type ||
+    errors.default_due_days ||
+    errors.tax_rate
+  );
+  const mpesaTabHasErrors = !!(
+    errors.mpesa_consumer_key ||
+    errors.mpesa_consumer_secret ||
+    errors.mpesa_passkey ||
+    errors.mpesa_shortcode ||
+    errors.mpesa_callback_url
+  );
   const bankTabHasErrors = !!(errors.bank_name || errors.bank_account_number);
   const automationTabHasErrors = !!automationValidationError;
 
@@ -554,7 +564,8 @@ export default function PaymentsConfigPage() {
         />
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No facility is currently selected. Assign a facility to your account or use the facility switcher.
+            No facility is currently selected. Assign a facility to your account or use the facility
+            switcher.
           </CardContent>
         </Card>
       </div>
@@ -587,14 +598,12 @@ export default function PaymentsConfigPage() {
         />
         <Card>
           <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
-              No billing configuration found
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">No billing configuration found</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="mb-4 text-sm text-muted-foreground">
-              <strong>{facility.name}</strong> does not have a billing configuration yet.
-              Create one to set up payment defaults, M-Pesa integration, and bank accounts.
+              <strong>{facility.name}</strong> does not have a billing configuration yet. Create one
+              to set up payment defaults, M-Pesa integration, and bank accounts.
             </p>
             <Button onClick={() => createMutation.mutate()} disabled={isPending}>
               {createMutation.isPending ? (
@@ -622,10 +631,7 @@ export default function PaymentsConfigPage() {
         title="Payments Configuration"
         helpContent="Configure billing defaults, M-Pesa API credentials, and bank collection accounts for the current facility. M-Pesa credentials are per-facility — each facility can have its own Daraja shortcode."
         actions={
-          <Button
-            onClick={handleSave}
-            disabled={!isDirty || isPending}
-          >
+          <Button onClick={handleSave} disabled={!isDirty || isPending}>
             {updateMutation.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -637,21 +643,25 @@ export default function PaymentsConfigPage() {
       />
 
       {/* Facility context bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {facility.name}
-            <span className="text-muted-foreground"> &bull; MFL {configQuery.data.facility_mfl_code}</span>
+            <span className="text-muted-foreground">
+              {' '}
+              &bull; MFL {configQuery.data.facility_mfl_code}
+            </span>
           </p>
           <p className="text-xs text-muted-foreground">
-            Billing config #{configQuery.data.id} &bull; Last updated {new Date(configQuery.data.updated_at).toLocaleDateString()}
+            Billing config #{configQuery.data.id} &bull; Last updated{' '}
+            {new Date(configQuery.data.updated_at).toLocaleDateString()}
           </p>
         </div>
         <div className="flex gap-2">
-          <Badge variant={hasMpesaCreds ? 'default' : 'outline'} className="shrink-0 w-fit">
+          <Badge variant={hasMpesaCreds ? 'default' : 'outline'} className="w-fit shrink-0">
             {hasMpesaCreds ? 'M-Pesa Active' : 'M-Pesa Not Configured'}
           </Badge>
-          <Badge variant={hasShaCreds ? 'default' : 'outline'} className="shrink-0 w-fit">
+          <Badge variant={hasShaCreds ? 'default' : 'outline'} className="w-fit shrink-0">
             {hasShaCreds ? 'SHA Active' : 'SHA Not Configured'}
           </Badge>
         </div>
@@ -673,31 +683,38 @@ export default function PaymentsConfigPage() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Admission billing guard warning</AlertTitle>
           <AlertDescription className="text-xs">
-            {admissionServiceGuardQuery.data.message} Add the missing services in Service Catalog before starting new admissions.
+            {admissionServiceGuardQuery.data.message} Add the missing services in Service Catalog
+            before starting new admissions.
           </AlertDescription>
         </Alert>
       )}
 
       {/* Tab layout */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-muted h-10 sm:h-11 p-1">
+        <TabsList className="h-10 bg-muted p-1 sm:h-11">
           <TabsTrigger value="general" className="gap-1.5 text-xs sm:text-sm">
             <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">General</span>
             <span className="hidden sm:inline">Billing Defaults</span>
-            {touched && generalTabHasErrors && <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />}
+            {touched && generalTabHasErrors && (
+              <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />
+            )}
           </TabsTrigger>
           <TabsTrigger value="mpesa" className="gap-1.5 text-xs sm:text-sm">
             <Smartphone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">M-Pesa</span>
             <span className="hidden sm:inline">M-Pesa Integration</span>
-            {touched && mpesaTabHasErrors && <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />}
+            {touched && mpesaTabHasErrors && (
+              <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />
+            )}
           </TabsTrigger>
           <TabsTrigger value="bank" className="gap-1.5 text-xs sm:text-sm">
             <Banknote className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">Bank</span>
             <span className="hidden sm:inline">Bank Accounts</span>
-            {touched && bankTabHasErrors && <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />}
+            {touched && bankTabHasErrors && (
+              <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />
+            )}
           </TabsTrigger>
           <TabsTrigger value="sha" className="gap-1.5 text-xs sm:text-sm">
             <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -713,7 +730,9 @@ export default function PaymentsConfigPage() {
             <Settings2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">Rules</span>
             <span className="hidden sm:inline">Automation Rules</span>
-            {touched && automationTabHasErrors && <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />}
+            {touched && automationTabHasErrors && (
+              <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -721,7 +740,7 @@ export default function PaymentsConfigPage() {
         {/* TAB 1: Billing Defaults */}
         {/* ================================================================ */}
 
-        <TabsContent value="general" className="space-y-4 mt-4">
+        <TabsContent value="general" className="mt-4 space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -732,7 +751,10 @@ export default function PaymentsConfigPage() {
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="default-payment-type">Default payment type<Req /></Label>
+                  <Label htmlFor="default-payment-type">
+                    Default payment type
+                    <Req />
+                  </Label>
                   <TooltipProvider delayDuration={200}>
                     <Select
                       value={form.default_payment_type}
@@ -741,7 +763,9 @@ export default function PaymentsConfigPage() {
                     >
                       <SelectTrigger
                         id="default-payment-type"
-                        className={touched && errors.default_payment_type ? 'border-destructive' : ''}
+                        className={
+                          touched && errors.default_payment_type ? 'border-destructive' : ''
+                        }
                       >
                         <SelectValue placeholder="Select default" />
                       </SelectTrigger>
@@ -755,7 +779,7 @@ export default function PaymentsConfigPage() {
                               <Tooltip key={pt.value}>
                                 <TooltipTrigger asChild>
                                   <div
-                                    className="relative flex w-full select-none items-center rounded-sm py-1.5 px-2 text-sm text-muted-foreground opacity-50 cursor-not-allowed"
+                                    className="relative flex w-full cursor-not-allowed select-none items-center rounded-sm px-2 py-1.5 text-sm text-muted-foreground opacity-50"
                                     aria-disabled="true"
                                   >
                                     {pt.label}
@@ -783,7 +807,10 @@ export default function PaymentsConfigPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="default-due-days">Invoice due days<Req /></Label>
+                  <Label htmlFor="default-due-days">
+                    Invoice due days
+                    <Req />
+                  </Label>
                   <Input
                     id="default-due-days"
                     type="number"
@@ -798,7 +825,10 @@ export default function PaymentsConfigPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tax-rate">Tax rate (%)<Req /></Label>
+                  <Label htmlFor="tax-rate">
+                    Tax rate (%)
+                    <Req />
+                  </Label>
                   <Input
                     id="tax-rate"
                     type="number"
@@ -832,11 +862,7 @@ export default function PaymentsConfigPage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end border-t pt-4">
-              <Button
-                onClick={handleSave}
-                disabled={!isDirty || isPending}
-                size="sm"
-              >
+              <Button onClick={handleSave} disabled={!isDirty || isPending} size="sm">
                 {updateMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -852,7 +878,7 @@ export default function PaymentsConfigPage() {
         {/* TAB 2: M-Pesa Integration */}
         {/* ================================================================ */}
 
-        <TabsContent value="mpesa" className="space-y-4 mt-4">
+        <TabsContent value="mpesa" className="mt-4 space-y-4">
           {/* Collection account details */}
           <Card>
             <CardHeader className="pb-3">
@@ -904,9 +930,9 @@ export default function PaymentsConfigPage() {
               <Alert>
                 <AlertTitle className="text-sm">Multi-tenant M-Pesa</AlertTitle>
                 <AlertDescription className="text-xs">
-                  Each facility can have its own Daraja API credentials and shortcode.
-                  Either fill <strong>all four</strong> required credential fields, or leave them all empty
-                  to fall back to system-wide environment variables.
+                  Each facility can have its own Daraja API credentials and shortcode. Either fill{' '}
+                  <strong>all four</strong> required credential fields, or leave them all empty to
+                  fall back to system-wide environment variables.
                 </AlertDescription>
               </Alert>
 
@@ -918,9 +944,13 @@ export default function PaymentsConfigPage() {
                   onClick={() => setShowSecrets(!showSecrets)}
                 >
                   {showSecrets ? (
-                    <><EyeOff className="mr-1.5 h-3.5 w-3.5" /> Hide secrets</>
+                    <>
+                      <EyeOff className="mr-1.5 h-3.5 w-3.5" /> Hide secrets
+                    </>
                   ) : (
-                    <><Eye className="mr-1.5 h-3.5 w-3.5" /> Show secrets</>
+                    <>
+                      <Eye className="mr-1.5 h-3.5 w-3.5" /> Show secrets
+                    </>
                   )}
                 </Button>
               </div>
@@ -954,7 +984,11 @@ export default function PaymentsConfigPage() {
                     id="mpesa-shortcode"
                     value={form.mpesa_shortcode}
                     onChange={(e) => updateField('mpesa_shortcode', e.target.value)}
-                    placeholder={form.mpesa_environment === 'sandbox' ? 'Optional in sandbox (defaults to 174379)' : 'e.g. 174379'}
+                    placeholder={
+                      form.mpesa_environment === 'sandbox'
+                        ? 'Optional in sandbox (defaults to 174379)'
+                        : 'e.g. 174379'
+                    }
                     disabled={isPending}
                     className={touched && errors.mpesa_shortcode ? 'border-destructive' : ''}
                   />
@@ -962,13 +996,20 @@ export default function PaymentsConfigPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="mpesa-consumer-key">Consumer key<Req /></Label>
+                  <Label htmlFor="mpesa-consumer-key">
+                    Consumer key
+                    <Req />
+                  </Label>
                   <Input
                     id="mpesa-consumer-key"
                     type={showSecrets ? 'text' : 'password'}
                     value={form.mpesa_consumer_key}
                     onChange={(e) => updateField('mpesa_consumer_key', e.target.value)}
-                    placeholder={hasMpesaCreds ? '••••••••  (saved — leave blank to keep)' : 'Daraja consumer key'}
+                    placeholder={
+                      hasMpesaCreds
+                        ? '••••••••  (saved — leave blank to keep)'
+                        : 'Daraja consumer key'
+                    }
                     autoComplete="off"
                     disabled={isPending}
                     className={touched && errors.mpesa_consumer_key ? 'border-destructive' : ''}
@@ -977,13 +1018,20 @@ export default function PaymentsConfigPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="mpesa-consumer-secret">Consumer secret<Req /></Label>
+                  <Label htmlFor="mpesa-consumer-secret">
+                    Consumer secret
+                    <Req />
+                  </Label>
                   <Input
                     id="mpesa-consumer-secret"
                     type={showSecrets ? 'text' : 'password'}
                     value={form.mpesa_consumer_secret}
                     onChange={(e) => updateField('mpesa_consumer_secret', e.target.value)}
-                    placeholder={hasMpesaCreds ? '••••••••  (saved — leave blank to keep)' : 'Daraja consumer secret'}
+                    placeholder={
+                      hasMpesaCreds
+                        ? '••••••••  (saved — leave blank to keep)'
+                        : 'Daraja consumer secret'
+                    }
                     autoComplete="off"
                     disabled={isPending}
                     className={touched && errors.mpesa_consumer_secret ? 'border-destructive' : ''}
@@ -1016,7 +1064,10 @@ export default function PaymentsConfigPage() {
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="mpesa-callback-url">
-                    Callback URL{form.mpesa_environment === 'production' && hasMpesaCredsInForm(form) && <Req />}
+                    Callback URL
+                    {form.mpesa_environment === 'production' && hasMpesaCredsInForm(form) && (
+                      <Req />
+                    )}
                   </Label>
                   <Input
                     id="mpesa-callback-url"
@@ -1030,17 +1081,15 @@ export default function PaymentsConfigPage() {
                   <FieldError msg={touched ? errors.mpesa_callback_url : undefined} />
                   <p className="text-xs text-muted-foreground">
                     The publicly accessible URL where Safaricom sends payment results.
-                    {form.mpesa_environment === 'production' ? ' Required for production — must be HTTPS.' : ' Optional for sandbox.'}
+                    {form.mpesa_environment === 'production'
+                      ? ' Required for production — must be HTTPS.'
+                      : ' Optional for sandbox.'}
                   </p>
                 </div>
               </div>
             </CardContent>
             <CardFooter className="flex justify-end border-t pt-4">
-              <Button
-                onClick={handleSave}
-                disabled={!isDirty || isPending}
-                size="sm"
-              >
+              <Button onClick={handleSave} disabled={!isDirty || isPending} size="sm">
                 {updateMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -1056,7 +1105,7 @@ export default function PaymentsConfigPage() {
         {/* TAB 3: Bank Accounts */}
         {/* ================================================================ */}
 
-        <TabsContent value="bank" className="space-y-4 mt-4">
+        <TabsContent value="bank" className="mt-4 space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -1107,11 +1156,7 @@ export default function PaymentsConfigPage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end border-t pt-4">
-              <Button
-                onClick={handleSave}
-                disabled={!isDirty || isPending}
-                size="sm"
-              >
+              <Button onClick={handleSave} disabled={!isDirty || isPending} size="sm">
                 {updateMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -1127,7 +1172,7 @@ export default function PaymentsConfigPage() {
         {/* TAB 4: SHA/DHA Credentials */}
         {/* ================================================================ */}
 
-        <TabsContent value="sha" className="space-y-4 mt-4">
+        <TabsContent value="sha" className="mt-4 space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -1144,7 +1189,8 @@ export default function PaymentsConfigPage() {
               <Alert>
                 <AlertTitle className="text-sm">ILM setup</AlertTitle>
                 <AlertDescription className="text-xs">
-                  ILM integration uses facility-level identifiers. Consumer/client secrets are no longer required here.
+                  ILM integration uses facility-level identifiers. Consumer/client secrets are no
+                  longer required here.
                 </AlertDescription>
               </Alert>
 
@@ -1198,7 +1244,11 @@ export default function PaymentsConfigPage() {
                     type="password"
                     value={form.sha_encrypted_pin}
                     onChange={(e) => updateField('sha_encrypted_pin', e.target.value)}
-                    placeholder={hasShaCreds ? '••••••••  (saved — leave blank to keep)' : 'Pre-encrypted DHA PIN'}
+                    placeholder={
+                      hasShaCreds
+                        ? '••••••••  (saved — leave blank to keep)'
+                        : 'Pre-encrypted DHA PIN'
+                    }
                     autoComplete="off"
                     disabled={isPending}
                   />
@@ -1206,11 +1256,7 @@ export default function PaymentsConfigPage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end border-t pt-4">
-              <Button
-                onClick={handleSave}
-                disabled={!isDirty || isPending}
-                size="sm"
-              >
+              <Button onClick={handleSave} disabled={!isDirty || isPending} size="sm">
                 {updateMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -1226,7 +1272,7 @@ export default function PaymentsConfigPage() {
         {/* TAB 5: Payment Terms */}
         {/* ================================================================ */}
 
-        <TabsContent value="terms" className="space-y-4 mt-4">
+        <TabsContent value="terms" className="mt-4 space-y-4">
           <BillingSettingsTab />
         </TabsContent>
 
@@ -1234,7 +1280,7 @@ export default function PaymentsConfigPage() {
         {/* TAB 6: Automation Rules */}
         {/* ================================================================ */}
 
-        <TabsContent value="automation" className="space-y-4 mt-4">
+        <TabsContent value="automation" className="mt-4 space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -1246,25 +1292,29 @@ export default function PaymentsConfigPage() {
               <Alert>
                 <AlertTitle className="text-sm">Rule behavior</AlertTitle>
                 <AlertDescription className="text-xs">
-                  Rules execute in the backend with idempotency tracking. Encounter-created rules run when a new encounter invoice is initialized.
+                  Rules execute in the backend with idempotency tracking. Encounter-created rules
+                  run when a new encounter invoice is initialized.
                 </AlertDescription>
               </Alert>
 
               {form.automation_rules.length === 0 && (
                 <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                  No automation rules yet. Add one to auto-create charge lines on supported triggers.
+                  No automation rules yet. Add one to auto-create charge lines on supported
+                  triggers.
                 </div>
               )}
 
               <div className="space-y-3">
                 {form.automation_rules.map((rule, index) => (
-                  <div key={rule.id ?? `new-${index}`} className="rounded-lg border p-3 space-y-3">
+                  <div key={rule.id ?? `new-${index}`} className="space-y-3 rounded-lg border p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium">Rule {index + 1}</p>
                       <div className="flex items-center gap-2">
                         <Switch
                           checked={rule.is_active}
-                          onCheckedChange={(checked) => updateAutomationRule(index, { is_active: checked })}
+                          onCheckedChange={(checked) =>
+                            updateAutomationRule(index, { is_active: checked })
+                          }
                           disabled={isPending}
                         />
                         <Button
@@ -1311,7 +1361,9 @@ export default function PaymentsConfigPage() {
                                     }
                                     return `${selectedService.code} - ${selectedService.name}`;
                                   })()
-                                : (servicesQuery.isLoading ? 'Loading services...' : 'Search service...')}
+                                : servicesQuery.isLoading
+                                  ? 'Loading services...'
+                                  : 'Search service...'}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
@@ -1328,7 +1380,9 @@ export default function PaymentsConfigPage() {
                                       setOpenServiceRuleIndex(null);
                                     }}
                                   >
-                                    <Check className={`mr-2 h-4 w-4 ${rule.service === null ? 'opacity-100' : 'opacity-0'}`} />
+                                    <Check
+                                      className={`mr-2 h-4 w-4 ${rule.service === null ? 'opacity-100' : 'opacity-0'}`}
+                                    />
                                     No service (use price override)
                                   </CommandItem>
                                   {(servicesQuery.data ?? []).map((service) => (
@@ -1340,7 +1394,9 @@ export default function PaymentsConfigPage() {
                                         setOpenServiceRuleIndex(null);
                                       }}
                                     >
-                                      <Check className={`mr-2 h-4 w-4 ${rule.service === service.id ? 'opacity-100' : 'opacity-0'}`} />
+                                      <Check
+                                        className={`mr-2 h-4 w-4 ${rule.service === service.id ? 'opacity-100' : 'opacity-0'}`}
+                                      />
                                       {service.code} - {service.name}
                                     </CommandItem>
                                   ))}
@@ -1354,7 +1410,11 @@ export default function PaymentsConfigPage() {
                         <Label>Trigger</Label>
                         <Select
                           value={rule.trigger}
-                          onValueChange={(value) => updateAutomationRule(index, { trigger: value as AutomationRuleForm['trigger'] })}
+                          onValueChange={(value) =>
+                            updateAutomationRule(index, {
+                              trigger: value as AutomationRuleForm['trigger'],
+                            })
+                          }
                           disabled={isPending}
                         >
                           <SelectTrigger>
@@ -1374,7 +1434,9 @@ export default function PaymentsConfigPage() {
                         <Select
                           value={rule.recurrence}
                           onValueChange={(value) =>
-                            updateAutomationRule(index, { recurrence: value as AutomationRuleForm['recurrence'] })
+                            updateAutomationRule(index, {
+                              recurrence: value as AutomationRuleForm['recurrence'],
+                            })
                           }
                           disabled={isPending}
                         >
@@ -1397,7 +1459,9 @@ export default function PaymentsConfigPage() {
                           min="0.01"
                           step="0.01"
                           value={rule.quantity}
-                          onChange={(e) => updateAutomationRule(index, { quantity: e.target.value })}
+                          onChange={(e) =>
+                            updateAutomationRule(index, { quantity: e.target.value })
+                          }
                           disabled={isPending}
                         />
                       </div>
@@ -1408,7 +1472,9 @@ export default function PaymentsConfigPage() {
                           min="0"
                           step="0.01"
                           value={rule.unit_price_override}
-                          onChange={(e) => updateAutomationRule(index, { unit_price_override: e.target.value })}
+                          onChange={(e) =>
+                            updateAutomationRule(index, { unit_price_override: e.target.value })
+                          }
                           placeholder="Optional"
                           disabled={isPending}
                         />
@@ -1417,7 +1483,9 @@ export default function PaymentsConfigPage() {
                         <Label>Description template</Label>
                         <Input
                           value={rule.description_template}
-                          onChange={(e) => updateAutomationRule(index, { description_template: e.target.value })}
+                          onChange={(e) =>
+                            updateAutomationRule(index, { description_template: e.target.value })
+                          }
                           placeholder="Optional custom line description"
                           disabled={isPending}
                         />
@@ -1431,7 +1499,9 @@ export default function PaymentsConfigPage() {
                             step="1"
                             value={rule.repeat_every_days}
                             onChange={(e) =>
-                              updateAutomationRule(index, { repeat_every_days: Number.parseInt(e.target.value, 10) || 1 })
+                              updateAutomationRule(index, {
+                                repeat_every_days: Number.parseInt(e.target.value, 10) || 1,
+                              })
                             }
                             disabled={isPending}
                           />
@@ -1442,7 +1512,12 @@ export default function PaymentsConfigPage() {
                 ))}
               </div>
 
-              <Button type="button" variant="outline" onClick={addAutomationRule} disabled={isPending}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addAutomationRule}
+                disabled={isPending}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Rule
               </Button>

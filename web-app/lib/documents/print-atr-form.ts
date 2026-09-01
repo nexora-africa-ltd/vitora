@@ -36,10 +36,7 @@ function vitalsRow(
 }
 
 /** Render a checkbox group as ☑/☐ matching the MOH form layout */
-function checkboxGroup(
-  options: { value: string; label: string }[],
-  selected: string[]
-): string {
+function checkboxGroup(options: { value: string; label: string }[], selected: string[]): string {
   return options
     .map(
       (opt) =>
@@ -216,7 +213,9 @@ export function printATRForm(atr: AdverseTransfusionReaction): void {
   <!-- LAB INVESTIGATION -->
   <div class="section" style="margin-top: 8px;">
     <div class="section-title">LAB INVESTIGATION: (Transfusion Manager)</div>
-    ${atr.has_lab_investigation ? `
+    ${
+      atr.has_lab_investigation
+        ? `
     <div class="two-col">
       <div>
         <table class="lab-grid">
@@ -316,7 +315,9 @@ export function printATRForm(atr: AdverseTransfusionReaction): void {
         </td>
       </tr>
     </table>
-    ` : '<p style="padding: 6px; color: #666; font-style: italic;">Lab investigation not yet completed.</p>'}
+    `
+        : '<p style="padding: 6px; color: #666; font-style: italic;">Lab investigation not yet completed.</p>'
+    }
   </div>
 
   <!-- REPORTER DETAILS -->
@@ -339,7 +340,9 @@ export function printATRForm(atr: AdverseTransfusionReaction): void {
         <td class="label">Date of Report</td>
         <td colspan="3">${escapeHtml(atr.report_date)}</td>
       </tr>
-      ${atr.ppb_submitter_name ? `
+      ${
+        atr.ppb_submitter_name
+          ? `
       <tr>
         <td class="label">Name of Person Submitting to PPB</td>
         <td>${escapeHtml(atr.ppb_submitter_name)}</td>
@@ -355,7 +358,9 @@ export function printATRForm(atr: AdverseTransfusionReaction): void {
       <tr>
         <td class="label">Date of Submission</td>
         <td colspan="3">${escapeHtml(atr.submission_date || '—')}</td>
-      </tr>` : ''}
+      </tr>`
+          : ''
+      }
     </table>
   </div>
 

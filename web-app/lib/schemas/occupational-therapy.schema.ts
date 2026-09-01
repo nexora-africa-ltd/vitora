@@ -36,30 +36,25 @@ export const OTCategorySchema = z.enum([
   'OTHER',
 ]);
 
-export const OTAssessmentTypeSchema = z.enum([
-  'INITIAL',
-  'FOLLOW_UP',
-  'DISCHARGE',
-  'RE_EVALUATION',
-]).optional();
+export const OTAssessmentTypeSchema = z
+  .enum(['INITIAL', 'FOLLOW_UP', 'DISCHARGE', 'RE_EVALUATION'])
+  .optional();
 
-export const OTFunctionalStatusSchema = z.enum([
-  'INDEPENDENT',
-  'MODIFIED_INDEPENDENT',
-  'SUPERVISION',
-  'MINIMAL_ASSISTANCE',
-  'MODERATE_ASSISTANCE',
-  'MAXIMAL_ASSISTANCE',
-  'TOTAL_ASSISTANCE',
-]).optional();
+export const OTFunctionalStatusSchema = z
+  .enum([
+    'INDEPENDENT',
+    'MODIFIED_INDEPENDENT',
+    'SUPERVISION',
+    'MINIMAL_ASSISTANCE',
+    'MODERATE_ASSISTANCE',
+    'MAXIMAL_ASSISTANCE',
+    'TOTAL_ASSISTANCE',
+  ])
+  .optional();
 
-export const OTPatientEngagementSchema = z.enum([
-  'EXCELLENT',
-  'GOOD',
-  'FAIR',
-  'POOR',
-  'UNCOOPERATIVE',
-]).optional();
+export const OTPatientEngagementSchema = z
+  .enum(['EXCELLENT', 'GOOD', 'FAIR', 'POOR', 'UNCOOPERATIVE'])
+  .optional();
 
 // =============================================================================
 // TREATMENT TYPE (matches OTTreatmentTypeSerializer)

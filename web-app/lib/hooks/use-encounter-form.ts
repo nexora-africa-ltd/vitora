@@ -11,7 +11,7 @@ import type {
   EncounterFormData,
   VitalAlert,
   ICD10SearchResult,
-  DiagnosisFormData
+  DiagnosisFormData,
 } from '@/lib/types/encounter-form';
 import type { Encounter } from '@/lib/types/encounter';
 import type { Patient } from '@/lib/types/patient';
@@ -30,7 +30,7 @@ export function useICD10Search(query: string) {
       ORDER BY code
       LIMIT 20`,
     params: [searchPattern, searchPattern, searchPattern],
-    transform: (rows) => rows.map(r => transformICD10Row(r) as unknown as ICD10SearchResult),
+    transform: (rows) => rows.map((r) => transformICD10Row(r) as unknown as ICD10SearchResult),
     queryKey: ['icd10-search', debouncedQuery],
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) {
@@ -103,9 +103,10 @@ export function useCreateEncounterWithValidation() {
         chief_complaint: data.chief_complaint,
         temperature: data.temperature,
         pulse: data.pulse,
-        blood_pressure: data.blood_pressure_systolic && data.blood_pressure_diastolic
-          ? `${data.blood_pressure_systolic}/${data.blood_pressure_diastolic}`
-          : '',
+        blood_pressure:
+          data.blood_pressure_systolic && data.blood_pressure_diastolic
+            ? `${data.blood_pressure_systolic}/${data.blood_pressure_diastolic}`
+            : '',
         respiratory_rate: data.respiratory_rate,
         spo2: data.spo2,
         weight: data.weight,
@@ -139,10 +140,7 @@ export function useAddDiagnosis(encounterId: number) {
 
   return useMutation({
     mutationFn: async (data: DiagnosisFormData) => {
-      const response = await apiClient.post(
-        `/api/encounters/${encounterId}/diagnoses/`,
-        data
-      );
+      const response = await apiClient.post(`/api/encounters/${encounterId}/diagnoses/`, data);
       return response.data;
     },
     onSuccess: () => {
@@ -271,7 +269,10 @@ export function getVitalAlerts(data: EncounterFormData): VitalAlert[] {
 /**
  * Calculate BMI from weight (kg) and height (cm).
  */
-export function calculateBMI(weight: number | null, height: number | null): { bmi: number | null; classification: string } {
+export function calculateBMI(
+  weight: number | null,
+  height: number | null
+): { bmi: number | null; classification: string } {
   if (!weight || !height || height <= 0) {
     return { bmi: null, classification: '' };
   }
@@ -291,11 +292,7 @@ export function calculateBMI(weight: number | null, height: number | null): { bm
 /**
  * Auto-save hook for encounter form.
  */
-export function useAutoSave(
-  data: EncounterFormData,
-  encounterId: number | null,
-  isDirty: boolean
-) {
+export function useAutoSave(data: EncounterFormData, encounterId: number | null, isDirty: boolean) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -309,9 +306,10 @@ export function useAutoSave(
       try {
         const apiData = {
           ...debouncedData,
-          blood_pressure: debouncedData.blood_pressure_systolic && debouncedData.blood_pressure_diastolic
-            ? `${debouncedData.blood_pressure_systolic}/${debouncedData.blood_pressure_diastolic}`
-            : '',
+          blood_pressure:
+            debouncedData.blood_pressure_systolic && debouncedData.blood_pressure_diastolic
+              ? `${debouncedData.blood_pressure_systolic}/${debouncedData.blood_pressure_diastolic}`
+              : '',
         };
         await apiClient.patch(`/api/encounters/${encounterId}/`, apiData);
         setLastSaved(new Date());

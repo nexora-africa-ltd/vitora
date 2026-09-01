@@ -309,7 +309,11 @@ export const VISIT_REASON_DISPLAY: Record<VisitReason, string> = {
 };
 
 // Visit reasons that can skip triage
-export const SKIP_TRIAGE_REASONS: VisitReason[] = ['LAB_REVIEW', 'REFILL_ONLY', 'SCHEDULED_PROCEDURE'];
+export const SKIP_TRIAGE_REASONS: VisitReason[] = [
+  'LAB_REVIEW',
+  'REFILL_ONLY',
+  'SCHEDULED_PROCEDURE',
+];
 
 // Encounter state transition request/response
 export interface EncounterTransitionRequest {
@@ -347,24 +351,24 @@ export interface RelatedEncounter {
 // Encounter Type Choices - matches ENCOUNTER_TYPE_CHOICES
 export type EncounterType =
   // Existing (MANDATORY triage)
-  | 'OPD'           // Outpatient Department
-  | 'IPD'           // Inpatient Department
-  | 'EMERGENCY'     // Emergency
+  | 'OPD' // Outpatient Department
+  | 'IPD' // Inpatient Department
+  | 'EMERGENCY' // Emergency
   // High-risk clinics (MANDATORY triage)
-  | 'ANC'           // Antenatal Clinic
-  | 'PAEDIATRIC'    // Paediatric Clinic
-  | 'DIALYSIS'      // Dialysis Unit
-  | 'ONCOLOGY'      // Oncology Clinic
+  | 'ANC' // Antenatal Clinic
+  | 'PAEDIATRIC' // Paediatric Clinic
+  | 'DIALYSIS' // Dialysis Unit
+  | 'ONCOLOGY' // Oncology Clinic
   // Scheduled visits (OPTIONAL triage)
   | 'SCHEDULED_OPD' // Scheduled Outpatient
-  | 'FOLLOW_UP'     // Follow-up Visit
+  | 'FOLLOW_UP' // Follow-up Visit
   | 'CONSULTANT_REVIEW' // Consultant Review
-  | 'CHRONIC_STABLE'    // Stable Chronic Care
+  | 'CHRONIC_STABLE' // Stable Chronic Care
   | 'SPECIALIST_CLINIC' // Specialist Clinic
   // Pre-assessed (NOT_REQUIRED triage)
-  | 'PROCEDURE'     // Scheduled Procedure
-  | 'DAY_CASE'      // Day Case
-  | 'WARD_ROUND'    // Ward Round
+  | 'PROCEDURE' // Scheduled Procedure
+  | 'DAY_CASE' // Day Case
+  | 'WARD_ROUND' // Ward Round
   | 'DISCHARGE_REVIEW'; // Discharge Review
 
 // Display labels for encounter types
@@ -431,12 +435,12 @@ export type TriageCategory = BaseTriageCategory | null;
 
 // Triage Bypass Reason - matches TRIAGE_BYPASS_REASON_CHOICES
 export type TriageBypassReason =
-  | 'STABLE_FOLLOW_UP'      // Stable follow-up patient
-  | 'CONSULTANT_DECISION'   // Consultant/senior decision
-  | 'CHRONIC_CARE_REVIEW'   // Chronic care review
-  | 'STAFF_SHORTAGE'        // Staff shortage
-  | 'PATIENT_PREFERENCE'    // Patient preference
-  | 'OTHER'                 // Other reason
+  | 'STABLE_FOLLOW_UP' // Stable follow-up patient
+  | 'CONSULTANT_DECISION' // Consultant/senior decision
+  | 'CHRONIC_CARE_REVIEW' // Chronic care review
+  | 'STAFF_SHORTAGE' // Staff shortage
+  | 'PATIENT_PREFERENCE' // Patient preference
+  | 'OTHER' // Other reason
   | null;
 
 export const TRIAGE_BYPASS_REASON_DISPLAY: Record<Exclude<TriageBypassReason, null>, string> = {

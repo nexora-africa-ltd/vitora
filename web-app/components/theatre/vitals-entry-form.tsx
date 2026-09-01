@@ -125,8 +125,12 @@ export function VitalsEntryForm({ caseNumber, onVitalAdded }: VitalsEntryFormPro
 
   // Collect all current inline alerts for a summary banner
   const thresholdFields = [
-    'heart_rate', 'spo2', 'systolic_bp', 'diastolic_bp',
-    'respiratory_rate', 'etco2',
+    'heart_rate',
+    'spo2',
+    'systolic_bp',
+    'diastolic_bp',
+    'respiratory_rate',
+    'etco2',
   ] as const;
   const activeAlerts = thresholdFields
     .map((f) => getVitalAlert(f, watchedValues[f] as number | null | undefined))
@@ -152,10 +156,10 @@ export function VitalsEntryForm({ caseNumber, onVitalAdded }: VitalsEntryFormPro
               <FormLabel className="flex items-center gap-1.5">
                 {label}
                 {status === 'critical' && (
-                  <span className="text-red-500 text-[10px] font-bold">CRITICAL</span>
+                  <span className="text-[10px] font-bold text-red-500">CRITICAL</span>
                 )}
                 {status === 'warning' && (
-                  <span className="text-amber-500 text-[10px] font-bold">WARNING</span>
+                  <span className="text-[10px] font-bold text-amber-500">WARNING</span>
                 )}
               </FormLabel>
               <FormControl>
@@ -170,14 +174,14 @@ export function VitalsEntryForm({ caseNumber, onVitalAdded }: VitalsEntryFormPro
                 />
               </FormControl>
               {alert && (
-                <p className={`text-[11px] leading-tight ${status === 'critical' ? 'text-red-600' : 'text-amber-600'}`}>
+                <p
+                  className={`text-[11px] leading-tight ${status === 'critical' ? 'text-red-600' : 'text-amber-600'}`}
+                >
                   {alert}
                 </p>
               )}
               {!alert && range && numVal != null && (
-                <p className="text-[11px] leading-tight text-muted-foreground">
-                  Normal: {range}
-                </p>
+                <p className="text-[11px] leading-tight text-muted-foreground">Normal: {range}</p>
               )}
               <FormMessage />
             </FormItem>
@@ -190,7 +194,7 @@ export function VitalsEntryForm({ caseNumber, onVitalAdded }: VitalsEntryFormPro
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
           <Syringe className="h-4 w-4" />
           Record Vital Reading
           <HelpPopover content="Enter a new intra-operative vital observation. Fields with clinical thresholds show real-time warnings (amber) and critical alerts (red) as you type. The backend validates ranges before saving." />
@@ -260,7 +264,7 @@ export function VitalsEntryForm({ caseNumber, onVitalAdded }: VitalsEntryFormPro
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <ul className="list-disc pl-4 text-sm space-y-0.5">
+                  <ul className="list-disc space-y-0.5 pl-4 text-sm">
                     {activeAlerts.map((msg, i) => (
                       <li key={i}>{msg}</li>
                     ))}
@@ -270,7 +274,7 @@ export function VitalsEntryForm({ caseNumber, onVitalAdded }: VitalsEntryFormPro
             )}
 
             <Button type="submit">
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Add vital reading
             </Button>
           </form>

@@ -8,14 +8,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/utils/format';
-import {
-  Receipt,
-  Printer,
-  Eye,
-  Search,
-  Banknote,
-  AlertCircle,
-} from 'lucide-react';
+import { Receipt, Printer, Eye, Search, Banknote, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
@@ -42,7 +35,7 @@ const methodColors: Record<string, string> = {
 
 function PaymentMethodBadge({ method }: { method: string }) {
   return (
-    <Badge className={`${methodColors[method] || 'bg-gray-100 text-gray-700'} text-xs shrink-0`}>
+    <Badge className={`${methodColors[method] || 'bg-gray-100 text-gray-700'} shrink-0 text-xs`}>
       {method.replace('_', ' ')}
     </Badge>
   );
@@ -93,7 +86,7 @@ export default function ReceiptsPage() {
   if (error) {
     return (
       <div className="py-8 text-center">
-        <AlertCircle className="h-8 w-8 mx-auto text-destructive mb-2" />
+        <AlertCircle className="mx-auto mb-2 h-8 w-8 text-destructive" />
         <p className="text-destructive">Failed to load receipts</p>
       </div>
     );
@@ -108,7 +101,7 @@ export default function ReceiptsPage() {
           actions={
             <ReceivePaymentModal
               trigger={
-                <Button className="gap-2 w-full sm:w-auto">
+                <Button className="w-full gap-2 sm:w-auto">
                   <Banknote className="h-4 w-4" />
                   Receive Payment
                 </Button>
@@ -119,7 +112,7 @@ export default function ReceiptsPage() {
 
         {/* Search */}
         <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search receipts..."
             value={searchTerm}
@@ -133,7 +126,9 @@ export default function ReceiptsPage() {
           data={filteredPayments}
           keyExtractor={(payment) => payment.id}
           isLoading={isLoading}
-          emptyMessage={searchTerm ? 'No receipts match your search' : 'Completed payments will appear here'}
+          emptyMessage={
+            searchTerm ? 'No receipts match your search' : 'Completed payments will appear here'
+          }
           columns={[
             {
               key: 'payment_reference',
@@ -200,11 +195,7 @@ export default function ReceiptsPage() {
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => handlePrintReceipt(payment, e)}
-                  >
+                  <Button variant="ghost" size="sm" onClick={(e) => handlePrintReceipt(payment, e)}>
                     <Printer className="h-4 w-4" />
                   </Button>
                 </div>
@@ -216,20 +207,20 @@ export default function ReceiptsPage() {
             <Card className="p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-sm font-medium truncate">
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="truncate font-mono text-sm font-medium">
                       {payment.payment_reference}
                     </span>
                     <PaymentMethodBadge method={payment.method} />
                   </div>
-                  <p className="text-sm truncate">{payment.patient_name || 'Unknown patient'}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="truncate text-sm">{payment.patient_name || 'Unknown patient'}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {formatDate(payment.created_at, 'dd MMM yyyy')}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="shrink-0 text-right">
                   <p className="font-semibold">{formatCurrency(parseFloat(payment.amount))}</p>
-                  <div className="flex gap-1 mt-2 justify-end">
+                  <div className="mt-2 flex justify-end gap-1">
                     <Button
                       variant="ghost"
                       size="sm"

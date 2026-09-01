@@ -43,7 +43,10 @@ import {
 } from '@/components/ui/select';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { TriageCategoryBadge } from '@/components/triage';
-import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
+import {
+  CheckinSuccessModal,
+  type CheckinSuccessData,
+} from '@/components/patients/checkin-success-modal';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
@@ -65,24 +68,26 @@ import { ZONE_ROUTES } from '@/lib/config/emergency';
 // Schema
 // =============================================================================
 
-const routingSchema = z.object({
-  routing_type: z.enum(['emergency', 'clinic'], {
-    required_error: 'Select where to route the patient',
-  }),
-  assigned_area: z.string().optional(),
-  assigned_clinic: z.number().nullable().optional(),
-}).refine(
-  (data) => {
-    if (data.routing_type === 'emergency') {
-      return !!data.assigned_area && data.assigned_area.trim() !== '';
+const routingSchema = z
+  .object({
+    routing_type: z.enum(['emergency', 'clinic'], {
+      required_error: 'Select where to route the patient',
+    }),
+    assigned_area: z.string().optional(),
+    assigned_clinic: z.number().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.routing_type === 'emergency') {
+        return !!data.assigned_area && data.assigned_area.trim() !== '';
+      }
+      return data.assigned_clinic != null;
+    },
+    {
+      message: 'Select a routing destination',
+      path: ['assigned_area'],
     }
-    return data.assigned_clinic != null;
-  },
-  {
-    message: 'Select a routing destination',
-    path: ['assigned_area'],
-  }
-);
+  );
 
 type RoutingFormData = z.infer<typeof routingSchema>;
 
@@ -122,12 +127,13 @@ export default function TriageRoutePage() {
     return () => {
       markSectionVisited(encounterIdNum, 'route');
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encounterIdNum]);
 
   // Hooks
   const { mutateAsync: createAssessment, isPending: isCreating } = useCreateTriageAssessment();
-  const { mutateAsync: completeAssessment, isPending: isCompleting } = useCompleteTriageAssessment();
+  const { mutateAsync: completeAssessment, isPending: isCompleting } =
+    useCompleteTriageAssessment();
   const { data: clinicsData, isLoading: isClinicsLoading } = useClinics({ page_size: 100 });
 
   // Local state
@@ -140,10 +146,10 @@ export default function TriageRoutePage() {
   const defaultRoutingType = currentRouting?.assigned_area
     ? 'emergency'
     : currentRouting?.assigned_clinic
-    ? 'clinic'
-    : isEmergencyCategory
-    ? 'emergency'
-    : 'clinic';
+      ? 'clinic'
+      : isEmergencyCategory
+        ? 'emergency'
+        : 'clinic';
 
   const {
     handleSubmit,
@@ -168,9 +174,7 @@ export default function TriageRoutePage() {
   useEffect(() => {
     if (routingType === 'clinic' && !selectedClinic && clinicsData?.results?.length) {
       // Priority 1: Match by name containing "general opd" (most specific)
-      const byName = clinicsData.results.find(
-        (c) => c.name.toLowerCase().includes('general opd')
-      );
+      const byName = clinicsData.results.find((c) => c.name.toLowerCase().includes('general opd'));
       // Priority 2: Match by clinic_type, preferring non-test clinics
       const byType = !byName
         ? clinicsData.results.find(
@@ -199,8 +203,10 @@ export default function TriageRoutePage() {
 
       // Store routing
       setRouting(parseInt(encounterId, 10), {
-        assigned_area: data.routing_type === 'emergency' ? (data.assigned_area as AssignedArea) : '',
-        assigned_clinic: data.routing_type === 'clinic' ? data.assigned_clinic ?? undefined : undefined,
+        assigned_area:
+          data.routing_type === 'emergency' ? (data.assigned_area as AssignedArea) : '',
+        assigned_clinic:
+          data.routing_type === 'clinic' ? (data.assigned_clinic ?? undefined) : undefined,
       });
 
       try {
@@ -241,7 +247,9 @@ export default function TriageRoutePage() {
           weight: currentVitals?.weight,
           height: currentVitals?.height,
           // Routing
-          assigned_area: (data.routing_type === 'emergency' ? data.assigned_area : '') as AssignedArea | '',
+          assigned_area: (data.routing_type === 'emergency' ? data.assigned_area : '') as
+            | AssignedArea
+            | '',
           assigned_clinic: data.routing_type === 'clinic' ? data.assigned_clinic : null,
         };
 
@@ -349,24 +357,24 @@ export default function TriageRoutePage() {
     <div className="space-y-6">
       {/* Pre-requisites Warning */}
       {(!hasVitals || !hasAssessment) && (
-        <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
+        <Alert variant="destructive" className="border-destructive/20 bg-destructive/10">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Incomplete Assessment</AlertTitle>
           <AlertDescription className="space-y-1">
             {!hasVitals && (
               <p>
-                <strong>Vitals not recorded:</strong> Vital signs were not captured during registration.
-                Recording vitals is required before routing the patient to consultation.
+                <strong>Vitals not recorded:</strong> Vital signs were not captured during
+                registration. Recording vitals is required before routing the patient to
+                consultation.
               </p>
             )}
             {!hasAssessment && (
               <p>
-                <strong>Assessment required:</strong> Please complete the triage assessment before proceeding.
+                <strong>Assessment required:</strong> Please complete the triage assessment before
+                proceeding.
               </p>
             )}
-            <p className="text-sm mt-2">
-              Complete the previous steps to continue.
-            </p>
+            <p className="mt-2 text-sm">Complete the previous steps to continue.</p>
           </AlertDescription>
         </Alert>
       )}
@@ -374,20 +382,22 @@ export default function TriageRoutePage() {
       {/* Assessment Summary */}
       {hasAssessment && (
         <Card className="overflow-hidden">
-          <CardHeader className="pb-3 border-b bg-muted/30">
+          <CardHeader className="border-b bg-muted/30 pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <Stethoscope className="h-5 w-5 text-muted-foreground" />
                 Assessment Summary
               </CardTitle>
-              <Badge variant="secondary">Step {showHistoryStep ? 4 : 3} of {showHistoryStep ? 4 : 3}</Badge>
+              <Badge variant="secondary">
+                Step {showHistoryStep ? 4 : 3} of {showHistoryStep ? 4 : 3}
+              </Badge>
             </div>
           </CardHeader>
           <CardContent className="pt-4">
             {/* Patient Info Row */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b">
+            <div className="flex flex-col justify-between gap-4 border-b pb-4 sm:flex-row sm:items-center">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                   <User className="h-5 w-5 text-primary" />
                 </div>
                 <div>
@@ -402,40 +412,40 @@ export default function TriageRoutePage() {
 
             {/* Vitals Summary */}
             {currentVitals && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-4 border-b">
+              <div className="grid grid-cols-2 gap-3 border-b py-4 sm:grid-cols-4">
                 {currentVitals.heart_rate && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-rose-50 dark:bg-rose-950/30">
+                  <div className="flex items-center gap-2 rounded-lg bg-rose-50 p-2 dark:bg-rose-950/30">
                     <Heart className="h-4 w-4 text-rose-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">HR</p>
-                      <p className="font-semibold text-sm">{currentVitals.heart_rate} bpm</p>
+                      <p className="text-sm font-semibold">{currentVitals.heart_rate} bpm</p>
                     </div>
                   </div>
                 )}
                 {currentVitals.spo2 && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-sky-50 dark:bg-sky-950/30">
+                  <div className="flex items-center gap-2 rounded-lg bg-sky-50 p-2 dark:bg-sky-950/30">
                     <Activity className="h-4 w-4 text-sky-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">SpO2</p>
-                      <p className="font-semibold text-sm">{currentVitals.spo2}%</p>
+                      <p className="text-sm font-semibold">{currentVitals.spo2}%</p>
                     </div>
                   </div>
                 )}
                 {currentVitals.temperature && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30">
+                  <div className="flex items-center gap-2 rounded-lg bg-amber-50 p-2 dark:bg-amber-950/30">
                     <Thermometer className="h-4 w-4 text-amber-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">Temp</p>
-                      <p className="font-semibold text-sm">{currentVitals.temperature}°C</p>
+                      <p className="text-sm font-semibold">{currentVitals.temperature}°C</p>
                     </div>
                   </div>
                 )}
                 {(currentVitals.systolic_bp || currentVitals.diastolic_bp) && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-violet-50 dark:bg-violet-950/30">
+                  <div className="flex items-center gap-2 rounded-lg bg-violet-50 p-2 dark:bg-violet-950/30">
                     <Activity className="h-4 w-4 text-violet-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">BP</p>
-                      <p className="font-semibold text-sm">
+                      <p className="text-sm font-semibold">
                         {currentVitals.systolic_bp}/{currentVitals.diastolic_bp}
                       </p>
                     </div>
@@ -447,27 +457,43 @@ export default function TriageRoutePage() {
             {/* Chief Complaint */}
             {currentAssessment.chief_complaint && (
               <div className="pt-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Chief Complaint</p>
+                <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+                  Chief Complaint
+                </p>
                 <p className="text-sm">{currentAssessment.chief_complaint}</p>
               </div>
             )}
 
             {/* Category Description */}
             {currentAssessment.triage_category && (
-              <div className="mt-4 p-3 rounded-lg border" style={{
-                backgroundColor: `${TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory].bgColor}10`,
-                borderColor: `${TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory].bgColor}30`,
-              }}>
+              <div
+                className="mt-4 rounded-lg border p-3"
+                style={{
+                  backgroundColor: `${TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory].bgColor}10`,
+                  borderColor: `${TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory].bgColor}30`,
+                }}
+              >
                 <div className="flex items-start gap-2">
-                  <Clock className="h-4 w-4 mt-0.5" style={{
-                    color: TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory].bgColor
-                  }} />
+                  <Clock
+                    className="mt-0.5 h-4 w-4"
+                    style={{
+                      color:
+                        TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory]
+                          .bgColor,
+                    }}
+                  />
                   <div>
                     <p className="text-sm font-medium">
-                      {TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory].label}
+                      {
+                        TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory]
+                          .label
+                      }
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory].description}
+                      {
+                        TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory]
+                          .description
+                      }
                     </p>
                   </div>
                 </div>
@@ -494,39 +520,48 @@ export default function TriageRoutePage() {
                 name="routing_type"
                 control={control}
                 render={({ field }) => (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {/* Emergency Option */}
                     <button
                       type="button"
                       onClick={() => field.onChange('emergency')}
-                      className={`flex items-center gap-4 rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 text-left ${
+                      className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 text-left transition-all duration-200 ${
                         field.value === 'emergency'
-                          ? 'border-red-500 bg-red-50 dark:bg-red-950/30 ring-2 ring-red-500/20 scale-[1.02] shadow-lg shadow-red-500/10'
+                          ? 'scale-[1.02] border-red-500 bg-red-50 shadow-lg shadow-red-500/10 ring-2 ring-red-500/20 dark:bg-red-950/30'
                           : 'border-border bg-card hover:border-red-200 hover:bg-red-50/50 dark:hover:bg-red-950/10'
                       }`}
                     >
-                      <div className={`p-3 rounded-lg ${
-                        field.value === 'emergency'
-                          ? 'bg-red-500 text-white'
-                          : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                      }`}>
+                      <div
+                        className={`rounded-lg p-3 ${
+                          field.value === 'emergency'
+                            ? 'bg-red-500 text-white'
+                            : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                        }`}
+                      >
                         <Siren className="h-6 w-6" />
                       </div>
                       <div className="flex-1">
-                        <span className={`font-semibold ${
-                          field.value === 'emergency' ? 'text-red-700 dark:text-red-300' : ''
-                        }`}>Emergency Area</span>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <span
+                          className={`font-semibold ${
+                            field.value === 'emergency' ? 'text-red-700 dark:text-red-300' : ''
+                          }`}
+                        >
+                          Emergency Area
+                        </span>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           ER zones, Trauma, Resuscitation
                         </p>
                         {isEmergencyCategory && field.value !== 'emergency' && (
-                          <Badge variant="outline" className="mt-2 text-xs border-red-300 text-red-600">
+                          <Badge
+                            variant="outline"
+                            className="mt-2 border-red-300 text-xs text-red-600"
+                          >
                             Recommended for {triageCategory}
                           </Badge>
                         )}
                       </div>
                       {field.value === 'emergency' && (
-                        <CheckCircle2 className="h-5 w-5 text-red-500 shrink-0" />
+                        <CheckCircle2 className="h-5 w-5 shrink-0 text-red-500" />
                       )}
                     </button>
 
@@ -534,34 +569,43 @@ export default function TriageRoutePage() {
                     <button
                       type="button"
                       onClick={() => field.onChange('clinic')}
-                      className={`flex items-center gap-4 rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 text-left ${
+                      className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 text-left transition-all duration-200 ${
                         field.value === 'clinic'
-                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 ring-2 ring-emerald-500/20 scale-[1.02] shadow-lg shadow-emerald-500/10'
+                          ? 'scale-[1.02] border-emerald-500 bg-emerald-50 shadow-lg shadow-emerald-500/10 ring-2 ring-emerald-500/20 dark:bg-emerald-950/30'
                           : 'border-border bg-card hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/10'
                       }`}
                     >
-                      <div className={`p-3 rounded-lg ${
-                        field.value === 'clinic'
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-                      }`}>
+                      <div
+                        className={`rounded-lg p-3 ${
+                          field.value === 'clinic'
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        }`}
+                      >
                         <Building2 className="h-6 w-6" />
                       </div>
                       <div className="flex-1">
-                        <span className={`font-semibold ${
-                          field.value === 'clinic' ? 'text-emerald-700 dark:text-emerald-300' : ''
-                        }`}>OPD Clinic</span>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <span
+                          className={`font-semibold ${
+                            field.value === 'clinic' ? 'text-emerald-700 dark:text-emerald-300' : ''
+                          }`}
+                        >
+                          OPD Clinic
+                        </span>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           General or specialty outpatient clinic
                         </p>
                         {!isEmergencyCategory && field.value !== 'clinic' && (
-                          <Badge variant="outline" className="mt-2 text-xs border-emerald-300 text-emerald-600">
+                          <Badge
+                            variant="outline"
+                            className="mt-2 border-emerald-300 text-xs text-emerald-600"
+                          >
                             Recommended for {triageCategory}
                           </Badge>
                         )}
                       </div>
                       {field.value === 'clinic' && (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                        <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
                       )}
                     </button>
                   </div>
@@ -571,7 +615,7 @@ export default function TriageRoutePage() {
 
             {/* Emergency Area Selection */}
             {routingType === 'emergency' && (
-              <div className="space-y-3 p-4 rounded-lg border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
+              <div className="space-y-3 rounded-lg border-2 border-red-200 bg-red-50/50 p-4 dark:border-red-800 dark:bg-red-950/20">
                 <Label className="flex items-center gap-1.5 text-red-700 dark:text-red-300">
                   <MapPin className="h-4 w-4" />
                   Select Emergency Area *
@@ -580,27 +624,30 @@ export default function TriageRoutePage() {
                   name="assigned_area"
                   control={control}
                   render={({ field }) => (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {EMERGENCY_AREA_OPTIONS.map((option) => {
                         const isSelected = field.value === option.value;
-                        const categoryConfig = TRIAGE_CATEGORY_CONFIG[option.category as TriageCategory];
+                        const categoryConfig =
+                          TRIAGE_CATEGORY_CONFIG[option.category as TriageCategory];
                         return (
                           <button
                             key={option.value}
                             type="button"
                             onClick={() => field.onChange(option.value)}
-                            className={`flex items-center justify-between rounded-lg border-2 p-3 cursor-pointer transition-all duration-200 ${
+                            className={`flex cursor-pointer items-center justify-between rounded-lg border-2 p-3 transition-all duration-200 ${
                               isSelected
-                                ? 'border-red-500 bg-white dark:bg-red-950/50 ring-2 ring-red-500/30 shadow-lg shadow-red-500/10 scale-[1.03]'
-                                : 'border-red-200 dark:border-red-800 bg-white/50 dark:bg-red-950/10 hover:bg-white dark:hover:bg-red-950/30'
+                                ? 'scale-[1.03] border-red-500 bg-white shadow-lg shadow-red-500/10 ring-2 ring-red-500/30 dark:bg-red-950/50'
+                                : 'border-red-200 bg-white/50 hover:bg-white dark:border-red-800 dark:bg-red-950/10 dark:hover:bg-red-950/30'
                             }`}
                           >
-                            <span className={`text-sm font-medium ${isSelected ? 'text-red-700 dark:text-red-300' : ''}`}>
+                            <span
+                              className={`text-sm font-medium ${isSelected ? 'text-red-700 dark:text-red-300' : ''}`}
+                            >
                               {option.label}
                             </span>
                             <div className="flex items-center gap-2">
                               {isSelected && (
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
                               )}
                               <Badge
                                 className="text-xs"
@@ -626,7 +673,7 @@ export default function TriageRoutePage() {
 
             {/* Clinic Selection */}
             {routingType === 'clinic' && (
-              <div className="space-y-3 p-4 rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
+              <div className="space-y-3 rounded-lg border-2 border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
                 <Label className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
                   <Building2 className="h-4 w-4" />
                   Select Clinic *
@@ -640,7 +687,7 @@ export default function TriageRoutePage() {
                       value={field.value?.toString() || ''}
                       disabled={isClinicsLoading}
                     >
-                      <SelectTrigger className="bg-white dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700">
+                      <SelectTrigger className="border-emerald-300 bg-white dark:border-emerald-700 dark:bg-emerald-950/30">
                         <SelectValue placeholder="Select a clinic" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60 overflow-y-auto">
@@ -667,13 +714,13 @@ export default function TriageRoutePage() {
             Back: Assessment
           </Button>
           <ShiftGate>
-          <Button
-            type="submit"
-            disabled={isSubmitting || isCreating || isCompleting || !hasAssessment}
-          >
-            <CheckCircle2 className="h-4 w-4 mr-1.5" />
-            Complete Triage
-          </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || isCreating || isCompleting || !hasAssessment}
+            >
+              <CheckCircle2 className="mr-1.5 h-4 w-4" />
+              Complete Triage
+            </Button>
           </ShiftGate>
         </div>
       </form>

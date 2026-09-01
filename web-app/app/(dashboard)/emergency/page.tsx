@@ -17,12 +17,7 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Users,
-  AlertCircle,
-  BedDouble,
-  ArrowRight,
-} from 'lucide-react';
+import { Users, AlertCircle, BedDouble, ArrowRight } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Card } from '@/components/ui/card';
@@ -37,7 +32,13 @@ import {
 } from '@/components/emergency';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useZonesSummary, useCriticalPatients, useERBedSummary, useWaitTimeBreaches, useBreachActions } from '@/lib/hooks/use-triage';
+import {
+  useZonesSummary,
+  useCriticalPatients,
+  useERBedSummary,
+  useWaitTimeBreaches,
+  useBreachActions,
+} from '@/lib/hooks/use-triage';
 import { ER_BED_STATUS_CONFIG } from '@/lib/types/triage';
 import type { ERBedStatus } from '@/lib/types/triage';
 import { useEmergencySocket } from '@/lib/hooks/use-websocket';
@@ -60,9 +61,9 @@ function BedBoardPanel() {
         <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-5" />
           <Skeleton className="h-5 w-28" />
-          <Skeleton className="h-5 w-16 ml-auto" />
+          <Skeleton className="ml-auto h-5 w-16" />
         </div>
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-lg" />
           ))}
@@ -105,24 +106,27 @@ function BedBoardPanel() {
       </div>
 
       {/* Per-zone occupancy bars */}
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         {summaryData.map((zone) => {
           const pct = zone.total_beds > 0 ? Math.round((zone.occupied / zone.total_beds) * 100) : 0;
           return (
             <Card
               key={zone.zone}
-              className="p-3 cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer p-3 transition-shadow hover:shadow-md"
               onClick={() => router.push('/emergency/bed-board')}
             >
-              <p className="text-xs font-medium truncate">{zone.zone_display}</p>
-              <div className="flex items-end justify-between mt-1.5">
+              <p className="truncate text-xs font-medium">{zone.zone_display}</p>
+              <div className="mt-1.5 flex items-end justify-between">
                 <span className="text-lg font-bold tabular-nums leading-none">
-                  {zone.occupied}<span className="text-xs font-normal text-muted-foreground">/{zone.total_beds}</span>
+                  {zone.occupied}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    /{zone.total_beds}
+                  </span>
                 </span>
-                <span className="text-[10px] text-muted-foreground tabular-nums">{pct}%</span>
+                <span className="text-[10px] tabular-nums text-muted-foreground">{pct}%</span>
               </div>
               {/* Mini bar */}
-              <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
                   className={cn(
                     'h-full rounded-full transition-all',
@@ -132,7 +136,7 @@ function BedBoardPanel() {
                 />
               </div>
               {/* Status chips */}
-              <div className="flex gap-1.5 mt-1.5 text-[10px] text-muted-foreground">
+              <div className="mt-1.5 flex gap-1.5 text-[10px] text-muted-foreground">
                 <span>{zone.available} free</span>
                 {zone.cleaning > 0 && <span>· {zone.cleaning} clean</span>}
                 {zone.out_of_service > 0 && <span>· {zone.out_of_service} OOS</span>}
@@ -170,15 +174,19 @@ export default function EmergencyDashboardPage() {
     refetch: refetchZones,
   } = useZonesSummary({ enabled: !isConnected });
 
-  const { data: polledCriticalData, isLoading: criticalLoading, refetch: refetchCritical } = useCriticalPatients({
+  const {
+    data: polledCriticalData,
+    isLoading: criticalLoading,
+    refetch: refetchCritical,
+  } = useCriticalPatients({
     enabled: !isConnected,
   });
 
   // Breach data
-  const {
-    data: breachesData,
-    isLoading: breachesLoading,
-  } = useWaitTimeBreaches({ activeOnly: true, refetchInterval: 30_000 });
+  const { data: breachesData, isLoading: breachesLoading } = useWaitTimeBreaches({
+    activeOnly: true,
+    refetchInterval: 30_000,
+  });
 
   const { acknowledgeBreach, isLoading: ackLoading } = useBreachActions();
 
@@ -219,7 +227,10 @@ export default function EmergencyDashboardPage() {
     // Fall back to triage assessment if encounter_id is missing (shouldn't happen)
     if (patient.encounter_id) {
       router.push(
-        buildEncounterHref(patient.encounter_id, getEncounterFocusFromStatus(patient.encounter_status))
+        buildEncounterHref(
+          patient.encounter_id,
+          getEncounterFocusFromStatus(patient.encounter_status)
+        )
       );
     } else {
       router.push(`/triage/${patient.id}`);
@@ -236,7 +247,7 @@ export default function EmergencyDashboardPage() {
             helpContent="Real-time overview of all ER zones. Critical patients are highlighted at the top. Click any zone card to view its queue."
           />
           {/* Live status indicator */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border">
+          <div className="flex items-center gap-2 rounded-full border bg-muted/50 px-3 py-1.5">
             <WebSocketStatus
               connectionState={connectionState}
               showLabel
@@ -249,34 +260,36 @@ export default function EmergencyDashboardPage() {
         {/* Critical Alert Banner */}
         {criticalLoading && !isConnected && <CriticalAlertSkeleton />}
         {criticalData && criticalData.count > 0 && (
-          <CriticalAlertBanner
-            patients={criticalData.patients}
-            onViewPatient={handleViewPatient}
-          />
+          <CriticalAlertBanner patients={criticalData.patients} onViewPatient={handleViewPatient} />
         )}
 
         {/* Wait Time Breach Banner */}
-        {breachesLoading ? null : breachesData && breachesData.results.length > 0 && (
-          <WaitTimeBreachBanner
-            breaches={breachesData.results.map((b) => ({
-              id: b.id,
-              triage_assessment: b.triage_assessment,
-              patient_name: b.patient_name,
-              patient_mrn: b.patient_mrn,
-              triage_category: b.triage_category,
-              severity: b.severity as import('@/lib/types/triage').BreachSeverity,
-              target_wait_minutes: b.target_wait_minutes,
-              actual_wait_minutes: b.actual_wait_minutes,
-              assigned_area: b.assigned_area,
-              assigned_area_display: b.assigned_area_display || '',
-              acknowledged: !!b.acknowledged_at,
-            }))}
-            isLoading={breachesLoading}
-            onViewPatient={(triageId) => router.push(`/triage/${triageId}`)}
-            onAcknowledge={(breachId) => acknowledgeBreach({ breachId, notes: 'Acknowledged from dashboard' })}
-            acknowledgeLoading={ackLoading}
-          />
-        )}
+        {breachesLoading
+          ? null
+          : breachesData &&
+            breachesData.results.length > 0 && (
+              <WaitTimeBreachBanner
+                breaches={breachesData.results.map((b) => ({
+                  id: b.id,
+                  triage_assessment: b.triage_assessment,
+                  patient_name: b.patient_name,
+                  patient_mrn: b.patient_mrn,
+                  triage_category: b.triage_category,
+                  severity: b.severity as import('@/lib/types/triage').BreachSeverity,
+                  target_wait_minutes: b.target_wait_minutes,
+                  actual_wait_minutes: b.actual_wait_minutes,
+                  assigned_area: b.assigned_area,
+                  assigned_area_display: b.assigned_area_display || '',
+                  acknowledged: !!b.acknowledged_at,
+                }))}
+                isLoading={breachesLoading}
+                onViewPatient={(triageId) => router.push(`/triage/${triageId}`)}
+                onAcknowledge={(breachId) =>
+                  acknowledgeBreach({ breachId, notes: 'Acknowledged from dashboard' })
+                }
+                acknowledgeLoading={ackLoading}
+              />
+            )}
 
         {/* Zone Summary Grid */}
         <div className="space-y-4">
@@ -291,19 +304,15 @@ export default function EmergencyDashboardPage() {
           </div>
 
           {zonesLoading ? (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 7 }).map((_, i) => (
                 <ZoneCardSkeleton key={i} />
               ))}
             </div>
           ) : (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {zonesData?.zones.map((zone) => (
-                <ZoneCard
-                  key={zone.code}
-                  zone={zone}
-                  onNavigate={handleZoneClick}
-                />
+                <ZoneCard key={zone.code} zone={zone} onNavigate={handleZoneClick} />
               ))}
             </div>
           )}
@@ -315,8 +324,8 @@ export default function EmergencyDashboardPage() {
         {/* Empty state when no zones data */}
         {!zonesLoading && (!zonesData || zonesData.zones.length === 0) && (
           <Card className="p-8 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Zone Data Available</h3>
+            <AlertCircle className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="mb-2 text-lg font-semibold">No Zone Data Available</h3>
             <p className="text-muted-foreground">
               {isConnected
                 ? 'Waiting for data from server...'

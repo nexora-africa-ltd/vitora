@@ -63,7 +63,9 @@ const QC_BASE = '/api/lab/qc';
 export const qcMaterialsApi = {
   async list(params?: { page?: number; search?: string }): Promise<PaginatedResponse<QCMaterial>> {
     const response = await apiClient.get(`${QC_BASE}/materials/`, { params });
-    return parseResponse(PaginatedQCMaterialSchema, response.data, { context: 'qcMaterialsApi.list' });
+    return parseResponse(PaginatedQCMaterialSchema, response.data, {
+      context: 'qcMaterialsApi.list',
+    });
   },
 
   async get(id: number): Promise<QCMaterial> {
@@ -126,7 +128,11 @@ export const qcLotsApi = {
 // ============================================================================
 
 export const qcTargetsApi = {
-  async list(params?: { lot?: number; test?: number; page?: number }): Promise<PaginatedResponse<QCTarget>> {
+  async list(params?: {
+    lot?: number;
+    test?: number;
+    page?: number;
+  }): Promise<PaginatedResponse<QCTarget>> {
     const response = await apiClient.get(`${QC_BASE}/targets/`, { params });
     return parseResponse(PaginatedQCTargetSchema, response.data, { context: 'qcTargetsApi.list' });
   },
@@ -173,7 +179,9 @@ export const qcResultsApi = {
     limit?: number;
   }): Promise<LeveyJenningsData> {
     const response = await apiClient.get(`${QC_BASE}/results/levey-jennings/`, { params });
-    return parseResponse(LeveyJenningsDataSchema, response.data, { context: 'qcResultsApi.getLeveyJennings' });
+    return parseResponse(LeveyJenningsDataSchema, response.data, {
+      context: 'qcResultsApi.getLeveyJennings',
+    });
   },
 };
 
@@ -228,7 +236,9 @@ export const qcViolationsApi = {
     const response = await apiClient.post(`${QC_BASE}/violations/${id}/acknowledge/`, {
       corrective_action: corrective_action || '',
     });
-    return parseResponse(QCRuleViolationSchema, response.data, { context: 'qcViolationsApi.acknowledge' });
+    return parseResponse(QCRuleViolationSchema, response.data, {
+      context: 'qcViolationsApi.acknowledge',
+    });
   },
 };
 
@@ -239,7 +249,9 @@ export const qcViolationsApi = {
 export const eqaSurveysApi = {
   async list(params?: EQASurveyListParams): Promise<PaginatedResponse<EQASurvey>> {
     const response = await apiClient.get(`${QC_BASE}/eqa/surveys/`, { params });
-    return parseResponse(PaginatedEQASurveySchema, response.data, { context: 'eqaSurveysApi.list' });
+    return parseResponse(PaginatedEQASurveySchema, response.data, {
+      context: 'eqaSurveysApi.list',
+    });
   },
 
   async get(id: number): Promise<EQASurveyDetail> {
@@ -259,7 +271,9 @@ export const eqaSurveysApi = {
 
   async markSubmitted(id: number): Promise<EQASurveyDetail> {
     const response = await apiClient.post(`${QC_BASE}/eqa/surveys/${id}/submit/`);
-    return parseResponse(EQASurveyDetailSchema, response.data, { context: 'eqaSurveysApi.markSubmitted' });
+    return parseResponse(EQASurveyDetailSchema, response.data, {
+      context: 'eqaSurveysApi.markSubmitted',
+    });
   },
 };
 
@@ -285,7 +299,7 @@ export const eqaSamplesApi = {
 // ============================================================================
 
 export const eqaSubmissionsApi = {
-  async list(params?: { 'sample__survey'?: number; performance?: string }): Promise<EQASubmission[]> {
+  async list(params?: { sample__survey?: number; performance?: string }): Promise<EQASubmission[]> {
     const response = await apiClient.get(`${QC_BASE}/eqa/submissions/`, { params });
     const data = Array.isArray(response.data) ? response.data : response.data.results || [];
     return parseResponse(EQASubmissionArraySchema, data, { context: 'eqaSubmissionsApi.list' });
@@ -293,11 +307,15 @@ export const eqaSubmissionsApi = {
 
   async create(data: EQASubmissionCreateData): Promise<EQASubmission> {
     const response = await apiClient.post(`${QC_BASE}/eqa/submissions/`, data);
-    return parseResponse(EQASubmissionSchema, response.data, { context: 'eqaSubmissionsApi.create' });
+    return parseResponse(EQASubmissionSchema, response.data, {
+      context: 'eqaSubmissionsApi.create',
+    });
   },
 
   async updateScore(id: number, data: EQAUpdateScoreData): Promise<EQASubmission> {
     const response = await apiClient.post(`${QC_BASE}/eqa/submissions/${id}/update-score/`, data);
-    return parseResponse(EQASubmissionSchema, response.data, { context: 'eqaSubmissionsApi.updateScore' });
+    return parseResponse(EQASubmissionSchema, response.data, {
+      context: 'eqaSubmissionsApi.updateScore',
+    });
   },
 };

@@ -6,9 +6,7 @@
  * The backend returns flat IDs + `_name` fields, NOT nested objects.
  */
 
-import {
-  AlliedHealthOrderListParams,
-} from './allied-health';
+import { AlliedHealthOrderListParams } from './allied-health';
 
 // =============================================================================
 // ENUMS
@@ -101,20 +99,32 @@ export const REFERRAL_REASON_LABELS: Record<SWReferralReason, string> = {
 
 export const CASE_STATUS_CONFIG: Record<
   SWCaseStatus,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    className?: string;
+  }
 > = {
   OPEN: { label: 'Open', variant: 'default', className: 'bg-blue-500' },
   IN_PROGRESS: { label: 'In Progress', variant: 'default', className: 'bg-green-500' },
   ON_HOLD: { label: 'On Hold', variant: 'secondary', className: 'bg-yellow-500 text-yellow-950' },
   PENDING_EXTERNAL: { label: 'Pending External', variant: 'secondary' },
   CLOSED_RESOLVED: { label: 'Closed (Resolved)', variant: 'outline' },
-  CLOSED_UNRESOLVED: { label: 'Closed (Unresolved)', variant: 'outline', className: 'text-muted-foreground' },
+  CLOSED_UNRESOLVED: {
+    label: 'Closed (Unresolved)',
+    variant: 'outline',
+    className: 'text-muted-foreground',
+  },
   CLOSED_TRANSFERRED: { label: 'Closed (Transferred)', variant: 'outline' },
 };
 
 export const URGENCY_CONFIG: Record<
   CaseUrgency,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    className?: string;
+  }
 > = {
   LOW: { label: 'Low', variant: 'outline' },
   MEDIUM: { label: 'Medium', variant: 'secondary' },

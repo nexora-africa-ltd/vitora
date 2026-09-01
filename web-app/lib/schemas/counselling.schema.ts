@@ -39,7 +39,9 @@ export const CounsellingCategorySchema = z.enum([
 
 export const CounsellingUrgencySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
 
-export const CounsellingRiskLevelSchema = z.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']).optional();
+export const CounsellingRiskLevelSchema = z
+  .enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL'])
+  .optional();
 
 // =============================================================================
 // COUNSELLING TYPE (matches CounsellingTypeSerializer)

@@ -12,7 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useBloodUnits } from '@/lib/hooks/use-blood-bank';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -53,7 +57,9 @@ export default function BloodUnitsPage() {
       header: 'Group',
       sortable: true,
       cell: (item: BloodUnitListItem) => (
-        <Badge variant="outline" className="font-bold">{item.blood_group}</Badge>
+        <Badge variant="outline" className="font-bold">
+          {item.blood_group}
+        </Badge>
       ),
     },
     {
@@ -68,9 +74,7 @@ export default function BloodUnitsPage() {
       header: 'Status',
       sortable: true,
       cell: (item: BloodUnitListItem) => (
-        <Badge className={`${UNIT_STATUS_COLORS[item.status]} shrink-0 w-fit`}>
-          {item.status}
-        </Badge>
+        <Badge className={`${UNIT_STATUS_COLORS[item.status]} w-fit shrink-0`}>{item.status}</Badge>
       ),
     },
     {
@@ -80,7 +84,7 @@ export default function BloodUnitsPage() {
       sortType: 'date' as const,
       hideOnMobile: true,
       cell: (item: BloodUnitListItem) => (
-        <span className={item.is_expired ? 'text-destructive font-medium' : ''}>
+        <span className={item.is_expired ? 'font-medium text-destructive' : ''}>
           {formatDate(item.expiry_date)}
         </span>
       ),
@@ -95,14 +99,17 @@ export default function BloodUnitsPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Blood Units"
           helpContent="Track blood unit inventory, screening status, and expiry. Units move through: Collected → Testing → Available → Issued."
           actions={
             <PermissionGate action="blood_bank.manage">
-              <Button onClick={() => router.push('/blood-bank/units/new')} disabled={!canCreateRoute('/blood-bank/units/new')}>
-                <Plus className="h-4 w-4 mr-2" />
+              <Button
+                onClick={() => router.push('/blood-bank/units/new')}
+                disabled={!canCreateRoute('/blood-bank/units/new')}
+              >
+                <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Add Unit</span>
                 <span className="sm:hidden">New</span>
               </Button>
@@ -112,8 +119,8 @@ export default function BloodUnitsPage() {
 
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search units..."
               value={search}

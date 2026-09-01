@@ -123,7 +123,7 @@ export function NavigationProgress({
         aria-valuemin={0}
         aria-valuemax={100}
         className={cn(
-          'fixed top-0 left-0 right-0 z-[100] pointer-events-none',
+          'pointer-events-none fixed left-0 right-0 top-0 z-[100]',
           'transition-opacity duration-300',
           isLoading ? 'opacity-100' : 'opacity-0'
         )}
@@ -142,7 +142,7 @@ export function NavigationProgress({
       <div
         aria-hidden="true"
         className={cn(
-          'fixed top-0 right-0 bottom-0 z-[100] pointer-events-none',
+          'pointer-events-none fixed bottom-0 right-0 top-0 z-[100]',
           'transition-opacity duration-300',
           isLoading ? 'opacity-100' : 'opacity-0'
         )}
@@ -161,7 +161,7 @@ export function NavigationProgress({
       <div
         aria-hidden="true"
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-[100] pointer-events-none',
+          'pointer-events-none fixed bottom-0 left-0 right-0 z-[100]',
           'transition-opacity duration-300',
           isLoading ? 'opacity-100' : 'opacity-0'
         )}
@@ -180,7 +180,7 @@ export function NavigationProgress({
       <div
         aria-hidden="true"
         className={cn(
-          'fixed top-0 left-0 bottom-0 z-[100] pointer-events-none',
+          'pointer-events-none fixed bottom-0 left-0 top-0 z-[100]',
           'transition-opacity duration-300',
           isLoading ? 'opacity-100' : 'opacity-0'
         )}

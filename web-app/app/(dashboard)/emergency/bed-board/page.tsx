@@ -36,12 +36,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils/cn';
 import { useERBedBoard, useERBedSummary, useERBedActions } from '@/lib/hooks/use-triage';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
@@ -76,22 +71,25 @@ function StatusLegend() {
 
   return (
     <div className="flex flex-wrap gap-3 text-xs sm:text-sm">
-      {(Object.entries(ER_BED_STATUS_CONFIG) as [ERBedStatus, typeof ER_BED_STATUS_CONFIG[ERBedStatus]][]).map(
-        ([status, config]) => (
-          <div key={status} className="flex items-center gap-1.5">
-            <div
-              className={cn(
-                'h-5 w-5 rounded border flex items-center justify-center',
-                config.bgClass,
-                config.borderClass,
-              )}
-            >
-              {legendIcons[status]}
-            </div>
-            <span className="text-muted-foreground">{config.label}</span>
+      {(
+        Object.entries(ER_BED_STATUS_CONFIG) as [
+          ERBedStatus,
+          (typeof ER_BED_STATUS_CONFIG)[ERBedStatus],
+        ][]
+      ).map(([status, config]) => (
+        <div key={status} className="flex items-center gap-1.5">
+          <div
+            className={cn(
+              'flex h-5 w-5 items-center justify-center rounded border',
+              config.bgClass,
+              config.borderClass
+            )}
+          >
+            {legendIcons[status]}
           </div>
-        )
-      )}
+          <span className="text-muted-foreground">{config.label}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -119,8 +117,8 @@ function BedCell({ bed, onClick }: BedCellProps) {
             onClick={() => onClick(bed)}
             className={cn(
               'relative flex flex-col items-center justify-center gap-0.5',
-              'w-full rounded-xl border-2 transition-all p-2',
-              'hover:shadow-lg hover:scale-[1.03] active:scale-[0.97]',
+              'w-full rounded-xl border-2 p-2 transition-all',
+              'hover:scale-[1.03] hover:shadow-lg active:scale-[0.97]',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               'min-h-[88px] sm:min-h-[96px]',
               config.bgClass,
@@ -133,20 +131,17 @@ function BedCell({ bed, onClick }: BedCellProps) {
             {/* Bed icon — the visual anchor */}
             <BedDouble
               className={cn(
-                'h-7 w-7 sm:h-8 sm:w-8 shrink-0',
+                'h-7 w-7 shrink-0 sm:h-8 sm:w-8',
                 bed.status === 'AVAILABLE' && 'text-green-400 dark:text-green-500',
                 bed.status === 'OCCUPIED' && 'text-destructive/70',
                 bed.status === 'CLEANING' && 'text-yellow-400 dark:text-yellow-500',
-                bed.status === 'OUT_OF_SERVICE' && 'text-muted-foreground/40',
+                bed.status === 'OUT_OF_SERVICE' && 'text-muted-foreground/40'
               )}
             />
 
             {/* Bed number label */}
             <span
-              className={cn(
-                'text-[11px] sm:text-xs font-bold leading-tight',
-                config.textClass
-              )}
+              className={cn('text-[11px] font-bold leading-tight sm:text-xs', config.textClass)}
             >
               {bed.bed_number}
             </span>
@@ -155,14 +150,19 @@ function BedCell({ bed, onClick }: BedCellProps) {
             {bed.status === 'OCCUPIED' && bed.patient_name ? (
               <span
                 className={cn(
-                  'text-[9px] sm:text-[10px] font-medium truncate max-w-full px-0.5 leading-tight',
+                  'max-w-full truncate px-0.5 text-[9px] font-medium leading-tight sm:text-[10px]',
                   config.textClass
                 )}
               >
                 {bed.patient_name.split(' ')[0]}
               </span>
             ) : (
-              <span className={cn('text-[9px] sm:text-[10px] leading-tight opacity-70', config.textClass)}>
+              <span
+                className={cn(
+                  'text-[9px] leading-tight opacity-70 sm:text-[10px]',
+                  config.textClass
+                )}
+              >
                 {config.label}
               </span>
             )}
@@ -171,8 +171,8 @@ function BedCell({ bed, onClick }: BedCellProps) {
             {bed.status === 'OCCUPIED' && bed.occupied_duration_minutes != null && (
               <span
                 className={cn(
-                  'inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] mt-0.5 px-1.5 py-0.5 rounded-full',
-                  'bg-background/60 border border-current/10 font-medium tabular-nums',
+                  'mt-0.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] sm:text-[9px]',
+                  'border-current/10 border bg-background/60 font-medium tabular-nums',
                   config.textClass
                 )}
               >
@@ -186,24 +186,30 @@ function BedCell({ bed, onClick }: BedCellProps) {
             {/* Triage category indicator dot */}
             {bed.triage_category && categoryColor && (
               <div
-                className="absolute top-1.5 right-1.5 h-3 w-3 rounded-full ring-2 ring-background"
-                style={{ backgroundColor: getCategoryDotColor(bed.triage_category as TriageCategory) }}
+                className="absolute right-1.5 top-1.5 h-3 w-3 rounded-full ring-2 ring-background"
+                style={{
+                  backgroundColor: getCategoryDotColor(bed.triage_category as TriageCategory),
+                }}
               />
             )}
 
             {/* Small status icon in top-left for cleaning/OOS */}
             {(bed.status === 'CLEANING' || bed.status === 'OUT_OF_SERVICE') && (
-              <div className={cn('absolute top-1.5 left-1.5', config.textClass)}>
-                {bed.status === 'CLEANING'
-                  ? <SparklesIcon className="h-3 w-3" />
-                  : <WrenchIcon className="h-3 w-3" />}
+              <div className={cn('absolute left-1.5 top-1.5', config.textClass)}>
+                {bed.status === 'CLEANING' ? (
+                  <SparklesIcon className="h-3 w-3" />
+                ) : (
+                  <WrenchIcon className="h-3 w-3" />
+                )}
               </div>
             )}
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[200px]">
-          <div className="text-xs space-y-0.5">
-            <p className="font-semibold">{bed.bed_number} — {config.label}</p>
+          <div className="space-y-0.5 text-xs">
+            <p className="font-semibold">
+              {bed.bed_number} — {config.label}
+            </p>
             {bed.patient_name && <p>Patient: {bed.patient_name}</p>}
             {bed.patient_mrn && <p>MRN: {bed.patient_mrn}</p>}
             {bed.triage_category && <p>Category: {bed.triage_category}</p>}
@@ -247,9 +253,9 @@ function ZoneSection({ zone, summary, onBedClick }: ZoneSectionProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-2 pt-3 px-3 sm:px-6 sm:pt-4">
+      <CardHeader className="px-3 pb-2 pt-3 sm:px-6 sm:pt-4">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm sm:text-base font-semibold flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold sm:text-base">
             {categoryColor && (
               <div
                 className={cn('h-3 w-3 rounded-full', categoryColor.bg)}
@@ -259,15 +265,12 @@ function ZoneSection({ zone, summary, onBedClick }: ZoneSectionProps) {
             <span className="sm:hidden">{meta?.shortLabel || zone.zone_display}</span>
             <span className="hidden sm:inline">{zone.zone_display}</span>
           </CardTitle>
-          <Badge
-            variant="secondary"
-            className="text-xs tabular-nums"
-          >
+          <Badge variant="secondary" className="text-xs tabular-nums">
             {occupiedCount}/{zone.beds.length}
           </Badge>
         </div>
         {summary && (
-          <div className="flex gap-2 text-[10px] sm:text-xs text-muted-foreground mt-1">
+          <div className="mt-1 flex gap-2 text-[10px] text-muted-foreground sm:text-xs">
             <span>{summary.available} free</span>
             <span>·</span>
             <span>{summary.cleaning} cleaning</span>
@@ -287,7 +290,9 @@ function ZoneSection({ zone, summary, onBedClick }: ZoneSectionProps) {
           className={cn(
             'grid gap-2',
             zone.beds.length <= 4 && 'grid-cols-4',
-            zone.beds.length > 4 && zone.beds.length <= 8 && 'grid-cols-4 sm:grid-cols-6 lg:grid-cols-8',
+            zone.beds.length > 4 &&
+              zone.beds.length <= 8 &&
+              'grid-cols-4 sm:grid-cols-6 lg:grid-cols-8',
             zone.beds.length > 8 && 'grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10'
           )}
         >
@@ -338,9 +343,7 @@ function BedDetailDialog({
             <BedDouble className="h-5 w-5" />
             Bed {bed.bed_number}
           </DialogTitle>
-          <DialogDescription>
-            {bed.zone_display}
-          </DialogDescription>
+          <DialogDescription>{bed.zone_display}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -355,16 +358,16 @@ function BedDetailDialog({
           {/* Patient info (when occupied) */}
           {bed.status === 'OCCUPIED' && (
             <Card className="bg-muted/50">
-              <CardContent className="p-3 space-y-1.5">
+              <CardContent className="space-y-1.5 p-3">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">{bed.patient_name}</span>
                 </div>
                 {bed.patient_mrn && (
-                  <p className="text-xs text-muted-foreground ml-6">{bed.patient_mrn}</p>
+                  <p className="ml-6 text-xs text-muted-foreground">{bed.patient_mrn}</p>
                 )}
                 {bed.triage_category && categoryColor && (
-                  <div className="flex items-center gap-2 ml-6">
+                  <div className="ml-6 flex items-center gap-2">
                     <Badge
                       className={cn(
                         'text-xs',
@@ -379,7 +382,7 @@ function BedDetailDialog({
                   </div>
                 )}
                 {bed.occupied_duration_minutes != null && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-6">
+                  <div className="ml-6 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Clock className="h-3.5 w-3.5" />
                     <span>
                       {bed.occupied_duration_minutes < 60
@@ -412,7 +415,11 @@ function BedDetailDialog({
                 disabled={isLoading}
                 className="w-full sm:w-auto"
               >
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <SparklesIcon className="h-4 w-4 mr-1" />}
+                {isLoading ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <SparklesIcon className="mr-1 h-4 w-4" />
+                )}
                 Release → Cleaning
               </Button>
               <Button
@@ -422,7 +429,11 @@ function BedDetailDialog({
                 disabled={isLoading}
                 className="w-full sm:w-auto"
               >
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+                {isLoading ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-1 h-4 w-4" />
+                )}
                 Release → Available
               </Button>
             </>
@@ -435,7 +446,11 @@ function BedDetailDialog({
               disabled={isLoading}
               className="w-full sm:w-auto"
             >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+              {isLoading ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-1 h-4 w-4" />
+              )}
               Mark Available
             </Button>
           )}
@@ -448,7 +463,11 @@ function BedDetailDialog({
               disabled={isLoading}
               className="w-full sm:w-auto"
             >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <WrenchIcon className="h-4 w-4 mr-1" />}
+              {isLoading ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <WrenchIcon className="mr-1 h-4 w-4" />
+              )}
               Out of Service
             </Button>
           )}
@@ -460,7 +479,11 @@ function BedDetailDialog({
               disabled={isLoading}
               className="w-full sm:w-auto"
             >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+              {isLoading ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-1 h-4 w-4" />
+              )}
               Return to Service
             </Button>
           )}
@@ -484,10 +507,10 @@ function BedBoardSkeleton() {
               <Skeleton className="h-5 w-32" />
               <Skeleton className="h-5 w-12" />
             </div>
-            <Skeleton className="h-3 w-48 mt-1" />
+            <Skeleton className="mt-1 h-3 w-48" />
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
               {Array.from({ length: 6 }).map((_, j) => (
                 <Skeleton key={j} className="aspect-square rounded-lg" />
               ))}
@@ -544,10 +567,7 @@ export default function ERBedBoardPage() {
 
   const handleRelease = useCallback(
     (bedId: number, markCleaning: boolean) => {
-      releaseBed.mutate(
-        { bedId, markCleaning },
-        { onSuccess: () => setDialogOpen(false) }
-      );
+      releaseBed.mutate({ bedId, markCleaning }, { onSuccess: () => setDialogOpen(false) });
     },
     [releaseBed]
   );
@@ -576,7 +596,7 @@ export default function ERBedBoardPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
-      <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+      <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
         {/* Header */}
         <PageHeader
           title="ER Bed Board"
@@ -584,8 +604,10 @@ export default function ERBedBoardPage() {
           actions={
             <div className="flex items-center gap-2">
               {totalStats && (
-                <div className="hidden sm:flex items-center gap-3 text-sm text-muted-foreground mr-2">
-                  <span className="tabular-nums">{totalStats.occupied}/{totalStats.total} occupied</span>
+                <div className="mr-2 hidden items-center gap-3 text-sm text-muted-foreground sm:flex">
+                  <span className="tabular-nums">
+                    {totalStats.occupied}/{totalStats.total} occupied
+                  </span>
                   <span>·</span>
                   <span className="tabular-nums">{totalStats.available} free</span>
                 </div>
@@ -596,8 +618,10 @@ export default function ERBedBoardPage() {
 
         {/* Summary bar (mobile) */}
         {totalStats && (
-          <div className="sm:hidden flex items-center gap-3 text-xs text-muted-foreground px-1">
-            <span className="tabular-nums font-medium">{totalStats.occupied}/{totalStats.total} occupied</span>
+          <div className="flex items-center gap-3 px-1 text-xs text-muted-foreground sm:hidden">
+            <span className="font-medium tabular-nums">
+              {totalStats.occupied}/{totalStats.total} occupied
+            </span>
             <span>·</span>
             <span>{totalStats.available} free</span>
             <span>·</span>
@@ -615,10 +639,10 @@ export default function ERBedBoardPage() {
         {error && (
           <Card className="border-destructive/50">
             <CardContent className="flex items-center gap-3 p-4">
-              <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+              <AlertCircle className="h-5 w-5 shrink-0 text-destructive" />
               <div>
                 <p className="text-sm font-medium">Failed to load bed board</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {error instanceof Error ? error.message : 'Unknown error'}
                 </p>
               </div>
@@ -633,9 +657,9 @@ export default function ERBedBoardPage() {
         {!isLoading && !error && boardData && boardData.length === 0 && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center p-8 text-center">
-              <BedDouble className="h-12 w-12 text-muted-foreground/30 mb-3" />
+              <BedDouble className="mb-3 h-12 w-12 text-muted-foreground/30" />
               <p className="text-sm font-medium">No ER beds configured</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="mt-1 text-xs text-muted-foreground">
                 ER beds need to be created before the bed board can be displayed.
               </p>
             </CardContent>

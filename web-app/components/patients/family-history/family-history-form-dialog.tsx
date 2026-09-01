@@ -4,12 +4,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,10 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  useCreateFamilyHistory,
-  useUpdateFamilyHistory,
-} from '@/lib/hooks/use-family-history';
+import { useCreateFamilyHistory, useUpdateFamilyHistory } from '@/lib/hooks/use-family-history';
 import { RELATIONSHIP_OPTIONS } from '@/lib/types/family-history';
 import type { FamilyRelationship } from '@/lib/types/family-history';
 
@@ -149,7 +141,10 @@ export function FamilyHistoryFormDialog({
           </div>
           <div className="space-y-2">
             <Label>Condition *</Label>
-            <Input {...register('condition_name')} placeholder="e.g., Type 2 Diabetes, Hypertension" />
+            <Input
+              {...register('condition_name')}
+              placeholder="e.g., Type 2 Diabetes, Hypertension"
+            />
             {errors.condition_name && (
               <p className="text-xs text-destructive">{errors.condition_name.message}</p>
             )}
@@ -160,16 +155,18 @@ export function FamilyHistoryFormDialog({
               <Input {...register('age_at_onset')} placeholder="e.g., 55" />
             </div>
             <div className="flex items-center gap-2 pt-6">
-              <Switch
-                checked={deceasedValue}
-                onCheckedChange={(v) => setValue('deceased', v)}
-              />
+              <Switch checked={deceasedValue} onCheckedChange={(v) => setValue('deceased', v)} />
               <Label className="text-sm">Deceased</Label>
             </div>
           </div>
           <div className="space-y-2">
             <Label>Notes</Label>
-            <Textarea {...register('notes')} placeholder="Additional details..." rows={2} className="resize-none" />
+            <Textarea
+              {...register('notes')}
+              placeholder="Additional details..."
+              rows={2}
+              className="resize-none"
+            />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

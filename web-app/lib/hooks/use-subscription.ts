@@ -63,18 +63,24 @@ export function useSubscription(): SubscriptionInfo {
     return user.ai_tokens_available ?? false;
   }, [user, isAuthenticated]);
 
-  const hasFeature = useCallback((feature: string): boolean => {
-    if (!isAuthenticated || !user) return false;
-    // Superusers bypass feature checks
-    if (user.is_superuser) return true;
-    // If plan_features hasn't been loaded yet, be permissive (avoid flash)
-    if (planFeatures === null) return true;
-    return planFeatures[feature] === true;
-  }, [user, isAuthenticated, planFeatures]);
+  const hasFeature = useCallback(
+    (feature: string): boolean => {
+      if (!isAuthenticated || !user) return false;
+      // Superusers bypass feature checks
+      if (user.is_superuser) return true;
+      // If plan_features hasn't been loaded yet, be permissive (avoid flash)
+      if (planFeatures === null) return true;
+      return planFeatures[feature] === true;
+    },
+    [user, isAuthenticated, planFeatures]
+  );
 
-  const isAtLeast = useCallback((minTier: SubscriptionTier): boolean => {
-    return TIER_HIERARCHY[tier] >= TIER_HIERARCHY[minTier];
-  }, [tier]);
+  const isAtLeast = useCallback(
+    (minTier: SubscriptionTier): boolean => {
+      return TIER_HIERARCHY[tier] >= TIER_HIERARCHY[minTier];
+    },
+    [tier]
+  );
 
   const isPaid = useMemo(() => tier !== 'FREE', [tier]);
 

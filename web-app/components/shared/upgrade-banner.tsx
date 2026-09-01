@@ -22,7 +22,7 @@ export function UpgradeBanner({ feature, compact = false }: UpgradeBannerProps) 
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Lock className="h-3 w-3" />
         <span>{feature} requires a plan upgrade</span>
-        <Badge variant="outline" className="text-[10px] px-1">
+        <Badge variant="outline" className="px-1 text-[10px]">
           {tier}
         </Badge>
       </div>
@@ -37,8 +37,8 @@ export function UpgradeBanner({ feature, compact = false }: UpgradeBannerProps) 
       <div className="space-y-1">
         <p className="text-sm font-medium">{feature} is not available on your plan</p>
         <p className="text-xs text-muted-foreground">
-          Upgrade your subscription to unlock {feature.toLowerCase()}.
-          Contact your administrator for plan changes.
+          Upgrade your subscription to unlock {feature.toLowerCase()}. Contact your administrator
+          for plan changes.
         </p>
       </div>
       <Badge variant="secondary" className="text-xs">

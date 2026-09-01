@@ -39,7 +39,10 @@ import type {
 } from '@/lib/types/inpatient';
 
 /** Parse a comma-separated query param into a typed array, filtering to valid enum values. */
-function parseEnumParam<T extends string>(param: string | null, validValues: readonly { value: T }[]): T[] {
+function parseEnumParam<T extends string>(
+  param: string | null,
+  validValues: readonly { value: T }[]
+): T[] {
   if (!param) return [];
   const valid = new Set(validValues.map((v) => v.value));
   return param.split(',').filter((v): v is T => valid.has(v as T));
@@ -69,17 +72,17 @@ export default function NewATRReportPage() {
   const [generalReactions, setGeneralReactions] = useState<GeneralReaction[]>(() =>
     parseEnumParam(searchParams.get('general'), GENERAL_REACTION_OPTIONS)
   );
-  const [dermatologicalReactions, setDermatologicalReactions] = useState<DermatologicalReaction[]>(() =>
-    parseEnumParam(searchParams.get('dermatological'), DERMATOLOGICAL_REACTION_OPTIONS)
+  const [dermatologicalReactions, setDermatologicalReactions] = useState<DermatologicalReaction[]>(
+    () => parseEnumParam(searchParams.get('dermatological'), DERMATOLOGICAL_REACTION_OPTIONS)
   );
-  const [cardiacRespiratoryReactions, setCardiacRespiratoryReactions] = useState<CardiacRespiratoryReaction[]>(() =>
-    parseEnumParam(searchParams.get('cardiac'), CARDIAC_RESPIRATORY_REACTION_OPTIONS)
-  );
+  const [cardiacRespiratoryReactions, setCardiacRespiratoryReactions] = useState<
+    CardiacRespiratoryReaction[]
+  >(() => parseEnumParam(searchParams.get('cardiac'), CARDIAC_RESPIRATORY_REACTION_OPTIONS));
   const [renalReactions, setRenalReactions] = useState<RenalReaction[]>(() =>
     parseEnumParam(searchParams.get('renal'), RENAL_REACTION_OPTIONS)
   );
-  const [haematologicalReactions, setHaematologicalReactions] = useState<HaematologicalReaction[]>(() =>
-    parseEnumParam(searchParams.get('haematological'), HAEMATOLOGICAL_REACTION_OPTIONS)
+  const [haematologicalReactions, setHaematologicalReactions] = useState<HaematologicalReaction[]>(
+    () => parseEnumParam(searchParams.get('haematological'), HAEMATOLOGICAL_REACTION_OPTIONS)
   );
   const [otherReactions, setOtherReactions] = useState(() => searchParams.get('other') || '');
 
@@ -135,11 +138,18 @@ export default function NewATRReportPage() {
     };
     createMutation.mutate(data, {
       onSuccess: (result) => {
-        toast({ title: 'ATR Report Created', description: 'Adverse transfusion reaction report has been recorded.' });
+        toast({
+          title: 'ATR Report Created',
+          description: 'Adverse transfusion reaction report has been recorded.',
+        });
         router.push(`/inpatient/adverse-transfusion-reaction/${result.id}`);
       },
       onError: () => {
-        toast({ title: 'Error', description: 'Failed to create ATR report.', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: 'Failed to create ATR report.',
+          variant: 'destructive',
+        });
       },
     });
   }
@@ -150,7 +160,8 @@ export default function NewATRReportPage() {
         <PageHeader title="New ATR Report" />
         <Card className="mt-4">
           <CardContent className="py-8 text-center text-muted-foreground">
-            No transfusion ID provided. Navigate from a blood transfusion chart to create an ATR report.
+            No transfusion ID provided. Navigate from a blood transfusion chart to create an ATR
+            report.
           </CardContent>
         </Card>
       </div>
@@ -181,7 +192,7 @@ export default function NewATRReportPage() {
           <CardTitle className="text-base">1. Patient History</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="pre-hb">Pre-Transfusion Hb (g/dL)</Label>
               <Input
@@ -206,8 +217,13 @@ export default function NewATRReportPage() {
             </div>
             <div className="space-y-2">
               <Label>Obstetric Status</Label>
-              <Select value={obstetricStatus} onValueChange={(v) => setObstetricStatus(v as ObstetricStatus)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={obstetricStatus}
+                onValueChange={(v) => setObstetricStatus(v as ObstetricStatus)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NA">N/A</SelectItem>
                   <SelectItem value="GRAVID">Gravid</SelectItem>
@@ -218,18 +234,28 @@ export default function NewATRReportPage() {
             {obstetricStatus === 'GRAVID' && (
               <div className="space-y-2">
                 <Label htmlFor="gravida">Gravida</Label>
-                <Input id="gravida" type="number" value={gravida} onChange={(e) => setGravida(e.target.value)} />
+                <Input
+                  id="gravida"
+                  type="number"
+                  value={gravida}
+                  onChange={(e) => setGravida(e.target.value)}
+                />
               </div>
             )}
             {obstetricStatus === 'PARA' && (
               <div className="space-y-2">
                 <Label htmlFor="para">Para</Label>
-                <Input id="para" type="number" value={para} onChange={(e) => setPara(e.target.value)} />
+                <Input
+                  id="para"
+                  type="number"
+                  value={para}
+                  onChange={(e) => setPara(e.target.value)}
+                />
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Switch checked={previousTransfusion} onCheckedChange={setPreviousTransfusion} />
@@ -278,12 +304,12 @@ export default function NewATRReportPage() {
         <CardContent className="space-y-6">
           {/* General Reactions */}
           <div>
-            <h4 className="text-sm font-medium mb-3">General</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <h4 className="mb-3 text-sm font-medium">General</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {GENERAL_REACTION_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
                     generalReactions.includes(opt.value)
                       ? 'border-primary bg-primary/5'
                       : 'border-border hover:bg-muted/50'
@@ -291,7 +317,9 @@ export default function NewATRReportPage() {
                 >
                   <Checkbox
                     checked={generalReactions.includes(opt.value)}
-                    onCheckedChange={() => toggleReaction(generalReactions, setGeneralReactions, opt.value)}
+                    onCheckedChange={() =>
+                      toggleReaction(generalReactions, setGeneralReactions, opt.value)
+                    }
                   />
                   <span className="text-sm">{opt.label}</span>
                 </label>
@@ -301,12 +329,12 @@ export default function NewATRReportPage() {
 
           {/* Dermatological Reactions */}
           <div>
-            <h4 className="text-sm font-medium mb-3">Dermatological</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <h4 className="mb-3 text-sm font-medium">Dermatological</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {DERMATOLOGICAL_REACTION_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
                     dermatologicalReactions.includes(opt.value)
                       ? 'border-primary bg-primary/5'
                       : 'border-border hover:bg-muted/50'
@@ -314,7 +342,9 @@ export default function NewATRReportPage() {
                 >
                   <Checkbox
                     checked={dermatologicalReactions.includes(opt.value)}
-                    onCheckedChange={() => toggleReaction(dermatologicalReactions, setDermatologicalReactions, opt.value)}
+                    onCheckedChange={() =>
+                      toggleReaction(dermatologicalReactions, setDermatologicalReactions, opt.value)
+                    }
                   />
                   <span className="text-sm">{opt.label}</span>
                 </label>
@@ -324,12 +354,12 @@ export default function NewATRReportPage() {
 
           {/* Cardiac/Respiratory Reactions */}
           <div>
-            <h4 className="text-sm font-medium mb-3">Cardiac / Respiratory</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <h4 className="mb-3 text-sm font-medium">Cardiac / Respiratory</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {CARDIAC_RESPIRATORY_REACTION_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
                     cardiacRespiratoryReactions.includes(opt.value)
                       ? 'border-primary bg-primary/5'
                       : 'border-border hover:bg-muted/50'
@@ -337,7 +367,13 @@ export default function NewATRReportPage() {
                 >
                   <Checkbox
                     checked={cardiacRespiratoryReactions.includes(opt.value)}
-                    onCheckedChange={() => toggleReaction(cardiacRespiratoryReactions, setCardiacRespiratoryReactions, opt.value)}
+                    onCheckedChange={() =>
+                      toggleReaction(
+                        cardiacRespiratoryReactions,
+                        setCardiacRespiratoryReactions,
+                        opt.value
+                      )
+                    }
                   />
                   <span className="text-sm">{opt.label}</span>
                 </label>
@@ -347,12 +383,12 @@ export default function NewATRReportPage() {
 
           {/* Renal Reactions */}
           <div>
-            <h4 className="text-sm font-medium mb-3">Renal</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <h4 className="mb-3 text-sm font-medium">Renal</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {RENAL_REACTION_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
                     renalReactions.includes(opt.value)
                       ? 'border-primary bg-primary/5'
                       : 'border-border hover:bg-muted/50'
@@ -360,7 +396,9 @@ export default function NewATRReportPage() {
                 >
                   <Checkbox
                     checked={renalReactions.includes(opt.value)}
-                    onCheckedChange={() => toggleReaction(renalReactions, setRenalReactions, opt.value)}
+                    onCheckedChange={() =>
+                      toggleReaction(renalReactions, setRenalReactions, opt.value)
+                    }
                   />
                   <span className="text-sm">{opt.label}</span>
                 </label>
@@ -370,12 +408,12 @@ export default function NewATRReportPage() {
 
           {/* Haematological Reactions */}
           <div>
-            <h4 className="text-sm font-medium mb-3">Haematological</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <h4 className="mb-3 text-sm font-medium">Haematological</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {HAEMATOLOGICAL_REACTION_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
                     haematologicalReactions.includes(opt.value)
                       ? 'border-primary bg-primary/5'
                       : 'border-border hover:bg-muted/50'
@@ -383,7 +421,9 @@ export default function NewATRReportPage() {
                 >
                   <Checkbox
                     checked={haematologicalReactions.includes(opt.value)}
-                    onCheckedChange={() => toggleReaction(haematologicalReactions, setHaematologicalReactions, opt.value)}
+                    onCheckedChange={() =>
+                      toggleReaction(haematologicalReactions, setHaematologicalReactions, opt.value)
+                    }
                   />
                   <span className="text-sm">{opt.label}</span>
                 </label>
@@ -414,7 +454,7 @@ export default function NewATRReportPage() {
           <CardTitle className="text-base">3. Reporter Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="reporter-cadre">Cadre / Designation</Label>
               <Input

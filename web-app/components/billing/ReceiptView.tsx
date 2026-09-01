@@ -42,8 +42,28 @@ interface ReceiptViewProps {
 // Amount to Words Helper
 // ============================================================================
 
-const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-  'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const ones = [
+  '',
+  'One',
+  'Two',
+  'Three',
+  'Four',
+  'Five',
+  'Six',
+  'Seven',
+  'Eight',
+  'Nine',
+  'Ten',
+  'Eleven',
+  'Twelve',
+  'Thirteen',
+  'Fourteen',
+  'Fifteen',
+  'Sixteen',
+  'Seventeen',
+  'Eighteen',
+  'Nineteen',
+];
 const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
 
 function numberToWords(num: number): string {
@@ -52,18 +72,38 @@ function numberToWords(num: number): string {
   if (num < 0) return 'Negative ' + numberToWords(-num);
   if (num < 20) return ones[num] || '';
   if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + (ones[num % 10] || '') : '');
-  if (num < 1000) return (ones[Math.floor(num / 100)] || '') + ' Hundred' + (num % 100 ? ' ' + numberToWords(num % 100) : '');
-  if (num < 1000000) return numberToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
-  if (num < 1000000000) return numberToWords(Math.floor(num / 1000000)) + ' Million' + (num % 1000000 ? ' ' + numberToWords(num % 1000000) : '');
+  if (num < 1000)
+    return (
+      (ones[Math.floor(num / 100)] || '') +
+      ' Hundred' +
+      (num % 100 ? ' ' + numberToWords(num % 100) : '')
+    );
+  if (num < 1000000)
+    return (
+      numberToWords(Math.floor(num / 1000)) +
+      ' Thousand' +
+      (num % 1000 ? ' ' + numberToWords(num % 1000) : '')
+    );
+  if (num < 1000000000)
+    return (
+      numberToWords(Math.floor(num / 1000000)) +
+      ' Million' +
+      (num % 1000000 ? ' ' + numberToWords(num % 1000000) : '')
+    );
 
-  return numberToWords(Math.floor(num / 1000000000)) + ' Billion' + (num % 1000000000 ? ' ' + numberToWords(num % 1000000000) : '');
+  return (
+    numberToWords(Math.floor(num / 1000000000)) +
+    ' Billion' +
+    (num % 1000000000 ? ' ' + numberToWords(num % 1000000000) : '')
+  );
 }
 
 export function amountToWords(amount: number, currency: string = 'KES'): string {
   const wholeAmount = Math.floor(amount);
   const cents = Math.round((amount - wholeAmount) * 100);
 
-  let result = numberToWords(wholeAmount) + ' ' + (currency === 'KES' ? 'Kenya Shillings' : currency);
+  let result =
+    numberToWords(wholeAmount) + ' ' + (currency === 'KES' ? 'Kenya Shillings' : currency);
 
   if (cents > 0) {
     result += ' and ' + numberToWords(cents) + ' Cents';
@@ -80,8 +120,8 @@ function ReceiptSkeleton() {
   return (
     <div role="status" aria-label="Loading receipt">
       <div className="space-y-4">
-        <Skeleton className="h-8 w-48 mx-auto" />
-        <Skeleton className="h-4 w-64 mx-auto" />
+        <Skeleton className="mx-auto h-8 w-48" />
+        <Skeleton className="mx-auto h-4 w-64" />
         <Separator />
         <div className="space-y-2">
           <Skeleton className="h-4 w-full" />
@@ -128,11 +168,7 @@ export function ReceiptView({
   }
 
   if (!receipt) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        No receipt data available
-      </div>
-    );
+    return <div className="py-8 text-center text-muted-foreground">No receipt data available</div>;
   }
 
   // Use facility info from receipt if available, otherwise use defaults
@@ -164,13 +200,13 @@ export function ReceiptView({
       )}
 
       {/* Receipt Content */}
-      <Card ref={printRef} className="max-w-lg mx-auto print:shadow-none print:border-none">
-        <CardHeader className="text-center pb-2 px-4 sm:px-6">
-          <h2 className="text-lg sm:text-xl font-bold">{displayFacilityName}</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">{displayFacilityAddress}</p>
-          <p className="text-xs sm:text-sm text-muted-foreground">{displayFacilityPhone}</p>
+      <Card ref={printRef} className="mx-auto max-w-lg print:border-none print:shadow-none">
+        <CardHeader className="px-4 pb-2 text-center sm:px-6">
+          <h2 className="text-lg font-bold sm:text-xl">{displayFacilityName}</h2>
+          <p className="text-xs text-muted-foreground sm:text-sm">{displayFacilityAddress}</p>
+          <p className="text-xs text-muted-foreground sm:text-sm">{displayFacilityPhone}</p>
           <Separator className="my-3 sm:my-4" />
-          <h3 className="text-base sm:text-lg font-semibold">PAYMENT RECEIPT</h3>
+          <h3 className="text-base font-semibold sm:text-lg">PAYMENT RECEIPT</h3>
         </CardHeader>
         <CardContent className="space-y-4 px-4 sm:px-6">
           {receipt.is_voided && (
@@ -184,7 +220,7 @@ export function ReceiptView({
           {/* Receipt Details */}
           <div className="grid grid-cols-2 gap-y-2 text-sm">
             <div className="text-muted-foreground">Receipt No:</div>
-            <div className="font-medium text-right" data-testid="receipt-number">
+            <div className="text-right font-medium" data-testid="receipt-number">
               {receipt.receipt_number}
             </div>
 
@@ -209,26 +245,20 @@ export function ReceiptView({
             )}
 
             <div className="text-muted-foreground">Payment Method:</div>
-            <div className="text-right capitalize">
-              {receipt.payment_method.replace('_', ' ')}
-            </div>
+            <div className="text-right capitalize">{receipt.payment_method.replace('_', ' ')}</div>
 
             {/* M-Pesa details */}
             {receipt.mpesa_phone_display && (
               <>
                 <div className="text-muted-foreground">M-Pesa Phone:</div>
-                <div className="text-right">
-                  {receipt.mpesa_phone_display}
-                </div>
+                <div className="text-right">{receipt.mpesa_phone_display}</div>
               </>
             )}
 
             {receipt.mpesa_receipt_number && (
               <>
                 <div className="text-muted-foreground">M-Pesa Ref:</div>
-                <div className="text-right font-medium">
-                  {receipt.mpesa_receipt_number}
-                </div>
+                <div className="text-right font-medium">{receipt.mpesa_receipt_number}</div>
               </>
             )}
 
@@ -259,28 +289,32 @@ export function ReceiptView({
           {receipt.line_items && receipt.line_items.length > 0 ? (
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Services</h4>
-              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
                 <Table className="min-w-[320px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-xs">Description</TableHead>
-                      <TableHead className="text-xs text-center w-12 sm:w-16">Qty</TableHead>
-                      <TableHead className="text-xs text-right w-20 sm:w-24">Price</TableHead>
-                      <TableHead className="text-xs text-right w-20 sm:w-24">Amount</TableHead>
+                      <TableHead className="w-12 text-center text-xs sm:w-16">Qty</TableHead>
+                      <TableHead className="w-20 text-right text-xs sm:w-24">Price</TableHead>
+                      <TableHead className="w-20 text-right text-xs sm:w-24">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {receipt.line_items.map((item, index) => (
                       <TableRow key={index}>
-                        <TableCell className="text-xs sm:text-sm py-2">{item.description}</TableCell>
-                        <TableCell className="text-xs sm:text-sm text-center py-2">{item.quantity}</TableCell>
-                        <TableCell className="text-xs sm:text-sm text-right py-2">
+                        <TableCell className="py-2 text-xs sm:text-sm">
+                          {item.description}
+                        </TableCell>
+                        <TableCell className="py-2 text-center text-xs sm:text-sm">
+                          {item.quantity}
+                        </TableCell>
+                        <TableCell className="py-2 text-right text-xs sm:text-sm">
                           {parseFloat(item.unit_price).toLocaleString('en-KE', {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
                         </TableCell>
-                        <TableCell className="text-xs sm:text-sm text-right py-2 font-medium">
+                        <TableCell className="py-2 text-right text-xs font-medium sm:text-sm">
                           {parseFloat(item.line_total).toLocaleString('en-KE', {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
@@ -291,11 +325,15 @@ export function ReceiptView({
                   </TableBody>
                   <TableFooter>
                     <TableRow>
-                      <TableCell colSpan={3} className="text-xs sm:text-sm font-semibold">
+                      <TableCell colSpan={3} className="text-xs font-semibold sm:text-sm">
                         Total
                       </TableCell>
-                      <TableCell className="text-right font-bold text-sm" data-testid="receipt-amount">
-                        KES {amount.toLocaleString('en-KE', {
+                      <TableCell
+                        className="text-right text-sm font-bold"
+                        data-testid="receipt-amount"
+                      >
+                        KES{' '}
+                        {amount.toLocaleString('en-KE', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
@@ -305,7 +343,7 @@ export function ReceiptView({
                 </Table>
               </div>
               <div
-                className="text-xs sm:text-sm text-muted-foreground italic text-center pt-2"
+                className="pt-2 text-center text-xs italic text-muted-foreground sm:text-sm"
                 data-testid="amount-in-words"
               >
                 {amountInWords}
@@ -313,13 +351,13 @@ export function ReceiptView({
             </div>
           ) : (
             /* Fallback: Simple amount display when no line items */
-            <div className="text-center space-y-2">
+            <div className="space-y-2 text-center">
               <div className="text-sm text-muted-foreground">Amount Paid</div>
-              <div className="text-2xl sm:text-3xl font-bold" data-testid="receipt-amount">
+              <div className="text-2xl font-bold sm:text-3xl" data-testid="receipt-amount">
                 {amountDisplay}
               </div>
               <div
-                className="text-xs sm:text-sm text-muted-foreground italic"
+                className="text-xs italic text-muted-foreground sm:text-sm"
                 data-testid="amount-in-words"
               >
                 {amountInWords}
@@ -330,7 +368,7 @@ export function ReceiptView({
           <Separator />
 
           {/* Footer */}
-          <div className="text-center text-xs text-muted-foreground space-y-1">
+          <div className="space-y-1 text-center text-xs text-muted-foreground">
             <p>Thank you for your payment</p>
             <p>This is a computer-generated receipt</p>
           </div>

@@ -7,11 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -29,10 +25,7 @@ import {
 import { PageHeader } from '@/components/shared/page-header';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { shaApi } from '@/lib/api/sha';
-import type {
-  SHAIntervention,
-  InterventionSearchParams,
-} from '@/lib/terminology/types';
+import type { SHAIntervention, InterventionSearchParams } from '@/lib/terminology/types';
 import { INTERVENTION_CATEGORIES } from '@/lib/terminology/types';
 import { formatCurrency } from '@/lib/utils/format';
 
@@ -75,7 +68,9 @@ function PreauthBadges({ item }: { item: SHAIntervention }) {
   return (
     <div className="flex flex-wrap gap-1">
       {flags.map((f) => (
-        <Badge key={f} variant="secondary" className="text-xs">{f}</Badge>
+        <Badge key={f} variant="secondary" className="text-xs">
+          {f}
+        </Badge>
       ))}
     </div>
   );
@@ -130,19 +125,13 @@ export default function SHAInterventionLookupPage() {
     setStatus('searching');
     setError(null);
     try {
-      const response = await shaApi.searchInterventions(
-        params as InterventionSearchParams
-      );
+      const response = await shaApi.searchInterventions(params as InterventionSearchParams);
       let rows = response.results;
       // Client-side preauth filter (backend may not support it)
       if (requiresPreauth === 'yes') {
-        rows = rows.filter(
-          (r) => r.requires_preauthorization || r.needs_preauth
-        );
+        rows = rows.filter((r) => r.requires_preauthorization || r.needs_preauth);
       } else if (requiresPreauth === 'no') {
-        rows = rows.filter(
-          (r) => !r.requires_preauthorization && !r.needs_preauth
-        );
+        rows = rows.filter((r) => !r.requires_preauthorization && !r.needs_preauth);
       }
       setResults(rows);
       setCount(response.count);
@@ -182,8 +171,8 @@ export default function SHAInterventionLookupPage() {
 
       {/* Filter Card */}
       <Card>
-        <CardContent className="pt-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1.5 lg:col-span-2">
               <Label htmlFor="search">Search</Label>
               <div className="relative">
@@ -208,7 +197,9 @@ export default function SHAInterventionLookupPage() {
                 <SelectContent>
                   <SelectItem value="all">All categories</SelectItem>
                   {INTERVENTION_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -223,7 +214,9 @@ export default function SHAInterventionLookupPage() {
                 <SelectContent>
                   <SelectItem value="all">All levels</SelectItem>
                   {FACILITY_LEVELS.map((l) => (
-                    <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                    <SelectItem key={l.value} value={l.value}>
+                      {l.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -245,12 +238,7 @@ export default function SHAInterventionLookupPage() {
 
             <div className="flex items-end justify-end lg:col-span-3">
               {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="gap-1"
-                >
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
                   <X className="h-3.5 w-3.5" />
                   Clear filters
                 </Button>
@@ -283,7 +271,7 @@ export default function SHAInterventionLookupPage() {
       {/* Results */}
       {(status === 'searching' || status === 'found' || status === 'empty') && (
         <Card>
-          <CardContent className="px-0 sm:px-6 pt-6">
+          <CardContent className="px-0 pt-6 sm:px-6">
             <ResponsiveTable<SHAIntervention>
               data={results}
               keyExtractor={(i) => i.id ?? i.code}
@@ -317,16 +305,14 @@ export default function SHAInterventionLookupPage() {
                   sortable: true,
                   sortType: 'number',
                   hideOnMobile: true,
-                  cell: (i) => i.facility_level ? `L${i.facility_level}` : '—',
+                  cell: (i) => (i.facility_level ? `L${i.facility_level}` : '—'),
                 },
                 {
                   key: 'price',
                   header: 'Tariff',
                   sortable: true,
                   sortType: 'number',
-                  cell: (i) => (
-                    <span className="font-mono text-xs">{formatTariff(i.price)}</span>
-                  ),
+                  cell: (i) => <span className="font-mono text-xs">{formatTariff(i.price)}</span>,
                 },
                 {
                   key: 'preauth',
@@ -379,7 +365,8 @@ export default function SHAInterventionLookupPage() {
           <CardContent className="py-12 text-center">
             <FileSearch className="mx-auto h-10 w-10 text-muted-foreground/50" />
             <p className="mt-3 text-sm text-muted-foreground">
-              Type a code or name (min 2 characters), or pick a facility level to browse the catalog.
+              Type a code or name (min 2 characters), or pick a facility level to browse the
+              catalog.
             </p>
           </CardContent>
         </Card>
@@ -387,7 +374,7 @@ export default function SHAInterventionLookupPage() {
 
       {/* Detail Drawer */}
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
           {selected && (
             <>
               <SheetHeader className="space-y-2">
@@ -395,15 +382,11 @@ export default function SHAInterventionLookupPage() {
                   <Badge variant={selected.is_active ? 'default' : 'outline'}>
                     {selected.is_active ? 'Active' : 'Retired'}
                   </Badge>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {selected.code}
-                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">{selected.code}</span>
                 </div>
                 <SheetTitle className="text-left">{selected.name}</SheetTitle>
                 {selected.description && (
-                  <SheetDescription className="text-left">
-                    {selected.description}
-                  </SheetDescription>
+                  <SheetDescription className="text-left">{selected.description}</SheetDescription>
                 )}
               </SheetHeader>
 
@@ -435,15 +418,12 @@ export default function SHAInterventionLookupPage() {
                     | string
                     | number
                     | undefined;
-                  const needsDoctorAuth = extras.needs_doctor_authorization as
-                    | string
-                    | undefined;
-                  const needsMemberAuth = extras.needs_member_authorization as
-                    | string
-                    | undefined;
+                  const needsDoctorAuth = extras.needs_doctor_authorization as string | undefined;
+                  const needsMemberAuth = extras.needs_member_authorization as string | undefined;
                   const levelsApplicable = extras.levels_applicable as unknown;
                   const applicableSchemes = extras.applicable_schemes as unknown;
-                  const applicableFacilityOwnership = extras.applicable_facility_ownership as unknown;
+                  const applicableFacilityOwnership =
+                    extras.applicable_facility_ownership as unknown;
                   const applicableDocumentTypes = extras.applicable_document_types as unknown;
                   const diagnosisLists = extras.diagnosis_lists as unknown;
                   const diagnosisBlocks = extras.diagnosis_blocks as unknown;
@@ -476,9 +456,16 @@ export default function SHAInterventionLookupPage() {
                         />
                         <DetailField label="Access Point" value={accessPoint} />
                         <DetailField label="Payment Mechanism" value={paymentMechanism} />
-                        {benefit && <DetailField label="Parent Benefit" value={<span className="font-mono text-xs">{benefit}</span>} />}
+                        {benefit && (
+                          <DetailField
+                            label="Parent Benefit"
+                            value={<span className="font-mono text-xs">{benefit}</span>}
+                          />
+                        )}
                         {complexity && <DetailField label="Complexity" value={complexity} />}
-                        {coverageLevel && <DetailField label="Coverage Level" value={coverageLevel} />}
+                        {coverageLevel && (
+                          <DetailField label="Coverage Level" value={coverageLevel} />
+                        )}
                         {applicableGender && (
                           <DetailField label="Applicable Gender" value={applicableGender} />
                         )}
@@ -505,18 +492,29 @@ export default function SHAInterventionLookupPage() {
                       {/* Hospital Level Tariffs (from raw_data.level_X_tariff) */}
                       {!isProcedure && !isCodeRegimen && (
                         <section>
-                          <h3 className="text-sm font-semibold mb-2">Hospital Level Tariffs</h3>
-                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                          <h3 className="mb-2 text-sm font-semibold">Hospital Level Tariffs</h3>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                             {[2, 3, 4, 5, 6].map((lvl) => {
-                              const tariff = extras[`level_${lvl}_tariff`] as number | string | null | undefined;
-                              const fallback = extras[`fall_back_level_${lvl}_tariff`] as number | string | null | undefined;
-                              const hasFallback = fallback !== undefined && fallback !== null && Number(fallback) > 0;
+                              const tariff = extras[`level_${lvl}_tariff`] as
+                                | number
+                                | string
+                                | null
+                                | undefined;
+                              const fallback = extras[`fall_back_level_${lvl}_tariff`] as
+                                | number
+                                | string
+                                | null
+                                | undefined;
+                              const hasFallback =
+                                fallback !== undefined && fallback !== null && Number(fallback) > 0;
                               return (
                                 <div key={lvl} className="rounded-md border p-2 text-center">
                                   <div className="text-xs text-muted-foreground">L{lvl}</div>
-                                  <div className="font-mono text-xs mt-1">{formatTariff(tariff)}</div>
+                                  <div className="mt-1 font-mono text-xs">
+                                    {formatTariff(tariff)}
+                                  </div>
                                   {hasFallback && (
-                                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                                    <div className="mt-0.5 text-[10px] text-muted-foreground">
                                       fb: {formatTariff(fallback)}
                                     </div>
                                   )}
@@ -524,7 +522,7 @@ export default function SHAInterventionLookupPage() {
                               );
                             })}
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-2">
+                          <p className="mt-2 text-[11px] text-muted-foreground">
                             Many DHA records report 0.0 tariffs — payment may be governed by the
                             management / investigation tariff or sub-intervention pricing.
                           </p>
@@ -532,40 +530,54 @@ export default function SHAInterventionLookupPage() {
                       )}
 
                       {/* Aggregate tariffs (code-class) */}
-                      {!isProcedure && !isCodeRegimen && (managementTariff !== undefined || investigationTariff !== undefined || tariffLimitPerIndividual !== undefined) && (
-                        <section className="grid grid-cols-2 gap-3">
-                          {managementTariff !== undefined && (
-                            <DetailField
-                              label="Management Tariff"
-                              value={
-                                <span className="font-mono text-sm">
-                                  {formatTariff(managementTariff)}
-                                  {managementTariffHasLimit === 'True' && (
-                                    <span className="ml-1 text-xs text-muted-foreground">(limited)</span>
-                                  )}
-                                </span>
-                              }
-                            />
-                          )}
-                          {investigationTariff !== undefined && (
-                            <DetailField
-                              label="Investigation Tariff"
-                              value={<span className="font-mono text-sm">{formatTariff(investigationTariff)}</span>}
-                            />
-                          )}
-                          {tariffLimitPerIndividual !== undefined && (
-                            <DetailField
-                              label="Per-Individual Limit"
-                              value={<span className="font-mono text-sm">{formatTariff(tariffLimitPerIndividual)}</span>}
-                            />
-                          )}
-                        </section>
-                      )}
+                      {!isProcedure &&
+                        !isCodeRegimen &&
+                        (managementTariff !== undefined ||
+                          investigationTariff !== undefined ||
+                          tariffLimitPerIndividual !== undefined) && (
+                          <section className="grid grid-cols-2 gap-3">
+                            {managementTariff !== undefined && (
+                              <DetailField
+                                label="Management Tariff"
+                                value={
+                                  <span className="font-mono text-sm">
+                                    {formatTariff(managementTariff)}
+                                    {managementTariffHasLimit === 'True' && (
+                                      <span className="ml-1 text-xs text-muted-foreground">
+                                        (limited)
+                                      </span>
+                                    )}
+                                  </span>
+                                }
+                              />
+                            )}
+                            {investigationTariff !== undefined && (
+                              <DetailField
+                                label="Investigation Tariff"
+                                value={
+                                  <span className="font-mono text-sm">
+                                    {formatTariff(investigationTariff)}
+                                  </span>
+                                }
+                              />
+                            )}
+                            {tariffLimitPerIndividual !== undefined && (
+                              <DetailField
+                                label="Per-Individual Limit"
+                                value={
+                                  <span className="font-mono text-sm">
+                                    {formatTariff(tariffLimitPerIndividual)}
+                                  </span>
+                                }
+                              />
+                            )}
+                          </section>
+                        )}
 
                       {/* Procedure-type sub-intervention pricing */}
                       {isProcedure && (
                         <section>
-                          <h3 className="text-sm font-semibold mb-2">Sub-Intervention Pricing</h3>
+                          <h3 className="mb-2 text-sm font-semibold">Sub-Intervention Pricing</h3>
                           <div className="grid grid-cols-2 gap-3">
                             <DetailField
                               label="Tariff per Test"
@@ -579,7 +591,9 @@ export default function SHAInterventionLookupPage() {
                               label="Max per Year"
                               value={
                                 <span className="font-mono text-sm">
-                                  {formatTariff(extras['Total Maximum Amount per test'] as string | number)}
+                                  {formatTariff(
+                                    extras['Total Maximum Amount per test'] as string | number
+                                  )}
                                 </span>
                               }
                             />
@@ -588,10 +602,7 @@ export default function SHAInterventionLookupPage() {
                               value={selected.quantity_per_year ?? '—'}
                             />
                             {extras.Protocol ? (
-                              <DetailField
-                                label="Protocol"
-                                value={String(extras.Protocol)}
-                              />
+                              <DetailField label="Protocol" value={String(extras.Protocol)} />
                             ) : null}
                           </div>
                         </section>
@@ -600,7 +611,7 @@ export default function SHAInterventionLookupPage() {
                       {/* Drug regimen (Code class) */}
                       {isCodeRegimen && (
                         <section>
-                          <h3 className="text-sm font-semibold mb-2">Drug Regimen</h3>
+                          <h3 className="mb-2 text-sm font-semibold">Drug Regimen</h3>
                           <div className="grid grid-cols-2 gap-3">
                             {extras.regimen !== undefined && (
                               <DetailField label="Regimen" value={String(extras.regimen)} />
@@ -636,13 +647,16 @@ export default function SHAInterventionLookupPage() {
                           <h3 className="text-sm font-semibold">Applicable Scope</h3>
                           <ChipList label="Facility Levels" items={levelsApplicable} />
                           <ChipList label="Schemes" items={applicableSchemes} />
-                          <ChipList label="Facility Ownership" items={applicableFacilityOwnership} />
+                          <ChipList
+                            label="Facility Ownership"
+                            items={applicableFacilityOwnership}
+                          />
                         </section>
                       )}
 
                       {/* Preauthorization */}
                       <section>
-                        <h3 className="text-sm font-semibold mb-2">Preauthorization</h3>
+                        <h3 className="mb-2 text-sm font-semibold">Preauthorization</h3>
                         {anyPreauth ? (
                           <div className="flex flex-wrap gap-1">
                             {preauthFlags
@@ -656,7 +670,7 @@ export default function SHAInterventionLookupPage() {
                         ) : (
                           <p className="text-sm text-muted-foreground">Not required.</p>
                         )}
-                        <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div className="mt-3 grid grid-cols-2 gap-3">
                           {needsProtocols !== undefined && (
                             <DetailField
                               label="Needs Protocols"
@@ -676,10 +690,7 @@ export default function SHAInterventionLookupPage() {
                             />
                           )}
                           {numberOfDoctors !== undefined && numberOfDoctors !== '' && (
-                            <DetailField
-                              label="Doctors Required"
-                              value={String(numberOfDoctors)}
-                            />
+                            <DetailField label="Doctors Required" value={String(numberOfDoctors)} />
                           )}
                           {protocolUsed ? (
                             <DetailField label="Protocol Used" value={String(protocolUsed)} />
@@ -690,8 +701,8 @@ export default function SHAInterventionLookupPage() {
                       {/* Document requirements */}
                       {toArray(applicableDocumentTypes).length > 0 && (
                         <section>
-                          <h3 className="text-sm font-semibold mb-2">Required Documents</h3>
-                          <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                          <h3 className="mb-2 text-sm font-semibold">Required Documents</h3>
+                          <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
                             {toArray(applicableDocumentTypes).map((doc) => (
                               <li key={doc}>{doc}</li>
                             ))}
@@ -711,12 +722,8 @@ export default function SHAInterventionLookupPage() {
                       {/* Retirement / comments */}
                       {(retiredOn || comment) && (
                         <section className="grid grid-cols-1 gap-3">
-                          {retiredOn ? (
-                            <DetailField label="Retired On" value={retiredOn} />
-                          ) : null}
-                          {comment ? (
-                            <DetailField label="Comment" value={comment} />
-                          ) : null}
+                          {retiredOn ? <DetailField label="Retired On" value={retiredOn} /> : null}
+                          {comment ? <DetailField label="Comment" value={comment} /> : null}
                         </section>
                       )}
 
@@ -726,9 +733,8 @@ export default function SHAInterventionLookupPage() {
                           <AlertCircle className="h-4 w-4" />
                           <AlertTitle>ALONE package</AlertTitle>
                           <AlertDescription>
-                            This intervention belongs to an SHA package that must be claimed
-                            ALONE — it cannot be combined with other interventions on the same
-                            claim.
+                            This intervention belongs to an SHA package that must be claimed ALONE —
+                            it cannot be combined with other interventions on the same claim.
                           </AlertDescription>
                         </Alert>
                       )}
@@ -736,10 +742,10 @@ export default function SHAInterventionLookupPage() {
                       {/* Raw OCL record (for audit / debug) */}
                       <section>
                         <details className="rounded-md border bg-muted/30">
-                          <summary className="cursor-pointer px-3 py-2 text-xs font-medium select-none">
+                          <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium">
                             Raw DHA OCL record
                           </summary>
-                          <pre className="px-3 py-2 text-[11px] overflow-x-auto max-h-80 leading-relaxed">
+                          <pre className="max-h-80 overflow-x-auto px-3 py-2 text-[11px] leading-relaxed">
                             {JSON.stringify(extras, null, 2)}
                           </pre>
                         </details>

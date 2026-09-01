@@ -19,21 +19,13 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
     '^msw/node$': '<rootDir>/node_modules/msw/lib/node/index.js',
     '^msw$': '<rootDir>/node_modules/msw/lib/core/index.js',
-    '^@mswjs/interceptors/ClientRequest$': '<rootDir>/node_modules/@mswjs/interceptors/lib/node/interceptors/ClientRequest/index.js',
+    '^@mswjs/interceptors/ClientRequest$':
+      '<rootDir>/node_modules/@mswjs/interceptors/lib/node/interceptors/ClientRequest/index.js',
   },
-  transformIgnorePatterns: [
-    '/node_modules/(?!(msw|@mswjs)/)/',
-  ],
+  transformIgnorePatterns: ['/node_modules/(?!(msw|@mswjs)/)/'],
   // Only run jest-cucumber step definition tests
-  testMatch: [
-    '<rootDir>/features/**/*.steps.ts',
-    '<rootDir>/features/**/*.steps.tsx',
-  ],
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/e2e/',
-    '/.next/',
-  ],
+  testMatch: ['<rootDir>/features/**/*.steps.ts', '<rootDir>/features/**/*.steps.tsx'],
+  testPathIgnorePatterns: ['/node_modules/', '/e2e/', '/.next/'],
   // Coverage for components/lib tested via BDD
   collectCoverageFrom: [
     'lib/**/*.{js,jsx,ts,tsx}',

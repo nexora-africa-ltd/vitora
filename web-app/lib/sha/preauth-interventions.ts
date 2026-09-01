@@ -53,7 +53,7 @@ export interface InterventionOption {
 }
 
 export function mapClaimInterventionToOption(
-  intervention: Record<string, unknown>,
+  intervention: Record<string, unknown>
 ): InterventionOption {
   const getString = (...keys: string[]): string | undefined => {
     for (const key of keys) {
@@ -123,7 +123,7 @@ export function mapClaimInterventionToOption(
     needsPreauth: getBoolean('needs_preauth', 'needsPreauth'),
     needsManualPreauthApproval: getBoolean(
       'needs_manual_preauth_approval',
-      'needsManualPreauthApproval',
+      'needsManualPreauthApproval'
     ),
     isSurgicalPreauth: getBoolean('is_surgical_preauth', 'isSurgicalPreauth'),
     isRenalPreauth: getBoolean('is_renal_preauth', 'isRenalPreauth'),
@@ -132,7 +132,7 @@ export function mapClaimInterventionToOption(
     isOpticalPreauth: getBoolean('is_optical_preauth', 'isOpticalPreauth'),
     requiredPreauthDocumentTypes: getStringArray(
       'required_preauth_document_types',
-      'requiredPreauthDocumentTypes',
+      'requiredPreauthDocumentTypes'
     ),
   };
 }

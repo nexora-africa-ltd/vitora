@@ -88,11 +88,7 @@ const DESKTOP_SW_KILLSWITCH = `(function(){try{
   });
 }catch(e){}})();`;
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

@@ -30,9 +30,20 @@ export const InpatientWardTypeSchema = z.enum([
   'ISOLATION',
 ]);
 
-export const BedStatusSchema = z.enum(['AVAILABLE', 'OCCUPIED', 'CLEANING', 'MAINTENANCE', 'RESERVED']);
+export const BedStatusSchema = z.enum([
+  'AVAILABLE',
+  'OCCUPIED',
+  'CLEANING',
+  'MAINTENANCE',
+  'RESERVED',
+]);
 
-export const AdmissionRecommendationStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'DECLINED', 'EXPIRED']);
+export const AdmissionRecommendationStatusSchema = z.enum([
+  'PENDING',
+  'ACCEPTED',
+  'DECLINED',
+  'EXPIRED',
+]);
 
 export const AdmissionRecommendationUrgencySchema = z.enum(['ROUTINE', 'URGENT', 'EMERGENCY']);
 
@@ -62,11 +73,7 @@ export const MaternityContinuityActionSchema = z.enum([
   'ROUTE_TO_PNC_QUEUE',
 ]);
 
-export const MaternityContinuityStatusSchema = z.enum([
-  'NOT_APPLICABLE',
-  'SCHEDULED',
-  'QUEUED',
-]);
+export const MaternityContinuityStatusSchema = z.enum(['NOT_APPLICABLE', 'SCHEDULED', 'QUEUED']);
 
 export const TransferReasonSchema = z.enum([
   'STEP_UP',
@@ -96,7 +103,12 @@ export const ReviewRequestTypeSchema = z.enum([
 
 export const ReviewUrgencySchema = z.enum(['ROUTINE', 'URGENT', 'STAT']);
 
-export const ReviewRequestStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']);
+export const ReviewRequestStatusSchema = z.enum([
+  'PENDING',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+]);
 
 export const RiskLevelSchema = z.enum(['LOW', 'MODERATE', 'HIGH']);
 
@@ -267,16 +279,21 @@ export const AdmissionSchema = z.object({
   constraint_override_reason: z.string().nullable().optional(),
   constraint_violations: z.array(z.string()).optional(),
   expected_discharge_date: z.string().nullable().optional(),
-  clinical_context: z.object({
-    comorbidities: z.array(z.string()),
-    current_medications: z.array(z.string()),
-    allergies_structured: z.array(z.string()),
-    lab_results_summary: z.array(z.object({
-      test_name: z.string(),
-      value: z.number(),
-      unit: z.string(),
-    })),
-  }).nullable().optional(),
+  clinical_context: z
+    .object({
+      comorbidities: z.array(z.string()),
+      current_medications: z.array(z.string()),
+      allergies_structured: z.array(z.string()),
+      lab_results_summary: z.array(
+        z.object({
+          test_name: z.string(),
+          value: z.number(),
+          unit: z.string(),
+        })
+      ),
+    })
+    .nullable()
+    .optional(),
   clinical_notes: z.string().optional(),
   diet: z.string().optional(),
   special_instructions: z.string().optional(),
@@ -358,13 +375,15 @@ export type DischargeMedicationSchemaType = z.infer<typeof DischargeMedicationSc
 
 export const DiagnosisRoleSchema = z.enum(['PRIMARY', 'SECONDARY', 'COMPLICATION']);
 
-export const DischargeDiagnosisSchema = z.object({
-  id: z.number().optional(),
-  role: DiagnosisRoleSchema,
-  role_display: z.string().optional(),
-  code: z.string(),
-  description: z.string(),
-}).passthrough();
+export const DischargeDiagnosisSchema = z
+  .object({
+    id: z.number().optional(),
+    role: DiagnosisRoleSchema,
+    role_display: z.string().optional(),
+    code: z.string(),
+    description: z.string(),
+  })
+  .passthrough();
 
 export const DischargeSchema = z.object({
   id: z.number(),
@@ -635,22 +654,26 @@ export const AdmissionICUReadinessSchema = z.object({
   can_run_predict: z.boolean(),
   missing_required: z.array(z.string()),
   missing_advisory: z.array(z.string()),
-  vitals: z.object({
-    temperature: z.number().nullable().optional(),
-    heart_rate: z.number().nullable().optional(),
-    systolic_bp: z.number().nullable().optional(),
-    diastolic_bp: z.number().nullable().optional(),
-    respiratory_rate: z.number().nullable().optional(),
-    spo2: z.number().nullable().optional(),
-  }).optional(),
-  labs: z.object({
-    wbc: z.number().nullable().optional(),
-    platelets: z.number().nullable().optional(),
-    creatinine: z.number().nullable().optional(),
-    bilirubin: z.number().nullable().optional(),
-    lactate: z.number().nullable().optional(),
-    pao2_fio2_ratio: z.number().nullable().optional(),
-  }).optional(),
+  vitals: z
+    .object({
+      temperature: z.number().nullable().optional(),
+      heart_rate: z.number().nullable().optional(),
+      systolic_bp: z.number().nullable().optional(),
+      diastolic_bp: z.number().nullable().optional(),
+      respiratory_rate: z.number().nullable().optional(),
+      spo2: z.number().nullable().optional(),
+    })
+    .optional(),
+  labs: z
+    .object({
+      wbc: z.number().nullable().optional(),
+      platelets: z.number().nullable().optional(),
+      creatinine: z.number().nullable().optional(),
+      bilirubin: z.number().nullable().optional(),
+      lactate: z.number().nullable().optional(),
+      pao2_fio2_ratio: z.number().nullable().optional(),
+    })
+    .optional(),
   gcs: z.number().nullable().optional(),
   on_vasopressors: z.boolean().nullable().optional(),
   vasopressor_dose_mcg_kg_min: z.number().nullable().optional(),
@@ -1270,18 +1293,30 @@ export const PaginatedFluidBalanceEntrySchema = z.object({
 });
 
 export const TransfusionObservationIntervalSchema = z.enum([
-  'BEFORE', '00_MIN', '15_MIN', '45_MIN',
-  '1HR_15MIN', '1HR_45MIN', '2HR_15MIN', '2HR_45MIN',
-  '3HR_15MIN', '3HR_45MIN', '4HR_15MIN', '4HR_AFTER',
+  'BEFORE',
+  '00_MIN',
+  '15_MIN',
+  '45_MIN',
+  '1HR_15MIN',
+  '1HR_45MIN',
+  '2HR_15MIN',
+  '2HR_45MIN',
+  '3HR_15MIN',
+  '3HR_45MIN',
+  '4HR_15MIN',
+  '4HR_AFTER',
 ]);
 
 export const BloodProductSchema = z.enum([
-  'WHOLE', 'PACKED_RED_CELLS', 'FFP', 'PLATELETS', 'CRYOPRECIPITATE', 'OTHER',
+  'WHOLE',
+  'PACKED_RED_CELLS',
+  'FFP',
+  'PLATELETS',
+  'CRYOPRECIPITATE',
+  'OTHER',
 ]);
 
-export const TransfusionStatusSchema = z.enum([
-  'IN_PROGRESS', 'COMPLETED', 'STOPPED', 'CANCELLED',
-]);
+export const TransfusionStatusSchema = z.enum(['IN_PROGRESS', 'COMPLETED', 'STOPPED', 'CANCELLED']);
 
 export const TransfusionObservationEntrySchema = z.object({
   id: z.number(),
@@ -1402,7 +1437,9 @@ export const RuleBasedBedAssignmentResponseSchema = z.object({
   error: z.string().nullable(),
 });
 
-export type RuleBasedBedAssignmentResponseSchemaType = z.infer<typeof RuleBasedBedAssignmentResponseSchema>;
+export type RuleBasedBedAssignmentResponseSchemaType = z.infer<
+  typeof RuleBasedBedAssignmentResponseSchema
+>;
 
 // =============================================================================
 // SMART ALLOCATION SCHEMAS (Phase C)
@@ -1433,7 +1470,9 @@ export const PredictedDischargesResponseSchema = z.object({
   predictions: z.array(PredictedDischargeSchema),
 });
 
-export type PredictedDischargesResponseSchemaType = z.infer<typeof PredictedDischargesResponseSchema>;
+export type PredictedDischargesResponseSchemaType = z.infer<
+  typeof PredictedDischargesResponseSchema
+>;
 
 export const BedUtilizationSchema = z.object({
   ward_id: z.number(),
@@ -1479,7 +1518,9 @@ export const SetExpectedDischargeResponseSchema = z.object({
   expected_discharge_date: z.string(),
 });
 
-export type SetExpectedDischargeResponseSchemaType = z.infer<typeof SetExpectedDischargeResponseSchema>;
+export type SetExpectedDischargeResponseSchemaType = z.infer<
+  typeof SetExpectedDischargeResponseSchema
+>;
 
 // --- Ward Recommendation ---
 
@@ -1507,22 +1548,23 @@ export const WardRecommendationResponseSchema = z.object({
   recommended_ward_id: z.number().nullable(),
   recommended_ward_name: z.string().nullable(),
   ranked_wards: z.array(WardRecommendationRankedWardSchema),
-  incompatible_wards: z.array(z.object({
-    ward_id: z.number(),
-    ward_name: z.string(),
-    ward_code: z.string(),
-    ward_type: z.string(),
-    ward_type_display: z.string().optional().default(''),
-    compatible: z.boolean().optional().default(false),
-    violations: z.array(z.string()),
-    rejection_reason: z.string().optional().default(''),
-  })),
+  incompatible_wards: z.array(
+    z.object({
+      ward_id: z.number(),
+      ward_name: z.string(),
+      ward_code: z.string(),
+      ward_type: z.string(),
+      ward_type_display: z.string().optional().default(''),
+      compatible: z.boolean().optional().default(false),
+      violations: z.array(z.string()),
+      rejection_reason: z.string().optional().default(''),
+    })
+  ),
   total_evaluated: z.number(),
   infection_isolation_triggered: z.boolean(),
   evaluation_time_ms: z.number(),
   error: z.string().nullable(),
 });
-
 
 // ============================================================================
 // Adverse Transfusion Reaction (ATR) Schemas

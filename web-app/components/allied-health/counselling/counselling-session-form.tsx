@@ -11,12 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -125,11 +120,7 @@ function SessionStatusBadge({ status }: { status: string }) {
     NO_SHOW: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
   };
 
-  return (
-    <Badge className={variants[status] || ''}>
-      {status.replace('_', ' ')}
-    </Badge>
-  );
+  return <Badge className={variants[status] || ''}>{status.replace('_', ' ')}</Badge>;
 }
 
 // =============================================================================
@@ -246,11 +237,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
   }
 
   if (error || !session) {
-    return (
-      <div className="p-4 text-center text-destructive">
-        Failed to load session
-      </div>
-    );
+    return <div className="p-4 text-center text-destructive">Failed to load session</div>;
   }
 
   return (
@@ -276,9 +263,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
                 <FileText className="h-5 w-5" />
                 {session.session_number}
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Counselling Session
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Counselling Session</p>
             </div>
             <SessionStatusBadge status={session.status} />
           </div>
@@ -286,14 +271,16 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="flex items-start gap-2">
-              <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <User className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">Patient</div>
-                <div className="text-sm text-muted-foreground">Session #{session.session_sequence}</div>
+                <div className="text-sm text-muted-foreground">
+                  Session #{session.session_sequence}
+                </div>
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <Calendar className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">
                   {format(parseISO(session.scheduled_date), 'MMMM d, yyyy')}
@@ -304,17 +291,19 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <User className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">{session.counsellor_name || 'Unassigned'}</div>
                 <div className="text-sm text-muted-foreground">Counsellor</div>
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <Clock className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">
-                  {isCompleted && session.duration_minutes ? `${session.duration_minutes} min` : '—'}
+                  {isCompleted && session.duration_minutes
+                    ? `${session.duration_minutes} min`
+                    : '—'}
                 </div>
                 <div className="text-sm text-muted-foreground">Duration</div>
               </div>
@@ -327,11 +316,11 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
       {isScheduled && (
         <div className="flex gap-2">
           <Button onClick={() => setShowStartDialog(true)}>
-            <Play className="h-4 w-4 mr-2" />
+            <Play className="mr-2 h-4 w-4" />
             Start Session
           </Button>
           <Button variant="outline" onClick={() => setShowCancelDialog(true)}>
-            <XCircle className="h-4 w-4 mr-2" />
+            <XCircle className="mr-2 h-4 w-4" />
             Cancel Session
           </Button>
         </div>
@@ -541,11 +530,13 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
                 />
 
                 {(watchRiskLevel === 'HIGH' || watchRiskLevel === 'CRITICAL') && (
-                  <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-destructive">
-                    <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
+                  <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-destructive">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
                     <div className="text-sm">
                       <p className="font-medium">Elevated Risk Detected</p>
-                      <p>Please review and update the safety plan. Consider escalation protocols.</p>
+                      <p>
+                        Please review and update the safety plan. Consider escalation protocols.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -649,7 +640,6 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
                     />
                   </>
                 )}
-
               </CardContent>
             </Card>
 
@@ -713,18 +703,14 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
               <div className="flex gap-2">
                 <Button type="submit" disabled={completeMutation.isPending}>
                   {completeMutation.isPending ? (
-                    <LoadingSpinner className="h-4 w-4 mr-2" />
+                    <LoadingSpinner className="mr-2 h-4 w-4" />
                   ) : (
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <CheckCircle className="mr-2 h-4 w-4" />
                   )}
                   Complete Session
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCancelDialog(true)}
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
+                <Button type="button" variant="outline" onClick={() => setShowCancelDialog(true)}>
+                  <XCircle className="mr-2 h-4 w-4" />
                   Cancel Session
                 </Button>
               </div>
@@ -738,16 +724,14 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Start Counselling Session</DialogTitle>
-            <DialogDescription>
-              Ready to begin the counselling session?
-            </DialogDescription>
+            <DialogDescription>Ready to begin the counselling session?</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowStartDialog(false)}>
               Cancel
             </Button>
             <Button onClick={handleStartSession} disabled={startMutation.isPending}>
-              {startMutation.isPending && <LoadingSpinner className="h-4 w-4 mr-2" />}
+              {startMutation.isPending && <LoadingSpinner className="mr-2 h-4 w-4" />}
               Start Session
             </Button>
           </DialogFooter>
@@ -776,9 +760,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
                 placeholder="Enter cancellation reason..."
                 rows={3}
               />
-              {cancelError && (
-                <p className="text-sm text-destructive mt-1">{cancelError}</p>
-              )}
+              {cancelError && <p className="mt-1 text-sm text-destructive">{cancelError}</p>}
             </div>
           </div>
           <DialogFooter>
@@ -790,7 +772,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
               onClick={handleCancelSession}
               disabled={cancelMutation.isPending}
             >
-              {cancelMutation.isPending && <LoadingSpinner className="h-4 w-4 mr-2" />}
+              {cancelMutation.isPending && <LoadingSpinner className="mr-2 h-4 w-4" />}
               Confirm Cancel
             </Button>
           </DialogFooter>

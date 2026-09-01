@@ -184,7 +184,8 @@ export default function RoleEditPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Role</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Delete this role permanently. Staff members using it will need reassignment before they can keep working with the correct permissions.
+                  Delete this role permanently. Staff members using it will need reassignment before
+                  they can keep working with the correct permissions.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -204,10 +205,15 @@ export default function RoleEditPage() {
           </p>
           <p className="text-sm text-muted-foreground">
             {role.category_display || role.category}
-            {role.requires_license ? ` • License body: ${role.license_body || 'Required'}` : ' • No license requirement'}
+            {role.requires_license
+              ? ` • License body: ${role.license_body || 'Required'}`
+              : ' • No license requirement'}
           </p>
         </div>
-        <Badge variant={role.is_active ? 'default' : 'secondary'} className="w-fit shrink-0 self-start sm:self-auto">
+        <Badge
+          variant={role.is_active ? 'default' : 'secondary'}
+          className="w-fit shrink-0 self-start sm:self-auto"
+        >
           {role.is_active ? 'Active' : 'Inactive'}
         </Badge>
       </div>
@@ -269,7 +275,10 @@ export default function RoleEditPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="category">Category *</Label>
-                <Select value={category} onValueChange={(value) => setCategory(value as RoleCategory)}>
+                <Select
+                  value={category}
+                  onValueChange={(value) => setCategory(value as RoleCategory)}
+                >
                   <SelectTrigger id="category">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>

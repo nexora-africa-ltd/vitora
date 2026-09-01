@@ -72,7 +72,10 @@ export const autoverifyApi = {
     });
   },
 
-  async updateDeltaRule(id: number, data: Partial<DeltaCheckRuleCreateData>): Promise<DeltaCheckRule> {
+  async updateDeltaRule(
+    id: number,
+    data: Partial<DeltaCheckRuleCreateData>
+  ): Promise<DeltaCheckRule> {
     const response = await apiClient.patch(`${BASE}/delta-rules/${id}/`, data);
     return parseResponse(DeltaCheckRuleSchema, response.data, {
       context: 'autoverifyApi.updateDeltaRule',
@@ -175,7 +178,12 @@ export const autoverifyApi = {
   // Auto-Verify Logs
   // ===========================================================================
 
-  async listLogs(params?: { outcome?: string; result?: number; date_from?: string; date_to?: string }) {
+  async listLogs(params?: {
+    outcome?: string;
+    result?: number;
+    date_from?: string;
+    date_to?: string;
+  }) {
     const response = await apiClient.get(`${BASE}/logs/`, { params });
     return parseResponse(PaginatedAutoVerifyLogSchema, response.data, {
       context: 'autoverifyApi.listLogs',

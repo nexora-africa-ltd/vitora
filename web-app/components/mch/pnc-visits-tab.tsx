@@ -7,12 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -217,7 +212,7 @@ export function PNCVisitsTab({
         </Card>
       ) : null}
 
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">PNC Visits</h3>
           <HelpPopover content="Postnatal care visits monitor mother and baby health in the first 6 weeks after delivery. Kenya recommends visits at 6 hours, 6 days, 2 weeks, and 6 weeks." />
@@ -243,7 +238,7 @@ export function PNCVisitsTab({
               Record Visit
             </Button>
           )}
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Record PNC Visit</DialogTitle>
             </DialogHeader>
@@ -277,7 +272,10 @@ export function PNCVisitsTab({
                 </div>
                 <div className="space-y-2">
                   <Label>Uterine Involution</Label>
-                  <Select value={uterineInvolution} onValueChange={(v) => setUterineInvolution(v as UterineInvolution)}>
+                  <Select
+                    value={uterineInvolution}
+                    onValueChange={(v) => setUterineInvolution(v as UterineInvolution)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
@@ -307,7 +305,10 @@ export function PNCVisitsTab({
                 </div>
                 <div className="space-y-2">
                   <Label>Breast Condition</Label>
-                  <Select value={breastCondition} onValueChange={(v) => setBreastCondition(v as BreastCondition)}>
+                  <Select
+                    value={breastCondition}
+                    onValueChange={(v) => setBreastCondition(v as BreastCondition)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
@@ -322,7 +323,10 @@ export function PNCVisitsTab({
                 </div>
                 <div className="space-y-2">
                   <Label>Mood Assessment</Label>
-                  <Select value={moodAssessment} onValueChange={(v) => setMoodAssessment(v as MoodAssessment)}>
+                  <Select
+                    value={moodAssessment}
+                    onValueChange={(v) => setMoodAssessment(v as MoodAssessment)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
@@ -339,7 +343,7 @@ export function PNCVisitsTab({
 
               {/* Baby Assessment */}
               <div className="border-t pt-4">
-                <h4 className="font-medium mb-3">Baby Assessment</h4>
+                <h4 className="mb-3 font-medium">Baby Assessment</h4>
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <Label>Baby Weight (kg)</Label>
@@ -361,7 +365,10 @@ export function PNCVisitsTab({
                   </div>
                   <div className="space-y-2">
                     <Label>Cord Status</Label>
-                    <Select value={cordStatus} onValueChange={(v) => setCordStatus(v as CordStatus)}>
+                    <Select
+                      value={cordStatus}
+                      onValueChange={(v) => setCordStatus(v as CordStatus)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
@@ -376,7 +383,10 @@ export function PNCVisitsTab({
                   </div>
                   <div className="space-y-2">
                     <Label>Breastfeeding Status</Label>
-                    <Select value={breastfeedingStatus} onValueChange={(v) => setBreastfeedingStatus(v as BreastfeedingStatus)}>
+                    <Select
+                      value={breastfeedingStatus}
+                      onValueChange={(v) => setBreastfeedingStatus(v as BreastfeedingStatus)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
@@ -394,7 +404,7 @@ export function PNCVisitsTab({
 
               {/* Family Planning */}
               <div className="border-t pt-4">
-                <h4 className="font-medium mb-3">Family Planning</h4>
+                <h4 className="mb-3 font-medium">Family Planning</h4>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="flex items-center gap-2">
                     <Switch
@@ -405,7 +415,10 @@ export function PNCVisitsTab({
                   </div>
                   <div className="space-y-2">
                     <Label>Contraceptive Method</Label>
-                    <Select value={contraceptiveGiven} onValueChange={(v) => setContraceptiveGiven(v as ContraceptiveMethod)}>
+                    <Select
+                      value={contraceptiveGiven}
+                      onValueChange={(v) => setContraceptiveGiven(v as ContraceptiveMethod)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
@@ -423,11 +436,7 @@ export function PNCVisitsTab({
 
               <div className="space-y-2">
                 <Label>Notes</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                />
+                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
               </div>
 
               <div className="flex justify-end gap-2">
@@ -455,18 +464,14 @@ export function PNCVisitsTab({
           {visits.map((visit) => (
             <Card key={visit.id}>
               <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-base flex items-center gap-2">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <Heart className="h-4 w-4" />
                     Visit #{visit.visit_number}
                   </CardTitle>
-                  <Badge variant="outline">
-                    Day {visit.days_postpartum}
-                  </Badge>
+                  <Badge variant="outline">Day {visit.days_postpartum}</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(visit.visit_date)}
-                </p>
+                <p className="text-sm text-muted-foreground">{formatDate(visit.visit_date)}</p>
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="text-sm">
@@ -478,7 +483,7 @@ export function PNCVisitsTab({
                   )}
                 </div>
                 {visit.alerts.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="mt-2 flex flex-wrap gap-1">
                     {visit.alerts.map((alert, i) => (
                       <Badge key={i} variant="destructive" className="gap-1">
                         <AlertTriangle className="h-3 w-3" />

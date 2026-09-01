@@ -124,9 +124,7 @@ function createEmptyCreditNoteLine(): CreditNoteLineForm {
 function cleanApiErrorMessage(message: string): string {
   const trimmed = message.trim();
   const normalizeDetail = (value: string) =>
-    value
-      .replace(/\\"/g, '"')
-      .replace(/"([A-Z_]+)"/g, '$1');
+    value.replace(/\\"/g, '"').replace(/"([A-Z_]+)"/g, '$1');
   const firstBrace = trimmed.indexOf('{');
   const lastBrace = trimmed.lastIndexOf('}');
 
@@ -173,7 +171,11 @@ type UpstreamErrorPayload = {
   message?: string;
 };
 
-function extractApiError(error: unknown): { message: string | null; upstream: UpstreamErrorPayload | null; action: string | null } {
+function extractApiError(error: unknown): {
+  message: string | null;
+  upstream: UpstreamErrorPayload | null;
+  action: string | null;
+} {
   if (!error || typeof error !== 'object') {
     return { message: null, upstream: null, action: null };
   }
@@ -188,9 +190,10 @@ function extractApiError(error: unknown): { message: string | null; upstream: Up
   if (data && typeof data === 'object') {
     const payload = data as Record<string, unknown>;
     const upstreamCandidate = payload.upstream;
-    const upstream = upstreamCandidate && typeof upstreamCandidate === 'object'
-      ? (upstreamCandidate as UpstreamErrorPayload)
-      : null;
+    const upstream =
+      upstreamCandidate && typeof upstreamCandidate === 'object'
+        ? (upstreamCandidate as UpstreamErrorPayload)
+        : null;
     const action = typeof payload.action === 'string' ? payload.action : null;
 
     if (upstream && typeof upstream.message === 'string' && upstream.message.trim()) {
@@ -284,11 +287,15 @@ export default function InsuranceClaimDetailPage() {
   const [creditNoteOpen, setCreditNoteOpen] = useState(false);
   const [creditNoteNumber, setCreditNoteNumber] = useState('');
   const [creditNoteDate, setCreditNoteDate] = useState(new Date().toISOString());
-  const [creditNoteLines, setCreditNoteLines] = useState<CreditNoteLineForm[]>([createEmptyCreditNoteLine()]);
+  const [creditNoteLines, setCreditNoteLines] = useState<CreditNoteLineForm[]>([
+    createEmptyCreditNoteLine(),
+  ]);
 
   // HealthCloud workflow state
   const [session, setSession] = useState<InsuranceVisitAuthorization | null>(null);
-  const [eligibilityResult, setEligibilityResult] = useState<VerifyViaHealthcloudResult | null>(null);
+  const [eligibilityResult, setEligibilityResult] = useState<VerifyViaHealthcloudResult | null>(
+    null
+  );
   const [contactId, setContactId] = useState('');
   const [beneficiaryId, setBeneficiaryId] = useState('');
   const [benefitType, setBenefitType] = useState('OUTPATIENT');
@@ -299,7 +306,9 @@ export default function InsuranceClaimDetailPage() {
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [reservationAmount, setReservationAmount] = useState('');
   const [attachmentFiles, setAttachmentFiles] = useState<Record<string, File | null>>({});
-  const [uploadedAttachments, setUploadedAttachments] = useState<Array<{ label: string; ref: string; type?: string }>>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<
+    Array<{ label: string; ref: string; type?: string }>
+  >([]);
   const [uploadingAttachmentType, setUploadingAttachmentType] = useState<string | null>(null);
   const [workflowEvents, setWorkflowEvents] = useState<string[]>([]);
   const [inlineError, setInlineError] = useState<string | null>(null);
@@ -318,13 +327,21 @@ export default function InsuranceClaimDetailPage() {
     [eligibilityResult]
   );
 
-  const eligibilityContacts = useMemo(() => eligibilityView?.contacts ?? [], [eligibilityView?.contacts]);
-  const eligibilityBenefits = useMemo(() => eligibilityView?.benefits ?? [], [eligibilityView?.benefits]);
+  const eligibilityContacts = useMemo(
+    () => eligibilityView?.contacts ?? [],
+    [eligibilityView?.contacts]
+  );
+  const eligibilityBenefits = useMemo(
+    () => eligibilityView?.benefits ?? [],
+    [eligibilityView?.benefits]
+  );
 
   useEffect(() => {
     if (session) return;
     const existingSessions = authorizationListData?.results ?? [];
-    const existing = existingSessions.find((item) => item.status !== 'failed' && item.status !== 'expired');
+    const existing = existingSessions.find(
+      (item) => item.status !== 'failed' && item.status !== 'expired'
+    );
     if (!existing) return;
 
     setSession(existing);
@@ -360,8 +377,12 @@ export default function InsuranceClaimDetailPage() {
       const preferred = session.selected_beneficiary_contact_id ?? session.beneficiary_contact_id;
       return preferred ? String(preferred) : '';
     });
-    setBeneficiaryId((prev) => (prev || (session.beneficiary_id ? String(session.beneficiary_id) : '')));
-    setBenefitType((prev) => prev || session.selected_benefit_type || session.benefit_type || 'OUTPATIENT');
+    setBeneficiaryId(
+      (prev) => prev || (session.beneficiary_id ? String(session.beneficiary_id) : '')
+    );
+    setBenefitType(
+      (prev) => prev || session.selected_benefit_type || session.benefit_type || 'OUTPATIENT'
+    );
     setBenefitCode((prev) => prev || session.selected_benefit_code || session.benefit_code || '');
     setPolicyNumber((prev) => prev || session.policy_number || '');
     setPolicyEffectiveDate((prev) => {
@@ -370,8 +391,8 @@ export default function InsuranceClaimDetailPage() {
         typeof session.raw_payload?.policy_effective_date === 'string'
           ? session.raw_payload.policy_effective_date
           : typeof session.raw_payload?.policyEffectiveDate === 'string'
-          ? session.raw_payload.policyEffectiveDate
-          : '';
+            ? session.raw_payload.policyEffectiveDate
+            : '';
       return rawPolicyDate || new Date().toISOString();
     });
     setAuthorizationToken((prev) => prev || session.auth_token || session.authorization_guid || '');
@@ -380,7 +401,10 @@ export default function InsuranceClaimDetailPage() {
       if (prev) return prev;
       const latestReservedAmount = claim?.latest_balance_reservation?.amount;
       if (latestReservedAmount) return latestReservedAmount;
-      const insurerPortion = Math.max(Number(claim?.total_amount || 0) - Number(claim?.copay_amount || 0), 0);
+      const insurerPortion = Math.max(
+        Number(claim?.total_amount || 0) - Number(claim?.copay_amount || 0),
+        0
+      );
       return insurerPortion > 0 ? insurerPortion.toFixed(2) : '';
     });
   }, [
@@ -427,29 +451,50 @@ export default function InsuranceClaimDetailPage() {
     toast({ title, description: message, variant: 'destructive' });
   };
 
-  const pickPreferredBenefit = useCallback((benefits: Array<Record<string, unknown>>) => {
-    if (benefits.length === 0) return null;
-    const claimType = String(claim?.claim_type || '').toLowerCase();
-    const desiredType = claimType === 'inpatient' ? 'INPATIENT' : 'OUTPATIENT';
-    const preferred = benefits.find((row) => {
-      const benefitTypeValue = String(row.benefitType || '').toUpperCase();
-      return benefitTypeValue.includes(desiredType);
-    });
-    return preferred ?? benefits.find((row) => typeof row.benefitCode === 'string') ?? null;
-  }, [claim?.claim_type]);
+  const pickPreferredBenefit = useCallback(
+    (benefits: Array<Record<string, unknown>>) => {
+      if (benefits.length === 0) return null;
+      const claimType = String(claim?.claim_type || '').toLowerCase();
+      const desiredType = claimType === 'inpatient' ? 'INPATIENT' : 'OUTPATIENT';
+      const preferred = benefits.find((row) => {
+        const benefitTypeValue = String(row.benefitType || '').toUpperCase();
+        return benefitTypeValue.includes(desiredType);
+      });
+      return preferred ?? benefits.find((row) => typeof row.benefitCode === 'string') ?? null;
+    },
+    [claim?.claim_type]
+  );
 
   const workflowSteps = useMemo(() => {
     const hasSession = Boolean(session?.id);
-    const hasOtp = session?.status === 'otp_requested' || session?.status === 'authorized' || session?.status === 'validated';
+    const hasOtp =
+      session?.status === 'otp_requested' ||
+      session?.status === 'authorized' ||
+      session?.status === 'validated';
     const hasVisitStarted = session?.status === 'authorized' || session?.status === 'validated';
     const hasValidation = session?.status === 'validated';
     const claimSubmitted = Boolean(claim?.external_claim_id) || claim?.status !== 'draft';
     return [
       { key: 'eligibility', title: '1. Eligibility', done: hasSession, current: !hasSession },
       { key: 'otp', title: '2. OTP', done: hasOtp, current: hasSession && !hasOtp },
-      { key: 'visit', title: '3. Start Visit', done: hasVisitStarted, current: hasOtp && !hasVisitStarted },
-      { key: 'validate', title: '4. Validate', done: hasValidation, current: hasVisitStarted && !hasValidation },
-      { key: 'submit', title: '5. Submit Claim', done: claimSubmitted, current: hasValidation && !claimSubmitted },
+      {
+        key: 'visit',
+        title: '3. Start Visit',
+        done: hasVisitStarted,
+        current: hasOtp && !hasVisitStarted,
+      },
+      {
+        key: 'validate',
+        title: '4. Validate',
+        done: hasValidation,
+        current: hasVisitStarted && !hasValidation,
+      },
+      {
+        key: 'submit',
+        title: '5. Submit Claim',
+        done: claimSubmitted,
+        current: hasValidation && !claimSubmitted,
+      },
     ];
   }, [claim?.external_claim_id, claim?.status, session?.id, session?.status]);
 
@@ -457,7 +502,9 @@ export default function InsuranceClaimDetailPage() {
     const container = ref.current;
     if (!container) return;
     container.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const firstField = container.querySelector('input, select, textarea, button') as HTMLElement | null;
+    const firstField = container.querySelector(
+      'input, select, textarea, button'
+    ) as HTMLElement | null;
     firstField?.focus();
   };
 
@@ -512,7 +559,10 @@ export default function InsuranceClaimDetailPage() {
     try {
       await submitClaim.mutateAsync(claimId);
       setInlineError(null);
-      toast({ title: 'Claim submitted', description: 'The claim has been submitted to the insurer.' });
+      toast({
+        title: 'Claim submitted',
+        description: 'The claim has been submitted to the insurer.',
+      });
       refetch();
     } catch (error) {
       showErrorToast({ title: 'Error', description: 'Failed to submit claim.', error });
@@ -608,7 +658,9 @@ export default function InsuranceClaimDetailPage() {
       setSession(response.session);
       setEligibilityResult(response.eligibility);
 
-      const member = response.eligibility.raw_response?.member as Record<string, unknown> | undefined;
+      const member = response.eligibility.raw_response?.member as
+        | Record<string, unknown>
+        | undefined;
       const cover = response.eligibility.raw_response?.cover as Record<string, unknown> | undefined;
       const contacts = Array.isArray(member?.contacts)
         ? (member?.contacts as Array<Record<string, unknown>>)
@@ -624,8 +676,10 @@ export default function InsuranceClaimDetailPage() {
         : [];
       const preferredBenefit = pickPreferredBenefit(benefits);
       if (preferredBenefit) {
-        if (typeof preferredBenefit.benefitCode === 'string') setBenefitCode(preferredBenefit.benefitCode);
-        if (typeof preferredBenefit.benefitType === 'string') setBenefitType(preferredBenefit.benefitType);
+        if (typeof preferredBenefit.benefitCode === 'string')
+          setBenefitCode(preferredBenefit.benefitCode);
+        if (typeof preferredBenefit.benefitType === 'string')
+          setBenefitType(preferredBenefit.benefitType);
       }
 
       pushWorkflowEvent('Eligibility session started');
@@ -729,7 +783,10 @@ export default function InsuranceClaimDetailPage() {
 
   const handleReserveBalance = async () => {
     if (!session?.id || !invoiceNumber || !reservationAmount) {
-      showErrorToast({ title: 'Missing fields', description: 'Authorization, invoice number, and amount are required.' });
+      showErrorToast({
+        title: 'Missing fields',
+        description: 'Authorization, invoice number, and amount are required.',
+      });
       return;
     }
     try {
@@ -757,7 +814,11 @@ export default function InsuranceClaimDetailPage() {
       toast({ title: 'Claim sent to HealthCloud' });
       refetch();
     } catch (error) {
-      showErrorToast({ title: 'Error', description: 'Failed to submit claim to HealthCloud.', error });
+      showErrorToast({
+        title: 'Error',
+        description: 'Failed to submit claim to HealthCloud.',
+        error,
+      });
     }
   };
 
@@ -776,7 +837,10 @@ export default function InsuranceClaimDetailPage() {
   const handleSubmitInvoice = async () => {
     if (!claim) return;
     if (!invoiceNumber) {
-      showErrorToast({ title: 'Invoice number required', description: 'Enter an invoice number before submitting.' });
+      showErrorToast({
+        title: 'Invoice number required',
+        description: 'Enter an invoice number before submitting.',
+      });
       return;
     }
     try {
@@ -802,7 +866,8 @@ export default function InsuranceClaimDetailPage() {
     if (!claim?.external_claim_id) {
       showErrorToast({
         title: 'Submit claim first',
-        description: 'Upload to Slade requires external claim id. Submit claim to HealthCloud first.',
+        description:
+          'Upload to Slade requires external claim id. Submit claim to HealthCloud first.',
       });
       return;
     }
@@ -850,15 +915,24 @@ export default function InsuranceClaimDetailPage() {
   const handleSubmitCreditNote = async () => {
     if (!claim) return;
     if (!creditNoteNumber.trim()) {
-      showErrorToast({ title: 'Credit note number required', description: 'Enter a credit note number before submitting.' });
+      showErrorToast({
+        title: 'Credit note number required',
+        description: 'Enter a credit note number before submitting.',
+      });
       return;
     }
     if (!creditNoteDate.trim()) {
-      showErrorToast({ title: 'Credit note date required', description: 'Enter a credit note date before submitting.' });
+      showErrorToast({
+        title: 'Credit note date required',
+        description: 'Enter a credit note date before submitting.',
+      });
       return;
     }
     if (creditNoteLines.length === 0) {
-      showErrorToast({ title: 'Credit note line required', description: 'Add at least one credit note line.' });
+      showErrorToast({
+        title: 'Credit note line required',
+        description: 'Add at least one credit note line.',
+      });
       return;
     }
 
@@ -868,13 +942,16 @@ export default function InsuranceClaimDetailPage() {
       }
       const unitPrice = Number(line.unit_price);
       const quantity = Number(line.quantity);
-      return !Number.isFinite(unitPrice) || unitPrice <= 0 || !Number.isFinite(quantity) || quantity <= 0;
+      return (
+        !Number.isFinite(unitPrice) || unitPrice <= 0 || !Number.isFinite(quantity) || quantity <= 0
+      );
     });
 
     if (hasInvalidLine) {
       showErrorToast({
         title: 'Invalid credit note lines',
-        description: 'Each line needs item name, charge date, positive unit price, and positive quantity.',
+        description:
+          'Each line needs item name, charge date, positive unit price, and positive quantity.',
       });
       return;
     }
@@ -943,7 +1020,6 @@ export default function InsuranceClaimDetailPage() {
     setCreditNoteLines((prev) => prev.filter((_, idx) => idx !== lineIndex));
   };
 
-
   const handleCheckRemittance = async () => {
     try {
       await checkRemittance.mutateAsync(claimId);
@@ -967,42 +1043,61 @@ export default function InsuranceClaimDetailPage() {
   }
 
   if (!claim) {
-    return <div className="text-center py-10 text-muted-foreground">Claim not found.</div>;
+    return <div className="py-10 text-center text-muted-foreground">Claim not found.</div>;
   }
 
   const canSubmit = claim.status === 'draft' && canSubmitClaims;
-  const canCancel = ['draft', 'submitted', 'acknowledged'].includes(claim.status) && canSubmitClaims;
+  const canCancel =
+    ['draft', 'submitted', 'acknowledged'].includes(claim.status) && canSubmitClaims;
   const allowManualAdjudication = !claim.is_healthcloud_enabled;
-  const canApprove = allowManualAdjudication && ['submitted', 'acknowledged', 'under_review'].includes(claim.status) && canAdjudicate;
-  const canReject = allowManualAdjudication && ['submitted', 'acknowledged', 'under_review'].includes(claim.status) && canAdjudicate;
-  const canQuery = allowManualAdjudication && ['submitted', 'acknowledged', 'under_review'].includes(claim.status) && canAdjudicate;
+  const canApprove =
+    allowManualAdjudication &&
+    ['submitted', 'acknowledged', 'under_review'].includes(claim.status) &&
+    canAdjudicate;
+  const canReject =
+    allowManualAdjudication &&
+    ['submitted', 'acknowledged', 'under_review'].includes(claim.status) &&
+    canAdjudicate;
+  const canQuery =
+    allowManualAdjudication &&
+    ['submitted', 'acknowledged', 'under_review'].includes(claim.status) &&
+    canAdjudicate;
   const canRespond = allowManualAdjudication && claim.status === 'query' && canSubmitClaims;
-  const canMarkPaid = allowManualAdjudication && ['approved', 'partially_approved'].includes(claim.status) && canAdjudicate;
+  const canMarkPaid =
+    allowManualAdjudication &&
+    ['approved', 'partially_approved'].includes(claim.status) &&
+    canAdjudicate;
   const canAppeal = allowManualAdjudication && claim.is_appealable && canSubmitClaims;
   const hasValidatedAuthorization = session?.status === 'validated';
   const hasExternalClaim = Boolean(claim.external_claim_id);
   const hasActiveReservation = claim.latest_balance_reservation?.status === 'reserved';
   const hasInvoiceNumber = invoiceNumber.trim().length > 0;
   const hasReservationAmount = reservationAmount.trim().length > 0;
-  const canReserveBalanceAction = Boolean(hasValidatedAuthorization && hasInvoiceNumber && hasReservationAmount);
+  const canReserveBalanceAction = Boolean(
+    hasValidatedAuthorization && hasInvoiceNumber && hasReservationAmount
+  );
   const canSubmitHealthcloudClaim = Boolean(hasValidatedAuthorization && hasActiveReservation);
   const canUploadAttachments = hasExternalClaim;
-  const canSubmitInvoiceAction = Boolean(hasExternalClaim && hasActiveReservation && hasInvoiceNumber);
+  const canSubmitInvoiceAction = Boolean(
+    hasExternalClaim && hasActiveReservation && hasInvoiceNumber
+  );
   const canSubmitCreditNoteAction = hasExternalClaim;
   const canSubmitCreditNoteForm =
-    canSubmitCreditNoteAction
-    && Boolean(creditNoteNumber.trim())
-    && Boolean(creditNoteDate.trim())
-    && creditNoteLines.length > 0
-    && creditNoteLines.every((line) => {
+    canSubmitCreditNoteAction &&
+    Boolean(creditNoteNumber.trim()) &&
+    Boolean(creditNoteDate.trim()) &&
+    creditNoteLines.length > 0 &&
+    creditNoteLines.every((line) => {
       const unitPrice = Number(line.unit_price);
       const quantity = Number(line.quantity);
-      return Boolean(line.item_name.trim())
-        && Boolean(line.charge_date.trim())
-        && Number.isFinite(unitPrice)
-        && unitPrice > 0
-        && Number.isFinite(quantity)
-        && quantity > 0;
+      return (
+        Boolean(line.item_name.trim()) &&
+        Boolean(line.charge_date.trim()) &&
+        Number.isFinite(unitPrice) &&
+        unitPrice > 0 &&
+        Number.isFinite(quantity) &&
+        quantity > 0
+      );
     });
   const canCheckRemittance = hasExternalClaim;
   const canRefreshExternalStatus = hasExternalClaim;
@@ -1030,7 +1125,12 @@ export default function InsuranceClaimDetailPage() {
               </Button>
             )}
             {canCheckRemittance && (
-              <Button size="sm" variant="outline" onClick={handleCheckRemittance} disabled={checkRemittance.isPending}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCheckRemittance}
+                disabled={checkRemittance.isPending}
+              >
                 Check Remittance
               </Button>
             )}
@@ -1050,8 +1150,8 @@ export default function InsuranceClaimDetailPage() {
       )}
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <p className="text-sm font-medium">
             {claim.patient_name}
             <span className="text-muted-foreground"> • {claim.member_number}</span>
@@ -1061,11 +1161,11 @@ export default function InsuranceClaimDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className={`${STATUS_COLORS[claim.status] || ''} shrink-0 w-fit`}>
+          <Badge className={`${STATUS_COLORS[claim.status] || ''} w-fit shrink-0`}>
             {CLAIM_STATUS_LABELS[claim.status] || claim.status}
           </Badge>
           {externalWorkflowState && (
-            <Badge variant="outline" className="shrink-0 w-fit text-[10px] uppercase tracking-wide">
+            <Badge variant="outline" className="w-fit shrink-0 text-[10px] uppercase tracking-wide">
               HC {externalWorkflowState}
             </Badge>
           )}
@@ -1074,32 +1174,61 @@ export default function InsuranceClaimDetailPage() {
       </div>
 
       {/* Action Buttons */}
-      {(canSubmit || canCancel || canApprove || canReject || canRespond || canMarkPaid || canAppeal) && (
+      {(canSubmit ||
+        canCancel ||
+        canApprove ||
+        canReject ||
+        canRespond ||
+        canMarkPaid ||
+        canAppeal) && (
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-wrap gap-2">
               {canSubmit && (
-                <Button size="sm" onClick={handleSubmit} disabled={submitClaim.isPending} className="gap-1">
+                <Button
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={submitClaim.isPending}
+                  className="gap-1"
+                >
                   <Send className="h-3 w-3" /> Submit
                 </Button>
               )}
               {canApprove && (
                 <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="default" className="gap-1 bg-green-600 hover:bg-green-700">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="gap-1 bg-green-600 hover:bg-green-700"
+                    >
                       <Check className="h-3 w-3" /> Approve
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-sm">
-                    <DialogHeader><DialogTitle>Approve Claim</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                      <DialogTitle>Approve Claim</DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <Label>Approved Amount (KES)</Label>
-                        <Input type="number" value={approvedAmount} onChange={e => setApprovedAmount(e.target.value)} placeholder={claim.total_amount} />
+                        <Input
+                          type="number"
+                          value={approvedAmount}
+                          onChange={(e) => setApprovedAmount(e.target.value)}
+                          placeholder={claim.total_amount}
+                        />
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setApproveOpen(false)}>Cancel</Button>
-                        <Button onClick={handleApprove} disabled={approveClaim.isPending || !approvedAmount}>Approve</Button>
+                        <Button variant="outline" onClick={() => setApproveOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleApprove}
+                          disabled={approveClaim.isPending || !approvedAmount}
+                        >
+                          Approve
+                        </Button>
                       </div>
                     </div>
                   </DialogContent>
@@ -1113,15 +1242,29 @@ export default function InsuranceClaimDetailPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-sm">
-                    <DialogHeader><DialogTitle>Reject Claim</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                      <DialogTitle>Reject Claim</DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <Label>Reason *</Label>
-                        <Textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3} />
+                        <Textarea
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          rows={3}
+                        />
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setRejectOpen(false)}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleReject} disabled={rejectClaim.isPending || !rejectReason}>Reject</Button>
+                        <Button variant="outline" onClick={() => setRejectOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={handleReject}
+                          disabled={rejectClaim.isPending || !rejectReason}
+                        >
+                          Reject
+                        </Button>
                       </div>
                     </div>
                   </DialogContent>
@@ -1135,8 +1278,12 @@ export default function InsuranceClaimDetailPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-sm">
-                    <DialogHeader><DialogTitle>Send Query</DialogTitle></DialogHeader>
-                    <p className="text-sm text-muted-foreground">Query functionality is available via the insurer portal integration.</p>
+                    <DialogHeader>
+                      <DialogTitle>Send Query</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                      Query functionality is available via the insurer portal integration.
+                    </p>
                   </DialogContent>
                 </Dialog>
               )}
@@ -1148,21 +1295,34 @@ export default function InsuranceClaimDetailPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-sm">
-                    <DialogHeader><DialogTitle>Respond to Insurer Query</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                      <DialogTitle>Respond to Insurer Query</DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-3">
                       {claim.query_details && (
                         <div className="rounded bg-muted p-2 text-sm">
-                          <p className="font-medium text-xs text-muted-foreground mb-1">Query:</p>
+                          <p className="mb-1 text-xs font-medium text-muted-foreground">Query:</p>
                           <p>{claim.query_details}</p>
                         </div>
                       )}
                       <div className="space-y-1">
                         <Label>Response *</Label>
-                        <Textarea value={queryResponse} onChange={e => setQueryResponse(e.target.value)} rows={3} />
+                        <Textarea
+                          value={queryResponse}
+                          onChange={(e) => setQueryResponse(e.target.value)}
+                          rows={3}
+                        />
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setRespondOpen(false)}>Cancel</Button>
-                        <Button onClick={handleRespondToQuery} disabled={respondToQuery.isPending || !queryResponse}>Send Response</Button>
+                        <Button variant="outline" onClick={() => setRespondOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleRespondToQuery}
+                          disabled={respondToQuery.isPending || !queryResponse}
+                        >
+                          Send Response
+                        </Button>
                       </div>
                     </div>
                   </DialogContent>
@@ -1171,20 +1331,38 @@ export default function InsuranceClaimDetailPage() {
               {canMarkPaid && (
                 <Dialog open={markPaidOpen} onOpenChange={setMarkPaidOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="default" className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+                    >
                       <DollarSign className="h-3 w-3" /> Mark Paid
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-sm">
-                    <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                      <DialogTitle>Record Payment</DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <Label>Paid Amount (KES)</Label>
-                        <Input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} placeholder={claim.approved_amount} />
+                        <Input
+                          type="number"
+                          value={paidAmount}
+                          onChange={(e) => setPaidAmount(e.target.value)}
+                          placeholder={claim.approved_amount}
+                        />
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setMarkPaidOpen(false)}>Cancel</Button>
-                        <Button onClick={handleMarkPaid} disabled={markPaid.isPending || !paidAmount}>Confirm</Button>
+                        <Button variant="outline" onClick={() => setMarkPaidOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleMarkPaid}
+                          disabled={markPaid.isPending || !paidAmount}
+                        >
+                          Confirm
+                        </Button>
                       </div>
                     </div>
                   </DialogContent>
@@ -1198,22 +1376,38 @@ export default function InsuranceClaimDetailPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-sm">
-                    <DialogHeader><DialogTitle>Appeal Claim</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                      <DialogTitle>Appeal Claim</DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <Label>Notes (optional)</Label>
-                        <Textarea value={appealNotes} onChange={e => setAppealNotes(e.target.value)} rows={3} />
+                        <Textarea
+                          value={appealNotes}
+                          onChange={(e) => setAppealNotes(e.target.value)}
+                          rows={3}
+                        />
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setAppealOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAppeal} disabled={appealClaim.isPending}>Submit Appeal</Button>
+                        <Button variant="outline" onClick={() => setAppealOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleAppeal} disabled={appealClaim.isPending}>
+                          Submit Appeal
+                        </Button>
                       </div>
                     </div>
                   </DialogContent>
                 </Dialog>
               )}
               {canCancel && (
-                <Button size="sm" variant="ghost" className="gap-1 text-destructive hover:text-destructive" onClick={handleCancel} disabled={cancelClaim.isPending}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1 text-destructive hover:text-destructive"
+                  onClick={handleCancel}
+                  disabled={cancelClaim.isPending}
+                >
                   <Trash2 className="h-3 w-3" /> Cancel
                 </Button>
               )}
@@ -1223,7 +1417,7 @@ export default function InsuranceClaimDetailPage() {
       )}
 
       {/* Financial Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3 text-center">
             <p className="text-xs text-muted-foreground">Claimed</p>
@@ -1256,7 +1450,7 @@ export default function InsuranceClaimDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Shield className="h-4 w-4" /> HealthCloud Workflow
           </CardTitle>
         </CardHeader>
@@ -1270,7 +1464,7 @@ export default function InsuranceClaimDetailPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
             {workflowSteps.map((step) => (
               <button
                 key={step.title}
@@ -1284,12 +1478,14 @@ export default function InsuranceClaimDetailPage() {
                 className={`rounded-md border px-3 py-2 text-left text-xs transition hover:border-primary ${step.done ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30' : step.current ? 'border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30' : 'border-border bg-muted/30'}`}
               >
                 <p className="font-medium">{step.title}</p>
-                <p className="text-muted-foreground">{step.done ? 'Done' : step.current ? 'Current' : 'Pending'}</p>
+                <p className="text-muted-foreground">
+                  {step.done ? 'Done' : step.current ? 'Current' : 'Pending'}
+                </p>
               </button>
             ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div ref={contactStepRef}>
               <Label>Contact ID (OTP)</Label>
               {eligibilityContacts.length > 0 ? (
@@ -1298,9 +1494,15 @@ export default function InsuranceClaimDetailPage() {
                   value={contactId}
                   onChange={(e) => setContactId(e.target.value)}
                 >
-                  <option value="" className="bg-background text-foreground">Select contact</option>
+                  <option value="" className="bg-background text-foreground">
+                    Select contact
+                  </option>
                   {eligibilityContacts.map((contact) => (
-                    <option key={contact.id} value={String(contact.id)} className="bg-background text-foreground">
+                    <option
+                      key={contact.id}
+                      value={String(contact.id)}
+                      className="bg-background text-foreground"
+                    >
                       {contact.id} - {contact.contactValue}
                     </option>
                   ))}
@@ -1328,7 +1530,11 @@ export default function InsuranceClaimDetailPage() {
             </div>
             <div ref={visitStepRef}>
               <Label>Beneficiary ID</Label>
-              <Input value={beneficiaryId} onChange={(e) => setBeneficiaryId(e.target.value)} placeholder="Eligibility member.id" />
+              <Input
+                value={beneficiaryId}
+                onChange={(e) => setBeneficiaryId(e.target.value)}
+                placeholder="Eligibility member.id"
+              />
             </div>
             <div>
               <Label>Start Visit</Label>
@@ -1374,7 +1580,9 @@ export default function InsuranceClaimDetailPage() {
                     }
                   }}
                 >
-                  <option value="" className="bg-background text-foreground">Select benefit</option>
+                  <option value="" className="bg-background text-foreground">
+                    Select benefit
+                  </option>
                   {eligibilityBenefits.map((benefit, idx) => (
                     <option
                       key={`${benefit.benefitCode || 'benefit'}-${idx}`}
@@ -1395,11 +1603,18 @@ export default function InsuranceClaimDetailPage() {
             </div>
             <div>
               <Label>Policy Number</Label>
-              <Input value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)} placeholder="POL/001" />
+              <Input
+                value={policyNumber}
+                onChange={(e) => setPolicyNumber(e.target.value)}
+                placeholder="POL/001"
+              />
             </div>
             <div className="md:col-span-2">
               <Label>Policy Effective Date (ISO)</Label>
-              <Input value={policyEffectiveDate} onChange={(e) => setPolicyEffectiveDate(e.target.value)} />
+              <Input
+                value={policyEffectiveDate}
+                onChange={(e) => setPolicyEffectiveDate(e.target.value)}
+              />
             </div>
             <div>
               <Label>Session ID</Label>
@@ -1407,7 +1622,11 @@ export default function InsuranceClaimDetailPage() {
             </div>
             <div className="md:col-span-2" ref={validateStepRef}>
               <Label>Authorization Token</Label>
-              <Input value={authorizationToken} onChange={(e) => setAuthorizationToken(e.target.value)} placeholder="Token from start visit" />
+              <Input
+                value={authorizationToken}
+                onChange={(e) => setAuthorizationToken(e.target.value)}
+                placeholder="Token from start visit"
+              />
               {(canValidateToken || validateVisit.isPending) && (
                 <div className="mt-2">
                   <Button
@@ -1424,14 +1643,20 @@ export default function InsuranceClaimDetailPage() {
             </div>
             <div ref={reserveStepRef}>
               <Label>Reserve Amount (Shillings)</Label>
-              <Input value={reservationAmount} onChange={(e) => setReservationAmount(e.target.value)} placeholder={claim.total_amount} />
+              <Input
+                value={reservationAmount}
+                onChange={(e) => setReservationAmount(e.target.value)}
+                placeholder={claim.total_amount}
+              />
               {claim.latest_balance_reservation && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   {formatCurrency(claim.latest_balance_reservation.amount)} shillings reserved
                 </p>
               )}
               {!hasValidatedAuthorization && (
-                <p className="mt-1 text-xs text-muted-foreground">Validate authorization token first.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Validate authorization token first.
+                </p>
               )}
               {(session?.id || reserveBalance.isPending) && (
                 <div className="mt-2">
@@ -1447,21 +1672,31 @@ export default function InsuranceClaimDetailPage() {
                 </div>
               )}
             </div>
-            <div className="md:col-span-3 flex flex-col items-end gap-1">
-              <Button size="sm" onClick={handleSubmitHealthcloudClaim} disabled={submitToHealthcloud.isPending || !canSubmitHealthcloudClaim}>
+            <div className="flex flex-col items-end gap-1 md:col-span-3">
+              <Button
+                size="sm"
+                onClick={handleSubmitHealthcloudClaim}
+                disabled={submitToHealthcloud.isPending || !canSubmitHealthcloudClaim}
+              >
                 Submit Claim to HealthCloud
               </Button>
               {!canSubmitHealthcloudClaim && (
-                <p className="text-xs text-muted-foreground">Validate authorization and reserve balance before claim submission.</p>
+                <p className="text-xs text-muted-foreground">
+                  Validate authorization and reserve balance before claim submission.
+                </p>
               )}
             </div>
-            <div className="md:col-span-3 rounded-md border p-3" ref={attachmentStepRef}>
-              <p className="text-sm font-medium mb-2">Required claim attachments</p>
-              <p className="text-xs text-muted-foreground mb-2">Submit claim first, then upload attachments.</p>
+            <div className="rounded-md border p-3 md:col-span-3" ref={attachmentStepRef}>
+              <p className="mb-2 text-sm font-medium">Required claim attachments</p>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Submit claim first, then upload attachments.
+              </p>
               <div className="space-y-2">
                 {REQUIRED_ATTACHMENT_TYPES.map((type) => {
                   const selectedFile = attachmentFiles[type];
-                  const uploadedForType = uploadedAttachments.some((item) => item.type === type || item.label.startsWith(type));
+                  const uploadedForType = uploadedAttachments.some(
+                    (item) => item.type === type || item.label.startsWith(type)
+                  );
                   return (
                     <div key={type} className="rounded-md border p-2">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1485,7 +1720,12 @@ export default function InsuranceClaimDetailPage() {
                             size="sm"
                             variant="secondary"
                             onClick={() => handleUploadAttachmentType(type)}
-                            disabled={!canUploadAttachments || !selectedFile || uploadAttachmentFile.isPending || uploadingAttachmentType === type}
+                            disabled={
+                              !canUploadAttachments ||
+                              !selectedFile ||
+                              uploadAttachmentFile.isPending ||
+                              uploadingAttachmentType === type
+                            }
                           >
                             {uploadingAttachmentType === type && uploadAttachmentFile.isPending ? (
                               <>
@@ -1502,10 +1742,12 @@ export default function InsuranceClaimDetailPage() {
                 })}
               </div>
             </div>
-            <div className="md:col-span-3 rounded-md border p-2" ref={submitStepRef}>
-              <p className="text-xs text-muted-foreground mb-1">Uploaded attachments</p>
+            <div className="rounded-md border p-2 md:col-span-3" ref={submitStepRef}>
+              <p className="mb-1 text-xs text-muted-foreground">Uploaded attachments</p>
               {uploadedAttachments.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No attachments uploaded in this session yet.</p>
+                <p className="text-xs text-muted-foreground">
+                  No attachments uploaded in this session yet.
+                </p>
               ) : (
                 <div className="space-y-1">
                   {uploadedAttachments.map((attachment, index) => (
@@ -1519,8 +1761,14 @@ export default function InsuranceClaimDetailPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" className="gap-1" onClick={handleStartSession} disabled={startSession.isPending}>
-              <Shield className="h-3 w-3" /> {startSession.isPending ? 'Running...' : '1. Run Eligibility'}
+            <Button
+              size="sm"
+              className="gap-1"
+              onClick={handleStartSession}
+              disabled={startSession.isPending}
+            >
+              <Shield className="h-3 w-3" />{' '}
+              {startSession.isPending ? 'Running...' : '1. Run Eligibility'}
             </Button>
           </div>
 
@@ -1532,18 +1780,19 @@ export default function InsuranceClaimDetailPage() {
           )}
 
           <div className="rounded-md border p-3">
-            <p className="text-xs text-muted-foreground mb-2">Workflow timeline</p>
+            <p className="mb-2 text-xs text-muted-foreground">Workflow timeline</p>
             {workflowEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground">No workflow events yet.</p>
             ) : (
               <div className="space-y-1">
                 {workflowEvents.map((event, idx) => (
-                  <p key={`${event}-${idx}`} className="text-sm">{event}</p>
+                  <p key={`${event}-${idx}`} className="text-sm">
+                    {event}
+                  </p>
                 ))}
               </div>
             )}
           </div>
-
         </CardContent>
       </Card>
 
@@ -1553,7 +1802,7 @@ export default function InsuranceClaimDetailPage() {
           <CardTitle className="text-base">Claim Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <div>
@@ -1589,13 +1838,15 @@ export default function InsuranceClaimDetailPage() {
               </div>
             )}
             {claim.diagnosis_codes.length > 0 && (
-              <div className="flex items-start gap-2 col-span-full">
-                <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <div className="col-span-full flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">Diagnosis Codes</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <div className="mt-1 flex flex-wrap gap-1">
                     {claim.diagnosis_codes.map((code) => (
-                      <Badge key={code} variant="secondary" className="text-xs font-mono">{code}</Badge>
+                      <Badge key={code} variant="secondary" className="font-mono text-xs">
+                        {code}
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -1617,9 +1868,13 @@ export default function InsuranceClaimDetailPage() {
             {claim.rejection_reason && <p>{claim.rejection_reason}</p>}
             {claim.query_details && (
               <div className="space-y-2">
-                <p><span className="font-medium">Query:</span> {claim.query_details}</p>
+                <p>
+                  <span className="font-medium">Query:</span> {claim.query_details}
+                </p>
                 {claim.query_response && (
-                  <p><span className="font-medium">Response:</span> {claim.query_response}</p>
+                  <p>
+                    <span className="font-medium">Response:</span> {claim.query_response}
+                  </p>
                 )}
               </div>
             )}
@@ -1635,7 +1890,12 @@ export default function InsuranceClaimDetailPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="flex items-center gap-2">
                 <Label className="whitespace-nowrap">Invoice Number</Label>
-                <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="INV-001" className="h-8 w-52" />
+                <Input
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  placeholder="INV-001"
+                  className="h-8 w-52"
+                />
               </div>
             </div>
           </div>
@@ -1644,28 +1904,79 @@ export default function InsuranceClaimDetailPage() {
           <ResponsiveTable<(typeof displayedLineItems)[number]>
             data={displayedLineItems}
             columns={[
-              { key: 'service', header: 'Service', sortable: true, cell: (item) => (
-                <div>
-                  <p className="text-sm">{item.service}</p>
-                  {item.code && <p className="text-xs text-muted-foreground font-mono">{item.code}</p>}
-                </div>
-              )},
-              { key: 'quantity', header: 'Qty', sortable: true, sortType: 'number', cell: (item) => item.quantity },
-              { key: 'unitPrice', header: 'Unit Price', sortable: true, sortType: 'number', hideOnMobile: true, cell: (item) => formatCurrency(item.unitPrice) },
-              { key: 'claimed', header: 'Claimed', sortable: true, sortType: 'number', cell: (item) => formatCurrency(item.claimed) },
-              { key: 'approved', header: 'Approved', sortable: true, sortType: 'number', hideOnMobile: true, cell: (item) => formatCurrency(item.approved) },
-              { key: 'status', header: 'Status', cell: (item) => <Badge variant="secondary" className="text-xs">{item.status}</Badge> },
+              {
+                key: 'service',
+                header: 'Service',
+                sortable: true,
+                cell: (item) => (
+                  <div>
+                    <p className="text-sm">{item.service}</p>
+                    {item.code && (
+                      <p className="font-mono text-xs text-muted-foreground">{item.code}</p>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                key: 'quantity',
+                header: 'Qty',
+                sortable: true,
+                sortType: 'number',
+                cell: (item) => item.quantity,
+              },
+              {
+                key: 'unitPrice',
+                header: 'Unit Price',
+                sortable: true,
+                sortType: 'number',
+                hideOnMobile: true,
+                cell: (item) => formatCurrency(item.unitPrice),
+              },
+              {
+                key: 'claimed',
+                header: 'Claimed',
+                sortable: true,
+                sortType: 'number',
+                cell: (item) => formatCurrency(item.claimed),
+              },
+              {
+                key: 'approved',
+                header: 'Approved',
+                sortable: true,
+                sortType: 'number',
+                hideOnMobile: true,
+                cell: (item) => formatCurrency(item.approved),
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                cell: (item) => (
+                  <Badge variant="secondary" className="text-xs">
+                    {item.status}
+                  </Badge>
+                ),
+              },
             ]}
             keyExtractor={(item) => item.id}
             emptyMessage="No line items from claim or linked invoice."
           />
           <div className="mt-4 flex flex-wrap justify-end gap-2 px-6 pb-2 sm:px-0">
-            <Button size="sm" variant="secondary" onClick={handleSubmitInvoice} disabled={submitInvoice.isPending || !canSubmitInvoiceAction}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleSubmitInvoice}
+              disabled={submitInvoice.isPending || !canSubmitInvoiceAction}
+            >
               Submit Invoice
             </Button>
             <Dialog open={creditNoteOpen} onOpenChange={setCreditNoteOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" variant="ghost" onClick={handleOpenCreditNoteDialog} disabled={!canSubmitCreditNoteAction}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleOpenCreditNoteDialog}
+                  disabled={!canSubmitCreditNoteAction}
+                >
                   Create Credit Note
                 </Button>
               </DialogTrigger>
@@ -1674,7 +1985,7 @@ export default function InsuranceClaimDetailPage() {
                   <DialogTitle>Create Credit Note</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
                       <Label>Credit Note Number</Label>
                       <Input
@@ -1685,14 +1996,20 @@ export default function InsuranceClaimDetailPage() {
                     </div>
                     <div className="space-y-1">
                       <Label>Credit Note Date (ISO)</Label>
-                      <Input value={creditNoteDate} onChange={(e) => setCreditNoteDate(e.target.value)} />
+                      <Input
+                        value={creditNoteDate}
+                        onChange={(e) => setCreditNoteDate(e.target.value)}
+                      />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     {creditNoteLines.map((line, idx) => (
-                      <div key={`credit-note-line-${idx}`} className="rounded-md border p-2 space-y-2">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      <div
+                        key={`credit-note-line-${idx}`}
+                        className="space-y-2 rounded-md border p-2"
+                      >
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                           <Input
                             value={line.item_code}
                             onChange={(e) => updateCreditNoteLine(idx, 'item_code', e.target.value)}
@@ -1705,13 +2022,17 @@ export default function InsuranceClaimDetailPage() {
                           />
                           <Input
                             value={line.charge_date}
-                            onChange={(e) => updateCreditNoteLine(idx, 'charge_date', e.target.value)}
+                            onChange={(e) =>
+                              updateCreditNoteLine(idx, 'charge_date', e.target.value)
+                            }
                             placeholder="Charge date (ISO)"
                           />
                           <Input
                             type="number"
                             value={line.unit_price}
-                            onChange={(e) => updateCreditNoteLine(idx, 'unit_price', e.target.value)}
+                            onChange={(e) =>
+                              updateCreditNoteLine(idx, 'unit_price', e.target.value)
+                            }
                             placeholder="Unit price"
                           />
                           <Input
@@ -1753,7 +2074,11 @@ export default function InsuranceClaimDetailPage() {
                       <Button size="sm" variant="outline" onClick={() => setCreditNoteOpen(false)}>
                         Cancel
                       </Button>
-                      <Button size="sm" onClick={handleSubmitCreditNote} disabled={submitCreditNote.isPending || !canSubmitCreditNoteForm}>
+                      <Button
+                        size="sm"
+                        onClick={handleSubmitCreditNote}
+                        disabled={submitCreditNote.isPending || !canSubmitCreditNoteForm}
+                      >
                         {submitCreditNote.isPending ? 'Submitting...' : 'Submit Credit Note'}
                       </Button>
                     </div>
@@ -1764,7 +2089,8 @@ export default function InsuranceClaimDetailPage() {
           </div>
           {(!canSubmitInvoiceAction || !canSubmitCreditNoteAction) && (
             <p className="px-6 pb-2 text-xs text-muted-foreground sm:px-0">
-              Invoice actions unlock after claim submission. Invoice submission also requires active balance reservation.
+              Invoice actions unlock after claim submission. Invoice submission also requires active
+              balance reservation.
             </p>
           )}
         </CardContent>
@@ -1777,7 +2103,7 @@ export default function InsuranceClaimDetailPage() {
             <CardTitle className="text-base">Notes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{claim.notes}</p>
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{claim.notes}</p>
           </CardContent>
         </Card>
       )}

@@ -25,18 +25,10 @@ export {
 } from './encounter-context';
 
 // Page Refresh Context
-export {
-  PageRefreshProvider,
-  usePageRefresh,
-  formatLastFetch,
-} from './page-refresh-context';
+export { PageRefreshProvider, usePageRefresh, formatLastFetch } from './page-refresh-context';
 
 // Sync Context
-export {
-  SyncProvider,
-  useSyncStatus,
-  formatLastSync,
-} from './sync-context';
+export { SyncProvider, useSyncStatus, formatLastSync } from './sync-context';
 
 // AI Chat Context
 export {
@@ -48,7 +40,4 @@ export {
 } from './ai-chat-context';
 
 // Facility Context
-export {
-  FacilityProvider,
-  useFacility,
-} from './facility-context';
+export { FacilityProvider, useFacility } from './facility-context';

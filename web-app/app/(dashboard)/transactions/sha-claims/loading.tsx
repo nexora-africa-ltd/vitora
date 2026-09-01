@@ -25,7 +25,7 @@ export default function SHAClaimsLoading() {
             </CardHeader>
             <CardContent>
               <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-3 w-20 mt-2" />
+              <Skeleton className="mt-2 h-3 w-20" />
             </CardContent>
           </Card>
         ))}
@@ -45,12 +45,12 @@ export default function SHAClaimsLoading() {
         <CardContent>
           <div className="space-y-4">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+              <div key={i} className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3 w-48" />
                 </div>
-                <div className="text-right space-y-2">
+                <div className="space-y-2 text-right">
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-3 w-16" />
                 </div>

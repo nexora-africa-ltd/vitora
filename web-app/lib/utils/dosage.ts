@@ -190,7 +190,7 @@ export function generateDosageSuggestions(drug: Drug): DosageSuggestion[] {
 
   // For liquid forms without concentration (e.g., syrup "100ml", suspension "60ml")
   // The strength is just the bottle size — suggest standard ml doses
-  if (['SYRUP', 'SUSPENSION', 'SOLUTION'].includes(drug.form) && (!parsed?.perVolume)) {
+  if (['SYRUP', 'SUSPENSION', 'SOLUTION'].includes(drug.form) && !parsed?.perVolume) {
     const mlDoses = [2.5, 5, 10, 15, 20];
     for (const ml of mlDoses) {
       const mlStr = Number.isInteger(ml) ? ml.toString() : ml.toFixed(1);
@@ -521,7 +521,7 @@ export function calculateQuantity(
   unitsPerDose: number | null | undefined,
   frequency: string | undefined,
   duration: string | undefined,
-  drugForm?: DrugForm | null,
+  drugForm?: DrugForm | null
 ): number | null {
   if (!unitsPerDose || !frequency || !duration) return null;
 

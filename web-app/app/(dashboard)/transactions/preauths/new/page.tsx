@@ -61,7 +61,11 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { PatientSearchInput } from '@/components/patients/patient-search-input';
 import { ConsentPanel } from '@/components/billing/sha/ConsentPanel';
 import { StaffSearchCombobox } from '@/components/clinics/staff-search-combobox';
-import { DiagnosisCodeInput, emptyDiagnosisCodeValue, type DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import {
+  DiagnosisCodeInput,
+  emptyDiagnosisCodeValue,
+  type DiagnosisCodeValue,
+} from '@/components/shared/diagnosis-code-input';
 import { cn } from '@/lib/utils';
 import { shaApi, type ClaimAttachment } from '@/lib/api/sha';
 import { encountersApi } from '@/lib/api/encounters';
@@ -161,7 +165,11 @@ function normalizeDoctorRegulationBody(value: string | undefined): string {
   if (normalized === 'coc' || normalized === 'clinical officers council') {
     return 'COC';
   }
-  if (normalized === 'nck' || normalized === 'nursing council' || normalized === 'nursing council of kenya') {
+  if (
+    normalized === 'nck' ||
+    normalized === 'nursing council' ||
+    normalized === 'nursing council of kenya'
+  ) {
     return 'NCK';
   }
   return text;
@@ -204,7 +212,9 @@ function extractIlmResults(payload: unknown): Array<Record<string, unknown>> {
 }
 
 function toPreauthAttachmentDocumentType(doc: DraftDocument): string {
-  const required = String(doc.requiredDocType || '').trim().toUpperCase();
+  const required = String(doc.requiredDocType || '')
+    .trim()
+    .toUpperCase();
   if (required === 'IMAGING_RESULT') return 'RADIOLOGY_REQUEST';
   if (required === 'LAB_RESULTS') return 'LAB_ORDER';
   if (required === 'MEDICAL_REPORT') return 'MEDICAL_REPORT';
@@ -246,9 +256,13 @@ interface DraftDocument {
 }
 
 function buildDocumentIdentity(name: string, size: number, mimeType: string): string {
-  const normalizedName = String(name || '').trim().toLowerCase();
+  const normalizedName = String(name || '')
+    .trim()
+    .toLowerCase();
   const normalizedSize = Number.isFinite(size) ? size : 0;
-  const normalizedMime = String(mimeType || '').trim().toLowerCase();
+  const normalizedMime = String(mimeType || '')
+    .trim()
+    .toLowerCase();
   return `${normalizedName}::${normalizedSize}::${normalizedMime}`;
 }
 
@@ -260,17 +274,19 @@ function documentIdentityFromDraft(doc: DraftDocument): string {
   return buildDocumentIdentity(
     doc.file?.name || doc.displayName,
     doc.fileSizeBytes ?? doc.file?.size ?? 0,
-    doc.mimeType ?? doc.file?.type ?? '',
+    doc.mimeType ?? doc.file?.type ?? ''
   );
 }
 
 function claimAttachmentSignature(attachment: ClaimAttachment): string {
-  const checksum = String(attachment.checksum || '').trim().toLowerCase();
+  const checksum = String(attachment.checksum || '')
+    .trim()
+    .toLowerCase();
   if (checksum) return `sha256:${checksum}`;
   return buildDocumentIdentity(
     String(attachment.original_filename || attachment.name || '').trim(),
     Number(attachment.file_size || 0),
-    String(attachment.mime_type || ''),
+    String(attachment.mime_type || '')
   );
 }
 
@@ -285,10 +301,7 @@ const AUTO_GENERATABLE_PREAUTH_DOC_TYPES = new Set(['MEDICAL_REPORT', 'PREAUTH_F
 const PREAUTH_DRAFT_STORAGE_KEY = 'transactions-preauth-new-draft-v1';
 
 function escapePdfText(input: string): string {
-  return input
-    .replaceAll('\\', '\\\\')
-    .replaceAll('(', '\\(')
-    .replaceAll(')', '\\)');
+  return input.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)');
 }
 
 function wrapPdfLines(lines: string[], maxCharsPerLine: number = 95): string[] {
@@ -349,11 +362,9 @@ function buildSimplePdf(lines: string[]): Uint8Array {
     'BT',
     '/F1 10 Tf',
     '50 760 Td',
-    ...safeLines.flatMap((line, index) => (
-      index === 0
-        ? [`(${escapePdfText(line)}) Tj`]
-        : ['0 -14 Td', `(${escapePdfText(line)}) Tj`]
-    )),
+    ...safeLines.flatMap((line, index) =>
+      index === 0 ? [`(${escapePdfText(line)}) Tj`] : ['0 -14 Td', `(${escapePdfText(line)}) Tj`]
+    ),
     'ET',
   ].join('\n');
 
@@ -361,10 +372,10 @@ function buildSimplePdf(lines: string[]): Uint8Array {
   objects.push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
   objects.push('2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n');
   objects.push(
-    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n'
   );
   objects.push(
-    `4 0 obj\n<< /Length ${contentOps.length} >>\nstream\n${contentOps}\nendstream\nendobj\n`,
+    `4 0 obj\n<< /Length ${contentOps.length} >>\nstream\n${contentOps}\nendstream\nendobj\n`
   );
   objects.push('5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n');
 
@@ -379,7 +390,10 @@ function buildSimplePdf(lines: string[]): Uint8Array {
   }
 
   const xrefStart = cursor;
-  const xrefRows = ['0000000000 65535 f ', ...offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n `)];
+  const xrefRows = [
+    '0000000000 65535 f ',
+    ...offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n `),
+  ];
   const xref = `xref\n0 ${objects.length + 1}\n${xrefRows.join('\n')}\n`;
   const trailer = `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`;
   const pdfText = header + body + xref + trailer;
@@ -434,7 +448,8 @@ export default function NewPreauthPage() {
   const [interventionPrice, setInterventionPrice] = useState<number | null>(null);
 
   const [diagnosisChips, setDiagnosisChips] = useState<DiagnosisChip[]>([]);
-  const [diagnosisInput, setDiagnosisInput] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
+  const [diagnosisInput, setDiagnosisInput] =
+    useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
 
   const [doctorChips, setDoctorChips] = useState<DoctorChip[]>([]);
   const [selectedStaffUserId, setSelectedStaffUserId] = useState<number | undefined>();
@@ -443,7 +458,9 @@ export default function NewPreauthPage() {
   const [manualDoctorRegNumber, setManualDoctorRegNumber] = useState('');
   const [manualDoctorIdType, setManualDoctorIdType] = useState('registration_number');
   const [manualDoctorRegBody, setManualDoctorRegBody] = useState('KMPDC');
-  const [manualLookupIdType, setManualLookupIdType] = useState<'National ID' | 'passport'>('National ID');
+  const [manualLookupIdType, setManualLookupIdType] = useState<'National ID' | 'passport'>(
+    'National ID'
+  );
   const [manualLookupIdNumber, setManualLookupIdNumber] = useState('');
   const [manualLookupLoading, setManualLookupLoading] = useState(false);
 
@@ -458,7 +475,9 @@ export default function NewPreauthPage() {
   const [clinicalNotesTouched, setClinicalNotesTouched] = useState(false);
   const [documents, setDocuments] = useState<DraftDocument[]>([]);
   const [linkedEvidenceKeys, setLinkedEvidenceKeys] = useState<string[]>([]);
-  const [evidenceClaimAttachmentIds, setEvidenceClaimAttachmentIds] = useState<Record<string, number>>({});
+  const [evidenceClaimAttachmentIds, setEvidenceClaimAttachmentIds] = useState<
+    Record<string, number>
+  >({});
   const [evidenceBusyKeys, setEvidenceBusyKeys] = useState<string[]>([]);
   const [generatedRequiredDocTypes, setGeneratedRequiredDocTypes] = useState<string[]>([]);
   const [uploadedRequiredDocTypes, setUploadedRequiredDocTypes] = useState<string[]>([]);
@@ -482,95 +501,120 @@ export default function NewPreauthPage() {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }, [encounterId]);
 
-  const derivePreauthType = useCallback((intervention: Partial<InterventionOption>): PreauthType => {
-    const asRecord = intervention as Record<string, unknown>;
-    const nestedRaw = (
-      (asRecord.raw_data && typeof asRecord.raw_data === 'object' ? asRecord.raw_data : null)
-      || (asRecord.intervention_payload && typeof asRecord.intervention_payload === 'object'
-        ? asRecord.intervention_payload
-        : null)
-      || {}
-    ) as Record<string, unknown>;
+  const derivePreauthType = useCallback(
+    (intervention: Partial<InterventionOption>): PreauthType => {
+      const asRecord = intervention as Record<string, unknown>;
+      const nestedRaw = ((asRecord.raw_data && typeof asRecord.raw_data === 'object'
+        ? asRecord.raw_data
+        : null) ||
+        (asRecord.intervention_payload && typeof asRecord.intervention_payload === 'object'
+          ? asRecord.intervention_payload
+          : null) ||
+        {}) as Record<string, unknown>;
 
-    const isFlagTrue = (...candidates: unknown[]): boolean => {
-      for (const value of candidates) {
-        if (value === true) return true;
-        if (typeof value === 'number' && value !== 0) return true;
-        if (typeof value === 'string') {
-          const normalized = value.trim().toLowerCase();
-          if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
+      const isFlagTrue = (...candidates: unknown[]): boolean => {
+        for (const value of candidates) {
+          if (value === true) return true;
+          if (typeof value === 'number' && value !== 0) return true;
+          if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+            if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
+          }
         }
-      }
-      return false;
-    };
+        return false;
+      };
 
-    if (isFlagTrue(
-      intervention.needsManualPreauthApproval,
-      intervention.needs_manual_preauth_approval,
-      nestedRaw.needsManualPreauthApproval,
-      nestedRaw.needs_manual_preauth_approval,
-    )) return 'elective';
+      if (
+        isFlagTrue(
+          intervention.needsManualPreauthApproval,
+          intervention.needs_manual_preauth_approval,
+          nestedRaw.needsManualPreauthApproval,
+          nestedRaw.needs_manual_preauth_approval
+        )
+      )
+        return 'elective';
 
-    if (isFlagTrue(
-      intervention.isSurgicalPreauth,
-      intervention.is_surgical_preauth,
-      intervention.requiresSurgicalPreauth,
-      intervention.requires_surgical_preauth,
-      nestedRaw.isSurgicalPreauth,
-      nestedRaw.is_surgical_preauth,
-      nestedRaw.requiresSurgicalPreauth,
-      nestedRaw.requires_surgical_preauth,
-    )) return 'surgical';
+      if (
+        isFlagTrue(
+          intervention.isSurgicalPreauth,
+          intervention.is_surgical_preauth,
+          intervention.requiresSurgicalPreauth,
+          intervention.requires_surgical_preauth,
+          nestedRaw.isSurgicalPreauth,
+          nestedRaw.is_surgical_preauth,
+          nestedRaw.requiresSurgicalPreauth,
+          nestedRaw.requires_surgical_preauth
+        )
+      )
+        return 'surgical';
 
-    if (isFlagTrue(
-      intervention.isRenalPreauth,
-      intervention.is_renal_preauth,
-      intervention.requiresRenalPreauth,
-      intervention.requires_renal_preauth,
-      nestedRaw.isRenalPreauth,
-      nestedRaw.is_renal_preauth,
-      nestedRaw.requiresRenalPreauth,
-      nestedRaw.requires_renal_preauth,
-    )) return 'renal';
+      if (
+        isFlagTrue(
+          intervention.isRenalPreauth,
+          intervention.is_renal_preauth,
+          intervention.requiresRenalPreauth,
+          intervention.requires_renal_preauth,
+          nestedRaw.isRenalPreauth,
+          nestedRaw.is_renal_preauth,
+          nestedRaw.requiresRenalPreauth,
+          nestedRaw.requires_renal_preauth
+        )
+      )
+        return 'renal';
 
-    if (isFlagTrue(
-      intervention.isOncologyPreauth,
-      intervention.is_oncology_preauth,
-      intervention.requiresOncologyPreauth,
-      intervention.requires_oncology_preauth,
-      nestedRaw.isOncologyPreauth,
-      nestedRaw.is_oncology_preauth,
-      nestedRaw.requiresOncologyPreauth,
-      nestedRaw.requires_oncology_preauth,
-    )) return 'oncology';
+      if (
+        isFlagTrue(
+          intervention.isOncologyPreauth,
+          intervention.is_oncology_preauth,
+          intervention.requiresOncologyPreauth,
+          intervention.requires_oncology_preauth,
+          nestedRaw.isOncologyPreauth,
+          nestedRaw.is_oncology_preauth,
+          nestedRaw.requiresOncologyPreauth,
+          nestedRaw.requires_oncology_preauth
+        )
+      )
+        return 'oncology';
 
-    if (isFlagTrue(
-      intervention.isImagingPreauth,
-      intervention.is_imaging_preauth,
-      intervention.requiresRadiologyPreauth,
-      intervention.requires_radiology_preauth,
-      nestedRaw.isImagingPreauth,
-      nestedRaw.is_imaging_preauth,
-      nestedRaw.requiresRadiologyPreauth,
-      nestedRaw.requires_radiology_preauth,
-    )) return 'imaging';
+      if (
+        isFlagTrue(
+          intervention.isImagingPreauth,
+          intervention.is_imaging_preauth,
+          intervention.requiresRadiologyPreauth,
+          intervention.requires_radiology_preauth,
+          nestedRaw.isImagingPreauth,
+          nestedRaw.is_imaging_preauth,
+          nestedRaw.requiresRadiologyPreauth,
+          nestedRaw.requires_radiology_preauth
+        )
+      )
+        return 'imaging';
 
-    if (isFlagTrue(
-      intervention.isOpticalPreauth,
-      intervention.is_optical_preauth,
-      intervention.requiresOpticalPreauth,
-      intervention.requires_optical_preauth,
-      nestedRaw.isOpticalPreauth,
-      nestedRaw.is_optical_preauth,
-      nestedRaw.requiresOpticalPreauth,
-      nestedRaw.requires_optical_preauth,
-    )) return 'optical';
+      if (
+        isFlagTrue(
+          intervention.isOpticalPreauth,
+          intervention.is_optical_preauth,
+          intervention.requiresOpticalPreauth,
+          intervention.requires_optical_preauth,
+          nestedRaw.isOpticalPreauth,
+          nestedRaw.is_optical_preauth,
+          nestedRaw.requiresOpticalPreauth,
+          nestedRaw.requires_optical_preauth
+        )
+      )
+        return 'optical';
 
-    return 'normal';
-  }, []);
+      return 'normal';
+    },
+    []
+  );
 
   // ---- Eligibility pre-check ----
-  const { data: eligibility, isLoading: eligibilityLoading, error: eligibilityError } = useQuery({
+  const {
+    data: eligibility,
+    isLoading: eligibilityLoading,
+    error: eligibilityError,
+  } = useQuery({
     queryKey: ['patient-eligibility', patientId],
     queryFn: async () => {
       if (!patientId) return null;
@@ -616,12 +660,13 @@ export default function NewPreauthPage() {
     staleTime: 30_000,
   });
 
-  const { data: selectedClaimAttachments = [], isLoading: selectedClaimAttachmentsLoading } = useQuery({
-    queryKey: ['preauth-context-claim-attachments', selectedClaimIdNumber],
-    queryFn: () => shaApi.getClaimAttachments(selectedClaimIdNumber!),
-    enabled: selectedClaimIdNumber != null,
-    staleTime: 30_000,
-  });
+  const { data: selectedClaimAttachments = [], isLoading: selectedClaimAttachmentsLoading } =
+    useQuery({
+      queryKey: ['preauth-context-claim-attachments', selectedClaimIdNumber],
+      queryFn: () => shaApi.getClaimAttachments(selectedClaimIdNumber!),
+      enabled: selectedClaimIdNumber != null,
+      staleTime: 30_000,
+    });
 
   const { data: selectedEncounterRecord } = useQuery({
     queryKey: ['preauth-encounter-record', selectedEncounterIdNumber],
@@ -634,7 +679,8 @@ export default function NewPreauthPage() {
     const raw = selectedClaim as unknown as Record<string, unknown> | null;
     if (!raw) return null;
     const candidate = raw.sha_member ?? raw.shaMember;
-    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) return candidate;
+    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0)
+      return candidate;
     if (typeof candidate === 'string') {
       const parsed = Number(candidate);
       if (Number.isFinite(parsed) && parsed > 0) return parsed;
@@ -646,7 +692,8 @@ export default function NewPreauthPage() {
 
   const patientCrId = useMemo(() => {
     const claim = selectedClaim as unknown as Record<string, unknown> | null;
-    const member = (eligibility as unknown as { member?: Record<string, unknown> } | null)?.member || null;
+    const member =
+      (eligibility as unknown as { member?: Record<string, unknown> } | null)?.member || null;
     const candidates = [
       claim?.patient_cr_number,
       claim?.patientCrNumber,
@@ -682,11 +729,12 @@ export default function NewPreauthPage() {
         return await shaApi.getLatestConsent(effectiveShaMemberId, {
           claimPk: selectedClaimIdNumber ?? undefined,
           encounterId: selectedEncounterIdNumber ?? undefined,
-          interventionCode: selectedType === 'elective' ? (interventionCode || undefined) : undefined,
+          interventionCode: selectedType === 'elective' ? interventionCode || undefined : undefined,
         });
       } catch (error) {
-        const response = (error as { response?: { status?: number; data?: Record<string, unknown> } })
-          ?.response;
+        const response = (
+          error as { response?: { status?: number; data?: Record<string, unknown> } }
+        )?.response;
         const statusCode = response?.status;
         const code = typeof response?.data?.code === 'string' ? response.data.code : '';
 
@@ -695,8 +743,8 @@ export default function NewPreauthPage() {
         }
 
         if (
-          statusCode === 404
-          && (code === 'consent_token_expired' || code === 'claim_consent_expired')
+          statusCode === 404 &&
+          (code === 'consent_token_expired' || code === 'claim_consent_expired')
         ) {
           throw error;
         }
@@ -820,9 +868,8 @@ export default function NewPreauthPage() {
 
   useEffect(() => {
     if (providerNotificationEmailTouched || providerNotificationEmail) return;
-    const fallbackEmail = facilityDetail?.dha_facility_email
-      || facilityDetail?.dha_admin_email
-      || '';
+    const fallbackEmail =
+      facilityDetail?.dha_facility_email || facilityDetail?.dha_admin_email || '';
     if (fallbackEmail) {
       setProviderNotificationEmail(fallbackEmail);
     }
@@ -855,7 +902,8 @@ export default function NewPreauthPage() {
 
       if (!urlPatientId && typeof draft.patientId === 'number') setPatientId(draft.patientId);
       if (!urlClaimId && typeof draft.claimId === 'string') setClaimId(draft.claimId);
-      if (!urlEncounterId && typeof draft.encounterId === 'string') setEncounterId(draft.encounterId);
+      if (!urlEncounterId && typeof draft.encounterId === 'string')
+        setEncounterId(draft.encounterId);
 
       if (typeof draft.selectedType === 'string') {
         const allowed = new Set(PREAUTH_TYPES.map((item) => item.id));
@@ -871,8 +919,10 @@ export default function NewPreauthPage() {
       if (typeof draft.shaMemberId === 'number') setShaMemberId(draft.shaMemberId);
       if (typeof draft.interventionCode === 'string') setInterventionCode(draft.interventionCode);
       if (typeof draft.interventionName === 'string') setInterventionName(draft.interventionName);
-      if (typeof draft.interventionPrice === 'number') setInterventionPrice(draft.interventionPrice);
-      if (Array.isArray(draft.diagnosisChips)) setDiagnosisChips(draft.diagnosisChips as DiagnosisChip[]);
+      if (typeof draft.interventionPrice === 'number')
+        setInterventionPrice(draft.interventionPrice);
+      if (Array.isArray(draft.diagnosisChips))
+        setDiagnosisChips(draft.diagnosisChips as DiagnosisChip[]);
       if (Array.isArray(draft.doctorChips)) setDoctorChips(draft.doctorChips as DoctorChip[]);
       if (Array.isArray(draft.tariffChips)) setTariffChips(draft.tariffChips.map(String));
       if (typeof draft.serviceStartDate === 'string') setServiceStartDate(draft.serviceStartDate);
@@ -895,19 +945,27 @@ export default function NewPreauthPage() {
         setClinicalNotesTouched(draft.clinicalNotesTouched);
       }
       if (Array.isArray(draft.generatedRequiredDocTypes)) {
-        setGeneratedRequiredDocTypes(draft.generatedRequiredDocTypes.map((value) => String(value).toUpperCase()));
+        setGeneratedRequiredDocTypes(
+          draft.generatedRequiredDocTypes.map((value) => String(value).toUpperCase())
+        );
       }
       if (Array.isArray(draft.uploadedRequiredDocTypes)) {
-        setUploadedRequiredDocTypes(draft.uploadedRequiredDocTypes.map((value) => String(value).toUpperCase()));
+        setUploadedRequiredDocTypes(
+          draft.uploadedRequiredDocTypes.map((value) => String(value).toUpperCase())
+        );
       }
-      if (draft.evidenceClaimAttachmentIds && typeof draft.evidenceClaimAttachmentIds === 'object') {
+      if (
+        draft.evidenceClaimAttachmentIds &&
+        typeof draft.evidenceClaimAttachmentIds === 'object'
+      ) {
         setEvidenceClaimAttachmentIds(draft.evidenceClaimAttachmentIds as Record<string, number>);
       }
       if (Array.isArray(draft.documents)) {
         const restoredDocs = draft.documents
           .map((item) => {
             const row = item as Record<string, unknown>;
-            const displayName = String(row.displayName || row.fileName || 'Attachment').trim() || 'Attachment';
+            const displayName =
+              String(row.displayName || row.fileName || 'Attachment').trim() || 'Attachment';
             const fileName = String(row.fileName || displayName || 'attachment.pdf');
             const mimeType = String(row.mimeType || 'application/pdf');
             const placeholder = new File([], fileName, { type: mimeType });
@@ -921,10 +979,10 @@ export default function NewPreauthPage() {
               requiredDocType:
                 typeof row.requiredDocType === 'string' ? row.requiredDocType : undefined,
               source:
-                row.source === 'generated'
-                  || row.source === 'required_upload'
-                  || row.source === 'evidence'
-                  || row.source === 'manual'
+                row.source === 'generated' ||
+                row.source === 'required_upload' ||
+                row.source === 'evidence' ||
+                row.source === 'manual'
                   ? row.source
                   : 'manual',
               claimFileUrl: typeof row.claimFileUrl === 'string' ? row.claimFileUrl : undefined,
@@ -1011,112 +1069,115 @@ export default function NewPreauthPage() {
     documents,
   ]);
 
-  const {
-    data: selectedInterventionRecord,
-    isFetching: selectedInterventionRecordLoading,
-  } = useQuery({
-    queryKey: [
-      'preauth-intervention-record',
-      interventionCode,
-      selectedClaimIdNumber,
-      patientCrId,
-      patientId,
-      effectiveShaMemberId,
-    ],
-    queryFn: async () => {
-      if (!interventionCode) return null;
+  const { data: selectedInterventionRecord, isFetching: selectedInterventionRecordLoading } =
+    useQuery({
+      queryKey: [
+        'preauth-intervention-record',
+        interventionCode,
+        selectedClaimIdNumber,
+        patientCrId,
+        patientId,
+        effectiveShaMemberId,
+      ],
+      queryFn: async () => {
+        if (!interventionCode) return null;
 
-      if (patientCrId) {
-        const parentBenefitCode = interventionCode.includes('-')
-          ? interventionCode.split('-').slice(0, 2).join('-')
-          : '';
-        if (parentBenefitCode) {
-          try {
-            const subBenefits = await shaApi.ilmSubBenefits({
-              patient_id: patientCrId,
-              parent_benefit_code: parentBenefitCode,
-              ...(patientId ? { patient_pk: patientId } : {}),
-              ...(effectiveShaMemberId ? { sha_member_id: effectiveShaMemberId } : {}),
-            });
-            const subBenefitCodes = extractIlmResults(subBenefits.data)
-              .map((item) => String(item.subBenefitCode || item.sub_benefit_code || item.code || '').trim())
-              .filter(Boolean);
-
-            const claimType = String((selectedClaim as { claim_type?: string } | null)?.claim_type || '').toLowerCase();
-            const serviceType = claimType === 'inpatient' ? 'INPATIENT' : 'OUTPATIENT';
-
-            for (const subBenefitCode of subBenefitCodes.slice(0, 25)) {
-              const interventions = await shaApi.ilmBenefitInterventions({
+        if (patientCrId) {
+          const parentBenefitCode = interventionCode.includes('-')
+            ? interventionCode.split('-').slice(0, 2).join('-')
+            : '';
+          if (parentBenefitCode) {
+            try {
+              const subBenefits = await shaApi.ilmSubBenefits({
                 patient_id: patientCrId,
-                sub_benefit_code: subBenefitCode,
+                parent_benefit_code: parentBenefitCode,
                 ...(patientId ? { patient_pk: patientId } : {}),
                 ...(effectiveShaMemberId ? { sha_member_id: effectiveShaMemberId } : {}),
-                service_type: serviceType,
               });
-              const match = extractIlmResults(interventions.data).find((item) => {
-                const code = String(item.code || item.interventionCode || item.intervention_code || '').trim();
-                return code === interventionCode;
-              });
-              if (match) return match;
+              const subBenefitCodes = extractIlmResults(subBenefits.data)
+                .map((item) =>
+                  String(item.subBenefitCode || item.sub_benefit_code || item.code || '').trim()
+                )
+                .filter(Boolean);
+
+              const claimType = String(
+                (selectedClaim as { claim_type?: string } | null)?.claim_type || ''
+              ).toLowerCase();
+              const serviceType = claimType === 'inpatient' ? 'INPATIENT' : 'OUTPATIENT';
+
+              for (const subBenefitCode of subBenefitCodes.slice(0, 25)) {
+                const interventions = await shaApi.ilmBenefitInterventions({
+                  patient_id: patientCrId,
+                  sub_benefit_code: subBenefitCode,
+                  ...(patientId ? { patient_pk: patientId } : {}),
+                  ...(effectiveShaMemberId ? { sha_member_id: effectiveShaMemberId } : {}),
+                  service_type: serviceType,
+                });
+                const match = extractIlmResults(interventions.data).find((item) => {
+                  const code = String(
+                    item.code || item.interventionCode || item.intervention_code || ''
+                  ).trim();
+                  return code === interventionCode;
+                });
+                if (match) return match;
+              }
+            } catch {
+              // Fall through to terminology lookup for non-doc metadata fallback.
             }
-          } catch {
-            // Fall through to terminology lookup for non-doc metadata fallback.
           }
         }
-      }
 
-      const selectedClaimRecord = selectedClaim as unknown as Record<string, unknown> | null;
-      const facilityRecord = selectedClaimRecord?.facility;
-      const facilityLevelFromFacility = facilityRecord && typeof facilityRecord === 'object'
-        ? (facilityRecord as Record<string, unknown>).level
-        : undefined;
-      const facilityLevelRaw =
-        selectedClaimRecord?.facility_level
-        ?? selectedClaimRecord?.facilityLevel
-        ?? facilityLevelFromFacility;
-      const facilityLevel = typeof facilityLevelRaw === 'number'
-        ? facilityLevelRaw
-        : typeof facilityLevelRaw === 'string'
-          ? Number(String(facilityLevelRaw).replace(/^L/i, ''))
-          : NaN;
+        const selectedClaimRecord = selectedClaim as unknown as Record<string, unknown> | null;
+        const facilityRecord = selectedClaimRecord?.facility;
+        const facilityLevelFromFacility =
+          facilityRecord && typeof facilityRecord === 'object'
+            ? (facilityRecord as Record<string, unknown>).level
+            : undefined;
+        const facilityLevelRaw =
+          selectedClaimRecord?.facility_level ??
+          selectedClaimRecord?.facilityLevel ??
+          facilityLevelFromFacility;
+        const facilityLevel =
+          typeof facilityLevelRaw === 'number'
+            ? facilityLevelRaw
+            : typeof facilityLevelRaw === 'string'
+              ? Number(String(facilityLevelRaw).replace(/^L/i, ''))
+              : NaN;
 
-      const exact = await shaApi.searchInterventions({
-        code: interventionCode,
-        ...(Number.isFinite(facilityLevel) ? { facility_level: facilityLevel } : {}),
-        limit: 1,
-      });
-      const exactMatch = (exact.results || [])[0] || null;
-      if (exactMatch) return exactMatch;
+        const exact = await shaApi.searchInterventions({
+          code: interventionCode,
+          ...(Number.isFinite(facilityLevel) ? { facility_level: facilityLevel } : {}),
+          limit: 1,
+        });
+        const exactMatch = (exact.results || [])[0] || null;
+        if (exactMatch) return exactMatch;
 
-      const fallback = await shaApi.searchInterventions({
-        search: interventionCode,
-        limit: 200,
-      });
-      return (fallback.results || []).find((item) => item.code === interventionCode) || null;
-    },
-    enabled: !!interventionCode,
-    staleTime: 30_000,
-  });
+        const fallback = await shaApi.searchInterventions({
+          search: interventionCode,
+          limit: 200,
+        });
+        return (fallback.results || []).find((item) => item.code === interventionCode) || null;
+      },
+      enabled: !!interventionCode,
+      staleTime: 30_000,
+    });
 
   const interventionSelectOptions = useMemo(() => {
     return interventionOptions.map((item) => {
       const mechanism = item.paymentMechanism
         ? item.paymentMechanism.replaceAll('_', ' ').toUpperCase()
         : null;
-      const mechanismLabel = mechanism === 'FEE FOR SERVICE'
-        ? 'FFS'
-        : mechanism === 'PER DIEM'
-          ? 'PER DIEM'
-          : mechanism;
-      const effectiveNeedsPreauth = item.needsPreauth ?? (
-        item.isSurgicalPreauth
-        || item.isRenalPreauth
-        || item.isOncologyPreauth
-        || item.isImagingPreauth
-        || item.isOpticalPreauth
-        || item.needsManualPreauthApproval
-        || false
-      );
+      const mechanismLabel =
+        mechanism === 'FEE FOR SERVICE' ? 'FFS' : mechanism === 'PER DIEM' ? 'PER DIEM' : mechanism;
+      const effectiveNeedsPreauth =
+        item.needsPreauth ??
+        (item.isSurgicalPreauth ||
+          item.isRenalPreauth ||
+          item.isOncologyPreauth ||
+          item.isImagingPreauth ||
+          item.isOpticalPreauth ||
+          item.needsManualPreauthApproval ||
+          false);
       const flags: string[] = [];
       if (mechanismLabel) flags.push(mechanismLabel);
       if (effectiveNeedsPreauth) flags.push('PREAUTH');
@@ -1129,12 +1190,14 @@ export default function NewPreauthPage() {
   }, [interventionOptions]);
 
   const selectedRequiredDocumentTypes = useMemo(() => {
-    const selectedFromBenefits = interventionOptions.find((entry) => entry.code === interventionCode);
+    const selectedFromBenefits = interventionOptions.find(
+      (entry) => entry.code === interventionCode
+    );
     const raw = selectedInterventionRecord as Record<string, unknown> | null;
     if (!raw && !selectedFromBenefits) return [] as string[];
-    const extras = (raw?.raw_data && typeof raw.raw_data === 'object'
-      ? raw.raw_data
-      : null) as Record<string, unknown> | null;
+    const extras = (
+      raw?.raw_data && typeof raw.raw_data === 'object' ? raw.raw_data : null
+    ) as Record<string, unknown> | null;
     const docTypes = [
       ...(Array.isArray(selectedFromBenefits?.requiredPreauthDocumentTypes)
         ? selectedFromBenefits.requiredPreauthDocumentTypes
@@ -1143,28 +1206,32 @@ export default function NewPreauthPage() {
         ? selectedFromBenefits.required_preauth_document_types
         : []),
       ...(Array.isArray(raw?.requiredPreauthDocumentTypes) ? raw.requiredPreauthDocumentTypes : []),
-      ...(Array.isArray(raw?.required_preauth_document_types) ? raw.required_preauth_document_types : []),
-      ...(Array.isArray(extras?.requiredPreauthDocumentTypes) ? extras.requiredPreauthDocumentTypes : []),
-      ...(Array.isArray(extras?.required_preauth_document_types) ? extras.required_preauth_document_types : []),
+      ...(Array.isArray(raw?.required_preauth_document_types)
+        ? raw.required_preauth_document_types
+        : []),
+      ...(Array.isArray(extras?.requiredPreauthDocumentTypes)
+        ? extras.requiredPreauthDocumentTypes
+        : []),
+      ...(Array.isArray(extras?.required_preauth_document_types)
+        ? extras.required_preauth_document_types
+        : []),
     ];
     return Array.from(
-      new Set(
-        docTypes
-          .map((item) => String(item).trim().toUpperCase())
-          .filter(Boolean),
-      ),
+      new Set(docTypes.map((item) => String(item).trim().toUpperCase()).filter(Boolean))
     );
   }, [interventionOptions, interventionCode, selectedInterventionRecord]);
 
   const restoredRequiredDocumentTypes = useMemo(() => {
     const fromDocuments = documents
-      .map((doc) => String(doc.requiredDocType || '').trim().toUpperCase())
+      .map((doc) =>
+        String(doc.requiredDocType || '')
+          .trim()
+          .toUpperCase()
+      )
       .filter(Boolean);
-    return Array.from(new Set([
-      ...generatedRequiredDocTypes,
-      ...uploadedRequiredDocTypes,
-      ...fromDocuments,
-    ]));
+    return Array.from(
+      new Set([...generatedRequiredDocTypes, ...uploadedRequiredDocTypes, ...fromDocuments])
+    );
   }, [documents, generatedRequiredDocTypes, uploadedRequiredDocTypes]);
 
   const effectiveRequiredDocumentTypes = useMemo(() => {
@@ -1197,31 +1264,32 @@ export default function NewPreauthPage() {
         const result = row as unknown as Record<string, unknown>;
         const id = Number(result.id || 0);
         if (!id) continue;
-        const testName = String(result.test_name || result.test || result.parameter_name || `Lab result #${id}`);
+        const testName = String(
+          result.test_name || result.test || result.parameter_name || `Lab result #${id}`
+        );
         const numericValue = result.numeric_value;
         const textValue = result.text_value;
         const optionValue = result.option_value;
         const formattedValue = result.formatted_value;
         const value = String(
-          formattedValue
-            || (numericValue != null ? numericValue : '')
-            || textValue
-            || optionValue
-            || result.result_value
-            || result.value
-            || ''
+          formattedValue ||
+            (numericValue != null ? numericValue : '') ||
+            textValue ||
+            optionValue ||
+            result.result_value ||
+            result.value ||
+            ''
         ).trim();
         const status = String(
-          result.verification_status
-            || result.result_flag
-            || result.status
-            || ''
+          result.verification_status || result.result_flag || result.status || ''
         ).trim();
         const enteredAt = String(result.entered_at || '').trim();
         options.push({
           key: `lab-${id}`,
           title: testName,
-          subtitle: [value, status, enteredAt ? `at ${enteredAt}` : ''].filter(Boolean).join(' • ') || 'Lab result',
+          subtitle:
+            [value, status, enteredAt ? `at ${enteredAt}` : ''].filter(Boolean).join(' • ') ||
+            'Lab result',
           documentType: 'LAB_RESULTS',
           exportText: `LAB RESULT\nID: ${id}\nTest: ${testName}\nValue: ${value || '-'}\nStatus: ${status || '-'}\nEntered At: ${enteredAt || '-'}\n`,
         });
@@ -1236,9 +1304,14 @@ export default function NewPreauthPage() {
         const status = String(order.status || '').toUpperCase();
         if (status !== 'REPORTED' && status !== 'COMPLETED') continue;
         const orderNumber = String(order.order_number || `IMG-${id}`);
-        const summary = order.report_summary && typeof order.report_summary === 'object'
-          ? String((order.report_summary as Record<string, unknown>).impression || (order.report_summary as Record<string, unknown>).findings || '')
-          : '';
+        const summary =
+          order.report_summary && typeof order.report_summary === 'object'
+            ? String(
+                (order.report_summary as Record<string, unknown>).impression ||
+                  (order.report_summary as Record<string, unknown>).findings ||
+                  ''
+              )
+            : '';
         options.push({
           key: `img-${id}`,
           title: `Imaging ${orderNumber}`,
@@ -1253,9 +1326,13 @@ export default function NewPreauthPage() {
   }, [needsLabEvidence, needsImagingEvidence, patientLabResults, patientImagingOrders]);
 
   const resolveRequiredDocTypeForDocument = useCallback((doc: DraftDocument): string | null => {
-    const explicit = String(doc.requiredDocType || '').trim().toUpperCase();
+    const explicit = String(doc.requiredDocType || '')
+      .trim()
+      .toUpperCase();
     if (explicit) return explicit;
-    const label = String(doc.displayName || doc.file?.name || '').trim().toUpperCase();
+    const label = String(doc.displayName || doc.file?.name || '')
+      .trim()
+      .toUpperCase();
     if (label.includes('PREAUTH FORM')) return 'PREAUTH_FORM';
     if (label.includes('MEDICAL REPORT')) return 'MEDICAL_REPORT';
     if (label.includes('LAB RESULT')) return 'LAB_RESULTS';
@@ -1286,7 +1363,9 @@ export default function NewPreauthPage() {
   ]);
 
   const missingRequiredDocumentTypes = useMemo(() => {
-    return effectiveRequiredDocumentTypes.filter((docType) => !fulfilledRequiredDocTypes.has(docType));
+    return effectiveRequiredDocumentTypes.filter(
+      (docType) => !fulfilledRequiredDocTypes.has(docType)
+    );
   }, [effectiveRequiredDocumentTypes, fulfilledRequiredDocTypes]);
 
   const hasAllRequiredDocuments = missingRequiredDocumentTypes.length === 0;
@@ -1377,7 +1456,9 @@ export default function NewPreauthPage() {
       .filter((doc) => typeof doc.claimAttachmentId === 'number' || (doc.file && doc.file.size > 0))
       .map((doc) => {
         const claimAttachment =
-          typeof doc.claimAttachmentId === 'number' ? claimAttachmentById.get(doc.claimAttachmentId) : undefined;
+          typeof doc.claimAttachmentId === 'number'
+            ? claimAttachmentById.get(doc.claimAttachmentId)
+            : undefined;
         const stale = typeof doc.claimAttachmentId === 'number' && !claimAttachment;
         return {
           key: doc.key,
@@ -1391,15 +1472,18 @@ export default function NewPreauthPage() {
   const selectedInterventionTariff = useMemo(() => {
     if (interventionPrice != null) return interventionPrice;
 
-    const selectedFromBenefits = interventionOptions.find((entry) => entry.code === interventionCode);
+    const selectedFromBenefits = interventionOptions.find(
+      (entry) => entry.code === interventionCode
+    );
     if (selectedFromBenefits?.price != null) return selectedFromBenefits.price;
 
     const raw = selectedInterventionRecord as Record<string, unknown> | null;
     if (!raw) return null;
 
-    const rawData = raw.raw_data && typeof raw.raw_data === 'object'
-      ? raw.raw_data as Record<string, unknown>
-      : null;
+    const rawData =
+      raw.raw_data && typeof raw.raw_data === 'object'
+        ? (raw.raw_data as Record<string, unknown>)
+        : null;
 
     const candidates = [
       raw.price,
@@ -1436,11 +1520,7 @@ export default function NewPreauthPage() {
     if (selectedInterventionTariff != null) return false;
     if (selectedInterventionRecordLoading) return false;
     return true;
-  }, [
-    interventionCode,
-    selectedInterventionTariff,
-    selectedInterventionRecordLoading,
-  ]);
+  }, [interventionCode, selectedInterventionTariff, selectedInterventionRecordLoading]);
 
   const patientActiveFunds = useMemo(() => {
     const funds = new Set<string>();
@@ -1453,7 +1533,8 @@ export default function NewPreauthPage() {
     const schemeCategory = normalizeFundLabel(eligibility?.member?.scheme_category);
     if (schemeCategory) funds.add(schemeCategory);
 
-    const directSchemes = (eligibility as unknown as { schemes?: Array<{ schemeName?: string }> })?.schemes || [];
+    const directSchemes =
+      (eligibility as unknown as { schemes?: Array<{ schemeName?: string }> })?.schemes || [];
     directSchemes.forEach((entry) => {
       const normalized = normalizeFundLabel(entry?.schemeName);
       if (normalized) funds.add(normalized);
@@ -1463,11 +1544,14 @@ export default function NewPreauthPage() {
   }, [eligibility]);
 
   const interventionFunds = useMemo(() => {
-    const selectedFromBenefits = interventionOptions.find((entry) => entry.code === interventionCode);
+    const selectedFromBenefits = interventionOptions.find(
+      (entry) => entry.code === interventionCode
+    );
     const raw = selectedInterventionRecord as Record<string, unknown> | null;
-    const nestedRaw = raw?.raw_data && typeof raw.raw_data === 'object'
-      ? raw.raw_data as Record<string, unknown>
-      : null;
+    const nestedRaw =
+      raw?.raw_data && typeof raw.raw_data === 'object'
+        ? (raw.raw_data as Record<string, unknown>)
+        : null;
 
     const rawFunds = [
       selectedFromBenefits?.fund,
@@ -1594,12 +1678,10 @@ export default function NewPreauthPage() {
   const hasConsent = !!consentToken;
   const canUseClaimLinkedConsent = Boolean(selectedType !== 'elective' && selectedClaimIdNumber);
   const canReuseClaimConsent = Boolean(
-    !forceConsentRefresh
-    && canUseClaimLinkedConsent
-    && (
-      (latestClaimConsent?.status === 'VALIDATED' && latestClaimConsent?.consent_token)
-      || selectedClaim?.consent_obtained
-    )
+    !forceConsentRefresh &&
+    canUseClaimLinkedConsent &&
+    ((latestClaimConsent?.status === 'VALIDATED' && latestClaimConsent?.consent_token) ||
+      selectedClaim?.consent_obtained)
   );
   const hasConsentForWorkflow = hasConsent || canUseClaimLinkedConsent;
   const effectiveConsentToken = consentToken || latestClaimConsent?.consent_token || '';
@@ -1613,78 +1695,83 @@ export default function NewPreauthPage() {
     (!requiresAnaesthesiaSelection || !!typeOfAnaesthesia);
 
   const showInterventionSection = hasPatientContext;
-  const showConsentSection = showInterventionSection && hasInterventionSelected && (!canUseClaimLinkedConsent || forceConsentRefresh);
-  const showClinicalSection = showInterventionSection && hasInterventionSelected && hasConsentForWorkflow;
+  const showConsentSection =
+    showInterventionSection &&
+    hasInterventionSelected &&
+    (!canUseClaimLinkedConsent || forceConsentRefresh);
+  const showClinicalSection =
+    showInterventionSection && hasInterventionSelected && hasConsentForWorkflow;
   const showReviewSection = showClinicalSection && canProceedStep3;
   const hasConsentInterventionMismatch = Boolean(
-    selectedType === 'elective'
-    && consentToken
-    && consentedInterventionCode
-    && interventionCode
-    && consentedInterventionCode.trim() !== interventionCode.trim()
+    selectedType === 'elective' &&
+    consentToken &&
+    consentedInterventionCode &&
+    interventionCode &&
+    consentedInterventionCode.trim() !== interventionCode.trim()
   );
 
   // ---- Handlers ----
-  const handleConsentObtained = useCallback((
-    id: number,
-    token: string,
-    _credential?: any,
-    consentInterventionCode?: string,
-  ) => {
-    setConsentTokenId(id);
-    setConsentToken(token);
-    setForceConsentRefresh(false);
-    setConsentRefreshReason(null);
-    queryClient.invalidateQueries({ queryKey: ['preauth-latest-consent'] });
+  const handleConsentObtained = useCallback(
+    (id: number, token: string, _credential?: unknown, consentInterventionCode?: string) => {
+      setConsentTokenId(id);
+      setConsentToken(token);
+      setForceConsentRefresh(false);
+      setConsentRefreshReason(null);
+      queryClient.invalidateQueries({ queryKey: ['preauth-latest-consent'] });
 
-    if (!consentInterventionCode) return;
-    setConsentedInterventionCode(consentInterventionCode);
-    setInterventionCode(consentInterventionCode);
+      if (!consentInterventionCode) return;
+      setConsentedInterventionCode(consentInterventionCode);
+      setInterventionCode(consentInterventionCode);
 
-    const matched = interventionOptions.find((item) => item.code === consentInterventionCode);
-    setInterventionName(matched?.name || consentInterventionCode);
-    setInterventionPrice(matched?.price ?? null);
-    if (matched) {
-      setSelectedType(
-        derivePreauthType({
-          needsManualPreauthApproval: matched.needsManualPreauthApproval,
-          needs_manual_preauth_approval: (matched as unknown as Record<string, unknown>)
-            .needs_manual_preauth_approval as boolean | undefined,
-          isSurgicalPreauth: matched.isSurgicalPreauth,
-          isRenalPreauth: matched.isRenalPreauth,
-          isOncologyPreauth: matched.isOncologyPreauth,
-          isImagingPreauth: matched.isImagingPreauth,
-          isOpticalPreauth: matched.isOpticalPreauth,
-        })
+      const matched = interventionOptions.find((item) => item.code === consentInterventionCode);
+      setInterventionName(matched?.name || consentInterventionCode);
+      setInterventionPrice(matched?.price ?? null);
+      if (matched) {
+        setSelectedType(
+          derivePreauthType({
+            needsManualPreauthApproval: matched.needsManualPreauthApproval,
+            needs_manual_preauth_approval: (matched as unknown as Record<string, unknown>)
+              .needs_manual_preauth_approval as boolean | undefined,
+            isSurgicalPreauth: matched.isSurgicalPreauth,
+            isRenalPreauth: matched.isRenalPreauth,
+            isOncologyPreauth: matched.isOncologyPreauth,
+            isImagingPreauth: matched.isImagingPreauth,
+            isOpticalPreauth: matched.isOpticalPreauth,
+          })
+        );
+      }
+      setTariffChips((prev) =>
+        prev.includes(consentInterventionCode) ? prev : [consentInterventionCode, ...prev]
       );
-    }
-    setTariffChips((prev) => (
-      prev.includes(consentInterventionCode) ? prev : [consentInterventionCode, ...prev]
-    ));
-  }, [interventionOptions, derivePreauthType, queryClient]);
+    },
+    [interventionOptions, derivePreauthType, queryClient]
+  );
 
-  const selectIntervention = useCallback((item: InterventionOption) => {
-    if (
-      selectedType === 'elective'
-      &&
-      consentToken
-      && consentedInterventionCode
-      && consentedInterventionCode.trim() !== item.code.trim()
-    ) {
-      setConsentToken('');
-      setConsentTokenId(undefined);
-      toast({
-        title: 'Consent reset',
-        description: 'Intervention changed after consent. Please complete consent again for the selected intervention.',
-      });
-    }
-    setInterventionCode(item.code);
-    setInterventionName(item.name);
-    setInterventionPrice(item.price ?? null);
-    setSelectedType(derivePreauthType(item));
-    // Auto-add intervention code as the first tariff item
-    setTariffChips((prev) => prev.includes(item.code) ? prev : [item.code, ...prev]);
-  }, [derivePreauthType, consentToken, consentedInterventionCode, selectedType, toast]);
+  const selectIntervention = useCallback(
+    (item: InterventionOption) => {
+      if (
+        selectedType === 'elective' &&
+        consentToken &&
+        consentedInterventionCode &&
+        consentedInterventionCode.trim() !== item.code.trim()
+      ) {
+        setConsentToken('');
+        setConsentTokenId(undefined);
+        toast({
+          title: 'Consent reset',
+          description:
+            'Intervention changed after consent. Please complete consent again for the selected intervention.',
+        });
+      }
+      setInterventionCode(item.code);
+      setInterventionName(item.name);
+      setInterventionPrice(item.price ?? null);
+      setSelectedType(derivePreauthType(item));
+      // Auto-add intervention code as the first tariff item
+      setTariffChips((prev) => (prev.includes(item.code) ? prev : [item.code, ...prev]));
+    },
+    [derivePreauthType, consentToken, consentedInterventionCode, selectedType, toast]
+  );
 
   useEffect(() => {
     if (!interventionCode) {
@@ -1702,8 +1789,8 @@ export default function NewPreauthPage() {
     }
 
     if (
-      previousInterventionCodeRef.current
-      && previousInterventionCodeRef.current !== interventionCode
+      previousInterventionCodeRef.current &&
+      previousInterventionCodeRef.current !== interventionCode
     ) {
       if (typeOfAnaesthesia) setTypeOfAnaesthesia('');
       if (linkedEvidenceKeys.length > 0) setLinkedEvidenceKeys([]);
@@ -1716,14 +1803,17 @@ export default function NewPreauthPage() {
     }
     previousInterventionCodeRef.current = interventionCode;
 
-    const selectedFromBenefits = interventionOptions.find((entry) => entry.code === interventionCode);
+    const selectedFromBenefits = interventionOptions.find(
+      (entry) => entry.code === interventionCode
+    );
     const source = {
       ...((selectedInterventionRecord as unknown as Partial<InterventionOption> | null) || {}),
       ...(selectedFromBenefits
         ? {
             needsManualPreauthApproval: selectedFromBenefits.needsManualPreauthApproval,
-            needs_manual_preauth_approval: (selectedFromBenefits as unknown as Record<string, unknown>)
-              .needs_manual_preauth_approval as boolean | undefined,
+            needs_manual_preauth_approval: (
+              selectedFromBenefits as unknown as Record<string, unknown>
+            ).needs_manual_preauth_approval as boolean | undefined,
             isSurgicalPreauth: selectedFromBenefits.isSurgicalPreauth,
             isRenalPreauth: selectedFromBenefits.isRenalPreauth,
             isOncologyPreauth: selectedFromBenefits.isOncologyPreauth,
@@ -1778,14 +1868,29 @@ export default function NewPreauthPage() {
       setDiagnosisChips([{ code: claimCode, display: `${claimCode} - ${claimDescription}` }]);
       return;
     }
-    const encounterDiagnosis = (selectedEncounterDiagnoses || []).find((entry) => {
-      const type = String(entry.diagnosis_type || '').toUpperCase();
-      return type === 'PRIMARY' || type === 'WORKING';
-    }) || selectedEncounterDiagnoses?.[0];
+    const encounterDiagnosis =
+      (selectedEncounterDiagnoses || []).find((entry) => {
+        const type = String(entry.diagnosis_type || '').toUpperCase();
+        return type === 'PRIMARY' || type === 'WORKING';
+      }) || selectedEncounterDiagnoses?.[0];
     if (!encounterDiagnosis) return;
-    const code = (encounterDiagnosis.icd11_code || encounterDiagnosis.icd10_code_display || encounterDiagnosis.icd10_display || '').toString().trim();
+    const code = (
+      encounterDiagnosis.icd11_code ||
+      encounterDiagnosis.icd10_code_display ||
+      encounterDiagnosis.icd10_display ||
+      ''
+    )
+      .toString()
+      .trim();
     if (!code) return;
-    const description = (encounterDiagnosis.icd11_display || encounterDiagnosis.icd10_description || encounterDiagnosis.icd10_display || code).toString().trim();
+    const description = (
+      encounterDiagnosis.icd11_display ||
+      encounterDiagnosis.icd10_description ||
+      encounterDiagnosis.icd10_display ||
+      code
+    )
+      .toString()
+      .trim();
     setDiagnosisChips([{ code, display: `${code} - ${description}` }]);
   }, [
     diagnosisChips.length,
@@ -1799,26 +1904,28 @@ export default function NewPreauthPage() {
     const clinician = selectedClaim?.encounter_clinician;
     if (!clinician) return;
     const registrationNumber =
-      clinician.license_number?.trim()
-      || clinician.national_id?.trim()
-      || String(clinician.id);
+      clinician.license_number?.trim() || clinician.national_id?.trim() || String(clinician.id);
     const name = clinician.name?.trim() || `Clinician ${clinician.id}`;
-    setDoctorChips([{
-      registration_number: registrationNumber,
-      name,
-      identification_type: 'registration_number',
-      regulation_body: clinician.licensing_body?.trim() || 'KMPDC',
-    }]);
+    setDoctorChips([
+      {
+        registration_number: registrationNumber,
+        name,
+        identification_type: 'registration_number',
+        regulation_body: clinician.licensing_body?.trim() || 'KMPDC',
+      },
+    ]);
   }, [doctorChips.length, selectedClaim?.encounter_clinician]);
 
   useEffect(() => {
     if (!interventionCode) return;
-    const diagnosisLine = diagnosisChips.length > 0
-      ? diagnosisChips.map((entry) => entry.code).join(', ')
-      : 'Pending diagnosis';
-    const doctorLine = doctorChips.length > 0
-      ? doctorChips.map((entry) => entry.name).join(', ')
-      : 'Pending clinician assignment';
+    const diagnosisLine =
+      diagnosisChips.length > 0
+        ? diagnosisChips.map((entry) => entry.code).join(', ')
+        : 'Pending diagnosis';
+    const doctorLine =
+      doctorChips.length > 0
+        ? doctorChips.map((entry) => entry.name).join(', ')
+        : 'Pending clinician assignment';
 
     const prefix = [
       `Procedure requested: ${interventionCode}${interventionName ? ` - ${interventionName}` : ''}`,
@@ -1830,24 +1937,19 @@ export default function NewPreauthPage() {
     const rationaleStart = existingLines.findIndex((line) =>
       line.toLowerCase().startsWith('clinical rationale:')
     );
-    const rationaleLines = rationaleStart >= 0
-      ? existingLines.slice(rationaleStart)
-      : ['Clinical rationale: '];
+    const rationaleLines =
+      rationaleStart >= 0 ? existingLines.slice(rationaleStart) : ['Clinical rationale: '];
     const nextNotes = [...prefix, ...rationaleLines].join('\n');
     if (nextNotes !== clinicalNotes) {
       setClinicalNotes(nextNotes);
     }
-  }, [
-    interventionCode,
-    interventionName,
-    diagnosisChips,
-    doctorChips,
-    clinicalNotes,
-  ]);
+  }, [interventionCode, interventionName, diagnosisChips, doctorChips, clinicalNotes]);
 
   useEffect(() => {
     if (!interventionCode) return;
-    setTariffChips((prev) => (prev.includes(interventionCode) ? prev : [interventionCode, ...prev]));
+    setTariffChips((prev) =>
+      prev.includes(interventionCode) ? prev : [interventionCode, ...prev]
+    );
   }, [interventionCode]);
 
   useEffect(() => {
@@ -1868,25 +1970,28 @@ export default function NewPreauthPage() {
     setDiagnosisChips((prev) => prev.filter((d) => d.code !== code));
   }, []);
 
-  const addDoctor = useCallback((doc: {
-    name: string;
-    registration_number: string;
-    identification_type?: string;
-    regulation_body?: string;
-  }) => {
-    setDoctorChips((prev) => {
-      if (prev.some((d) => d.registration_number === doc.registration_number)) return prev;
-      return [
-        ...prev,
-        {
-          registration_number: doc.registration_number,
-          name: doc.name,
-          identification_type: doc.identification_type || 'registration_number',
-          regulation_body: doc.regulation_body || 'KMPDC',
-        },
-      ];
-    });
-  }, []);
+  const addDoctor = useCallback(
+    (doc: {
+      name: string;
+      registration_number: string;
+      identification_type?: string;
+      regulation_body?: string;
+    }) => {
+      setDoctorChips((prev) => {
+        if (prev.some((d) => d.registration_number === doc.registration_number)) return prev;
+        return [
+          ...prev,
+          {
+            registration_number: doc.registration_number,
+            name: doc.name,
+            identification_type: doc.identification_type || 'registration_number',
+            regulation_body: doc.regulation_body || 'KMPDC',
+          },
+        ];
+      });
+    },
+    []
+  );
 
   const removeDoctor = useCallback((regNum: string) => {
     setDoctorChips((prev) => prev.filter((d) => d.registration_number !== regNum));
@@ -1974,31 +2079,37 @@ export default function NewPreauthPage() {
     }
   }, [manualLookupIdNumber, manualLookupIdType, manualDoctorName, toast]);
 
-  const makeDraftDocument = useCallback((file: File, options?: {
-    claimAttachmentId?: number;
-    displayName?: string;
-    evidenceKey?: string;
-    requiredDocType?: string;
-    source?: DraftDocument['source'];
-    claimFileUrl?: string;
-    fileSizeBytes?: number;
-    mimeType?: string;
-  }): DraftDocument => ({
-    key: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    file,
-    displayName: options?.displayName || file.name,
-    claimAttachmentId: options?.claimAttachmentId,
-    evidenceKey: options?.evidenceKey,
-    requiredDocType: options?.requiredDocType,
-    source: options?.source || 'manual',
-    claimFileUrl: options?.claimFileUrl,
-    fileSizeBytes: options?.fileSizeBytes,
-    mimeType: options?.mimeType,
-  }), []);
+  const makeDraftDocument = useCallback(
+    (
+      file: File,
+      options?: {
+        claimAttachmentId?: number;
+        displayName?: string;
+        evidenceKey?: string;
+        requiredDocType?: string;
+        source?: DraftDocument['source'];
+        claimFileUrl?: string;
+        fileSizeBytes?: number;
+        mimeType?: string;
+      }
+    ): DraftDocument => ({
+      key: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      file,
+      displayName: options?.displayName || file.name,
+      claimAttachmentId: options?.claimAttachmentId,
+      evidenceKey: options?.evidenceKey,
+      requiredDocType: options?.requiredDocType,
+      source: options?.source || 'manual',
+      claimFileUrl: options?.claimFileUrl,
+      fileSizeBytes: options?.fileSizeBytes,
+      mimeType: options?.mimeType,
+    }),
+    []
+  );
 
   const activeDocument = useMemo(
     () => documents.find((entry) => entry.key === activeDocumentKey) || null,
-    [documents, activeDocumentKey],
+    [documents, activeDocumentKey]
   );
 
   const openAttachmentDialog = useCallback((document: DraftDocument) => {
@@ -2008,320 +2119,371 @@ export default function NewPreauthPage() {
     setAttachmentDialogOpen(true);
   }, []);
 
-  const removeDocumentByKey = useCallback((key: string) => {
-    const target = documents.find((entry) => entry.key === key);
-    if (!target) return;
+  const removeDocumentByKey = useCallback(
+    (key: string) => {
+      const target = documents.find((entry) => entry.key === key);
+      if (!target) return;
 
-    setDocuments((prev) => prev.filter((entry) => entry.key !== key));
+      setDocuments((prev) => prev.filter((entry) => entry.key !== key));
 
-    if (target.evidenceKey) {
-      setLinkedEvidenceKeys((prev) => prev.filter((entry) => entry !== target.evidenceKey));
-      setEvidenceClaimAttachmentIds((prev) => {
-        const next = { ...prev };
-        delete next[target.evidenceKey as string];
-        return next;
-      });
-    }
-
-    if (target.requiredDocType && target.source === 'generated') {
-      const remainingSameType = documents.some(
-        (entry) =>
-          entry.key !== key
-          && entry.requiredDocType === target.requiredDocType
-          && entry.source === 'generated'
-      );
-      if (!remainingSameType) {
-        setGeneratedRequiredDocTypes((prev) => prev.filter((item) => item !== target.requiredDocType));
+      if (target.evidenceKey) {
+        setLinkedEvidenceKeys((prev) => prev.filter((entry) => entry !== target.evidenceKey));
+        setEvidenceClaimAttachmentIds((prev) => {
+          const next = { ...prev };
+          delete next[target.evidenceKey as string];
+          return next;
+        });
       }
-    }
 
-    if (target.requiredDocType && target.source === 'required_upload') {
-      const remainingSameType = documents.some(
-        (entry) =>
-          entry.key !== key
-          && entry.requiredDocType === target.requiredDocType
-          && entry.source === 'required_upload'
-      );
-      if (!remainingSameType) {
-        setUploadedRequiredDocTypes((prev) => prev.filter((item) => item !== target.requiredDocType));
+      if (target.requiredDocType && target.source === 'generated') {
+        const remainingSameType = documents.some(
+          (entry) =>
+            entry.key !== key &&
+            entry.requiredDocType === target.requiredDocType &&
+            entry.source === 'generated'
+        );
+        if (!remainingSameType) {
+          setGeneratedRequiredDocTypes((prev) =>
+            prev.filter((item) => item !== target.requiredDocType)
+          );
+        }
       }
-    }
-  }, [documents]);
 
-  const hasDuplicateDocument = useCallback((file: File, options?: { ignoreKey?: string }): boolean => {
-    const identity = documentIdentityFromFile(file);
-    const ignoreKey = options?.ignoreKey;
-    return documents.some((doc) => (
-      doc.key !== ignoreKey && documentIdentityFromDraft(doc) === identity
-    ));
-  }, [documents]);
+      if (target.requiredDocType && target.source === 'required_upload') {
+        const remainingSameType = documents.some(
+          (entry) =>
+            entry.key !== key &&
+            entry.requiredDocType === target.requiredDocType &&
+            entry.source === 'required_upload'
+        );
+        if (!remainingSameType) {
+          setUploadedRequiredDocTypes((prev) =>
+            prev.filter((item) => item !== target.requiredDocType)
+          );
+        }
+      }
+    },
+    [documents]
+  );
+
+  const hasDuplicateDocument = useCallback(
+    (file: File, options?: { ignoreKey?: string }): boolean => {
+      const identity = documentIdentityFromFile(file);
+      const ignoreKey = options?.ignoreKey;
+      return documents.some(
+        (doc) => doc.key !== ignoreKey && documentIdentityFromDraft(doc) === identity
+      );
+    },
+    [documents]
+  );
 
   const removeStaleAttachmentRefs = useCallback(() => {
     if (staleAttachmentRefs.length === 0) return;
-    setDocuments((prev) => prev.filter((doc) => (
-      !(typeof doc.claimAttachmentId === 'number' && staleAttachmentRefs.includes(doc.claimAttachmentId))
-    )));
+    setDocuments((prev) =>
+      prev.filter(
+        (doc) =>
+          !(
+            typeof doc.claimAttachmentId === 'number' &&
+            staleAttachmentRefs.includes(doc.claimAttachmentId)
+          )
+      )
+    );
     toast({
       title: 'Stale references removed',
       description: `Removed ${staleAttachmentRefs.length} stale attachment reference${staleAttachmentRefs.length === 1 ? '' : 's'}.`,
     });
   }, [staleAttachmentRefs, toast]);
 
-  const uploadRequiredDocument = useCallback(async (documentType: string, files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const selectedFiles = Array.from(files);
-    const normalizedDocType = String(documentType || '').trim().toUpperCase();
-    if (!normalizedDocType) return;
+  const uploadRequiredDocument = useCallback(
+    async (documentType: string, files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      const selectedFiles = Array.from(files);
+      const normalizedDocType = String(documentType || '')
+        .trim()
+        .toUpperCase();
+      if (!normalizedDocType) return;
 
-    const seenBatchIdentities = new Set<string>();
-    const dedupedFiles = selectedFiles.filter((file) => {
-      const identity = documentIdentityFromFile(file);
-      if (seenBatchIdentities.has(identity)) return false;
-      seenBatchIdentities.add(identity);
-      return !hasDuplicateDocument(file);
-    });
-    const skippedCount = selectedFiles.length - dedupedFiles.length;
-
-    if (dedupedFiles.length === 0) {
-      toast({
-        title: 'Duplicate file skipped',
-        description: 'This document is already attached in the preauth form.',
+      const seenBatchIdentities = new Set<string>();
+      const dedupedFiles = selectedFiles.filter((file) => {
+        const identity = documentIdentityFromFile(file);
+        if (seenBatchIdentities.has(identity)) return false;
+        seenBatchIdentities.add(identity);
+        return !hasDuplicateDocument(file);
       });
-      return;
-    }
+      const skippedCount = selectedFiles.length - dedupedFiles.length;
 
-    setRequiredDocUploadBusyTypes((prev) => (
-      prev.includes(normalizedDocType) ? prev : [...prev, normalizedDocType]
-    ));
-
-    try {
-      const draftDocsToAdd: DraftDocument[] = [];
-      if (selectedClaimIdNumber) {
-        const attachmentType = PREAUTH_DOC_TO_ATTACHMENT_TYPE[normalizedDocType] || 'other';
-        for (const file of dedupedFiles) {
-          const created = await shaApi.createClaimAttachment(selectedClaimIdNumber, {
-            attachment_type: attachmentType,
-            name: file.name,
-            description: `Required preauth document (${normalizedDocType.replace(/_/g, ' ')})`,
-            file,
-          });
-          draftDocsToAdd.push(
-            makeDraftDocument(file, {
-              claimAttachmentId: created.id,
-              requiredDocType: normalizedDocType,
-              source: 'required_upload',
-              claimFileUrl: created.file || undefined,
-              fileSizeBytes: created.file_size || undefined,
-              mimeType: created.mime_type || file.type,
-            })
-          );
-        }
-      } else {
-        draftDocsToAdd.push(
-          ...dedupedFiles.map((file) =>
-            makeDraftDocument(file, {
-              requiredDocType: normalizedDocType,
-              source: 'required_upload',
-            })
-          )
-        );
-      }
-
-      setDocuments((prev) => [...prev, ...draftDocsToAdd]);
-      setUploadedRequiredDocTypes((prev) => (
-        prev.includes(normalizedDocType) ? prev : [...prev, normalizedDocType]
-      ));
-
-      toast({
-        title: 'Required document uploaded',
-        description: `${normalizedDocType.replace(/_/g, ' ')} file${dedupedFiles.length > 1 ? 's' : ''} added.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicate file${skippedCount > 1 ? 's' : ''}.` : ''}`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Upload failed',
-        description: error instanceof Error ? error.message : 'Unable to upload required document',
-        variant: 'destructive',
-      });
-    } finally {
-      setRequiredDocUploadBusyTypes((prev) => prev.filter((entry) => entry !== normalizedDocType));
-    }
-  }, [hasDuplicateDocument, makeDraftDocument, selectedClaimIdNumber, toast]);
-
-  const addEvidenceAsDocument = useCallback(async (option: PreauthEvidenceOption) => {
-    if (linkedEvidenceKeys.includes(option.key)) return;
-    setEvidenceBusyKeys((prev) => (prev.includes(option.key) ? prev : [...prev, option.key]));
-
-    try {
-      const safeName = option.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      const file = buildPdfFile(
-        `${option.documentType.toLowerCase()}-${safeName || option.key}`,
-        option.exportText.split('\n'),
-      );
-
-      if (hasDuplicateDocument(file)) {
+      if (dedupedFiles.length === 0) {
         toast({
           title: 'Duplicate file skipped',
-          description: `${option.title} is already attached.`,
+          description: 'This document is already attached in the preauth form.',
         });
         return;
       }
 
-      let createdAttachmentId: number | null = null;
-      let createdAttachmentUrl: string | undefined;
-      let createdAttachmentMimeType: string | undefined;
-      let createdAttachmentSize: number | undefined;
+      setRequiredDocUploadBusyTypes((prev) =>
+        prev.includes(normalizedDocType) ? prev : [...prev, normalizedDocType]
+      );
 
-      if (selectedClaimIdNumber) {
-        const attachmentType = PREAUTH_DOC_TO_ATTACHMENT_TYPE[option.documentType] || 'other';
-        const created = await shaApi.createClaimAttachment(selectedClaimIdNumber, {
-          attachment_type: attachmentType,
-          name: option.title,
-          description: `Auto-linked preauth evidence (${option.documentType})`,
-          file,
-        });
-        if (typeof created?.id === 'number') {
-          createdAttachmentId = created.id;
+      try {
+        const draftDocsToAdd: DraftDocument[] = [];
+        if (selectedClaimIdNumber) {
+          const attachmentType = PREAUTH_DOC_TO_ATTACHMENT_TYPE[normalizedDocType] || 'other';
+          for (const file of dedupedFiles) {
+            const created = await shaApi.createClaimAttachment(selectedClaimIdNumber, {
+              attachment_type: attachmentType,
+              name: file.name,
+              description: `Required preauth document (${normalizedDocType.replace(/_/g, ' ')})`,
+              file,
+            });
+            draftDocsToAdd.push(
+              makeDraftDocument(file, {
+                claimAttachmentId: created.id,
+                requiredDocType: normalizedDocType,
+                source: 'required_upload',
+                claimFileUrl: created.file || undefined,
+                fileSizeBytes: created.file_size || undefined,
+                mimeType: created.mime_type || file.type,
+              })
+            );
+          }
+        } else {
+          draftDocsToAdd.push(
+            ...dedupedFiles.map((file) =>
+              makeDraftDocument(file, {
+                requiredDocType: normalizedDocType,
+                source: 'required_upload',
+              })
+            )
+          );
         }
-        createdAttachmentUrl = created.file || undefined;
-        createdAttachmentMimeType = created.mime_type || undefined;
-        createdAttachmentSize = created.file_size || undefined;
+
+        setDocuments((prev) => [...prev, ...draftDocsToAdd]);
+        setUploadedRequiredDocTypes((prev) =>
+          prev.includes(normalizedDocType) ? prev : [...prev, normalizedDocType]
+        );
+
         toast({
-          title: 'Evidence attached to claim',
-          description: `${option.title} uploaded as ${attachmentType.replace(/_/g, ' ')}.`,
+          title: 'Required document uploaded',
+          description: `${normalizedDocType.replace(/_/g, ' ')} file${dedupedFiles.length > 1 ? 's' : ''} added.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicate file${skippedCount > 1 ? 's' : ''}.` : ''}`,
         });
+      } catch (error) {
+        toast({
+          title: 'Upload failed',
+          description:
+            error instanceof Error ? error.message : 'Unable to upload required document',
+          variant: 'destructive',
+        });
+      } finally {
+        setRequiredDocUploadBusyTypes((prev) =>
+          prev.filter((entry) => entry !== normalizedDocType)
+        );
       }
+    },
+    [hasDuplicateDocument, makeDraftDocument, selectedClaimIdNumber, toast]
+  );
 
-      setDocuments((prev) => [
-        ...prev,
-        makeDraftDocument(file, {
-          claimAttachmentId: createdAttachmentId ?? undefined,
-          evidenceKey: option.key,
-          displayName: option.title,
-          requiredDocType: option.documentType,
-          source: 'evidence',
-          claimFileUrl: createdAttachmentUrl,
-          fileSizeBytes: createdAttachmentSize,
-          mimeType: createdAttachmentMimeType || file.type,
-        }),
-      ]);
-      setLinkedEvidenceKeys((prev) => [...prev, option.key]);
-      if (createdAttachmentId != null) {
-        setEvidenceClaimAttachmentIds((prev) => ({ ...prev, [option.key]: createdAttachmentId as number }));
+  const addEvidenceAsDocument = useCallback(
+    async (option: PreauthEvidenceOption) => {
+      if (linkedEvidenceKeys.includes(option.key)) return;
+      setEvidenceBusyKeys((prev) => (prev.includes(option.key) ? prev : [...prev, option.key]));
+
+      try {
+        const safeName = option.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        const file = buildPdfFile(
+          `${option.documentType.toLowerCase()}-${safeName || option.key}`,
+          option.exportText.split('\n')
+        );
+
+        if (hasDuplicateDocument(file)) {
+          toast({
+            title: 'Duplicate file skipped',
+            description: `${option.title} is already attached.`,
+          });
+          return;
+        }
+
+        let createdAttachmentId: number | null = null;
+        let createdAttachmentUrl: string | undefined;
+        let createdAttachmentMimeType: string | undefined;
+        let createdAttachmentSize: number | undefined;
+
+        if (selectedClaimIdNumber) {
+          const attachmentType = PREAUTH_DOC_TO_ATTACHMENT_TYPE[option.documentType] || 'other';
+          const created = await shaApi.createClaimAttachment(selectedClaimIdNumber, {
+            attachment_type: attachmentType,
+            name: option.title,
+            description: `Auto-linked preauth evidence (${option.documentType})`,
+            file,
+          });
+          if (typeof created?.id === 'number') {
+            createdAttachmentId = created.id;
+          }
+          createdAttachmentUrl = created.file || undefined;
+          createdAttachmentMimeType = created.mime_type || undefined;
+          createdAttachmentSize = created.file_size || undefined;
+          toast({
+            title: 'Evidence attached to claim',
+            description: `${option.title} uploaded as ${attachmentType.replace(/_/g, ' ')}.`,
+          });
+        }
+
+        setDocuments((prev) => [
+          ...prev,
+          makeDraftDocument(file, {
+            claimAttachmentId: createdAttachmentId ?? undefined,
+            evidenceKey: option.key,
+            displayName: option.title,
+            requiredDocType: option.documentType,
+            source: 'evidence',
+            claimFileUrl: createdAttachmentUrl,
+            fileSizeBytes: createdAttachmentSize,
+            mimeType: createdAttachmentMimeType || file.type,
+          }),
+        ]);
+        setLinkedEvidenceKeys((prev) => [...prev, option.key]);
+        if (createdAttachmentId != null) {
+          setEvidenceClaimAttachmentIds((prev) => ({
+            ...prev,
+            [option.key]: createdAttachmentId as number,
+          }));
+        }
+      } catch (error) {
+        toast({
+          title: 'Evidence attachment failed',
+          description: error instanceof Error ? error.message : 'Failed to attach evidence',
+          variant: 'destructive',
+        });
+      } finally {
+        setEvidenceBusyKeys((prev) => prev.filter((entry) => entry !== option.key));
       }
-    } catch (error) {
-      toast({
-        title: 'Evidence attachment failed',
-        description: error instanceof Error ? error.message : 'Failed to attach evidence',
-        variant: 'destructive',
-      });
-    } finally {
-      setEvidenceBusyKeys((prev) => prev.filter((entry) => entry !== option.key));
-    }
-  }, [hasDuplicateDocument, linkedEvidenceKeys, makeDraftDocument, selectedClaimIdNumber, toast]);
+    },
+    [hasDuplicateDocument, linkedEvidenceKeys, makeDraftDocument, selectedClaimIdNumber, toast]
+  );
 
-  const attachFirstEvidenceForType = useCallback(async (documentType: string) => {
-    const candidate = preauthEvidenceOptions.find(
-      (option) => option.documentType === documentType && !linkedEvidenceKeys.includes(option.key)
-    );
-    if (!candidate) return;
-    await addEvidenceAsDocument(candidate);
-  }, [preauthEvidenceOptions, linkedEvidenceKeys, addEvidenceAsDocument]);
+  const attachFirstEvidenceForType = useCallback(
+    async (documentType: string) => {
+      const candidate = preauthEvidenceOptions.find(
+        (option) => option.documentType === documentType && !linkedEvidenceKeys.includes(option.key)
+      );
+      if (!candidate) return;
+      await addEvidenceAsDocument(candidate);
+    },
+    [preauthEvidenceOptions, linkedEvidenceKeys, addEvidenceAsDocument]
+  );
 
-  const detachEvidence = useCallback((key: string) => {
-    setLinkedEvidenceKeys((prev) => prev.filter((entry) => entry !== key));
-    setDocuments((prev) => prev.filter((entry) => entry.evidenceKey !== key));
-    setEvidenceClaimAttachmentIds((prev) => {
-      if (!(key in prev)) return prev;
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-    toast({
-      title: 'Evidence detached',
-      description: 'The linked record was removed from this draft preauth package.',
-    });
-  }, [toast]);
-
-  const removeEvidenceFromClaim = useCallback(async (key: string) => {
-    if (!selectedClaimIdNumber) return;
-    const attachmentId = evidenceClaimAttachmentIds[key];
-    if (!attachmentId) {
-      detachEvidence(key);
-      return;
-    }
-
-    try {
-      await shaApi.deleteClaimAttachment(selectedClaimIdNumber, attachmentId);
+  const detachEvidence = useCallback(
+    (key: string) => {
       setLinkedEvidenceKeys((prev) => prev.filter((entry) => entry !== key));
       setDocuments((prev) => prev.filter((entry) => entry.evidenceKey !== key));
       setEvidenceClaimAttachmentIds((prev) => {
+        if (!(key in prev)) return prev;
         const next = { ...prev };
         delete next[key];
         return next;
       });
       toast({
-        title: 'Removed from claim',
-        description: 'Attachment deleted from linked claim and detached from this preauth draft.',
+        title: 'Evidence detached',
+        description: 'The linked record was removed from this draft preauth package.',
       });
-    } catch (error) {
-      toast({
-        title: 'Failed to remove from claim',
-        description: error instanceof Error ? error.message : 'Unable to delete attachment from claim',
-        variant: 'destructive',
-      });
-    }
-  }, [detachEvidence, evidenceClaimAttachmentIds, selectedClaimIdNumber, toast]);
+    },
+    [toast]
+  );
 
-  const removeRequiredDocType = useCallback(async (docType: string) => {
-    const targets = documents.filter((doc) => resolveRequiredDocTypeForDocument(doc) === docType);
-    if (targets.length === 0) return;
-
-    setAttachmentDialogBusy(true);
-    try {
-      if (selectedClaimIdNumber) {
-        for (const doc of targets) {
-          if (doc.claimAttachmentId) {
-            await shaApi.deleteClaimAttachment(selectedClaimIdNumber, doc.claimAttachmentId);
-          }
-        }
+  const removeEvidenceFromClaim = useCallback(
+    async (key: string) => {
+      if (!selectedClaimIdNumber) return;
+      const attachmentId = evidenceClaimAttachmentIds[key];
+      if (!attachmentId) {
+        detachEvidence(key);
+        return;
       }
 
-      setDocuments((prev) => prev.filter((doc) => resolveRequiredDocTypeForDocument(doc) !== docType));
-      setGeneratedRequiredDocTypes((prev) => prev.filter((item) => item !== docType));
-      setUploadedRequiredDocTypes((prev) => prev.filter((item) => item !== docType));
-
-      const evidenceKeys = targets.map((doc) => doc.evidenceKey).filter((key): key is string => !!key);
-      if (evidenceKeys.length > 0) {
-        setLinkedEvidenceKeys((prev) => prev.filter((key) => !evidenceKeys.includes(key)));
+      try {
+        await shaApi.deleteClaimAttachment(selectedClaimIdNumber, attachmentId);
+        setLinkedEvidenceKeys((prev) => prev.filter((entry) => entry !== key));
+        setDocuments((prev) => prev.filter((entry) => entry.evidenceKey !== key));
         setEvidenceClaimAttachmentIds((prev) => {
           const next = { ...prev };
-          for (const key of evidenceKeys) delete next[key];
+          delete next[key];
           return next;
         });
+        toast({
+          title: 'Removed from claim',
+          description: 'Attachment deleted from linked claim and detached from this preauth draft.',
+        });
+      } catch (error) {
+        toast({
+          title: 'Failed to remove from claim',
+          description:
+            error instanceof Error ? error.message : 'Unable to delete attachment from claim',
+          variant: 'destructive',
+        });
       }
+    },
+    [detachEvidence, evidenceClaimAttachmentIds, selectedClaimIdNumber, toast]
+  );
 
-      toast({
-        title: 'Attachment removed',
-        description: `${docType.replace(/_/g, ' ')} removed. You can now replace it.`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Remove failed',
-        description: error instanceof Error ? error.message : 'Unable to remove attachment',
-        variant: 'destructive',
-      });
-    } finally {
-      setAttachmentDialogBusy(false);
-    }
-  }, [documents, resolveRequiredDocTypeForDocument, selectedClaimIdNumber, toast]);
+  const removeRequiredDocType = useCallback(
+    async (docType: string) => {
+      const targets = documents.filter((doc) => resolveRequiredDocTypeForDocument(doc) === docType);
+      if (targets.length === 0) return;
+
+      setAttachmentDialogBusy(true);
+      try {
+        if (selectedClaimIdNumber) {
+          for (const doc of targets) {
+            if (doc.claimAttachmentId) {
+              await shaApi.deleteClaimAttachment(selectedClaimIdNumber, doc.claimAttachmentId);
+            }
+          }
+        }
+
+        setDocuments((prev) =>
+          prev.filter((doc) => resolveRequiredDocTypeForDocument(doc) !== docType)
+        );
+        setGeneratedRequiredDocTypes((prev) => prev.filter((item) => item !== docType));
+        setUploadedRequiredDocTypes((prev) => prev.filter((item) => item !== docType));
+
+        const evidenceKeys = targets
+          .map((doc) => doc.evidenceKey)
+          .filter((key): key is string => !!key);
+        if (evidenceKeys.length > 0) {
+          setLinkedEvidenceKeys((prev) => prev.filter((key) => !evidenceKeys.includes(key)));
+          setEvidenceClaimAttachmentIds((prev) => {
+            const next = { ...prev };
+            for (const key of evidenceKeys) delete next[key];
+            return next;
+          });
+        }
+
+        toast({
+          title: 'Attachment removed',
+          description: `${docType.replace(/_/g, ' ')} removed. You can now replace it.`,
+        });
+      } catch (error) {
+        toast({
+          title: 'Remove failed',
+          description: error instanceof Error ? error.message : 'Unable to remove attachment',
+          variant: 'destructive',
+        });
+      } finally {
+        setAttachmentDialogBusy(false);
+      }
+    },
+    [documents, resolveRequiredDocTypeForDocument, selectedClaimIdNumber, toast]
+  );
 
   const saveAttachmentChanges = useCallback(async () => {
     if (!activeDocument) return;
-    const nextName = attachmentEditName.trim() || activeDocument.displayName || activeDocument.file.name;
+    const nextName =
+      attachmentEditName.trim() || activeDocument.displayName || activeDocument.file.name;
 
     if (
-      attachmentReplacementFile
-      && hasDuplicateDocument(attachmentReplacementFile, { ignoreKey: activeDocument.key })
+      attachmentReplacementFile &&
+      hasDuplicateDocument(attachmentReplacementFile, { ignoreKey: activeDocument.key })
     ) {
       toast({
         title: 'Duplicate file skipped',
@@ -2346,7 +2508,7 @@ export default function NewPreauthPage() {
           {
             name: nextName,
             ...(attachmentReplacementFile ? { file: attachmentReplacementFile } : {}),
-          },
+          }
         );
         updatedName = updated.name || nextName;
         if (attachmentReplacementFile) updatedFile = attachmentReplacementFile;
@@ -2359,18 +2521,20 @@ export default function NewPreauthPage() {
         updatedMimeType = attachmentReplacementFile.type;
       }
 
-      setDocuments((prev) => prev.map((entry) => (
-        entry.key === activeDocument.key
-          ? {
-              ...entry,
-              displayName: updatedName,
-              file: updatedFile,
-              claimFileUrl: updatedFileUrl,
-              fileSizeBytes: updatedFileSize,
-              mimeType: updatedMimeType,
-            }
-          : entry
-      )));
+      setDocuments((prev) =>
+        prev.map((entry) =>
+          entry.key === activeDocument.key
+            ? {
+                ...entry,
+                displayName: updatedName,
+                file: updatedFile,
+                claimFileUrl: updatedFileUrl,
+                fileSizeBytes: updatedFileSize,
+                mimeType: updatedMimeType,
+              }
+            : entry
+        )
+      );
 
       setAttachmentDialogOpen(false);
       setAttachmentReplacementFile(null);
@@ -2406,7 +2570,9 @@ export default function NewPreauthPage() {
       }
 
       if (activeDocument.evidenceKey) {
-        setLinkedEvidenceKeys((prev) => prev.filter((entry) => entry !== activeDocument.evidenceKey));
+        setLinkedEvidenceKeys((prev) =>
+          prev.filter((entry) => entry !== activeDocument.evidenceKey)
+        );
         setEvidenceClaimAttachmentIds((prev) => {
           if (!activeDocument.evidenceKey) return prev;
           const next = { ...prev };
@@ -2439,147 +2605,154 @@ export default function NewPreauthPage() {
     setTimeout(() => evidenceSearchRef.current?.focus(), 0);
   }, []);
 
-  const generateRequiredDocDraft = useCallback(async (documentType: string) => {
-    if (!AUTO_GENERATABLE_PREAUTH_DOC_TYPES.has(documentType)) return;
+  const generateRequiredDocDraft = useCallback(
+    async (documentType: string) => {
+      if (!AUTO_GENERATABLE_PREAUTH_DOC_TYPES.has(documentType)) return;
 
-    setDocuments((prev) => prev.filter((doc) => !(
-      resolveRequiredDocTypeForDocument(doc) === documentType
-      && (doc.source === 'generated' || doc.source === 'required_upload')
-    )));
-    setGeneratedRequiredDocTypes((prev) => prev.filter((item) => item !== documentType));
-    setUploadedRequiredDocTypes((prev) => prev.filter((item) => item !== documentType));
+      setDocuments((prev) =>
+        prev.filter(
+          (doc) =>
+            !(
+              resolveRequiredDocTypeForDocument(doc) === documentType &&
+              (doc.source === 'generated' || doc.source === 'required_upload')
+            )
+        )
+      );
+      setGeneratedRequiredDocTypes((prev) => prev.filter((item) => item !== documentType));
+      setUploadedRequiredDocTypes((prev) => prev.filter((item) => item !== documentType));
 
-    const encounterCtx = selectedEncounterIdNumber || selectedClaim?.encounter;
-    const contextToken = encounterCtx
-      ? `encounter-${encounterCtx}`
-      : selectedClaimIdNumber
-        ? `claim-${selectedClaimIdNumber}`
-        : interventionCode
-          ? `intervention-${interventionCode.toLowerCase()}`
-          : `draft-${Date.now()}`;
-    if (!encounterCtx && !selectedClaimIdNumber && !patientId) {
-      toast({
-        title: 'Context required',
-        description: `Select patient/claim context to auto-generate ${documentType.replace(/_/g, ' ')}.`,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const diagnosisText = diagnosisChips.map((entry) => entry.code).join(', ') || '-';
-    const clinicianText = doctorChips.map((entry) => entry.name).join(', ') || '-';
-    const nowIso = new Date().toISOString();
-
-    const contentLines = documentType === 'PREAUTH_FORM'
-      ? [
-          'PREAUTH FORM (AUTO-GENERATED ATTACHMENT)',
-          `Generated At: ${nowIso}`,
-          '',
-          `Patient ID: ${patientId || '-'}`,
-          `Claim ID: ${selectedClaimIdNumber || '-'}`,
-          `Encounter ID: ${encounterCtx || '-'}`,
-          `Intervention Code: ${interventionCode || '-'}`,
-          `Intervention Name: ${interventionName || '-'}`,
-          `Preauth Type: ${selectedType || '-'}`,
-          `Attending Clinician(s): ${clinicianText}`,
-          `Diagnosis Codes: ${diagnosisText}`,
-          '',
-          'Clinical Rationale:',
-          clinicalNotes || '-',
-          '',
-        ]
-      : [
-          'MEDICAL REPORT (AUTO-GENERATED ATTACHMENT)',
-          `Generated At: ${nowIso}`,
-          '',
-          `Patient ID: ${patientId || '-'}`,
-          `Encounter ID: ${encounterCtx || '-'}`,
-          `Claim ID: ${selectedClaimIdNumber || '-'}`,
-          '',
-          'Clinical Context:',
-          `Intervention: ${interventionCode || '-'}${interventionName ? ` - ${interventionName}` : ''}`,
-          `Diagnosis: ${diagnosisText}`,
-          `Clinician: ${clinicianText}`,
-          '',
-          'Clinical Notes:',
-          clinicalNotes || 'Auto-generated from preauth context.',
-        ];
-    const file = buildPdfFile(
-      `${documentType.toLowerCase()}-${contextToken}`,
-      contentLines,
-    );
-
-    if (hasDuplicateDocument(file)) {
-      toast({
-        title: 'Duplicate file skipped',
-        description: `${documentType.replace(/_/g, ' ')} is already attached.`,
-      });
-      return;
-    }
-
-    try {
-      let createdAttachmentId: number | undefined;
-      if (selectedClaimIdNumber) {
-        const attachmentType = PREAUTH_DOC_TO_ATTACHMENT_TYPE[documentType] || 'other';
-        const created = await shaApi.createClaimAttachment(selectedClaimIdNumber, {
-          attachment_type: attachmentType,
-          name: `${documentType.replace(/_/g, ' ')} draft`,
-          description: `Auto-generated from ${contextToken.replace(/-/g, ' ')}`,
-          file,
+      const encounterCtx = selectedEncounterIdNumber || selectedClaim?.encounter;
+      const contextToken = encounterCtx
+        ? `encounter-${encounterCtx}`
+        : selectedClaimIdNumber
+          ? `claim-${selectedClaimIdNumber}`
+          : interventionCode
+            ? `intervention-${interventionCode.toLowerCase()}`
+            : `draft-${Date.now()}`;
+      if (!encounterCtx && !selectedClaimIdNumber && !patientId) {
+        toast({
+          title: 'Context required',
+          description: `Select patient/claim context to auto-generate ${documentType.replace(/_/g, ' ')}.`,
+          variant: 'destructive',
         });
-        createdAttachmentId = created.id;
+        return;
       }
-      setDocuments((prev) => [
-        ...prev,
-        makeDraftDocument(file, {
-          claimAttachmentId: createdAttachmentId,
-          displayName: `${documentType.replace(/_/g, ' ')} draft`,
-          requiredDocType: documentType,
-          source: 'generated',
-        }),
-      ]);
-      setGeneratedRequiredDocTypes((prev) => [...prev, documentType]);
-      toast({
-        title: 'Document generated',
-        description: `${documentType.replace(/_/g, ' ')} draft added to uploads.`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Generation failed',
-        description: error instanceof Error ? error.message : 'Unable to generate draft document',
-        variant: 'destructive',
-      });
-    }
-  }, [
-    resolveRequiredDocTypeForDocument,
-    selectedEncounterIdNumber,
-    selectedClaim?.encounter,
-    selectedClaimIdNumber,
-    hasDuplicateDocument,
-    makeDraftDocument,
-    patientId,
-    interventionCode,
-    interventionName,
-    diagnosisChips,
-    doctorChips,
-    clinicalNotes,
-    selectedType,
-    toast,
-  ]);
+
+      const diagnosisText = diagnosisChips.map((entry) => entry.code).join(', ') || '-';
+      const clinicianText = doctorChips.map((entry) => entry.name).join(', ') || '-';
+      const nowIso = new Date().toISOString();
+
+      const contentLines =
+        documentType === 'PREAUTH_FORM'
+          ? [
+              'PREAUTH FORM (AUTO-GENERATED ATTACHMENT)',
+              `Generated At: ${nowIso}`,
+              '',
+              `Patient ID: ${patientId || '-'}`,
+              `Claim ID: ${selectedClaimIdNumber || '-'}`,
+              `Encounter ID: ${encounterCtx || '-'}`,
+              `Intervention Code: ${interventionCode || '-'}`,
+              `Intervention Name: ${interventionName || '-'}`,
+              `Preauth Type: ${selectedType || '-'}`,
+              `Attending Clinician(s): ${clinicianText}`,
+              `Diagnosis Codes: ${diagnosisText}`,
+              '',
+              'Clinical Rationale:',
+              clinicalNotes || '-',
+              '',
+            ]
+          : [
+              'MEDICAL REPORT (AUTO-GENERATED ATTACHMENT)',
+              `Generated At: ${nowIso}`,
+              '',
+              `Patient ID: ${patientId || '-'}`,
+              `Encounter ID: ${encounterCtx || '-'}`,
+              `Claim ID: ${selectedClaimIdNumber || '-'}`,
+              '',
+              'Clinical Context:',
+              `Intervention: ${interventionCode || '-'}${interventionName ? ` - ${interventionName}` : ''}`,
+              `Diagnosis: ${diagnosisText}`,
+              `Clinician: ${clinicianText}`,
+              '',
+              'Clinical Notes:',
+              clinicalNotes || 'Auto-generated from preauth context.',
+            ];
+      const file = buildPdfFile(`${documentType.toLowerCase()}-${contextToken}`, contentLines);
+
+      if (hasDuplicateDocument(file)) {
+        toast({
+          title: 'Duplicate file skipped',
+          description: `${documentType.replace(/_/g, ' ')} is already attached.`,
+        });
+        return;
+      }
+
+      try {
+        let createdAttachmentId: number | undefined;
+        if (selectedClaimIdNumber) {
+          const attachmentType = PREAUTH_DOC_TO_ATTACHMENT_TYPE[documentType] || 'other';
+          const created = await shaApi.createClaimAttachment(selectedClaimIdNumber, {
+            attachment_type: attachmentType,
+            name: `${documentType.replace(/_/g, ' ')} draft`,
+            description: `Auto-generated from ${contextToken.replace(/-/g, ' ')}`,
+            file,
+          });
+          createdAttachmentId = created.id;
+        }
+        setDocuments((prev) => [
+          ...prev,
+          makeDraftDocument(file, {
+            claimAttachmentId: createdAttachmentId,
+            displayName: `${documentType.replace(/_/g, ' ')} draft`,
+            requiredDocType: documentType,
+            source: 'generated',
+          }),
+        ]);
+        setGeneratedRequiredDocTypes((prev) => [...prev, documentType]);
+        toast({
+          title: 'Document generated',
+          description: `${documentType.replace(/_/g, ' ')} draft added to uploads.`,
+        });
+      } catch (error) {
+        toast({
+          title: 'Generation failed',
+          description: error instanceof Error ? error.message : 'Unable to generate draft document',
+          variant: 'destructive',
+        });
+      }
+    },
+    [
+      resolveRequiredDocTypeForDocument,
+      selectedEncounterIdNumber,
+      selectedClaim?.encounter,
+      selectedClaimIdNumber,
+      hasDuplicateDocument,
+      makeDraftDocument,
+      patientId,
+      interventionCode,
+      interventionName,
+      diagnosisChips,
+      doctorChips,
+      clinicalNotes,
+      selectedType,
+      toast,
+    ]
+  );
 
   const handleSubmit = async () => {
     const requiresExplicitConsentToken = selectedType === 'elective';
     const consentTokenForSubmit = (effectiveConsentToken || '').trim();
     if (
-      !canProceedStep3
-      || (requiresExplicitConsentToken && !consentTokenForSubmit)
-      || (forceConsentRefresh && !consentTokenForSubmit)
-      || !patientId
-      || !selectedClaimIdNumber
-      || !hasAllRequiredDocuments
-      || hasConsentInterventionMismatch
-      || (selectedType === 'surgical' && !typeOfAnaesthesia)
-    ) return;
+      !canProceedStep3 ||
+      (requiresExplicitConsentToken && !consentTokenForSubmit) ||
+      (forceConsentRefresh && !consentTokenForSubmit) ||
+      !patientId ||
+      !selectedClaimIdNumber ||
+      !hasAllRequiredDocuments ||
+      hasConsentInterventionMismatch ||
+      (selectedType === 'surgical' && !typeOfAnaesthesia)
+    )
+      return;
     setIsSubmitting(true);
     try {
       const extraFields: Record<string, unknown> = {};
@@ -2606,8 +2779,10 @@ export default function NewPreauthPage() {
         extraFields.items = tariffChips.map((itemCode) => ({
           item_code: itemCode,
           ItemCode: itemCode,
-          unit_price: selectedInterventionTariff != null ? String(selectedInterventionTariff) : undefined,
-          UnitPrice: selectedInterventionTariff != null ? String(selectedInterventionTariff) : undefined,
+          unit_price:
+            selectedInterventionTariff != null ? String(selectedInterventionTariff) : undefined,
+          UnitPrice:
+            selectedInterventionTariff != null ? String(selectedInterventionTariff) : undefined,
           quantity: '1',
           Quantity: '1',
         }));
@@ -2666,11 +2841,13 @@ export default function NewPreauthPage() {
         extraFields.notification_email = providerNotificationEmail.trim();
       }
 
-      const explicitAttachmentIds = Array.from(new Set(
-        documents
-          .map((doc) => doc.claimAttachmentId)
-          .filter((id): id is number => typeof id === 'number')
-      ));
+      const explicitAttachmentIds = Array.from(
+        new Set(
+          documents
+            .map((doc) => doc.claimAttachmentId)
+            .filter((id): id is number => typeof id === 'number')
+        )
+      );
       const uploadableDocuments = documents.filter(
         (doc) => doc.file && doc.file.size > 0 && typeof doc.claimAttachmentId !== 'number'
       );
@@ -2718,8 +2895,8 @@ export default function NewPreauthPage() {
       const errorCode = typeof axiosData?.code === 'string' ? axiosData.code : '';
       if (errorCode === 'dha_visit_not_started') {
         const refreshReason =
-          errorMessage
-          || 'The linked consent token does not have an active DHA visit. Collect a fresh consent below and resubmit.';
+          errorMessage ||
+          'The linked consent token does not have an active DHA visit. Collect a fresh consent below and resubmit.';
         setForceConsentRefresh(true);
         setConsentRefreshReason(refreshReason);
         setConsentToken('');
@@ -2734,19 +2911,26 @@ export default function NewPreauthPage() {
         const invalidIdsRaw = axiosData?.invalid_attachment_ids;
         const invalidIds = Array.isArray(invalidIdsRaw)
           ? invalidIdsRaw
-            .map((value) => Number(value))
-            .filter((value) => Number.isFinite(value) && value > 0)
+              .map((value) => Number(value))
+              .filter((value) => Number.isFinite(value) && value > 0)
           : [];
         if (invalidIds.length > 0) {
-          setDocuments((prev) => prev.filter((doc) => (
-            !(typeof doc.claimAttachmentId === 'number' && invalidIds.includes(doc.claimAttachmentId))
-          )));
+          setDocuments((prev) =>
+            prev.filter(
+              (doc) =>
+                !(
+                  typeof doc.claimAttachmentId === 'number' &&
+                  invalidIds.includes(doc.claimAttachmentId)
+                )
+            )
+          );
         }
         toast({
           title: 'Stale attachments detected',
-          description: invalidIds.length > 0
-            ? `Removed ${invalidIds.length} stale attachment reference${invalidIds.length === 1 ? '' : 's'}. Review attachments and submit again.`
-            : 'Some selected claim attachments are no longer valid. Review attachments and submit again.',
+          description:
+            invalidIds.length > 0
+              ? `Removed ${invalidIds.length} stale attachment reference${invalidIds.length === 1 ? '' : 's'}. Review attachments and submit again.`
+              : 'Some selected claim attachments are no longer valid. Review attachments and submit again.',
           variant: 'destructive',
         });
       } else {
@@ -2831,135 +3015,150 @@ export default function NewPreauthPage() {
 
       <div className="space-y-6">
         <h3 className="text-lg font-medium">1. Patient and Context</h3>
-          {/* Patient Selection */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Select Patient *</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <PatientSearchInput
-                value={patientId}
-                onChange={(id) => setPatientId(id)}
-                placeholder="Search patient by name or MRN..."
-              />
+        {/* Patient Selection */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Select Patient *</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <PatientSearchInput
+              value={patientId}
+              onChange={(id) => setPatientId(id)}
+              placeholder="Search patient by name or MRN..."
+            />
 
-              {/* Eligibility Status */}
-              {patientId && (
-                <div className="mt-3">
-                  {eligibilityLoading && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Checking SHA eligibility...
-                    </div>
-                  )}
-                  {eligibilityError && (
-                    <Alert variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle>Eligibility Check Failed</AlertTitle>
-                      <AlertDescription className="text-xs">
-                        {eligibilityError instanceof Error ? eligibilityError.message : 'Unable to verify eligibility. You may proceed but submission may fail.'}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  {eligibility && !eligibilityLoading && (
-                    <div className={cn(
+            {/* Eligibility Status */}
+            {patientId && (
+              <div className="mt-3">
+                {eligibilityLoading && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Checking SHA eligibility...
+                  </div>
+                )}
+                {eligibilityError && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Eligibility Check Failed</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      {eligibilityError instanceof Error
+                        ? eligibilityError.message
+                        : 'Unable to verify eligibility. You may proceed but submission may fail.'}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {eligibility && !eligibilityLoading && (
+                  <div
+                    className={cn(
                       'flex items-center gap-2 rounded-md p-2.5 text-sm',
                       eligibility.is_eligible
-                        ? 'bg-green-50 dark:bg-green-900/10 text-green-800 dark:text-green-400'
+                        ? 'bg-green-50 text-green-800 dark:bg-green-900/10 dark:text-green-400'
                         : 'bg-destructive/10 text-destructive'
-                    )}>
-                      {eligibility.is_eligible ? (
-                        <>
-                          <ShieldCheck className="h-4 w-4" />
-                          <span>Patient is SHA eligible</span>
-                          {eligibility.member && (
-                            <Badge variant="outline" className="ml-auto text-xs">
-                              Member #{eligibility.member.sha_number || eligibility.member.id}
-                            </Badge>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <AlertTriangle className="h-4 w-4" />
-                          <span>Patient is not SHA eligible — preauth may be rejected</span>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
+                    )}
+                  >
+                    {eligibility.is_eligible ? (
+                      <>
+                        <ShieldCheck className="h-4 w-4" />
+                        <span>Patient is SHA eligible</span>
+                        {eligibility.member && (
+                          <Badge variant="outline" className="ml-auto text-xs">
+                            Member #{eligibility.member.sha_number || eligibility.member.id}
+                          </Badge>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="h-4 w-4" />
+                        <span>Patient is not SHA eligible — preauth may be rejected</span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Claim Link (required) */}
+            <div className="space-y-1.5">
+              <Label htmlFor="claim-id" className="text-xs text-muted-foreground">
+                Link to Claim *
+              </Label>
+              {patientId && patientClaims && patientClaims.length > 0 ? (
+                <select
+                  id="claim-id"
+                  value={claimId}
+                  onChange={(e) => setClaimId(e.target.value)}
+                  className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">— Select claim —</option>
+                  {patientClaims.map((claim) => (
+                    <option key={claim.id} value={String(claim.id)}>
+                      #{claim.id} — {claim.claim_number || claim.sha_claim_reference || 'No ref'} (
+                      {claim.status}){claim.service_date ? ` • ${claim.service_date}` : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  id="claim-id"
+                  type="number"
+                  value={claimId}
+                  onChange={(e) => setClaimId(e.target.value)}
+                  placeholder={
+                    patientId
+                      ? patientClaimsLoading
+                        ? 'Loading claims...'
+                        : 'No claims found — enter ID manually'
+                      : 'Select a patient first'
+                  }
+                  className="h-8 text-sm"
+                  disabled={patientClaimsLoading}
+                />
               )}
+              {patientId && patientClaimsLoading && (
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Loading patient claims…
+                </p>
+              )}
+              {patientId && !selectedClaimIdNumber && !patientClaimsLoading && (
+                <p className="text-xs text-destructive">
+                  A linked claim is required before you can continue to intervention and consent.
+                </p>
+              )}
+            </div>
 
-              {/* Claim Link (required) */}
-              <div className="space-y-1.5">
-                <Label htmlFor="claim-id" className="text-xs text-muted-foreground">Link to Claim *</Label>
-                {patientId && patientClaims && patientClaims.length > 0 ? (
-                  <select
-                    id="claim-id"
-                    value={claimId}
-                    onChange={(e) => setClaimId(e.target.value)}
-                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    <option value="">— Select claim —</option>
-                    {patientClaims.map((claim) => (
-                      <option key={claim.id} value={String(claim.id)}>
-                        #{claim.id} — {claim.claim_number || claim.sha_claim_reference || 'No ref'} ({claim.status}){claim.service_date ? ` • ${claim.service_date}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <Input
-                    id="claim-id"
-                    type="number"
-                    value={claimId}
-                    onChange={(e) => setClaimId(e.target.value)}
-                    placeholder={patientId ? (patientClaimsLoading ? 'Loading claims...' : 'No claims found — enter ID manually') : 'Select a patient first'}
-                    className="h-8 text-sm"
-                    disabled={patientClaimsLoading}
-                  />
-                )}
-                {patientId && patientClaimsLoading && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Loading patient claims…
-                  </p>
-                )}
-                {patientId && !selectedClaimIdNumber && !patientClaimsLoading && (
-                  <p className="text-xs text-destructive">
-                    A linked claim is required before you can continue to intervention and consent.
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="encounter-id" className="text-xs text-muted-foreground">Encounter (optional)</Label>
-                {patientId && (patientEncounters?.length || 0) > 0 ? (
-                  <select
-                    id="encounter-id"
-                    value={encounterId}
-                    onChange={(e) => setEncounterId(e.target.value)}
-                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    <option value="">— None —</option>
-                    {(patientEncounters || []).map((encounter) => (
-                      <option key={encounter.id} value={String(encounter.id)}>
-                        #{encounter.id} — {encounter.chief_complaint || 'No chief complaint'} ({encounter.encounter_type})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <Input
-                    id="encounter-id"
-                    type="number"
-                    value={encounterId}
-                    onChange={(e) => setEncounterId(e.target.value)}
-                    placeholder="Enter encounter ID"
-                    className="h-8 text-sm"
-                    disabled={!patientId}
-                  />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
+            <div className="space-y-1.5">
+              <Label htmlFor="encounter-id" className="text-xs text-muted-foreground">
+                Encounter (optional)
+              </Label>
+              {patientId && (patientEncounters?.length || 0) > 0 ? (
+                <select
+                  id="encounter-id"
+                  value={encounterId}
+                  onChange={(e) => setEncounterId(e.target.value)}
+                  className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">— None —</option>
+                  {(patientEncounters || []).map((encounter) => (
+                    <option key={encounter.id} value={String(encounter.id)}>
+                      #{encounter.id} — {encounter.chief_complaint || 'No chief complaint'} (
+                      {encounter.encounter_type})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  id="encounter-id"
+                  type="number"
+                  value={encounterId}
+                  onChange={(e) => setEncounterId(e.target.value)}
+                  placeholder="Enter encounter ID"
+                  className="h-8 text-sm"
+                  disabled={!patientId}
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {showInterventionSection && (
@@ -3004,7 +3203,7 @@ export default function NewPreauthPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="preauth-intervention">Intervention</Label>
                   {selectedClaimLoading ? (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Loader2 className="h-3 w-3 animate-spin" /> Loading claim interventions…
                     </p>
                   ) : interventionSelectOptions.length > 0 ? (
@@ -3027,8 +3226,9 @@ export default function NewPreauthPage() {
                           isOpticalPreauth: selected.isOpticalPreauth,
                           needsDoctorAuthorization: selected.needsDoctorAuthorization,
                           needsManualPreauthApproval: selected.needsManualPreauthApproval,
-                          needs_manual_preauth_approval: (selected as unknown as Record<string, unknown>)
-                            .needs_manual_preauth_approval as boolean | undefined,
+                          needs_manual_preauth_approval: (
+                            selected as unknown as Record<string, unknown>
+                          ).needs_manual_preauth_approval as boolean | undefined,
                         });
                       }}
                       placeholder="Select intervention"
@@ -3050,7 +3250,9 @@ export default function NewPreauthPage() {
 
               {interventionCode && selectedType && (
                 <div className="rounded-md border bg-muted/30 px-3 py-2">
-                  <p className="text-sm font-medium">Pre-auth Type: {typeConfig?.label || selectedType}</p>
+                  <p className="text-sm font-medium">
+                    Pre-auth Type: {typeConfig?.label || selectedType}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     Read-only, auto-derived from selected intervention flags.
                   </p>
@@ -3068,7 +3270,9 @@ export default function NewPreauthPage() {
                   >
                     <option value="">— Select anaesthesia —</option>
                     {ANAESTHESIA_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
                     ))}
                   </select>
                   {!typeOfAnaesthesia && (
@@ -3080,7 +3284,7 @@ export default function NewPreauthPage() {
               )}
 
               {interventionCode && (
-                <div className="rounded-md border bg-muted/20 px-3 py-2 space-y-2">
+                <div className="space-y-2 rounded-md border bg-muted/20 px-3 py-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Tariff</span>
                     <span className="font-mono">
@@ -3093,12 +3297,13 @@ export default function NewPreauthPage() {
                     <Alert variant="destructive" className="py-2">
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription className="text-xs">
-                        Unable to resolve tariff amount for this intervention. Verify tariff metadata on the linked claim intervention or SHA terminology catalog.
+                        Unable to resolve tariff amount for this intervention. Verify tariff
+                        metadata on the linked claim intervention or SHA terminology catalog.
                       </AlertDescription>
                     </Alert>
                   )}
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Required Preauth Documents</p>
+                    <p className="mb-1 text-xs text-muted-foreground">Required Preauth Documents</p>
                     {effectiveRequiredDocumentTypes.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
                         {effectiveRequiredDocumentTypes.map((docType) => (
@@ -3108,12 +3313,14 @@ export default function NewPreauthPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">No document requirements returned for this intervention.</p>
+                      <p className="text-xs text-muted-foreground">
+                        No document requirements returned for this intervention.
+                      </p>
                     )}
                   </div>
 
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Fund Coverage</p>
+                    <p className="mb-1 text-xs text-muted-foreground">Fund Coverage</p>
                     {isInterventionFundCovered === true ? (
                       <div className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 text-[11px] text-green-800 dark:bg-green-900/20 dark:text-green-300">
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -3124,7 +3331,8 @@ export default function NewPreauthPage() {
                     ) : isInterventionFundCovered === false ? (
                       <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-[11px] text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
                         <AlertTriangle className="h-3.5 w-3.5" />
-                        Intervention fund ({interventionFunds.join(', ')}) does not match active patient fund ({patientActiveFunds.join(', ') || 'unknown'})
+                        Intervention fund ({interventionFunds.join(', ')}) does not match active
+                        patient fund ({patientActiveFunds.join(', ') || 'unknown'})
                       </div>
                     ) : (
                       <p className="text-[11px] text-muted-foreground">
@@ -3137,7 +3345,8 @@ export default function NewPreauthPage() {
                     <div className="space-y-2 pt-1">
                       <div className="flex items-center gap-2">
                         <p className="text-xs text-muted-foreground">
-                          Search patient lab/imaging records scoped to selected patient {patientId ? `#${patientId}` : ''}
+                          Search patient lab/imaging records scoped to selected patient{' '}
+                          {patientId ? `#${patientId}` : ''}
                         </p>
                         {activeEvidenceDocType && (
                           <Badge variant="outline" className="text-[10px]">
@@ -3170,10 +3379,15 @@ export default function NewPreauthPage() {
                           const selected = linkedEvidenceKeys.includes(option.key);
                           const busy = evidenceBusyKeys.includes(option.key);
                           return (
-                            <div key={option.key} className="flex items-center justify-between rounded border px-2 py-1.5">
+                            <div
+                              key={option.key}
+                              className="flex items-center justify-between rounded border px-2 py-1.5"
+                            >
                               <div className="min-w-0">
-                                <p className="text-xs font-medium truncate">{option.title}</p>
-                                <p className="text-[11px] text-muted-foreground truncate">{option.subtitle}</p>
+                                <p className="truncate text-xs font-medium">{option.title}</p>
+                                <p className="truncate text-[11px] text-muted-foreground">
+                                  {option.subtitle}
+                                </p>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Button
@@ -3192,17 +3406,19 @@ export default function NewPreauthPage() {
                                 >
                                   {selected ? 'Detach' : busy ? 'Attaching...' : 'Attach'}
                                 </Button>
-                                {selected && selectedClaimIdNumber && evidenceClaimAttachmentIds[option.key] && (
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                    onClick={() => void removeEvidenceFromClaim(option.key)}
-                                  >
-                                    Remove from claim
-                                  </Button>
-                                )}
+                                {selected &&
+                                  selectedClaimIdNumber &&
+                                  evidenceClaimAttachmentIds[option.key] && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs"
+                                      onClick={() => void removeEvidenceFromClaim(option.key)}
+                                    >
+                                      Remove from claim
+                                    </Button>
+                                  )}
                               </div>
                             </div>
                           );
@@ -3232,21 +3448,20 @@ export default function NewPreauthPage() {
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>DHA Visit Not Active</AlertTitle>
-              <AlertDescription className="text-xs">
-                {consentRefreshReason}
-              </AlertDescription>
+              <AlertDescription className="text-xs">{consentRefreshReason}</AlertDescription>
             </Alert>
           )}
 
           {canReuseClaimConsent ? (
             <Card>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center gap-2 rounded-md bg-green-50 dark:bg-green-900/10 p-3 text-sm text-green-800 dark:text-green-400">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800 dark:bg-green-900/10 dark:text-green-400">
                   <CheckCircle2 className="h-4 w-4" />
                   <span>Using active claim consent token for normal same-day preauth.</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Intervention is not elective (`needsManualPreauthApproval` is false/absent), so preauth uses the existing visit consent token.
+                  Intervention is not elective (`needsManualPreauthApproval` is false/absent), so
+                  preauth uses the existing visit consent token.
                 </p>
               </CardContent>
             </Card>
@@ -3261,13 +3476,13 @@ export default function NewPreauthPage() {
             />
           ) : (
             <Card>
-              <CardContent className="p-4 space-y-3">
+              <CardContent className="space-y-3 p-4">
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertTitle>No SHA Member Record</AlertTitle>
                   <AlertDescription>
-                    No SHA member record found for this patient. Enter the consent token manually
-                    if you already have one from a prior visit.
+                    No SHA member record found for this patient. Enter the consent token manually if
+                    you already have one from a prior visit.
                   </AlertDescription>
                 </Alert>
                 <div className="space-y-1.5">
@@ -3286,7 +3501,7 @@ export default function NewPreauthPage() {
 
           {/* Show consent status */}
           {consentToken && (
-            <div className="flex items-center gap-2 rounded-md bg-green-50 dark:bg-green-900/10 p-3 text-sm text-green-800 dark:text-green-400">
+            <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-800 dark:bg-green-900/10 dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" />
               <span>Consent token available</span>
             </div>
@@ -3308,12 +3523,16 @@ export default function NewPreauthPage() {
               {diagnosisChips.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {diagnosisChips.map((chip) => (
-                    <Badge key={chip.code} variant="secondary" className="gap-1 pr-1 font-mono text-xs">
+                    <Badge
+                      key={chip.code}
+                      variant="secondary"
+                      className="gap-1 pr-1 font-mono text-xs"
+                    >
                       {chip.code}
                       <button
                         type="button"
                         onClick={() => removeDiagnosis(chip.code)}
-                        className="ml-1 rounded-full hover:bg-muted p-0.5"
+                        className="ml-1 rounded-full p-0.5 hover:bg-muted"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -3338,12 +3557,14 @@ export default function NewPreauthPage() {
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    const code = diagnosisInput.icd11Code?.trim()
-                      || diagnosisInput.icd10Display.split(' - ')[0]?.trim();
+                    const code =
+                      diagnosisInput.icd11Code?.trim() ||
+                      diagnosisInput.icd10Display.split(' - ')[0]?.trim();
                     if (!code) return;
-                    const description = diagnosisInput.icd11Display?.split(' - ').slice(1).join(' - ').trim()
-                      || diagnosisInput.icd10Display?.trim()
-                      || code;
+                    const description =
+                      diagnosisInput.icd11Display?.split(' - ').slice(1).join(' - ').trim() ||
+                      diagnosisInput.icd10Display?.trim() ||
+                      code;
                     addDiagnosis({ code, description });
                     setDiagnosisInput(emptyDiagnosisCodeValue());
                   }}
@@ -3359,7 +3580,9 @@ export default function NewPreauthPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">
                 Doctors / Practitioners
-                {(typeConfig?.requiresDoctors || doctorAuthorizationRequired) && <span className="text-destructive ml-1">*</span>}
+                {(typeConfig?.requiresDoctors || doctorAuthorizationRequired) && (
+                  <span className="ml-1 text-destructive">*</span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -3376,12 +3599,16 @@ export default function NewPreauthPage() {
               {doctorChips.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {doctorChips.map((doc) => (
-                    <Badge key={doc.registration_number} variant="secondary" className="gap-1 pr-1 text-xs">
+                    <Badge
+                      key={doc.registration_number}
+                      variant="secondary"
+                      className="gap-1 pr-1 text-xs"
+                    >
                       {doc.name} ({doc.registration_number})
                       <button
                         type="button"
                         onClick={() => removeDoctor(doc.registration_number)}
-                        className="ml-1 rounded-full hover:bg-muted p-0.5"
+                        className="ml-1 rounded-full p-0.5 hover:bg-muted"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -3397,7 +3624,8 @@ export default function NewPreauthPage() {
                     setSelectedStaffUserId(staff.user);
                     addDoctor({
                       name: staff.full_name || `Staff ${staff.id}`,
-                      registration_number: staff.license_number || staff.employee_id || String(staff.id),
+                      registration_number:
+                        staff.license_number || staff.employee_id || String(staff.id),
                       identification_type: 'registration_number',
                       regulation_body: 'KMPDC',
                     });
@@ -3415,13 +3643,17 @@ export default function NewPreauthPage() {
 
               {showManualDoctorForm && (
                 <div className="space-y-2 rounded-md border p-3">
-                  <p className="text-xs text-muted-foreground">Enter ID, lookup HWR, then review and add.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Enter ID, lookup HWR, then review and add.
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                     <div className="space-y-1">
                       <Label className="text-xs">Lookup ID Type</Label>
                       <select
                         value={manualLookupIdType}
-                        onChange={(e) => setManualLookupIdType(e.target.value as 'National ID' | 'passport')}
+                        onChange={(e) =>
+                          setManualLookupIdType(e.target.value as 'National ID' | 'passport')
+                        }
                         className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
                       >
                         <option value="National ID">National ID</option>
@@ -3519,9 +3751,9 @@ export default function NewPreauthPage() {
                 <p className="text-xs text-muted-foreground">
                   Auto-filled from selected intervention. Add more codes as needed.
                 </p>
-                <div className="flex flex-wrap gap-1.5 min-h-[2rem] rounded-md border p-2">
+                <div className="flex min-h-[2rem] flex-wrap gap-1.5 rounded-md border p-2">
                   {tariffChips.map((code) => (
-                    <Badge key={code} variant="secondary" className="gap-1 text-xs font-mono">
+                    <Badge key={code} variant="secondary" className="gap-1 font-mono text-xs">
                       {code}
                       <button
                         type="button"
@@ -3546,8 +3778,10 @@ export default function NewPreauthPage() {
                         setTariffInput('');
                       }
                     }}
-                    placeholder={tariffChips.length > 0 ? 'Add more codes...' : 'e.g., SHA-19-001-A'}
-                    className="flex-1 min-w-[150px] border-0 p-0 h-6 text-sm shadow-none focus-visible:ring-0"
+                    placeholder={
+                      tariffChips.length > 0 ? 'Add more codes...' : 'e.g., SHA-19-001-A'
+                    }
+                    className="h-6 min-w-[150px] flex-1 border-0 p-0 text-sm shadow-none focus-visible:ring-0"
                   />
                 </div>
               </div>
@@ -3602,7 +3836,8 @@ export default function NewPreauthPage() {
                   placeholder="billing@facility.example"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Used by DHA for provider notifications; you can override the default before submit.
+                  Used by DHA for provider notifications; you can override the default before
+                  submit.
                 </p>
               </div>
 
@@ -3618,13 +3853,25 @@ export default function NewPreauthPage() {
                     <p className="text-xs text-muted-foreground">Required preauth documents</p>
                     {effectiveRequiredDocumentTypes.map((docType) => {
                       const isFulfilled = fulfilledRequiredDocTypes.has(docType);
-                      const hasEvidenceOption = preauthEvidenceOptions.some((option) => option.documentType === docType);
+                      const hasEvidenceOption = preauthEvidenceOptions.some(
+                        (option) => option.documentType === docType
+                      );
                       const typedDocs = documentsByRequiredType[docType] || [];
                       const hasTypedDocs = typedDocs.length > 0;
-                      const canGenerate = AUTO_GENERATABLE_PREAUTH_DOC_TYPES.has(docType)
-                        && !!(selectedEncounterIdNumber || selectedClaim?.encounter || selectedClaimIdNumber || patientId || interventionCode);
+                      const canGenerate =
+                        AUTO_GENERATABLE_PREAUTH_DOC_TYPES.has(docType) &&
+                        !!(
+                          selectedEncounterIdNumber ||
+                          selectedClaim?.encounter ||
+                          selectedClaimIdNumber ||
+                          patientId ||
+                          interventionCode
+                        );
                       return (
-                        <div key={docType} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5">
+                        <div
+                          key={docType}
+                          className="flex items-center justify-between gap-2 rounded border px-2 py-1.5"
+                        >
                           <div className="min-w-0">
                             <p className="text-xs font-medium">{docType.replace(/_/g, ' ')}</p>
                             <p className="text-[11px] text-muted-foreground">
@@ -3721,7 +3968,8 @@ export default function NewPreauthPage() {
                         className="underline-offset-2 hover:underline"
                         onClick={() => openAttachmentDialog(doc)}
                       >
-                        {doc.displayName} ({(((doc.fileSizeBytes ?? doc.file.size) || 0) / 1024).toFixed(0)} KB)
+                        {doc.displayName} (
+                        {(((doc.fileSizeBytes ?? doc.file.size) || 0) / 1024).toFixed(0)} KB)
                       </button>
                     </Badge>
                   ))}
@@ -3737,7 +3985,7 @@ export default function NewPreauthPage() {
           <h3 className="text-lg font-medium">5. Review &amp; Submit</h3>
 
           <Card>
-            <CardContent className="p-4 space-y-4">
+            <CardContent className="space-y-4 p-4">
               <div className="flex items-center gap-2">
                 {selectedType && (
                   <Badge variant="outline" className="capitalize">
@@ -3767,7 +4015,8 @@ export default function NewPreauthPage() {
                 <Info className="h-4 w-4" />
                 <AlertDescription>
                   <span className="font-medium">
-                    {resolvedPreauthAttachmentSummary.total} attachment{resolvedPreauthAttachmentSummary.total === 1 ? '' : 's'} will be submitted
+                    {resolvedPreauthAttachmentSummary.total} attachment
+                    {resolvedPreauthAttachmentSummary.total === 1 ? '' : 's'} will be submitted
                   </span>
                   {` (${resolvedPreauthAttachmentSummary.fromUploads} from this form, ${resolvedPreauthAttachmentSummary.fromClaim} existing on claim)`}
                   {resolvedPreauthAttachmentSummary.dedupedOut > 0
@@ -3781,9 +4030,15 @@ export default function NewPreauthPage() {
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription className="flex items-center justify-between gap-3">
                     <span>
-                      {staleAttachmentRefs.length} stale attachment reference{staleAttachmentRefs.length === 1 ? '' : 's'} detected.
+                      {staleAttachmentRefs.length} stale attachment reference
+                      {staleAttachmentRefs.length === 1 ? '' : 's'} detected.
                     </span>
-                    <Button type="button" size="sm" variant="outline" onClick={removeStaleAttachmentRefs}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={removeStaleAttachmentRefs}
+                    >
                       Remove stale references
                     </Button>
                   </AlertDescription>
@@ -3793,17 +4048,27 @@ export default function NewPreauthPage() {
               <div className="rounded-md border p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-sm font-medium">Included attachments</p>
-                  <span className="text-xs text-muted-foreground">{includedAttachmentRows.length} selected</span>
+                  <span className="text-xs text-muted-foreground">
+                    {includedAttachmentRows.length} selected
+                  </span>
                 </div>
                 {includedAttachmentRows.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No attachments selected yet.</p>
                 ) : (
                   <div className="space-y-1.5">
                     {includedAttachmentRows.map((row) => (
-                      <div key={row.key} className="flex items-center justify-between gap-2 rounded border px-2 py-1">
+                      <div
+                        key={row.key}
+                        className="flex items-center justify-between gap-2 rounded border px-2 py-1"
+                      >
                         <div className="min-w-0">
                           <p className="truncate text-xs font-medium">{row.title}</p>
-                          <p className={cn('text-[11px] text-muted-foreground', row.stale && 'text-destructive')}>
+                          <p
+                            className={cn(
+                              'text-[11px] text-muted-foreground',
+                              row.stale && 'text-destructive'
+                            )}
+                          >
                             {row.stale ? 'stale reference' : row.sourceLabel}
                           </p>
                         </div>
@@ -3822,7 +4087,7 @@ export default function NewPreauthPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 <div>
                   <span className="text-muted-foreground">Patient</span>
                   <p>ID: {patientId}</p>
@@ -3843,22 +4108,28 @@ export default function NewPreauthPage() {
                 <div>
                   <span className="text-muted-foreground">Fund Coverage</span>
                   {isInterventionFundCovered === true ? (
-                    <p className="text-green-700 dark:text-green-400">Patient fund covers this intervention</p>
+                    <p className="text-green-700 dark:text-green-400">
+                      Patient fund covers this intervention
+                    </p>
                   ) : isInterventionFundCovered === false ? (
-                    <p className="text-amber-700 dark:text-amber-400">Fund mismatch: patient may not be covered</p>
+                    <p className="text-amber-700 dark:text-amber-400">
+                      Fund mismatch: patient may not be covered
+                    </p>
                   ) : (
                     <p className="text-muted-foreground">Coverage not confirmed</p>
                   )}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Token used for submit</span>
-                  <p className="font-mono text-xs truncate max-w-[200px]">
-                    {effectiveConsentToken ? `${effectiveConsentToken.slice(0, 40)}...` : 'Resolved on submit'}
+                  <p className="max-w-[200px] truncate font-mono text-xs">
+                    {effectiveConsentToken
+                      ? `${effectiveConsentToken.slice(0, 40)}...`
+                      : 'Resolved on submit'}
                   </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Claim-derived token</span>
-                  <p className="font-mono text-xs truncate max-w-[200px]">
+                  <p className="max-w-[200px] truncate font-mono text-xs">
                     {claimDerivedTokenStatus.text}
                   </p>
                   {claimDerivedTokenStatus.helper && (
@@ -3869,8 +4140,10 @@ export default function NewPreauthPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Fresh/session token</span>
-                  <p className="font-mono text-xs truncate max-w-[200px]">
-                    {consentToken ? `${consentToken.slice(0, 40)}...` : 'Not captured in this session'}
+                  <p className="max-w-[200px] truncate font-mono text-xs">
+                    {consentToken
+                      ? `${consentToken.slice(0, 40)}...`
+                      : 'Not captured in this session'}
                   </p>
                 </div>
                 {claimId && (
@@ -3895,13 +4168,17 @@ export default function NewPreauthPage() {
                 </div>
                 <div className="sm:col-span-2">
                   <span className="text-muted-foreground">Provider Notification Email</span>
-                  <p className="break-all">{providerNotificationEmail || 'Will use facility default'}</p>
+                  <p className="break-all">
+                    {providerNotificationEmail || 'Will use facility default'}
+                  </p>
                 </div>
                 {selectedType === 'surgical' && (
                   <>
                     <div className="sm:col-span-2">
                       <span className="text-muted-foreground">Chief Complaint</span>
-                      <p>{extractedEncounterFields.chiefComplaint || 'Not available from encounter'}</p>
+                      <p>
+                        {extractedEncounterFields.chiefComplaint || 'Not available from encounter'}
+                      </p>
                     </div>
                     <div className="sm:col-span-2">
                       <span className="text-muted-foreground">Vital Signs</span>
@@ -3909,15 +4186,24 @@ export default function NewPreauthPage() {
                     </div>
                     <div className="sm:col-span-2">
                       <span className="text-muted-foreground">History of Present Illness</span>
-                      <p>{extractedEncounterFields.historyOfPresentIllness || 'Not available from encounter'}</p>
+                      <p>
+                        {extractedEncounterFields.historyOfPresentIllness ||
+                          'Not available from encounter'}
+                      </p>
                     </div>
                     <div className="sm:col-span-2">
                       <span className="text-muted-foreground">Physical Examination</span>
-                      <p>{extractedEncounterFields.physicalExamination || 'Not available from encounter'}</p>
+                      <p>
+                        {extractedEncounterFields.physicalExamination ||
+                          'Not available from encounter'}
+                      </p>
                     </div>
                     <div className="sm:col-span-2">
                       <span className="text-muted-foreground">Investigation Report Details</span>
-                      <p>{extractedEncounterFields.investigationReportDetails || 'Not available from encounter'}</p>
+                      <p>
+                        {extractedEncounterFields.investigationReportDetails ||
+                          'Not available from encounter'}
+                      </p>
                     </div>
                   </>
                 )}
@@ -3927,7 +4213,7 @@ export default function NewPreauthPage() {
               {diagnosisChips.length > 0 && (
                 <div>
                   <span className="text-sm text-muted-foreground">Diagnoses</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
+                  <div className="mt-1 flex flex-wrap gap-1.5">
                     {diagnosisChips.map((d) => (
                       <Badge key={d.code} variant="outline" className="font-mono text-xs">
                         {d.code}
@@ -3941,7 +4227,7 @@ export default function NewPreauthPage() {
               {doctorChips.length > 0 && (
                 <div>
                   <span className="text-sm text-muted-foreground">Doctors</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
+                  <div className="mt-1 flex flex-wrap gap-1.5">
                     {doctorChips.map((d) => (
                       <Badge key={d.registration_number} variant="outline" className="text-xs">
                         {d.name}
@@ -3955,7 +4241,7 @@ export default function NewPreauthPage() {
               {tariffChips.length > 0 && (
                 <div className="text-sm">
                   <span className="text-muted-foreground">Tariff Items</span>
-                  <p className="font-mono text-xs mt-0.5">{tariffChips.join(', ')}</p>
+                  <p className="mt-0.5 font-mono text-xs">{tariffChips.join(', ')}</p>
                 </div>
               )}
 
@@ -3971,7 +4257,7 @@ export default function NewPreauthPage() {
               {documents.length > 0 && (
                 <div className="text-sm">
                   <span className="text-muted-foreground">Documents ({documents.length})</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
+                  <div className="mt-1 flex flex-wrap gap-1.5">
                     {documents.map((doc) => (
                       <Badge key={doc.key} variant="outline" className="text-xs">
                         {doc.displayName}
@@ -3986,7 +4272,8 @@ export default function NewPreauthPage() {
                   <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>Required Documents Pending</AlertTitle>
                   <AlertDescription>
-                    Attach all required preauth documents before submission: {missingRequiredDocumentTypes.join(', ').replace(/_/g, ' ')}.
+                    Attach all required preauth documents before submission:{' '}
+                    {missingRequiredDocumentTypes.join(', ').replace(/_/g, ' ')}.
                   </AlertDescription>
                 </Alert>
               )}
@@ -3996,7 +4283,9 @@ export default function NewPreauthPage() {
                   <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>Consent and Intervention Mismatch</AlertTitle>
                   <AlertDescription>
-                    The consent token was captured for {consentedInterventionCode} but this preauth is for {interventionCode}. Please complete consent again for the selected intervention.
+                    The consent token was captured for {consentedInterventionCode} but this preauth
+                    is for {interventionCode}. Please complete consent again for the selected
+                    intervention.
                   </AlertDescription>
                 </Alert>
               )}
@@ -4018,10 +4307,12 @@ export default function NewPreauthPage() {
           {selectedType === 'elective' && (
             <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-900/10">
               <Info className="h-4 w-4 text-amber-600" />
-              <AlertTitle className="text-amber-800 dark:text-amber-400">Doctor Consent Required</AlertTitle>
-              <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
-                This elective preauth will trigger doctor consent approval.
-                Listed doctors will receive a notification to approve via Practice360.
+              <AlertTitle className="text-amber-800 dark:text-amber-400">
+                Doctor Consent Required
+              </AlertTitle>
+              <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
+                This elective preauth will trigger doctor consent approval. Listed doctors will
+                receive a notification to approve via Practice360.
               </AlertDescription>
             </Alert>
           )}
@@ -4041,9 +4332,7 @@ export default function NewPreauthPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Manage Attachment</DialogTitle>
-            <DialogDescription>
-              View, rename, replace, or remove this attachment.
-            </DialogDescription>
+            <DialogDescription>View, rename, replace, or remove this attachment.</DialogDescription>
           </DialogHeader>
 
           {activeDocument ? (
@@ -4065,7 +4354,10 @@ export default function NewPreauthPage() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {(((activeDocument.fileSizeBytes ?? activeDocument.file.size) || 0) / 1024).toFixed(0)} KB
+                  {(
+                    ((activeDocument.fileSizeBytes ?? activeDocument.file.size) || 0) / 1024
+                  ).toFixed(0)}{' '}
+                  KB
                   {activeDocument.claimAttachmentId ? ' • Saved to claim' : ' • Draft only'}
                 </p>
               </div>
@@ -4088,7 +4380,9 @@ export default function NewPreauthPage() {
                   onChange={(e) => setAttachmentReplacementFile(e.target.files?.[0] || null)}
                 />
                 {attachmentReplacementFile && (
-                  <p className="text-xs text-muted-foreground">Selected: {attachmentReplacementFile.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Selected: {attachmentReplacementFile.name}
+                  </p>
                 )}
               </div>
 
@@ -4097,7 +4391,8 @@ export default function NewPreauthPage() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    const url = activeDocument.claimFileUrl || URL.createObjectURL(activeDocument.file);
+                    const url =
+                      activeDocument.claimFileUrl || URL.createObjectURL(activeDocument.file);
                     window.open(url, '_blank', 'noopener,noreferrer');
                     if (!activeDocument.claimFileUrl) {
                       setTimeout(() => URL.revokeObjectURL(url), 5000);
@@ -4149,7 +4444,7 @@ export default function NewPreauthPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex justify-between pt-4 border-t">
+      <div className="flex justify-between border-t pt-4">
         <Button
           variant="outline"
           onClick={() => {
@@ -4161,15 +4456,20 @@ export default function NewPreauthPage() {
         </Button>
 
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleClearAll}
-            disabled={isSubmitting}
-          >
+          <Button variant="outline" onClick={handleClearAll} disabled={isSubmitting}>
             <X className="mr-2 h-4 w-4" />
             Clear all
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting || !showReviewSection || hasDuplicate || !hasAllRequiredDocuments || hasConsentInterventionMismatch}>
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              isSubmitting ||
+              !showReviewSection ||
+              hasDuplicate ||
+              !hasAllRequiredDocuments ||
+              hasConsentInterventionMismatch
+            }
+          >
             {isSubmitting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

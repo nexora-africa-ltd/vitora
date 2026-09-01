@@ -49,11 +49,33 @@ const OWNERSHIPS: { value: FacilityOwnership; label: string }[] = [
 ];
 
 const OPERATING_MODES: { value: FacilityOperatingMode; label: string; description: string }[] = [
-  { value: 'FULL_HMIS', label: 'Full HMIS', description: 'All clinical workflow modules are managed individually below.' },
-  { value: 'STANDALONE_LAB', label: 'Standalone Lab', description: 'Lab-only operation. Inpatient, ER, triage, scheduling, etc. will be disabled on save.' },
-  { value: 'STANDALONE_PHARMACY', label: 'Standalone Pharmacy', description: 'Retail/walk-in pharmacy. Clinical workflow modules will be disabled on save.' },
-  { value: 'STANDALONE_IMAGING', label: 'Standalone Imaging', description: 'Imaging-only operation. Clinical workflow modules will be disabled on save.' },
-  { value: 'STANDALONE_DIAGNOSTIC', label: 'Standalone Diagnostic Centre', description: 'Lab + imaging diagnostic centre. Clinical workflow modules will be disabled on save.' },
+  {
+    value: 'FULL_HMIS',
+    label: 'Full HMIS',
+    description: 'All clinical workflow modules are managed individually below.',
+  },
+  {
+    value: 'STANDALONE_LAB',
+    label: 'Standalone Lab',
+    description:
+      'Lab-only operation. Inpatient, ER, triage, scheduling, etc. will be disabled on save.',
+  },
+  {
+    value: 'STANDALONE_PHARMACY',
+    label: 'Standalone Pharmacy',
+    description: 'Retail/walk-in pharmacy. Clinical workflow modules will be disabled on save.',
+  },
+  {
+    value: 'STANDALONE_IMAGING',
+    label: 'Standalone Imaging',
+    description: 'Imaging-only operation. Clinical workflow modules will be disabled on save.',
+  },
+  {
+    value: 'STANDALONE_DIAGNOSTIC',
+    label: 'Standalone Diagnostic Centre',
+    description:
+      'Lab + imaging diagnostic centre. Clinical workflow modules will be disabled on save.',
+  },
 ];
 
 const MODULE_LABELS: { key: string; label: string }[] = [
@@ -97,10 +119,36 @@ const MODULE_LABELS: { key: string; label: string }[] = [
  */
 const MODE_RELEVANT_MODULES: Record<FacilityOperatingMode, string[] | 'all'> = {
   FULL_HMIS: 'all',
-  STANDALONE_LAB: ['has_laboratory', 'has_lis_standalone', 'has_billing', 'has_inventory', 'has_quality'],
-  STANDALONE_PHARMACY: ['has_pharmacy', 'has_pharmacy_standalone', 'has_billing', 'has_inventory', 'has_quality'],
-  STANDALONE_IMAGING: ['has_imaging', 'has_imaging_standalone', 'has_billing', 'has_inventory', 'has_quality'],
-  STANDALONE_DIAGNOSTIC: ['has_laboratory', 'has_imaging', 'has_lis_standalone', 'has_imaging_standalone', 'has_billing', 'has_inventory', 'has_quality'],
+  STANDALONE_LAB: [
+    'has_laboratory',
+    'has_lis_standalone',
+    'has_billing',
+    'has_inventory',
+    'has_quality',
+  ],
+  STANDALONE_PHARMACY: [
+    'has_pharmacy',
+    'has_pharmacy_standalone',
+    'has_billing',
+    'has_inventory',
+    'has_quality',
+  ],
+  STANDALONE_IMAGING: [
+    'has_imaging',
+    'has_imaging_standalone',
+    'has_billing',
+    'has_inventory',
+    'has_quality',
+  ],
+  STANDALONE_DIAGNOSTIC: [
+    'has_laboratory',
+    'has_imaging',
+    'has_lis_standalone',
+    'has_imaging_standalone',
+    'has_billing',
+    'has_inventory',
+    'has_quality',
+  ],
 };
 
 export default function EditFacilityPage() {
@@ -110,7 +158,12 @@ export default function EditFacilityPage() {
   const queryClient = useQueryClient();
   const facilityId = parseInt(params.id as string);
   const { updateUserFacility } = useAuth();
-  const { facility: activeFacility, facilityOverride, isUsingFacilityOverride, setFacilityOverride } = useFacility();
+  const {
+    facility: activeFacility,
+    facilityOverride,
+    isUsingFacilityOverride,
+    setFacilityOverride,
+  } = useFacility();
 
   const { data: facility, isLoading } = useQuery({
     queryKey: ['facility', facilityId],
@@ -201,7 +254,8 @@ export default function EditFacilityPage() {
         sha_contracted: facility.sha_contracted,
         sha_facility_code: facility.sha_facility_code || '',
         sha_contract_expiry: facility.sha_contract_expiry || '',
-        operating_mode: (facility.operating_mode as FacilityOperatingMode | undefined) ?? 'FULL_HMIS',
+        operating_mode:
+          (facility.operating_mode as FacilityOperatingMode | undefined) ?? 'FULL_HMIS',
         is_active: facility.is_active,
         workstation_id: facility.workstation_id || '',
         biometrics_enforced: facility.biometrics_enforced ?? false,
@@ -294,7 +348,11 @@ export default function EditFacilityPage() {
         }
         if (Object.keys(mapped).length > 0) {
           setFormErrors((prev) => ({ ...prev, ...mapped }));
-          toast({ variant: 'destructive', title: 'Validation error', description: 'Please fix the highlighted fields.' });
+          toast({
+            variant: 'destructive',
+            title: 'Validation error',
+            description: 'Please fix the highlighted fields.',
+          });
           return;
         }
       }
@@ -309,7 +367,11 @@ export default function EditFacilityPage() {
   const handleChange = (field: string, value: string | boolean | number | undefined) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (formErrors[field]) {
-      setFormErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+      setFormErrors((prev) => {
+        const n = { ...prev };
+        delete n[field];
+        return n;
+      });
     }
   };
 
@@ -398,7 +460,7 @@ export default function EditFacilityPage() {
         {/* General */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Building2 className="h-4 w-4 text-muted-foreground" />
               Facility Details
             </CardTitle>
@@ -406,13 +468,23 @@ export default function EditFacilityPage() {
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Facility Name *</Label>
-              <Input id="name" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} />
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+              />
               {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="mfl_code">MFL Code *</Label>
-              <Input id="mfl_code" value={formData.mfl_code} onChange={(e) => handleChange('mfl_code', e.target.value)} />
-              {formErrors.mfl_code && <p className="text-xs text-destructive">{formErrors.mfl_code}</p>}
+              <Input
+                id="mfl_code"
+                value={formData.mfl_code}
+                onChange={(e) => handleChange('mfl_code', e.target.value)}
+              />
+              {formErrors.mfl_code && (
+                <p className="text-xs text-destructive">{formErrors.mfl_code}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>KEPH Level *</Label>
@@ -425,7 +497,9 @@ export default function EditFacilityPage() {
                   }
                 }}
               >
-                <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select level" />
+                </SelectTrigger>
                 <SelectContent>
                   {FACILITY_LEVEL_OPTIONS.map((l) => (
                     <SelectItem key={l.value} value={l.value}>
@@ -445,27 +519,45 @@ export default function EditFacilityPage() {
                 }
                 disabled={!supportsFacilityLevelSubtype(formData.level)}
               >
-                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__NONE__">None</SelectItem>
                   {FACILITY_LEVEL_SUBTYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Ownership *</Label>
-              <Select value={formData.ownership} onValueChange={(v) => handleChange('ownership', v)}>
-                <SelectTrigger><SelectValue placeholder="Select ownership" /></SelectTrigger>
+              <Select
+                value={formData.ownership}
+                onValueChange={(v) => handleChange('ownership', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select ownership" />
+                </SelectTrigger>
                 <SelectContent>
-                  {OWNERSHIPS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  {OWNERSHIPS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {formErrors.ownership && <p className="text-xs text-destructive">{formErrors.ownership}</p>}
+              {formErrors.ownership && (
+                <p className="text-xs text-destructive">{formErrors.ownership}</p>
+              )}
             </div>
             <div className="flex items-center gap-3 pt-4">
-              <Switch checked={formData.is_active} onCheckedChange={(v) => handleChange('is_active', v)} />
+              <Switch
+                checked={formData.is_active}
+                onCheckedChange={(v) => handleChange('is_active', v)}
+              />
               <Label>{formData.is_active ? 'Active' : 'Inactive'}</Label>
             </div>
           </CardContent>
@@ -475,7 +567,7 @@ export default function EditFacilityPage() {
         {facility && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
                 Location
               </CardTitle>
@@ -490,14 +582,17 @@ export default function EditFacilityPage() {
         {/* SHA */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Shield className="h-4 w-4 text-muted-foreground" />
               SHA Integration
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="flex items-center gap-3">
-              <Switch checked={formData.sha_contracted} onCheckedChange={(v) => handleChange('sha_contracted', v)} />
+              <Switch
+                checked={formData.sha_contracted}
+                onCheckedChange={(v) => handleChange('sha_contracted', v)}
+              />
               <Label>SHA Contracted</Label>
             </div>
             {formData.sha_contracted && (
@@ -529,7 +624,8 @@ export default function EditFacilityPage() {
               <div>
                 <Label>Hide capitation interventions by default</Label>
                 <p className="text-xs text-muted-foreground">
-                  Intervention lookup hides CAPITATION codes unless payment mechanism is explicitly set.
+                  Intervention lookup hides CAPITATION codes unless payment mechanism is explicitly
+                  set.
                 </p>
               </div>
             </div>
@@ -539,7 +635,7 @@ export default function EditFacilityPage() {
         {/* Integrations & Biometrics */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Fingerprint className="h-4 w-4 text-muted-foreground" />
               Integrations & Biometrics
             </CardTitle>
@@ -553,7 +649,9 @@ export default function EditFacilityPage() {
                 value={formData.dhis2_org_unit}
                 onChange={(e) => handleChange('dhis2_org_unit', e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Used for MOH aggregate reporting and DHIS2 submission.</p>
+              <p className="text-xs text-muted-foreground">
+                Used for MOH aggregate reporting and DHIS2 submission.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="workstation_id">Biometric Workstation ID</Label>
@@ -563,7 +661,9 @@ export default function EditFacilityPage() {
                 value={formData.workstation_id}
                 onChange={(e) => handleChange('workstation_id', e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Identifies this workstation for DHA biometric consent.</p>
+              <p className="text-xs text-muted-foreground">
+                Identifies this workstation for DHA biometric consent.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="biometrics_agent_national_id">Biometric Agent National ID</Label>
@@ -573,13 +673,20 @@ export default function EditFacilityPage() {
                 value={formData.biometrics_agent_national_id}
                 onChange={(e) => handleChange('biometrics_agent_national_id', e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">National ID of the staff member registered with DHA for biometric authorization.</p>
+              <p className="text-xs text-muted-foreground">
+                National ID of the staff member registered with DHA for biometric authorization.
+              </p>
             </div>
             <div className="flex items-center gap-3 pt-4">
-              <Switch checked={formData.biometrics_enforced} onCheckedChange={(v) => handleChange('biometrics_enforced', v)} />
+              <Switch
+                checked={formData.biometrics_enforced}
+                onCheckedChange={(v) => handleChange('biometrics_enforced', v)}
+              />
               <div>
                 <Label>Biometrics enforced</Label>
-                <p className="text-xs text-muted-foreground">When enabled, OTP-only consent is blocked.</p>
+                <p className="text-xs text-muted-foreground">
+                  When enabled, OTP-only consent is blocked.
+                </p>
               </div>
             </div>
           </CardContent>
@@ -588,13 +695,13 @@ export default function EditFacilityPage() {
         {/* Modules */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Boxes className="h-4 w-4 text-muted-foreground" />
               Module Capabilities
             </CardTitle>
           </CardHeader>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Boxes className="h-4 w-4 text-muted-foreground" />
               Operating Mode
             </CardTitle>
@@ -606,10 +713,14 @@ export default function EditFacilityPage() {
                 value={formData.operating_mode}
                 onValueChange={(v) => handleChange('operating_mode', v)}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {OPERATING_MODES.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -618,11 +729,10 @@ export default function EditFacilityPage() {
               </p>
               {formData.operating_mode !== 'FULL_HMIS' && (
                 <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100">
-                  Saving will cascade module flags below: clinical workflow modules
-                  (inpatient, emergency, triage, maternity, theatre, dialysis, ICU,
-                  mortuary, blood bank, allied health, scheduling, surveillance,
-                  immunizations, outpatient) will be turned OFF and the relevant
-                  standalone module + billing + inventory will be turned ON.
+                  Saving will cascade module flags below: clinical workflow modules (inpatient,
+                  emergency, triage, maternity, theatre, dialysis, ICU, mortuary, blood bank, allied
+                  health, scheduling, surveillance, immunizations, outpatient) will be turned OFF
+                  and the relevant standalone module + billing + inventory will be turned ON.
                 </div>
               )}
             </div>
@@ -632,13 +742,11 @@ export default function EditFacilityPage() {
         {/* Modules */}
         <Card>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {MODULE_LABELS
-                .filter(({ key }) => {
-                  const relevant = MODE_RELEVANT_MODULES[formData.operating_mode];
-                  return relevant === 'all' || relevant.includes(key);
-                })
-                .map(({ key, label }) => (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {MODULE_LABELS.filter(({ key }) => {
+                const relevant = MODE_RELEVANT_MODULES[formData.operating_mode];
+                return relevant === 'all' || relevant.includes(key);
+              }).map(({ key, label }) => (
                 <div key={key} className="flex items-center gap-2">
                   <Switch
                     checked={formData[key as keyof typeof formData] as boolean}

@@ -8,7 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Download } from 'lucide-react';
 import { surveillanceApi } from '@/lib/api/surveillance';
 import { formatDate } from '@/lib/utils/format';
@@ -24,7 +31,11 @@ export default function IDSRReportDetailPage() {
   const [exportingAdx, setExportingAdx] = useState(false);
   const [exportingSdmx, setExportingSdmx] = useState(false);
 
-  const { data: report, isLoading, error } = useQuery({
+  const {
+    data: report,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['idsr-report', reportId],
     queryFn: () => surveillanceApi.getIDSRReport(reportId),
     enabled: Number.isFinite(reportId),
@@ -70,9 +81,10 @@ export default function IDSRReportDetailPage() {
     const setLoading = format === 'adx' ? setExportingAdx : setExportingSdmx;
     setLoading(true);
     try {
-      const blob = format === 'adx'
-        ? await surveillanceApi.exportAdx(reportId)
-        : await surveillanceApi.exportSdmx(reportId);
+      const blob =
+        format === 'adx'
+          ? await surveillanceApi.exportAdx(reportId)
+          : await surveillanceApi.exportSdmx(reportId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -127,19 +139,19 @@ export default function IDSRReportDetailPage() {
         helpContent="Review disease summaries, approve, and submit weekly IDSR reports to DHIS2/KHIS."
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {report.facility_name || 'Facility'}
             <span className="text-muted-foreground"> • {report.county_name || 'County'}</span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {formatDate(report.week_start_date)} - {formatDate(report.week_end_date)}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           {report.outbreak_declared && (
-            <Badge variant="destructive" className="shrink-0 w-fit self-start sm:self-auto">
+            <Badge variant="destructive" className="w-fit shrink-0 self-start sm:self-auto">
               Outbreak
             </Badge>
           )}
@@ -147,11 +159,11 @@ export default function IDSRReportDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         {summaryStats.map((stat) => (
           <Card key={stat.label} className="p-4">
             <p className="text-xs text-muted-foreground">{stat.label}</p>
-            <p className="text-xl font-semibold mt-1">{stat.value}</p>
+            <p className="mt-1 text-xl font-semibold">{stat.value}</p>
           </Card>
         ))}
       </div>
@@ -212,12 +224,22 @@ export default function IDSRReportDetailPage() {
       </Card>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        <Button variant="outline" size="sm" onClick={() => handleExport('adx')} disabled={exportingAdx}>
-          <Download className="h-4 w-4 mr-2" />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleExport('adx')}
+          disabled={exportingAdx}
+        >
+          <Download className="mr-2 h-4 w-4" />
           {exportingAdx ? 'Exporting...' : 'Export ADX'}
         </Button>
-        <Button variant="outline" size="sm" onClick={() => handleExport('sdmx')} disabled={exportingSdmx}>
-          <Download className="h-4 w-4 mr-2" />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleExport('sdmx')}
+          disabled={exportingSdmx}
+        >
+          <Download className="mr-2 h-4 w-4" />
           {exportingSdmx ? 'Exporting...' : 'Export SDMX'}
         </Button>
         <Button variant="outline" onClick={() => setPreviewOpen(true)}>
@@ -235,11 +257,7 @@ export default function IDSRReportDetailPage() {
         )}
       </div>
 
-      <DHIS2PreviewDialog
-        reportId={reportId}
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-      />
+      <DHIS2PreviewDialog reportId={reportId} open={previewOpen} onOpenChange={setPreviewOpen} />
     </div>
   );
 }

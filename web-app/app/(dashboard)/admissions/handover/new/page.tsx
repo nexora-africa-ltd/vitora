@@ -19,7 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useInpatientWards, useCreateShiftHandover, useAdmissions } from '@/lib/hooks/use-inpatient';
+import {
+  useInpatientWards,
+  useCreateShiftHandover,
+  useAdmissions,
+} from '@/lib/hooks/use-inpatient';
 import { useMyStaffProfile, useStaffList } from '@/lib/hooks/use-rbac';
 import { useToast } from '@/lib/hooks/use-toast';
 import { attendanceApi, shiftTypeConfigsApi } from '@/lib/api/scheduling';
@@ -92,7 +96,9 @@ export default function NewHandoverPage() {
   const [criticalPatientsOpen, setCriticalPatientsOpen] = useState(false);
   const [selectedCriticalAdmissionIds, setSelectedCriticalAdmissionIds] = useState<number[]>([]);
   const [selectedPresetAdmissionId, setSelectedPresetAdmissionId] = useState<string>('');
-  const [patientPresetAssignments, setPatientPresetAssignments] = useState<PatientPresetAssignment[]>([]);
+  const [patientPresetAssignments, setPatientPresetAssignments] = useState<
+    PatientPresetAssignment[]
+  >([]);
   const [includeAutoSummary, setIncludeAutoSummary] = useState(true);
 
   const selectedWardId = wardId ? Number(wardId) : undefined;
@@ -110,24 +116,24 @@ export default function NewHandoverPage() {
     for (const config of configured) {
       const normalized = normalizeShiftTypeToHandoverShift(config.shift_type);
       if (!normalized || labelsByShift.has(normalized)) continue;
-      labelsByShift.set(normalized, config.display_label || config.label || SHIFT_FALLBACK_LABELS[normalized]);
+      labelsByShift.set(
+        normalized,
+        config.display_label || config.label || SHIFT_FALLBACK_LABELS[normalized]
+      );
     }
 
     for (const shift of myTodayData?.shifts ?? []) {
       const normalized = normalizeShiftTypeToHandoverShift(shift.shift_type);
       if (!normalized || labelsByShift.has(normalized)) continue;
-      labelsByShift.set(
-        normalized,
-        shift.shift_type_display || SHIFT_FALLBACK_LABELS[normalized]
-      );
+      labelsByShift.set(normalized, shift.shift_type_display || SHIFT_FALLBACK_LABELS[normalized]);
     }
 
-    const ordered = DEFAULT_SHIFT_ORDER
-      .filter((shift) => labelsByShift.has(shift))
-      .map((shift) => ({
+    const ordered = DEFAULT_SHIFT_ORDER.filter((shift) => labelsByShift.has(shift)).map(
+      (shift) => ({
         value: shift,
         label: labelsByShift.get(shift) || SHIFT_FALLBACK_LABELS[shift],
-      }));
+      })
+    );
 
     if (ordered.length > 0) return ordered;
 
@@ -193,11 +199,13 @@ export default function NewHandoverPage() {
 
   const criticalPatientOptions = useMemo(() => {
     if (!selectedWardId) return [];
-    return (activeAdmissions?.results ?? []).map((admission) => ({
-      ward: admission.ward,
-      id: admission.id,
-      label: `${admission.patient_name || `Patient ${admission.patient}`} (${admission.bed_number || 'No bed'})`,
-    })).filter((admission) => admission.ward === selectedWardId)
+    return (activeAdmissions?.results ?? [])
+      .map((admission) => ({
+        ward: admission.ward,
+        id: admission.id,
+        label: `${admission.patient_name || `Patient ${admission.patient}`} (${admission.bed_number || 'No bed'})`,
+      }))
+      .filter((admission) => admission.ward === selectedWardId)
       .map(({ id, label }) => ({ id, label }));
   }, [activeAdmissions?.results, selectedWardId]);
 
@@ -211,7 +219,8 @@ export default function NewHandoverPage() {
   const selectedPresetPatientLabel = useMemo(() => {
     if (!selectedPresetAdmissionId) return '';
     return (
-      criticalPatientOptions.find((option) => option.id === Number(selectedPresetAdmissionId))?.label || ''
+      criticalPatientOptions.find((option) => option.id === Number(selectedPresetAdmissionId))
+        ?.label || ''
     );
   }, [criticalPatientOptions, selectedPresetAdmissionId]);
 
@@ -271,29 +280,39 @@ export default function NewHandoverPage() {
 
   const autoSummaryDraft = useMemo(() => {
     const blocks: string[] = [];
-    const outgoingLabel = shiftOptions.find((item) => item.value === outgoingShift)?.label || outgoingShift;
-    const incomingLabel = shiftOptions.find((item) => item.value === incomingShift)?.label || incomingShift;
+    const outgoingLabel =
+      shiftOptions.find((item) => item.value === outgoingShift)?.label || outgoingShift;
+    const incomingLabel =
+      shiftOptions.find((item) => item.value === incomingShift)?.label || incomingShift;
 
     if (selectedWard?.name) {
       blocks.push(`Ward: ${selectedWard.name}`);
     }
     if (outgoingLabel || incomingLabel) {
-      blocks.push(`Shift transition: ${outgoingLabel || 'Current shift'} -> ${incomingLabel || 'Next shift'}`);
+      blocks.push(
+        `Shift transition: ${outgoingLabel || 'Current shift'} -> ${incomingLabel || 'Next shift'}`
+      );
     }
     if (selectedWard?.occupied_beds !== undefined) {
       blocks.push(`Current occupancy: ${selectedWard.occupied_beds} occupied beds`);
     }
     if (selectedCriticalPatientLabels.length > 0) {
-      blocks.push(`Critical patients:\n${selectedCriticalPatientLabels.map((item) => `- ${item}`).join('\n')}`);
+      blocks.push(
+        `Critical patients:\n${selectedCriticalPatientLabels.map((item) => `- ${item}`).join('\n')}`
+      );
     }
     if (patientPresetAssignments.length > 0) {
       const assignmentLines = patientPresetAssignments.flatMap((assignment) => {
         const lines: string[] = [];
         if (assignment.pendingTasks.length > 0) {
-          lines.push(`- ${assignment.patientLabel} - Pending: ${assignment.pendingTasks.join('; ')}`);
+          lines.push(
+            `- ${assignment.patientLabel} - Pending: ${assignment.pendingTasks.join('; ')}`
+          );
         }
         if (assignment.criticalConcerns.length > 0) {
-          lines.push(`- ${assignment.patientLabel} - Critical: ${assignment.criticalConcerns.join('; ')}`);
+          lines.push(
+            `- ${assignment.patientLabel} - Critical: ${assignment.criticalConcerns.join('; ')}`
+          );
         }
         return lines;
       });
@@ -332,9 +351,10 @@ export default function NewHandoverPage() {
         ? currentValues.filter((item) => item !== presetValue)
         : [...currentValues, presetValue];
 
-      const pendingTasks = category === 'pendingTasks' ? nextValues : existing?.pendingTasks ?? [];
+      const pendingTasks =
+        category === 'pendingTasks' ? nextValues : (existing?.pendingTasks ?? []);
       const criticalConcerns =
-        category === 'criticalConcerns' ? nextValues : existing?.criticalConcerns ?? [];
+        category === 'criticalConcerns' ? nextValues : (existing?.criticalConcerns ?? []);
 
       const withoutCurrent = current.filter((assignment) => assignment.admissionId !== admissionId);
       if (pendingTasks.length === 0 && criticalConcerns.length === 0) {
@@ -368,7 +388,8 @@ export default function NewHandoverPage() {
     const nextIndex =
       currentIndex === -1
         ? fallbackIndex
-        : (currentIndex + direction + criticalPatientOptions.length) % criticalPatientOptions.length;
+        : (currentIndex + direction + criticalPatientOptions.length) %
+          criticalPatientOptions.length;
     const next = criticalPatientOptions[nextIndex];
     if (!next) return;
     setSelectedPresetAdmissionId(String(next.id));
@@ -442,7 +463,9 @@ export default function NewHandoverPage() {
         criticalPatients && `Critical Patients: ${criticalPatients}`,
         pendingTasks && `Pending Tasks: ${pendingTasks}`,
         medicationsDue && `Medications Due: ${medicationsDue}`,
-      ].filter(Boolean).join('\n\n');
+      ]
+        .filter(Boolean)
+        .join('\n\n');
 
       await createHandover.mutateAsync({
         ward: Number(wardId),
@@ -470,7 +493,7 @@ export default function NewHandoverPage() {
   const isFormValid = wardId && outgoingShift && incomingShift && incomingNurseId && summary;
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="New Shift Handover"
         helpContent="Create a handover report for the incoming shift. Include patient status, critical information, and pending tasks."
@@ -479,13 +502,11 @@ export default function NewHandoverPage() {
       {/* Ward and Shift Selection */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Users className="h-5 w-5" />
             Shift Details
           </CardTitle>
-          <CardDescription>
-            Select the ward and shift information
-          </CardDescription>
+          <CardDescription>Select the ward and shift information</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -507,7 +528,10 @@ export default function NewHandoverPage() {
 
             <div className="space-y-2">
               <Label htmlFor="outgoing-shift">Outgoing Shift *</Label>
-              <Select value={outgoingShift} onValueChange={(v) => setOutgoingShift(v as ShiftEndingType)}>
+              <Select
+                value={outgoingShift}
+                onValueChange={(v) => setOutgoingShift(v as ShiftEndingType)}
+              >
                 <SelectTrigger id="outgoing-shift" aria-label="Outgoing Shift">
                   <SelectValue placeholder="Select shift" />
                 </SelectTrigger>
@@ -523,7 +547,10 @@ export default function NewHandoverPage() {
 
             <div className="space-y-2">
               <Label htmlFor="incoming-shift">Incoming Shift *</Label>
-              <Select value={incomingShift} onValueChange={(v) => setIncomingShift(v as ShiftEndingType)}>
+              <Select
+                value={incomingShift}
+                onValueChange={(v) => setIncomingShift(v as ShiftEndingType)}
+              >
                 <SelectTrigger id="incoming-shift" aria-label="Incoming Shift">
                   <SelectValue placeholder="Select shift" />
                 </SelectTrigger>
@@ -561,7 +588,7 @@ export default function NewHandoverPage() {
       {/* Handover Summary */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Clock className="h-5 w-5" />
             Handover Summary
           </CardTitle>
@@ -576,7 +603,8 @@ export default function NewHandoverPage() {
               <Switch checked={includeAutoSummary} onCheckedChange={setIncludeAutoSummary} />
             </div>
             <p className="text-xs text-muted-foreground">
-              Generate a structured handover summary from selected shift details, critical patients, concerns, tasks, and medications due.
+              Generate a structured handover summary from selected shift details, critical patients,
+              concerns, tasks, and medications due.
             </p>
             <Button
               type="button"
@@ -604,13 +632,11 @@ export default function NewHandoverPage() {
       {/* Critical Information */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
             Critical Information
           </CardTitle>
-          <CardDescription>
-            Highlight any critical patients or urgent matters
-          </CardDescription>
+          <CardDescription>Highlight any critical patients or urgent matters</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {selectedWardId && (
@@ -618,7 +644,11 @@ export default function NewHandoverPage() {
               <Label className="text-sm font-medium">Critical Patients</Label>
               <Popover open={criticalPatientsOpen} onOpenChange={setCriticalPatientsOpen}>
                 <PopoverTrigger asChild>
-                  <Button type="button" variant="outline" className="w-full justify-between font-normal">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between font-normal"
+                  >
                     <span className="truncate">
                       {selectedCriticalPatientLabels.length > 0
                         ? `${selectedCriticalPatientLabels.length} selected`
@@ -630,7 +660,9 @@ export default function NewHandoverPage() {
                 <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-2">
                   <div className="max-h-56 space-y-2 overflow-auto pr-1">
                     {criticalPatientOptions.length === 0 ? (
-                      <p className="text-sm text-muted-foreground px-1 py-2">No active admissions in this ward.</p>
+                      <p className="px-1 py-2 text-sm text-muted-foreground">
+                        No active admissions in this ward.
+                      </p>
                     ) : (
                       criticalPatientOptions.map((patientOption) => {
                         const checked = selectedCriticalAdmissionIds.includes(patientOption.id);
@@ -660,7 +692,8 @@ export default function NewHandoverPage() {
           <div className="space-y-2 rounded-md border bg-muted/30 p-3">
             <Label className="text-sm font-medium">Patient-specific preset assignment</Label>
             <p className="text-xs text-muted-foreground">
-              Select a patient first, then assign pending task and critical concern presets for that patient.
+              Select a patient first, then assign pending task and critical concern presets for that
+              patient.
             </p>
             {assignedPatients.length > 0 && (
               <div className="space-y-2 rounded-md border bg-background p-2">
@@ -677,7 +710,8 @@ export default function NewHandoverPage() {
                         className="h-auto px-2 py-1.5 text-xs"
                         onClick={() => setSelectedPresetAdmissionId(String(assignment.admissionId))}
                       >
-                        {assignment.patientLabel} ({assignment.pendingTasks.length} pending, {assignment.criticalConcerns.length} critical)
+                        {assignment.patientLabel} ({assignment.pendingTasks.length} pending,{' '}
+                        {assignment.criticalConcerns.length} critical)
                       </Button>
                     );
                   })}
@@ -710,7 +744,9 @@ export default function NewHandoverPage() {
               </SelectTrigger>
               <SelectContent>
                 {criticalPatientOptions.length === 0 ? (
-                  <div className="px-2 py-2 text-sm text-muted-foreground">No active admissions in ward</div>
+                  <div className="px-2 py-2 text-sm text-muted-foreground">
+                    No active admissions in ward
+                  </div>
                 ) : (
                   criticalPatientOptions.map((option) => (
                     <SelectItem key={option.id} value={String(option.id)}>
@@ -741,7 +777,9 @@ export default function NewHandoverPage() {
                     type="button"
                     size="sm"
                     disabled={!selectedPresetAdmissionId || !selectedPresetPatientLabel}
-                    variant={selectedPresetAssignment?.pendingTasks.includes(task) ? 'default' : 'outline'}
+                    variant={
+                      selectedPresetAssignment?.pendingTasks.includes(task) ? 'default' : 'outline'
+                    }
                     className="h-auto px-2 py-1.5 text-xs"
                     onClick={() => togglePatientPreset('pendingTasks', task)}
                   >
@@ -760,7 +798,11 @@ export default function NewHandoverPage() {
                     type="button"
                     size="sm"
                     disabled={!selectedPresetAdmissionId || !selectedPresetPatientLabel}
-                    variant={selectedPresetAssignment?.criticalConcerns.includes(concern) ? 'destructive' : 'outline'}
+                    variant={
+                      selectedPresetAssignment?.criticalConcerns.includes(concern)
+                        ? 'destructive'
+                        : 'outline'
+                    }
                     className="h-auto px-2 py-1.5 text-xs"
                     onClick={() => togglePatientPreset('criticalConcerns', concern)}
                   >
@@ -798,13 +840,11 @@ export default function NewHandoverPage() {
       {/* Medications */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Pill className="h-5 w-5" />
             Medications Due
           </CardTitle>
-          <CardDescription>
-            List medications due during the incoming shift
-          </CardDescription>
+          <CardDescription>List medications due during the incoming shift</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -825,11 +865,8 @@ export default function NewHandoverPage() {
         <Button variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={createHandover.isPending || !isFormValid}
-        >
-          <Save className="h-4 w-4 mr-2" />
+        <Button onClick={handleSubmit} disabled={createHandover.isPending || !isFormValid}>
+          <Save className="mr-2 h-4 w-4" />
           {createHandover.isPending ? 'Submitting...' : 'Submit Handover'}
         </Button>
       </div>

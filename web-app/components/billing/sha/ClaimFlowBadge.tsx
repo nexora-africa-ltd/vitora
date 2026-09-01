@@ -9,12 +9,7 @@
 import React from 'react';
 import { AlertTriangle, ShieldCheck, HeartPulse } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useClaimFlow } from '@/lib/hooks/use-claim-flow';
 import type { Claim } from '@/lib/types/sha';

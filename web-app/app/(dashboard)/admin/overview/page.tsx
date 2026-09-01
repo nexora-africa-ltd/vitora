@@ -26,13 +26,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDepartmentOrgChart, useRoles } from '@/lib/hooks/use-rbac';
@@ -144,22 +138,32 @@ export default function AdminOverviewPage() {
 
   const totalOrgs = organizations.length;
   const activeOrgs = organizations.filter((o: OrganizationListItem) => o.is_active).length;
-  const totalFacilities = organizations.reduce((sum: number, o: OrganizationListItem) => sum + o.facility_count, 0);
-  const totalOrgStaff = organizations.reduce((sum: number, o: OrganizationListItem) => sum + o.staff_count, 0);
+  const totalFacilities = organizations.reduce(
+    (sum: number, o: OrganizationListItem) => sum + o.facility_count,
+    0
+  );
+  const totalOrgStaff = organizations.reduce(
+    (sum: number, o: OrganizationListItem) => sum + o.staff_count,
+    0
+  );
 
   const activeDepartments = departments.filter((department) => department.is_active).length;
   const assignedHeads = departments.filter((department) => department.head !== null).length;
   const activeStaff = staff.filter((member) => member.employment_status === 'ACTIVE').length;
-  const supervisorCoverage = staff.length > 0
-    ? Math.round((staff.filter((member) => member.supervisor).length / staff.length) * 100)
-    : 0;
+  const supervisorCoverage =
+    staff.length > 0
+      ? Math.round((staff.filter((member) => member.supervisor).length / staff.length) * 100)
+      : 0;
   const activeRoles = roles.filter((role) => role.is_active).length;
   const licensedRoles = roles.filter((role) => role.requires_license).length;
   const topLevelDepartments = departments.filter((department) => department.parent === null).length;
-  const departmentsWithoutHeads = departments.filter((department) => department.head === null).length;
+  const departmentsWithoutHeads = departments.filter(
+    (department) => department.head === null
+  ).length;
   const inactiveDepartments = departments.length - activeDepartments;
   const staffWithoutSupervisor = staff.filter(
-    (member) => member.primary_department && !member.supervisor && member.employment_status === 'ACTIVE'
+    (member) =>
+      member.primary_department && !member.supervisor && member.employment_status === 'ACTIVE'
   ).length;
   const staffWithoutDepartment = staff.filter(
     (member) => !member.primary_department && member.employment_status === 'ACTIVE'
@@ -168,7 +172,8 @@ export default function AdminOverviewPage() {
     (member) => !member.primary_role && member.employment_status === 'ACTIVE'
   ).length;
   const licensedRoleShare = roles.length > 0 ? Math.round((licensedRoles / roles.length) * 100) : 0;
-  const headAssignmentRate = departments.length > 0 ? Math.round((assignedHeads / departments.length) * 100) : 0;
+  const headAssignmentRate =
+    departments.length > 0 ? Math.round((assignedHeads / departments.length) * 100) : 0;
 
   const isLoading = orgChartLoading || rolesLoading || orgsLoading || facilitiesLoading;
   const hasError = orgChartError || rolesError || orgsError || facilitiesError;
@@ -241,7 +246,9 @@ export default function AdminOverviewPage() {
         {hasError ? (
           <Card>
             <CardContent className="py-10 text-center">
-              <p className="font-medium text-destructive">The admin overview could not be loaded.</p>
+              <p className="font-medium text-destructive">
+                The admin overview could not be loaded.
+              </p>
               <p className="mt-2 text-sm text-muted-foreground">
                 Refresh the page or verify the RBAC endpoints, then try again.
               </p>
@@ -256,22 +263,28 @@ export default function AdminOverviewPage() {
               <div className="relative space-y-6 p-6 sm:p-8">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="max-w-2xl space-y-3">
-                    <Badge variant="outline" className="border-primary/30 bg-background/70 text-primary">
+                    <Badge
+                      variant="outline"
+                      className="border-primary/30 bg-background/70 text-primary"
+                    >
                       Administrative Health
                     </Badge>
                     <div className="space-y-2">
-                      <h2 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+                      <h2 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
                         Structure, access, and staffing from one control surface.
                       </h2>
                       <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
-                        Use this page to spot missing leadership, repair reporting lines, and move directly into department, role, and staff maintenance.
+                        Use this page to spot missing leadership, repair reporting lines, and move
+                        directly into department, role, and staff maintenance.
                       </p>
                     </div>
                   </div>
 
                   <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[250px]">
                     <Button asChild className="w-full">
-                      <CreateRouteLink href="/admin/departments/new">New Department</CreateRouteLink>
+                      <CreateRouteLink href="/admin/departments/new">
+                        New Department
+                      </CreateRouteLink>
                     </Button>
                     <Button asChild variant="outline" className="w-full">
                       <CreateRouteLink href="/admin/staff/new">Add Staff</CreateRouteLink>
@@ -291,10 +304,11 @@ export default function AdminOverviewPage() {
                       Department Network
                     </p>
                     <p className="mt-3 text-3xl font-semibold tracking-tight">
-                      {isLoading ? '...' : orgChartData?.summary.department_count ?? 0}
+                      {isLoading ? '...' : (orgChartData?.summary.department_count ?? 0)}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {activeDepartments} active and {inactiveDepartments} inactive departments in the loaded structure.
+                      {activeDepartments} active and {inactiveDepartments} inactive departments in
+                      the loaded structure.
                     </p>
                   </div>
                   <div className="rounded-2xl border border-border/60 bg-background/75 p-4 backdrop-blur">
@@ -316,7 +330,8 @@ export default function AdminOverviewPage() {
                       {isLoading ? '...' : `${supervisorCoverage}%`}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {staff.filter((member) => member.supervisor).length} active reporting links captured in loaded staff.
+                      {staff.filter((member) => member.supervisor).length} active reporting links
+                      captured in loaded staff.
                     </p>
                   </div>
                   <div className="rounded-2xl border border-border/60 bg-background/75 p-4 backdrop-blur">
@@ -324,7 +339,7 @@ export default function AdminOverviewPage() {
                       Role Posture
                     </p>
                     <p className="mt-3 text-3xl font-semibold tracking-tight">
-                      {isLoading ? '...' : rolesData?.count ?? 0}
+                      {isLoading ? '...' : (rolesData?.count ?? 0)}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
                       {licensedRoleShare}% of loaded roles require license-backed assignments.
@@ -361,7 +376,11 @@ export default function AdminOverviewPage() {
                       <div className="flex shrink-0 items-center gap-2">
                         <Badge
                           variant={item.count > 0 ? 'default' : 'secondary'}
-                          className={item.tone === 'critical' ? 'bg-destructive text-destructive-foreground' : ''}
+                          className={
+                            item.tone === 'critical'
+                              ? 'bg-destructive text-destructive-foreground'
+                              : ''
+                          }
                         >
                           {isLoading ? '...' : item.count}
                         </Badge>
@@ -398,7 +417,7 @@ export default function AdminOverviewPage() {
           <AdminStatCard
             eyebrow="Staffing"
             title="Staff Profiles"
-            value={isLoading ? '...' : orgChartData?.summary.staff_count ?? 0}
+            value={isLoading ? '...' : (orgChartData?.summary.staff_count ?? 0)}
             description={`${activeStaff} active staff profiles loaded in the current dataset.`}
             icon={<Users className="h-4 w-4 text-muted-foreground" />}
             tone="default"
@@ -447,7 +466,9 @@ export default function AdminOverviewPage() {
           <AdminStatCard
             eyebrow="Coverage"
             title="Avg Facilities/Org"
-            value={isLoading ? '...' : activeOrgs > 0 ? Math.round(totalFacilities / activeOrgs) : 0}
+            value={
+              isLoading ? '...' : activeOrgs > 0 ? Math.round(totalFacilities / activeOrgs) : 0
+            }
             description="Average number of facilities per active organization."
             icon={<Network className="h-4 w-4 text-muted-foreground" />}
             tone="default"
@@ -462,14 +483,20 @@ export default function AdminOverviewPage() {
                 <div>
                   <CardTitle className="text-xl">Organization Explorer</CardTitle>
                   <CardDescription>
-                    Inspect the formal structure, then drill into staff reporting lines and department ownership without leaving the page.
+                    Inspect the formal structure, then drill into staff reporting lines and
+                    department ownership without leaving the page.
                   </CardDescription>
                 </div>
                 <Badge variant="outline">Live Structure</Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <AdminOrgChart departments={departments} staff={staff} organizations={organizations} facilities={allFacilities} />
+              <AdminOrgChart
+                departments={departments}
+                staff={staff}
+                organizations={organizations}
+                facilities={allFacilities}
+              />
             </CardContent>
           </Card>
 
@@ -494,7 +521,9 @@ export default function AdminOverviewPage() {
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-foreground">{item.title}</p>
-                              <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                {item.description}
+                              </p>
                             </div>
                           </div>
                           <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -544,7 +573,9 @@ export default function AdminOverviewPage() {
                   <div className="rounded-2xl border border-border/60 bg-background/75 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-medium text-foreground">Assignment Completeness</p>
+                        <p className="text-sm font-medium text-foreground">
+                          Assignment Completeness
+                        </p>
                         <p className="mt-1 text-sm text-muted-foreground">
                           {staffWithoutRole} active staff profiles still need a primary role.
                         </p>
@@ -565,9 +596,7 @@ export default function AdminOverviewPage() {
             </Card>
 
             {/* AI Token Usage — show for the first active org */}
-            {organizations[0] != null && (
-              <TokenUsageCard organizationId={organizations[0].id} />
-            )}
+            {organizations[0] != null && <TokenUsageCard organizationId={organizations[0].id} />}
           </div>
         </div>
         {/* System Health — Superuser only */}
@@ -576,7 +605,7 @@ export default function AdminOverviewPage() {
             <CardHeader className="pb-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
                     <HeartPulse className="h-5 w-5" />
                     System Health
                   </CardTitle>
@@ -606,18 +635,24 @@ export default function AdminOverviewPage() {
                           <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
                             {unmappedSurgical.slice(0, 5).map((entry) => (
                               <li key={entry.id} className="truncate">
-                                <span className="font-medium text-foreground">{entry.code}</span> &middot; {entry.name}
+                                <span className="font-medium text-foreground">{entry.code}</span>{' '}
+                                &middot; {entry.name}
                               </li>
                             ))}
                             {unmappedSurgical.length > 5 && (
-                              <li className="text-muted-foreground">and {unmappedSurgical.length - 5} more&hellip;</li>
+                              <li className="text-muted-foreground">
+                                and {unmappedSurgical.length - 5} more&hellip;
+                              </li>
                             )}
                           </ul>
                         )}
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <Badge variant={unmappedSurgical.length > 0 ? 'default' : 'secondary'} className={unmappedSurgical.length > 0 ? 'bg-amber-600 text-white' : ''}>
+                      <Badge
+                        variant={unmappedSurgical.length > 0 ? 'default' : 'secondary'}
+                        className={unmappedSurgical.length > 0 ? 'bg-amber-600 text-white' : ''}
+                      >
                         {catalogLoading ? '...' : unmappedSurgical.length}
                       </Badge>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -628,19 +663,33 @@ export default function AdminOverviewPage() {
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-border/60 bg-background/75 p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Total Catalog</p>
-                  <p className="mt-2 text-2xl font-semibold">{catalogLoading ? '...' : catalogEntries.length}</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                    Total Catalog
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold">
+                    {catalogLoading ? '...' : catalogEntries.length}
+                  </p>
                   <p className="mt-1 text-xs text-muted-foreground">Active procedure entries</p>
                 </div>
                 <div className="rounded-2xl border border-border/60 bg-background/75 p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Surgical</p>
-                  <p className="mt-2 text-2xl font-semibold">{catalogLoading ? '...' : surgicalEntries.length}</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                    Surgical
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold">
+                    {catalogLoading ? '...' : surgicalEntries.length}
+                  </p>
                   <p className="mt-1 text-xs text-muted-foreground">Entries in SURGICAL category</p>
                 </div>
                 <div className="rounded-2xl border border-border/60 bg-background/75 p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">AI Mapped</p>
-                  <p className="mt-2 text-2xl font-semibold">{catalogLoading ? '...' : totalMapped}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Entries with AI procedure key</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                    AI Mapped
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold">
+                    {catalogLoading ? '...' : totalMapped}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Entries with AI procedure key
+                  </p>
                 </div>
               </div>
             </CardContent>

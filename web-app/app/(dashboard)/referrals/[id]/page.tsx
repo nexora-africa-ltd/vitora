@@ -173,7 +173,11 @@ export default function ReferralDetailPage() {
       facility: facilityDetail
         ? {
             name: facilityDetail.name,
-            address: `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(/^, |, $/g, ''),
+            address:
+              `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(
+                /^, |, $/g,
+                ''
+              ),
             phone: '',
             license: facilityDetail.mfl_code || '',
           }
@@ -197,7 +201,10 @@ export default function ReferralDetailPage() {
         helpContent="View referral details. Accept, decline, complete, or cancel as appropriate."
         actions={
           referral.encounter ? (
-            <Button variant="outline" onClick={() => router.push(buildEncounterHref(referral.encounter!, 'referrals'))}>
+            <Button
+              variant="outline"
+              onClick={() => router.push(buildEncounterHref(referral.encounter!, 'referrals'))}
+            >
               View Encounter
             </Button>
           ) : undefined
@@ -205,23 +212,27 @@ export default function ReferralDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {referral.patient_name}
             <span className="text-muted-foreground"> • {referral.patient_mrn}</span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {REFERRAL_TYPE_DISPLAY[referral.referral_type]} → {referral.target_service_display}
             {referral.destination_clinic_name && ` • ${referral.destination_clinic_name}`}
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <SignatureBadge documentType="ClinicalReferral" documentId={id} canSign={referral.status === 'ACCEPTED' || referral.status === 'IN_PROGRESS'} />
-          <Badge className={`${PRIORITY_COLORS[referral.priority]} shrink-0 w-fit`}>
+          <SignatureBadge
+            documentType="ClinicalReferral"
+            documentId={id}
+            canSign={referral.status === 'ACCEPTED' || referral.status === 'IN_PROGRESS'}
+          />
+          <Badge className={`${PRIORITY_COLORS[referral.priority]} w-fit shrink-0`}>
             {REFERRAL_PRIORITY_CONFIG[referral.priority]?.label}
           </Badge>
-          <Badge className={`${STATUS_COLORS[referral.status]} shrink-0 w-fit`}>
+          <Badge className={`${STATUS_COLORS[referral.status]} w-fit shrink-0`}>
             {REFERRAL_STATUS_CONFIG[referral.status]?.label}
           </Badge>
         </div>
@@ -230,7 +241,7 @@ export default function ReferralDetailPage() {
       {/* Action Buttons */}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         <Button variant="outline" size="sm" onClick={handlePrint}>
-          <Printer className="h-4 w-4 mr-1" />
+          <Printer className="mr-1 h-4 w-4" />
           Print
         </Button>
         {referral.status === 'PENDING' && referral.referral_type !== 'EXTERNAL' && (
@@ -241,19 +252,20 @@ export default function ReferralDetailPage() {
               onClick={() => setDeclineDialogOpen(true)}
               disabled={isSubmitting}
             >
-              <XCircle className="h-4 w-4 mr-1" />
+              <XCircle className="mr-1 h-4 w-4" />
               Decline
             </Button>
             <Button size="sm" onClick={handleAccept} disabled={isSubmitting}>
-              <CheckCircle2 className="h-4 w-4 mr-1" />
+              <CheckCircle2 className="mr-1 h-4 w-4" />
               Accept
             </Button>
           </>
         )}
-        {(referral.status === 'ACCEPTED' || referral.status === 'IN_PROGRESS'
-          || (referral.status === 'PENDING' && referral.referral_type === 'EXTERNAL')) && (
+        {(referral.status === 'ACCEPTED' ||
+          referral.status === 'IN_PROGRESS' ||
+          (referral.status === 'PENDING' && referral.referral_type === 'EXTERNAL')) && (
           <Button size="sm" onClick={handleComplete} disabled={isSubmitting}>
-            <CheckCircle2 className="h-4 w-4 mr-1" />
+            <CheckCircle2 className="mr-1 h-4 w-4" />
             Complete
           </Button>
         )}
@@ -264,7 +276,7 @@ export default function ReferralDetailPage() {
             onClick={() => setCancelDialogOpen(true)}
             disabled={isSubmitting}
           >
-            <Ban className="h-4 w-4 mr-1" />
+            <Ban className="mr-1 h-4 w-4" />
             Cancel
           </Button>
         )}
@@ -275,7 +287,7 @@ export default function ReferralDetailPage() {
         {/* Referral Info */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <ArrowLeftRight className="h-4 w-4" />
               Referral Information
             </CardTitle>
@@ -321,26 +333,26 @@ export default function ReferralDetailPage() {
         {/* Clinical Context */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Stethoscope className="h-4 w-4" />
               Clinical Context
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="text-sm">
-              <span className="text-muted-foreground block mb-1">Reason for Referral</span>
+              <span className="mb-1 block text-muted-foreground">Reason for Referral</span>
               <span>{referral.reason}</span>
             </div>
             {referral.clinical_notes && (
               <div className="text-sm">
-                <span className="text-muted-foreground block mb-1">Clinical Notes</span>
+                <span className="mb-1 block text-muted-foreground">Clinical Notes</span>
                 <span>{referral.clinical_notes}</span>
               </div>
             )}
             {referral.relevant_diagnoses && referral.relevant_diagnoses.length > 0 && (
               <div className="text-sm">
-                <span className="text-muted-foreground block mb-1">Relevant Diagnoses</span>
-                <ul className="list-disc list-inside space-y-0.5">
+                <span className="mb-1 block text-muted-foreground">Relevant Diagnoses</span>
+                <ul className="list-inside list-disc space-y-0.5">
                   {referral.relevant_diagnoses.map((d, i) => (
                     <li key={i}>
                       <span className="font-mono text-xs">{d.code}</span> – {d.description}
@@ -356,13 +368,13 @@ export default function ReferralDetailPage() {
         {referral.hospital_course && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Stethoscope className="h-4 w-4" />
                 Hospital Course
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{referral.hospital_course}</p>
+              <p className="whitespace-pre-wrap text-sm">{referral.hospital_course}</p>
             </CardContent>
           </Card>
         )}
@@ -371,7 +383,7 @@ export default function ReferralDetailPage() {
         {referral.relevant_vitals && Object.values(referral.relevant_vitals).some(Boolean) && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <AlertTriangle className="h-4 w-4" />
                 Vitals at Referral
               </CardTitle>
@@ -415,7 +427,7 @@ export default function ReferralDetailPage() {
         {referral.referral_type === 'EXTERNAL' && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Building2 className="h-4 w-4" />
                 External Facility
               </CardTitle>
@@ -440,7 +452,7 @@ export default function ReferralDetailPage() {
         {/* Status Tracking */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Clock className="h-4 w-4" />
               Status Timeline
             </CardTitle>
@@ -472,7 +484,7 @@ export default function ReferralDetailPage() {
             )}
             {referral.decline_reason && (
               <div className="text-sm">
-                <span className="text-muted-foreground block mb-1">Decline Reason</span>
+                <span className="mb-1 block text-muted-foreground">Decline Reason</span>
                 <span>{referral.decline_reason}</span>
               </div>
             )}
@@ -487,7 +499,7 @@ export default function ReferralDetailPage() {
             )}
             {referral.cancel_reason && (
               <div className="text-sm">
-                <span className="text-muted-foreground block mb-1">Cancel Reason</span>
+                <span className="mb-1 block text-muted-foreground">Cancel Reason</span>
                 <span>{referral.cancel_reason}</span>
               </div>
             )}

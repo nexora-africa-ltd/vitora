@@ -89,9 +89,7 @@ function StatCard({
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{title}</p>
             <p className="text-2xl font-bold">{value}</p>
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
+            {description && <p className="text-xs text-muted-foreground">{description}</p>}
           </div>
           <Icon className={`h-8 w-8 ${colorMap[variant]} opacity-80`} />
         </div>
@@ -113,14 +111,16 @@ export default function AIInsightsPage() {
 
   const advisoryOrderRate = useMemo(() => {
     if (!insights?.advisory_links.total) return null;
-    return Math.round(
-      (insights.advisory_links.ordered / insights.advisory_links.total) * 100
-    );
+    return Math.round((insights.advisory_links.ordered / insights.advisory_links.total) * 100);
   }, [insights]);
 
   if (error) {
     // 404 = TIBABOT_ENABLED is false on the backend
-    const statusCode = (error as any)?.response?.status || (error as any)?.status;
+    const statusCode =
+      typeof error === 'object' && error !== null
+        ? (error as { response?: { status?: number }; status?: number }).response?.status ||
+          (error as { response?: { status?: number }; status?: number }).status
+        : undefined;
     const isNotEnabled = statusCode === 404 || error.message?.includes('404');
     return (
       <div className="space-y-4">
@@ -130,7 +130,9 @@ export default function AIInsightsPage() {
         />
         <Card className="p-8">
           <div className="flex flex-col items-center gap-3 text-center">
-            <AlertCircle className={`h-10 w-10 ${isNotEnabled ? 'text-muted-foreground' : 'text-destructive'}`} />
+            <AlertCircle
+              className={`h-10 w-10 ${isNotEnabled ? 'text-muted-foreground' : 'text-destructive'}`}
+            />
             <p className="text-sm text-muted-foreground">
               {isNotEnabled
                 ? 'AI features are not enabled for this environment.'
@@ -151,7 +153,7 @@ export default function AIInsightsPage() {
         />
 
         {isLoading ? (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-[100px] rounded-lg" />
             ))}
@@ -159,7 +161,7 @@ export default function AIInsightsPage() {
         ) : insights ? (
           <>
             {/* Top-level KPIs */}
-            <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <StatCard
                 title="Total AI Actions (30d)"
                 value={insights.total_ai_actions_30d.toLocaleString()}
@@ -192,7 +194,7 @@ export default function AIInsightsPage() {
             </div>
 
             {/* Feedback + Advisory */}
-            <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <StatCard
                 title="Positive Feedback"
                 value={insights.feedback.total_up}
@@ -210,9 +212,7 @@ export default function AIInsightsPage() {
                 value={insights.advisory_links.total}
                 icon={Link2}
                 description={
-                  advisoryOrderRate !== null
-                    ? `${advisoryOrderRate}% ordered`
-                    : undefined
+                  advisoryOrderRate !== null ? `${advisoryOrderRate}% ordered` : undefined
                 }
               />
               <StatCard
@@ -223,35 +223,69 @@ export default function AIInsightsPage() {
             </div>
 
             {/* Token Usage Meter */}
-            {organization && (
-              <TokenUsageCard organizationId={organization.id} />
-            )}
+            {organization && <TokenUsageCard organizationId={organization.id} />}
 
             {/* Stored Results Breakdown */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <BrainCircuit className="h-4 w-4" />
                   Stored Results Breakdown
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {[
-                    { label: 'Care Plans', value: insights.stored_results.care_plans, href: '/ai/insights/stored-results/care-plans' },
-                    { label: 'CDS Evaluations', value: insights.stored_results.cds_evaluations, href: '/ai/insights/stored-results/cds-evaluations' },
-                    { label: 'Lab Interpretations', value: insights.stored_results.lab_interpretations, href: '/ai/insights/stored-results/lab-interpretations' },
-                    { label: 'Discharge Assessments', value: insights.stored_results.discharge_assessments, href: '/ai/insights/stored-results/discharge-assessments' },
-                    { label: 'ICU Risk Predictions', value: insights.stored_results.icu_risk_predictions, href: '/ai/insights/stored-results/icu-risk-predictions' },
-                    { label: 'Investigation Suggestions', value: insights.stored_results.investigation_suggestions, href: '/ai/insights/stored-results/investigation-suggestions' },
-                    { label: 'Surgical Pre-Op', value: insights.stored_results.surgical_pre_op, href: '/theatre' },
-                    { label: 'Surgical Checklists', value: insights.stored_results.surgical_checklists, href: '/theatre' },
-                    { label: 'Surgical Post-Op', value: insights.stored_results.surgical_post_op, href: '/theatre' },
+                    {
+                      label: 'Care Plans',
+                      value: insights.stored_results.care_plans,
+                      href: '/ai/insights/stored-results/care-plans',
+                    },
+                    {
+                      label: 'CDS Evaluations',
+                      value: insights.stored_results.cds_evaluations,
+                      href: '/ai/insights/stored-results/cds-evaluations',
+                    },
+                    {
+                      label: 'Lab Interpretations',
+                      value: insights.stored_results.lab_interpretations,
+                      href: '/ai/insights/stored-results/lab-interpretations',
+                    },
+                    {
+                      label: 'Discharge Assessments',
+                      value: insights.stored_results.discharge_assessments,
+                      href: '/ai/insights/stored-results/discharge-assessments',
+                    },
+                    {
+                      label: 'ICU Risk Predictions',
+                      value: insights.stored_results.icu_risk_predictions,
+                      href: '/ai/insights/stored-results/icu-risk-predictions',
+                    },
+                    {
+                      label: 'Investigation Suggestions',
+                      value: insights.stored_results.investigation_suggestions,
+                      href: '/ai/insights/stored-results/investigation-suggestions',
+                    },
+                    {
+                      label: 'Surgical Pre-Op',
+                      value: insights.stored_results.surgical_pre_op,
+                      href: '/theatre',
+                    },
+                    {
+                      label: 'Surgical Checklists',
+                      value: insights.stored_results.surgical_checklists,
+                      href: '/theatre',
+                    },
+                    {
+                      label: 'Surgical Post-Op',
+                      value: insights.stored_results.surgical_post_op,
+                      href: '/theatre',
+                    },
                   ].map((item) => (
                     <Link
                       key={item.label}
                       href={item.href}
-                      className="flex items-center justify-between rounded-md border px-3 py-2 hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between rounded-md border px-3 py-2 transition-colors hover:bg-muted/50"
                     >
                       <span className="text-sm text-muted-foreground">{item.label}</span>
                       <Badge variant="secondary">{item.value}</Badge>
@@ -265,7 +299,7 @@ export default function AIInsightsPage() {
             {insights.usage_breakdown.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <BarChart3 className="h-4 w-4" />
                     Top AI Actions (Last 30 Days)
                   </CardTitle>
@@ -279,11 +313,11 @@ export default function AIInsightsPage() {
                         <div key={item.action} className="space-y-1">
                           <div className="flex items-center justify-between text-sm">
                             <span className="truncate">{formatActionLabel(item.action)}</span>
-                            <span className="text-muted-foreground font-mono ml-2">
+                            <span className="ml-2 font-mono text-muted-foreground">
                               {item.count}
                             </span>
                           </div>
-                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div className="h-2 overflow-hidden rounded-full bg-muted">
                             <div
                               className="h-full rounded-full bg-primary/60 transition-all"
                               style={{ width: `${percentage}%` }}
@@ -300,28 +334,24 @@ export default function AIInsightsPage() {
             {/* Suggestion Audit Detail */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <CheckCircle2 className="h-4 w-4" />
                   Suggestion Audit (Last 30 Days)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="flex items-center gap-3 rounded-md border p-3">
                     <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                     <div>
-                      <p className="text-lg font-semibold">
-                        {insights.suggestion_audit.accepted}
-                      </p>
+                      <p className="text-lg font-semibold">{insights.suggestion_audit.accepted}</p>
                       <p className="text-xs text-muted-foreground">Accepted</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 rounded-md border p-3">
                     <Sparkles className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-lg font-semibold">
-                        {insights.suggestion_audit.applied}
-                      </p>
+                      <p className="text-lg font-semibold">{insights.suggestion_audit.applied}</p>
                       <p className="text-xs text-muted-foreground">Applied</p>
                     </div>
                   </div>

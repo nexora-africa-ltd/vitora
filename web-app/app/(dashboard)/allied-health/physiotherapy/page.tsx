@@ -60,8 +60,11 @@ export default function PhysiotherapyDashboardPage() {
         title="Physiotherapy Services"
         helpContent="Manage physiotherapy orders, treatment sessions, and patient rehabilitation progress."
         actions={
-          <Button onClick={() => router.push('/allied-health/physiotherapy/orders/new')} disabled={!canCreateRoute('/allied-health/physiotherapy/orders/new')}>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button
+            onClick={() => router.push('/allied-health/physiotherapy/orders/new')}
+            disabled={!canCreateRoute('/allied-health/physiotherapy/orders/new')}
+          >
+            <Plus className="mr-2 h-4 w-4" />
             New Order
           </Button>
         }
@@ -76,7 +79,7 @@ export default function PhysiotherapyDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {statsLoading ? '...' : (queueStats?.waiting_count || 0)}
+              {statsLoading ? '...' : queueStats?.waiting_count || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               {queueStats?.in_consultation_count || 0} in treatment
@@ -91,11 +94,9 @@ export default function PhysiotherapyDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {statsLoading ? '...' : (physioStats?.pending_count || 0)}
+              {statsLoading ? '...' : physioStats?.pending_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting approval
-            </p>
+            <p className="text-xs text-muted-foreground">Awaiting approval</p>
           </CardContent>
         </Card>
 
@@ -106,11 +107,9 @@ export default function PhysiotherapyDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {statsLoading ? '...' : (physioStats?.today_sessions_count || 0)}
+              {statsLoading ? '...' : physioStats?.today_sessions_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Scheduled or in progress
-            </p>
+            <p className="text-xs text-muted-foreground">Scheduled or in progress</p>
           </CardContent>
         </Card>
 
@@ -121,18 +120,16 @@ export default function PhysiotherapyDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {statsLoading ? '...' : (physioStats?.completed_today_count || 0)}
+              {statsLoading ? '...' : physioStats?.completed_today_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Sessions finished
-            </p>
+            <p className="text-xs text-muted-foreground">Sessions finished</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs for Queue and Orders */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="w-full grid grid-cols-2">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="queue" className="gap-1.5 px-2 sm:px-4">
             <Users className="h-5 w-5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Today&apos;s Queue</span>
@@ -169,11 +166,11 @@ export default function PhysiotherapyDashboardPage() {
                     {queueData.results.map((visit) => (
                       <div
                         key={visit.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                        className="flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                         onClick={() => router.push(`/clinics/visits/${visit.id}`)}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                             <User className="h-5 w-5 text-muted-foreground" />
                           </div>
                           <div>
@@ -186,7 +183,8 @@ export default function PhysiotherapyDashboardPage() {
                         <div className="flex items-center gap-3">
                           <div className="text-right text-sm">
                             <p className="text-muted-foreground">
-                              {visit.registered_at && format(new Date(visit.registered_at), 'HH:mm')}
+                              {visit.registered_at &&
+                                format(new Date(visit.registered_at), 'HH:mm')}
                             </p>
                           </div>
                           <Badge className={statusVariants[visit.status] || 'bg-gray-100'}>

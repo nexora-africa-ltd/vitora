@@ -91,7 +91,7 @@ export async function initCornerstone(): Promise<void> {
       },
       // Configure request headers for authentication (httpOnly cookies)
       beforeSend: (xhr: XMLHttpRequest) => {
-        xhr.withCredentials = true;  // Include httpOnly auth cookies
+        xhr.withCredentials = true; // Include httpOnly auth cookies
       },
     };
 
@@ -106,7 +106,7 @@ export async function initCornerstone(): Promise<void> {
     if (dicomImageLoader.wadouri?.configure) {
       dicomImageLoader.wadouri.configure({
         beforeSend: (xhr: XMLHttpRequest) => {
-          xhr.withCredentials = true;  // Include httpOnly auth cookies
+          xhr.withCredentials = true; // Include httpOnly auth cookies
         },
       });
     }
@@ -118,7 +118,8 @@ export async function initCornerstone(): Promise<void> {
     } else if (dicomImageLoader.wadouri?.externalModules) {
       // Alternative location in some versions
       const dicomParserModule = await import('dicom-parser');
-      dicomImageLoader.wadouri.externalModules.dicomParser = dicomParserModule.default || dicomParserModule;
+      dicomImageLoader.wadouri.externalModules.dicomParser =
+        dicomParserModule.default || dicomParserModule;
     }
     // If neither exists, dicom-parser is bundled internally (v4+ behavior)
 
@@ -462,55 +463,58 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
   }, []);
 
   // Tool management
-  const setActiveTool = useCallback((tool: DICOMViewerTool) => {
-    const toolGroup = toolGroupRef.current;
-    if (!toolGroup || !cornerstoneTools) return;
+  const setActiveTool = useCallback(
+    (tool: DICOMViewerTool) => {
+      const toolGroup = toolGroupRef.current;
+      if (!toolGroup || !cornerstoneTools) return;
 
-    if (tool === 'reset') {
-      withViewport((viewport) => {
-        resetViewportSafely(viewport);
+      if (tool === 'reset') {
+        withViewport((viewport) => {
+          resetViewportSafely(viewport);
+        });
+        return;
+      }
+
+      const toolName = TOOL_NAMES[tool];
+      if (!toolName) return;
+
+      // Deactivate ALL tools on primary mouse button (navigation + annotation)
+      // This prevents tool conflicts where two tools respond to the same click
+      [
+        TOOL_NAMES.window_level,
+        TOOL_NAMES.pan,
+        TOOL_NAMES.zoom,
+        TOOL_NAMES.ruler,
+        TOOL_NAMES.angle,
+        TOOL_NAMES.ellipse,
+        TOOL_NAMES.rectangle,
+      ]
+        .filter(Boolean)
+        .forEach((name) => {
+          toolGroup.setToolPassive(name);
+        });
+
+      // Set the new tool as active on primary mouse button
+      const { MouseBindings } = cornerstoneTools.Enums;
+      toolGroup.setToolActive(toolName, {
+        bindings: [{ mouseButton: MouseBindings.Primary }],
       });
-      return;
-    }
 
-    const toolName = TOOL_NAMES[tool];
-    if (!toolName) return;
-
-    // Deactivate ALL tools on primary mouse button (navigation + annotation)
-    // This prevents tool conflicts where two tools respond to the same click
-    [
-      TOOL_NAMES.window_level,
-      TOOL_NAMES.pan,
-      TOOL_NAMES.zoom,
-      TOOL_NAMES.ruler,
-      TOOL_NAMES.angle,
-      TOOL_NAMES.ellipse,
-      TOOL_NAMES.rectangle,
-    ]
-      .filter(Boolean)
-      .forEach((name) => {
-        toolGroup.setToolPassive(name);
-      });
-
-    // Set the new tool as active on primary mouse button
-    const { MouseBindings } = cornerstoneTools.Enums;
-    toolGroup.setToolActive(toolName, {
-      bindings: [{ mouseButton: MouseBindings.Primary }],
-    });
-
-    // Keep middle-button pan and right-button zoom as secondary bindings
-    // (unless the user explicitly selected those tools for primary)
-    if (toolName !== TOOL_NAMES.pan) {
-      toolGroup.setToolActive(TOOL_NAMES.pan, {
-        bindings: [{ mouseButton: MouseBindings.Auxiliary }],
-      });
-    }
-    if (toolName !== TOOL_NAMES.zoom) {
-      toolGroup.setToolActive(TOOL_NAMES.zoom, {
-        bindings: [{ mouseButton: MouseBindings.Secondary }],
-      });
-    }
-  }, [withViewport]);
+      // Keep middle-button pan and right-button zoom as secondary bindings
+      // (unless the user explicitly selected those tools for primary)
+      if (toolName !== TOOL_NAMES.pan) {
+        toolGroup.setToolActive(TOOL_NAMES.pan, {
+          bindings: [{ mouseButton: MouseBindings.Auxiliary }],
+        });
+      }
+      if (toolName !== TOOL_NAMES.zoom) {
+        toolGroup.setToolActive(TOOL_NAMES.zoom, {
+          bindings: [{ mouseButton: MouseBindings.Secondary }],
+        });
+      }
+    },
+    [withViewport]
+  );
 
   // Viewport manipulation
   const resetViewport = useCallback(() => {

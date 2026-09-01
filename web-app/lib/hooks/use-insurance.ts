@@ -64,7 +64,8 @@ export const insuranceQueryKeys = {
   configList: (params?: Record<string, unknown>) =>
     [...insuranceQueryKeys.configs(), 'list', params] as const,
   configDetail: (id: number) => [...insuranceQueryKeys.configs(), id] as const,
-  sladeCredentialCurrent: () => [...insuranceQueryKeys.configs(), 'slade-credential-current'] as const,
+  sladeCredentialCurrent: () =>
+    [...insuranceQueryKeys.configs(), 'slade-credential-current'] as const,
 
   authorizations: () => [...insuranceQueryKeys.all, 'authorizations'] as const,
   authorizationList: (params?: Record<string, unknown>) =>
@@ -90,8 +91,7 @@ export const insuranceQueryKeys = {
     include_sync_items?: boolean;
     include_remittance_items?: boolean;
     limit?: number;
-  }) =>
-    [...insuranceQueryKeys.remittances(), 'healthcloud-sync-status', params] as const,
+  }) => [...insuranceQueryKeys.remittances(), 'healthcloud-sync-status', params] as const,
 
   tariffs: () => [...insuranceQueryKeys.all, 'tariffs'] as const,
   tariffList: (params?: Record<string, unknown>) =>
@@ -306,9 +306,13 @@ export function useStartHealthcloudSession() {
     mutationFn: (id: number) => insuranceApi.startHealthcloudSession(id),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizations() });
-      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.authorizationDetail(data.session.id) });
+      queryClient.invalidateQueries({
+        queryKey: insuranceQueryKeys.authorizationDetail(data.session.id),
+      });
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollments() });
-      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollmentDetail(data.session.enrollment) });
+      queryClient.invalidateQueries({
+        queryKey: insuranceQueryKeys.enrollmentDetail(data.session.enrollment),
+      });
     },
   });
 }
@@ -344,7 +348,9 @@ export function usePostHealthcloudProfile() {
       insuranceApi.postHealthcloudProfile(id, data),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollments() });
-      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollmentDetail(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: insuranceQueryKeys.enrollmentDetail(variables.id),
+      });
       queryClient.setQueryData(insuranceQueryKeys.enrollmentDetail(variables.id), data.enrollment);
     },
   });
@@ -357,7 +363,9 @@ export function useGetHealthcloudHealthId() {
       insuranceApi.getHealthcloudHealthId(id, data),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollments() });
-      queryClient.invalidateQueries({ queryKey: insuranceQueryKeys.enrollmentDetail(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: insuranceQueryKeys.enrollmentDetail(variables.id),
+      });
       queryClient.setQueryData(insuranceQueryKeys.enrollmentDetail(variables.id), data.enrollment);
     },
   });

@@ -36,7 +36,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Search,
   Loader2,
-
   AlertCircle,
   UserCheck,
   ShieldOff,
@@ -154,7 +153,9 @@ function DetailItem({ label, value }: { label: string; value: RecordValue }) {
 
   return (
     <div className="rounded-lg border bg-card/60 p-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-1 break-words text-sm font-medium">{formatRecordValue(value)}</p>
     </div>
   );
@@ -204,18 +205,28 @@ function getEligibilitySchemeSummary(eligibility: DirectEligibilityCheckResponse
   const coveredSchemes = schemes
     .filter((scheme) => isCoveredSchemeStatus(scheme.coverage?.status))
     .map((scheme) => scheme.schemeName)
-    .filter((schemeName): schemeName is string => typeof schemeName === 'string' && schemeName.trim().length > 0);
+    .filter(
+      (schemeName): schemeName is string =>
+        typeof schemeName === 'string' && schemeName.trim().length > 0
+    );
   const uncoveredSchemes = schemes
     .filter((scheme) => !isCoveredSchemeStatus(scheme.coverage?.status))
     .map((scheme) => scheme.schemeName)
-    .filter((schemeName): schemeName is string => typeof schemeName === 'string' && schemeName.trim().length > 0);
+    .filter(
+      (schemeName): schemeName is string =>
+        typeof schemeName === 'string' && schemeName.trim().length > 0
+    );
   const uniqueCoveredSchemes = Array.from(new Set(coveredSchemes));
   const uniqueUncoveredSchemes = Array.from(new Set(uncoveredSchemes));
   const shifCovered = schemes.some(
-    (scheme) => scheme.schemeName?.trim().toUpperCase() === 'SHIF' && isCoveredSchemeStatus(scheme.coverage?.status)
+    (scheme) =>
+      scheme.schemeName?.trim().toUpperCase() === 'SHIF' &&
+      isCoveredSchemeStatus(scheme.coverage?.status)
   );
   const shifUncovered = schemes.some(
-    (scheme) => scheme.schemeName?.trim().toUpperCase() === 'SHIF' && !isCoveredSchemeStatus(scheme.coverage?.status)
+    (scheme) =>
+      scheme.schemeName?.trim().toUpperCase() === 'SHIF' &&
+      !isCoveredSchemeStatus(scheme.coverage?.status)
   );
 
   if (shifUncovered && uniqueCoveredSchemes.length > 0) {
@@ -275,21 +286,24 @@ function getEligibilityErrorPresentation(error: unknown): { title: string; messa
     if (status === 502) {
       return {
         title: 'SHA auth failed',
-        message: 'Unable to authenticate with the upstream SHA service. Please verify the SHA credentials or try again later.',
+        message:
+          'Unable to authenticate with the upstream SHA service. Please verify the SHA credentials or try again later.',
       };
     }
 
     if (status === 503) {
       return {
         title: 'SHA API currently unavailable',
-        message: 'The upstream SHA service is currently unavailable. Please try the eligibility check again later.',
+        message:
+          'The upstream SHA service is currently unavailable. Please try the eligibility check again later.',
       };
     }
 
     if (status === 504) {
       return {
         title: 'SHA API timed out',
-        message: 'The upstream SHA service did not respond in time. Please retry the eligibility check.',
+        message:
+          'The upstream SHA service did not respond in time. Please retry the eligibility check.',
       };
     }
   }
@@ -367,10 +381,14 @@ function getSHAServiceErrorPresentation(
   };
 }
 
-function extractShaNumberFromIdentifiers(identifiers: Array<Record<string, unknown>>): string | undefined {
+function extractShaNumberFromIdentifiers(
+  identifiers: Array<Record<string, unknown>>
+): string | undefined {
   const shaIdentifier = identifiers.find((identifier) => {
     const identificationType = identifier.identification_type;
-    return typeof identificationType === 'string' && identificationType.toLowerCase().includes('sha');
+    return (
+      typeof identificationType === 'string' && identificationType.toLowerCase().includes('sha')
+    );
   });
 
   return typeof shaIdentifier?.identification_number === 'string'
@@ -409,7 +427,7 @@ function buildShaPayloadPerson(
   source: SHAPayloadPerson['source'],
   relationship?: string,
   /** Fallback full name to parse when first/last are absent (from eligibility.full_name) */
-  fallbackFullName?: string,
+  fallbackFullName?: string
 ): SHAPayloadPerson {
   const identifiers = Array.isArray(person.other_identifications)
     ? (person.other_identifications as Array<Record<string, unknown>>)
@@ -421,9 +439,10 @@ function buildShaPayloadPerson(
   let lastName = typeof person.last_name === 'string' ? person.last_name : undefined;
 
   if (!firstName && !lastName) {
-    const fullName = fallbackFullName
-      ?? (typeof person.full_name === 'string' ? person.full_name : undefined)
-      ?? (typeof person.name === 'string' ? person.name : undefined);
+    const fullName =
+      fallbackFullName ??
+      (typeof person.full_name === 'string' ? person.full_name : undefined) ??
+      (typeof person.name === 'string' ? person.name : undefined);
     if (fullName) {
       const parts = fullName.trim().split(/\s+/);
       if (parts.length >= 3) {
@@ -451,13 +470,22 @@ function buildShaPayloadPerson(
     date_of_birth: typeof person.date_of_birth === 'string' ? person.date_of_birth : undefined,
     place_of_birth: typeof person.place_of_birth === 'string' ? person.place_of_birth : undefined,
     citizenship: typeof person.citizenship === 'string' ? person.citizenship : undefined,
-    employment_type: typeof person.employment_type === 'string' ? person.employment_type : undefined,
+    employment_type:
+      typeof person.employment_type === 'string' ? person.employment_type : undefined,
     civil_status: typeof person.civil_status === 'string' ? person.civil_status : undefined,
-    identification_type: typeof person.identification_type === 'string' ? person.identification_type : undefined,
-    identification_number: typeof person.identification_number === 'string' ? person.identification_number : undefined,
+    identification_type:
+      typeof person.identification_type === 'string' ? person.identification_type : undefined,
+    identification_number:
+      typeof person.identification_number === 'string' ? person.identification_number : undefined,
     other_identifications: identifiers.map((identifier) => ({
-      identification_type: typeof identifier.identification_type === 'string' ? identifier.identification_type : undefined,
-      identification_number: typeof identifier.identification_number === 'string' ? identifier.identification_number : undefined,
+      identification_type:
+        typeof identifier.identification_type === 'string'
+          ? identifier.identification_type
+          : undefined,
+      identification_number:
+        typeof identifier.identification_number === 'string'
+          ? identifier.identification_number
+          : undefined,
     })),
     phone: typeof person.phone === 'string' ? person.phone : undefined,
     country: typeof person.country === 'string' ? person.country : undefined,
@@ -465,7 +493,8 @@ function buildShaPayloadPerson(
     sub_county: typeof person.sub_county === 'string' ? person.sub_county : undefined,
     ward: typeof person.ward === 'string' ? person.ward : undefined,
     village_estate: typeof person.village_estate === 'string' ? person.village_estate : undefined,
-    province_state_country: typeof person.province_state_country === 'string' ? person.province_state_country : undefined,
+    province_state_country:
+      typeof person.province_state_country === 'string' ? person.province_state_country : undefined,
     zip_code: typeof person.zip_code === 'string' ? person.zip_code : undefined,
     postal_address: typeof person.postal_address === 'string' ? person.postal_address : undefined,
     id_serial: typeof person.id_serial === 'string' ? person.id_serial : undefined,
@@ -515,48 +544,77 @@ function EligibilityDataPanel({
   const dependantGroups = Array.isArray(rawPatient.dependants)
     ? (rawPatient.dependants as Array<Record<string, unknown>>)
     : [];
-  const meta = rawPatient.meta && typeof rawPatient.meta === 'object'
-    ? (rawPatient.meta as Record<string, unknown>)
-    : null;
-  const originSystem = rawPatient.originSystem && typeof rawPatient.originSystem === 'object'
-    ? (rawPatient.originSystem as Record<string, unknown>)
-    : null;
+  const meta =
+    rawPatient.meta && typeof rawPatient.meta === 'object'
+      ? (rawPatient.meta as Record<string, unknown>)
+      : null;
+  const originSystem =
+    rawPatient.originSystem && typeof rawPatient.originSystem === 'object'
+      ? (rawPatient.originSystem as Record<string, unknown>)
+      : null;
   const schemes = Array.isArray(eligibility.schemes) ? eligibility.schemes : [];
 
   return (
     <div className="space-y-4">
-      <div className={cn(
-        'rounded-2xl border p-4',
-        schemeSummary.tone === 'covered' ? 'border-success/30 bg-success/10' : 'border-warning/30 bg-warning/10'
-      )}>
+      <div
+        className={cn(
+          'rounded-2xl border p-4',
+          schemeSummary.tone === 'covered'
+            ? 'border-success/30 bg-success/10'
+            : 'border-warning/30 bg-warning/10'
+        )}
+      >
         <div className="space-y-4">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 shrink-0">
-              {schemeSummary.tone === 'covered' ? <SHALogo size="lg" /> : <ShieldOff className="h-6 w-6 text-warning-foreground" />}
+              {schemeSummary.tone === 'covered' ? (
+                <SHALogo size="lg" />
+              ) : (
+                <ShieldOff className="h-6 w-6 text-warning-foreground" />
+              )}
             </div>
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-base font-semibold">
-                  {schemeSummary.tone === 'mixed' ? 'Mixed Scheme Coverage' : schemeSummary.tone === 'covered' ? 'SHA Coverage Found' : 'SHA Coverage Not Active'}
+                  {schemeSummary.tone === 'mixed'
+                    ? 'Mixed Scheme Coverage'
+                    : schemeSummary.tone === 'covered'
+                      ? 'SHA Coverage Found'
+                      : 'SHA Coverage Not Active'}
                 </h3>
-                <Badge variant="outline" className={cn(
-                  schemeSummary.tone === 'covered' ? 'border-success text-success' : 'border-warning text-warning-foreground'
-                )}>
-                  {schemeSummary.tone === 'covered' ? 'Eligible' : schemeSummary.tone === 'mixed' ? 'Mixed' : 'Ineligible'}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    schemeSummary.tone === 'covered'
+                      ? 'border-success text-success'
+                      : 'border-warning text-warning-foreground'
+                  )}
+                >
+                  {schemeSummary.tone === 'covered'
+                    ? 'Eligible'
+                    : schemeSummary.tone === 'mixed'
+                      ? 'Mixed'
+                      : 'Ineligible'}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {schemeSummary.description}
-              </p>
+              <p className="text-sm text-muted-foreground">{schemeSummary.description}</p>
               {schemeSummary.tone === 'mixed' && (
                 <div className="flex flex-wrap gap-2 pt-1">
                   {schemeSummary.uncoveredSchemes.map((schemeName) => (
-                    <Badge key={`uncovered-${schemeName}`} variant="outline" className="border-warning text-warning-foreground">
+                    <Badge
+                      key={`uncovered-${schemeName}`}
+                      variant="outline"
+                      className="border-warning text-warning-foreground"
+                    >
                       {schemeName} not covered
                     </Badge>
                   ))}
                   {schemeSummary.coveredSchemes.map((schemeName) => (
-                    <Badge key={`covered-${schemeName}`} variant="outline" className="border-success text-success">
+                    <Badge
+                      key={`covered-${schemeName}`}
+                      variant="outline"
+                      className="border-success text-success"
+                    >
                       {schemeName} covered
                     </Badge>
                   ))}
@@ -568,7 +626,14 @@ function EligibilityDataPanel({
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <DetailItem label="SHA Number" value={eligibility.sha_number} />
             <DetailItem label="Member CR Number" value={eligibility.member_cr_number} />
-            <DetailItem label="Copay" value={eligibility.copay_percentage === 0 ? 'Full coverage' : `${eligibility.copay_percentage}%`} />
+            <DetailItem
+              label="Copay"
+              value={
+                eligibility.copay_percentage === 0
+                  ? 'Full coverage'
+                  : `${eligibility.copay_percentage}%`
+              }
+            />
             <DetailItem label="Status Code" value={eligibility.status_code} />
           </div>
         </div>
@@ -597,21 +662,29 @@ function EligibilityDataPanel({
                 <div key={schemeKey} className="rounded-xl border bg-card/60 p-4">
                   <div className="border-b pb-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold">{scheme.schemeName ?? `Scheme ${index + 1}`}</p>
-                      {scheme.schemeId !== undefined && <Badge variant="outline">ID {scheme.schemeId}</Badge>}
+                      <p className="text-sm font-semibold">
+                        {scheme.schemeName ?? `Scheme ${index + 1}`}
+                      </p>
+                      {scheme.schemeId !== undefined && (
+                        <Badge variant="outline">ID {scheme.schemeId}</Badge>
+                      )}
                       {scheme.memberType && <Badge variant="secondary">{scheme.memberType}</Badge>}
                       <Badge
                         variant="outline"
                         className={cn(
                           'sm:ml-auto',
-                          isCovered ? 'border-success text-success' : 'border-warning text-warning-foreground'
+                          isCovered
+                            ? 'border-success text-success'
+                            : 'border-warning text-warning-foreground'
                         )}
                       >
                         {formatSchemeCoverageStatus(coverage?.status)}
                       </Badge>
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {coverage?.message || coverage?.reason || 'Coverage details returned by SHA eligibility lookup.'}
+                      {coverage?.message ||
+                        coverage?.reason ||
+                        'Coverage details returned by SHA eligibility lookup.'}
                     </p>
                   </div>
 
@@ -626,15 +699,26 @@ function EligibilityDataPanel({
 
                   {principalContributor && (
                     <div className="mt-4 rounded-lg border bg-background/80 p-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Principal Contributor</p>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Principal Contributor
+                      </p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <DetailItem label="Name" value={principalContributor.name} />
                         <DetailItem label="CR Number" value={principalContributor.crNumber} />
                         <DetailItem label="ID Type" value={principalContributor.idType} />
                         <DetailItem label="ID Number" value={principalContributor.idNumber} />
-                        <DetailItem label="Relationship" value={principalContributor.relationship} />
-                        <DetailItem label="Employment Type" value={principalContributor.employmentType} />
-                        <DetailItem label="Employer" value={principalContributor.employerDetails?.name} />
+                        <DetailItem
+                          label="Relationship"
+                          value={principalContributor.relationship}
+                        />
+                        <DetailItem
+                          label="Employment Type"
+                          value={principalContributor.employmentType}
+                        />
+                        <DetailItem
+                          label="Employer"
+                          value={principalContributor.employerDetails?.name}
+                        />
                       </div>
                     </div>
                   )}
@@ -646,7 +730,10 @@ function EligibilityDataPanel({
       )}
 
       {crClient && (
-        <DetailSection title="Patient Profile (Client Registry)" icon={<UserRound className="h-4 w-4" />}>
+        <DetailSection
+          title="Patient Profile (Client Registry)"
+          icon={<UserRound className="h-4 w-4" />}
+        >
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <DetailItem label="First Name" value={crClient.first_name} />
             <DetailItem label="Middle Name" value={crClient.middle_name} />
@@ -673,7 +760,11 @@ function EligibilityDataPanel({
           {crClient.other_identifications && crClient.other_identifications.length > 0 && (
             <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {crClient.other_identifications.map((oid, idx) => (
-                <DetailItem key={idx} label={oid.identification_type} value={oid.identification_number} />
+                <DetailItem
+                  key={idx}
+                  label={oid.identification_type}
+                  value={oid.identification_number}
+                />
               ))}
             </div>
           )}
@@ -682,7 +773,12 @@ function EligibilityDataPanel({
           {crClient.dependants && crClient.dependants.length > 0 && (
             <div className="mt-4 space-y-2">
               <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Dependants ({crClient.dependants.reduce((sum, g) => sum + (g.total ?? g.result?.length ?? 0), 0)})
+                Dependants (
+                {crClient.dependants.reduce(
+                  (sum, g) => sum + (g.total ?? g.result?.length ?? 0),
+                  0
+                )}
+                )
               </p>
               {crClient.dependants.flatMap((group) =>
                 (group.result ?? []).map((dep, idx) => (
@@ -692,21 +788,31 @@ function EligibilityDataPanel({
                         {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ')}
                       </span>
                       {group.relationship && (
-                        <Badge variant="outline" className="text-xs">{group.relationship}</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {group.relationship}
+                        </Badge>
                       )}
-                      {dep.gender && <span className="text-xs text-muted-foreground">{dep.gender}</span>}
-                      {dep.date_of_birth && <span className="text-xs text-muted-foreground">DOB: {dep.date_of_birth}</span>}
+                      {dep.gender && (
+                        <span className="text-xs text-muted-foreground">{dep.gender}</span>
+                      )}
+                      {dep.date_of_birth && (
+                        <span className="text-xs text-muted-foreground">
+                          DOB: {dep.date_of_birth}
+                        </span>
+                      )}
                       {onAddPersonToForm && (
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-6 w-6 ml-auto shrink-0"
+                          className="ml-auto h-6 w-6 shrink-0"
                           title={`Use dependant ${[dep.first_name, dep.last_name].filter(Boolean).join(' ')} to populate form`}
                           onClick={() => {
                             const person = buildShaPayloadPerson(
                               dep as unknown as Record<string, unknown>,
                               'dependent',
-                              typeof group.relationship === 'string' ? group.relationship : undefined
+                              typeof group.relationship === 'string'
+                                ? group.relationship
+                                : undefined
                             );
                             onAddPersonToForm(person);
                           }}
@@ -715,30 +821,22 @@ function EligibilityDataPanel({
                         </Button>
                       )}
                     </div>
-                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-muted-foreground">
+                    <div className="mt-2 grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
                       {dep.identification_number && (
-                        <span>{dep.identification_type}: {dep.identification_number}</span>
+                        <span>
+                          {dep.identification_type}: {dep.identification_number}
+                        </span>
                       )}
-                      {dep.id && (
-                        <span>CR: {dep.id}</span>
-                      )}
-                      {dep.phone && (
-                        <span>Phone: {dep.phone}</span>
-                      )}
-                      {dep.county && (
-                        <span>County: {dep.county}</span>
-                      )}
-                      {dep.sub_county && (
-                        <span>Sub-County: {dep.sub_county}</span>
-                      )}
-                      {dep.ward && (
-                        <span>Ward: {dep.ward}</span>
-                      )}
+                      {dep.id && <span>CR: {dep.id}</span>}
+                      {dep.phone && <span>Phone: {dep.phone}</span>}
+                      {dep.county && <span>County: {dep.county}</span>}
+                      {dep.sub_county && <span>Sub-County: {dep.sub_county}</span>}
+                      {dep.ward && <span>Ward: {dep.ward}</span>}
                     </div>
                     {dep.other_identifications && dep.other_identifications.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {dep.other_identifications.map((oid, oidIdx) => (
-                          <span key={oidIdx} className="text-xs rounded bg-muted px-1.5 py-0.5">
+                          <span key={oidIdx} className="rounded bg-muted px-1.5 py-0.5 text-xs">
                             {oid.identification_type}: {oid.identification_number}
                           </span>
                         ))}
@@ -760,10 +858,22 @@ function EligibilityDataPanel({
           <DetailItem label="First Name" value={rawPatient.first_name as RecordValue} />
           <DetailItem label="Middle Name" value={rawPatient.middle_name as RecordValue} />
           <DetailItem label="Last Name" value={rawPatient.last_name as RecordValue} />
-          <DetailItem label="Identification Type" value={rawPatient.identification_type as RecordValue} />
-          <DetailItem label="Identification Number" value={rawPatient.identification_number as RecordValue} />
-          <DetailItem label="Gender" value={eligibility.gender ?? (rawPatient.gender as RecordValue)} />
-          <DetailItem label="Date of Birth" value={eligibility.date_of_birth ?? (rawPatient.date_of_birth as RecordValue)} />
+          <DetailItem
+            label="Identification Type"
+            value={rawPatient.identification_type as RecordValue}
+          />
+          <DetailItem
+            label="Identification Number"
+            value={rawPatient.identification_number as RecordValue}
+          />
+          <DetailItem
+            label="Gender"
+            value={eligibility.gender ?? (rawPatient.gender as RecordValue)}
+          />
+          <DetailItem
+            label="Date of Birth"
+            value={eligibility.date_of_birth ?? (rawPatient.date_of_birth as RecordValue)}
+          />
           <DetailItem label="Age" value={eligibility.age} />
           <DetailItem label="Citizenship" value={rawPatient.citizenship as RecordValue} />
           <DetailItem label="Civil Status" value={rawPatient.civil_status as RecordValue} />
@@ -786,10 +896,10 @@ function EligibilityDataPanel({
                   last_name: rawPatient.last_name ?? crClient?.last_name,
                   gender: rawPatient.gender ?? crClient?.gender ?? eligibility.gender,
                   date_of_birth:
-                    rawPatient.date_of_birth
-                    ?? (rawPatient.dateOfBirth as string)
-                    ?? crClient?.date_of_birth
-                    ?? eligibility.date_of_birth,
+                    rawPatient.date_of_birth ??
+                    (rawPatient.dateOfBirth as string) ??
+                    crClient?.date_of_birth ??
+                    eligibility.date_of_birth,
                   phone: rawPatient.phone ?? crClient?.phone_number,
                   county: rawPatient.county ?? crClient?.county,
                   sub_county: rawPatient.sub_county ?? crClient?.sub_county,
@@ -799,18 +909,25 @@ function EligibilityDataPanel({
                   postal_address: rawPatient.postal_address ?? crClient?.address,
                   sha_number: rawPatient.sha_number ?? eligibility.sha_number,
                   identification_type:
-                    rawPatient.identification_type
-                    ?? mapShaIdTypeCode(rawPatient.requestIdType)
-                    ?? 'national id',
+                    rawPatient.identification_type ??
+                    mapShaIdTypeCode(rawPatient.requestIdType) ??
+                    'national id',
                   identification_number:
-                    rawPatient.identification_number
-                    ?? (rawPatient.requestIdNumber as string)
-                    ?? crClient?.national_id,
+                    rawPatient.identification_number ??
+                    (rawPatient.requestIdNumber as string) ??
+                    crClient?.national_id,
                 };
-                onAddPersonToForm(buildShaPayloadPerson(merged, 'principal', undefined, eligibility.full_name ?? undefined));
+                onAddPersonToForm(
+                  buildShaPayloadPerson(
+                    merged,
+                    'principal',
+                    undefined,
+                    eligibility.full_name ?? undefined
+                  )
+                );
               }}
             >
-              <UserPlus className="h-4 w-4 mr-1.5" />
+              <UserPlus className="mr-1.5 h-4 w-4" />
               Use Principal
             </Button>
           </div>
@@ -825,7 +942,10 @@ function EligibilityDataPanel({
           <DetailItem label="Sub County" value={rawPatient.sub_county as RecordValue} />
           <DetailItem label="Ward" value={rawPatient.ward as RecordValue} />
           <DetailItem label="Village / Estate" value={rawPatient.village_estate as RecordValue} />
-          <DetailItem label="Province / State" value={rawPatient.province_state_country as RecordValue} />
+          <DetailItem
+            label="Province / State"
+            value={rawPatient.province_state_country as RecordValue}
+          />
           <DetailItem label="Postal Address" value={rawPatient.postal_address as RecordValue} />
           <DetailItem label="ZIP Code" value={rawPatient.zip_code as RecordValue} />
           <DetailItem label="Place of Birth" value={rawPatient.place_of_birth as RecordValue} />
@@ -835,7 +955,10 @@ function EligibilityDataPanel({
 
       <DetailSection title="Employment" icon={<Briefcase className="h-4 w-4" />}>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <DetailItem label="Employment Type" value={eligibility.employment_type ?? (rawPatient.employment_type as RecordValue)} />
+          <DetailItem
+            label="Employment Type"
+            value={eligibility.employment_type ?? (rawPatient.employment_type as RecordValue)}
+          />
           <DetailItem label="Employer Name" value={eligibility.employer_name} />
           <DetailItem label="Employed" value={eligibility.is_employed} />
           <DetailItem label="Transition Status" value={eligibility.nhif_transition_status} />
@@ -846,9 +969,16 @@ function EligibilityDataPanel({
         <DetailSection title="Other Identifications" icon={<CreditCard className="h-4 w-4" />}>
           <div className="space-y-2">
             {otherIdentifications.map((item, index) => (
-              <div key={`${String(item.identification_type)}-${index}`} className="rounded-lg border bg-card/60 p-3">
-                <p className="text-sm font-medium">{formatRecordValue(item.identification_type as RecordValue)}</p>
-                <p className="mt-1 text-sm text-muted-foreground break-all">{formatRecordValue(item.identification_number as RecordValue)}</p>
+              <div
+                key={`${String(item.identification_type)}-${index}`}
+                className="rounded-lg border bg-card/60 p-3"
+              >
+                <p className="text-sm font-medium">
+                  {formatRecordValue(item.identification_type as RecordValue)}
+                </p>
+                <p className="mt-1 break-all text-sm text-muted-foreground">
+                  {formatRecordValue(item.identification_number as RecordValue)}
+                </p>
               </div>
             ))}
           </div>
@@ -859,16 +989,27 @@ function EligibilityDataPanel({
         <DetailSection title="Dependants" icon={<Users className="h-4 w-4" />}>
           <div className="space-y-2">
             {eligibility.dependents.map((dependent, index) => (
-              <div key={`${dependent.sha_number ?? dependent.name}-${index}`} className="rounded-lg border bg-card/60 p-3">
+              <div
+                key={`${dependent.sha_number ?? dependent.name}-${index}`}
+                className="rounded-lg border bg-card/60 p-3"
+              >
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-medium break-words">{dependent.name}</p>
-                    <p className="text-xs text-muted-foreground break-words">
-                      {[dependent.relationship, dependent.sha_number].filter(Boolean).join(' • ') || 'Dependant'}
+                    <p className="break-words text-sm font-medium">{dependent.name}</p>
+                    <p className="break-words text-xs text-muted-foreground">
+                      {[dependent.relationship, dependent.sha_number].filter(Boolean).join(' • ') ||
+                        'Dependant'}
                     </p>
                   </div>
                   {dependent.is_active !== undefined && (
-                    <Badge variant="outline" className={dependent.is_active ? 'border-success text-success' : 'border-warning text-warning-foreground'}>
+                    <Badge
+                      variant="outline"
+                      className={
+                        dependent.is_active
+                          ? 'border-success text-success'
+                          : 'border-warning text-warning-foreground'
+                      }
+                    >
                       {dependent.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   )}
@@ -888,39 +1029,51 @@ function EligibilityDataPanel({
                 : [];
 
               return (
-                <div key={`${String(group.relationship)}-${groupIndex}`} className="rounded-xl border bg-card/60 p-3">
+                <div
+                  key={`${String(group.relationship)}-${groupIndex}`}
+                  className="rounded-xl border bg-card/60 p-3"
+                >
                   <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-sm font-semibold">{formatRecordValue(group.relationship as RecordValue)}</p>
+                      <p className="text-sm font-semibold">
+                        {formatRecordValue(group.relationship as RecordValue)}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Added {formatRecordValue(group.date_added as RecordValue)}
                       </p>
                     </div>
-                    <Badge variant="outline">{formatRecordValue(group.total as RecordValue)} linked</Badge>
+                    <Badge variant="outline">
+                      {formatRecordValue(group.total as RecordValue)} linked
+                    </Badge>
                   </div>
 
                   <div className="mt-3 space-y-3">
                     {groupResults.map((person, personIndex) => (
-                      <div key={`${String(person.id)}-${personIndex}`} className="rounded-lg border bg-background/80 p-3">
+                      <div
+                        key={`${String(person.id)}-${personIndex}`}
+                        className="rounded-lg border bg-background/80 p-3"
+                      >
                         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                           <div>
-                            <p className="text-sm font-semibold break-words">
+                            <p className="break-words text-sm font-semibold">
                               {[person.first_name, person.middle_name, person.last_name]
-                                .filter((value) => typeof value === 'string' && value.trim().length > 0)
+                                .filter(
+                                  (value) => typeof value === 'string' && value.trim().length > 0
+                                )
                                 .join(' ')}
                             </p>
-                            <p className="text-xs text-muted-foreground break-words">
-                              {[
-                                person.identification_type,
-                                person.identification_number,
-                                person.id,
-                              ]
-                                .filter((value) => typeof value === 'string' && value.trim().length > 0)
+                            <p className="break-words text-xs text-muted-foreground">
+                              {[person.identification_type, person.identification_number, person.id]
+                                .filter(
+                                  (value) => typeof value === 'string' && value.trim().length > 0
+                                )
                                 .join(' • ')}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline">{formatRecordValue(person.resourceType as RecordValue)}</Badge>
+                            <Badge variant="outline">
+                              {formatRecordValue(person.resourceType as RecordValue)}
+                            </Badge>
                             {onAddPersonToForm && (
                               <Button
                                 type="button"
@@ -928,7 +1081,17 @@ function EligibilityDataPanel({
                                 variant="outline"
                                 className="h-7 w-7 shrink-0"
                                 title={`Use dependant ${[person.first_name, person.last_name].filter((v) => typeof v === 'string' && v.trim()).join(' ')} to populate form`}
-                                onClick={() => onAddPersonToForm(buildShaPayloadPerson(person, 'dependent', typeof group.relationship === 'string' ? group.relationship : undefined))}
+                                onClick={() =>
+                                  onAddPersonToForm(
+                                    buildShaPayloadPerson(
+                                      person,
+                                      'dependent',
+                                      typeof group.relationship === 'string'
+                                        ? group.relationship
+                                        : undefined
+                                    )
+                                  )
+                                }
                               >
                                 <UserPlus className="h-3.5 w-3.5" />
                               </Button>
@@ -938,41 +1101,72 @@ function EligibilityDataPanel({
 
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                           <DetailItem label="Gender" value={person.gender as RecordValue} />
-                          <DetailItem label="Date of Birth" value={person.date_of_birth as RecordValue} />
-                          <DetailItem label="Civil Status" value={person.civil_status as RecordValue} />
-                          <DetailItem label="Employment Type" value={person.employment_type as RecordValue} />
+                          <DetailItem
+                            label="Date of Birth"
+                            value={person.date_of_birth as RecordValue}
+                          />
+                          <DetailItem
+                            label="Civil Status"
+                            value={person.civil_status as RecordValue}
+                          />
+                          <DetailItem
+                            label="Employment Type"
+                            value={person.employment_type as RecordValue}
+                          />
                           <DetailItem label="Phone" value={person.phone as RecordValue} />
                           <DetailItem label="Country" value={person.country as RecordValue} />
                           <DetailItem label="County" value={person.county as RecordValue} />
                           <DetailItem label="Sub County" value={person.sub_county as RecordValue} />
                           <DetailItem label="Ward" value={person.ward as RecordValue} />
-                          <DetailItem label="Village / Estate" value={person.village_estate as RecordValue} />
-                          <DetailItem label="Province / State" value={person.province_state_country as RecordValue} />
-                          <DetailItem label="Postal Address" value={person.postal_address as RecordValue} />
+                          <DetailItem
+                            label="Village / Estate"
+                            value={person.village_estate as RecordValue}
+                          />
+                          <DetailItem
+                            label="Province / State"
+                            value={person.province_state_country as RecordValue}
+                          />
+                          <DetailItem
+                            label="Postal Address"
+                            value={person.postal_address as RecordValue}
+                          />
                           <DetailItem label="ZIP Code" value={person.zip_code as RecordValue} />
                           <DetailItem label="ID Serial" value={person.id_serial as RecordValue} />
-                          <DetailItem label="Place of Birth" value={person.place_of_birth as RecordValue} />
+                          <DetailItem
+                            label="Place of Birth"
+                            value={person.place_of_birth as RecordValue}
+                          />
                         </div>
 
-                        {Array.isArray(person.other_identifications) && person.other_identifications.length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                              Other Identifications
-                            </p>
-                            <div className="space-y-2">
-                              {(person.other_identifications as Array<Record<string, unknown>>).map((identifier, identifierIndex) => (
-                                <div key={`${String(identifier.identification_type)}-${identifierIndex}`} className="rounded-lg border bg-card/60 p-2.5">
-                                  <p className="text-sm font-medium">
-                                    {formatRecordValue(identifier.identification_type as RecordValue)}
-                                  </p>
-                                  <p className="mt-1 break-all text-sm text-muted-foreground">
-                                    {formatRecordValue(identifier.identification_number as RecordValue)}
-                                  </p>
-                                </div>
-                              ))}
+                        {Array.isArray(person.other_identifications) &&
+                          person.other_identifications.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Other Identifications
+                              </p>
+                              <div className="space-y-2">
+                                {(
+                                  person.other_identifications as Array<Record<string, unknown>>
+                                ).map((identifier, identifierIndex) => (
+                                  <div
+                                    key={`${String(identifier.identification_type)}-${identifierIndex}`}
+                                    className="rounded-lg border bg-card/60 p-2.5"
+                                  >
+                                    <p className="text-sm font-medium">
+                                      {formatRecordValue(
+                                        identifier.identification_type as RecordValue
+                                      )}
+                                    </p>
+                                    <p className="mt-1 break-all text-sm text-muted-foreground">
+                                      {formatRecordValue(
+                                        identifier.identification_number as RecordValue
+                                      )}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
                       </div>
                     ))}
                   </div>
@@ -986,11 +1180,23 @@ function EligibilityDataPanel({
       {eligibility.means_testing && (
         <DetailSection title="Means Testing" icon={<HeartPulse className="h-4 w-4" />}>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <DetailItem label="Monthly Contribution" value={eligibility.means_testing.monthly_contribution} />
-            <DetailItem label="Annual Contribution" value={eligibility.means_testing.annual_contribution} />
-            <DetailItem label="Income Category" value={eligibility.means_testing.income_prediction_category} />
+            <DetailItem
+              label="Monthly Contribution"
+              value={eligibility.means_testing.monthly_contribution}
+            />
+            <DetailItem
+              label="Annual Contribution"
+              value={eligibility.means_testing.annual_contribution}
+            />
+            <DetailItem
+              label="Income Category"
+              value={eligibility.means_testing.income_prediction_category}
+            />
             <DetailItem label="Appeal Status" value={eligibility.means_testing.appeal_status} />
-            <DetailItem label="Means Testing Done" value={eligibility.means_testing.means_testing_done} />
+            <DetailItem
+              label="Means Testing Done"
+              value={eligibility.means_testing.means_testing_done}
+            />
             <DetailItem label="Assessment Date" value={eligibility.means_testing.mt_date} />
           </div>
         </DetailSection>
@@ -1011,7 +1217,9 @@ function EligibilityDataPanel({
       {eligibility.possible_solution && (
         <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
           <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <AlertTitle className="text-blue-800 dark:text-blue-300 text-sm">Suggested Resolution</AlertTitle>
+          <AlertTitle className="text-sm text-blue-800 dark:text-blue-300">
+            Suggested Resolution
+          </AlertTitle>
           <AlertDescription className="text-sm text-blue-700 dark:text-blue-400">
             {eligibility.possible_solution}
           </AlertDescription>
@@ -1021,14 +1229,18 @@ function EligibilityDataPanel({
       <DetailSection title="Raw Payloads" icon={<FileJson className="h-4 w-4" />}>
         <div className="space-y-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">SHA Eligibility Response</p>
+            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              SHA Eligibility Response
+            </p>
             <pre className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs leading-relaxed">
               {JSON.stringify(eligibility.raw_response ?? {}, null, 2)}
             </pre>
           </div>
           {crClient && (
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Client Registry Response</p>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Client Registry Response
+              </p>
               <pre className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs leading-relaxed">
                 {JSON.stringify(crClient, null, 2)}
               </pre>
@@ -1160,118 +1372,134 @@ export function SHAVerificationModal({
     }
   };
 
-  const handleAddPerson = useCallback(async (person: SHAPayloadPerson) => {
-    // For dependants, inject the principal's national ID so downstream eligibility
-    // checks can resolve coverage via the principal (DHA only resolves via principal).
-    if (person.source === 'dependent' && !person.principal_national_id) {
-      // Try from eligibility schemes first
-      const principalIdFromScheme = eligibility?.schemes?.[0]?.principalContributor?.idNumber;
-      if (principalIdFromScheme) {
-        person = { ...person, principal_national_id: principalIdFromScheme };
-      } else if (identifierType === 'National ID' && identifierValue.trim()) {
-        // Fallback: the user searched with the principal's national ID
-        person = { ...person, principal_national_id: identifierValue.trim() };
-      }
-    }
-
-    // For dependants, attempt a secondary CR lookup to enrich demographics
-    if (person.source === 'dependent') {
-      // Extract the best identifier for CR lookup
-      const crNumber = person.cr_number || person.id;
-      const shaNumber = person.sha_number;
-      const birthCert = person.other_identifications?.find(
-        (oid) => oid.identification_type?.toLowerCase().includes('birth')
-      );
-      const primaryId = person.identification_number;
-      const primaryIdType = person.identification_type;
-
-      // Build lookup params — try CR number first, then SHA number, then birth cert, then primary ID
-      let lookupParams: Record<string, string> | null = null;
-      if (crNumber && typeof crNumber === 'string' && crNumber.startsWith('CR')) {
-        lookupParams = { cr_number: crNumber };
-      } else if (shaNumber) {
-        lookupParams = { identification_type: 'SHA Number', identification_number: shaNumber };
-      } else if (birthCert?.identification_number) {
-        lookupParams = { identification_type: 'Birth Certificate', identification_number: birthCert.identification_number };
-      } else if (primaryId && primaryIdType) {
-        lookupParams = { identification_type: primaryIdType, identification_number: primaryId };
-      }
-
-      if (lookupParams) {
-        setDependantLookupLoading(true);
-        try {
-          const crResponse = await shaApi.fetchFromClientRegistry(lookupParams);
-          if (crResponse.found && crResponse.client) {
-            const client = crResponse.client;
-            // Merge CR data into the person payload (CR wins for missing fields)
-            const enriched: SHAPayloadPerson = {
-              ...person,
-              first_name: person.first_name || client.first_name || undefined,
-              middle_name: person.middle_name || client.middle_name || undefined,
-              last_name: person.last_name || client.last_name || undefined,
-              gender: person.gender || client.gender || undefined,
-              date_of_birth: person.date_of_birth || client.date_of_birth || undefined,
-              phone: person.phone || client.phone_number || undefined,
-              county: person.county || client.county || undefined,
-              sub_county: person.sub_county || client.sub_county || undefined,
-              ward: person.ward || client.ward || undefined,
-              cr_number: client.client_number || person.cr_number,
-              identification_type: person.identification_type || (client.national_id ? 'National ID' : undefined),
-              identification_number: person.identification_number || client.national_id || undefined,
-              place_of_birth: person.place_of_birth || client.place_of_birth || undefined,
-              citizenship: person.citizenship || client.citizenship || undefined,
-              village_estate: person.village_estate || client.village_estate || undefined,
-              postal_address: person.postal_address || client.address || undefined,
-              id_serial: person.id_serial || client.id_serial || undefined,
-              // Merge other_identifications from CR if the dependant had none
-              other_identifications: (person.other_identifications?.length ?? 0) > 0
-                ? person.other_identifications
-                : client.other_identifications?.map((oid) => ({
-                    identification_type: oid.identification_type,
-                    identification_number: oid.identification_number,
-                  })),
-              // Re-extract SHA/household from enriched identifiers
-              sha_number: person.sha_number || (client.other_identifications
-                ? extractShaNumberFromIdentifiers(
-                    client.other_identifications as unknown as Array<Record<string, unknown>>
-                  )
-                : undefined),
-              household_number: person.household_number || (client.other_identifications
-                ? extractIdentifierByLabel(
-                    client.other_identifications as unknown as Array<Record<string, unknown>>,
-                    (label) => label.includes('household')
-                  )
-                : undefined),
-            };
-            setDependantLookupLoading(false);
-            onAddPersonToForm?.(enriched);
-            setIsOpen(false);
-            return;
-          }
-        } catch {
-          // CR lookup failed — non-fatal, proceed with original data
-          console.warn('Dependant CR enrichment failed (non-fatal), using original data');
+  const handleAddPerson = useCallback(
+    async (person: SHAPayloadPerson) => {
+      // For dependants, inject the principal's national ID so downstream eligibility
+      // checks can resolve coverage via the principal (DHA only resolves via principal).
+      if (person.source === 'dependent' && !person.principal_national_id) {
+        // Try from eligibility schemes first
+        const principalIdFromScheme = eligibility?.schemes?.[0]?.principalContributor?.idNumber;
+        if (principalIdFromScheme) {
+          person = { ...person, principal_national_id: principalIdFromScheme };
+        } else if (identifierType === 'National ID' && identifierValue.trim()) {
+          // Fallback: the user searched with the principal's national ID
+          person = { ...person, principal_national_id: identifierValue.trim() };
         }
-        setDependantLookupLoading(false);
       }
-    }
 
-    // Fallback: pass person as-is (principal, or dependant without enrichable identifiers)
-    onAddPersonToForm?.(person);
-    setIsOpen(false);
-  }, [onAddPersonToForm, setIsOpen, eligibility, identifierType, identifierValue]);
+      // For dependants, attempt a secondary CR lookup to enrich demographics
+      if (person.source === 'dependent') {
+        // Extract the best identifier for CR lookup
+        const crNumber = person.cr_number || person.id;
+        const shaNumber = person.sha_number;
+        const birthCert = person.other_identifications?.find((oid) =>
+          oid.identification_type?.toLowerCase().includes('birth')
+        );
+        const primaryId = person.identification_number;
+        const primaryIdType = person.identification_type;
+
+        // Build lookup params — try CR number first, then SHA number, then birth cert, then primary ID
+        let lookupParams: Record<string, string> | null = null;
+        if (crNumber && typeof crNumber === 'string' && crNumber.startsWith('CR')) {
+          lookupParams = { cr_number: crNumber };
+        } else if (shaNumber) {
+          lookupParams = { identification_type: 'SHA Number', identification_number: shaNumber };
+        } else if (birthCert?.identification_number) {
+          lookupParams = {
+            identification_type: 'Birth Certificate',
+            identification_number: birthCert.identification_number,
+          };
+        } else if (primaryId && primaryIdType) {
+          lookupParams = { identification_type: primaryIdType, identification_number: primaryId };
+        }
+
+        if (lookupParams) {
+          setDependantLookupLoading(true);
+          try {
+            const crResponse = await shaApi.fetchFromClientRegistry(lookupParams);
+            if (crResponse.found && crResponse.client) {
+              const client = crResponse.client;
+              // Merge CR data into the person payload (CR wins for missing fields)
+              const enriched: SHAPayloadPerson = {
+                ...person,
+                first_name: person.first_name || client.first_name || undefined,
+                middle_name: person.middle_name || client.middle_name || undefined,
+                last_name: person.last_name || client.last_name || undefined,
+                gender: person.gender || client.gender || undefined,
+                date_of_birth: person.date_of_birth || client.date_of_birth || undefined,
+                phone: person.phone || client.phone_number || undefined,
+                county: person.county || client.county || undefined,
+                sub_county: person.sub_county || client.sub_county || undefined,
+                ward: person.ward || client.ward || undefined,
+                cr_number: client.client_number || person.cr_number,
+                identification_type:
+                  person.identification_type || (client.national_id ? 'National ID' : undefined),
+                identification_number:
+                  person.identification_number || client.national_id || undefined,
+                place_of_birth: person.place_of_birth || client.place_of_birth || undefined,
+                citizenship: person.citizenship || client.citizenship || undefined,
+                village_estate: person.village_estate || client.village_estate || undefined,
+                postal_address: person.postal_address || client.address || undefined,
+                id_serial: person.id_serial || client.id_serial || undefined,
+                // Merge other_identifications from CR if the dependant had none
+                other_identifications:
+                  (person.other_identifications?.length ?? 0) > 0
+                    ? person.other_identifications
+                    : client.other_identifications?.map((oid) => ({
+                        identification_type: oid.identification_type,
+                        identification_number: oid.identification_number,
+                      })),
+                // Re-extract SHA/household from enriched identifiers
+                sha_number:
+                  person.sha_number ||
+                  (client.other_identifications
+                    ? extractShaNumberFromIdentifiers(
+                        client.other_identifications as unknown as Array<Record<string, unknown>>
+                      )
+                    : undefined),
+                household_number:
+                  person.household_number ||
+                  (client.other_identifications
+                    ? extractIdentifierByLabel(
+                        client.other_identifications as unknown as Array<Record<string, unknown>>,
+                        (label) => label.includes('household')
+                      )
+                    : undefined),
+              };
+              setDependantLookupLoading(false);
+              onAddPersonToForm?.(enriched);
+              setIsOpen(false);
+              return;
+            }
+          } catch {
+            // CR lookup failed — non-fatal, proceed with original data
+            console.warn('Dependant CR enrichment failed (non-fatal), using original data');
+          }
+          setDependantLookupLoading(false);
+        }
+      }
+
+      // Fallback: pass person as-is (principal, or dependant without enrichable identifiers)
+      onAddPersonToForm?.(person);
+      setIsOpen(false);
+    },
+    [onAddPersonToForm, setIsOpen, eligibility, identifierType, identifierValue]
+  );
 
   return (
-    <Sheet open={isOpen} onOpenChange={(openState) => {
-      if (!openState) {
-        setEligibility(null);
-        setCRClient(null);
-        setStatus('idle');
-        setCRStatus('idle');
-        setErrorMessage(undefined);
-      }
-      setIsOpen(openState);
-    }}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(openState) => {
+        if (!openState) {
+          setEligibility(null);
+          setCRClient(null);
+          setStatus('idle');
+          setCRStatus('idle');
+          setErrorMessage(undefined);
+        }
+        setIsOpen(openState);
+      }}
+    >
       {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
 
       <SheetContent
@@ -1286,7 +1514,9 @@ export function SHAVerificationModal({
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
             <div className="flex items-center gap-3 rounded-lg border bg-card p-4 shadow-lg">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="text-sm font-medium">Looking up dependant in Client Registry...</span>
+              <span className="text-sm font-medium">
+                Looking up dependant in Client Registry...
+              </span>
             </div>
           </div>
         )}
@@ -1296,14 +1526,14 @@ export function SHAVerificationModal({
             Kenya Digital Health Verification
           </SheetTitle>
           <SheetDescription>
-            Verify SHA eligibility and retrieve patient demographics from Kenya&apos;s Client Registry in a single lookup.
+            Verify SHA eligibility and retrieve patient demographics from Kenya&apos;s Client
+            Registry in a single lookup.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col">
           <ScrollArea className="flex-1">
             <div className="space-y-6 p-5">
-
               {/* Search Input */}
               <div className="space-y-2">
                 <Label htmlFor="unified-identifier-value">Identification</Label>
@@ -1368,66 +1598,97 @@ export function SHAVerificationModal({
               )}
 
               {/* Eligibility Result (compact card) */}
-              {status === 'success' && eligibility && (
+              {status === 'success' &&
+                eligibility &&
                 (() => {
                   const schemeSummary = getEligibilitySchemeSummary(eligibility);
                   return (
-                    <Card className={cn(
-                      schemeSummary.tone === 'covered'
-                        ? 'border-success bg-success/10'
-                        : 'border-warning bg-warning/10'
-                    )}>
+                    <Card
+                      className={cn(
+                        schemeSummary.tone === 'covered'
+                          ? 'border-success bg-success/10'
+                          : 'border-warning bg-warning/10'
+                      )}
+                    >
                       <CardContent className="pt-4">
                         <div className="flex items-start gap-3">
                           <div className="mt-0.5 shrink-0">
-                            {schemeSummary.tone === 'covered' ? <SHALogo size="lg" /> : <ShieldOff className="h-6 w-6 text-warning-foreground" />}
+                            {schemeSummary.tone === 'covered' ? (
+                              <SHALogo size="lg" />
+                            ) : (
+                              <ShieldOff className="h-6 w-6 text-warning-foreground" />
+                            )}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h4 className={cn(
-                                'font-semibold text-lg',
-                                schemeSummary.tone === 'covered' ? 'text-success' : 'text-warning-foreground'
-                              )}>
-                                {schemeSummary.tone === 'covered' ? 'SHA Eligible' : schemeSummary.tone === 'mixed' ? 'SHIF Not Covered' : 'NOT SHA ELIGIBLE'}
+                              <h4
+                                className={cn(
+                                  'text-lg font-semibold',
+                                  schemeSummary.tone === 'covered'
+                                    ? 'text-success'
+                                    : 'text-warning-foreground'
+                                )}
+                              >
+                                {schemeSummary.tone === 'covered'
+                                  ? 'SHA Eligible'
+                                  : schemeSummary.tone === 'mixed'
+                                    ? 'SHIF Not Covered'
+                                    : 'NOT SHA ELIGIBLE'}
                               </h4>
-                              <Badge variant="outline" className={cn(
-                                schemeSummary.tone === 'covered' ? 'border-success text-success' : 'border-warning text-warning-foreground'
-                              )}>
-                                {schemeSummary.tone === 'covered' ? 'Eligible' : schemeSummary.tone === 'mixed' ? 'Mixed' : 'Ineligible'}
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  schemeSummary.tone === 'covered'
+                                    ? 'border-success text-success'
+                                    : 'border-warning text-warning-foreground'
+                                )}
+                              >
+                                {schemeSummary.tone === 'covered'
+                                  ? 'Eligible'
+                                  : schemeSummary.tone === 'mixed'
+                                    ? 'Mixed'
+                                    : 'Ineligible'}
                               </Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="mt-1 text-sm text-muted-foreground">
                               {schemeSummary.tone === 'not-covered'
-                                ? (eligibility.reason || 'This individual does not have active SHA coverage')
+                                ? eligibility.reason ||
+                                  'This individual does not have active SHA coverage'
                                 : schemeSummary.description}
                             </p>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-4">
+                        <div className="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 sm:gap-3">
                           {eligibility.full_name && (
                             <div className="min-w-0">
-                              <Label className="text-muted-foreground text-xs">Name</Label>
-                              <p className="font-medium break-words">{eligibility.full_name}</p>
+                              <Label className="text-xs text-muted-foreground">Name</Label>
+                              <p className="break-words font-medium">{eligibility.full_name}</p>
                             </div>
                           )}
                           {eligibility.sha_number && (
                             <div className="min-w-0">
-                              <Label className="text-muted-foreground text-xs">SHA Number</Label>
-                              <p className="font-medium break-words">{eligibility.sha_number}</p>
+                              <Label className="text-xs text-muted-foreground">SHA Number</Label>
+                              <p className="break-words font-medium">{eligibility.sha_number}</p>
                             </div>
                           )}
                           {eligibility.coverage_end_date && (
                             <div className="min-w-0">
-                              <Label className="text-muted-foreground text-xs">Coverage Until</Label>
-                              <p className="font-medium break-words">{eligibility.coverage_end_date}</p>
+                              <Label className="text-xs text-muted-foreground">
+                                Coverage Until
+                              </Label>
+                              <p className="break-words font-medium">
+                                {eligibility.coverage_end_date}
+                              </p>
                             </div>
                           )}
                           <div className="min-w-0">
-                            <Label className="text-muted-foreground text-xs">Copay</Label>
+                            <Label className="text-xs text-muted-foreground">Copay</Label>
                             <div className="font-medium">
                               {eligibility.copay_percentage === 0 ? (
-                                <Badge className="bg-success text-success-foreground">Full Coverage</Badge>
+                                <Badge className="bg-success text-success-foreground">
+                                  Full Coverage
+                                </Badge>
                               ) : (
                                 <span>{eligibility.copay_percentage}%</span>
                               )}
@@ -1435,21 +1696,29 @@ export function SHAVerificationModal({
                           </div>
                           {eligibility.employer_name && (
                             <div className="min-w-0">
-                              <Label className="text-muted-foreground text-xs">Employer</Label>
-                              <p className="font-medium break-words">{eligibility.employer_name}</p>
+                              <Label className="text-xs text-muted-foreground">Employer</Label>
+                              <p className="break-words font-medium">{eligibility.employer_name}</p>
                             </div>
                           )}
                         </div>
 
                         {schemeSummary.tone === 'mixed' && (
-                          <div className="flex flex-wrap gap-2 mt-3">
+                          <div className="mt-3 flex flex-wrap gap-2">
                             {schemeSummary.uncoveredSchemes.map((schemeName) => (
-                              <Badge key={`uncovered-${schemeName}`} variant="outline" className="border-warning text-warning-foreground">
+                              <Badge
+                                key={`uncovered-${schemeName}`}
+                                variant="outline"
+                                className="border-warning text-warning-foreground"
+                              >
                                 {schemeName} not covered
                               </Badge>
                             ))}
                             {schemeSummary.coveredSchemes.map((schemeName) => (
-                              <Badge key={`covered-${schemeName}`} variant="outline" className="border-success text-success">
+                              <Badge
+                                key={`covered-${schemeName}`}
+                                variant="outline"
+                                className="border-success text-success"
+                              >
                                 {schemeName} covered
                               </Badge>
                             ))}
@@ -1459,7 +1728,9 @@ export function SHAVerificationModal({
                         {eligibility.possible_solution && (
                           <Alert className="mt-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
                             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                            <AlertTitle className="text-blue-800 dark:text-blue-300 text-sm">How to Resolve</AlertTitle>
+                            <AlertTitle className="text-sm text-blue-800 dark:text-blue-300">
+                              How to Resolve
+                            </AlertTitle>
                             <AlertDescription className="text-sm text-blue-700 dark:text-blue-400">
                               {eligibility.possible_solution}
                             </AlertDescription>
@@ -1477,19 +1748,16 @@ export function SHAVerificationModal({
                       </CardContent>
                     </Card>
                   );
-                })()
-              )}
+                })()}
 
               {/* CR Demographics — shown once CR result arrives */}
               {crClient && (
                 <Card className="border-success bg-success/10">
                   <CardContent className="pt-4">
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="mb-3 flex items-center gap-2">
                       <UserCheck className="h-5 w-5 text-success" />
-                      <h4 className="font-semibold text-success">
-                        Client Registry Record
-                      </h4>
-                      <Badge variant="outline" className="ml-auto text-success border-success">
+                      <h4 className="font-semibold text-success">Client Registry Record</h4>
+                      <Badge variant="outline" className="ml-auto border-success text-success">
                         {crClient.client_number}
                       </Badge>
                       {onAddPersonToForm && (
@@ -1504,7 +1772,9 @@ export function SHAVerificationModal({
                                 ...crClient,
                                 phone: crClient.phone_number,
                                 id: crClient.client_number,
-                                identification_type: crClient.national_id ? 'National ID' : undefined,
+                                identification_type: crClient.national_id
+                                  ? 'National ID'
+                                  : undefined,
                                 identification_number: crClient.national_id,
                               } as unknown as Record<string, unknown>,
                               'principal'
@@ -1517,128 +1787,161 @@ export function SHAVerificationModal({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
+                    <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 sm:gap-3">
                       <div className="min-w-0">
-                        <Label className="text-muted-foreground text-xs">Full Name</Label>
-                        <p className="font-medium break-words">
-                          {crClient.first_name} {crClient.middle_name && `${crClient.middle_name} `}{crClient.last_name}
+                        <Label className="text-xs text-muted-foreground">Full Name</Label>
+                        <p className="break-words font-medium">
+                          {crClient.first_name} {crClient.middle_name && `${crClient.middle_name} `}
+                          {crClient.last_name}
                         </p>
                       </div>
                       <div className="min-w-0">
-                        <Label className="text-muted-foreground text-xs">Date of Birth</Label>
-                        <p className="font-medium break-words">{crClient.date_of_birth}</p>
+                        <Label className="text-xs text-muted-foreground">Date of Birth</Label>
+                        <p className="break-words font-medium">{crClient.date_of_birth}</p>
                       </div>
                       <div className="min-w-0">
-                        <Label className="text-muted-foreground text-xs">Gender</Label>
-                        <p className="font-medium break-words">
-                          {crClient.gender === 'M' ? 'Male' : crClient.gender === 'F' ? 'Female' : crClient.gender || 'Other'}
+                        <Label className="text-xs text-muted-foreground">Gender</Label>
+                        <p className="break-words font-medium">
+                          {crClient.gender === 'M'
+                            ? 'Male'
+                            : crClient.gender === 'F'
+                              ? 'Female'
+                              : crClient.gender || 'Other'}
                         </p>
                       </div>
                       {crClient.national_id && (
                         <div className="min-w-0">
-                          <Label className="text-muted-foreground text-xs">National ID</Label>
-                          <p className="font-medium break-words">{crClient.national_id}</p>
+                          <Label className="text-xs text-muted-foreground">National ID</Label>
+                          <p className="break-words font-medium">{crClient.national_id}</p>
                         </div>
                       )}
                       {crClient.phone_number && (
                         <div className="min-w-0">
-                          <Label className="text-muted-foreground text-xs">Phone</Label>
-                          <p className="font-medium break-words">{crClient.phone_number}</p>
+                          <Label className="text-xs text-muted-foreground">Phone</Label>
+                          <p className="break-words font-medium">{crClient.phone_number}</p>
                         </div>
                       )}
                       {crClient.email && (
                         <div className="min-w-0">
-                          <Label className="text-muted-foreground text-xs">Email</Label>
-                          <p className="font-medium break-words">{crClient.email}</p>
+                          <Label className="text-xs text-muted-foreground">Email</Label>
+                          <p className="break-words font-medium">{crClient.email}</p>
                         </div>
                       )}
                       {crClient.county && (
                         <div className="min-w-0">
-                          <Label className="text-muted-foreground text-xs">County</Label>
-                          <p className="font-medium break-words">{crClient.county}</p>
+                          <Label className="text-xs text-muted-foreground">County</Label>
+                          <p className="break-words font-medium">{crClient.county}</p>
                         </div>
                       )}
                       {crClient.sub_county && (
                         <div className="min-w-0">
-                          <Label className="text-muted-foreground text-xs">Sub-County</Label>
-                          <p className="font-medium break-words">{crClient.sub_county}</p>
+                          <Label className="text-xs text-muted-foreground">Sub-County</Label>
+                          <p className="break-words font-medium">{crClient.sub_county}</p>
                         </div>
                       )}
                       {crClient.ward && (
                         <div className="min-w-0">
-                          <Label className="text-muted-foreground text-xs">Ward</Label>
-                          <p className="font-medium break-words">{crClient.ward}</p>
+                          <Label className="text-xs text-muted-foreground">Ward</Label>
+                          <p className="break-words font-medium">{crClient.ward}</p>
                         </div>
                       )}
                       {crClient.citizenship && (
                         <div className="min-w-0">
-                          <Label className="text-muted-foreground text-xs">Citizenship</Label>
-                          <p className="font-medium break-words">{crClient.citizenship}</p>
+                          <Label className="text-xs text-muted-foreground">Citizenship</Label>
+                          <p className="break-words font-medium">{crClient.citizenship}</p>
                         </div>
                       )}
                       {crClient.village_estate && (
                         <div className="min-w-0">
-                          <Label className="text-muted-foreground text-xs">Village/Estate</Label>
-                          <p className="font-medium break-words">{crClient.village_estate}</p>
+                          <Label className="text-xs text-muted-foreground">Village/Estate</Label>
+                          <p className="break-words font-medium">{crClient.village_estate}</p>
                         </div>
                       )}
                       {crClient.id_serial && (
                         <div className="min-w-0">
-                          <Label className="text-muted-foreground text-xs">ID Serial No.</Label>
-                          <p className="font-medium break-words">{crClient.id_serial}</p>
+                          <Label className="text-xs text-muted-foreground">ID Serial No.</Label>
+                          <p className="break-words font-medium">{crClient.id_serial}</p>
                         </div>
                       )}
                     </div>
 
                     {/* Other Identifications (SHA Number, Household Number, etc.) */}
-                    {crClient.other_identifications && crClient.other_identifications.length > 0 && (
-                      <div className="mt-3 pt-3 border-t">
-                        <Label className="text-muted-foreground text-xs uppercase tracking-wide">Other Identifiers</Label>
-                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                          {crClient.other_identifications.map((oid, idx) => (
-                            <div key={idx} className="min-w-0 flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/40">
-                              <span className="text-xs text-muted-foreground shrink-0">{oid.identification_type}:</span>
-                              <span className="font-medium break-all">{oid.identification_number}</span>
-                            </div>
-                          ))}
+                    {crClient.other_identifications &&
+                      crClient.other_identifications.length > 0 && (
+                        <div className="mt-3 border-t pt-3">
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Other Identifiers
+                          </Label>
+                          <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                            {crClient.other_identifications.map((oid, idx) => (
+                              <div
+                                key={idx}
+                                className="flex min-w-0 items-center gap-2 rounded-md border bg-muted/40 px-3 py-2"
+                              >
+                                <span className="shrink-0 text-xs text-muted-foreground">
+                                  {oid.identification_type}:
+                                </span>
+                                <span className="break-all font-medium">
+                                  {oid.identification_number}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Dependants */}
                     {crClient.dependants && crClient.dependants.length > 0 && (
-                      <div className="mt-3 pt-3 border-t">
-                        <Label className="text-muted-foreground text-xs uppercase tracking-wide">
-                          Dependants ({crClient.dependants.reduce((sum, g) => sum + (g.total ?? g.result?.length ?? 0), 0)})
+                      <div className="mt-3 border-t pt-3">
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Dependants (
+                          {crClient.dependants.reduce(
+                            (sum, g) => sum + (g.total ?? g.result?.length ?? 0),
+                            0
+                          )}
+                          )
                         </Label>
                         <div className="mt-2 space-y-2">
                           {crClient.dependants.flatMap((group) =>
                             (group.result ?? []).map((dep, idx) => (
-                              <div key={dep.id ?? idx} className="rounded-md border px-3 py-2 bg-muted/40 text-sm">
+                              <div
+                                key={dep.id ?? idx}
+                                className="rounded-md border bg-muted/40 px-3 py-2 text-sm"
+                              >
                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                   <span className="font-medium">
-                                    {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ')}
+                                    {[dep.first_name, dep.middle_name, dep.last_name]
+                                      .filter(Boolean)
+                                      .join(' ')}
                                   </span>
                                   {group.relationship && (
-                                    <Badge variant="outline" className="text-xs">{group.relationship}</Badge>
+                                    <Badge variant="outline" className="text-xs">
+                                      {group.relationship}
+                                    </Badge>
                                   )}
                                   {dep.gender && (
-                                    <span className="text-xs text-muted-foreground">{dep.gender}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {dep.gender}
+                                    </span>
                                   )}
                                   {dep.date_of_birth && (
-                                    <span className="text-xs text-muted-foreground">DOB: {dep.date_of_birth}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      DOB: {dep.date_of_birth}
+                                    </span>
                                   )}
                                   {onAddPersonToForm && (
                                     <Button
                                       variant="outline"
                                       size="icon"
-                                      className="h-6 w-6 ml-auto shrink-0"
+                                      className="ml-auto h-6 w-6 shrink-0"
                                       title={`Use dependant ${[dep.first_name, dep.last_name].filter(Boolean).join(' ')} to populate form`}
                                       onClick={() => {
                                         const person = buildShaPayloadPerson(
                                           dep as unknown as Record<string, unknown>,
                                           'dependent',
-                                          typeof group.relationship === 'string' ? group.relationship : undefined
+                                          typeof group.relationship === 'string'
+                                            ? group.relationship
+                                            : undefined
                                         );
                                         handleAddPerson(person);
                                       }}
@@ -1647,32 +1950,30 @@ export function SHAVerificationModal({
                                     </Button>
                                   )}
                                 </div>
-                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-muted-foreground">
+                                <div className="mt-2 grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
                                   {dep.identification_number && (
-                                    <span>{dep.identification_type}: {dep.identification_number}</span>
+                                    <span>
+                                      {dep.identification_type}: {dep.identification_number}
+                                    </span>
                                   )}
-                                  {dep.id && (
-                                    <span>CR: {dep.id}</span>
-                                  )}
-                                  {dep.county && (
-                                    <span>County: {dep.county}</span>
-                                  )}
-                                  {dep.sub_county && (
-                                    <span>Sub-County: {dep.sub_county}</span>
-                                  )}
-                                  {dep.ward && (
-                                    <span>Ward: {dep.ward}</span>
-                                  )}
+                                  {dep.id && <span>CR: {dep.id}</span>}
+                                  {dep.county && <span>County: {dep.county}</span>}
+                                  {dep.sub_county && <span>Sub-County: {dep.sub_county}</span>}
+                                  {dep.ward && <span>Ward: {dep.ward}</span>}
                                 </div>
-                                {dep.other_identifications && dep.other_identifications.length > 0 && (
-                                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                                    {dep.other_identifications.map((oid, oidIdx) => (
-                                      <span key={oidIdx} className="text-xs rounded bg-muted px-1.5 py-0.5">
-                                        {oid.identification_type}: {oid.identification_number}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
+                                {dep.other_identifications &&
+                                  dep.other_identifications.length > 0 && (
+                                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                      {dep.other_identifications.map((oid, oidIdx) => (
+                                        <span
+                                          key={oidIdx}
+                                          className="rounded bg-muted px-1.5 py-0.5 text-xs"
+                                        >
+                                          {oid.identification_type}: {oid.identification_number}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                               </div>
                             ))
                           )}
@@ -1699,7 +2000,6 @@ export function SHAVerificationModal({
                   onAddPersonToForm={onAddPersonToForm ? handleAddPerson : undefined}
                 />
               )}
-
             </div>
           </ScrollArea>
         </div>

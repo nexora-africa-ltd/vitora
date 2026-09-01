@@ -24,24 +24,40 @@ import type { ProcedureCatalogDetail } from '@/lib/types/procedure';
 import { RISK_LEVEL_COLORS } from '@/lib/types/procedure';
 
 const CATEGORY_LABELS: Record<string, string> = {
-  MINOR: 'Minor Procedure', DIAGNOSTIC: 'Diagnostic', THERAPEUTIC: 'Therapeutic',
-  PREVENTIVE: 'Preventive', EMERGENCY: 'Emergency', DENTAL: 'Dental',
-  OPHTHALMIC: 'Ophthalmic', ENT: 'ENT', OBSTETRIC: 'Obstetric',
-  WOUND_CARE: 'Wound Care', INJECTION: 'Injection/Infusion', OTHER: 'Other',
+  MINOR: 'Minor Procedure',
+  DIAGNOSTIC: 'Diagnostic',
+  THERAPEUTIC: 'Therapeutic',
+  PREVENTIVE: 'Preventive',
+  EMERGENCY: 'Emergency',
+  DENTAL: 'Dental',
+  OPHTHALMIC: 'Ophthalmic',
+  ENT: 'ENT',
+  OBSTETRIC: 'Obstetric',
+  WOUND_CARE: 'Wound Care',
+  INJECTION: 'Injection/Infusion',
+  OTHER: 'Other',
 };
 
 const BODY_SYSTEM_LABELS: Record<string, string> = {
-  INTEGUMENTARY: 'Integumentary (Skin)', MUSCULOSKELETAL: 'Musculoskeletal',
-  RESPIRATORY: 'Respiratory', CARDIOVASCULAR: 'Cardiovascular', DIGESTIVE: 'Digestive',
-  URINARY: 'Urinary', REPRODUCTIVE: 'Reproductive', NERVOUS: 'Nervous',
-  ENDOCRINE: 'Endocrine', LYMPHATIC: 'Lymphatic', SENSORY: 'Sensory (Eye/Ear)',
-  DENTAL: 'Dental', GENERAL: 'General/Multiple',
+  INTEGUMENTARY: 'Integumentary (Skin)',
+  MUSCULOSKELETAL: 'Musculoskeletal',
+  RESPIRATORY: 'Respiratory',
+  CARDIOVASCULAR: 'Cardiovascular',
+  DIGESTIVE: 'Digestive',
+  URINARY: 'Urinary',
+  REPRODUCTIVE: 'Reproductive',
+  NERVOUS: 'Nervous',
+  ENDOCRINE: 'Endocrine',
+  LYMPHATIC: 'Lymphatic',
+  SENSORY: 'Sensory (Eye/Ear)',
+  DENTAL: 'Dental',
+  GENERAL: 'General/Multiple',
 };
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-4">
-      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="shrink-0 text-muted-foreground">{label}</span>
       <span className="text-right">{children}</span>
     </div>
   );
@@ -50,7 +66,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 function BoolRow({ label, value }: { label: string; value: boolean }) {
   return (
     <InfoRow label={label}>
-      <span className={value ? 'text-amber-600 font-medium' : 'text-muted-foreground'}>
+      <span className={value ? 'font-medium text-amber-600' : 'text-muted-foreground'}>
         {value ? 'Yes' : 'No'}
       </span>
     </InfoRow>
@@ -62,7 +78,11 @@ export default function ProcedureCatalogDetailPage() {
   const router = useRouter();
   const procedureId = Number(params.id);
 
-  const { data: procedure, isLoading, error } = useQuery<ProcedureCatalogDetail>({
+  const {
+    data: procedure,
+    isLoading,
+    error,
+  } = useQuery<ProcedureCatalogDetail>({
     queryKey: ['procedure-catalog-entry', procedureId],
     queryFn: () => proceduresApi.getCatalogEntry(procedureId),
     enabled: Number.isFinite(procedureId),
@@ -98,15 +118,15 @@ export default function ProcedureCatalogDetailPage() {
         helpContent="View procedure details including coding, consent requirements, clinical protocols, and billing information."
         actions={
           <Button onClick={() => router.push(`/procedures/catalog/${procedureId}/edit`)}>
-            <Edit className="h-4 w-4 mr-2" />
+            <Edit className="mr-2 h-4 w-4" />
             Edit
           </Button>
         }
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <p className="font-mono text-sm text-muted-foreground">{procedure.code}</p>
           <p className="text-sm text-muted-foreground">
             {CATEGORY_LABELS[procedure.category] || procedure.category}
@@ -114,7 +134,7 @@ export default function ProcedureCatalogDetailPage() {
             {BODY_SYSTEM_LABELS[procedure.body_system] || procedure.body_system}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+        <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
           <Badge className={`${RISK_LEVEL_COLORS[procedure.risk_level] || ''} w-fit`}>
             {procedure.risk_level} Risk
           </Badge>
@@ -132,7 +152,7 @@ export default function ProcedureCatalogDetailPage() {
         {/* Coding & Classification */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <FileText className="h-4 w-4" />
               Coding & Classification
             </CardTitle>
@@ -141,7 +161,9 @@ export default function ProcedureCatalogDetailPage() {
             <InfoRow label="Code">{procedure.code}</InfoRow>
             {procedure.ichi_code && <InfoRow label="ICHI">{procedure.ichi_code}</InfoRow>}
             {procedure.cpt_code && <InfoRow label="CPT">{procedure.cpt_code}</InfoRow>}
-            {procedure.icd10_pcs_code && <InfoRow label="ICD-10-PCS">{procedure.icd10_pcs_code}</InfoRow>}
+            {procedure.icd10_pcs_code && (
+              <InfoRow label="ICD-10-PCS">{procedure.icd10_pcs_code}</InfoRow>
+            )}
             <InfoRow label="AI Procedure Key">
               {procedure.tibabot_procedure_key ? (
                 <Badge variant="info" className="w-fit gap-1">
@@ -152,8 +174,12 @@ export default function ProcedureCatalogDetailPage() {
                 <span className="text-muted-foreground">Not mapped</span>
               )}
             </InfoRow>
-            <InfoRow label="Category">{CATEGORY_LABELS[procedure.category] || procedure.category}</InfoRow>
-            <InfoRow label="Body System">{BODY_SYSTEM_LABELS[procedure.body_system] || procedure.body_system}</InfoRow>
+            <InfoRow label="Category">
+              {CATEGORY_LABELS[procedure.category] || procedure.category}
+            </InfoRow>
+            <InfoRow label="Body System">
+              {BODY_SYSTEM_LABELS[procedure.body_system] || procedure.body_system}
+            </InfoRow>
             <InfoRow label="Risk Level">
               <Badge className={`${RISK_LEVEL_COLORS[procedure.risk_level] || ''} w-fit`}>
                 {procedure.risk_level}
@@ -165,7 +191,7 @@ export default function ProcedureCatalogDetailPage() {
         {/* Clinical Requirements */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Syringe className="h-4 w-4" />
               Clinical Requirements
             </CardTitle>
@@ -187,7 +213,7 @@ export default function ProcedureCatalogDetailPage() {
         {/* Consent Requirements */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Shield className="h-4 w-4" />
               Consent Requirements
             </CardTitle>
@@ -197,8 +223,8 @@ export default function ProcedureCatalogDetailPage() {
             <BoolRow label="Guardian Consent" value={procedure.guardian_consent_required} />
             <BoolRow label="Witness Required" value={procedure.witness_required} />
             {procedure.consent_template && (
-              <div className="pt-2 border-t">
-                <p className="text-muted-foreground text-xs mb-1">Consent Template</p>
+              <div className="border-t pt-2">
+                <p className="mb-1 text-xs text-muted-foreground">Consent Template</p>
                 <p className="whitespace-pre-wrap">{procedure.consent_template}</p>
               </div>
             )}
@@ -208,7 +234,7 @@ export default function ProcedureCatalogDetailPage() {
         {/* Billing & SHA */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Heart className="h-4 w-4" />
               Billing & SHA
             </CardTitle>
@@ -236,7 +262,7 @@ export default function ProcedureCatalogDetailPage() {
         {procedure.requires_follow_up && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Clock className="h-4 w-4" />
                 Follow-up
               </CardTitle>
@@ -251,7 +277,7 @@ export default function ProcedureCatalogDetailPage() {
         {(procedure.pre_procedure_instructions || procedure.post_procedure_instructions) && (
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <AlertTriangle className="h-4 w-4" />
                 Patient Instructions
               </CardTitle>
@@ -259,7 +285,7 @@ export default function ProcedureCatalogDetailPage() {
             <CardContent className="space-y-4 text-sm">
               {procedure.pre_procedure_instructions && (
                 <div>
-                  <p className="font-medium mb-1">Pre-Procedure</p>
+                  <p className="mb-1 font-medium">Pre-Procedure</p>
                   <p className="whitespace-pre-wrap text-muted-foreground">
                     {procedure.pre_procedure_instructions}
                   </p>
@@ -267,7 +293,7 @@ export default function ProcedureCatalogDetailPage() {
               )}
               {procedure.post_procedure_instructions && (
                 <div>
-                  <p className="font-medium mb-1">Post-Procedure</p>
+                  <p className="mb-1 font-medium">Post-Procedure</p>
                   <p className="whitespace-pre-wrap text-muted-foreground">
                     {procedure.post_procedure_instructions}
                   </p>

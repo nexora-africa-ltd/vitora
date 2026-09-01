@@ -232,10 +232,10 @@ export const NATIONALITIES = [
   'Zimbabwean',
 ] as const;
 
-export type Nationality = typeof NATIONALITIES[number];
+export type Nationality = (typeof NATIONALITIES)[number];
 
 // Formatted options for combobox
-export const NATIONALITY_OPTIONS = NATIONALITIES.map(n => ({
+export const NATIONALITY_OPTIONS = NATIONALITIES.map((n) => ({
   value: n,
   label: n,
 }));

@@ -82,7 +82,10 @@ const STATUS_OPTIONS = [
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   clinic_type: z.string().min(1, 'Please select a clinic type'),
-  code: z.string().min(2, 'Code must be at least 2 characters').regex(/^[A-Z0-9-]+$/, 'Code must be uppercase letters, numbers, and dashes only'),
+  code: z
+    .string()
+    .min(2, 'Code must be at least 2 characters')
+    .regex(/^[A-Z0-9-]+$/, 'Code must be uppercase letters, numbers, and dashes only'),
   description: z.string().optional(),
   location: z.string().optional(),
   floor: z.string().optional(),
@@ -167,10 +170,18 @@ export default function EditClinicPage() {
           description: `${data.name} has been updated successfully.`,
         });
         router.push(`/clinics/${clinicId}/settings`);
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const description =
+          typeof error === 'object' &&
+          error !== null &&
+          'response' in error &&
+          typeof (error as { response?: { data?: { detail?: string } } }).response?.data?.detail ===
+            'string'
+            ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+            : 'Failed to update clinic.';
         toast({
           title: 'Error',
-          description: error?.response?.data?.detail || 'Failed to update clinic.',
+          description,
           variant: 'destructive',
         });
       }
@@ -190,11 +201,7 @@ export default function EditClinicPage() {
   }
 
   if (!clinic) {
-    return (
-      <div className="py-12 text-center text-muted-foreground">
-        Clinic not found.
-      </div>
-    );
+    return <div className="py-12 text-center text-muted-foreground">Clinic not found.</div>;
   }
 
   return (
@@ -214,7 +221,7 @@ export default function EditClinicPage() {
                 <HelpPopover content="Core clinic identity fields. Changing the clinic type may affect procedure assignments and patient routing." />
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
+            <CardContent className="space-y-4 p-4 pt-0 sm:p-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -344,7 +351,7 @@ export default function EditClinicPage() {
                 <HelpPopover content="Physical location of the clinic within the facility." />
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 grid gap-4 sm:grid-cols-2">
+            <CardContent className="grid gap-4 p-4 pt-0 sm:grid-cols-2 sm:p-6">
               <FormField
                 control={form.control}
                 name="location"
@@ -383,8 +390,8 @@ export default function EditClinicPage() {
                 <HelpPopover content="Configure patient flow requirements: appointments, walk-ins, referrals, and triage." />
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
-              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+            <CardContent className="space-y-4 p-4 pt-0 sm:p-6">
+              <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
                 <FormField
                   control={form.control}
                   name="requires_appointment"
@@ -462,7 +469,7 @@ export default function EditClinicPage() {
                 control={form.control}
                 name="is_sensitive"
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20 p-3 sm:p-4">
+                  <FormItem className="flex items-center justify-between rounded-lg border border-yellow-500/50 bg-yellow-50 p-3 dark:bg-yellow-950/20 sm:p-4">
                     <div className="space-y-0.5">
                       <FormLabel className="text-sm">Sensitive Clinic</FormLabel>
                       <FormDescription className="text-xs sm:text-sm">
@@ -486,7 +493,7 @@ export default function EditClinicPage() {
                 <HelpPopover content="Set default consultation fees and SHA service codes for claims integration." />
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 grid gap-4 sm:grid-cols-2">
+            <CardContent className="grid gap-4 p-4 pt-0 sm:grid-cols-2 sm:p-6">
               <FormField
                 control={form.control}
                 name="default_service_fee"
@@ -508,10 +515,7 @@ export default function EditClinicPage() {
                   <FormItem>
                     <FormLabel>SHA Service Code</FormLabel>
                     <FormControl>
-                      <SHATariffCombobox
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
+                      <SHATariffCombobox value={field.value} onValueChange={field.onChange} />
                     </FormControl>
                     <FormDescription>For SHA claims integration</FormDescription>
                     <FormMessage />
@@ -528,9 +532,9 @@ export default function EditClinicPage() {
             </Button>
             <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="mr-2 h-4 w-4" />
               )}
               {isPending ? 'Saving...' : 'Save Changes'}
             </Button>

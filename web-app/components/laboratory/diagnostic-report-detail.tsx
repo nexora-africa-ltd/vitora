@@ -87,9 +87,7 @@ function getAmendLockedMessage(params: {
   return 'Amendments are disabled after a report is finalized or digitally signed.';
 }
 
-export function DiagnosticReportDetail({
-  reportNumber,
-}: DiagnosticReportDetailProps) {
+export function DiagnosticReportDetail({ reportNumber }: DiagnosticReportDetailProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [amendConclusion, setAmendConclusion] = useState('');
@@ -125,16 +123,13 @@ export function DiagnosticReportDetail({
 
   if (error || !report) {
     return (
-      <div className="text-center py-12">
-        <AlertTriangle className="h-12 w-12 mx-auto text-yellow-500 mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Report Not Found</h2>
-        <p className="text-muted-foreground mb-4">
+      <div className="py-12 text-center">
+        <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-yellow-500" />
+        <h2 className="mb-2 text-xl font-semibold">Report Not Found</h2>
+        <p className="mb-4 text-muted-foreground">
           {error?.message || 'Unable to load diagnostic report.'}
         </p>
-        <Button
-          variant="outline"
-          onClick={() => router.push('/laboratory/reports')}
-        >
+        <Button variant="outline" onClick={() => router.push('/laboratory/reports')}>
           Go to Reports
         </Button>
       </div>
@@ -187,8 +182,7 @@ export function DiagnosticReportDetail({
     } catch (error) {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to finalize report',
+        description: error instanceof Error ? error.message : 'Failed to finalize report',
         variant: 'destructive',
       });
     }
@@ -211,8 +205,7 @@ export function DiagnosticReportDetail({
     } catch (error) {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to update report draft',
+        description: error instanceof Error ? error.message : 'Failed to update report draft',
         variant: 'destructive',
       });
     }
@@ -240,8 +233,7 @@ export function DiagnosticReportDetail({
     } catch (error) {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to amend report',
+        description: error instanceof Error ? error.message : 'Failed to amend report',
         variant: 'destructive',
       });
     }
@@ -266,8 +258,7 @@ export function DiagnosticReportDetail({
     } catch (error) {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to cancel report',
+        description: error instanceof Error ? error.message : 'Failed to cancel report',
         variant: 'destructive',
       });
     }
@@ -275,9 +266,18 @@ export function DiagnosticReportDetail({
 
   // Compute patient age from DOB
   const patientAge = report.patient_dob
-    ? String(Math.floor((Date.now() - new Date(report.patient_dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))
+    ? String(
+        Math.floor(
+          (Date.now() - new Date(report.patient_dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+        )
+      )
     : '';
-  const patientSex = report.patient_gender === 'M' ? 'Male' : report.patient_gender === 'F' ? 'Female' : report.patient_gender || '';
+  const patientSex =
+    report.patient_gender === 'M'
+      ? 'Male'
+      : report.patient_gender === 'F'
+        ? 'Female'
+        : report.patient_gender || '';
 
   const handlePrint = async () => {
     if (!labOrder) {
@@ -290,7 +290,9 @@ export function DiagnosticReportDetail({
     }
     try {
       const latestResults = await laboratoryApi.getOrderResults(report.lab_order_number);
-      const resultByOrderItem = new Map(latestResults.map((result) => [String(result.order_item), result]));
+      const resultByOrderItem = new Map(
+        latestResults.map((result) => [String(result.order_item), result])
+      );
       const printableOrder = {
         ...labOrder,
         items: labOrder.items.map((item) => {
@@ -304,7 +306,14 @@ export function DiagnosticReportDetail({
       };
 
       // Fetch signature data for the report (if signed)
-      let signatureData: { signer_full_name: string; signed_at: string; certificate_serial?: string; is_valid?: boolean } | undefined;
+      let signatureData:
+        | {
+            signer_full_name: string;
+            signed_at: string;
+            certificate_serial?: string;
+            is_valid?: boolean;
+          }
+        | undefined;
       try {
         let sigs = await signaturesApi.forDocument('DiagnosticReport', report.id);
         if (sigs.length === 0) {
@@ -345,7 +354,11 @@ export function DiagnosticReportDetail({
         facility: facilityDetail
           ? {
               name: facilityDetail.name,
-              address: `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(/^, |, $/g, ''),
+              address:
+                `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(
+                  /^, |, $/g,
+                  ''
+                ),
               phone: '',
               license: facilityDetail.mfl_code || '',
             }
@@ -354,8 +367,7 @@ export function DiagnosticReportDetail({
     } catch (error) {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to print report',
+        description: error instanceof Error ? error.message : 'Failed to print report',
         variant: 'destructive',
       });
     }
@@ -374,7 +386,9 @@ export function DiagnosticReportDetail({
       if (error instanceof Error) {
         message = error.message;
       } else if (error && typeof error === 'object' && 'response' in error) {
-        const maybeAxios = error as { response?: { data?: { detail?: string; error?: string; message?: string } } };
+        const maybeAxios = error as {
+          response?: { data?: { detail?: string; error?: string; message?: string } };
+        };
         message =
           maybeAxios.response?.data?.detail ||
           maybeAxios.response?.data?.error ||
@@ -397,11 +411,8 @@ export function DiagnosticReportDetail({
         actions={
           <>
             {canPrint && (
-              <Button
-                variant="outline"
-                onClick={handlePrint}
-              >
-                <Printer className="h-4 w-4 mr-2" />
+              <Button variant="outline" onClick={handlePrint}>
+                <Printer className="mr-2 h-4 w-4" />
                 Print
               </Button>
             )}
@@ -410,7 +421,7 @@ export function DiagnosticReportDetail({
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
                     Sign & Finalize
                   </Button>
                 </AlertDialogTrigger>
@@ -422,14 +433,12 @@ export function DiagnosticReportDetail({
                     </div>
                   </AlertDialogHeader>
                   <p className="text-sm text-muted-foreground">
-                    Are you sure you want to sign and finalize this report? This action
-                    marks it as the official diagnostic report.
+                    Are you sure you want to sign and finalize this report? This action marks it as
+                    the official diagnostic report.
                   </p>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleFinalize}>
-                      Sign & Finalize
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={handleFinalize}>Sign & Finalize</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -438,7 +447,7 @@ export function DiagnosticReportDetail({
             {canEditDraft && (
               <Dialog open={draftEditOpen} onOpenChange={setDraftEditOpen}>
                 <Button variant="outline" onClick={() => setDraftEditOpen(true)}>
-                  <PenLine className="h-4 w-4 mr-2" />
+                  <PenLine className="mr-2 h-4 w-4" />
                   Edit Draft
                 </Button>
                 <DialogContent>
@@ -485,7 +494,7 @@ export function DiagnosticReportDetail({
                   <TooltipTrigger asChild>
                     <span>
                       <Button variant="outline" disabled>
-                        <PenLine className="h-4 w-4 mr-2" />
+                        <PenLine className="mr-2 h-4 w-4" />
                         Amend
                       </Button>
                     </span>
@@ -501,7 +510,7 @@ export function DiagnosticReportDetail({
                 onClick={handleSupersede}
                 disabled={supersedeReport.isPending}
               >
-                <CopyPlus className="h-4 w-4 mr-2" />
+                <CopyPlus className="mr-2 h-4 w-4" />
                 {supersedeReport.isPending ? 'Creating...' : 'Create Superseding Report'}
               </Button>
             )}
@@ -512,7 +521,7 @@ export function DiagnosticReportDetail({
                   <TooltipTrigger asChild>
                     <span>
                       <Button variant="outline" disabled>
-                        <CopyPlus className="h-4 w-4 mr-2" />
+                        <CopyPlus className="mr-2 h-4 w-4" />
                         Create Superseding Report
                       </Button>
                     </span>
@@ -526,7 +535,7 @@ export function DiagnosticReportDetail({
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline">
-                    <PenLine className="h-4 w-4 mr-2" />
+                    <PenLine className="mr-2 h-4 w-4" />
                     Amend
                   </Button>
                 </AlertDialogTrigger>
@@ -547,9 +556,7 @@ export function DiagnosticReportDetail({
                   </div>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleAmend}>
-                      Submit Amendment
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={handleAmend}>Submit Amendment</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -559,7 +566,7 @@ export function DiagnosticReportDetail({
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive">
-                    <XCircle className="h-4 w-4 mr-2" />
+                    <XCircle className="mr-2 h-4 w-4" />
                     Cancel Report
                   </Button>
                 </AlertDialogTrigger>
@@ -595,9 +602,9 @@ export function DiagnosticReportDetail({
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {report.patient_name}
             <span className="text-muted-foreground">
               {' '}
@@ -610,26 +617,20 @@ export function DiagnosticReportDetail({
               </Link>
             </span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Created {formatDateTime(report.created_at)}
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <ReportStatusBadge
-            status={report.status}
-          />
+          <ReportStatusBadge status={report.status} />
           {report.is_finalized && (
-            <SignatureBadge
-              documentType="DiagnosticReport"
-              documentId={report.id}
-              canSign={true}
-            />
+            <SignatureBadge documentType="DiagnosticReport" documentId={report.id} canSign={true} />
           )}
         </div>
       </div>
 
       {/* Report Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Conclusion */}
         <Card>
           <CardHeader>
@@ -637,11 +638,9 @@ export function DiagnosticReportDetail({
           </CardHeader>
           <CardContent>
             {report.conclusion ? (
-              <p className="text-sm whitespace-pre-wrap">{report.conclusion}</p>
+              <p className="whitespace-pre-wrap text-sm">{report.conclusion}</p>
             ) : (
-              <p className="text-sm text-muted-foreground italic">
-                No conclusion provided yet.
-              </p>
+              <p className="text-sm italic text-muted-foreground">No conclusion provided yet.</p>
             )}
           </CardContent>
         </Card>
@@ -653,11 +652,9 @@ export function DiagnosticReportDetail({
           </CardHeader>
           <CardContent>
             {report.clinical_info ? (
-              <p className="text-sm whitespace-pre-wrap">
-                {report.clinical_info}
-              </p>
+              <p className="whitespace-pre-wrap text-sm">{report.clinical_info}</p>
             ) : (
-              <p className="text-sm text-muted-foreground italic">
+              <p className="text-sm italic text-muted-foreground">
                 No clinical information provided.
               </p>
             )}
@@ -671,7 +668,7 @@ export function DiagnosticReportDetail({
           <CardTitle className="text-base">Report Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
             <div>
               <p className="text-muted-foreground">Issued By</p>
               <p className="font-medium">{report.issued_by_name || '—'}</p>
@@ -686,7 +683,7 @@ export function DiagnosticReportDetail({
               <p className="text-muted-foreground">Lab Order</p>
               <Link
                 href={`/laboratory/orders/${report.lab_order_number}`}
-                className="font-medium text-primary hover:underline inline-flex items-center gap-1"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
               >
                 {report.lab_order_number}
                 <ExternalLink className="h-3 w-3" />
@@ -702,8 +699,8 @@ export function DiagnosticReportDetail({
           {report.amended_by_name && (
             <>
               <Separator className="my-4" />
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
-                <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+              <div className="rounded-md bg-blue-50 p-3 dark:bg-blue-900/20">
+                <p className="mb-1 text-sm font-medium text-blue-700 dark:text-blue-300">
                   Amendment Details
                 </p>
                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -714,9 +711,7 @@ export function DiagnosticReportDetail({
                   <div>
                     <p className="text-muted-foreground">Amended At</p>
                     <p className="font-medium">
-                      {report.amended_at
-                        ? formatDateTime(report.amended_at)
-                        : '—'}
+                      {report.amended_at ? formatDateTime(report.amended_at) : '—'}
                     </p>
                   </div>
                 </div>
@@ -728,8 +723,8 @@ export function DiagnosticReportDetail({
           {report.cancellation_reason && (
             <>
               <Separator className="my-4" />
-              <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
-                <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-1">
+              <div className="rounded-md bg-red-50 p-3 dark:bg-red-900/20">
+                <p className="mb-1 text-sm font-medium text-red-700 dark:text-red-300">
                   Cancellation Reason
                 </p>
                 <p className="text-sm text-red-600 dark:text-red-400">
@@ -751,7 +746,7 @@ function ReportDetailSkeleton() {
         <Skeleton className="h-8 w-48" />
       </div>
       <Skeleton className="h-16 w-full rounded-lg" />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardContent className="pt-6">
             <Skeleton className="h-24 w-full" />

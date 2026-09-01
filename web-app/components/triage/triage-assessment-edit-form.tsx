@@ -43,7 +43,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { TriageCategoryBadge } from './triage-category-badge';
 import { cn } from '@/lib/utils/cn';
-import type { TriageAssessment, AVPUStatus, MobilityStatus, TriageCategory } from '@/lib/types/triage';
+import type {
+  TriageAssessment,
+  AVPUStatus,
+  MobilityStatus,
+  TriageCategory,
+} from '@/lib/types/triage';
 import type { TriageAssessmentUpdateData } from '@/lib/api/triage';
 import {
   AVPU_CONFIG,
@@ -208,12 +213,13 @@ export function TriageAssessmentEditForm({
               <Info className="h-4 w-4" />
               <AlertTitle>Vitals are read-only</AlertTitle>
               <AlertDescription>
-                {permissions.vitalsDisabledReason || 'You do not have permission to edit vitals for this assessment.'}
+                {permissions.vitalsDisabledReason ||
+                  'You do not have permission to edit vitals for this assessment.'}
               </AlertDescription>
             </Alert>
           )}
 
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {/* SpO2 */}
             <div className="space-y-2">
               <Label htmlFor="spo2" className="flex items-center gap-1.5 text-xs">
@@ -450,10 +456,10 @@ export function TriageAssessmentEditForm({
                         <Label
                           htmlFor={`avpu-${status}`}
                           className={cn(
-                            'flex items-center justify-center px-3 py-2 text-sm border rounded-md cursor-pointer transition-colors',
-                            'peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary',
+                            'flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-sm transition-colors',
+                            'peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground',
                             'hover:bg-accent',
-                            !permissions.canEditAssessment && 'opacity-50 cursor-not-allowed'
+                            !permissions.canEditAssessment && 'cursor-not-allowed opacity-50'
                           )}
                         >
                           {AVPU_CONFIG[status].label}
@@ -533,17 +539,21 @@ export function TriageAssessmentEditForm({
                 Pediatric Assessment (ETAT)
               </CardTitle>
               {assessment.age_group && (
-                <Badge variant="outline" className="text-xs">{assessment.age_group}</Badge>
+                <Badge variant="outline" className="text-xs">
+                  {assessment.age_group}
+                </Badge>
               )}
-              <Lock className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
+              <Lock className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
             </div>
-            <CardDescription>Captured during initial triage. Not editable in re-triage.</CardDescription>
+            <CardDescription>
+              Captured during initial triage. Not editable in re-triage.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {assessment.etat_danger_signs && assessment.etat_danger_signs.length > 0 && (
               <div>
                 <span className="font-medium text-muted-foreground">Danger Signs: </span>
-                <div className="flex flex-wrap gap-1 mt-1">
+                <div className="mt-1 flex flex-wrap gap-1">
                   {assessment.etat_danger_signs.map((sign) => (
                     <Badge key={sign} variant="destructive" className="text-xs">
                       {ETAT_DANGER_SIGNS_CONFIG[sign as EtATDangerSign]?.label || sign}
@@ -556,7 +566,9 @@ export function TriageAssessmentEditForm({
               {assessment.dehydration_level && assessment.dehydration_level !== 'NONE' && (
                 <div>
                   <span className="font-medium text-muted-foreground">Dehydration: </span>
-                  {DEHYDRATION_CONFIG[assessment.dehydration_level as keyof typeof DEHYDRATION_CONFIG]?.label || assessment.dehydration_level}
+                  {DEHYDRATION_CONFIG[
+                    assessment.dehydration_level as keyof typeof DEHYDRATION_CONFIG
+                  ]?.label || assessment.dehydration_level}
                 </div>
               )}
               {assessment.capillary_refill_seconds != null && (
@@ -569,20 +581,25 @@ export function TriageAssessmentEditForm({
                 <div>
                   <span className="font-medium text-muted-foreground">MUAC: </span>
                   {assessment.muac_cm} cm
-                  {assessment.muac_cm < 11.5 && <span className="text-red-600 ml-1">(SAM)</span>}
-                  {assessment.muac_cm >= 11.5 && assessment.muac_cm < 12.5 && <span className="text-orange-600 ml-1">(MAM)</span>}
+                  {assessment.muac_cm < 11.5 && <span className="ml-1 text-red-600">(SAM)</span>}
+                  {assessment.muac_cm >= 11.5 && assessment.muac_cm < 12.5 && (
+                    <span className="ml-1 text-orange-600">(MAM)</span>
+                  )}
                 </div>
               )}
               {assessment.fontanelle_status && (
                 <div>
                   <span className="font-medium text-muted-foreground">Fontanelle: </span>
-                  {FONTANELLE_CONFIG[assessment.fontanelle_status as keyof typeof FONTANELLE_CONFIG]?.label || assessment.fontanelle_status}
+                  {FONTANELLE_CONFIG[assessment.fontanelle_status as keyof typeof FONTANELLE_CONFIG]
+                    ?.label || assessment.fontanelle_status}
                 </div>
               )}
               {assessment.breastfeeding_ability && (
                 <div>
                   <span className="font-medium text-muted-foreground">Feeding: </span>
-                  {BREASTFEEDING_CONFIG[assessment.breastfeeding_ability as keyof typeof BREASTFEEDING_CONFIG]?.label || assessment.breastfeeding_ability}
+                  {BREASTFEEDING_CONFIG[
+                    assessment.breastfeeding_ability as keyof typeof BREASTFEEDING_CONFIG
+                  ]?.label || assessment.breastfeeding_ability}
                 </div>
               )}
             </div>
@@ -596,9 +613,9 @@ export function TriageAssessmentEditForm({
           <CardTitle className="text-base">Triage Category</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-4 mb-2">
+          <div className="mb-2 flex items-center gap-4">
             <div>
-              <span className="text-sm text-muted-foreground mr-2">Auto-calculated:</span>
+              <span className="mr-2 text-sm text-muted-foreground">Auto-calculated:</span>
               <TriageCategoryBadge category={originalCategory} />
             </div>
           </div>
@@ -611,7 +628,7 @@ export function TriageAssessmentEditForm({
                 value={field.value}
                 onValueChange={field.onChange}
                 disabled={!permissions.canEditCategory}
-                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2"
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
               >
                 {(Object.keys(TRIAGE_CATEGORY_CONFIG) as TriageCategory[]).map((category) => {
                   const config = TRIAGE_CATEGORY_CONFIG[category];
@@ -626,9 +643,9 @@ export function TriageAssessmentEditForm({
                       <Label
                         htmlFor={`category-${category}`}
                         className={cn(
-                          'flex flex-col items-center justify-center p-3 border-2 rounded-lg cursor-pointer transition-all',
+                          'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 p-3 transition-all',
                           isSelected && 'ring-2 ring-offset-2',
-                          !permissions.canEditCategory && 'opacity-50 cursor-not-allowed'
+                          !permissions.canEditCategory && 'cursor-not-allowed opacity-50'
                         )}
                         style={{
                           backgroundColor: isSelected ? config.bgColor : 'transparent',
@@ -636,9 +653,14 @@ export function TriageAssessmentEditForm({
                           color: isSelected ? config.textColor : undefined,
                         }}
                       >
-                        <span className="font-bold text-sm">{category}</span>
-                        <span className="text-xs text-center mt-1" style={{ color: isSelected ? config.textColor : undefined }}>
-                          {config.targetWaitMinutes === 0 ? 'Immediate' : `≤${config.targetWaitMinutes}min`}
+                        <span className="text-sm font-bold">{category}</span>
+                        <span
+                          className="mt-1 text-center text-xs"
+                          style={{ color: isSelected ? config.textColor : undefined }}
+                        >
+                          {config.targetWaitMinutes === 0
+                            ? 'Immediate'
+                            : `≤${config.targetWaitMinutes}min`}
                         </span>
                       </Label>
                     </div>
@@ -650,7 +672,7 @@ export function TriageAssessmentEditForm({
 
           {/* Override Reason (required if category changed) */}
           {isOverridden && (
-            <div className="space-y-2 mt-4">
+            <div className="mt-4 space-y-2">
               <Label htmlFor="category_override_reason" className="flex items-center gap-1.5">
                 <AlertCircle className="h-4 w-4 text-orange-500" />
                 Override Reason (recommended)
@@ -668,7 +690,8 @@ export function TriageAssessmentEditForm({
                 )}
               />
               <p className="text-xs text-muted-foreground">
-                Category changed from {originalCategory} to {currentCategory}. Please document the clinical rationale.
+                Category changed from {originalCategory} to {currentCategory}. Please document the
+                clinical rationale.
               </p>
             </div>
           )}

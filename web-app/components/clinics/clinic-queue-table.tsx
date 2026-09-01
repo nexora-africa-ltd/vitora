@@ -37,21 +37,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { ClinicPriorityBadge } from './clinic-priority-badge';
 import { ClinicVisitStatusBadge } from './clinic-visit-status-badge';
 import { ClinicQueueMobileCard } from './clinic-queue-mobile-card';
 import { ReferPatientDialog } from './refer-patient-dialog';
-import {
-  useClinicQueueActions,
-  type QueueDialogType,
-} from '@/lib/hooks/use-clinic-queue-actions';
+import { useClinicQueueActions, type QueueDialogType } from '@/lib/hooks/use-clinic-queue-actions';
 import type { ClinicVisit } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
 
@@ -109,23 +101,14 @@ function QueueRowActions({
   return (
     <div className="flex items-center justify-end gap-2">
       {canCall && (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onCall(visit)}
-          disabled={isPending}
-        >
-          <Phone className="h-3 w-3 mr-1" />
+        <Button size="sm" variant="outline" onClick={() => onCall(visit)} disabled={isPending}>
+          <Phone className="mr-1 h-3 w-3" />
           Call
         </Button>
       )}
       {canStart && (
-        <Button
-          size="sm"
-          onClick={() => onStart(visit)}
-          disabled={isPending}
-        >
-          <Play className="h-3 w-3 mr-1" />
+        <Button size="sm" onClick={() => onStart(visit)} disabled={isPending}>
+          <Play className="mr-1 h-3 w-3" />
           Start
         </Button>
       )}
@@ -137,21 +120,21 @@ function QueueRowActions({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => onViewPatient(visit)}>
-            <User className="h-4 w-4 mr-2" />
+            <User className="mr-2 h-4 w-4" />
             View Patient
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => onRefer(visit)}>
-            <ArrowRight className="h-4 w-4 mr-2" />
+            <ArrowRight className="mr-2 h-4 w-4" />
             Refer to Clinic
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => onNoShow(visit)} className="text-orange-600">
-            <AlertCircle className="h-4 w-4 mr-2" />
+            <AlertCircle className="mr-2 h-4 w-4" />
             Mark No-Show
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onCancel(visit)} className="text-destructive">
-            <XCircle className="h-4 w-4 mr-2" />
+            <XCircle className="mr-2 h-4 w-4" />
             Cancel Visit
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -292,15 +275,14 @@ export function ClinicQueueTable({
         sortable: true,
         sortType: 'number' as const,
         sortFn: (a: ClinicVisit, b: ClinicVisit) => a.queue_number - b.queue_number,
-        cell: (visit: ClinicVisit) => (
-          <span className="font-medium">{visit.queue_number}</span>
-        ),
+        cell: (visit: ClinicVisit) => <span className="font-medium">{visit.queue_number}</span>,
       },
       {
         key: 'patient',
         header: 'Patient',
         sortable: true,
-        sortFn: (a: ClinicVisit, b: ClinicVisit) => a.patient.full_name.localeCompare(b.patient.full_name),
+        sortFn: (a: ClinicVisit, b: ClinicVisit) =>
+          a.patient.full_name.localeCompare(b.patient.full_name),
         cell: (visit: ClinicVisit) => (
           <div className="flex flex-col">
             <span className="font-medium">{visit.patient.full_name}</span>
@@ -324,7 +306,8 @@ export function ClinicQueueTable({
         hideOnMobile: true,
         sortable: true,
         sortType: 'number' as const,
-        sortFn: (a: ClinicVisit, b: ClinicVisit) => (a.wait_time_minutes ?? 0) - (b.wait_time_minutes ?? 0),
+        sortFn: (a: ClinicVisit, b: ClinicVisit) =>
+          (a.wait_time_minutes ?? 0) - (b.wait_time_minutes ?? 0),
         cell: (visit: ClinicVisit) => (
           <div className="flex items-center gap-1 text-muted-foreground">
             <Clock className="h-3 w-3" />
@@ -337,7 +320,7 @@ export function ClinicQueueTable({
         header: 'Chief Complaint',
         hideOnMobile: true,
         cell: (visit: ClinicVisit) => (
-          <span className="max-w-[200px] truncate block">
+          <span className="block max-w-[200px] truncate">
             {visit.chief_complaint || visit.notes || '--'}
           </span>
         ),
@@ -356,9 +339,7 @@ export function ClinicQueueTable({
         header: 'Room',
         hideOnMobile: true,
         cell: (visit: ClinicVisit) => (
-          <span className="text-sm text-muted-foreground">
-            {visit.room_name || '—'}
-          </span>
+          <span className="text-sm text-muted-foreground">{visit.room_name || '—'}</span>
         ),
       },
       ...(showActions
@@ -442,9 +423,7 @@ export function ClinicQueueTable({
       >
         <SheetContent side="bottom" className="pb-safe">
           <SheetHeader>
-            <SheetTitle>
-              {mobileActionsVisit?.patient.full_name}
-            </SheetTitle>
+            <SheetTitle>{mobileActionsVisit?.patient.full_name}</SheetTitle>
           </SheetHeader>
           <div className="grid gap-2 py-4">
             <Button
@@ -455,7 +434,7 @@ export function ClinicQueueTable({
                 setMobileActionsVisit(null);
               }}
             >
-              <User className="h-4 w-4 mr-2" />
+              <User className="mr-2 h-4 w-4" />
               View Patient
             </Button>
             <Button
@@ -466,7 +445,7 @@ export function ClinicQueueTable({
                 setMobileActionsVisit(null);
               }}
             >
-              <ArrowRight className="h-4 w-4 mr-2" />
+              <ArrowRight className="mr-2 h-4 w-4" />
               Refer to Clinic
             </Button>
             <Button
@@ -477,7 +456,7 @@ export function ClinicQueueTable({
                 setMobileActionsVisit(null);
               }}
             >
-              <AlertCircle className="h-4 w-4 mr-2" />
+              <AlertCircle className="mr-2 h-4 w-4" />
               Mark No-Show
             </Button>
             <Button
@@ -488,7 +467,7 @@ export function ClinicQueueTable({
                 setMobileActionsVisit(null);
               }}
             >
-              <XCircle className="h-4 w-4 mr-2" />
+              <XCircle className="mr-2 h-4 w-4" />
               Cancel Visit
             </Button>
           </div>

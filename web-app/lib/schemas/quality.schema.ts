@@ -21,17 +21,9 @@ export const QualityMeasureDomainSchema = z.enum([
   'CARE_COORDINATION',
 ]);
 
-export const QualityMeasureStatusSchema = z.enum([
-  'ACTIVE',
-  'DRAFT',
-  'RETIRED',
-]);
+export const QualityMeasureStatusSchema = z.enum(['ACTIVE', 'DRAFT', 'RETIRED']);
 
-export const ReportingPeriodSchema = z.enum([
-  'MONTHLY',
-  'QUARTERLY',
-  'ANNUAL',
-]);
+export const ReportingPeriodSchema = z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL']);
 
 export const ExportFormatSchema = z.enum(['csv', 'json', 'qrda']);
 export const ImportFormatSchema = z.enum(['csv', 'json']);

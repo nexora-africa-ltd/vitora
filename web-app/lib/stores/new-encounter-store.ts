@@ -375,11 +375,21 @@ export const useNewEncounterStore = create<NewEncounterState>()(
           return {
             session: {
               ...state.session,
-              ...(details.encounter_type !== undefined && { encounter_type: details.encounter_type }),
-              ...(details.encounter_date !== undefined && { encounter_date: details.encounter_date }),
-              ...(details.chief_complaint !== undefined && { chief_complaint: details.chief_complaint }),
-              ...(details.chief_complaint_category !== undefined && { chief_complaint_category: details.chief_complaint_category }),
-              ...(details.admission_urgency !== undefined && { admission_urgency: details.admission_urgency }),
+              ...(details.encounter_type !== undefined && {
+                encounter_type: details.encounter_type,
+              }),
+              ...(details.encounter_date !== undefined && {
+                encounter_date: details.encounter_date,
+              }),
+              ...(details.chief_complaint !== undefined && {
+                chief_complaint: details.chief_complaint,
+              }),
+              ...(details.chief_complaint_category !== undefined && {
+                chief_complaint_category: details.chief_complaint_category,
+              }),
+              ...(details.admission_urgency !== undefined && {
+                admission_urgency: details.admission_urgency,
+              }),
               lastUpdatedAt: new Date(),
               isDirty: true,
             },
@@ -517,14 +527,16 @@ export const useNewEncounterStore = create<NewEncounterState>()(
 
       getAdmission: () => {
         const session = get().session;
-        return session?.admission ?? {
-          wardId: null,
-          bedId: null,
-          payerType: 'CASH',
-          requiresIsolation: false,
-          requiresOxygen: false,
-          requiresVentilator: false,
-        };
+        return (
+          session?.admission ?? {
+            wardId: null,
+            bedId: null,
+            payerType: 'CASH',
+            requiresIsolation: false,
+            requiresOxygen: false,
+            requiresVentilator: false,
+          }
+        );
       },
 
       // Section Completion

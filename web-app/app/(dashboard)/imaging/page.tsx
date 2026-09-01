@@ -39,7 +39,12 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { ImagingOrderTable, ImagingWorklist, SchedulingCalendar, ModalityBadge } from '@/components/imaging';
+import {
+  ImagingOrderTable,
+  ImagingWorklist,
+  SchedulingCalendar,
+  ModalityBadge,
+} from '@/components/imaging';
 import { useImagingOrders, useImagingProcedures } from '@/lib/hooks/use-imaging';
 import { imagingApi } from '@/lib/api/imaging';
 import {
@@ -84,16 +89,13 @@ export default function ImagingPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Imaging</h1>
-          <p className="text-muted-foreground hidden sm:block">
+          <p className="hidden text-muted-foreground sm:block">
             Manage imaging orders, view worklist, and track procedures
           </p>
         </div>
         {canCreateImagingOrder ? (
-          <Button
-            onClick={() => router.push('/imaging/orders/new')}
-            className="w-full sm:w-auto"
-          >
-            <Plus className="h-4 w-4 mr-2" />
+          <Button onClick={() => router.push('/imaging/orders/new')} className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
             New Imaging Order
           </Button>
         ) : null}
@@ -101,7 +103,7 @@ export default function ImagingPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="orders" className="space-y-4">
-        <TabsList className="w-full grid grid-cols-5">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="orders" className="gap-1.5 px-2 sm:px-4">
             <SquareDashedTopSolid className="h-5 w-5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Orders</span>
@@ -181,15 +183,16 @@ function DICOMStudiesView() {
   });
 
   // Filter by search
-  const studies = data?.results?.filter((study: DICOMStudy) => {
-    if (!searchTerm) return true;
-    const lower = searchTerm.toLowerCase();
-    return (
-      study.patient_name?.toLowerCase().includes(lower) ||
-      study.accession_number?.toLowerCase().includes(lower) ||
-      study.study_description?.toLowerCase().includes(lower)
-    );
-  }) || [];
+  const studies =
+    data?.results?.filter((study: DICOMStudy) => {
+      if (!searchTerm) return true;
+      const lower = searchTerm.toLowerCase();
+      return (
+        study.patient_name?.toLowerCase().includes(lower) ||
+        study.accession_number?.toLowerCase().includes(lower) ||
+        study.study_description?.toLowerCase().includes(lower)
+      );
+    }) || [];
 
   const totalPages = data ? Math.ceil(data.count / pageSize) : 0;
 
@@ -200,7 +203,7 @@ function DICOMStudiesView() {
         <CardContent className="pt-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search patient, accession..."
                 value={searchTerm}
@@ -229,7 +232,7 @@ function DICOMStudiesView() {
       <Card>
         <CardContent className="p-0 sm:p-4">
           {isLoading ? (
-            <div className="p-4 space-y-3">
+            <div className="space-y-3 p-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
@@ -243,13 +246,13 @@ function DICOMStudiesView() {
             </div>
           ) : studies.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
-              <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <ImageIcon className="mx-auto mb-4 h-12 w-12 opacity-50" />
               <p>No DICOM studies found</p>
             </div>
           ) : (
             <>
               {/* Desktop view */}
-              <div className="hidden md:block overflow-x-auto">
+              <div className="hidden overflow-x-auto md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -271,18 +274,14 @@ function DICOMStudiesView() {
                         <TableCell className="font-medium">
                           {study.patient_name || 'Unknown'}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                        <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                           {study.study_description || 'No description'}
                         </TableCell>
                         <TableCell>
                           <ModalityBadge modality={study.modality as ImagingModality} />
                         </TableCell>
-                        <TableCell className="text-sm">
-                          {formatDate(study.study_date)}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {study.number_of_instances}
-                        </TableCell>
+                        <TableCell className="text-sm">{formatDate(study.study_date)}</TableCell>
+                        <TableCell className="text-sm">{study.number_of_instances}</TableCell>
                         <TableCell>
                           <Button variant="ghost" size="sm">
                             <Eye className="h-4 w-4" />
@@ -295,23 +294,23 @@ function DICOMStudiesView() {
               </div>
 
               {/* Mobile view - cards */}
-              <div className="md:hidden space-y-3 p-4">
+              <div className="space-y-3 p-4 md:hidden">
                 {studies.map((study: DICOMStudy) => (
                   <div
                     key={study.study_instance_uid}
-                    className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50"
+                    className="cursor-pointer rounded-lg border p-3 hover:bg-muted/50"
                     onClick={() => router.push(`/imaging/studies/${study.study_instance_uid}`)}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium truncate">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="truncate font-medium">
                         {study.patient_name || 'Unknown'}
                       </span>
                       <ModalityBadge modality={study.modality as ImagingModality} />
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
+                    <p className="truncate text-sm text-muted-foreground">
                       {study.study_description || 'No description'}
                     </p>
-                    <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                    <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                       <span>{formatDate(study.study_date)}</span>
                       <span>{study.number_of_instances} images</span>
                     </div>
@@ -321,7 +320,7 @@ function DICOMStudiesView() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 p-4 border-t">
+                <div className="flex items-center justify-center gap-2 border-t p-4">
                   <Button
                     variant="outline"
                     size="sm"
@@ -370,12 +369,13 @@ function ProcedureCatalogView() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-lg font-semibold">
-          Procedure Catalog ({totalCount} procedures)
-        </h3>
+        <h3 className="text-lg font-semibold">Procedure Catalog ({totalCount} procedures)</h3>
         <Select
           value={modalityFilter}
-          onValueChange={(v) => { setModalityFilter(v as ImagingModality | ''); setPage(1); }}
+          onValueChange={(v) => {
+            setModalityFilter(v as ImagingModality | '');
+            setPage(1);
+          }}
         >
           <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="All modalities" />
@@ -383,41 +383,37 @@ function ProcedureCatalogView() {
           <SelectContent>
             <SelectItem value="">All modalities</SelectItem>
             {Object.entries(MODALITY_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading ? (
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="p-4 border rounded-lg animate-pulse">
-              <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-              <div className="h-3 bg-muted rounded w-1/2" />
-            </div>
-          ))
-        ) : (
-          procedures.map((procedure: ImagingProcedure) => (
-            <div
-              key={procedure.id}
-              className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-sm text-muted-foreground">
-                  {procedure.code}
-                </span>
-                <span className="text-xs px-2 py-0.5 bg-muted rounded">
-                  {procedure.modality}
-                </span>
+        {isLoading
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-lg border p-4">
+                <div className="mb-2 h-4 w-3/4 rounded bg-muted" />
+                <div className="h-3 w-1/2 rounded bg-muted" />
               </div>
-              <p className="font-medium">{procedure.name}</p>
-              <div className="flex items-center justify-between mt-2 text-sm">
-                <span>KES {procedure.cost.toLocaleString()}</span>
+            ))
+          : procedures.map((procedure: ImagingProcedure) => (
+              <div
+                key={procedure.id}
+                className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="font-mono text-sm text-muted-foreground">{procedure.code}</span>
+                  <span className="rounded bg-muted px-2 py-0.5 text-xs">{procedure.modality}</span>
+                </div>
+                <p className="font-medium">{procedure.name}</p>
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span>KES {procedure.cost.toLocaleString()}</span>
+                </div>
               </div>
-            </div>
-          ))
-        )}
+            ))}
       </div>
 
       {/* Pagination */}

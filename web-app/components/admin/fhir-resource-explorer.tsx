@@ -28,15 +28,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Search, Copy, Download, Code2, ExternalLink, CheckCircle2, AlertTriangle,
-  Link2, BarChart3,
+  Search,
+  Copy,
+  Download,
+  Code2,
+  ExternalLink,
+  CheckCircle2,
+  AlertTriangle,
+  Link2,
+  BarChart3,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -112,7 +114,10 @@ export function FHIRResourceExplorer() {
   const [externalServerUrl, setExternalServerUrl] = useState('');
   const [resourceStats, setResourceStats] = useState<ResourceStats>({});
   const [statsLoading, setStatsLoading] = useState(false);
-  const [validationResult, setValidationResult] = useState<{ valid: boolean; issues: string[] } | null>(null);
+  const [validationResult, setValidationResult] = useState<{
+    valid: boolean;
+    issues: string[];
+  } | null>(null);
   const [validating, setValidating] = useState(false);
   const debouncedSearch = useDebounce(searchQuery, 400);
 
@@ -143,50 +148,57 @@ export function FHIRResourceExplorer() {
   };
 
   // Search FHIR resources
-  const searchResources = useCallback(async (query: string) => {
-    if (!query.trim() || query.length < 2) {
-      setResults([]);
-      return;
-    }
-    setIsLoading(true);
-    setError('');
-    setSelectedResource(null);
-    setValidationResult(null);
-
-    try {
-      const params: Record<string, string> = {};
-      if (resourceType === 'Patient') {
-        params[query.startsWith('MRN-') ? 'identifier' : /^\d+$/.test(query) ? '_id' : 'name'] = query;
-      } else if (/^\d+$/.test(query)) {
-        params.patient = query;
-      } else if (query.startsWith('ge') || query.startsWith('le') || query.startsWith('gt') || query.startsWith('lt')) {
-        params.date = query;
-      } else {
-        // Try code or status
-        params[resourceType === 'Observation' ? 'category' : 'code'] = query;
+  const searchResources = useCallback(
+    async (query: string) => {
+      if (!query.trim() || query.length < 2) {
+        setResults([]);
+        return;
       }
+      setIsLoading(true);
+      setError('');
+      setSelectedResource(null);
+      setValidationResult(null);
 
-      const baseUrl = useExternalServer && externalServerUrl
-        ? externalServerUrl.replace(/\/$/, '')
-        : '';
-      const url = baseUrl
-        ? `${baseUrl}/${resourceType}`
-        : `/fhir/${resourceType}`;
+      try {
+        const params: Record<string, string> = {};
+        if (resourceType === 'Patient') {
+          params[query.startsWith('MRN-') ? 'identifier' : /^\d+$/.test(query) ? '_id' : 'name'] =
+            query;
+        } else if (/^\d+$/.test(query)) {
+          params.patient = query;
+        } else if (
+          query.startsWith('ge') ||
+          query.startsWith('le') ||
+          query.startsWith('gt') ||
+          query.startsWith('lt')
+        ) {
+          params.date = query;
+        } else {
+          // Try code or status
+          params[resourceType === 'Observation' ? 'category' : 'code'] = query;
+        }
 
-      const resp = useExternalServer && externalServerUrl
-        ? await fetch(`${url}?${new URLSearchParams(params)}`, {
-            headers: { Accept: 'application/fhir+json' },
-          }).then(r => r.json())
-        : (await apiClient.get<FHIRBundle>(url, { params })).data;
+        const baseUrl =
+          useExternalServer && externalServerUrl ? externalServerUrl.replace(/\/$/, '') : '';
+        const url = baseUrl ? `${baseUrl}/${resourceType}` : `/fhir/${resourceType}`;
 
-      setResults(resp.entry?.map((e: { resource: FHIRResource }) => e.resource) || []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Search failed');
-      setResults([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [resourceType, useExternalServer, externalServerUrl]);
+        const resp =
+          useExternalServer && externalServerUrl
+            ? await fetch(`${url}?${new URLSearchParams(params)}`, {
+                headers: { Accept: 'application/fhir+json' },
+              }).then((r) => r.json())
+            : (await apiClient.get<FHIRBundle>(url, { params })).data;
+
+        setResults(resp.entry?.map((e: { resource: FHIRResource }) => e.resource) || []);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Search failed');
+        setResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [resourceType, useExternalServer, externalServerUrl]
+  );
 
   // Auto-search
   useEffect(() => {
@@ -222,11 +234,10 @@ export function FHIRResourceExplorer() {
     setValidating(true);
     setValidationResult(null);
     try {
-      const resp = await apiClient.post<{ valid: boolean; issues: Array<{ severity: string; message: string }> }>(
-        '/fhir/$validate',
-        resource,
-        { headers: { 'Content-Type': 'application/fhir+json' } }
-      );
+      const resp = await apiClient.post<{
+        valid: boolean;
+        issues: Array<{ severity: string; message: string }>;
+      }>('/fhir/$validate', resource, { headers: { 'Content-Type': 'application/fhir+json' } });
       setValidationResult({
         valid: resp.data.valid,
         issues: resp.data.issues?.map((i) => `[${i.severity}] ${i.message}`) || [],
@@ -236,7 +247,13 @@ export function FHIRResourceExplorer() {
       const issues: string[] = [];
       if (!resource.resourceType) issues.push('[error] Missing resourceType');
       if (!resource.id) issues.push('[warning] Missing id');
-      setValidationResult({ valid: issues.length === 0, issues: issues.length > 0 ? issues : ['Resource structure looks valid (no server validator available)'] });
+      setValidationResult({
+        valid: issues.length === 0,
+        issues:
+          issues.length > 0
+            ? issues
+            : ['Resource structure looks valid (no server validator available)'],
+      });
     } finally {
       setValidating(false);
     }
@@ -257,7 +274,10 @@ export function FHIRResourceExplorer() {
     const refs: string[] = [];
     const walk = (obj: unknown) => {
       if (!obj || typeof obj !== 'object') return;
-      if (Array.isArray(obj)) { obj.forEach(walk); return; }
+      if (Array.isArray(obj)) {
+        obj.forEach(walk);
+        return;
+      }
       const record = obj as Record<string, unknown>;
       if (typeof record.reference === 'string') refs.push(record.reference);
       Object.values(record).forEach(walk);
@@ -274,7 +294,9 @@ export function FHIRResourceExplorer() {
         const names = r.name as Array<{ family?: string; given?: string[] }> | undefined;
         const ids = r.identifier as Array<{ value?: string }> | undefined;
         return {
-          title: names?.[0] ? `${names[0].given?.join(' ') || ''} ${names[0].family || ''}`.trim() : `Patient/${resource.id}`,
+          title: names?.[0]
+            ? `${names[0].given?.join(' ') || ''} ${names[0].family || ''}`.trim()
+            : `Patient/${resource.id}`,
           subtitle: `${ids?.[0]?.value || ''} • ${(r.gender as string) || ''} • DOB: ${(r.birthDate as string) || ''}`,
         };
       }
@@ -311,17 +333,25 @@ export function FHIRResourceExplorer() {
   return (
     <div className="space-y-4">
       {/* Enhancement #6: Resource Count Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {RESOURCE_TYPES.slice(0, 5).map((rt) => (
           <button
             key={rt.value}
-            onClick={() => { setResourceType(rt.value); setSearchQuery(''); setResults([]); }}
-            className={`p-2 rounded-lg border text-center transition-colors ${
+            onClick={() => {
+              setResourceType(rt.value);
+              setSearchQuery('');
+              setResults([]);
+            }}
+            className={`rounded-lg border p-2 text-center transition-colors ${
               resourceType === rt.value ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
             }`}
           >
             <p className="text-lg font-bold">
-              {statsLoading ? <Skeleton className="h-6 w-8 mx-auto" /> : (resourceStats[rt.value] ?? '—')}
+              {statsLoading ? (
+                <Skeleton className="mx-auto h-6 w-8" />
+              ) : (
+                (resourceStats[rt.value] ?? '—')
+              )}
             </p>
             <p className="text-xs text-muted-foreground">{rt.label}s</p>
           </button>
@@ -331,7 +361,7 @@ export function FHIRResourceExplorer() {
       {/* Search Controls */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base">FHIR R4 Resource Explorer</CardTitle>
             <div className="flex items-center gap-3">
               {/* Enhancement #2: Raw JSON toggle */}
@@ -367,14 +397,21 @@ export function FHIRResourceExplorer() {
                 placeholder="https://hapi.fhir.org/baseR4"
                 value={externalServerUrl}
                 onChange={(e) => setExternalServerUrl(e.target.value)}
-                className="flex-1 h-8 text-sm"
+                className="h-8 flex-1 text-sm"
               />
             )}
           </div>
 
           {/* Enhancement #1: Extended resource type selector */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Select value={resourceType} onValueChange={(v) => { setResourceType(v); setResults([]); setSelectedResource(null); }}>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Select
+              value={resourceType}
+              onValueChange={(v) => {
+                setResourceType(v);
+                setResults([]);
+                setSelectedResource(null);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-56">
                 <SelectValue />
               </SelectTrigger>
@@ -390,7 +427,7 @@ export function FHIRResourceExplorer() {
               </SelectContent>
             </Select>
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={PLACEHOLDER_MAP[resourceType] || 'Search...'}
                 value={searchQuery}
@@ -406,10 +443,10 @@ export function FHIRResourceExplorer() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Supports FHIR date prefixes: <code className="bg-muted px-1 rounded">ge</code>,{' '}
-            <code className="bg-muted px-1 rounded">le</code>,{' '}
-            <code className="bg-muted px-1 rounded">gt</code>,{' '}
-            <code className="bg-muted px-1 rounded">lt</code>.
+            Supports FHIR date prefixes: <code className="rounded bg-muted px-1">ge</code>,{' '}
+            <code className="rounded bg-muted px-1">le</code>,{' '}
+            <code className="rounded bg-muted px-1">gt</code>,{' '}
+            <code className="rounded bg-muted px-1">lt</code>.
             {useExternalServer && ' • Querying external FHIR server.'}
           </p>
 
@@ -419,10 +456,12 @@ export function FHIRResourceExplorer() {
           {results.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">{results.length} result{results.length !== 1 ? 's' : ''}</p>
+                <p className="text-sm text-muted-foreground">
+                  {results.length} result{results.length !== 1 ? 's' : ''}
+                </p>
               </div>
 
-              <div className="border rounded-lg divide-y max-h-[500px] overflow-y-auto">
+              <div className="max-h-[500px] divide-y overflow-y-auto rounded-lg border">
                 {results.map((resource, i) => {
                   const summary = getResourceSummary(resource);
                   const refs = extractReferences(resource);
@@ -431,43 +470,58 @@ export function FHIRResourceExplorer() {
                   return (
                     <div
                       key={resource.id || i}
-                      className={`p-3 cursor-pointer transition-colors ${isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-muted/50'}`}
+                      className={`cursor-pointer p-3 transition-colors ${isSelected ? 'border-l-2 border-l-primary bg-primary/5' : 'hover:bg-muted/50'}`}
                       onClick={() => setSelectedResource(isSelected ? null : resource)}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs shrink-0">{resource.resourceType}</Badge>
-                            <p className="font-medium text-sm truncate">{summary.title}</p>
+                            <Badge variant="outline" className="shrink-0 text-xs">
+                              {resource.resourceType}
+                            </Badge>
+                            <p className="truncate text-sm font-medium">{summary.title}</p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{summary.subtitle}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{summary.subtitle}</p>
 
                           {/* Enhancement #7: Cross-references */}
                           {isSelected && refs.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
+                            <div className="mt-2 flex flex-wrap gap-1">
                               {refs.slice(0, 8).map((ref) => (
                                 <button
                                   key={ref}
-                                  onClick={(e) => { e.stopPropagation(); crossReference(ref); }}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs hover:bg-primary/10 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    crossReference(ref);
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs transition-colors hover:bg-primary/10"
                                 >
                                   <Link2 className="h-3 w-3" />
                                   {ref}
                                 </button>
                               ))}
                               {refs.length > 8 && (
-                                <span className="text-xs text-muted-foreground">+{refs.length - 8} more</span>
+                                <span className="text-xs text-muted-foreground">
+                                  +{refs.length - 8} more
+                                </span>
                               )}
                             </div>
                           )}
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex shrink-0 items-center gap-1">
                           <TooltipProvider delayDuration={200}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); copyAsJson(resource); }}>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    copyAsJson(resource);
+                                  }}
+                                >
                                   <Copy className="h-3.5 w-3.5" />
                                 </Button>
                               </TooltipTrigger>
@@ -477,7 +531,16 @@ export function FHIRResourceExplorer() {
                           <TooltipProvider delayDuration={200}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); validateResource(resource); setSelectedResource(resource); }}>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    validateResource(resource);
+                                    setSelectedResource(resource);
+                                  }}
+                                >
                                   <CheckCircle2 className="h-3.5 w-3.5" />
                                 </Button>
                               </TooltipTrigger>
@@ -489,15 +552,17 @@ export function FHIRResourceExplorer() {
 
                       {/* Enhancement #2: Raw JSON view */}
                       {isSelected && showRawJson && (
-                        <pre className="mt-3 p-3 bg-muted rounded-md text-xs overflow-x-auto max-h-[300px] overflow-y-auto font-mono">
+                        <pre className="mt-3 max-h-[300px] overflow-x-auto overflow-y-auto rounded-md bg-muted p-3 font-mono text-xs">
                           {JSON.stringify(resource, null, 2)}
                         </pre>
                       )}
 
                       {/* Enhancement #4: Validation result */}
                       {isSelected && validationResult && (
-                        <div className={`mt-3 p-3 rounded-md text-sm ${validationResult.valid ? 'bg-green-50 dark:bg-green-950/20' : 'bg-red-50 dark:bg-red-950/20'}`}>
-                          <div className="flex items-center gap-2 mb-1">
+                        <div
+                          className={`mt-3 rounded-md p-3 text-sm ${validationResult.valid ? 'bg-green-50 dark:bg-green-950/20' : 'bg-red-50 dark:bg-red-950/20'}`}
+                        >
+                          <div className="mb-1 flex items-center gap-2">
                             {validationResult.valid ? (
                               <CheckCircle2 className="h-4 w-4 text-green-600" />
                             ) : (
@@ -508,9 +573,11 @@ export function FHIRResourceExplorer() {
                             </span>
                           </div>
                           {validationResult.issues.length > 0 && (
-                            <ul className="text-xs space-y-0.5 ml-6">
+                            <ul className="ml-6 space-y-0.5 text-xs">
                               {validationResult.issues.map((issue, idx) => (
-                                <li key={idx} className="text-muted-foreground">{issue}</li>
+                                <li key={idx} className="text-muted-foreground">
+                                  {issue}
+                                </li>
                               ))}
                             </ul>
                           )}
@@ -527,7 +594,7 @@ export function FHIRResourceExplorer() {
           )}
 
           {!isLoading && results.length === 0 && debouncedSearch.length >= 2 && !error && (
-            <p className="text-sm text-muted-foreground text-center py-6">
+            <p className="py-6 text-center text-sm text-muted-foreground">
               No {resourceType} resources found.
             </p>
           )}

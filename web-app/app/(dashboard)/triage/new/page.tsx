@@ -19,9 +19,22 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { TriageAssessmentForm, AlreadyTriagedWarning, TriageInProgressWarning } from '@/components/triage';
-import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
-import { useCreateTriageAssessment, useCompleteTriageAssessment, useWaitingQueue, useCheckInPatient, useTriageAssessmentByEncounter } from '@/lib/hooks/use-triage';
+import {
+  TriageAssessmentForm,
+  AlreadyTriagedWarning,
+  TriageInProgressWarning,
+} from '@/components/triage';
+import {
+  CheckinSuccessModal,
+  type CheckinSuccessData,
+} from '@/components/patients/checkin-success-modal';
+import {
+  useCreateTriageAssessment,
+  useCompleteTriageAssessment,
+  useWaitingQueue,
+  useCheckInPatient,
+  useTriageAssessmentByEncounter,
+} from '@/lib/hooks/use-triage';
 import { usePatient, usePatients } from '@/lib/hooks/use-patients';
 import { useEncounter, useCreateEncounter } from '@/lib/hooks/use-encounters';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
@@ -42,20 +55,7 @@ export default function NewTriagePage() {
   const searchParams = useSearchParams();
   const { hasPermission } = usePermissions();
   const canCreateTriage = hasPermission('triage.add_triageassessment');
-
-  if (!canCreateTriage) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Triage Assessment" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create triage assessments.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  const hasTriageAccess = canCreateTriage;
 
   // Get patient/encounter from query params
   const patientIdParam = searchParams.get('patientId');
@@ -105,71 +105,78 @@ export default function NewTriagePage() {
 
   // Mutations
   const { mutateAsync: createAssessment, isPending: isCreating } = useCreateTriageAssessment();
-  const { mutateAsync: completeAssessment, isPending: isCompleting } = useCompleteTriageAssessment();
+  const { mutateAsync: completeAssessment, isPending: isCompleting } =
+    useCompleteTriageAssessment();
   const { mutateAsync: createEncounter } = useCreateEncounter();
   const { mutateAsync: checkInPatient } = useCheckInPatient();
 
   // Handle selecting a patient from search
-  const handleSelectPatient = useCallback(async (patientToSelect: Patient) => {
-    setSelectedPatientId(patientToSelect.id);
-    setSearchQuery('');
+  const handleSelectPatient = useCallback(
+    async (patientToSelect: Patient) => {
+      setSelectedPatientId(patientToSelect.id);
+      setSearchQuery('');
 
-    // Create a new encounter for this patient
-    setIsCreatingEncounter(true);
-    try {
-      const encounterPayload = {
-        patient: patientToSelect.id,
-        encounter_type: 'OPD' as const,
-        encounter_date: new Date().toISOString().split('T')[0],
-        chief_complaint: 'Pending triage',
-      };
-      let newEncounter = await createEncounter(encounterPayload);
-      // Offline mutation returns null — fall back to direct API call
-      // because the triage flow needs a server-generated encounter ID.
-      if (!newEncounter) {
-        newEncounter = await encountersApi.create(encounterPayload);
-      }
-      setSelectedEncounterId(newEncounter.id);
+      // Create a new encounter for this patient
+      setIsCreatingEncounter(true);
+      try {
+        const encounterPayload = {
+          patient: patientToSelect.id,
+          encounter_type: 'OPD' as const,
+          encounter_date: new Date().toISOString().split('T')[0],
+          chief_complaint: 'Pending triage',
+        };
+        let newEncounter = await createEncounter(encounterPayload);
+        // Offline mutation returns null — fall back to direct API call
+        // because the triage flow needs a server-generated encounter ID.
+        if (!newEncounter) {
+          newEncounter = await encountersApi.create(encounterPayload);
+        }
+        setSelectedEncounterId(newEncounter.id);
 
-      // For legacy flow, navigate directly; for new flow, useEffect handles redirect
-      if (LEGACY_TRIAGE_FLOW) {
-        router.replace(`/triage/new?patientId=${patientToSelect.id}&encounterId=${newEncounter.id}`);
+        // For legacy flow, navigate directly; for new flow, useEffect handles redirect
+        if (LEGACY_TRIAGE_FLOW) {
+          router.replace(
+            `/triage/new?patientId=${patientToSelect.id}&encounterId=${newEncounter.id}`
+          );
+        }
+        // New flow navigation is handled by useEffect to avoid race conditions
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to create encounter. Please try again.',
+          variant: 'destructive',
+        });
+        setSelectedPatientId(null);
+      } finally {
+        setIsCreatingEncounter(false);
       }
-      // New flow navigation is handled by useEffect to avoid race conditions
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to create encounter. Please try again.',
-        variant: 'destructive',
-      });
-      setSelectedPatientId(null);
-    } finally {
-      setIsCreatingEncounter(false);
-    }
-  }, [createEncounter, router]);
+    },
+    [createEncounter, router]
+  );
 
   // Handle selecting from waiting queue
-  const handleSelectFromWaiting = useCallback((waitingEntry: {
-    patient: number;
-    encounter: number | null;
-    patient_name: string;
-  }) => {
-    if (waitingEntry.encounter) {
-      setSelectedPatientId(waitingEntry.patient);
-      setSelectedEncounterId(waitingEntry.encounter);
-      // For legacy flow, navigate directly; for new flow, useEffect handles redirect
-      if (LEGACY_TRIAGE_FLOW) {
-        router.replace(`/triage/new?patientId=${waitingEntry.patient}&encounterId=${waitingEntry.encounter}`);
+  const handleSelectFromWaiting = useCallback(
+    (waitingEntry: { patient: number; encounter: number | null; patient_name: string }) => {
+      if (waitingEntry.encounter) {
+        setSelectedPatientId(waitingEntry.patient);
+        setSelectedEncounterId(waitingEntry.encounter);
+        // For legacy flow, navigate directly; for new flow, useEffect handles redirect
+        if (LEGACY_TRIAGE_FLOW) {
+          router.replace(
+            `/triage/new?patientId=${waitingEntry.patient}&encounterId=${waitingEntry.encounter}`
+          );
+        }
+        // New flow navigation is handled by useEffect to avoid race conditions
+      } else {
+        toast({
+          title: 'No Encounter',
+          description: 'This patient has no encounter. Please create one first.',
+          variant: 'destructive',
+        });
       }
-      // New flow navigation is handled by useEffect to avoid race conditions
-    } else {
-      toast({
-        title: 'No Encounter',
-        description: 'This patient has no encounter. Please create one first.',
-        variant: 'destructive',
-      });
-    }
-  }, [router]);
+    },
+    [router]
+  );
 
   // Handle form submission
   const handleSubmit = useCallback(
@@ -239,7 +246,14 @@ export default function NewTriagePage() {
         });
       }
     },
-    [createAssessment, completeAssessment, selectedEncounterId, router, clearIdempotencyKey, patient]
+    [
+      createAssessment,
+      completeAssessment,
+      selectedEncounterId,
+      router,
+      clearIdempotencyKey,
+      patient,
+    ]
   );
 
   const handleCancel = useCallback(() => {
@@ -272,21 +286,21 @@ export default function NewTriagePage() {
       id: 'triage-priority',
       label: 'Suggest triage priority',
       query:
-        'Based on this patient\'s current vital signs, chief complaint, and clinical presentation, what KETA triage category (RED/ORANGE/YELLOW/GREEN/BLUE) would you recommend and why?',
+        "Based on this patient's current vital signs, chief complaint, and clinical presentation, what KETA triage category (RED/ORANGE/YELLOW/GREEN/BLUE) would you recommend and why?",
       userMessage: '🚦 Requesting triage priority recommendation...',
     },
     {
       id: 'triage-red-flags',
       label: 'Red flags to watch',
       query:
-        'What are the critical red flags and warning signs I should watch for with this patient\'s presentation? Include any vital sign trends that would require immediate escalation.',
+        "What are the critical red flags and warning signs I should watch for with this patient's presentation? Include any vital sign trends that would require immediate escalation.",
       userMessage: '🚩 Checking for clinical red flags...',
     },
     {
       id: 'triage-ddx',
       label: 'Differential diagnosis',
       query:
-        'Provide a differential diagnosis for this patient\'s triage presentation. Consider the chief complaint, vital signs, age, and any risk factors. Rank by likelihood.',
+        "Provide a differential diagnosis for this patient's triage presentation. Consider the chief complaint, vital signs, age, and any risk factors. Rank by likelihood.",
       userMessage: '🩺 Requesting differential diagnosis...',
     },
     {
@@ -302,18 +316,21 @@ export default function NewTriagePage() {
     if (!setEncounterAwareContext) return;
 
     if (patient && encounter) {
-      const allergies = encounter.allergies
-        ?.split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean) ?? [];
-      const comorbidities = encounter.chronic_conditions
-        ?.split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean) ?? [];
-      const currentMeds = encounter.current_medications
-        ?.split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean) ?? [];
+      const allergies =
+        encounter.allergies
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [];
+      const comorbidities =
+        encounter.chronic_conditions
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [];
+      const currentMeds =
+        encounter.current_medications
+          ?.split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean) ?? [];
 
       setEncounterAwareContext(
         {
@@ -328,10 +345,7 @@ export default function NewTriagePage() {
           vitals: {
             spo2: encounter.spo2 != null ? Number(encounter.spo2) : undefined,
             pulse: encounter.pulse ?? undefined,
-            temperature:
-              encounter.temperature != null
-                ? Number(encounter.temperature)
-                : undefined,
+            temperature: encounter.temperature != null ? Number(encounter.temperature) : undefined,
             rr: encounter.respiratory_rate ?? undefined,
             map: parseBPAndCalculateMAP(encounter.blood_pressure) ?? undefined,
           },
@@ -356,14 +370,15 @@ export default function NewTriagePage() {
   // If using new flow, don't render legacy page content while redirecting
   if (!LEGACY_TRIAGE_FLOW && selectedPatientId && selectedEncounterId) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <Skeleton className="h-8 w-48" />
       </div>
     );
   }
 
   // Loading state
-  const isLoading = isPatientLoading || isEncounterLoading || isCreatingEncounter || isCheckingExisting;
+  const isLoading =
+    isPatientLoading || isEncounterLoading || isCreatingEncounter || isCheckingExisting;
 
   // Show patient selection if no patient selected
   if (!selectedPatientId || !selectedEncounterId) {
@@ -374,7 +389,7 @@ export default function NewTriagePage() {
           helpContent="Select a patient to begin triage assessment. You can search for patients or pick from the waiting queue."
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Waiting Queue Section */}
           <Card>
             <CardHeader>
@@ -394,10 +409,10 @@ export default function NewTriagePage() {
                   ))}
                 </div>
               ) : waitingQueue?.results?.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  <Clock className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                <div className="py-6 text-center text-muted-foreground">
+                  <Clock className="mx-auto mb-2 h-10 w-10 opacity-50" />
                   <p>No patients in waiting queue</p>
-                  <p className="text-sm mt-1">Search for a patient below or register a new one</p>
+                  <p className="mt-1 text-sm">Search for a patient below or register a new one</p>
                 </div>
               ) : (
                 <ScrollArea className="h-[300px]">
@@ -406,15 +421,17 @@ export default function NewTriagePage() {
                       <button
                         key={entry.id}
                         onClick={() => handleSelectFromWaiting(entry)}
-                        className="w-full p-3 border rounded-lg hover:bg-muted/50 transition-colors text-left"
+                        className="w-full rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
                       >
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{entry.patient_name}</span>
-                              <Badge variant="outline" className="text-xs">{entry.patient_mrn}</Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {entry.patient_mrn}
+                              </Badge>
                             </div>
-                            <div className="text-sm text-muted-foreground mt-1">
+                            <div className="mt-1 text-sm text-muted-foreground">
                               {entry.reason_for_visit || 'No reason specified'}
                             </div>
                           </div>
@@ -423,7 +440,12 @@ export default function NewTriagePage() {
                               {entry.wait_time_minutes} min wait
                             </div>
                             {entry.priority_hint && (
-                              <Badge variant={entry.priority_hint === 'EMERGENCY' ? 'destructive' : 'secondary'} className="text-xs">
+                              <Badge
+                                variant={
+                                  entry.priority_hint === 'EMERGENCY' ? 'destructive' : 'secondary'
+                                }
+                                className="text-xs"
+                              >
                                 {entry.priority_hint}
                               </Badge>
                             )}
@@ -450,7 +472,7 @@ export default function NewTriagePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder="Search patients..."
@@ -469,8 +491,8 @@ export default function NewTriagePage() {
                       ))}
                     </div>
                   ) : patientsData?.results?.length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <User className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                    <div className="py-6 text-center text-muted-foreground">
+                      <User className="mx-auto mb-2 h-10 w-10 opacity-50" />
                       <p>No patients found for "{searchQuery}"</p>
                       <Button
                         variant="default"
@@ -478,7 +500,7 @@ export default function NewTriagePage() {
                         className="mt-3"
                         onClick={() => router.push('/patients/new')}
                       >
-                        <UserPlus className="h-4 w-4 mr-2" />
+                        <UserPlus className="mr-2 h-4 w-4" />
                         Register New Patient
                       </Button>
                     </div>
@@ -489,19 +511,24 @@ export default function NewTriagePage() {
                           key={p.id}
                           onClick={() => handleSelectPatient(p)}
                           disabled={isCreatingEncounter}
-                          className="w-full p-3 border rounded-lg hover:bg-muted/50 transition-colors text-left disabled:opacity-50"
+                          className="w-full rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 disabled:opacity-50"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                               <User className="h-5 w-5 text-primary" />
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">{p.first_name} {p.last_name}</span>
-                                <Badge variant="outline" className="text-xs">{p.mrn}</Badge>
+                                <span className="font-medium">
+                                  {p.first_name} {p.last_name}
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {p.mrn}
+                                </Badge>
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                {p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : 'Other'} • {p.date_of_birth}
+                                {p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : 'Other'}{' '}
+                                • {p.date_of_birth}
                               </div>
                             </div>
                           </div>
@@ -513,19 +540,19 @@ export default function NewTriagePage() {
               )}
 
               {searchQuery.length < 2 && (
-                <div className="text-center py-6 text-muted-foreground">
-                  <Search className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                <div className="py-6 text-center text-muted-foreground">
+                  <Search className="mx-auto mb-2 h-10 w-10 opacity-50" />
                   <p>Type at least 2 characters to search</p>
                 </div>
               )}
 
-              <div className="pt-4 border-t">
+              <div className="border-t pt-4">
                 <Button
                   variant="default"
                   className="w-full"
                   onClick={() => router.push('/patients/new')}
                 >
-                  <UserPlus className="h-4 w-4 mr-2" />
+                  <UserPlus className="mr-2 h-4 w-4" />
                   Register New Patient
                 </Button>
               </div>
@@ -540,9 +567,7 @@ export default function NewTriagePage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="New Triage Assessment"
-        />
+        <PageHeader title="New Triage Assessment" />
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-48" />
@@ -562,9 +587,7 @@ export default function NewTriagePage() {
   if (!patient || !encounter) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="New Triage Assessment"
-        />
+        <PageHeader title="New Triage Assessment" />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Not Found</AlertTitle>
@@ -593,9 +616,8 @@ export default function NewTriagePage() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Verification Failed</AlertTitle>
           <AlertDescription>
-            Could not verify if this encounter already has a triage assessment.
-            This may be due to a network error or data issue.
-            Please try again or select a different patient.
+            Could not verify if this encounter already has a triage assessment. This may be due to a
+            network error or data issue. Please try again or select a different patient.
           </AlertDescription>
         </Alert>
         <div className="flex gap-2">
@@ -676,7 +698,11 @@ export default function NewTriagePage() {
   }
 
   // Secondary check: triage_status IN_PROGRESS but no assessment record yet
-  if (encounter.triage_status === 'IN_PROGRESS' && !existingAssessment && !hasOverriddenInProgress) {
+  if (
+    encounter.triage_status === 'IN_PROGRESS' &&
+    !existingAssessment &&
+    !hasOverriddenInProgress
+  ) {
     return (
       <div className="space-y-6">
         <PageHeader
@@ -718,6 +744,20 @@ export default function NewTriagePage() {
     respiratory_rate: encounter.respiratory_rate ?? undefined,
     created_at: encounter.created_at,
   };
+
+  if (!hasTriageAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Triage Assessment" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to create triage assessments.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -26,10 +26,22 @@ interface VitalsChartCardProps {
 }
 
 const PARAMETER_CONFIG = [
-  { key: 'heartRate', label: 'HR', color: '#ef4444', defaultOn: true, thresholdField: 'heart_rate' },
+  {
+    key: 'heartRate',
+    label: 'HR',
+    color: '#ef4444',
+    defaultOn: true,
+    thresholdField: 'heart_rate',
+  },
   { key: 'spo2', label: 'SpO2', color: '#0ea5e9', defaultOn: true, thresholdField: 'spo2' },
   { key: 'etco2', label: 'EtCO2', color: '#14b8a6', defaultOn: true, thresholdField: 'etco2' },
-  { key: 'respRate', label: 'RR', color: '#8b5cf6', defaultOn: false, thresholdField: 'respiratory_rate' },
+  {
+    key: 'respRate',
+    label: 'RR',
+    color: '#8b5cf6',
+    defaultOn: false,
+    thresholdField: 'respiratory_rate',
+  },
   { key: 'temperature', label: 'Temp', color: '#f59e0b', defaultOn: false, thresholdField: null },
   { key: 'map', label: 'MAP', color: '#6366f1', defaultOn: false, thresholdField: null },
 ] as const;
@@ -77,7 +89,7 @@ export function VitalsChartCard({ vitals }: VitalsChartCardProps) {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="h-4 w-4" />
             Anesthesia Vitals Trend
             <HelpPopover content="Time-series chart of intra-operative vital signs. Toggle individual parameters and threshold reference lines. BP band shows systolic/diastolic envelope. Summary badges highlight values outside normal ranges." />
@@ -126,10 +138,7 @@ export function VitalsChartCard({ vitals }: VitalsChartCardProps) {
                 </label>
               ))}
               <label className="flex items-center gap-1.5 text-xs">
-                <Checkbox
-                  checked={showBP}
-                  onCheckedChange={() => toggleParam('bp')}
-                />
+                <Checkbox checked={showBP} onCheckedChange={() => toggleParam('bp')} />
                 <span className="text-pink-500">BP band</span>
               </label>
               <label className="flex items-center gap-1.5 text-xs">
@@ -158,7 +167,8 @@ export function VitalsChartCard({ vitals }: VitalsChartCardProps) {
                       if (!bounds) return null;
                       const [low, high] = bounds;
                       return (
-                        <>{/* Use fragments to return multiple reference lines per param */}
+                        <>
+                          {/* Use fragments to return multiple reference lines per param */}
                           {low != null && (
                             <ReferenceLine
                               key={`${p.key}-low`}
@@ -166,7 +176,12 @@ export function VitalsChartCard({ vitals }: VitalsChartCardProps) {
                               stroke={p.color}
                               strokeDasharray="6 3"
                               strokeOpacity={0.5}
-                              label={{ value: `${p.label} ↓${low}`, position: 'insideBottomLeft', fontSize: 10, fill: p.color }}
+                              label={{
+                                value: `${p.label} ↓${low}`,
+                                position: 'insideBottomLeft',
+                                fontSize: 10,
+                                fill: p.color,
+                              }}
                             />
                           )}
                           {high != null && (
@@ -176,7 +191,12 @@ export function VitalsChartCard({ vitals }: VitalsChartCardProps) {
                               stroke={p.color}
                               strokeDasharray="6 3"
                               strokeOpacity={0.5}
-                              label={{ value: `${p.label} ↑${high}`, position: 'insideTopLeft', fontSize: 10, fill: p.color }}
+                              label={{
+                                value: `${p.label} ↑${high}`,
+                                position: 'insideTopLeft',
+                                fontSize: 10,
+                                fill: p.color,
+                              }}
                             />
                           )}
                         </>
@@ -233,7 +253,10 @@ export function VitalsChartCard({ vitals }: VitalsChartCardProps) {
             {latestVital && (
               <div className="flex flex-wrap gap-2 text-xs">
                 {latestVital.heart_rate != null && (
-                  <Badge variant={vitalBadgeVariant('heart_rate', latestVital.heart_rate)} size="sm">
+                  <Badge
+                    variant={vitalBadgeVariant('heart_rate', latestVital.heart_rate)}
+                    size="sm"
+                  >
                     HR {latestVital.heart_rate}
                   </Badge>
                 )}
@@ -265,7 +288,10 @@ export function VitalsChartCard({ vitals }: VitalsChartCardProps) {
                   </Badge>
                 )}
                 {latestVital.respiratory_rate != null && (
-                  <Badge variant={vitalBadgeVariant('respiratory_rate', latestVital.respiratory_rate)} size="sm">
+                  <Badge
+                    variant={vitalBadgeVariant('respiratory_rate', latestVital.respiratory_rate)}
+                    size="sm"
+                  >
                     RR {latestVital.respiratory_rate}
                   </Badge>
                 )}

@@ -62,7 +62,7 @@ export function PatientAllergiesTab({ patientId, readOnly = false }: PatientAlle
         </div>
         {!readOnly && (
           <Button size="sm" onClick={() => setShowAddDialog(true)} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="mr-1 h-4 w-4" />
             Add Allergy
           </Button>
         )}
@@ -71,12 +71,12 @@ export function PatientAllergiesTab({ patientId, readOnly = false }: PatientAlle
       <CardContent className="space-y-4">
         {/* High Risk Warning Banner */}
         {highRiskAllergies.length > 0 && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <div className="flex items-center gap-2 text-destructive font-medium">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+            <div className="flex items-center gap-2 font-medium text-destructive">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>High-Risk Allergies Present</span>
             </div>
-            <p className="text-sm text-muted-foreground mt-1 ml-6">
+            <p className="ml-6 mt-1 text-sm text-muted-foreground">
               {highRiskAllergies.map((a) => a.substance).join(', ')}
             </p>
           </div>
@@ -110,7 +110,7 @@ export function PatientAllergiesTab({ patientId, readOnly = false }: PatientAlle
 
         {/* Resolved Allergies (collapsible) */}
         {resolvedAllergies.length > 0 && (
-          <div className="space-y-2 pt-4 border-t">
+          <div className="space-y-2 border-t pt-4">
             <h4 className="text-sm font-medium text-muted-foreground">
               Resolved / Inactive ({resolvedAllergies.length})
             </h4>

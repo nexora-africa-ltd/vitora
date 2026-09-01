@@ -11,7 +11,7 @@ type CreateRouteLinkProps = LinkProps & {
 
 export function CreateRouteLink({ href, children, className, ...rest }: CreateRouteLinkProps) {
   const canCreateRoute = useCreateRouteAccess();
-  const route = typeof href === 'string' ? href : href.pathname ?? '';
+  const route = typeof href === 'string' ? href : (href.pathname ?? '');
 
   if (!canCreateRoute(String(route))) {
     return null;

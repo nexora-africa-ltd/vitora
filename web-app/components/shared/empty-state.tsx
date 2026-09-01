@@ -19,25 +19,28 @@ export function EmptyState({
   action,
 }: EmptyStateProps) {
   return (
-    <div className="relative flex flex-col items-center justify-center py-12 text-center overflow-hidden">
+    <div className="relative flex flex-col items-center justify-center overflow-hidden py-12 text-center">
       {/* Watermark logo */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        aria-hidden="true"
+      >
         <VitoraLogo
           variant="icon"
           tone="teal"
           alt=""
-          className="w-28 sm:w-32 opacity-[0.045] dark:opacity-[0.06]"
+          className="w-28 opacity-[0.045] dark:opacity-[0.06] sm:w-32"
           imageClassName="pointer-events-none select-none"
         />
       </div>
       {/* Foreground content */}
       <div className="relative z-10 flex flex-col items-center">
-        <div className="rounded-full bg-muted p-4 mb-4">
+        <div className="mb-4 rounded-full bg-muted p-4">
           <Icon className="h-8 w-8 text-muted-foreground" />
         </div>
         <h3 className="text-lg font-semibold">{title}</h3>
         {description && (
-          <p className="text-sm text-muted-foreground mt-1 max-w-sm">{description}</p>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
         )}
         {action && (
           <Button onClick={action.onClick} className="mt-4">

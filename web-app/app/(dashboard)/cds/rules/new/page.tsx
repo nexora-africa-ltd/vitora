@@ -79,10 +79,7 @@ export default function CDSRuleNewPage() {
     });
   };
 
-  const updateField = <K extends keyof CDSRuleCreateData>(
-    key: K,
-    value: CDSRuleCreateData[K]
-  ) => {
+  const updateField = <K extends keyof CDSRuleCreateData>(key: K, value: CDSRuleCreateData[K]) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -92,7 +89,7 @@ export default function CDSRuleNewPage() {
         <PageHeader title="New CDS Rule" />
         <Card className="p-6 text-center">
           <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             You do not have permission to create CDS rules.
           </p>
         </Card>
@@ -110,9 +107,11 @@ export default function CDSRuleNewPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Basic Information */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Basic Information</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Basic Information</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="code">Code *</Label>
                 <Input
@@ -149,13 +148,20 @@ export default function CDSRuleNewPage() {
 
         {/* Classification */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Classification</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Classification</CardTitle>
+          </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-2">
                 <Label>Category *</Label>
-                <Select value={formData.category} onValueChange={(v) => updateField('category', v as CDSRuleCreateData['category'])}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={formData.category}
+                  onValueChange={(v) => updateField('category', v as CDSRuleCreateData['category'])}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="VITAL_SIGN">Vital Sign</SelectItem>
                     <SelectItem value="DRUG_ALLERGY">Drug-Allergy</SelectItem>
@@ -169,8 +175,13 @@ export default function CDSRuleNewPage() {
               </div>
               <div className="space-y-2">
                 <Label>Priority *</Label>
-                <Select value={formData.priority} onValueChange={(v) => updateField('priority', v as CDSRuleCreateData['priority'])}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={formData.priority}
+                  onValueChange={(v) => updateField('priority', v as CDSRuleCreateData['priority'])}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CRITICAL">Critical</SelectItem>
                     <SelectItem value="HIGH">High</SelectItem>
@@ -182,8 +193,15 @@ export default function CDSRuleNewPage() {
               </div>
               <div className="space-y-2">
                 <Label>Evidence Level</Label>
-                <Select value={formData.evidence_level ?? 'D'} onValueChange={(v) => updateField('evidence_level', v as CDSRuleCreateData['evidence_level'])}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={formData.evidence_level ?? 'D'}
+                  onValueChange={(v) =>
+                    updateField('evidence_level', v as CDSRuleCreateData['evidence_level'])
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="A">Level A — Strong</SelectItem>
                     <SelectItem value="B">Level B — Moderate</SelectItem>
@@ -194,8 +212,15 @@ export default function CDSRuleNewPage() {
               </div>
               <div className="space-y-2">
                 <Label>Action Type *</Label>
-                <Select value={formData.action_type} onValueChange={(v) => updateField('action_type', v as CDSRuleCreateData['action_type'])}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={formData.action_type}
+                  onValueChange={(v) =>
+                    updateField('action_type', v as CDSRuleCreateData['action_type'])
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALERT">Alert</SelectItem>
                     <SelectItem value="CONTRAINDICATE">Contraindicate</SelectItem>
@@ -212,7 +237,9 @@ export default function CDSRuleNewPage() {
 
         {/* Rule Logic */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Rule Logic</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Rule Logic</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="condition">Condition (JSON) *</Label>
@@ -258,7 +285,9 @@ export default function CDSRuleNewPage() {
 
         {/* References */}
         <Card>
-          <CardHeader><CardTitle className="text-base">References</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">References</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="references">Evidence References (one per line)</Label>

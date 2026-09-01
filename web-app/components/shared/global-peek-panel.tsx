@@ -17,9 +17,7 @@ export function GlobalPeekPanel() {
 
   const icon = target.type === 'encounter' ? Stethoscope : User;
   const fullPageHref =
-    target.type === 'encounter'
-      ? `/encounters/${target.id}`
-      : `/patients/${target.id}`;
+    target.type === 'encounter' ? `/encounters/${target.id}` : `/patients/${target.id}`;
 
   return (
     <FloatingPeekPanel

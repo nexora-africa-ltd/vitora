@@ -9,7 +9,7 @@ import type {
   PatientHistoryParams,
   PatientHistoryResponse,
   TimelineEvent,
-  TimelineFilters
+  TimelineFilters,
 } from '@/lib/types/timeline';
 import type { Encounter } from '@/lib/types/encounter';
 import type { SurgeryCaseList } from '@/lib/types/theatre';
@@ -86,25 +86,29 @@ async function fetchPatientHistory(params: PatientHistoryParams): Promise<Patien
 
   // Apply client-side filters (in production, this would be server-side)
   if (filters?.eventTypes && filters.eventTypes.length > 0) {
-    events = events.filter(event => filters.eventTypes.includes(event.type));
+    events = events.filter((event) => filters.eventTypes.includes(event.type));
   }
 
   if (filters?.startDate) {
-    events = events.filter(event => event.timestamp >= filters.startDate!);
+    events = events.filter((event) => event.timestamp >= filters.startDate!);
   }
 
   if (filters?.endDate) {
-    events = events.filter(event => event.timestamp <= filters.endDate!);
+    events = events.filter((event) => event.timestamp <= filters.endDate!);
   }
 
   if (filters?.searchQuery) {
     const query = filters.searchQuery.toLowerCase();
     events = events.filter(
-      event =>
+      (event) =>
         event.title.toLowerCase().includes(query) ||
         event.description?.toLowerCase().includes(query) ||
-        String(event.metadata?.caseNumber || '').toLowerCase().includes(query) ||
-        String(event.metadata?.theatreName || '').toLowerCase().includes(query)
+        String(event.metadata?.caseNumber || '')
+          .toLowerCase()
+          .includes(query) ||
+        String(event.metadata?.theatreName || '')
+          .toLowerCase()
+          .includes(query)
     );
   }
 
@@ -120,9 +124,7 @@ async function fetchPatientHistory(params: PatientHistoryParams): Promise<Patien
   return {
     events,
     totalCount: encounterCount + surgeryCount,
-    hasMore:
-      page * pageSize < encounterCount ||
-      page * pageSize < surgeryCount,
+    hasMore: page * pageSize < encounterCount || page * pageSize < surgeryCount,
     summary,
   };
 }
@@ -144,10 +146,8 @@ export function usePatientHistory(patientId: number, filters?: TimelineFilters) 
 export function usePatientHistoryInfinite(patientId: number, filters?: TimelineFilters) {
   return useInfiniteQuery({
     queryKey: ['patient-history-infinite', patientId, filters],
-    queryFn: ({ pageParam = 1 }) =>
-      fetchPatientHistory({ patientId, filters, page: pageParam }),
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.hasMore ? allPages.length + 1 : undefined,
+    queryFn: ({ pageParam = 1 }) => fetchPatientHistory({ patientId, filters, page: pageParam }),
+    getNextPageParam: (lastPage, allPages) => (lastPage.hasMore ? allPages.length + 1 : undefined),
     initialPageParam: 1,
     enabled: !!patientId,
   });

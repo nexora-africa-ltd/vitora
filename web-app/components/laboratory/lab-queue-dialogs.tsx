@@ -87,7 +87,7 @@ export function SampleCollectionDialog({
               <div className="flex items-center gap-2">
                 <Label htmlFor="sample-id">
                   Sample Barcode / Tube ID
-                  <span className="text-muted-foreground ml-1">(optional)</span>
+                  <span className="ml-1 text-muted-foreground">(optional)</span>
                 </Label>
                 <HelpPopover content="Enter the barcode or tube ID for tracking purposes." />
               </div>
@@ -176,7 +176,7 @@ export function TechnicianAssignmentDialog({
             </div>
           </DialogHeader>
 
-          <div className="pt-2 text-sm text-muted-foreground font-mono">
+          <div className="pt-2 font-mono text-sm text-muted-foreground">
             {queueEntry?.queue_number}
           </div>
 
@@ -299,7 +299,9 @@ export function RejectSampleDialog({
             <div className="flex items-center gap-2">
               <HelpPopover content="Mark this sample as rejected. A new sample may need to be collected depending on the reason." />
               {queueEntry?.queue_number ? (
-                <span className="font-mono text-xs text-muted-foreground">{queueEntry.queue_number}</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {queueEntry.queue_number}
+                </span>
               ) : null}
             </div>
           </DialogHeader>
@@ -310,7 +312,7 @@ export function RejectSampleDialog({
               <div className="text-sm">
                 {queueEntry?.patient_name} • {queueEntry?.sample_type}
                 {queueEntry?.sample_id && (
-                  <span className="font-mono ml-2">({queueEntry.sample_id})</span>
+                  <span className="ml-2 font-mono">({queueEntry.sample_id})</span>
                 )}
               </div>
             </div>
@@ -354,11 +356,7 @@ export function RejectSampleDialog({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={isLoading || !isValid}
-            >
+            <Button type="submit" variant="destructive" disabled={isLoading || !isValid}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Reject Sample
             </Button>
@@ -416,23 +414,23 @@ export function TechnicianNotesDialog({
           </DialogHeader>
 
           {queueEntry?.queue_number ? (
-            <div className="pt-2 text-sm text-muted-foreground font-mono">{queueEntry.queue_number}</div>
+            <div className="pt-2 font-mono text-sm text-muted-foreground">
+              {queueEntry.queue_number}
+            </div>
           ) : null}
 
           <div className="grid gap-4 py-4">
             {existingNotes && (
               <div className="space-y-2">
                 <Label>Existing Notes</Label>
-                <div className="p-3 bg-muted rounded-md text-sm whitespace-pre-wrap max-h-32 overflow-y-auto">
+                <div className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-sm">
                   {existingNotes}
                 </div>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="new-notes">
-                {existingNotes ? 'New Notes' : 'Notes'}
-              </Label>
+              <Label htmlFor="new-notes">{existingNotes ? 'New Notes' : 'Notes'}</Label>
               <Textarea
                 id="new-notes"
                 placeholder="Enter processing observations, special handling notes..."
@@ -568,14 +566,12 @@ export function BarcodeSearchDialog({
         </form>
 
         {error && (
-          <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
-            {error}
-          </div>
+          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
         )}
 
         {result && (
-          <div className="border rounded-lg p-4 space-y-3">
-            <div className="flex justify-between items-start">
+          <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex items-start justify-between">
               <div>
                 <p className="font-medium">{result.patient_name}</p>
                 <p className="text-sm text-muted-foreground">{result.patient_mrn}</p>
@@ -585,16 +581,13 @@ export function BarcodeSearchDialog({
 
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <span className="text-muted-foreground">Sample:</span>{' '}
-                {result.sample_type}
+                <span className="text-muted-foreground">Sample:</span> {result.sample_type}
               </div>
               <div>
-                <span className="text-muted-foreground">Status:</span>{' '}
-                {result.queue_status}
+                <span className="text-muted-foreground">Status:</span> {result.queue_status}
               </div>
               <div>
-                <span className="text-muted-foreground">Priority:</span>{' '}
-                {result.priority}
+                <span className="text-muted-foreground">Priority:</span> {result.priority}
               </div>
               {result.sample_id && (
                 <div>

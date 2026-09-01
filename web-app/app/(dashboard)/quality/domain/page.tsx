@@ -74,15 +74,16 @@ export default function QualityDomainIndexPage() {
 
         {domains.length === 0 ? (
           <Card className="p-6">
-            <div className="flex flex-col items-center text-center gap-2">
+            <div className="flex flex-col items-center gap-2 text-center">
               <BarChart3 className="h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                No domain results available for {year}. Run evaluations to generate performance data.
+                No domain results available for {year}. Run evaluations to generate performance
+                data.
               </p>
             </div>
           </Card>
         ) : (
-          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             {domains.map((domain) => (
               <DomainCard
                 key={domain.domain}
@@ -113,16 +114,13 @@ function DomainCard({ domain, onClick }: { domain: QualityDomainSummary; onClick
         : 'stroke-destructive';
 
   return (
-    <Card
-      className="cursor-pointer transition-colors hover:bg-muted/50"
-      onClick={onClick}
-    >
+    <Card className="cursor-pointer transition-colors hover:bg-muted/50" onClick={onClick}>
       <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium truncate text-primary hover:underline">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="truncate text-sm font-medium text-primary hover:underline">
             {domain.domain_display}
           </h3>
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
         </div>
         <div className="flex items-center gap-4">
           <CircularProgress
@@ -133,7 +131,7 @@ function DomainCard({ domain, onClick }: { domain: QualityDomainSummary; onClick
           >
             <span className="text-xs font-bold">{domain.compliance_rate.toFixed(0)}%</span>
           </CircularProgress>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <p className={`text-lg font-bold ${complianceColor}`}>
               {domain.compliance_rate.toFixed(1)}%
             </p>

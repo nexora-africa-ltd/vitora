@@ -42,11 +42,9 @@ export default function CaseNotesListPage() {
         actions={
           swCase && !swCase.status.startsWith('CLOSED') ? (
             <Button
-              onClick={() =>
-                router.push(`/allied-health/social-work/cases/${caseId}/notes/new`)
-              }
+              onClick={() => router.push(`/allied-health/social-work/cases/${caseId}/notes/new`)}
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Add Note
             </Button>
           ) : undefined
@@ -60,7 +58,7 @@ export default function CaseNotesListPage() {
       ) : notes.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <FileText className="mx-auto mb-2 h-8 w-8 opacity-50" />
             <p>No case notes recorded yet.</p>
           </CardContent>
         </Card>
@@ -69,34 +67,31 @@ export default function CaseNotesListPage() {
           {notes.map((note) => (
             <Card
               key={note.id}
-              className="cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() =>
-                router.push(`/allied-health/social-work/cases/${caseId}`)
-              }
+              className="cursor-pointer transition-colors hover:bg-muted/50"
+              onClick={() => router.push(`/allied-health/social-work/cases/${caseId}`)}
             >
               <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="font-medium text-sm truncate">
-                      {note.author_name}
-                    </span>
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate text-sm font-medium">{note.author_name}</span>
                     <Badge variant="outline" className="shrink-0 text-xs">
-                      {(note.contact_method && CONTACT_METHOD_LABELS[note.contact_method]) || note.contact_method || 'N/A'}
+                      {(note.contact_method && CONTACT_METHOD_LABELS[note.contact_method]) ||
+                        note.contact_method ||
+                        'N/A'}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                  <div className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     {format(parseISO(note.created_at), 'PPp')}
                   </div>
                 </div>
-                <p className="text-sm line-clamp-3">{note.content}</p>
+                <p className="line-clamp-3 text-sm">{note.content}</p>
                 {note.follow_up_required && (
                   <div className="mt-2">
                     <Badge variant="secondary" className="text-xs">
                       Follow-up required
-                      {note.follow_up_date &&
-                        ` — ${format(parseISO(note.follow_up_date), 'PP')}`}
+                      {note.follow_up_date && ` — ${format(parseISO(note.follow_up_date), 'PP')}`}
                     </Badge>
                   </div>
                 )}

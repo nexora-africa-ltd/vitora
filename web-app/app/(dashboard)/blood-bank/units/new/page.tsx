@@ -13,7 +13,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useCreateBloodUnit, useBloodDonor, useBloodDonors } from '@/lib/hooks/use-blood-bank';
 import { resourcesApi } from '@/lib/api/scheduling';
@@ -101,10 +105,22 @@ export default function NewBloodUnitPage() {
     } catch (err) {
       setError(getApiErrorMessage(err));
     }
-  }, [donorId, unitNumber, bloodGroup, component, collectionDate, expiryDate, volumeMl, storageLocation, notes, createMutation, router]);
+  }, [
+    donorId,
+    unitNumber,
+    bloodGroup,
+    component,
+    collectionDate,
+    expiryDate,
+    volumeMl,
+    storageLocation,
+    notes,
+    createMutation,
+    router,
+  ]);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <PageHeader
         title="Register Blood Unit"
         helpContent="Register a new blood unit collected from a donor. The unit will go through testing before becoming available."
@@ -132,7 +148,8 @@ export default function NewBloodUnitPage() {
                 <SelectContent>
                   {donorsData?.results?.map((donor) => (
                     <SelectItem key={donor.id} value={String(donor.id)}>
-                      {donor.donor_number} — {donor.first_name} {donor.last_name} ({donor.blood_group})
+                      {donor.donor_number} — {donor.first_name} {donor.last_name} (
+                      {donor.blood_group})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -157,7 +174,9 @@ export default function NewBloodUnitPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {BLOOD_GROUPS.map((bg) => (
-                      <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                      <SelectItem key={bg} value={bg}>
+                        {bg}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -170,7 +189,9 @@ export default function NewBloodUnitPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {COMPONENTS.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -221,7 +242,10 @@ export default function NewBloodUnitPage() {
 
             <div>
               <Label>Storage Location</Label>
-              <Select value={storageLocation || '__none__'} onValueChange={(v) => setStorageLocation(v === '__none__' ? '' : v)}>
+              <Select
+                value={storageLocation || '__none__'}
+                onValueChange={(v) => setStorageLocation(v === '__none__' ? '' : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select configured storage place" />
                 </SelectTrigger>
@@ -252,11 +276,11 @@ export default function NewBloodUnitPage() {
 
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => router.back()}>
-          <X className="h-4 w-4 mr-2" />
+          <X className="mr-2 h-4 w-4" />
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={createMutation.isPending}>
-          <Save className="h-4 w-4 mr-2" />
+          <Save className="mr-2 h-4 w-4" />
           {createMutation.isPending ? 'Saving...' : 'Register Unit'}
         </Button>
       </div>

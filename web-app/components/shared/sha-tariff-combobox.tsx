@@ -70,14 +70,9 @@ export function SHATariffCombobox({ value, onValueChange, disabled }: SHATariffC
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className={cn(
-            'w-full justify-between font-normal',
-            !value && 'text-muted-foreground',
-          )}
+          className={cn('w-full justify-between font-normal', !value && 'text-muted-foreground')}
         >
-          <span className="truncate">
-            {value ? selectedLabel : 'Select SHA tariff...'}
-          </span>
+          <span className="truncate">{value ? selectedLabel : 'Select SHA tariff...'}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -96,7 +91,9 @@ export function SHATariffCombobox({ value, onValueChange, disabled }: SHATariffC
               </div>
             ) : tariffs.length === 0 ? (
               <CommandEmpty>
-                {debouncedSearch && debouncedSearch.length >= 2 ? 'No interventions found.' : 'Type at least 2 characters to search...'}
+                {debouncedSearch && debouncedSearch.length >= 2
+                  ? 'No interventions found.'
+                  : 'Type at least 2 characters to search...'}
               </CommandEmpty>
             ) : (
               <CommandGroup>
@@ -113,13 +110,14 @@ export function SHATariffCombobox({ value, onValueChange, disabled }: SHATariffC
                     <Check
                       className={cn(
                         'mr-2 h-4 w-4 shrink-0',
-                        value === tariff.code ? 'opacity-100' : 'opacity-0',
+                        value === tariff.code ? 'opacity-100' : 'opacity-0'
                       )}
                     />
-                    <div className="flex flex-col min-w-0">
+                    <div className="flex min-w-0 flex-col">
                       <span className="truncate font-medium">{tariff.code}</span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {tariff.name}{tariff.price ? ` · KES ${tariff.price.toLocaleString()}` : ''}
+                      <span className="truncate text-xs text-muted-foreground">
+                        {tariff.name}
+                        {tariff.price ? ` · KES ${tariff.price.toLocaleString()}` : ''}
                       </span>
                     </div>
                   </CommandItem>

@@ -296,7 +296,9 @@ export async function printPrescription(options: PrintPrescriptionOptions): Prom
   // Get QR content with verification status
   const qrContent = getPrescriptionQRContent({
     prescription_number: prescription.prescription_number,
-    verification_url: verificationUrl || (prescription as Prescription & { verification_url?: string }).verification_url,
+    verification_url:
+      verificationUrl ||
+      (prescription as Prescription & { verification_url?: string }).verification_url,
     id: prescription.id,
   });
 
@@ -372,7 +374,9 @@ export async function previewPrescription(options: PrintPrescriptionOptions): Pr
   // Get QR content with verification status
   const qrContent = getPrescriptionQRContent({
     prescription_number: prescription.prescription_number,
-    verification_url: verificationUrl || (prescription as Prescription & { verification_url?: string }).verification_url,
+    verification_url:
+      verificationUrl ||
+      (prescription as Prescription & { verification_url?: string }).verification_url,
     id: prescription.id,
   });
 

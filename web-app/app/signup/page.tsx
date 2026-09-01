@@ -153,10 +153,9 @@ export default function SignupPage() {
     }
     setLoadingSubCounties(true);
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/locations/sub-counties/?county=${countyId}`,
-        { headers: { 'Content-Type': 'application/json' } }
-      );
+      const res = await fetch(`${API_BASE_URL}/api/locations/sub-counties/?county=${countyId}`, {
+        headers: { 'Content-Type': 'application/json' },
+      });
       if (res.ok) {
         const data = await res.json();
         setSubCounties(Array.isArray(data) ? data : data.results || []);
@@ -169,9 +168,9 @@ export default function SignupPage() {
   }, []);
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (validationErrors[field]) {
-      setValidationErrors(prev => ({ ...prev, [field]: '' }));
+      setValidationErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -195,7 +194,8 @@ export default function SignupPage() {
     if (!formData.admin_first_name.trim()) errors.admin_first_name = 'First name is required';
     if (!formData.admin_last_name.trim()) errors.admin_last_name = 'Last name is required';
     if (!formData.admin_email.trim()) errors.admin_email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) errors.admin_email = 'Invalid email';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email))
+      errors.admin_email = 'Invalid email';
     if (!formData.admin_password) {
       errors.admin_password = 'Password is required';
     } else {
@@ -204,11 +204,14 @@ export default function SignupPage() {
       else if (!/[A-Z]/.test(pwd)) errors.admin_password = 'Must include an uppercase letter';
       else if (!/[a-z]/.test(pwd)) errors.admin_password = 'Must include a lowercase letter';
       else if (!/\d/.test(pwd)) errors.admin_password = 'Must include a number';
-      else if (!/[^A-Za-z0-9]/.test(pwd)) errors.admin_password = 'Must include a special character';
+      else if (!/[^A-Za-z0-9]/.test(pwd))
+        errors.admin_password = 'Must include a special character';
       else if (/^\d+$/.test(pwd)) errors.admin_password = 'Password cannot be entirely numeric';
     }
-    if (formData.admin_password !== formData.confirm_password) errors.confirm_password = 'Passwords do not match';
-    if (!agreedToTerms) errors.agree_to_terms = 'You must agree to the Terms of Service and Privacy Policy';
+    if (formData.admin_password !== formData.confirm_password)
+      errors.confirm_password = 'Passwords do not match';
+    if (!agreedToTerms)
+      errors.agree_to_terms = 'You must agree to the Terms of Service and Privacy Policy';
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -224,13 +227,12 @@ export default function SignupPage() {
         ...formData,
         facility_county: Number(formData.facility_county),
         facility_sub_county: Number(formData.facility_sub_county),
-        facility_operating_mode:
-          formData.facility_operating_mode as
-            | 'FULL_HMIS'
-            | 'STANDALONE_LAB'
-            | 'STANDALONE_PHARMACY'
-            | 'STANDALONE_IMAGING'
-            | 'STANDALONE_DIAGNOSTIC',
+        facility_operating_mode: formData.facility_operating_mode as
+          | 'FULL_HMIS'
+          | 'STANDALONE_LAB'
+          | 'STANDALONE_PHARMACY'
+          | 'STANDALONE_IMAGING'
+          | 'STANDALONE_DIAGNOSTIC',
       });
       setSubmittedEmail(formData.admin_email);
       setSubmittedUsername(result.username);
@@ -243,11 +245,11 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4 sm:p-8 bg-background">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4 sm:p-8">
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-10"
+        className="absolute right-4 top-4 z-10"
         onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
       >
         <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -255,51 +257,48 @@ export default function SignupPage() {
         <span className="sr-only">Toggle theme</span>
       </Button>
 
-      <Card className="relative w-full max-w-lg border-brand-burgundy-200 dark:border-muted/30 shadow-lg overflow-hidden">
+      <Card className="relative w-full max-w-lg overflow-hidden border-brand-burgundy-200 shadow-lg dark:border-muted/30">
         {mounted && (
           <VitoraLogo
             variant="icon"
             tone={isDark ? 'white' : 'teal'}
             alt=""
-            className="absolute top-1/2 left-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none select-none"
+            className="pointer-events-none absolute left-1/2 top-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 select-none opacity-[0.03]"
             imageClassName="pointer-events-none select-none"
           />
         )}
 
         {pageState === 'success' ? (
-          <CardContent className="relative z-10 flex flex-col items-center justify-center py-16 gap-4">
+          <CardContent className="relative z-10 flex flex-col items-center justify-center gap-4 py-16">
             <div className="rounded-full bg-blue-500/10 p-3">
               <Mail className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
-            <div className="text-center space-y-2 max-w-xs">
+            <div className="max-w-xs space-y-2 text-center">
               <p className="text-lg font-semibold">Check Your Email</p>
               <p className="text-sm text-muted-foreground">
-                We&apos;ve sent a verification link to <span className="font-medium text-foreground">{submittedEmail}</span>.
+                We&apos;ve sent a verification link to{' '}
+                <span className="font-medium text-foreground">{submittedEmail}</span>.
               </p>
               {submittedUsername && (
                 <p className="text-sm text-muted-foreground">
-                  Your username is <span className="font-mono font-medium text-foreground">{submittedUsername}</span>
+                  Your username is{' '}
+                  <span className="font-mono font-medium text-foreground">{submittedUsername}</span>
                 </p>
               )}
               <p className="text-sm text-muted-foreground">
-                After verifying your email, a Nexora administrator will review and activate your organization.
+                After verifying your email, a Nexora administrator will review and activate your
+                organization.
               </p>
             </div>
-            <div className="flex flex-col gap-2 w-full max-w-xs">
-              <Button onClick={() => router.push('/login')}>
-                Go to Login
-              </Button>
+            <div className="flex w-full max-w-xs flex-col gap-2">
+              <Button onClick={() => router.push('/login')}>Go to Login</Button>
             </div>
           </CardContent>
         ) : (
           <>
-            <CardHeader className="relative z-10 text-center space-y-4">
+            <CardHeader className="relative z-10 space-y-4 text-center">
               <div className="mx-auto">
-                <VitoraLogo
-                  tone={isDark ? 'light' : 'dark'}
-                  alt={APP_NAME}
-                  className="w-36"
-                />
+                <VitoraLogo tone={isDark ? 'light' : 'dark'} alt={APP_NAME} className="w-36" />
               </div>
               <div>
                 <CardTitle className="text-xl font-bold">Register Your Organization</CardTitle>
@@ -312,7 +311,7 @@ export default function SignupPage() {
             <CardContent className="relative z-10">
               <form onSubmit={handleSubmit} className="space-y-5">
                 {error && (
-                  <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4 flex-shrink-0" />
                     <span>{error}</span>
                   </div>
@@ -353,7 +352,7 @@ export default function SignupPage() {
                   </legend>
 
                   {/* Facility name + MFL code */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <label htmlFor="facility_name" className="text-sm font-medium">
                         Facility Name <span className="text-destructive">*</span>
@@ -371,7 +370,10 @@ export default function SignupPage() {
                       )}
                     </div>
                     <div className="space-y-1.5">
-                      <label htmlFor="facility_mfl_code" className="flex items-center gap-1 text-sm font-medium">
+                      <label
+                        htmlFor="facility_mfl_code"
+                        className="flex items-center gap-1 text-sm font-medium"
+                      >
                         MFL Code <span className="text-destructive">*</span>
                         <HelpPopover content="The 5-digit Master Facility List code assigned by the Ministry of Health. Find it at kmhfl.health.go.ke." />
                       </label>
@@ -384,13 +386,15 @@ export default function SignupPage() {
                         className={`h-10 ${validationErrors.facility_mfl_code ? 'border-destructive' : ''}`}
                       />
                       {validationErrors.facility_mfl_code && (
-                        <p className="text-xs text-destructive">{validationErrors.facility_mfl_code}</p>
+                        <p className="text-xs text-destructive">
+                          {validationErrors.facility_mfl_code}
+                        </p>
                       )}
                     </div>
                   </div>
 
                   {/* County + Sub-County */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <label htmlFor="facility_county" className="text-sm font-medium">
                         County <span className="text-destructive">*</span>
@@ -400,7 +404,10 @@ export default function SignupPage() {
                         onValueChange={handleCountyChange}
                         disabled={isSubmitting}
                       >
-                        <SelectTrigger id="facility_county" className={`h-10 ${validationErrors.facility_county ? 'border-destructive' : ''}`}>
+                        <SelectTrigger
+                          id="facility_county"
+                          className={`h-10 ${validationErrors.facility_county ? 'border-destructive' : ''}`}
+                        >
                           <SelectValue placeholder="Select county" />
                         </SelectTrigger>
                         <SelectContent>
@@ -412,7 +419,9 @@ export default function SignupPage() {
                         </SelectContent>
                       </Select>
                       {validationErrors.facility_county && (
-                        <p className="text-xs text-destructive">{validationErrors.facility_county}</p>
+                        <p className="text-xs text-destructive">
+                          {validationErrors.facility_county}
+                        </p>
                       )}
                     </div>
                     <div className="space-y-1.5">
@@ -424,8 +433,13 @@ export default function SignupPage() {
                         onValueChange={(v) => handleChange('facility_sub_county', v)}
                         disabled={isSubmitting || !formData.facility_county || loadingSubCounties}
                       >
-                        <SelectTrigger id="facility_sub_county" className={`h-10 ${validationErrors.facility_sub_county ? 'border-destructive' : ''}`}>
-                          <SelectValue placeholder={loadingSubCounties ? 'Loading...' : 'Select sub-county'} />
+                        <SelectTrigger
+                          id="facility_sub_county"
+                          className={`h-10 ${validationErrors.facility_sub_county ? 'border-destructive' : ''}`}
+                        >
+                          <SelectValue
+                            placeholder={loadingSubCounties ? 'Loading...' : 'Select sub-county'}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {subCounties.map((sc) => (
@@ -436,15 +450,20 @@ export default function SignupPage() {
                         </SelectContent>
                       </Select>
                       {validationErrors.facility_sub_county && (
-                        <p className="text-xs text-destructive">{validationErrors.facility_sub_county}</p>
+                        <p className="text-xs text-destructive">
+                          {validationErrors.facility_sub_county}
+                        </p>
                       )}
                     </div>
                   </div>
 
                   {/* Level + Ownership */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <label htmlFor="facility_level" className="flex items-center gap-1 text-sm font-medium">
+                      <label
+                        htmlFor="facility_level"
+                        className="flex items-center gap-1 text-sm font-medium"
+                      >
                         KEPH Level
                         <HelpPopover content="Kenya Essential Package for Health level. Ranges from Level 1 (community units) to Level 6 (national referral hospitals)." />
                       </label>
@@ -490,7 +509,10 @@ export default function SignupPage() {
 
                   {/* Operating mode */}
                   <div className="space-y-1.5">
-                    <label htmlFor="facility_operating_mode" className="flex items-center gap-1 text-sm font-medium">
+                    <label
+                      htmlFor="facility_operating_mode"
+                      className="flex items-center gap-1 text-sm font-medium"
+                    >
                       What does this facility do?
                       <HelpPopover content="Standalone modes disable clinical workflow (inpatient, ER, triage) and enable only the chosen module + billing + inventory. You can change this later from facility settings." />
                     </label>
@@ -511,7 +533,10 @@ export default function SignupPage() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      {OPERATING_MODES.find((m) => m.value === formData.facility_operating_mode)?.description}
+                      {
+                        OPERATING_MODES.find((m) => m.value === formData.facility_operating_mode)
+                          ?.description
+                      }
                     </p>
                   </div>
                 </fieldset>
@@ -539,7 +564,9 @@ export default function SignupPage() {
                         className={`h-10 ${validationErrors.admin_first_name ? 'border-destructive' : ''}`}
                       />
                       {validationErrors.admin_first_name && (
-                        <p className="text-xs text-destructive">{validationErrors.admin_first_name}</p>
+                        <p className="text-xs text-destructive">
+                          {validationErrors.admin_first_name}
+                        </p>
                       )}
                     </div>
                     <div className="space-y-1.5">
@@ -555,7 +582,9 @@ export default function SignupPage() {
                         className={`h-10 ${validationErrors.admin_last_name ? 'border-destructive' : ''}`}
                       />
                       {validationErrors.admin_last_name && (
-                        <p className="text-xs text-destructive">{validationErrors.admin_last_name}</p>
+                        <p className="text-xs text-destructive">
+                          {validationErrors.admin_last_name}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -566,7 +595,7 @@ export default function SignupPage() {
                       Email <span className="text-destructive">*</span>
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         id="admin_email"
                         type="email"
@@ -607,7 +636,11 @@ export default function SignupPage() {
                         onClick={() => setShowPassword(!showPassword)}
                         tabIndex={-1}
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                     {validationErrors.admin_password && (
@@ -640,15 +673,23 @@ export default function SignupPage() {
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         tabIndex={-1}
                       >
-                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                     {validationErrors.confirm_password && (
-                      <p className="text-xs text-destructive">{validationErrors.confirm_password}</p>
+                      <p className="text-xs text-destructive">
+                        {validationErrors.confirm_password}
+                      </p>
                     )}
-                    {!validationErrors.confirm_password && formData.confirm_password && formData.admin_password !== formData.confirm_password && (
-                      <p className="text-xs text-destructive">Passwords do not match</p>
-                    )}
+                    {!validationErrors.confirm_password &&
+                      formData.confirm_password &&
+                      formData.admin_password !== formData.confirm_password && (
+                        <p className="text-xs text-destructive">Passwords do not match</p>
+                      )}
                   </div>
                 </fieldset>
 
@@ -661,13 +702,16 @@ export default function SignupPage() {
                       onCheckedChange={(checked) => {
                         setAgreedToTerms(checked === true);
                         if (validationErrors.agree_to_terms) {
-                          setValidationErrors(prev => ({ ...prev, agree_to_terms: '' }));
+                          setValidationErrors((prev) => ({ ...prev, agree_to_terms: '' }));
                         }
                       }}
                       disabled={isSubmitting}
                       className={`mt-0.5 ${validationErrors.agree_to_terms ? 'border-destructive' : ''}`}
                     />
-                    <label htmlFor="agree_to_terms" className="text-sm leading-snug text-muted-foreground cursor-pointer">
+                    <label
+                      htmlFor="agree_to_terms"
+                      className="cursor-pointer text-sm leading-snug text-muted-foreground"
+                    >
                       I agree to the{' '}
                       <a
                         href="https://vitora.nexora.africa/legal/terms"
@@ -693,7 +737,11 @@ export default function SignupPage() {
                   )}
                 </div>
 
-                <Button type="submit" className="w-full h-11" disabled={isSubmitting || !agreedToTerms}>
+                <Button
+                  type="submit"
+                  className="h-11 w-full"
+                  disabled={isSubmitting || !agreedToTerms}
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -707,7 +755,7 @@ export default function SignupPage() {
                 <div className="text-center">
                   <Link
                     href="/login"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+                    className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <ArrowLeft className="h-3 w-3" />
                     Already have an account? Sign in

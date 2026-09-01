@@ -111,7 +111,8 @@ export default function SurveillanceDashboardPage() {
                     <div>
                       <p className="font-medium">No notifiable diseases configured</p>
                       <p className="text-sm text-muted-foreground">
-                        Seed the MOH 502 notifiable disease list to enable case reporting and surveillance alerts.
+                        Seed the MOH 502 notifiable disease list to enable case reporting and
+                        surveillance alerts.
                       </p>
                     </div>
                   </div>
@@ -211,7 +212,7 @@ export default function SurveillanceDashboardPage() {
                     <div className="space-y-3">
                       {data.top_diseases.slice(0, 5).map((item) => (
                         <div key={item.name} className="flex items-center justify-between">
-                          <span className="text-sm truncate">{item.name}</span>
+                          <span className="truncate text-sm">{item.name}</span>
                           <Badge variant="secondary">{item.count}</Badge>
                         </div>
                       ))}
@@ -231,7 +232,7 @@ export default function SurveillanceDashboardPage() {
                     <div className="space-y-3">
                       {data.cases_by_county.slice(0, 5).map((item) => (
                         <div key={item.county} className="flex items-center justify-between">
-                          <span className="text-sm truncate">{item.county}</span>
+                          <span className="truncate text-sm">{item.county}</span>
                           <Badge variant="secondary">{item.count}</Badge>
                         </div>
                       ))}

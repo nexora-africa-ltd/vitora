@@ -111,7 +111,7 @@ const ResolveTestsResponseSchema = z.object({
       query_loinc: z.string(),
       match: LabTestCatalogListSchema.nullable(),
       score: z.number(),
-    }),
+    })
   ),
 });
 
@@ -195,7 +195,9 @@ export const laboratoryApi = {
    * Seed essential Kenya laboratory tests (idempotent).
    */
   async seedDefaults(): Promise<{ created: number; total: number }> {
-    const response = await apiClient.post<{ created: number; total: number }>('/api/lab/tests/seed-defaults/');
+    const response = await apiClient.post<{ created: number; total: number }>(
+      '/api/lab/tests/seed-defaults/'
+    );
     return parseResponse(SeedDefaultsResponseSchema, response.data, {
       context: 'laboratoryApi.seedDefaults',
     });
@@ -387,7 +389,11 @@ export const laboratoryApi = {
   /**
    * Search lab results by patient name, order number, or test name.
    */
-  async searchResults(params?: { search?: string; page?: number; page_size?: number }): Promise<PaginatedResponse<LabResult>> {
+  async searchResults(params?: {
+    search?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<PaginatedResponse<LabResult>> {
     const response = await apiClient.get('/api/lab/results/', { params });
     return parseResponse(
       z.object({
@@ -457,7 +463,9 @@ export const laboratoryApi = {
       `/api/lab/orders/${orderNumber}/results/batch/`,
       { results }
     );
-    return parseResponse(z.array(LabResultSchema), response.data, { context: 'laboratoryApi.addResultsBatch' });
+    return parseResponse(z.array(LabResultSchema), response.data, {
+      context: 'laboratoryApi.addResultsBatch',
+    });
   },
 
   /**
@@ -533,36 +541,53 @@ export const laboratoryApi = {
    * Get results pending verification.
    */
   async getPendingVerification(): Promise<LabResult[]> {
-    const response = await apiClient.get<LabResult[] | PaginatedResponse<LabResult>>('/api/lab/results/pending-verification/');
+    const response = await apiClient.get<LabResult[] | PaginatedResponse<LabResult>>(
+      '/api/lab/results/pending-verification/'
+    );
     if (Array.isArray(response.data)) {
       return parseResponse(z.array(LabResultSchema), response.data, {
         context: 'laboratoryApi.getPendingVerification.array',
       });
     }
-    const parsed = parseResponse(z.object({
-      count: z.number(),
-      next: z.string().nullable(),
-      previous: z.string().nullable(),
-      results: z.array(LabResultSchema),
-    }), response.data, {
-      context: 'laboratoryApi.getPendingVerification.paginated',
-    });
+    const parsed = parseResponse(
+      z.object({
+        count: z.number(),
+        next: z.string().nullable(),
+        previous: z.string().nullable(),
+        results: z.array(LabResultSchema),
+      }),
+      response.data,
+      {
+        context: 'laboratoryApi.getPendingVerification.paginated',
+      }
+    );
     return parsed.results;
   },
 
   /**
    * Get paginated results pending verification.
    */
-  async getPendingVerificationPaginated(params?: { page?: number; page_size?: number; validation_type?: string }): Promise<PaginatedResponse<LabResult>> {
-    const response = await apiClient.get<PaginatedResponse<LabResult>>('/api/lab/results/pending-verification/', { params });
-    return parseResponse(z.object({
-      count: z.number(),
-      next: z.string().nullable(),
-      previous: z.string().nullable(),
-      results: z.array(LabResultSchema),
-    }), response.data, {
-      context: 'laboratoryApi.getPendingVerificationPaginated',
-    });
+  async getPendingVerificationPaginated(params?: {
+    page?: number;
+    page_size?: number;
+    validation_type?: string;
+  }): Promise<PaginatedResponse<LabResult>> {
+    const response = await apiClient.get<PaginatedResponse<LabResult>>(
+      '/api/lab/results/pending-verification/',
+      { params }
+    );
+    return parseResponse(
+      z.object({
+        count: z.number(),
+        next: z.string().nullable(),
+        previous: z.string().nullable(),
+        results: z.array(LabResultSchema),
+      }),
+      response.data,
+      {
+        context: 'laboratoryApi.getPendingVerificationPaginated',
+      }
+    );
   },
 
   /**
@@ -829,7 +854,12 @@ export const laboratoryApi = {
     const payload = response.data as unknown;
 
     if (payload && typeof payload === 'object') {
-      const withDetail = payload as { detail?: unknown; error?: unknown; message?: unknown; results?: unknown };
+      const withDetail = payload as {
+        detail?: unknown;
+        error?: unknown;
+        message?: unknown;
+        results?: unknown;
+      };
       if (typeof withDetail.detail === 'string') {
         throw new Error(withDetail.detail);
       }
@@ -1103,7 +1133,10 @@ export const laboratoryApi = {
     await apiClient.delete(`/api/lab/reporting/sla-targets/${id}/`);
   },
 
-  async listTATSnapshots(params?: { priority?: string; is_breach?: boolean }): Promise<TATSnapshot[]> {
+  async listTATSnapshots(params?: {
+    priority?: string;
+    is_breach?: boolean;
+  }): Promise<TATSnapshot[]> {
     const response = await apiClient.get('/api/lab/reporting/tat-snapshots/', { params });
     const data = response.data.results ?? response.data;
     return parseResponse(TATSnapshotArraySchema, data, {
@@ -1146,7 +1179,10 @@ export const laboratoryApi = {
     });
   },
 
-  async getTechnicianEfficiency(startDate: string, endDate: string): Promise<TechnicianEfficiencyReport> {
+  async getTechnicianEfficiency(
+    startDate: string,
+    endDate: string
+  ): Promise<TechnicianEfficiencyReport> {
     const response = await apiClient.get('/api/lab/reporting/technician-efficiency/', {
       params: { start: startDate, end: endDate },
     });
@@ -1166,10 +1202,13 @@ export const laboratoryApi = {
 
   // ============ Analyzer Channels (L3) ============
 
-  async listChannels(params?: { is_active?: boolean; instrument?: number }): Promise<InstrumentChannel[]> {
+  async listChannels(params?: {
+    is_active?: boolean;
+    instrument?: number;
+  }): Promise<InstrumentChannel[]> {
     const response = await apiClient.get<InstrumentChannel[] | { results: InstrumentChannel[] }>(
       '/api/lab/analyzers/channels/',
-      { params },
+      { params }
     );
     if (Array.isArray(response.data)) {
       return parseResponse(InstrumentChannelArraySchema, response.data, {
@@ -1195,8 +1234,14 @@ export const laboratoryApi = {
     });
   },
 
-  async updateChannel(id: number, data: Partial<InstrumentChannelCreateData>): Promise<InstrumentChannel> {
-    const response = await apiClient.patch<InstrumentChannel>(`/api/lab/analyzers/channels/${id}/`, data);
+  async updateChannel(
+    id: number,
+    data: Partial<InstrumentChannelCreateData>
+  ): Promise<InstrumentChannel> {
+    const response = await apiClient.patch<InstrumentChannel>(
+      `/api/lab/analyzers/channels/${id}/`,
+      data
+    );
     return parseResponse(InstrumentChannelSchema, response.data, {
       context: 'laboratoryApi.updateChannel',
     });
@@ -1223,7 +1268,7 @@ export const laboratoryApi = {
   async applyDriverTemplate(channelId: number, templateId: number): Promise<InstrumentChannel> {
     const response = await apiClient.post<InstrumentChannel>(
       `/api/lab/analyzers/channels/${channelId}/apply_template/`,
-      { template_id: templateId },
+      { template_id: templateId }
     );
     return parseResponse(InstrumentChannelSchema, response.data, {
       context: 'laboratoryApi.applyDriverTemplate',
@@ -1240,7 +1285,7 @@ export const laboratoryApi = {
   }): Promise<AnalyzerMessage[]> {
     const response = await apiClient.get<AnalyzerMessage[] | { results: AnalyzerMessage[] }>(
       '/api/lab/analyzers/messages/',
-      { params },
+      { params }
     );
     if (Array.isArray(response.data)) {
       return parseResponse(AnalyzerMessageArraySchema, response.data, {
@@ -1260,10 +1305,10 @@ export const laboratoryApi = {
   },
 
   async ingestMessage(channelId: number, rawData: string): Promise<AnalyzerMessage> {
-    const response = await apiClient.post<AnalyzerMessage>(
-      '/api/lab/analyzers/messages/ingest/',
-      { channel_id: channelId, raw_data: rawData },
-    );
+    const response = await apiClient.post<AnalyzerMessage>('/api/lab/analyzers/messages/ingest/', {
+      channel_id: channelId,
+      raw_data: rawData,
+    });
     return parseResponse(AnalyzerMessageSchema, response.data, {
       context: 'laboratoryApi.ingestMessage',
     });
@@ -1272,10 +1317,9 @@ export const laboratoryApi = {
   // ============ Analyzer Driver Templates (L3) ============
 
   async listDriverTemplates(params?: { manufacturer?: string }): Promise<AnalyzerDriverTemplate[]> {
-    const response = await apiClient.get<AnalyzerDriverTemplate[] | { results: AnalyzerDriverTemplate[] }>(
-      '/api/lab/analyzers/templates/',
-      { params },
-    );
+    const response = await apiClient.get<
+      AnalyzerDriverTemplate[] | { results: AnalyzerDriverTemplate[] }
+    >('/api/lab/analyzers/templates/', { params });
     if (Array.isArray(response.data)) {
       return parseResponse(AnalyzerDriverTemplateArraySchema, response.data, {
         context: 'laboratoryApi.listDriverTemplates',
@@ -1287,7 +1331,9 @@ export const laboratoryApi = {
   },
 
   async getDriverTemplate(id: number): Promise<AnalyzerDriverTemplate> {
-    const response = await apiClient.get<AnalyzerDriverTemplate>(`/api/lab/analyzers/templates/${id}/`);
+    const response = await apiClient.get<AnalyzerDriverTemplate>(
+      `/api/lab/analyzers/templates/${id}/`
+    );
     return parseResponse(AnalyzerDriverTemplateSchema, response.data, {
       context: 'laboratoryApi.getDriverTemplate',
     });
@@ -1295,7 +1341,7 @@ export const laboratoryApi = {
 
   async seedDriverTemplates(): Promise<{ created: number; skipped: number; total: number }> {
     const response = await apiClient.post<{ created: number; skipped: number; total: number }>(
-      '/api/lab/analyzers/templates/seed_defaults/',
+      '/api/lab/analyzers/templates/seed_defaults/'
     );
     return parseResponse(SeedDriverTemplatesResponseSchema, response.data, {
       context: 'laboratoryApi.seedDriverTemplates',
@@ -1321,14 +1367,19 @@ export const laboratoryApi = {
     });
   },
 
-  async createRejectionReason(data: Partial<SpecimenRejectionReason>): Promise<SpecimenRejectionReason> {
+  async createRejectionReason(
+    data: Partial<SpecimenRejectionReason>
+  ): Promise<SpecimenRejectionReason> {
     const response = await apiClient.post('/api/lab/settings/rejection-reasons/', data);
     return parseResponse(SpecimenRejectionReasonSchema, response.data, {
       context: 'laboratoryApi.createRejectionReason',
     });
   },
 
-  async updateRejectionReason(id: number, data: Partial<SpecimenRejectionReason>): Promise<SpecimenRejectionReason> {
+  async updateRejectionReason(
+    id: number,
+    data: Partial<SpecimenRejectionReason>
+  ): Promise<SpecimenRejectionReason> {
     const response = await apiClient.patch(`/api/lab/settings/rejection-reasons/${id}/`, data);
     return parseResponse(SpecimenRejectionReasonSchema, response.data, {
       context: 'laboratoryApi.updateRejectionReason',
@@ -1339,7 +1390,10 @@ export const laboratoryApi = {
     await apiClient.delete(`/api/lab/settings/rejection-reasons/${id}/`);
   },
 
-  async listCommentTemplates(params?: { is_active?: boolean; category?: string }): Promise<ResultCommentTemplate[]> {
+  async listCommentTemplates(params?: {
+    is_active?: boolean;
+    category?: string;
+  }): Promise<ResultCommentTemplate[]> {
     const response = await apiClient.get('/api/lab/settings/comment-templates/', { params });
     const data = Array.isArray(response.data) ? response.data : response.data.results || [];
     return parseResponse(ResultCommentTemplateArraySchema, data, {
@@ -1347,14 +1401,19 @@ export const laboratoryApi = {
     });
   },
 
-  async createCommentTemplate(data: Partial<ResultCommentTemplate>): Promise<ResultCommentTemplate> {
+  async createCommentTemplate(
+    data: Partial<ResultCommentTemplate>
+  ): Promise<ResultCommentTemplate> {
     const response = await apiClient.post('/api/lab/settings/comment-templates/', data);
     return parseResponse(ResultCommentTemplateSchema, response.data, {
       context: 'laboratoryApi.createCommentTemplate',
     });
   },
 
-  async updateCommentTemplate(id: number, data: Partial<ResultCommentTemplate>): Promise<ResultCommentTemplate> {
+  async updateCommentTemplate(
+    id: number,
+    data: Partial<ResultCommentTemplate>
+  ): Promise<ResultCommentTemplate> {
     const response = await apiClient.patch(`/api/lab/settings/comment-templates/${id}/`, data);
     return parseResponse(ResultCommentTemplateSchema, response.data, {
       context: 'laboratoryApi.updateCommentTemplate',
@@ -1365,7 +1424,10 @@ export const laboratoryApi = {
     await apiClient.delete(`/api/lab/settings/comment-templates/${id}/`);
   },
 
-  async listReferralLabs(params?: { is_active?: boolean; search?: string }): Promise<ReferralLab[]> {
+  async listReferralLabs(params?: {
+    is_active?: boolean;
+    search?: string;
+  }): Promise<ReferralLab[]> {
     const response = await apiClient.get('/api/lab/settings/referral-labs/', { params });
     const data = Array.isArray(response.data) ? response.data : response.data.results || [];
     return parseResponse(ReferralLabArraySchema, data, {
@@ -1394,13 +1456,18 @@ export const laboratoryApi = {
   async getBarcodeConfig(): Promise<LabBarcodeConfig> {
     const response = await apiClient.get('/api/lab/settings/barcode-config/');
     // Singleton returns single object from list endpoint
-    const data = Array.isArray(response.data) ? response.data[0] : (response.data.results?.[0] || response.data);
+    const data = Array.isArray(response.data)
+      ? response.data[0]
+      : response.data.results?.[0] || response.data;
     return parseResponse(LabBarcodeConfigSchema, data, {
       context: 'laboratoryApi.getBarcodeConfig',
     });
   },
 
-  async updateBarcodeConfig(id: number, data: Partial<LabBarcodeConfig>): Promise<LabBarcodeConfig> {
+  async updateBarcodeConfig(
+    id: number,
+    data: Partial<LabBarcodeConfig>
+  ): Promise<LabBarcodeConfig> {
     const response = await apiClient.patch(`/api/lab/settings/barcode-config/${id}/`, data);
     return parseResponse(LabBarcodeConfigSchema, response.data, {
       context: 'laboratoryApi.updateBarcodeConfig',
@@ -1409,13 +1476,18 @@ export const laboratoryApi = {
 
   async getWorkflowSettings(): Promise<LabWorkflowSettings> {
     const response = await apiClient.get('/api/lab/settings/workflow/');
-    const data = Array.isArray(response.data) ? response.data[0] : (response.data.results?.[0] || response.data);
+    const data = Array.isArray(response.data)
+      ? response.data[0]
+      : response.data.results?.[0] || response.data;
     return parseResponse(LabWorkflowSettingsSchema, data, {
       context: 'laboratoryApi.getWorkflowSettings',
     });
   },
 
-  async updateWorkflowSettings(id: number, data: Partial<LabWorkflowSettings>): Promise<LabWorkflowSettings> {
+  async updateWorkflowSettings(
+    id: number,
+    data: Partial<LabWorkflowSettings>
+  ): Promise<LabWorkflowSettings> {
     const response = await apiClient.patch(`/api/lab/settings/workflow/${id}/`, data);
     return parseResponse(LabWorkflowSettingsSchema, response.data, {
       context: 'laboratoryApi.updateWorkflowSettings',
@@ -1478,7 +1550,11 @@ const PaginatedAntibiogramSchema = z.object({
 export const microbiologyApi = {
   // ============ Organisms ============
 
-  async listOrganisms(params?: { gram_stain?: string; organism_type?: string; search?: string }): Promise<PaginatedResponse<Organism>> {
+  async listOrganisms(params?: {
+    gram_stain?: string;
+    organism_type?: string;
+    search?: string;
+  }): Promise<PaginatedResponse<Organism>> {
     const response = await apiClient.get('/api/lab/microbiology/organisms/', { params });
     return parseResponse(PaginatedOrganismSchema, response.data, {
       context: 'microbiologyApi.listOrganisms',
@@ -1494,7 +1570,10 @@ export const microbiologyApi = {
 
   // ============ Antibiotics ============
 
-  async listAntibiotics(params?: { antibiotic_class?: string; search?: string }): Promise<PaginatedResponse<Antibiotic>> {
+  async listAntibiotics(params?: {
+    antibiotic_class?: string;
+    search?: string;
+  }): Promise<PaginatedResponse<Antibiotic>> {
     const response = await apiClient.get('/api/lab/microbiology/antibiotics/', { params });
     return parseResponse(PaginatedAntibioticSchema, response.data, {
       context: 'microbiologyApi.listAntibiotics',
@@ -1510,7 +1589,12 @@ export const microbiologyApi = {
 
   // ============ Culture Results ============
 
-  async listCultures(params?: { status?: string; organism?: number; search?: string; page?: number }): Promise<PaginatedResponse<CultureResult>> {
+  async listCultures(params?: {
+    status?: string;
+    organism?: number;
+    search?: string;
+    page?: number;
+  }): Promise<PaginatedResponse<CultureResult>> {
     const response = await apiClient.get('/api/lab/microbiology/cultures/', { params });
     return parseResponse(PaginatedCultureResultSchema, response.data, {
       context: 'microbiologyApi.listCultures',
@@ -1546,14 +1630,20 @@ export const microbiologyApi = {
   },
 
   async reportPreliminary(id: number, data: CultureReportData): Promise<CultureResult> {
-    const response = await apiClient.post(`/api/lab/microbiology/cultures/${id}/report-preliminary/`, data);
+    const response = await apiClient.post(
+      `/api/lab/microbiology/cultures/${id}/report-preliminary/`,
+      data
+    );
     return parseResponse(CultureResultSchema, response.data, {
       context: 'microbiologyApi.reportPreliminary',
     });
   },
 
   async reportFinal(id: number, data: CultureReportData): Promise<CultureResult> {
-    const response = await apiClient.post(`/api/lab/microbiology/cultures/${id}/report-final/`, data);
+    const response = await apiClient.post(
+      `/api/lab/microbiology/cultures/${id}/report-final/`,
+      data
+    );
     return parseResponse(CultureResultSchema, response.data, {
       context: 'microbiologyApi.reportFinal',
     });
@@ -1576,14 +1666,22 @@ export const microbiologyApi = {
   // ============ Sensitivities ============
 
   async listCultureSensitivities(cultureId: number): Promise<AntibioticSensitivity[]> {
-    const response = await apiClient.get(`/api/lab/microbiology/cultures/${cultureId}/sensitivities/`);
+    const response = await apiClient.get(
+      `/api/lab/microbiology/cultures/${cultureId}/sensitivities/`
+    );
     return parseResponse(z.array(AntibioticSensitivitySchema), response.data, {
       context: 'microbiologyApi.listCultureSensitivities',
     });
   },
 
-  async addSensitivity(cultureId: number, data: SensitivityCreateData): Promise<AntibioticSensitivity> {
-    const response = await apiClient.post(`/api/lab/microbiology/cultures/${cultureId}/sensitivities/`, data);
+  async addSensitivity(
+    cultureId: number,
+    data: SensitivityCreateData
+  ): Promise<AntibioticSensitivity> {
+    const response = await apiClient.post(
+      `/api/lab/microbiology/cultures/${cultureId}/sensitivities/`,
+      data
+    );
     return parseResponse(AntibioticSensitivitySchema, response.data, {
       context: 'microbiologyApi.addSensitivity',
     });
@@ -1591,7 +1689,10 @@ export const microbiologyApi = {
 
   // ============ Antibiogram ============
 
-  async listAntibiograms(params?: { year?: number; organism?: number }): Promise<PaginatedResponse<Antibiogram>> {
+  async listAntibiograms(params?: {
+    year?: number;
+    organism?: number;
+  }): Promise<PaginatedResponse<Antibiogram>> {
     const response = await apiClient.get('/api/lab/microbiology/antibiogram/', { params });
     return parseResponse(PaginatedAntibiogramSchema, response.data, {
       context: 'microbiologyApi.listAntibiograms',

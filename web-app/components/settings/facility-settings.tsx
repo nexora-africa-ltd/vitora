@@ -73,37 +73,195 @@ const MODULE_FIELDS: Array<{
   title: string;
   description: string;
 }> = [
-  { key: 'outpatient', field: 'has_outpatient', title: 'Outpatient', description: 'General OPD and ambulatory consultations.' },
-  { key: 'inpatient', field: 'has_inpatient', title: 'Inpatient', description: 'Ward admission and bed management.' },
-  { key: 'emergency', field: 'has_emergency', title: 'Emergency', description: 'Casualty and urgent emergency care.' },
-  { key: 'pharmacy', field: 'has_pharmacy', title: 'Pharmacy', description: 'Dispensing and medicine stock workflows.' },
-  { key: 'laboratory', field: 'has_laboratory', title: 'Laboratory', description: 'Diagnostics, orders, and lab results.' },
-  { key: 'imaging', field: 'has_imaging', title: 'Imaging', description: 'Radiology and diagnostic imaging services.' },
-  { key: 'theatre', field: 'has_theatre', title: 'Theatre', description: 'Surgical theatre and peri-operative workflows.' },
-  { key: 'dialysis', field: 'has_dialysis', title: 'Dialysis', description: 'Renal dialysis treatment capability.' },
-  { key: 'icu', field: 'has_icu', title: 'ICU', description: 'Intensive care services and monitoring.' },
-  { key: 'hdu', field: 'has_hdu', title: 'HDU', description: 'High dependency monitoring and step-down critical care.' },
-  { key: 'nbu', field: 'has_nbu', title: 'NBU', description: 'Newborn unit and neonatal inpatient support.' },
-  { key: 'maternity', field: 'has_maternity', title: 'Maternity', description: 'Maternal and obstetric services.' },
-  { key: 'mortuary', field: 'has_mortuary', title: 'Mortuary', description: 'Mortuary and post-mortem support.' },
-  { key: 'blood_bank', field: 'has_blood_bank', title: 'Blood Bank', description: 'Blood storage and transfusion services.' },
-  { key: 'inventory', field: 'has_inventory', title: 'Inventory', description: 'Supply chain, stock management, and procurement.' },
-  { key: 'lis_standalone', field: 'has_lis_standalone', title: 'LIS Standalone', description: 'Lab operates independently — walk-in patients, external orders, no encounter required.' },
-  { key: 'pharmacy_standalone', field: 'has_pharmacy_standalone', title: 'Pharmacy Standalone', description: 'Pharmacy operates independently — walk-in customers, external prescriptions, no encounter required.' },
-  { key: 'imaging_standalone', field: 'has_imaging_standalone', title: 'Imaging Standalone', description: 'Imaging operates independently — walk-in patients, external referrals, no encounter required.' },
-  { key: 'triage', field: 'has_triage', title: 'Triage', description: 'Patient acuity assessment and queue prioritisation.' },
-  { key: 'scheduling', field: 'has_scheduling', title: 'Scheduling', description: 'Appointment booking and roster management.' },
-  { key: 'surveillance', field: 'has_surveillance', title: 'Surveillance', description: 'Disease surveillance and outbreak reporting.' },
-  { key: 'immunizations', field: 'has_immunizations', title: 'Immunizations', description: 'Vaccination programme, cold chain, and AEFI tracking.' },
-  { key: 'allied_health', field: 'has_allied_health', title: 'Allied Health', description: 'Physiotherapy, nutrition, occupational therapy, social work.' },
-  { key: 'quality', field: 'has_quality', title: 'Quality', description: 'Clinical audit and quality improvement measures.' },
-  { key: 'billing', field: 'has_billing', title: 'Finance / Billing', description: 'Invoicing, payments, and financial management.' },
-  { key: 'private_insurance', field: 'has_private_insurance', title: 'Private Insurance', description: 'Private insurance claims, pre-authorizations, and remittances.' },
-  { key: 'moh_reporting', field: 'has_moh_reporting', title: 'MOH Reports', description: 'MOH 705/711/717 aggregate reporting and DHIS2 submission.' },
-  { key: 'ai_assistant', field: 'has_ai_assistant', title: 'TibaBot AI Assistant', description: 'Enable TibaBot conversational AI for this facility (requires plan).' },
-  { key: 'cds', field: 'has_cds', title: 'Clinical Decision Support', description: 'Enable CDS rules, alerts, and clinical recommendations (requires plan).' },
-  { key: 'procedures', field: 'has_procedures', title: 'Procedures', description: 'Clinical procedures, treatment room, and room assignment workflows.' },
-  { key: 'analytics', field: 'has_analytics', title: 'Analytics', description: 'BI dashboards, custom reports, and data analytics (requires plan).' },
+  {
+    key: 'outpatient',
+    field: 'has_outpatient',
+    title: 'Outpatient',
+    description: 'General OPD and ambulatory consultations.',
+  },
+  {
+    key: 'inpatient',
+    field: 'has_inpatient',
+    title: 'Inpatient',
+    description: 'Ward admission and bed management.',
+  },
+  {
+    key: 'emergency',
+    field: 'has_emergency',
+    title: 'Emergency',
+    description: 'Casualty and urgent emergency care.',
+  },
+  {
+    key: 'pharmacy',
+    field: 'has_pharmacy',
+    title: 'Pharmacy',
+    description: 'Dispensing and medicine stock workflows.',
+  },
+  {
+    key: 'laboratory',
+    field: 'has_laboratory',
+    title: 'Laboratory',
+    description: 'Diagnostics, orders, and lab results.',
+  },
+  {
+    key: 'imaging',
+    field: 'has_imaging',
+    title: 'Imaging',
+    description: 'Radiology and diagnostic imaging services.',
+  },
+  {
+    key: 'theatre',
+    field: 'has_theatre',
+    title: 'Theatre',
+    description: 'Surgical theatre and peri-operative workflows.',
+  },
+  {
+    key: 'dialysis',
+    field: 'has_dialysis',
+    title: 'Dialysis',
+    description: 'Renal dialysis treatment capability.',
+  },
+  {
+    key: 'icu',
+    field: 'has_icu',
+    title: 'ICU',
+    description: 'Intensive care services and monitoring.',
+  },
+  {
+    key: 'hdu',
+    field: 'has_hdu',
+    title: 'HDU',
+    description: 'High dependency monitoring and step-down critical care.',
+  },
+  {
+    key: 'nbu',
+    field: 'has_nbu',
+    title: 'NBU',
+    description: 'Newborn unit and neonatal inpatient support.',
+  },
+  {
+    key: 'maternity',
+    field: 'has_maternity',
+    title: 'Maternity',
+    description: 'Maternal and obstetric services.',
+  },
+  {
+    key: 'mortuary',
+    field: 'has_mortuary',
+    title: 'Mortuary',
+    description: 'Mortuary and post-mortem support.',
+  },
+  {
+    key: 'blood_bank',
+    field: 'has_blood_bank',
+    title: 'Blood Bank',
+    description: 'Blood storage and transfusion services.',
+  },
+  {
+    key: 'inventory',
+    field: 'has_inventory',
+    title: 'Inventory',
+    description: 'Supply chain, stock management, and procurement.',
+  },
+  {
+    key: 'lis_standalone',
+    field: 'has_lis_standalone',
+    title: 'LIS Standalone',
+    description:
+      'Lab operates independently — walk-in patients, external orders, no encounter required.',
+  },
+  {
+    key: 'pharmacy_standalone',
+    field: 'has_pharmacy_standalone',
+    title: 'Pharmacy Standalone',
+    description:
+      'Pharmacy operates independently — walk-in customers, external prescriptions, no encounter required.',
+  },
+  {
+    key: 'imaging_standalone',
+    field: 'has_imaging_standalone',
+    title: 'Imaging Standalone',
+    description:
+      'Imaging operates independently — walk-in patients, external referrals, no encounter required.',
+  },
+  {
+    key: 'triage',
+    field: 'has_triage',
+    title: 'Triage',
+    description: 'Patient acuity assessment and queue prioritisation.',
+  },
+  {
+    key: 'scheduling',
+    field: 'has_scheduling',
+    title: 'Scheduling',
+    description: 'Appointment booking and roster management.',
+  },
+  {
+    key: 'surveillance',
+    field: 'has_surveillance',
+    title: 'Surveillance',
+    description: 'Disease surveillance and outbreak reporting.',
+  },
+  {
+    key: 'immunizations',
+    field: 'has_immunizations',
+    title: 'Immunizations',
+    description: 'Vaccination programme, cold chain, and AEFI tracking.',
+  },
+  {
+    key: 'allied_health',
+    field: 'has_allied_health',
+    title: 'Allied Health',
+    description: 'Physiotherapy, nutrition, occupational therapy, social work.',
+  },
+  {
+    key: 'quality',
+    field: 'has_quality',
+    title: 'Quality',
+    description: 'Clinical audit and quality improvement measures.',
+  },
+  {
+    key: 'billing',
+    field: 'has_billing',
+    title: 'Finance / Billing',
+    description: 'Invoicing, payments, and financial management.',
+  },
+  {
+    key: 'private_insurance',
+    field: 'has_private_insurance',
+    title: 'Private Insurance',
+    description: 'Private insurance claims, pre-authorizations, and remittances.',
+  },
+  {
+    key: 'moh_reporting',
+    field: 'has_moh_reporting',
+    title: 'MOH Reports',
+    description: 'MOH 705/711/717 aggregate reporting and DHIS2 submission.',
+  },
+  {
+    key: 'ai_assistant',
+    field: 'has_ai_assistant',
+    title: 'TibaBot AI Assistant',
+    description: 'Enable TibaBot conversational AI for this facility (requires plan).',
+  },
+  {
+    key: 'cds',
+    field: 'has_cds',
+    title: 'Clinical Decision Support',
+    description: 'Enable CDS rules, alerts, and clinical recommendations (requires plan).',
+  },
+  {
+    key: 'procedures',
+    field: 'has_procedures',
+    title: 'Procedures',
+    description: 'Clinical procedures, treatment room, and room assignment workflows.',
+  },
+  {
+    key: 'analytics',
+    field: 'has_analytics',
+    title: 'Analytics',
+    description: 'BI dashboards, custom reports, and data analytics (requires plan).',
+  },
 ];
 
 /**
@@ -118,7 +276,14 @@ const MODE_RELEVANT_MODULES: Record<FacilityOperatingMode, string[] | 'all'> = {
   STANDALONE_LAB: ['has_laboratory', 'has_lis_standalone', 'has_billing', 'has_inventory'],
   STANDALONE_PHARMACY: ['has_pharmacy', 'has_pharmacy_standalone', 'has_billing', 'has_inventory'],
   STANDALONE_IMAGING: ['has_imaging', 'has_imaging_standalone', 'has_billing', 'has_inventory'],
-  STANDALONE_DIAGNOSTIC: ['has_laboratory', 'has_imaging', 'has_lis_standalone', 'has_imaging_standalone', 'has_billing', 'has_inventory'],
+  STANDALONE_DIAGNOSTIC: [
+    'has_laboratory',
+    'has_imaging',
+    'has_lis_standalone',
+    'has_imaging_standalone',
+    'has_billing',
+    'has_inventory',
+  ],
 };
 
 interface FacilityFormState {
@@ -237,11 +402,12 @@ function NoFacilityState() {
 
   const availableFacilities = facilitiesQuery.data?.length
     ? facilitiesQuery.data
-    : allFacilitiesQuery.data?.results ?? [];
+    : (allFacilitiesQuery.data?.results ?? []);
 
-  const isLoading = facilitiesQuery.isLoading || (availableFacilities.length === 0 && allFacilitiesQuery.isLoading);
+  const isLoading =
+    facilitiesQuery.isLoading || (availableFacilities.length === 0 && allFacilitiesQuery.isLoading);
 
-  const handleSelect = (fac: typeof availableFacilities[number]) => {
+  const handleSelect = (fac: (typeof availableFacilities)[number]) => {
     switchFacility({
       id: fac.id,
       name: fac.name,
@@ -292,9 +458,7 @@ function NoFacilityState() {
           <Building2 className="h-5 w-5 text-muted-foreground" />
           Select a Facility
         </CardTitle>
-        <CardDescription>
-          Choose a facility to configure its modules and settings.
-        </CardDescription>
+        <CardDescription>Choose a facility to configure its modules and settings.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading && (
@@ -312,7 +476,7 @@ function NoFacilityState() {
                 className="flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-accent"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{fac.name}</p>
+                  <p className="truncate font-medium">{fac.name}</p>
                   <p className="text-xs text-muted-foreground">
                     MFL: {fac.mfl_code} &middot; Level {fac.level}
                     {fac.county_name ? ` · ${fac.county_name}` : ''}
@@ -400,9 +564,7 @@ export function FacilitySettingsTab() {
   }, [facilityQuery.data]);
 
   useEffect(() => {
-    setHideCapitationInterventions(
-      billingConfigQuery.data?.hide_capitation_interventions ?? false,
-    );
+    setHideCapitationInterventions(billingConfigQuery.data?.hide_capitation_interventions ?? false);
   }, [billingConfigQuery.data, activeFacilityId]);
 
   const isDirty = useMemo(() => {
@@ -411,11 +573,8 @@ export function FacilitySettingsTab() {
     }
     const facilityChanged =
       JSON.stringify(form) !== JSON.stringify(createFormState(facilityQuery.data));
-    const initialHideCapitation =
-      billingConfigQuery.data?.hide_capitation_interventions ?? false;
-    return (
-      facilityChanged || hideCapitationInterventions !== initialHideCapitation
-    );
+    const initialHideCapitation = billingConfigQuery.data?.hide_capitation_interventions ?? false;
+    return facilityChanged || hideCapitationInterventions !== initialHideCapitation;
   }, [form, facilityQuery.data, billingConfigQuery.data, hideCapitationInterventions]);
 
   const updateMutation = useMutation({
@@ -469,7 +628,8 @@ export function FacilitySettingsTab() {
     },
   });
 
-  const interfacilityToggleDisabled = !canManageFacility || updateMutation.isPending || !interfacilityTransfersSystemEnabled;
+  const interfacilityToggleDisabled =
+    !canManageFacility || updateMutation.isPending || !interfacilityTransfersSystemEnabled;
   const interfacilityToggleDisabledReason = !canManageFacility
     ? 'You need facility management privileges to change this setting.'
     : updateMutation.isPending
@@ -542,7 +702,9 @@ export function FacilitySettingsTab() {
           <Alert variant="destructive">
             <AlertTitle>Facility settings unavailable</AlertTitle>
             <AlertDescription>
-              {facilityQuery.error instanceof Error ? facilityQuery.error.message : 'An unknown error occurred.'}
+              {facilityQuery.error instanceof Error
+                ? facilityQuery.error.message
+                : 'An unknown error occurred.'}
             </AlertDescription>
           </Alert>
           <Button variant="outline" onClick={() => void facilityQuery.refetch()}>
@@ -559,7 +721,8 @@ export function FacilitySettingsTab() {
         <Alert>
           <AlertTitle>Development facility override active</AlertTitle>
           <AlertDescription>
-            Editing <strong>{facilityOverride.name}</strong> while your assigned facility remains <strong>{assignedFacility.name}</strong>.
+            Editing <strong>{facilityOverride.name}</strong> while your assigned facility remains{' '}
+            <strong>{assignedFacility.name}</strong>.
           </AlertDescription>
         </Alert>
       )}
@@ -568,7 +731,8 @@ export function FacilitySettingsTab() {
         <Alert>
           <AlertTitle>Read-only facility view</AlertTitle>
           <AlertDescription>
-            You can review facility details here, but updating them requires facility management privileges.
+            You can review facility details here, but updating them requires facility management
+            privileges.
           </AlertDescription>
         </Alert>
       )}
@@ -577,7 +741,7 @@ export function FacilitySettingsTab() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Upload className="h-4 w-4 text-muted-foreground" />
               Facility Logo
             </CardTitle>
@@ -587,10 +751,12 @@ export function FacilitySettingsTab() {
         <CardContent>
           <div className="flex items-center gap-4">
             {logoPreview ? (
-              <div className="relative h-16 w-16 shrink-0 rounded-lg border overflow-hidden bg-muted">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={logoPreview.startsWith('http') ? logoPreview : `${API_BASE_URL}${logoPreview}`}
+                  src={
+                    logoPreview.startsWith('http') ? logoPreview : `${API_BASE_URL}${logoPreview}`
+                  }
                   alt="Facility logo"
                   className="h-full w-full object-cover"
                 />
@@ -616,7 +782,11 @@ export function FacilitySettingsTab() {
                   disabled={!canManageFacility || isUploadingLogo}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {isUploadingLogo ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-2 h-3.5 w-3.5" />}
+                  {isUploadingLogo ? (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-3.5 w-3.5" />
+                  )}
                   {facilityQuery.data?.logo ? 'Change' : 'Upload'}
                 </Button>
                 {facilityQuery.data?.logo && (
@@ -639,9 +809,7 @@ export function FacilitySettingsTab() {
                 </p>
               )}
               {!logoPreview && (
-                <p className="text-xs text-muted-foreground">
-                  PNG, JPG, or WebP. Max 2 MB.
-                </p>
+                <p className="text-xs text-muted-foreground">PNG, JPG, or WebP. Max 2 MB.</p>
               )}
             </div>
           </div>
@@ -679,7 +847,9 @@ export function FacilitySettingsTab() {
                 id="facility-name"
                 value={form.name}
                 disabled={!canManageFacility || updateMutation.isPending}
-                onChange={(event) => setForm((prev) => prev ? { ...prev, name: event.target.value } : prev)}
+                onChange={(event) =>
+                  setForm((prev) => (prev ? { ...prev, name: event.target.value } : prev))
+                }
               />
             </div>
 
@@ -689,7 +859,9 @@ export function FacilitySettingsTab() {
                 id="facility-mfl"
                 value={form.mfl_code}
                 disabled={!canManageFacility || updateMutation.isPending}
-                onChange={(event) => setForm((prev) => prev ? { ...prev, mfl_code: event.target.value } : prev)}
+                onChange={(event) =>
+                  setForm((prev) => (prev ? { ...prev, mfl_code: event.target.value } : prev))
+                }
               />
             </div>
 
@@ -697,7 +869,9 @@ export function FacilitySettingsTab() {
               <Label>KEPH level</Label>
               <Select
                 value={form.level}
-                onValueChange={(value) => setForm((prev) => prev ? { ...prev, level: value as FacilityLevel } : prev)}
+                onValueChange={(value) =>
+                  setForm((prev) => (prev ? { ...prev, level: value as FacilityLevel } : prev))
+                }
                 disabled={!canManageFacility || updateMutation.isPending}
               >
                 <SelectTrigger>
@@ -717,7 +891,11 @@ export function FacilitySettingsTab() {
               <Label>Ownership</Label>
               <Select
                 value={form.ownership}
-                onValueChange={(value) => setForm((prev) => prev ? { ...prev, ownership: value as FacilityOwnership } : prev)}
+                onValueChange={(value) =>
+                  setForm((prev) =>
+                    prev ? { ...prev, ownership: value as FacilityOwnership } : prev
+                  )
+                }
                 disabled={!canManageFacility || updateMutation.isPending}
               >
                 <SelectTrigger>
@@ -736,16 +914,24 @@ export function FacilitySettingsTab() {
 
           <section className="grid gap-4 rounded-xl border border-primary/10 bg-muted/20 p-4 sm:grid-cols-3">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">County</p>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                County
+              </p>
               <p className="mt-1 text-sm font-medium">{facilityQuery.data.county_name}</p>
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Sub-county</p>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Sub-county
+              </p>
               <p className="mt-1 text-sm font-medium">{facilityQuery.data.sub_county_name}</p>
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Ward</p>
-              <p className="mt-1 text-sm font-medium">{facilityQuery.data.ward_name || 'Not specified'}</p>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Ward
+              </p>
+              <p className="mt-1 text-sm font-medium">
+                {facilityQuery.data.ward_name || 'Not specified'}
+              </p>
             </div>
           </section>
 
@@ -756,7 +942,11 @@ export function FacilitySettingsTab() {
                 id="sha-facility-code"
                 value={form.sha_facility_code}
                 disabled={!canManageFacility || updateMutation.isPending}
-                onChange={(event) => setForm((prev) => prev ? { ...prev, sha_facility_code: event.target.value } : prev)}
+                onChange={(event) =>
+                  setForm((prev) =>
+                    prev ? { ...prev, sha_facility_code: event.target.value } : prev
+                  )
+                }
               />
             </div>
 
@@ -767,7 +957,11 @@ export function FacilitySettingsTab() {
                 type="date"
                 value={form.sha_contract_expiry}
                 disabled={!canManageFacility || updateMutation.isPending}
-                onChange={(event) => setForm((prev) => prev ? { ...prev, sha_contract_expiry: event.target.value } : prev)}
+                onChange={(event) =>
+                  setForm((prev) =>
+                    prev ? { ...prev, sha_contract_expiry: event.target.value } : prev
+                  )
+                }
               />
             </div>
 
@@ -778,9 +972,13 @@ export function FacilitySettingsTab() {
                 placeholder="e.g. WS-001"
                 value={form.workstation_id}
                 disabled={!canManageFacility || updateMutation.isPending}
-                onChange={(event) => setForm((prev) => prev ? { ...prev, workstation_id: event.target.value } : prev)}
+                onChange={(event) =>
+                  setForm((prev) => (prev ? { ...prev, workstation_id: event.target.value } : prev))
+                }
               />
-              <p className="text-xs text-muted-foreground">Identifies this workstation for DHA biometric consent.</p>
+              <p className="text-xs text-muted-foreground">
+                Identifies this workstation for DHA biometric consent.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -790,44 +988,63 @@ export function FacilitySettingsTab() {
                 placeholder="National ID of the authorizing agent"
                 value={form.biometrics_agent_national_id}
                 disabled={!canManageFacility || updateMutation.isPending}
-                onChange={(event) => setForm((prev) => prev ? { ...prev, biometrics_agent_national_id: event.target.value } : prev)}
+                onChange={(event) =>
+                  setForm((prev) =>
+                    prev ? { ...prev, biometrics_agent_national_id: event.target.value } : prev
+                  )
+                }
               />
-              <p className="text-xs text-muted-foreground">National ID of the staff member registered with DHA for biometric authorization.</p>
+              <p className="text-xs text-muted-foreground">
+                National ID of the staff member registered with DHA for biometric authorization.
+              </p>
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-primary/10 px-4 py-3">
               <div className="space-y-1">
                 <p className="text-sm font-medium">Biometrics enforced</p>
-                <p className="text-xs text-muted-foreground">When enabled, OTP-only consent is blocked — all consents require fingerprint verification.</p>
+                <p className="text-xs text-muted-foreground">
+                  When enabled, OTP-only consent is blocked — all consents require fingerprint
+                  verification.
+                </p>
               </div>
               <Switch
                 checked={form.biometrics_enforced}
                 disabled={!canManageFacility || updateMutation.isPending}
-                onCheckedChange={(checked) => setForm((prev) => prev ? { ...prev, biometrics_enforced: checked } : prev)}
+                onCheckedChange={(checked) =>
+                  setForm((prev) => (prev ? { ...prev, biometrics_enforced: checked } : prev))
+                }
               />
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-primary/10 px-4 py-3">
               <div className="space-y-1">
                 <p className="text-sm font-medium">SHA contracted</p>
-                <p className="text-sm text-muted-foreground">Enables SHA-linked claims and validation workflows.</p>
+                <p className="text-sm text-muted-foreground">
+                  Enables SHA-linked claims and validation workflows.
+                </p>
               </div>
               <Switch
                 checked={form.sha_contracted}
                 disabled={!canManageFacility || updateMutation.isPending}
-                onCheckedChange={(checked) => setForm((prev) => prev ? { ...prev, sha_contracted: checked } : prev)}
+                onCheckedChange={(checked) =>
+                  setForm((prev) => (prev ? { ...prev, sha_contracted: checked } : prev))
+                }
               />
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-primary/10 px-4 py-3">
               <div className="space-y-1">
                 <p className="text-sm font-medium">Facility active</p>
-                <p className="text-sm text-muted-foreground">Marks whether the facility is currently operational.</p>
+                <p className="text-sm text-muted-foreground">
+                  Marks whether the facility is currently operational.
+                </p>
               </div>
               <Switch
                 checked={form.is_active}
                 disabled={!canManageFacility || updateMutation.isPending}
-                onCheckedChange={(checked) => setForm((prev) => prev ? { ...prev, is_active: checked } : prev)}
+                onCheckedChange={(checked) =>
+                  setForm((prev) => (prev ? { ...prev, is_active: checked } : prev))
+                }
               />
             </div>
 
@@ -835,12 +1052,15 @@ export function FacilitySettingsTab() {
               <div className="space-y-1">
                 <p className="text-sm font-medium">Hide capitation interventions</p>
                 <p className="text-sm text-muted-foreground">
-                  Default intervention lookup hides CAPITATION codes for this facility unless payment mechanism is explicitly set.
+                  Default intervention lookup hides CAPITATION codes for this facility unless
+                  payment mechanism is explicitly set.
                 </p>
               </div>
               <Switch
                 checked={hideCapitationInterventions}
-                disabled={!canManageFacility || updateMutation.isPending || billingConfigQuery.isLoading}
+                disabled={
+                  !canManageFacility || updateMutation.isPending || billingConfigQuery.isLoading
+                }
                 onCheckedChange={setHideCapitationInterventions}
               />
             </div>
@@ -870,7 +1090,8 @@ export function FacilitySettingsTab() {
 
             {interfacilityTransfersSystemEnabled && !interfacilityTransfersEnabled && (
               <p className="text-xs text-muted-foreground md:col-span-2">
-                Inter-facility transfer navigation is hidden because it is disabled for this facility context on this browser.
+                Inter-facility transfer navigation is hidden because it is disabled for this
+                facility context on this browser.
               </p>
             )}
           </section>
@@ -880,19 +1101,23 @@ export function FacilitySettingsTab() {
               <Settings2 className="h-4 w-4 text-muted-foreground" />
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Service capabilities</h3>
-                <p className="text-sm text-muted-foreground">These toggles control which modules the facility advertises to the capability layer.</p>
+                <p className="text-sm text-muted-foreground">
+                  These toggles control which modules the facility advertises to the capability
+                  layer.
+                </p>
               </div>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {MODULE_FIELDS
-                .filter(({ field }) => {
-                  const mode = facilityQuery.data?.operating_mode ?? 'FULL_HMIS';
-                  const relevant = MODE_RELEVANT_MODULES[mode];
-                  return relevant === 'all' || relevant.includes(field);
-                })
-                .map((moduleField) => (
-                <div key={moduleField.key} className="flex items-start justify-between gap-4 rounded-xl border border-primary/10 bg-background p-4">
+              {MODULE_FIELDS.filter(({ field }) => {
+                const mode = facilityQuery.data?.operating_mode ?? 'FULL_HMIS';
+                const relevant = MODE_RELEVANT_MODULES[mode];
+                return relevant === 'all' || relevant.includes(field);
+              }).map((moduleField) => (
+                <div
+                  key={moduleField.key}
+                  className="flex items-start justify-between gap-4 rounded-xl border border-primary/10 bg-background p-4"
+                >
                   <div className="space-y-1">
                     <p className="text-sm font-medium">{moduleField.title}</p>
                     <p className="text-sm text-muted-foreground">{moduleField.description}</p>
@@ -900,7 +1125,9 @@ export function FacilitySettingsTab() {
                   <Switch
                     checked={form[moduleField.field] as boolean}
                     disabled={!canManageFacility || updateMutation.isPending}
-                    onCheckedChange={(checked) => setForm((prev) => prev ? { ...prev, [moduleField.field]: checked } : prev)}
+                    onCheckedChange={(checked) =>
+                      setForm((prev) => (prev ? { ...prev, [moduleField.field]: checked } : prev))
+                    }
                   />
                 </div>
               ))}
@@ -921,7 +1148,7 @@ export function FacilitySettingsTab() {
                   setForm(createFormState(facilityQuery.data));
                 }
                 setHideCapitationInterventions(
-                  billingConfigQuery.data?.hide_capitation_interventions ?? false,
+                  billingConfigQuery.data?.hide_capitation_interventions ?? false
                 );
               }}
               disabled={!isDirty || updateMutation.isPending}

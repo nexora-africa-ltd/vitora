@@ -59,11 +59,7 @@ export type {
 } from './types';
 
 // Constants
-export {
-  INTERVENTION_CATEGORIES,
-  FACILITY_LEVELS,
-  DOSAGE_FORMS,
-} from './types';
+export { INTERVENTION_CATEGORIES, FACILITY_LEVELS, DOSAGE_FORMS } from './types';
 
 // API functions
 export {

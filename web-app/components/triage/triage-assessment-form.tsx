@@ -137,54 +137,97 @@ const triageFormSchema = z
 
     // Vital signs (optional) - nullable number with range validation
     // Use union to properly short-circuit null before range checks
-    spo2: z.union([
-      z.literal(null),
-      z.number().min(0, 'SpO2 must be between 0 and 100').max(100, 'SpO2 must be between 0 and 100'),
-    ]).optional(),
-    heart_rate: z.union([
-      z.literal(null),
-      z.number().min(0, 'Heart rate must be between 0 and 300').max(300, 'Heart rate must be between 0 and 300'),
-    ]).optional(),
-    systolic_bp: z.union([
-      z.literal(null),
-      z.number().min(0, 'Systolic BP must be between 0 and 300').max(300, 'Systolic BP must be between 0 and 300'),
-    ]).optional(),
-    diastolic_bp: z.union([
-      z.literal(null),
-      z.number().min(0, 'Diastolic BP must be between 0 and 200').max(200, 'Diastolic BP must be between 0 and 200'),
-    ]).optional(),
-    temperature: z.union([
-      z.literal(null),
-      z.number().min(30, 'Temperature must be between 30 and 45').max(45, 'Temperature must be between 30 and 45'),
-    ]).optional(),
-    respiratory_rate: z.union([
-      z.literal(null),
-      z.number().min(0, 'Respiratory rate must be between 0 and 60').max(60, 'Respiratory rate must be between 0 and 60'),
-    ]).optional(),
-    weight: z.union([
-      z.literal(null),
-      z.number().min(0, 'Weight must be positive').max(500, 'Weight must be less than 500 kg'),
-    ]).optional(),
-    height: z.union([
-      z.literal(null),
-      z.number().min(0, 'Height must be positive').max(300, 'Height must be less than 300 cm'),
-    ]).optional(),
+    spo2: z
+      .union([
+        z.literal(null),
+        z
+          .number()
+          .min(0, 'SpO2 must be between 0 and 100')
+          .max(100, 'SpO2 must be between 0 and 100'),
+      ])
+      .optional(),
+    heart_rate: z
+      .union([
+        z.literal(null),
+        z
+          .number()
+          .min(0, 'Heart rate must be between 0 and 300')
+          .max(300, 'Heart rate must be between 0 and 300'),
+      ])
+      .optional(),
+    systolic_bp: z
+      .union([
+        z.literal(null),
+        z
+          .number()
+          .min(0, 'Systolic BP must be between 0 and 300')
+          .max(300, 'Systolic BP must be between 0 and 300'),
+      ])
+      .optional(),
+    diastolic_bp: z
+      .union([
+        z.literal(null),
+        z
+          .number()
+          .min(0, 'Diastolic BP must be between 0 and 200')
+          .max(200, 'Diastolic BP must be between 0 and 200'),
+      ])
+      .optional(),
+    temperature: z
+      .union([
+        z.literal(null),
+        z
+          .number()
+          .min(30, 'Temperature must be between 30 and 45')
+          .max(45, 'Temperature must be between 30 and 45'),
+      ])
+      .optional(),
+    respiratory_rate: z
+      .union([
+        z.literal(null),
+        z
+          .number()
+          .min(0, 'Respiratory rate must be between 0 and 60')
+          .max(60, 'Respiratory rate must be between 0 and 60'),
+      ])
+      .optional(),
+    weight: z
+      .union([
+        z.literal(null),
+        z.number().min(0, 'Weight must be positive').max(500, 'Weight must be less than 500 kg'),
+      ])
+      .optional(),
+    height: z
+      .union([
+        z.literal(null),
+        z.number().min(0, 'Height must be positive').max(300, 'Height must be less than 300 cm'),
+      ])
+      .optional(),
     mental_status: z.enum(['A', 'V', 'P', 'U'], {
       required_error: 'Mental status (AVPU) is required',
     }),
     // Glasgow Coma Scale (optional - for trauma/neuro cases)
-    gcs_eye: z.union([
-      z.literal(null),
-      z.number().min(1, 'Eye response must be 1-4').max(4, 'Eye response must be 1-4'),
-    ]).optional().nullable(),
-    gcs_verbal: z.union([
-      z.literal(null),
-      z.number().min(1, 'Verbal response must be 1-5').max(5, 'Verbal response must be 1-5'),
-    ]).optional().nullable(),
-    gcs_motor: z.union([
-      z.literal(null),
-      z.number().min(1, 'Motor response must be 1-6').max(6, 'Motor response must be 1-6'),
-    ]).optional().nullable(),
+    gcs_eye: z
+      .union([
+        z.literal(null),
+        z.number().min(1, 'Eye response must be 1-4').max(4, 'Eye response must be 1-4'),
+      ])
+      .optional()
+      .nullable(),
+    gcs_verbal: z
+      .union([
+        z.literal(null),
+        z.number().min(1, 'Verbal response must be 1-5').max(5, 'Verbal response must be 1-5'),
+      ])
+      .optional()
+      .nullable(),
+    gcs_motor: z
+      .union([
+        z.literal(null),
+        z.number().min(1, 'Motor response must be 1-6').max(6, 'Motor response must be 1-6'),
+      ])
+      .optional()
+      .nullable(),
     mobility: z.enum(['AMBULATORY', 'WHEELCHAIR', 'STRETCHER', 'IMMOBILE'], {
       required_error: 'Mobility status is required',
     }),
@@ -192,9 +235,7 @@ const triageFormSchema = z
     triage_category: z.enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'], {
       required_error: 'Triage category is required',
     }),
-    auto_calculated_category: z
-      .enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'])
-      .optional(),
+    auto_calculated_category: z.enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE']).optional(),
     category_override_reason: z.string().optional(),
 
     // ETAT pediatric fields (optional for all, shown conditionally for <12y)
@@ -202,18 +243,16 @@ const triageFormSchema = z
     dehydration_level: z.enum(['NONE', 'SOME', 'SEVERE', '']).optional().default(''),
     fontanelle_status: z.enum(['NORMAL', 'BULGING', 'SUNKEN', '']).optional().default(''),
     breastfeeding_ability: z.enum(['NORMAL', 'REDUCED', 'UNABLE', '']).optional().default(''),
-    capillary_refill_seconds: z.union([
-      z.literal(null),
-      z.number().min(0, 'Must be 0-15').max(15, 'Must be 0-15'),
-    ]).optional(),
-    muac_cm: z.union([
-      z.literal(null),
-      z.number().min(0, 'Must be 0-30').max(30, 'Must be 0-30'),
-    ]).optional(),
+    capillary_refill_seconds: z
+      .union([z.literal(null), z.number().min(0, 'Must be 0-15').max(15, 'Must be 0-15')])
+      .optional(),
+    muac_cm: z
+      .union([z.literal(null), z.number().min(0, 'Must be 0-30').max(30, 'Must be 0-30')])
+      .optional(),
 
     // Routing: Either assigned_area (ER zones) OR assigned_clinic (clinics)
-    assigned_area: z.enum(
-      [
+    assigned_area: z
+      .enum([
         'ER_RESUS',
         'ER_ACUTE',
         'ER_FAST_TRACK',
@@ -224,8 +263,8 @@ const triageFormSchema = z
         'MATERNITY',
         'SPECIALTY',
         '', // Empty when clinic is assigned
-      ]
-    ).optional(),
+      ])
+      .optional(),
     assigned_clinic: z.number().nullable().optional(),
     assigned_clinician: z.number().nullable().optional(),
   })
@@ -248,10 +287,7 @@ const triageFormSchema = z
   .refine(
     (data) => {
       // If category differs from auto-calculated, require override reason
-      if (
-        data.auto_calculated_category &&
-        data.triage_category !== data.auto_calculated_category
-      ) {
+      if (data.auto_calculated_category && data.triage_category !== data.auto_calculated_category) {
         return !!data.category_override_reason?.trim();
       }
       return true;
@@ -371,7 +407,7 @@ function getMAPAgeGroup(ageYears: number): MAPAgeGroup {
   if (ageYears >= 13) return 'adolescent';
   if (ageYears >= 6) return 'school_age';
   if (ageYears >= 1) return 'young_child';
-  if (ageYears >= 1/12) return 'infant'; // 1 month or more
+  if (ageYears >= 1 / 12) return 'infant'; // 1 month or more
   return 'neonate';
 }
 
@@ -440,8 +476,12 @@ function getMAPThresholdStatus(
   diastolic: number | null | undefined,
   patientAgeYears: number
 ): VitalThresholdStatus | null {
-  if (systolic === null || systolic === undefined ||
-      diastolic === null || diastolic === undefined) {
+  if (
+    systolic === null ||
+    systolic === undefined ||
+    diastolic === null ||
+    diastolic === undefined
+  ) {
     return null;
   }
 
@@ -516,7 +556,10 @@ function getVitalThresholdStatus(
 ): VitalThresholdStatus | null {
   if (value === null || value === undefined) return null;
 
-  const thresholds: Record<string, { critical: [number, number]; warning: [number, number]; unit: string }> = {
+  const thresholds: Record<
+    string,
+    { critical: [number, number]; warning: [number, number]; unit: string }
+  > = {
     spo2: { critical: [90, Infinity], warning: [95, Infinity], unit: '%' },
     heart_rate: { critical: [40, 150], warning: [50, 100], unit: 'bpm' },
     temperature: { critical: [32, 40], warning: [36.0, 37.5], unit: '°C' },
@@ -537,13 +580,25 @@ function getVitalThresholdStatus(
     // 91-94%: Mild hypoxemia (slightly reduced)
     // 95-100%: Normal oxygenation
     if (value <= 85) {
-      return { severity: 'emergency', message: `EMERGENCY: ${value}${config.unit} - Severe hypoxemia`, icon: 'emergency' };
+      return {
+        severity: 'emergency',
+        message: `EMERGENCY: ${value}${config.unit} - Severe hypoxemia`,
+        icon: 'emergency',
+      };
     }
     if (value <= 90) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Moderate hypoxemia`, icon: 'critical' };
+      return {
+        severity: 'critical',
+        message: `Critical: ${value}${config.unit} - Moderate hypoxemia`,
+        icon: 'critical',
+      };
     }
     if (value <= 94) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Mild hypoxemia`, icon: 'warning' };
+      return {
+        severity: 'warning',
+        message: `Warning: ${value}${config.unit} - Mild hypoxemia`,
+        icon: 'warning',
+      };
     }
     // 95-100% is normal, return null
   } else if (vitalType === 'temperature') {
@@ -552,50 +607,106 @@ function getVitalThresholdStatus(
     // Warning low: 32-35°C (moderate), 35-36°C (mild hypothermia)
     // Warning high: 37.6-38.4°C (low-grade fever), 38.5-39.9°C (moderate fever)
     if (value < 32) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Severe hypothermia`, icon: 'critical' };
+      return {
+        severity: 'critical',
+        message: `Critical: ${value}${config.unit} - Severe hypothermia`,
+        icon: 'critical',
+      };
     }
     if (value >= 40) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - High fever / Hyperpyrexia`, icon: 'critical' };
+      return {
+        severity: 'critical',
+        message: `Critical: ${value}${config.unit} - High fever / Hyperpyrexia`,
+        icon: 'critical',
+      };
     }
     if (value >= 38.5) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Moderate fever`, icon: 'warning' };
+      return {
+        severity: 'warning',
+        message: `Warning: ${value}${config.unit} - Moderate fever`,
+        icon: 'warning',
+      };
     }
     if (value > 37.5) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Low-grade fever`, icon: 'warning' };
+      return {
+        severity: 'warning',
+        message: `Warning: ${value}${config.unit} - Low-grade fever`,
+        icon: 'warning',
+      };
     }
     if (value < 35) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Moderate hypothermia`, icon: 'warning' };
+      return {
+        severity: 'warning',
+        message: `Warning: ${value}${config.unit} - Moderate hypothermia`,
+        icon: 'warning',
+      };
     }
     if (value < 36) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Mild hypothermia`, icon: 'warning' };
+      return {
+        severity: 'warning',
+        message: `Warning: ${value}${config.unit} - Mild hypothermia`,
+        icon: 'warning',
+      };
     }
   } else if (vitalType === 'heart_rate') {
     // Heart rate - use clinical terminology
     if (value < critLow) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Severe bradycardia`, icon: 'critical' };
+      return {
+        severity: 'critical',
+        message: `Critical: ${value}${config.unit} - Severe bradycardia`,
+        icon: 'critical',
+      };
     }
     if (value > critHigh) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Severe tachycardia`, icon: 'critical' };
+      return {
+        severity: 'critical',
+        message: `Critical: ${value}${config.unit} - Severe tachycardia`,
+        icon: 'critical',
+      };
     }
     if (value < warnLow) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Bradycardia`, icon: 'warning' };
+      return {
+        severity: 'warning',
+        message: `Warning: ${value}${config.unit} - Bradycardia`,
+        icon: 'warning',
+      };
     }
     if (value > warnHigh) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Tachycardia`, icon: 'warning' };
+      return {
+        severity: 'warning',
+        message: `Warning: ${value}${config.unit} - Tachycardia`,
+        icon: 'warning',
+      };
     }
   } else if (vitalType === 'respiratory_rate') {
     // Respiratory rate - use clinical terminology
     if (value < critLow) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Respiratory depression`, icon: 'critical' };
+      return {
+        severity: 'critical',
+        message: `Critical: ${value}${config.unit} - Respiratory depression`,
+        icon: 'critical',
+      };
     }
     if (value > critHigh) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Respiratory distress`, icon: 'critical' };
+      return {
+        severity: 'critical',
+        message: `Critical: ${value}${config.unit} - Respiratory distress`,
+        icon: 'critical',
+      };
     }
     if (value < warnLow) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Bradypnea`, icon: 'warning' };
+      return {
+        severity: 'warning',
+        message: `Warning: ${value}${config.unit} - Bradypnea`,
+        icon: 'warning',
+      };
     }
     if (value > warnHigh) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Tachypnea`, icon: 'warning' };
+      return {
+        severity: 'warning',
+        message: `Warning: ${value}${config.unit} - Tachypnea`,
+        icon: 'warning',
+      };
     }
   }
 
@@ -653,8 +764,8 @@ function getVitalRangeHint(
 function VitalThresholdBadge({ status }: { status: VitalThresholdStatus }) {
   if (status.severity === 'emergency') {
     return (
-      <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-rose-100 dark:bg-rose-950/70 border-2 border-rose-500 dark:border-rose-600">
-        <AlertCircle className="h-4 w-4 text-rose-700 dark:text-rose-300 shrink-0 animate-pulse" />
+      <div className="mt-1.5 flex items-center gap-1.5 rounded-md border-2 border-rose-500 bg-rose-100 p-2 dark:border-rose-600 dark:bg-rose-950/70">
+        <AlertCircle className="h-4 w-4 shrink-0 animate-pulse text-rose-700 dark:text-rose-300" />
         <span className="text-xs font-bold text-rose-800 dark:text-rose-200">{status.message}</span>
       </div>
     );
@@ -662,8 +773,8 @@ function VitalThresholdBadge({ status }: { status: VitalThresholdStatus }) {
 
   if (status.severity === 'critical') {
     return (
-      <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-red-50 dark:bg-red-950/50 border border-red-300 dark:border-red-700">
-        <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
+      <div className="mt-1.5 flex items-center gap-1.5 rounded-md border border-red-300 bg-red-50 p-2 dark:border-red-700 dark:bg-red-950/50">
+        <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
         <span className="text-xs font-medium text-red-700 dark:text-red-300">{status.message}</span>
       </div>
     );
@@ -671,9 +782,11 @@ function VitalThresholdBadge({ status }: { status: VitalThresholdStatus }) {
 
   if (status.severity === 'warning') {
     return (
-      <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800">
-        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-        <span className="text-xs font-medium text-amber-700 dark:text-amber-300">{status.message}</span>
+      <div className="mt-1.5 flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 p-2 dark:border-amber-800 dark:bg-amber-950/50">
+        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+        <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+          {status.message}
+        </span>
       </div>
     );
   }
@@ -731,7 +844,8 @@ function generateTriageAlerts(
         message: `Severe brain injury - GCS ${gcsTotal}/15`,
         value: gcsTotal,
         threshold: 8,
-        clinical_note: 'GCS ≤8 indicates severe brain injury. Patient may require intubation. Immediate neurosurgical assessment recommended.',
+        clinical_note:
+          'GCS ≤8 indicates severe brain injury. Patient may require intubation. Immediate neurosurgical assessment recommended.',
       });
     } else if (gcsTotal <= 12) {
       alerts.push({
@@ -741,7 +855,8 @@ function generateTriageAlerts(
         message: `Moderate brain injury - GCS ${gcsTotal}/15`,
         value: gcsTotal,
         threshold: 12,
-        clinical_note: 'GCS 9-12 indicates moderate brain injury. Close neurological monitoring required. Consider CT head scan.',
+        clinical_note:
+          'GCS 9-12 indicates moderate brain injury. Close neurological monitoring required. Consider CT head scan.',
       });
     }
   }
@@ -879,7 +994,8 @@ function generateTriageAlerts(
   // Warning low: 32-35°C (moderate), 35-36°C (mild hypothermia)
   // Warning high: 37.6-38.4°C (low-grade fever), 38.5-39.9°C (moderate fever)
   // Normal: 36-37.5°C
-  const temperature = typeof formData.temperature === 'number' ? formData.temperature : encounter.temperature;
+  const temperature =
+    typeof formData.temperature === 'number' ? formData.temperature : encounter.temperature;
   if (temperature !== undefined && temperature !== null) {
     if (temperature < 32) {
       alerts.push({
@@ -1043,11 +1159,9 @@ function calculateSuggestedCategory(
   patientAgeYears: number = 30 // Default to adult if age unknown
 ): TriageCategory {
   const spo2 = typeof formData.spo2 === 'number' ? formData.spo2 : encounter.spo2;
-  const heartRate =
-    typeof formData.heart_rate === 'number' ? formData.heart_rate : encounter.pulse;
+  const heartRate = typeof formData.heart_rate === 'number' ? formData.heart_rate : encounter.pulse;
   const systolicBp = typeof formData.systolic_bp === 'number' ? formData.systolic_bp : undefined;
-  const diastolicBp =
-    typeof formData.diastolic_bp === 'number' ? formData.diastolic_bp : undefined;
+  const diastolicBp = typeof formData.diastolic_bp === 'number' ? formData.diastolic_bp : undefined;
   const temperature =
     typeof formData.temperature === 'number' ? formData.temperature : encounter.temperature;
   const respiratoryRate =
@@ -1093,15 +1207,16 @@ function calculateSuggestedCategory(
     if (gcsTotal <= 8) return 'RED';
   }
   if (typeof spo2 === 'number' && spo2 <= 90) return 'RED';
-  if (typeof heartRate === 'number' && (heartRate < 40 || heartRate > 150))
-    return 'RED';
+  if (typeof heartRate === 'number' && (heartRate < 40 || heartRate > 150)) return 'RED';
   if (mapCritical) return 'RED';
-  if (typeof temperature === 'number' && (temperature < 32 || temperature >= 40))
-    return 'RED';
+  if (typeof temperature === 'number' && (temperature < 32 || temperature >= 40)) return 'RED';
 
   // --- ETAT ORANGE-level escalations ---
   if (formData.dehydration_level === 'SOME') return 'ORANGE';
-  if (typeof formData.capillary_refill_seconds === 'number' && formData.capillary_refill_seconds >= 3) {
+  if (
+    typeof formData.capillary_refill_seconds === 'number' &&
+    formData.capillary_refill_seconds >= 3
+  ) {
     return 'ORANGE';
   }
   if (typeof formData.muac_cm === 'number' && formData.muac_cm < 11.5) return 'ORANGE';
@@ -1135,7 +1250,10 @@ function calculateSuggestedCategory(
     if (gcsTotal >= 9 && gcsTotal <= 12) return 'ORANGE';
   }
   // Moderate hypothermia (32-35°C) or moderate fever (38.5-39.9°C) → ORANGE
-  if (typeof temperature === 'number' && ((temperature >= 32 && temperature < 35) || temperature >= 38.5))
+  if (
+    typeof temperature === 'number' &&
+    ((temperature >= 32 && temperature < 35) || temperature >= 38.5)
+  )
     return 'ORANGE';
 
   // Moderate conditions → YELLOW
@@ -1143,13 +1261,13 @@ function calculateSuggestedCategory(
     return 'YELLOW';
   if (formData.mental_status === 'V') return 'YELLOW';
   // Mild hypothermia (35-36°C) or low-grade fever (37.6-38.4°C) → YELLOW
-  if (typeof temperature === 'number' && ((temperature >= 35 && temperature < 36) || temperature > 37.5))
+  if (
+    typeof temperature === 'number' &&
+    ((temperature >= 35 && temperature < 36) || temperature > 37.5)
+  )
     return 'YELLOW';
   // Respiratory rate outside warning thresholds (<10 or >24)
-  if (
-    typeof respiratoryRate === 'number' &&
-    (respiratoryRate < 10 || respiratoryRate > 24)
-  ) {
+  if (typeof respiratoryRate === 'number' && (respiratoryRate < 10 || respiratoryRate > 24)) {
     return 'YELLOW';
   }
 
@@ -1222,7 +1340,8 @@ export function TriageAssessmentForm({
   const calculateCategoryMutation = useCalculateTriageCategory();
 
   // Use initialData's category if provided, otherwise calculate locally as fallback
-  const initialSuggested = initialData?.auto_calculated_category ||
+  const initialSuggested =
+    initialData?.auto_calculated_category ||
     initialData?.triage_category ||
     calculateSuggestedCategory(initialData || {}, encounter);
 
@@ -1238,8 +1357,11 @@ export function TriageAssessmentForm({
     defaultValues: {
       arrival_mode: initialData?.arrival_mode || 'WALK_IN',
       // Use encounter creation time as arrival time (when patient was registered)
-      arrival_time: initialData?.arrival_time ||
-        (encounter.created_at ? new Date(encounter.created_at).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)),
+      arrival_time:
+        initialData?.arrival_time ||
+        (encounter.created_at
+          ? new Date(encounter.created_at).toISOString().slice(0, 16)
+          : new Date().toISOString().slice(0, 16)),
       chief_complaint_category: initialData?.chief_complaint_category,
       chief_complaint: initialData?.chief_complaint || '',
       pain_score: initialData?.pain_score ?? null,
@@ -1262,9 +1384,7 @@ export function TriageAssessmentForm({
       allergies_noted: initialData?.allergies_noted || patient.allergies || '',
       triage_category: initialData?.triage_category,
       auto_calculated_category:
-        initialData?.auto_calculated_category ||
-        initialData?.triage_category ||
-        initialSuggested,
+        initialData?.auto_calculated_category || initialData?.triage_category || initialSuggested,
       category_override_reason: initialData?.category_override_reason || '',
       // ETAT pediatric fields
       etat_danger_signs: [],
@@ -1312,9 +1432,8 @@ export function TriageAssessmentForm({
 
   // MAP-based blood pressure evaluation (age-adjusted)
   const mapStatus = getMAPThresholdStatus(systolicBp, diastolicBp, patientAge);
-  const mapValue = (systolicBp != null && diastolicBp != null)
-    ? calculateMAP(systolicBp, diastolicBp)
-    : null;
+  const mapValue =
+    systolicBp != null && diastolicBp != null ? calculateMAP(systolicBp, diastolicBp) : null;
 
   // Critical flags for input border styling
   // Emergency flags (higher than critical)
@@ -1350,7 +1469,9 @@ export function TriageAssessmentForm({
 
   // Recalculate suggested category when relevant fields change
   // Skip recalculation if the category was provided via initialData (backend is source of truth)
-  const hasInitialCategory = Boolean(initialData?.auto_calculated_category || initialData?.triage_category);
+  const hasInitialCategory = Boolean(
+    initialData?.auto_calculated_category || initialData?.triage_category
+  );
   const [hasUserInteracted, setHasUserInteracted] = React.useState(false);
 
   // Track when user actually interacts with category-relevant fields
@@ -1454,8 +1575,7 @@ export function TriageAssessmentForm({
             systolic_bp: typeof systolicBp === 'number' ? systolicBp : undefined,
             diastolic_bp: typeof diastolicBp === 'number' ? diastolicBp : undefined,
             temperature: typeof temperature === 'number' ? temperature : undefined,
-            respiratory_rate:
-              typeof respiratoryRate === 'number' ? respiratoryRate : undefined,
+            respiratory_rate: typeof respiratoryRate === 'number' ? respiratoryRate : undefined,
             mental_status: mentalStatus,
             chief_complaint_category: chiefComplaintCategory || 'OTHER',
             pain_score: typeof painScore === 'number' ? painScore : undefined,
@@ -1472,10 +1592,7 @@ export function TriageAssessmentForm({
               typeof watchedValues.capillary_refill_seconds === 'number'
                 ? watchedValues.capillary_refill_seconds
                 : undefined,
-            muac_cm:
-              typeof watchedValues.muac_cm === 'number'
-                ? watchedValues.muac_cm
-                : undefined,
+            muac_cm: typeof watchedValues.muac_cm === 'number' ? watchedValues.muac_cm : undefined,
           });
 
           if (cancelled) return;
@@ -1574,7 +1691,9 @@ export function TriageAssessmentForm({
         auto_calculated_category: data.auto_calculated_category,
         category_override_reason: data.category_override_reason,
         // ETAT pediatric fields (only send non-empty values)
-        etat_danger_signs: data.etat_danger_signs?.length ? data.etat_danger_signs as EtATDangerSign[] : undefined,
+        etat_danger_signs: data.etat_danger_signs?.length
+          ? (data.etat_danger_signs as EtATDangerSign[])
+          : undefined,
         dehydration_level: data.dehydration_level || undefined,
         fontanelle_status: data.fontanelle_status || undefined,
         breastfeeding_ability: data.breastfeeding_ability || undefined,
@@ -1593,20 +1712,17 @@ export function TriageAssessmentForm({
   };
 
   const age = calculateAge(patient.date_of_birth);
-  const genderDisplay = patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other';
+  const genderDisplay =
+    patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other';
 
   return (
-    <form
-      role="form"
-      onSubmit={handleSubmit(onFormSubmit)}
-      className="space-y-6"
-    >
+    <form role="form" onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
       {/* Patient Header */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
                 <User className="h-6 w-6 text-blue-600" />
               </div>
               <div>
@@ -1620,7 +1736,7 @@ export function TriageAssessmentForm({
             </div>
             {autoCalculatedCategory && (
               <div data-testid="suggested-category" className="text-right">
-                <p className="text-xs text-muted-foreground mb-1">Suggested Category</p>
+                <p className="mb-1 text-xs text-muted-foreground">Suggested Category</p>
                 <TriageCategoryBadge category={autoCalculatedCategory} showIcon />
               </div>
             )}
@@ -1629,14 +1745,12 @@ export function TriageAssessmentForm({
       </Card>
 
       {/* Alerts Panel */}
-      {alerts.length > 0 && (
-        <VitalAlertsPanel alerts={alerts} showClinicalNotes />
-      )}
+      {alerts.length > 0 && <VitalAlertsPanel alerts={alerts} showClinicalNotes />}
 
       {/* Arrival Information */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Ambulance className="h-4 w-4" />
             Arrival Information
           </CardTitle>
@@ -1651,11 +1765,7 @@ export function TriageAssessmentForm({
               name="arrival_mode"
               control={control}
               render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={disabled}
-                >
+                <Select value={field.value} onValueChange={field.onChange} disabled={disabled}>
                   <SelectTrigger
                     id="arrival_mode"
                     aria-required="true"
@@ -1664,13 +1774,13 @@ export function TriageAssessmentForm({
                     <SelectValue placeholder="Select arrival mode" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.entries(ARRIVAL_MODE_CONFIG) as [ArrivalMode, { label: string }][]).map(
-                      ([value, config]) => (
-                        <SelectItem key={value} value={value}>
-                          {config.label}
-                        </SelectItem>
-                      )
-                    )}
+                    {(
+                      Object.entries(ARRIVAL_MODE_CONFIG) as [ArrivalMode, { label: string }][]
+                    ).map(([value, config]) => (
+                      <SelectItem key={value} value={value}>
+                        {config.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               )}
@@ -1683,7 +1793,7 @@ export function TriageAssessmentForm({
           {/* Arrival Time */}
           <div className="space-y-2">
             <Label htmlFor="arrival_time">
-              Arrival Time <span className="text-muted-foreground text-xs">(from check-in)</span>
+              Arrival Time <span className="text-xs text-muted-foreground">(from check-in)</span>
             </Label>
             <Input
               id="arrival_time"
@@ -1691,7 +1801,7 @@ export function TriageAssessmentForm({
               {...register('arrival_time')}
               disabled
               readOnly
-              className="bg-muted cursor-not-allowed"
+              className="cursor-not-allowed bg-muted"
               aria-required="true"
               aria-invalid={!!errors.arrival_time}
             />
@@ -1706,7 +1816,7 @@ export function TriageAssessmentForm({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Activity className="h-4 w-4" />
               Vital Signs
             </CardTitle>
@@ -1728,12 +1838,18 @@ export function TriageAssessmentForm({
               {/* SpO2 */}
               <div className="space-y-2">
                 <Label htmlFor="spo2">SpO2</Label>
-                <InputGroup className={cn(
-                  spo2Emergency && 'border-rose-600 ring-2 ring-rose-500 bg-rose-50 dark:bg-rose-950/30',
-                  spo2Critical && !spo2Emergency && 'border-destructive ring-1 ring-destructive',
-                  spo2Warning && !spo2Critical && !spo2Emergency && 'border-amber-500 ring-1 ring-amber-500',
-                  spo2Normal && 'border-green-500 ring-1 ring-green-500'
-                )}>
+                <InputGroup
+                  className={cn(
+                    spo2Emergency &&
+                      'border-rose-600 bg-rose-50 ring-2 ring-rose-500 dark:bg-rose-950/30',
+                    spo2Critical && !spo2Emergency && 'border-destructive ring-1 ring-destructive',
+                    spo2Warning &&
+                      !spo2Critical &&
+                      !spo2Emergency &&
+                      'border-amber-500 ring-1 ring-amber-500',
+                    spo2Normal && 'border-green-500 ring-1 ring-green-500'
+                  )}
+                >
                   <InputGroupInput
                     id="spo2"
                     inputMode="decimal"
@@ -1757,11 +1873,15 @@ export function TriageAssessmentForm({
               {/* Heart Rate */}
               <div className="space-y-2">
                 <Label htmlFor="heart_rate">Heart Rate</Label>
-                <InputGroup className={cn(
-                  heartRateCritical && 'border-destructive ring-1 ring-destructive',
-                  heartRateWarning && !heartRateCritical && 'border-amber-500 ring-1 ring-amber-500',
-                  heartRateNormal && 'border-green-500 ring-1 ring-green-500'
-                )}>
+                <InputGroup
+                  className={cn(
+                    heartRateCritical && 'border-destructive ring-1 ring-destructive',
+                    heartRateWarning &&
+                      !heartRateCritical &&
+                      'border-amber-500 ring-1 ring-amber-500',
+                    heartRateNormal && 'border-green-500 ring-1 ring-green-500'
+                  )}
+                >
                   <InputGroupInput
                     id="heart_rate"
                     inputMode="numeric"
@@ -1783,32 +1903,45 @@ export function TriageAssessmentForm({
                 )}
                 {heartRateStatus && <VitalThresholdBadge status={heartRateStatus} />}
                 {showPediatricSection && !heartRateStatus && (
-                  <p className="text-xs text-muted-foreground mt-1">{getVitalRangeHint('heart_rate', patientAgeGroup)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {getVitalRangeHint('heart_rate', patientAgeGroup)}
+                  </p>
                 )}
               </div>
 
               {/* Blood Pressure - with MAP calculation */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="systolic_bp">Blood Pressure <span className="text-xs text-muted-foreground">(mmHg)</span></Label>
+                  <Label htmlFor="systolic_bp">
+                    Blood Pressure <span className="text-xs text-muted-foreground">(mmHg)</span>
+                  </Label>
                   {mapValue !== null && (
-                    <span className={cn(
-                      "text-xs font-medium px-2 py-0.5 rounded",
-                      bpCritical && "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
-                      bpWarning && !bpCritical && "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
-                      !bpCritical && !bpWarning && "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                    )}>
+                    <span
+                      className={cn(
+                        'rounded px-2 py-0.5 text-xs font-medium',
+                        bpCritical &&
+                          'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+                        bpWarning &&
+                          !bpCritical &&
+                          'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+                        !bpCritical &&
+                          !bpWarning &&
+                          'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                      )}
+                    >
                       MAP: {mapValue}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
-                  <InputGroup className={cn(
-                    'flex-1',
-                    bpCritical && 'border-destructive ring-1 ring-destructive',
-                    bpWarning && !bpCritical && 'border-amber-500 ring-1 ring-amber-500',
-                    bpNormal && 'border-green-500 ring-1 ring-green-500'
-                  )}>
+                  <InputGroup
+                    className={cn(
+                      'flex-1',
+                      bpCritical && 'border-destructive ring-1 ring-destructive',
+                      bpWarning && !bpCritical && 'border-amber-500 ring-1 ring-amber-500',
+                      bpNormal && 'border-green-500 ring-1 ring-green-500'
+                    )}
+                  >
                     <InputGroupInput
                       id="systolic_bp"
                       inputMode="numeric"
@@ -1825,13 +1958,15 @@ export function TriageAssessmentForm({
                       })}
                     />
                   </InputGroup>
-                  <span className="text-muted-foreground font-medium">/</span>
-                  <InputGroup className={cn(
-                    'flex-1',
-                    bpCritical && 'border-destructive ring-1 ring-destructive',
-                    bpWarning && !bpCritical && 'border-amber-500 ring-1 ring-amber-500',
-                    bpNormal && 'border-green-500 ring-1 ring-green-500'
-                  )}>
+                  <span className="font-medium text-muted-foreground">/</span>
+                  <InputGroup
+                    className={cn(
+                      'flex-1',
+                      bpCritical && 'border-destructive ring-1 ring-destructive',
+                      bpWarning && !bpCritical && 'border-amber-500 ring-1 ring-amber-500',
+                      bpNormal && 'border-green-500 ring-1 ring-green-500'
+                    )}
+                  >
                     <InputGroupInput
                       id="diastolic_bp"
                       inputMode="numeric"
@@ -1862,11 +1997,15 @@ export function TriageAssessmentForm({
               {/* Temperature */}
               <div className="space-y-2">
                 <Label htmlFor="temperature">Temperature</Label>
-                <InputGroup className={cn(
-                  temperatureCritical && 'border-destructive ring-1 ring-destructive',
-                  temperatureWarning && !temperatureCritical && 'border-amber-500 ring-1 ring-amber-500',
-                  temperatureNormal && 'border-green-500 ring-1 ring-green-500'
-                )}>
+                <InputGroup
+                  className={cn(
+                    temperatureCritical && 'border-destructive ring-1 ring-destructive',
+                    temperatureWarning &&
+                      !temperatureCritical &&
+                      'border-amber-500 ring-1 ring-amber-500',
+                    temperatureNormal && 'border-green-500 ring-1 ring-green-500'
+                  )}
+                >
                   <InputGroupInput
                     id="temperature"
                     type="number"
@@ -1890,18 +2029,24 @@ export function TriageAssessmentForm({
                 )}
                 {temperatureStatus && <VitalThresholdBadge status={temperatureStatus} />}
                 {showPediatricSection && !temperatureStatus && (
-                  <p className="text-xs text-muted-foreground mt-1">{getVitalRangeHint('temperature', patientAgeGroup)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {getVitalRangeHint('temperature', patientAgeGroup)}
+                  </p>
                 )}
               </div>
 
               {/* Respiratory Rate */}
               <div className="space-y-2">
                 <Label htmlFor="respiratory_rate">Respiratory Rate</Label>
-                <InputGroup className={cn(
-                  respiratoryRateCritical && 'border-destructive ring-1 ring-destructive',
-                  respiratoryRateWarning && !respiratoryRateCritical && 'border-amber-500 ring-1 ring-amber-500',
-                  respiratoryRateNormal && 'border-green-500 ring-1 ring-green-500'
-                )}>
+                <InputGroup
+                  className={cn(
+                    respiratoryRateCritical && 'border-destructive ring-1 ring-destructive',
+                    respiratoryRateWarning &&
+                      !respiratoryRateCritical &&
+                      'border-amber-500 ring-1 ring-amber-500',
+                    respiratoryRateNormal && 'border-green-500 ring-1 ring-green-500'
+                  )}
+                >
                   <InputGroupInput
                     id="respiratory_rate"
                     inputMode="numeric"
@@ -1923,7 +2068,9 @@ export function TriageAssessmentForm({
                 )}
                 {respiratoryRateStatus && <VitalThresholdBadge status={respiratoryRateStatus} />}
                 {showPediatricSection && !respiratoryRateStatus && (
-                  <p className="text-xs text-muted-foreground mt-1">{getVitalRangeHint('respiratory_rate', patientAgeGroup)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {getVitalRangeHint('respiratory_rate', patientAgeGroup)}
+                  </p>
                 )}
               </div>
 
@@ -1936,7 +2083,13 @@ export function TriageAssessmentForm({
                     type="number"
                     step="0.1"
                     inputMode="decimal"
-                    placeholder={showNeonatalFields ? 'e.g. 3.5' : isPediatric(patientAgeGroup) ? 'e.g. 15' : 'e.g. 70'}
+                    placeholder={
+                      showNeonatalFields
+                        ? 'e.g. 3.5'
+                        : isPediatric(patientAgeGroup)
+                          ? 'e.g. 15'
+                          : 'e.g. 70'
+                    }
                     aria-invalid={!!errors.weight}
                     disabled={disabled}
                     {...register('weight', {
@@ -1956,18 +2109,20 @@ export function TriageAssessmentForm({
 
               {/* Height / Length (optional) */}
               <div className="space-y-2">
-                <Label htmlFor="height">
-                  {patientAge < 2
-                    ? 'Length (recumbent)'
-                    : 'Height'}
-                </Label>
+                <Label htmlFor="height">{patientAge < 2 ? 'Length (recumbent)' : 'Height'}</Label>
                 <InputGroup>
                   <InputGroupInput
                     id="height"
                     type="number"
                     step="0.1"
                     inputMode="decimal"
-                    placeholder={showNeonatalFields ? 'e.g. 50' : isPediatric(patientAgeGroup) ? 'e.g. 95' : 'e.g. 170'}
+                    placeholder={
+                      showNeonatalFields
+                        ? 'e.g. 50'
+                        : isPediatric(patientAgeGroup)
+                          ? 'e.g. 95'
+                          : 'e.g. 170'
+                    }
                     aria-invalid={!!errors.height}
                     disabled={disabled}
                     {...register('height', {
@@ -1992,21 +2147,23 @@ export function TriageAssessmentForm({
                     <Info className="h-4 w-4" />
                     BMI
                   </Label>
-                  <div className="flex items-center gap-2 h-10">
+                  <div className="flex h-10 items-center gap-2">
                     <Badge
                       variant="outline"
                       className={cn(
-                        'text-base font-semibold px-3 py-1.5',
+                        'px-3 py-1.5 text-base font-semibold',
                         getBMIColorClass(bmiResult.classification)
                       )}
                     >
                       {bmiResult.bmi}
                     </Badge>
                     <div className="flex flex-col">
-                      <span className={cn(
-                        'text-sm font-medium',
-                        getBMIColorClass(bmiResult.classification)
-                      )}>
+                      <span
+                        className={cn(
+                          'text-sm font-medium',
+                          getBMIColorClass(bmiResult.classification)
+                        )}
+                      >
                         {bmiResult.classification}
                       </span>
                       {bmiResult.percentile && (
@@ -2030,8 +2187,8 @@ export function TriageAssessmentForm({
                     Growth Assessment
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    BMI is not used for children under 2. Use weight-for-length z-scores
-                    (WHO growth charts) to assess nutritional status.
+                    BMI is not used for children under 2. Use weight-for-length z-scores (WHO growth
+                    charts) to assess nutritional status.
                   </p>
                 </div>
               )}
@@ -2043,7 +2200,7 @@ export function TriageAssessmentForm({
       {/* Chief Complaint */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Stethoscope className="h-4 w-4" />
             Chief Complaint
           </CardTitle>
@@ -2058,11 +2215,7 @@ export function TriageAssessmentForm({
               name="chief_complaint_category"
               control={control}
               render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={disabled}
-                >
+                <Select value={field.value} onValueChange={field.onChange} disabled={disabled}>
                   <SelectTrigger
                     id="chief_complaint_category"
                     aria-required="true"
@@ -2079,23 +2232,23 @@ export function TriageAssessmentForm({
                     )
                       .filter(([, config]) => {
                         // Filter categories by patient age
-                        if (config.ageRestriction === 'neonatal') return isNeonateOrInfant(patientAgeGroup);
-                        if (config.ageRestriction === 'pediatric') return isPediatric(patientAgeGroup);
+                        if (config.ageRestriction === 'neonatal')
+                          return isNeonateOrInfant(patientAgeGroup);
+                        if (config.ageRestriction === 'pediatric')
+                          return isPediatric(patientAgeGroup);
                         return true;
                       })
                       .map(([value, config]) => (
-                      <SelectItem key={value} value={value}>
-                        {config.label}
-                      </SelectItem>
-                    ))}
+                        <SelectItem key={value} value={value}>
+                          {config.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               )}
             />
             {errors.chief_complaint_category && (
-              <p className="text-sm text-destructive">
-                {errors.chief_complaint_category.message}
-              </p>
+              <p className="text-sm text-destructive">{errors.chief_complaint_category.message}</p>
             )}
           </div>
 
@@ -2124,7 +2277,7 @@ export function TriageAssessmentForm({
       {showPediatricSection && (
         <Card className="border-orange-200 dark:border-orange-800">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2 text-orange-700 dark:text-orange-300">
+            <CardTitle className="flex items-center gap-2 text-base text-orange-700 dark:text-orange-300">
               <ShieldAlert className="h-4 w-4" />
               Pediatric Assessment (ETAT)
               <Badge variant="outline" className="ml-auto text-xs">
@@ -2137,7 +2290,7 @@ export function TriageAssessmentForm({
             <div className="space-y-3">
               <Label className="text-sm font-medium">
                 ETAT Danger Signs
-                <span className="text-xs text-muted-foreground ml-2">(check all that apply)</span>
+                <span className="ml-2 text-xs text-muted-foreground">(check all that apply)</span>
               </Label>
               <Controller
                 name="etat_danger_signs"
@@ -2146,44 +2299,48 @@ export function TriageAssessmentForm({
                   const selected = field.value || [];
                   return (
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {(Object.entries(ETAT_DANGER_SIGNS_CONFIG) as [EtATDangerSign, { label: string; description: string }][]).map(
-                        ([sign, config]) => (
-                          <label
-                            key={sign}
-                            className={cn(
-                              'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-                              selected.includes(sign)
-                                ? 'border-red-500 bg-red-50 dark:bg-red-950/30'
-                                : 'border-border hover:border-muted-foreground'
-                            )}
-                          >
-                            <Checkbox
-                              checked={selected.includes(sign)}
-                              onCheckedChange={(checked) => {
-                                const next = checked
-                                  ? [...selected, sign]
-                                  : selected.filter((s: string) => s !== sign);
-                                field.onChange(next);
-                              }}
-                              disabled={disabled}
-                              className="mt-0.5"
-                            />
-                            <div>
-                              <span className="text-sm font-medium">{config.label}</span>
-                              <p className="text-xs text-muted-foreground">{config.description}</p>
-                            </div>
-                          </label>
-                        )
-                      )}
+                      {(
+                        Object.entries(ETAT_DANGER_SIGNS_CONFIG) as [
+                          EtATDangerSign,
+                          { label: string; description: string },
+                        ][]
+                      ).map(([sign, config]) => (
+                        <label
+                          key={sign}
+                          className={cn(
+                            'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+                            selected.includes(sign)
+                              ? 'border-red-500 bg-red-50 dark:bg-red-950/30'
+                              : 'border-border hover:border-muted-foreground'
+                          )}
+                        >
+                          <Checkbox
+                            checked={selected.includes(sign)}
+                            onCheckedChange={(checked) => {
+                              const next = checked
+                                ? [...selected, sign]
+                                : selected.filter((s: string) => s !== sign);
+                              field.onChange(next);
+                            }}
+                            disabled={disabled}
+                            className="mt-0.5"
+                          />
+                          <div>
+                            <span className="text-sm font-medium">{config.label}</span>
+                            <p className="text-xs text-muted-foreground">{config.description}</p>
+                          </div>
+                        </label>
+                      ))}
                     </div>
                   );
                 }}
               />
               {watchedValues.etat_danger_signs && watchedValues.etat_danger_signs.length > 0 && (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-2 dark:border-red-800 dark:bg-red-950/30">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
                   <span className="text-sm font-medium text-red-700 dark:text-red-300">
-                    {watchedValues.etat_danger_signs.length} danger sign(s) — auto-escalation to RED category
+                    {watchedValues.etat_danger_signs.length} danger sign(s) — auto-escalation to RED
+                    category
                   </span>
                 </div>
               )}
@@ -2204,7 +2361,9 @@ export function TriageAssessmentForm({
                   disabled={disabled}
                 />
                 {errors.capillary_refill_seconds && (
-                  <p className="text-sm text-destructive">{errors.capillary_refill_seconds.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.capillary_refill_seconds.message}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">
@@ -2220,15 +2379,17 @@ export function TriageAssessmentForm({
                   disabled={disabled}
                 />
                 {watchedValues.muac_cm != null && watchedValues.muac_cm < 11.5 && (
-                  <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+                  <p className="text-sm font-medium text-red-600 dark:text-red-400">
                     ⚠ SAM: MUAC &lt; 11.5 cm
                   </p>
                 )}
-                {watchedValues.muac_cm != null && watchedValues.muac_cm >= 11.5 && watchedValues.muac_cm < 12.5 && (
-                  <p className="text-sm text-orange-600 dark:text-orange-400">
-                    MAM: MUAC 11.5-12.5 cm
-                  </p>
-                )}
+                {watchedValues.muac_cm != null &&
+                  watchedValues.muac_cm >= 11.5 &&
+                  watchedValues.muac_cm < 12.5 && (
+                    <p className="text-sm text-orange-600 dark:text-orange-400">
+                      MAM: MUAC 11.5-12.5 cm
+                    </p>
+                  )}
                 {errors.muac_cm && (
                   <p className="text-sm text-destructive">{errors.muac_cm.message}</p>
                 )}
@@ -2242,16 +2403,25 @@ export function TriageAssessmentForm({
                 name="dehydration_level"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value || ''} onValueChange={field.onChange} disabled={disabled}>
+                  <Select
+                    value={field.value || ''}
+                    onValueChange={field.onChange}
+                    disabled={disabled}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Assess dehydration" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(Object.entries(DEHYDRATION_CONFIG) as [DehydrationLevel, { label: string }][]).map(
-                        ([value, config]) => (
-                          <SelectItem key={value} value={value}>{config.label}</SelectItem>
-                        )
-                      )}
+                      {(
+                        Object.entries(DEHYDRATION_CONFIG) as [
+                          DehydrationLevel,
+                          { label: string },
+                        ][]
+                      ).map(([value, config]) => (
+                        <SelectItem key={value} value={value}>
+                          {config.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
@@ -2268,16 +2438,25 @@ export function TriageAssessmentForm({
                     name="fontanelle_status"
                     control={control}
                     render={({ field }) => (
-                      <Select value={field.value || ''} onValueChange={field.onChange} disabled={disabled}>
+                      <Select
+                        value={field.value || ''}
+                        onValueChange={field.onChange}
+                        disabled={disabled}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Assess fontanelle" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(Object.entries(FONTANELLE_CONFIG) as [FontanelleStatus, { label: string }][]).map(
-                            ([value, config]) => (
-                              <SelectItem key={value} value={value}>{config.label}</SelectItem>
-                            )
-                          )}
+                          {(
+                            Object.entries(FONTANELLE_CONFIG) as [
+                              FontanelleStatus,
+                              { label: string },
+                            ][]
+                          ).map(([value, config]) => (
+                            <SelectItem key={value} value={value}>
+                              {config.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     )}
@@ -2291,16 +2470,25 @@ export function TriageAssessmentForm({
                     name="breastfeeding_ability"
                     control={control}
                     render={({ field }) => (
-                      <Select value={field.value || ''} onValueChange={field.onChange} disabled={disabled}>
+                      <Select
+                        value={field.value || ''}
+                        onValueChange={field.onChange}
+                        disabled={disabled}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Assess feeding" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(Object.entries(BREASTFEEDING_CONFIG) as [BreastfeedingAbility, { label: string }][]).map(
-                            ([value, config]) => (
-                              <SelectItem key={value} value={value}>{config.label}</SelectItem>
-                            )
-                          )}
+                          {(
+                            Object.entries(BREASTFEEDING_CONFIG) as [
+                              BreastfeedingAbility,
+                              { label: string },
+                            ][]
+                          ).map(([value, config]) => (
+                            <SelectItem key={value} value={value}>
+                              {config.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     )}
@@ -2315,7 +2503,7 @@ export function TriageAssessmentForm({
       {/* Clinical Assessment */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Activity className="h-4 w-4" />
             Clinical Assessment
           </CardTitle>
@@ -2352,7 +2540,7 @@ export function TriageAssessmentForm({
                     value={field.value ?? 0}
                     onChange={(e) => field.onChange(parseInt(e.target.value))}
                     disabled={disabled}
-                    className="flex-1 h-2 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 rounded-lg appearance-none cursor-pointer"
+                    className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"
                   />
                 )}
               />
@@ -2379,28 +2567,29 @@ export function TriageAssessmentForm({
                   disabled={disabled}
                   className="grid grid-cols-2 gap-2 sm:grid-cols-4"
                 >
-                  {(Object.entries(AVPU_CONFIG) as [AVPUStatus, { code: string; label: string; description: string }][]).map(
-                    ([value, config]) => (
-                      <div key={value} className="flex items-center space-x-2">
-                        <RadioGroupItem
-                          value={value}
-                          id={`avpu-${value}`}
-                          className={cn(
-                            value === 'U' && field.value === 'U' && 'border-red-500'
-                          )}
-                        />
-                        <Label
-                          htmlFor={`avpu-${value}`}
-                          className={cn(
-                            'font-normal cursor-pointer',
-                            value === 'U' && field.value === 'U' && 'text-red-600 font-medium'
-                          )}
-                        >
-                          {config.label}
-                        </Label>
-                      </div>
-                    )
-                  )}
+                  {(
+                    Object.entries(AVPU_CONFIG) as [
+                      AVPUStatus,
+                      { code: string; label: string; description: string },
+                    ][]
+                  ).map(([value, config]) => (
+                    <div key={value} className="flex items-center space-x-2">
+                      <RadioGroupItem
+                        value={value}
+                        id={`avpu-${value}`}
+                        className={cn(value === 'U' && field.value === 'U' && 'border-red-500')}
+                      />
+                      <Label
+                        htmlFor={`avpu-${value}`}
+                        className={cn(
+                          'cursor-pointer font-normal',
+                          value === 'U' && field.value === 'U' && 'font-medium text-red-600'
+                        )}
+                      >
+                        {config.label}
+                      </Label>
+                    </div>
+                  ))}
                 </RadioGroup>
               )}
             />
@@ -2408,7 +2597,7 @@ export function TriageAssessmentForm({
               <p className="text-sm text-destructive">{errors.mental_status.message}</p>
             )}
             {mentalStatus === 'U' && (
-              <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+              <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>CRITICAL: Unresponsive patient - Immediate attention required</span>
               </div>
@@ -2417,54 +2606,56 @@ export function TriageAssessmentForm({
 
           {/* DEBUG: GCS visibility check */}
           {process.env.NODE_ENV === 'development' && (
-            <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-              DEBUG: CC={chiefComplaintCategory}, AVPU={mentalStatus},
-              showGCS={(chiefComplaintCategory === 'TRAUMA' ||
+            <div className="rounded bg-muted p-2 text-xs text-muted-foreground">
+              DEBUG: CC={chiefComplaintCategory}, AVPU={mentalStatus}, showGCS=
+              {(
+                chiefComplaintCategory === 'TRAUMA' ||
                 chiefComplaintCategory === 'ALTERED_CONSCIOUSNESS' ||
                 mentalStatus === 'P' ||
-                mentalStatus === 'U').toString()}
+                mentalStatus === 'U'
+              ).toString()}
             </div>
           )}
 
           {/* Glasgow Coma Scale - conditional for trauma/neuro cases */}
           {/* Hidden for neonates/infants — AVPU is used instead (GCS unreliable for pre-verbal children) */}
           {!showNeonatalFields &&
-           (chiefComplaintCategory === 'TRAUMA' ||
-            chiefComplaintCategory === 'ALTERED_CONSCIOUSNESS' ||
-            mentalStatus === 'P' ||
-            mentalStatus === 'U') && (
-            <Controller
-              name="gcs_eye"
-              control={control}
-              render={({ field: eyeField }) => (
-                <Controller
-                  name="gcs_verbal"
-                  control={control}
-                  render={({ field: verbalField }) => (
-                    <Controller
-                      name="gcs_motor"
-                      control={control}
-                      render={({ field: motorField }) => (
-                        <GCSScorePanel
-                          value={{
-                            eye: eyeField.value ?? null,
-                            verbal: verbalField.value ?? null,
-                            motor: motorField.value ?? null,
-                          }}
-                          onChange={(gcs: GCSScores) => {
-                            eyeField.onChange(gcs.eye);
-                            verbalField.onChange(gcs.verbal);
-                            motorField.onChange(gcs.motor);
-                          }}
-                          disabled={disabled}
-                        />
-                      )}
-                    />
-                  )}
-                />
-              )}
-            />
-          )}
+            (chiefComplaintCategory === 'TRAUMA' ||
+              chiefComplaintCategory === 'ALTERED_CONSCIOUSNESS' ||
+              mentalStatus === 'P' ||
+              mentalStatus === 'U') && (
+              <Controller
+                name="gcs_eye"
+                control={control}
+                render={({ field: eyeField }) => (
+                  <Controller
+                    name="gcs_verbal"
+                    control={control}
+                    render={({ field: verbalField }) => (
+                      <Controller
+                        name="gcs_motor"
+                        control={control}
+                        render={({ field: motorField }) => (
+                          <GCSScorePanel
+                            value={{
+                              eye: eyeField.value ?? null,
+                              verbal: verbalField.value ?? null,
+                              motor: motorField.value ?? null,
+                            }}
+                            onChange={(gcs: GCSScores) => {
+                              eyeField.onChange(gcs.eye);
+                              verbalField.onChange(gcs.verbal);
+                              motorField.onChange(gcs.motor);
+                            }}
+                            disabled={disabled}
+                          />
+                        )}
+                      />
+                    )}
+                  />
+                )}
+              />
+            )}
 
           {/* Mobility */}
           <div className="space-y-2">
@@ -2475,11 +2666,7 @@ export function TriageAssessmentForm({
               name="mobility"
               control={control}
               render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={disabled}
-                >
+                <Select value={field.value} onValueChange={field.onChange} disabled={disabled}>
                   <SelectTrigger
                     id="mobility"
                     aria-required="true"
@@ -2523,7 +2710,7 @@ export function TriageAssessmentForm({
       {/* Triage Category */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Brain className="h-4 w-4" />
             Triage Category (KETA)
           </CardTitle>
@@ -2549,7 +2736,7 @@ export function TriageAssessmentForm({
                   <div
                     key={value}
                     className={cn(
-                      'flex items-center space-x-3 p-3 rounded-lg border transition-colors',
+                      'flex items-center space-x-3 rounded-lg border p-3 transition-colors',
                       field.value === value && 'border-blue-500 bg-blue-50 dark:bg-blue-950',
                       value === autoCalculatedCategory &&
                         field.value !== value &&
@@ -2559,7 +2746,7 @@ export function TriageAssessmentForm({
                     <RadioGroupItem value={value} id={`category-${value}`} />
                     <Label
                       htmlFor={`category-${value}`}
-                      className="flex-1 cursor-pointer flex items-center gap-3"
+                      className="flex flex-1 cursor-pointer items-center gap-3"
                     >
                       <TriageCategoryBadge category={value} size="sm" />
                       <span className="text-sm">{config.label}</span>
@@ -2580,8 +2767,11 @@ export function TriageAssessmentForm({
 
           {/* Override Reason */}
           {categoryOverridden && (
-            <div className="space-y-2 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 rounded-lg">
-              <Label htmlFor="category_override_reason" className="text-amber-800 dark:text-amber-200">
+            <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:bg-amber-950">
+              <Label
+                htmlFor="category_override_reason"
+                className="text-amber-800 dark:text-amber-200"
+              >
                 Override Reason <span className="text-destructive">*</span>
               </Label>
               <Textarea
@@ -2625,7 +2815,7 @@ export function TriageAssessmentForm({
       {/* Care Area Routing */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <MapPin className="h-4 w-4" />
             Care Area Assignment
           </CardTitle>
@@ -2667,16 +2857,17 @@ export function TriageAssessmentForm({
               <Label>
                 Emergency Area <span className="text-destructive">*</span>
               </Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {EMERGENCY_AREA_OPTIONS.map((option) => {
                   const isSelected = watchedValues.assigned_area === option.value;
-                  const categoryColor = {
-                    RED: 'border-red-500 bg-red-50 dark:bg-red-950/30',
-                    ORANGE: 'border-orange-500 bg-orange-50 dark:bg-orange-950/30',
-                    YELLOW: 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30',
-                    GREEN: 'border-green-500 bg-green-50 dark:bg-green-950/30',
-                    BLUE: 'border-blue-500 bg-blue-50 dark:bg-blue-950/30',
-                  }[option.category as string] || '';
+                  const categoryColor =
+                    {
+                      RED: 'border-red-500 bg-red-50 dark:bg-red-950/30',
+                      ORANGE: 'border-orange-500 bg-orange-50 dark:bg-orange-950/30',
+                      YELLOW: 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30',
+                      GREEN: 'border-green-500 bg-green-50 dark:bg-green-950/30',
+                      BLUE: 'border-blue-500 bg-blue-50 dark:bg-blue-950/30',
+                    }[option.category as string] || '';
 
                   return (
                     <button
@@ -2688,14 +2879,14 @@ export function TriageAssessmentForm({
                       }}
                       disabled={disabled}
                       className={cn(
-                        'p-3 text-left rounded-lg border-2 transition-all',
+                        'rounded-lg border-2 p-3 text-left transition-all',
                         'hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary',
                         isSelected
                           ? `${categoryColor} border-primary ring-2 ring-primary`
                           : 'border-border hover:border-muted-foreground'
                       )}
                     >
-                      <div className="font-medium text-sm">{option.label}</div>
+                      <div className="text-sm font-medium">{option.label}</div>
                     </button>
                   );
                 })}
@@ -2715,16 +2906,19 @@ export function TriageAssessmentForm({
 
               {/* Selected Clinic Display (collapsed state) */}
               {watchedValues.assigned_clinic ? (
-                <div className="p-3 bg-accent rounded-lg border border-border">
+                <div className="rounded-lg border border-border bg-accent p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-primary font-bold">✓</span>
+                      <span className="font-bold text-primary">✓</span>
                       <div>
                         <div className="text-sm font-medium text-accent-foreground">
-                          {clinics.find(c => c.id === watchedValues.assigned_clinic)?.name}
+                          {clinics.find((c) => c.id === watchedValues.assigned_clinic)?.name}
                         </div>
                         <div className="text-xs text-primary-foreground">
-                          {clinics.find(c => c.id === watchedValues.assigned_clinic)?.clinic_type_display}
+                          {
+                            clinics.find((c) => c.id === watchedValues.assigned_clinic)
+                              ?.clinic_type_display
+                          }
                         </div>
                       </div>
                     </div>
@@ -2751,18 +2945,20 @@ export function TriageAssessmentForm({
                       disabled={disabled}
                       className="pl-8"
                     />
-                    <Stethoscope className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Stethoscope className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   </div>
 
                   {/* Clinic List */}
-                  <div className="max-h-48 overflow-y-auto border border-border rounded-lg bg-card">
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-card">
                     {clinicsLoading ? (
                       <div className="p-4 text-center text-muted-foreground">
                         Loading clinics...
                       </div>
                     ) : filteredClinics.length === 0 ? (
                       <div className="p-4 text-center text-muted-foreground">
-                        {clinicSearch ? 'No clinics match your search' : 'No active clinics available'}
+                        {clinicSearch
+                          ? 'No clinics match your search'
+                          : 'No active clinics available'}
                       </div>
                     ) : (
                       <div className="divide-y divide-border">
@@ -2778,14 +2974,16 @@ export function TriageAssessmentForm({
                             disabled={disabled}
                             className={cn(
                               'w-full p-3 text-left transition-colors',
-                              'hover:bg-accent hover:text-accent-foreground focus:outline-none focus:bg-accent focus:text-accent-foreground'
+                              'hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none'
                             )}
                           >
-                            <div className="font-medium text-sm">{clinic.name}</div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-2">
+                            <div className="text-sm font-medium">{clinic.name}</div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span>{clinic.clinic_type_display}</span>
                               {clinic.is_open_today && (
-                                <Badge variant="outline" className="text-[10px] py-0 px-1">Open</Badge>
+                                <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                                  Open
+                                </Badge>
                               )}
                             </div>
                           </button>

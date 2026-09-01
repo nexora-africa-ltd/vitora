@@ -23,12 +23,10 @@ export default function DietPlansPage() {
         helpContent="View and manage patient diet plans. Create meal plans with nutritional targets, food guidance, and supplements."
         actions={
           <Button
-            onClick={() =>
-              router.push('/allied-health/nutrition/diet-plans/new')
-            }
+            onClick={() => router.push('/allied-health/nutrition/diet-plans/new')}
             disabled={!canCreateRoute('/allied-health/nutrition/diet-plans/new')}
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             New Diet Plan
           </Button>
         }

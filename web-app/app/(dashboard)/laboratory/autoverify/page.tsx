@@ -177,7 +177,10 @@ export default function AutoVerifyPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -191,27 +194,33 @@ export default function AutoVerifyPage() {
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <XCircle className="h-4 w-4 text-red-600" />
                 <span className="text-xs text-muted-foreground">Blocked</span>
               </div>
               <p className="mt-1 text-xl font-bold sm:text-2xl">{stats?.blocked ?? 0}</p>
-              <p className="text-xs text-muted-foreground">
-                Require manual review
-              </p>
+              <p className="text-xs text-muted-foreground">Require manual review</p>
             </CardContent>
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <span className="text-xs text-muted-foreground">Delta Failures</span>
               </div>
-              <p className="mt-1 text-xl font-bold sm:text-2xl">{stats?.delta_checks_failed ?? 0}</p>
+              <p className="mt-1 text-xl font-bold sm:text-2xl">
+                {stats?.delta_checks_failed ?? 0}
+              </p>
               <p className="text-xs text-muted-foreground">
                 of {stats?.delta_checks_total ?? 0} checks
               </p>
@@ -219,7 +228,10 @@ export default function AutoVerifyPage() {
           </Card>
 
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-blue-600" />
@@ -279,7 +291,12 @@ export default function AutoVerifyPage() {
                   keyExtractor={(r) => r.id}
                   columns={[
                     { key: 'test_name', header: 'Test', sortable: true, cell: (r) => r.test_name },
-                    { key: 'check_type', header: 'Type', sortable: true, cell: (r) => r.check_type },
+                    {
+                      key: 'check_type',
+                      header: 'Type',
+                      sortable: true,
+                      cell: (r) => r.check_type,
+                    },
                     {
                       key: 'threshold',
                       header: 'Threshold',
@@ -288,7 +305,13 @@ export default function AutoVerifyPage() {
                           ? `±${r.threshold_absolute}`
                           : `${r.threshold_percent}%`,
                     },
-                    { key: 'lookback_hours', header: 'Lookback', sortable: true, sortType: 'number', cell: (r) => `${r.lookback_hours}h` },
+                    {
+                      key: 'lookback_hours',
+                      header: 'Lookback',
+                      sortable: true,
+                      sortType: 'number',
+                      cell: (r) => `${r.lookback_hours}h`,
+                    },
                     {
                       key: 'action',
                       header: 'Action',
@@ -303,7 +326,13 @@ export default function AutoVerifyPage() {
                       key: 'is_active',
                       header: 'Active',
                       cell: (r) => (
-                        <Badge className={r.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
+                        <Badge
+                          className={
+                            r.is_active
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-600'
+                          }
+                        >
                           {r.is_active ? 'Yes' : 'No'}
                         </Badge>
                       ),
@@ -328,10 +357,16 @@ export default function AutoVerifyPage() {
                       <div>
                         <p className="font-medium">{r.test_name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {r.check_type} • {r.check_type === 'ABSOLUTE' ? `±${r.threshold_absolute}` : `${r.threshold_percent}%`} • {r.lookback_hours}h
+                          {r.check_type} •{' '}
+                          {r.check_type === 'ABSOLUTE'
+                            ? `±${r.threshold_absolute}`
+                            : `${r.threshold_percent}%`}{' '}
+                          • {r.lookback_hours}h
                         </p>
                       </div>
-                      <Badge variant="outline" className="text-xs">{r.action.replace(/_/g, ' ')}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {r.action.replace(/_/g, ' ')}
+                      </Badge>
                     </div>
                   )}
                 />
@@ -357,12 +392,24 @@ export default function AutoVerifyPage() {
                       sortable: true,
                       cell: (r) => conditionLabel(r.condition_type),
                     },
-                    { key: 'priority', header: 'Priority', sortable: true, sortType: 'number', cell: (r) => r.priority },
+                    {
+                      key: 'priority',
+                      header: 'Priority',
+                      sortable: true,
+                      sortType: 'number',
+                      cell: (r) => r.priority,
+                    },
                     {
                       key: 'is_active',
                       header: 'Active',
                       cell: (r) => (
-                        <Badge className={r.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
+                        <Badge
+                          className={
+                            r.is_active
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-600'
+                          }
+                        >
                           {r.is_active ? 'Yes' : 'No'}
                         </Badge>
                       ),
@@ -390,7 +437,11 @@ export default function AutoVerifyPage() {
                           {conditionLabel(r.condition_type)} • Priority {r.priority}
                         </p>
                       </div>
-                      <Badge className={r.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
+                      <Badge
+                        className={
+                          r.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                        }
+                      >
                         {r.is_active ? 'Active' : 'Inactive'}
                       </Badge>
                     </div>
@@ -414,7 +465,13 @@ export default function AutoVerifyPage() {
                   defaultSortDirection="desc"
                   columns={[
                     { key: 'test_name', header: 'Test', sortable: true, cell: (r) => r.test_name },
-                    { key: 'patient_name', header: 'Patient', sortable: true, cell: (r) => r.patient_name, hideOnMobile: true },
+                    {
+                      key: 'patient_name',
+                      header: 'Patient',
+                      sortable: true,
+                      cell: (r) => r.patient_name,
+                      hideOnMobile: true,
+                    },
                     {
                       key: 'outcome',
                       header: 'Outcome',
@@ -428,7 +485,8 @@ export default function AutoVerifyPage() {
                     {
                       key: 'blocking_rule_condition',
                       header: 'Blocker',
-                      cell: (r) => r.blocking_rule_condition ? conditionLabel(r.blocking_rule_condition) : '—',
+                      cell: (r) =>
+                        r.blocking_rule_condition ? conditionLabel(r.blocking_rule_condition) : '—',
                       hideOnMobile: true,
                     },
                     {
@@ -471,16 +529,18 @@ export default function AutoVerifyPage() {
                   defaultSortDirection="desc"
                   columns={[
                     { key: 'test_name', header: 'Test', sortable: true, cell: (r) => r.test_name },
-                    { key: 'patient_name', header: 'Patient', sortable: true, cell: (r) => r.patient_name, hideOnMobile: true },
+                    {
+                      key: 'patient_name',
+                      header: 'Patient',
+                      sortable: true,
+                      cell: (r) => r.patient_name,
+                      hideOnMobile: true,
+                    },
                     {
                       key: 'outcome',
                       header: 'Outcome',
                       sortable: true,
-                      cell: (r) => (
-                        <Badge className={outcomeColor(r.outcome)}>
-                          {r.outcome}
-                        </Badge>
-                      ),
+                      cell: (r) => <Badge className={outcomeColor(r.outcome)}>{r.outcome}</Badge>,
                     },
                     {
                       key: 'delta',
@@ -518,7 +578,9 @@ export default function AutoVerifyPage() {
                   mobileCard={(r) => (
                     <div className="flex items-center justify-between p-3">
                       <div>
-                        <p className="font-medium">{r.test_name} — {r.patient_name}</p>
+                        <p className="font-medium">
+                          {r.test_name} — {r.patient_name}
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           {r.previous_value} → {r.current_value}
                           {r.delta_percent != null && ` (${r.delta_percent.toFixed(1)}%)`}

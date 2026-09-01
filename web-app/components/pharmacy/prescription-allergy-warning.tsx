@@ -52,8 +52,7 @@ const severityColors: Record<AllergySeverity, string> = {
   mild: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   moderate: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
   severe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  life_threatening:
-    'bg-red-200 text-red-900 dark:bg-red-900/50 dark:text-red-300 font-semibold',
+  life_threatening: 'bg-red-200 text-red-900 dark:bg-red-900/50 dark:text-red-300 font-semibold',
 };
 
 export function PrescriptionAllergyWarning({
@@ -113,7 +112,7 @@ export function PrescriptionAllergyWarning({
             {interactions.interactions.map((interaction) => (
               <div
                 key={interaction.allergy_id}
-                className={`p-3 rounded-lg border ${
+                className={`rounded-lg border p-3 ${
                   interaction.is_high_risk
                     ? 'border-destructive/30 bg-destructive/5'
                     : 'border-orange-200 bg-orange-50 dark:border-orange-900/30 dark:bg-orange-950/20'
@@ -125,10 +124,7 @@ export function PrescriptionAllergyWarning({
                       {interaction.drug_name ?? `Drug ID: ${interaction.drug_id}`}
                     </span>
                     {interaction.is_high_risk && (
-                      <Badge
-                        variant="destructive"
-                        className="ml-2 text-xs"
-                      >
+                      <Badge variant="destructive" className="ml-2 text-xs">
                         HIGH RISK
                       </Badge>
                     )}
@@ -137,7 +133,7 @@ export function PrescriptionAllergyWarning({
                     {interaction.severity_display}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="mt-1 text-sm text-muted-foreground">
                   <span className="font-medium">Patient allergic to:</span> {interaction.substance}
                 </p>
                 {interaction.reaction_type !== 'other' && (
@@ -153,8 +149,8 @@ export function PrescriptionAllergyWarning({
 
         {/* Acknowledgment Checkbox */}
         <div
-          className={`flex items-start gap-3 p-3 rounded-lg ${
-            hasHighRisk ? 'bg-destructive/5 border border-destructive/20' : 'bg-muted'
+          className={`flex items-start gap-3 rounded-lg p-3 ${
+            hasHighRisk ? 'border border-destructive/20 bg-destructive/5' : 'bg-muted'
           }`}
         >
           <Checkbox
@@ -165,7 +161,7 @@ export function PrescriptionAllergyWarning({
           />
           <label
             htmlFor="acknowledge"
-            className={`text-sm leading-relaxed cursor-pointer ${
+            className={`cursor-pointer text-sm leading-relaxed ${
               hasHighRisk ? 'text-destructive' : ''
             }`}
           >

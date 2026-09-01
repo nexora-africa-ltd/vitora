@@ -56,11 +56,7 @@ const transactionTypeColors: Record<WardTransactionType, string> = {
   ADJUSTMENT: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
 };
 
-export default function WardStockDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function WardStockDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = parseInt(resolvedParams.id, 10);
   const { toast } = useToast();
@@ -178,9 +174,10 @@ export default function WardStockDetailPage({
     );
   }
 
-  const fillPercent = wardStock.max_level > 0
-    ? Math.min(100, Math.round((wardStock.quantity_available / wardStock.max_level) * 100))
-    : 0;
+  const fillPercent =
+    wardStock.max_level > 0
+      ? Math.min(100, Math.round((wardStock.quantity_available / wardStock.max_level) * 100))
+      : 0;
 
   const transactions = txData?.results || [];
 
@@ -191,45 +188,48 @@ export default function WardStockDetailPage({
         helpContent="View ward stock levels and perform consume, replenish, or return actions. Transaction history shows all movements."
         actions={
           canManageWardStock ? (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setConsumeOpen(true)}
-              disabled={anyPending || wardStock.quantity_available <= 0}
-            >
-              <Minus className="mr-1 h-4 w-4" />
-              Consume
-            </Button>
-            <Button size="sm" onClick={() => setReplenishOpen(true)} disabled={anyPending}>
-              <ArrowDownToLine className="mr-1 h-4 w-4" />
-              Replenish
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setReturnOpen(true)}
-              disabled={anyPending || wardStock.quantity_available <= 0}
-            >
-              <ArrowUpFromLine className="mr-1 h-4 w-4" />
-              Return to Store
-            </Button>
-          </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConsumeOpen(true)}
+                disabled={anyPending || wardStock.quantity_available <= 0}
+              >
+                <Minus className="mr-1 h-4 w-4" />
+                Consume
+              </Button>
+              <Button size="sm" onClick={() => setReplenishOpen(true)} disabled={anyPending}>
+                <ArrowDownToLine className="mr-1 h-4 w-4" />
+                Replenish
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setReturnOpen(true)}
+                disabled={anyPending || wardStock.quantity_available <= 0}
+              >
+                <ArrowUpFromLine className="mr-1 h-4 w-4" />
+                Return to Store
+              </Button>
+            </div>
           ) : undefined
         }
       />
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <div className="flex items-center gap-2">
-            <Pill className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-sm font-medium truncate">{wardStock.drug_name}</span>
+            <Pill className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate text-sm font-medium">{wardStock.drug_name}</span>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {wardStock.store_location_name}
             {wardStock.last_replenished_at && (
-              <> · Last replenished {new Date(wardStock.last_replenished_at).toLocaleDateString()}</>
+              <>
+                {' '}
+                · Last replenished {new Date(wardStock.last_replenished_at).toLocaleDateString()}
+              </>
             )}
           </p>
         </div>
@@ -237,7 +237,7 @@ export default function WardStockDetailPage({
           {wardStock.is_below_par ? (
             <Badge
               variant="outline"
-              className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 w-fit"
+              className="w-fit bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
             >
               <AlertTriangle className="mr-1 h-3 w-3" />
               Below Par
@@ -245,14 +245,14 @@ export default function WardStockDetailPage({
           ) : wardStock.is_above_max ? (
             <Badge
               variant="outline"
-              className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 w-fit"
+              className="w-fit bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
             >
               Above Max
             </Badge>
           ) : (
             <Badge
               variant="outline"
-              className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 w-fit"
+              className="w-fit bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
             >
               OK
             </Badge>
@@ -269,7 +269,7 @@ export default function WardStockDetailPage({
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Current Stock</span>
-              <span className="font-bold text-lg">{wardStock.quantity_available}</span>
+              <span className="text-lg font-bold">{wardStock.quantity_available}</span>
             </div>
             <Progress
               value={fillPercent}
@@ -288,7 +288,7 @@ export default function WardStockDetailPage({
             </div>
           </div>
 
-          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
             <div>
               <dt className="text-muted-foreground">Quantity Available</dt>
               <dd className="font-medium">{wardStock.quantity_available}</dd>
@@ -311,7 +311,8 @@ export default function WardStockDetailPage({
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Stock is below par level. Suggested reorder quantity: <strong>{wardStock.reorder_quantity}</strong> units.
+                Stock is below par level. Suggested reorder quantity:{' '}
+                <strong>{wardStock.reorder_quantity}</strong> units.
               </AlertDescription>
             </Alert>
           )}
@@ -321,9 +322,7 @@ export default function WardStockDetailPage({
       {/* Transaction History */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">
-            Transaction History ({transactions.length})
-          </CardTitle>
+          <CardTitle className="text-base">Transaction History ({transactions.length})</CardTitle>
         </CardHeader>
         <CardContent className="px-0 sm:px-6">
           {txLoading ? (
@@ -331,7 +330,7 @@ export default function WardStockDetailPage({
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
+            <p className="py-8 text-center text-sm text-muted-foreground">
               No transactions recorded yet.
             </p>
           ) : (
@@ -349,7 +348,7 @@ export default function WardStockDetailPage({
                 <TableBody>
                   {transactions.map((tx) => (
                     <TableRow key={tx.id}>
-                      <TableCell className="text-sm whitespace-nowrap">
+                      <TableCell className="whitespace-nowrap text-sm">
                         {new Date(tx.performed_at).toLocaleString()}
                       </TableCell>
                       <TableCell>
@@ -375,7 +374,7 @@ export default function WardStockDetailPage({
                         </span>
                       </TableCell>
                       <TableCell className="text-sm">{tx.performed_by_name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                      <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                         {tx.notes || '—'}
                       </TableCell>
                     </TableRow>
@@ -395,9 +394,7 @@ export default function WardStockDetailPage({
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="consume-qty">
-                Quantity (max: {wardStock.quantity_available})
-              </Label>
+              <Label htmlFor="consume-qty">Quantity (max: {wardStock.quantity_available})</Label>
               <Input
                 id="consume-qty"
                 type="number"
@@ -432,9 +429,7 @@ export default function WardStockDetailPage({
                 Number(consumeQty) > wardStock.quantity_available
               }
             >
-              {consumeMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {consumeMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Consume
             </Button>
           </DialogFooter>
@@ -476,13 +471,9 @@ export default function WardStockDetailPage({
             </Button>
             <Button
               onClick={() => replenishMutation.mutate()}
-              disabled={
-                replenishMutation.isPending || !replenishQty || Number(replenishQty) < 1
-              }
+              disabled={replenishMutation.isPending || !replenishQty || Number(replenishQty) < 1}
             >
-              {replenishMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {replenishMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Replenish
             </Button>
           </DialogFooter>
@@ -497,9 +488,7 @@ export default function WardStockDetailPage({
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="return-qty">
-                Quantity (max: {wardStock.quantity_available})
-              </Label>
+              <Label htmlFor="return-qty">Quantity (max: {wardStock.quantity_available})</Label>
               <Input
                 id="return-qty"
                 type="number"
@@ -534,9 +523,7 @@ export default function WardStockDetailPage({
                 Number(returnQty) > wardStock.quantity_available
               }
             >
-              {returnMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {returnMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Return
             </Button>
           </DialogFooter>

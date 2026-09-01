@@ -34,53 +34,64 @@ export default function EncounterEditHistoryPage() {
 
   const { encounter, isLoading } = useEncounterContext();
   const encounterStoreId = encounter?.id ?? 0;
-  const { getHistory, setHistory, getSession, markSectionComplete, setDirty } = useEncounterEditStore();
+  const { getHistory, setHistory, getSession, markSectionComplete, setDirty } =
+    useEncounterEditStore();
   const updateEncounter = useUpdateEncounter();
 
   const session = getSession(encounterStoreId);
   const history = getHistory(encounterStoreId);
 
   // Build form data from store for MedicalHistoryFormContent
-  const formData = useMemo((): EncounterFormData => ({
-    patient: session?.patientId || null,
-    encounter_type: session?.encounter_type || 'OPD',
-    encounter_date: session?.encounter_date || '',
-    chief_complaint: session?.chief_complaint || '',
-    status: session?.status || 'CREATED',
-    // Empty vitals
-    temperature: null,
-    pulse: null,
-    blood_pressure_systolic: null,
-    blood_pressure_diastolic: null,
-    respiratory_rate: null,
-    spo2: null,
-    weight: null,
-    height: null,
-    // History from store
-    allergies: history?.allergies || '',
-    chronic_conditions: history?.chronic_conditions || '',
-    current_medications: history?.current_medications || '',
-    past_surgeries: history?.past_surgeries || '',
-    family_history: history?.family_history || '',
-    social_history: history?.social_history || '',
-    // Empty notes
-    notes: '',
-    history_of_present_illness: '',
-    physical_examination: '',
-    assessment: '',
-  }), [session, history]);
+  const formData = useMemo(
+    (): EncounterFormData => ({
+      patient: session?.patientId || null,
+      encounter_type: session?.encounter_type || 'OPD',
+      encounter_date: session?.encounter_date || '',
+      chief_complaint: session?.chief_complaint || '',
+      status: session?.status || 'CREATED',
+      // Empty vitals
+      temperature: null,
+      pulse: null,
+      blood_pressure_systolic: null,
+      blood_pressure_diastolic: null,
+      respiratory_rate: null,
+      spo2: null,
+      weight: null,
+      height: null,
+      // History from store
+      allergies: history?.allergies || '',
+      chronic_conditions: history?.chronic_conditions || '',
+      current_medications: history?.current_medications || '',
+      past_surgeries: history?.past_surgeries || '',
+      family_history: history?.family_history || '',
+      social_history: history?.social_history || '',
+      // Empty notes
+      notes: '',
+      history_of_present_illness: '',
+      physical_examination: '',
+      assessment: '',
+    }),
+    [session, history]
+  );
 
   // Handle field changes
-  const handleFieldChange = useCallback((field: keyof EncounterFormData, value: unknown) => {
-    const historyFields = [
-      'allergies', 'chronic_conditions', 'current_medications',
-      'past_surgeries', 'family_history', 'social_history'
-    ];
+  const handleFieldChange = useCallback(
+    (field: keyof EncounterFormData, value: unknown) => {
+      const historyFields = [
+        'allergies',
+        'chronic_conditions',
+        'current_medications',
+        'past_surgeries',
+        'family_history',
+        'social_history',
+      ];
 
-    if (historyFields.includes(field)) {
-      setHistory(encounterStoreId, { [field]: value as string });
-    }
-  }, [encounterStoreId, setHistory]);
+      if (historyFields.includes(field)) {
+        setHistory(encounterStoreId, { [field]: value as string });
+      }
+    },
+    [encounterStoreId, setHistory]
+  );
 
   // Build auto-save data
   const autoSaveData = useMemo(() => {
@@ -196,10 +207,8 @@ export default function EncounterEditHistoryPage() {
       {/* Navigation */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-            <p className="text-sm text-muted-foreground">
-              Step 2 of 7 — Medical history recorded
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">Step 2 of 7 — Medical history recorded</p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handlePrev}>
                 <ArrowLeft className="h-4 w-4 sm:mr-2" />
@@ -211,7 +220,7 @@ export default function EncounterEditHistoryPage() {
                 disabled={updateEncounter.isPending || !isEditable}
               >
                 {updateEncounter.isPending ? (
-                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
                 ) : (
                   <Save className="h-4 w-4 sm:mr-2" />
                 )}

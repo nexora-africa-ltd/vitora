@@ -26,12 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { attendanceApi } from '@/lib/api/scheduling';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -40,7 +35,11 @@ import { AttendanceTrendsChart } from '@/components/scheduling/attendance-trends
 import { QRScannerDialog } from '@/components/scheduling/qr-clock-in';
 import { PayrollExportDialog } from '@/components/scheduling/payroll-export';
 import { EmergencyClockInDialog } from '@/components/dashboard/emergency-clock-in-dialog';
-import type { ShiftListItem, AttendanceStats, EmergencyClockInPayload } from '@/lib/types/scheduling';
+import type {
+  ShiftListItem,
+  AttendanceStats,
+  EmergencyClockInPayload,
+} from '@/lib/types/scheduling';
 
 // =============================================================================
 // Helpers
@@ -107,7 +106,12 @@ function StatsCards({ stats, isLoading }: { stats: AttendanceStats | null; isLoa
       label: 'On-Time Rate',
       value: `${stats.on_time_rate}%`,
       icon: CheckCircle2,
-      color: stats.on_time_rate >= 90 ? 'text-green-600' : stats.on_time_rate >= 75 ? 'text-amber-600' : 'text-destructive',
+      color:
+        stats.on_time_rate >= 90
+          ? 'text-green-600'
+          : stats.on_time_rate >= 75
+            ? 'text-amber-600'
+            : 'text-destructive',
       sub: `${stats.on_time_count} on-time, ${stats.late_count} late`,
     },
     {
@@ -144,7 +148,7 @@ function StatsCards({ stats, isLoading }: { stats: AttendanceStats | null; isLoa
           <CardContent className="relative p-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground font-medium">{card.label}</p>
+                <p className="text-xs font-medium text-muted-foreground">{card.label}</p>
                 <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
                 <p className="text-xs text-muted-foreground">{card.sub}</p>
               </div>
@@ -195,7 +199,11 @@ export default function MyShiftsPage() {
       tomorrow.setDate(tomorrow.getDate() + 1);
       const next7 = new Date();
       next7.setDate(next7.getDate() + 7);
-      return attendanceApi.myHistory({ from_date: tomorrow.toISOString().split('T')[0]!, to_date: next7.toISOString().split('T')[0]!, page_size: 20 });
+      return attendanceApi.myHistory({
+        from_date: tomorrow.toISOString().split('T')[0]!,
+        to_date: next7.toISOString().split('T')[0]!,
+        page_size: 20,
+      });
     },
   });
 
@@ -267,291 +275,307 @@ export default function MyShiftsPage() {
   const stats = historyData?.stats ?? null;
   const history = historyData?.results ?? [];
   const upcoming = upcomingData?.results ?? [];
-  const isPending = clockInMutation.isPending || clockOutMutation.isPending || takeBreakMutation.isPending || resumeMutation.isPending || emergencyClockInMutation.isPending;
+  const isPending =
+    clockInMutation.isPending ||
+    clockOutMutation.isPending ||
+    takeBreakMutation.isPending ||
+    resumeMutation.isPending ||
+    emergencyClockInMutation.isPending;
 
   return (
     <>
-    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="space-y-6">
-        <PageHeader
-          title="My Shifts"
-          helpContent="View your shift schedule, clock in/out, and track your attendance history and trends."
-          actions={
-            todayShift && (todayStatus === 'UPCOMING' || todayStatus === 'SHOULD_CLOCK_IN') ? (
-              isPastShiftEndTime(todayShift) ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
-                  onClick={() => setEmergencyDialogOpen(true)}
-                  disabled={isPending}
-                >
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Emergency </span>Clock-In
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={() => clockInMutation.mutate(todayShift.id)}
-                  disabled={isPending}
-                >
-                  <LogIn className="h-4 w-4 mr-1" />
-                  Clock In
-                </Button>
-              )
-            ) : todayShift && todayStatus === 'CLOCKED_IN' ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => takeBreakMutation.mutate(todayShift.id)}
-                  disabled={isPending}
-                >
-                  <Coffee className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Take Break</span>
-                  <span className="sm:hidden">Break</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => clockOutMutation.mutate(todayShift.id)}
-                  disabled={isPending}
-                >
-                  <LogOut className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Clock Out</span>
-                  <span className="sm:hidden">Out</span>
-                </Button>
-              </div>
-            ) : todayShift && todayStatus === 'ON_BREAK' ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => resumeMutation.mutate(todayShift.id)}
-                  disabled={isPending}
-                >
-                  <Play className="h-4 w-4 mr-1" />
-                  Resume
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => clockOutMutation.mutate(todayShift.id)}
-                  disabled={isPending}
-                >
-                  <LogOut className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Clock Out</span>
-                  <span className="sm:hidden">Out</span>
-                </Button>
-              </div>
-            ) : null
-          }
-        />
-
-        {/* Secondary Actions: QR Scanner + Payroll Export */}
-        <div className="flex flex-wrap items-center gap-2">
-          <QRScannerDialog />
-          <PayrollExportDialog />
-        </div>
-
-        {/* Today's Shift Summary */}
-        {todayShift ? (
-          <Card className="border-primary/20">
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <CalendarDays className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">
-                    Today: {todayShift.shift_type_display ?? todayShift.shift_type}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatTime(todayShift.start_time)} – {formatTime(todayShift.end_time)}
-                    {todayShift.department && ` · ${todayShift.department}`}
-                  </p>
-                </div>
-              </div>
-              <Badge className={STATUS_COLORS[todayShift.status] ?? ''}>
-                {todayShift.status_display ?? todayShift.status}
-              </Badge>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-dashed">
-            <CardContent className="p-4 text-center text-muted-foreground text-sm">
-              No shift scheduled for today
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Attendance Stats */}
-        <StatsCards stats={stats} isLoading={historyLoading} />
-
-        {/* Attendance Trends Chart (Phase 2) */}
-        <AttendanceTrendsChart weeks={12} />
-
-        {/* Upcoming Shifts */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Hourglass className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">Upcoming Shifts</CardTitle>
-              <Badge variant="secondary" className="text-xs">{upcoming.length}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {upcomingLoading ? (
-              <Skeleton className="h-24 w-full" />
-            ) : upcoming.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No upcoming shifts in the next 7 days
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {upcoming.slice(0, 7).map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border p-3"
+      <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
+        <div className="space-y-6">
+          <PageHeader
+            title="My Shifts"
+            helpContent="View your shift schedule, clock in/out, and track your attendance history and trends."
+            actions={
+              todayShift && (todayStatus === 'UPCOMING' || todayStatus === 'SHOULD_CLOCK_IN') ? (
+                isPastShiftEndTime(todayShift) ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                    onClick={() => setEmergencyDialogOpen(true)}
+                    disabled={isPending}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="text-center min-w-[3.5rem]">
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(s.shift_date + 'T00:00:00').toLocaleDateString('en-KE', { weekday: 'short' })}
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {new Date(s.shift_date + 'T00:00:00').getDate()}
-                        </p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {s.shift_type_display ?? s.shift_type}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatTime(s.start_time)} – {formatTime(s.end_time)}
-                          {s.department && ` · ${s.department}`}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs shrink-0">
-                      {s.duration_hours ? `${s.duration_hours}h` : '—'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    <AlertCircle className="mr-1 h-4 w-4" />
+                    <span className="hidden sm:inline">Emergency </span>Clock-In
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => clockInMutation.mutate(todayShift.id)}
+                    disabled={isPending}
+                  >
+                    <LogIn className="mr-1 h-4 w-4" />
+                    Clock In
+                  </Button>
+                )
+              ) : todayShift && todayStatus === 'CLOCKED_IN' ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => takeBreakMutation.mutate(todayShift.id)}
+                    disabled={isPending}
+                  >
+                    <Coffee className="mr-1 h-4 w-4" />
+                    <span className="hidden sm:inline">Take Break</span>
+                    <span className="sm:hidden">Break</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => clockOutMutation.mutate(todayShift.id)}
+                    disabled={isPending}
+                  >
+                    <LogOut className="mr-1 h-4 w-4" />
+                    <span className="hidden sm:inline">Clock Out</span>
+                    <span className="sm:hidden">Out</span>
+                  </Button>
+                </div>
+              ) : todayShift && todayStatus === 'ON_BREAK' ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => resumeMutation.mutate(todayShift.id)}
+                    disabled={isPending}
+                  >
+                    <Play className="mr-1 h-4 w-4" />
+                    Resume
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => clockOutMutation.mutate(todayShift.id)}
+                    disabled={isPending}
+                  >
+                    <LogOut className="mr-1 h-4 w-4" />
+                    <span className="hidden sm:inline">Clock Out</span>
+                    <span className="sm:hidden">Out</span>
+                  </Button>
+                </div>
+              ) : null
+            }
+          />
 
-        {/* Attendance History */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base">Attendance History</CardTitle>
-                <Badge variant="secondary" className="text-xs">{historyData?.count ?? 0}</Badge>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground shrink-0">From</Label>
-                  <Input
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                    className="h-8 w-[130px] text-xs"
-                  />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground shrink-0">To</Label>
-                  <Input
-                    type="date"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                    className="h-8 w-[130px] text-xs"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveTable
-              data={history}
-              keyExtractor={(item) => item.id}
-              columns={[
-                {
-                  key: 'shift_date',
-                  header: 'Date',
-                  sortable: true,
-                  sortType: 'date' as const,
-                  cell: (item: ShiftListItem) => (
-                    <span className="text-sm font-medium">{formatDate(item.shift_date)}</span>
-                  ),
-                },
-                {
-                  key: 'shift_type',
-                  header: 'Shift',
-                  sortable: true,
-                  cell: (item: ShiftListItem) => (
-                    <span className="text-sm">{item.shift_type_display ?? item.shift_type}</span>
-                  ),
-                },
-                {
-                  key: 'start_time',
-                  header: 'Time',
-                  cell: (item: ShiftListItem) => (
-                    <span className="text-sm text-muted-foreground">
-                      {formatTime(item.start_time)} – {formatTime(item.end_time)}
-                    </span>
-                  ),
-                },
-                {
-                  key: 'duration_hours',
-                  header: 'Duration',
-                  sortable: true,
-                  sortType: 'number' as const,
-                  cell: (item: ShiftListItem) => (
-                    <span className="text-sm">{item.duration_hours ? `${item.duration_hours}h` : '—'}</span>
-                  ),
-                  hideOnMobile: true,
-                },
-                {
-                  key: 'status',
-                  header: 'Status',
-                  sortable: true,
-                  cell: (item: ShiftListItem) => (
-                    <Badge className={`${STATUS_COLORS[item.status] ?? ''} shrink-0 w-fit`}>
-                      {item.status_display ?? item.status}
-                    </Badge>
-                  ),
-                },
-              ]}
-              mobileCard={(item: ShiftListItem) => (
-                <div className="flex items-center justify-between gap-2 p-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{formatDate(item.shift_date)}</p>
+          {/* Secondary Actions: QR Scanner + Payroll Export */}
+          <div className="flex flex-wrap items-center gap-2">
+            <QRScannerDialog />
+            <PayrollExportDialog />
+          </div>
+
+          {/* Today's Shift Summary */}
+          {todayShift ? (
+            <Card className="border-primary/20">
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <CalendarDays className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">
+                      Today: {todayShift.shift_type_display ?? todayShift.shift_type}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {item.shift_type_display ?? item.shift_type} · {formatTime(item.start_time)} – {formatTime(item.end_time)}
+                      {formatTime(todayShift.start_time)} – {formatTime(todayShift.end_time)}
+                      {todayShift.department && ` · ${todayShift.department}`}
                     </p>
                   </div>
-                  <Badge className={`${STATUS_COLORS[item.status] ?? ''} shrink-0 w-fit self-start`}>
-                    {item.status_display ?? item.status}
-                  </Badge>
+                </div>
+                <Badge className={STATUS_COLORS[todayShift.status] ?? ''}>
+                  {todayShift.status_display ?? todayShift.status}
+                </Badge>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                No shift scheduled for today
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Attendance Stats */}
+          <StatsCards stats={stats} isLoading={historyLoading} />
+
+          {/* Attendance Trends Chart (Phase 2) */}
+          <AttendanceTrendsChart weeks={12} />
+
+          {/* Upcoming Shifts */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Hourglass className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base">Upcoming Shifts</CardTitle>
+                <Badge variant="secondary" className="text-xs">
+                  {upcoming.length}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {upcomingLoading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : upcoming.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No upcoming shifts in the next 7 days
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {upcoming.slice(0, 7).map((s) => (
+                    <div
+                      key={s.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="min-w-[3.5rem] text-center">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(s.shift_date + 'T00:00:00').toLocaleDateString('en-KE', {
+                              weekday: 'short',
+                            })}
+                          </p>
+                          <p className="text-sm font-semibold">
+                            {new Date(s.shift_date + 'T00:00:00').getDate()}
+                          </p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {s.shift_type_display ?? s.shift_type}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatTime(s.start_time)} – {formatTime(s.end_time)}
+                            {s.department && ` · ${s.department}`}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        {s.duration_hours ? `${s.duration_hours}h` : '—'}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
               )}
-              defaultSortColumn="shift_date"
-              defaultSortDirection="desc"
-            />
-          </CardContent>
-        </Card>
-      </div>
-    </PullToRefresh>
+            </CardContent>
+          </Card>
 
-    <EmergencyClockInDialog
-      open={emergencyDialogOpen}
-      onOpenChange={setEmergencyDialogOpen}
-      onConfirm={(payload) => emergencyClockInMutation.mutate(payload)}
-      isPending={emergencyClockInMutation.isPending}
-    />
+          {/* Attendance History */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-base">Attendance History</CardTitle>
+                  <Badge variant="secondary" className="text-xs">
+                    {historyData?.count ?? 0}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label className="shrink-0 text-xs text-muted-foreground">From</Label>
+                    <Input
+                      type="date"
+                      value={fromDate}
+                      onChange={(e) => setFromDate(e.target.value)}
+                      className="h-8 w-[130px] text-xs"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Label className="shrink-0 text-xs text-muted-foreground">To</Label>
+                    <Input
+                      type="date"
+                      value={toDate}
+                      onChange={(e) => setToDate(e.target.value)}
+                      className="h-8 w-[130px] text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveTable
+                data={history}
+                keyExtractor={(item) => item.id}
+                columns={[
+                  {
+                    key: 'shift_date',
+                    header: 'Date',
+                    sortable: true,
+                    sortType: 'date' as const,
+                    cell: (item: ShiftListItem) => (
+                      <span className="text-sm font-medium">{formatDate(item.shift_date)}</span>
+                    ),
+                  },
+                  {
+                    key: 'shift_type',
+                    header: 'Shift',
+                    sortable: true,
+                    cell: (item: ShiftListItem) => (
+                      <span className="text-sm">{item.shift_type_display ?? item.shift_type}</span>
+                    ),
+                  },
+                  {
+                    key: 'start_time',
+                    header: 'Time',
+                    cell: (item: ShiftListItem) => (
+                      <span className="text-sm text-muted-foreground">
+                        {formatTime(item.start_time)} – {formatTime(item.end_time)}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'duration_hours',
+                    header: 'Duration',
+                    sortable: true,
+                    sortType: 'number' as const,
+                    cell: (item: ShiftListItem) => (
+                      <span className="text-sm">
+                        {item.duration_hours ? `${item.duration_hours}h` : '—'}
+                      </span>
+                    ),
+                    hideOnMobile: true,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    sortable: true,
+                    cell: (item: ShiftListItem) => (
+                      <Badge className={`${STATUS_COLORS[item.status] ?? ''} w-fit shrink-0`}>
+                        {item.status_display ?? item.status}
+                      </Badge>
+                    ),
+                  },
+                ]}
+                mobileCard={(item: ShiftListItem) => (
+                  <div className="flex items-center justify-between gap-2 p-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{formatDate(item.shift_date)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.shift_type_display ?? item.shift_type} · {formatTime(item.start_time)}{' '}
+                        – {formatTime(item.end_time)}
+                      </p>
+                    </div>
+                    <Badge
+                      className={`${STATUS_COLORS[item.status] ?? ''} w-fit shrink-0 self-start`}
+                    >
+                      {item.status_display ?? item.status}
+                    </Badge>
+                  </div>
+                )}
+                defaultSortColumn="shift_date"
+                defaultSortDirection="desc"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </PullToRefresh>
+
+      <EmergencyClockInDialog
+        open={emergencyDialogOpen}
+        onOpenChange={setEmergencyDialogOpen}
+        onConfirm={(payload) => emergencyClockInMutation.mutate(payload)}
+        isPending={emergencyClockInMutation.isPending}
+      />
     </>
   );
 }

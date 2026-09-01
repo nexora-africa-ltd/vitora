@@ -49,9 +49,7 @@ const parseNumber = (value: unknown): number | undefined => {
 
 const parseStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
-    return value
-      .map((item) => (typeof item === 'string' ? item.trim() : ''))
-      .filter(Boolean);
+    return value.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean);
   }
   if (typeof value === 'string' && value.trim()) {
     return [value.trim()];
@@ -67,12 +65,10 @@ export function buildHealthcloudEligibilityViewFromRaw(
   }
 
   const raw = rawResponse;
-  const member = raw.member && typeof raw.member === 'object'
-    ? (raw.member as Record<string, unknown>)
-    : null;
-  const cover = raw.cover && typeof raw.cover === 'object'
-    ? (raw.cover as Record<string, unknown>)
-    : null;
+  const member =
+    raw.member && typeof raw.member === 'object' ? (raw.member as Record<string, unknown>) : null;
+  const cover =
+    raw.cover && typeof raw.cover === 'object' ? (raw.cover as Record<string, unknown>) : null;
 
   const contactsSource = member?.contacts;
   const contacts = Array.isArray(contactsSource)
@@ -103,7 +99,9 @@ export function buildHealthcloudEligibilityViewFromRaw(
           copayValue:
             row.copayValue === null
               ? null
-              : parseNumber(row.copayValue ?? row.copay_value ?? row.copayAmount ?? row.copay_amount),
+              : parseNumber(
+                  row.copayValue ?? row.copay_value ?? row.copayAmount ?? row.copay_amount
+                ),
           copayAppliesTo: parseStringArray(
             row.copayAppliesTo ?? row.copay_applies_to ?? row.appliesTo ?? row.applies_to
           ),
@@ -130,16 +128,10 @@ export function buildHealthcloudEligibilityViewFromRaw(
   };
 
   const coverCopayValue = parseNumber(
-    cover?.copayValue ??
-    cover?.copay_value ??
-    raw.copayValue ??
-    raw.copay_value
+    cover?.copayValue ?? cover?.copay_value ?? raw.copayValue ?? raw.copay_value
   );
   const coverCopayAppliesTo = parseStringArray(
-    cover?.copayAppliesTo ??
-    cover?.copay_applies_to ??
-    raw.copayAppliesTo ??
-    raw.copay_applies_to
+    cover?.copayAppliesTo ?? cover?.copay_applies_to ?? raw.copayAppliesTo ?? raw.copay_applies_to
   );
 
   return {
@@ -165,7 +157,9 @@ export function buildHealthcloudEligibilityView(
   if (!eligibility?.raw_response || typeof eligibility.raw_response !== 'object') {
     return null;
   }
-  return buildHealthcloudEligibilityViewFromRaw(eligibility.raw_response as Record<string, unknown>);
+  return buildHealthcloudEligibilityViewFromRaw(
+    eligibility.raw_response as Record<string, unknown>
+  );
 }
 
 export function HealthcloudEligibilityCards({
@@ -181,8 +175,8 @@ export function HealthcloudEligibilityCards({
   if (!view) return null;
 
   return (
-    <div className="rounded-md border p-3 space-y-3">
-      <div className="grid gap-3 md:grid-cols-3 text-sm">
+    <div className="space-y-3 rounded-md border p-3">
+      <div className="grid gap-3 text-sm md:grid-cols-3">
         <div>
           <p className="text-xs text-muted-foreground">Eligibility</p>
           <p className="font-medium">{eligibility.eligible ? 'Eligible' : 'Not eligible'}</p>
@@ -219,7 +213,7 @@ export function HealthcloudEligibilityCards({
       </div>
 
       <div>
-        <p className="text-xs text-muted-foreground mb-1">Contacts ({view.contacts.length})</p>
+        <p className="mb-1 text-xs text-muted-foreground">Contacts ({view.contacts.length})</p>
         {view.contacts.length === 0 ? (
           <p className="text-sm text-muted-foreground">No contacts returned.</p>
         ) : (
@@ -234,7 +228,7 @@ export function HealthcloudEligibilityCards({
       </div>
 
       <div>
-        <p className="text-xs text-muted-foreground mb-1">Benefits ({view.benefits.length})</p>
+        <p className="mb-1 text-xs text-muted-foreground">Benefits ({view.benefits.length})</p>
         {view.benefits.length === 0 ? (
           <p className="text-sm text-muted-foreground">No benefits returned.</p>
         ) : (
@@ -287,12 +281,18 @@ export function HealthcloudEligibilityCards({
 
       {(typeof view.coverCopay.value === 'number' || view.coverCopay.appliesTo.length > 0) && (
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Cover-Level Copay</p>
+          <p className="mb-1 text-xs text-muted-foreground">Cover-Level Copay</p>
           <p className="text-sm">
-            Value: {typeof view.coverCopay.value === 'number' ? view.coverCopay.value.toLocaleString() : 'N/A'}
+            Value:{' '}
+            {typeof view.coverCopay.value === 'number'
+              ? view.coverCopay.value.toLocaleString()
+              : 'N/A'}
           </p>
           <p className="text-xs text-muted-foreground">
-            Applies to: {view.coverCopay.appliesTo.length > 0 ? view.coverCopay.appliesTo.join(', ') : 'Not specified'}
+            Applies to:{' '}
+            {view.coverCopay.appliesTo.length > 0
+              ? view.coverCopay.appliesTo.join(', ')
+              : 'Not specified'}
           </p>
         </div>
       )}

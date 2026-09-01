@@ -32,13 +32,15 @@ export function initLocalDatabase(dbDir?: string): void {
     return;
   }
 
-  const dataDir = dbDir || path.join(
-    process.env.APPDATA ||
-    process.env.XDG_DATA_HOME ||
-    path.join(process.env.HOME || '/tmp', '.local', 'share'),
-    'digital.vitora.hmis',
-    'db'
-  );
+  const dataDir =
+    dbDir ||
+    path.join(
+      process.env.APPDATA ||
+        process.env.XDG_DATA_HOME ||
+        path.join(process.env.HOME || '/tmp', '.local', 'share'),
+      'digital.vitora.hmis',
+      'db'
+    );
 
   fs.mkdirSync(dataDir, { recursive: true });
   const dbPath = path.join(dataDir, 'vitora.db');

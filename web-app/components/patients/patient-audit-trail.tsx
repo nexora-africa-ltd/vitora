@@ -28,7 +28,7 @@ export function PatientAuditTrail({ patientId }: PatientAuditTrailProps) {
       <Card>
         <CardContent className="py-8 text-center">
           <p className="text-destructive">Failed to load audit trail</p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             {error instanceof Error ? error.message : 'Unknown error'}
           </p>
         </CardContent>

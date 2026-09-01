@@ -24,12 +24,7 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -198,7 +193,7 @@ export default function EquipmentDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -206,7 +201,7 @@ export default function EquipmentDetailPage() {
 
   if (!equipment) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-2">
+      <div className="flex min-h-[400px] flex-col items-center justify-center gap-2">
         <p className="text-muted-foreground">Equipment not found.</p>
         <Button variant="outline" onClick={() => router.push('/immunizations/cold-chain')}>
           Back to Cold Chain
@@ -226,11 +221,11 @@ export default function EquipmentDetailPage() {
           actions={
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={openEditDialog}>
-                <Edit className="h-4 w-4 mr-1" />
+                <Edit className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">Edit</span>
               </Button>
               <Button size="sm" onClick={() => setTempDialogOpen(true)}>
-                <Thermometer className="h-4 w-4 mr-1" />
+                <Thermometer className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">Log Temp</span>
                 <span className="sm:hidden">Log</span>
               </Button>
@@ -239,35 +234,40 @@ export default function EquipmentDetailPage() {
         />
 
         {/* Summary Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-sm font-medium truncate">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="truncate text-sm font-medium">
               {equipmentTypeLabels[equipment.equipment_type]}
               <span className="text-muted-foreground"> • S/N: {equipment.serial_number}</span>
             </p>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               {equipment.min_temp}°C – {equipment.max_temp}°C
               {equipment.location && ` • ${equipment.location}`}
             </p>
           </div>
-          <Badge className={`${statusColors[equipment.status]} shrink-0 w-fit self-start sm:self-auto`}>
-            <StatusIcon className="h-3 w-3 mr-1" />
+          <Badge
+            className={`${statusColors[equipment.status]} w-fit shrink-0 self-start sm:self-auto`}
+          >
+            <StatusIcon className="mr-1 h-3 w-3" />
             {equipment.status.replace('_', ' ')}
           </Badge>
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
-            <CardContent className="relative pt-3 pb-3">
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
+            <CardContent className="relative pb-3 pt-3">
               <p className="text-2xl font-bold">{logs.length}</p>
               <p className="text-xs text-muted-foreground">Temp Readings</p>
             </CardContent>
           </Card>
           {excursionCount > 0 && (
             <Card className="border-orange-200">
-              <CardContent className="pt-3 pb-3">
+              <CardContent className="pb-3 pt-3">
                 <div className="flex items-center gap-1">
                   <AlertTriangle className="h-4 w-4 text-orange-500" />
                   <p className="text-2xl font-bold text-orange-600">{excursionCount}</p>
@@ -278,8 +278,10 @@ export default function EquipmentDetailPage() {
           )}
           {latestTemp && (
             <Card className={latestTemp.is_excursion ? 'border-red-200' : ''}>
-              <CardContent className="pt-3 pb-3">
-                <p className={`text-2xl font-bold font-mono ${latestTemp.is_excursion ? 'text-destructive' : ''}`}>
+              <CardContent className="pb-3 pt-3">
+                <p
+                  className={`font-mono text-2xl font-bold ${latestTemp.is_excursion ? 'text-destructive' : ''}`}
+                >
                   {latestTemp.temperature}°C
                 </p>
                 <p className="text-xs text-muted-foreground">Latest Reading</p>
@@ -288,7 +290,7 @@ export default function EquipmentDetailPage() {
           )}
           {incidents.length > 0 && (
             <Card className="border-red-200">
-              <CardContent className="pt-3 pb-3">
+              <CardContent className="pb-3 pt-3">
                 <p className="text-2xl font-bold text-destructive">{incidents.length}</p>
                 <p className="text-xs text-muted-foreground">Incidents</p>
               </CardContent>
@@ -302,24 +304,24 @@ export default function EquipmentDetailPage() {
             <CardTitle className="text-base">Equipment Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
               <div className="flex items-start gap-2">
-                <Tag className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <Tag className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <div>
                   <p className="text-muted-foreground">Type</p>
                   <p className="font-medium">{equipmentTypeLabels[equipment.equipment_type]}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <Hash className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <Hash className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <div>
                   <p className="text-muted-foreground">Serial Number</p>
-                  <p className="font-medium font-mono">{equipment.serial_number}</p>
+                  <p className="font-mono font-medium">{equipment.serial_number}</p>
                 </div>
               </div>
               {equipment.model_number && (
                 <div className="flex items-start gap-2">
-                  <Hash className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <Hash className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <div>
                     <p className="text-muted-foreground">Model Number</p>
                     <p className="font-medium">{equipment.model_number}</p>
@@ -328,7 +330,7 @@ export default function EquipmentDetailPage() {
               )}
               {equipment.manufacturer && (
                 <div className="flex items-start gap-2">
-                  <Factory className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <Factory className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <div>
                     <p className="text-muted-foreground">Manufacturer</p>
                     <p className="font-medium">{equipment.manufacturer}</p>
@@ -337,7 +339,7 @@ export default function EquipmentDetailPage() {
               )}
               {equipment.location && (
                 <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <div>
                     <p className="text-muted-foreground">Location</p>
                     <p className="font-medium">{equipment.location}</p>
@@ -345,15 +347,17 @@ export default function EquipmentDetailPage() {
                 </div>
               )}
               <div className="flex items-start gap-2">
-                <Thermometer className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <Thermometer className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <div>
                   <p className="text-muted-foreground">Temp Range</p>
-                  <p className="font-medium font-mono">{equipment.min_temp}°C – {equipment.max_temp}°C</p>
+                  <p className="font-mono font-medium">
+                    {equipment.min_temp}°C – {equipment.max_temp}°C
+                  </p>
                 </div>
               </div>
               {equipment.capacity_litres != null && (
                 <div className="flex items-start gap-2">
-                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <Tag className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <div>
                     <p className="text-muted-foreground">Capacity</p>
                     <p className="font-medium">{equipment.capacity_litres} litres</p>
@@ -361,7 +365,7 @@ export default function EquipmentDetailPage() {
                 </div>
               )}
               <div className="flex items-start gap-2">
-                <Zap className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <Zap className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <div>
                   <p className="text-muted-foreground">Power</p>
                   <p className="font-medium">
@@ -373,13 +377,15 @@ export default function EquipmentDetailPage() {
             </div>
 
             {/* Maintenance dates */}
-            {(equipment.installation_date || equipment.last_maintenance_date || equipment.next_maintenance_date) && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-sm font-medium mb-2 flex items-center gap-1">
+            {(equipment.installation_date ||
+              equipment.last_maintenance_date ||
+              equipment.next_maintenance_date) && (
+              <div className="mt-4 border-t pt-4">
+                <p className="mb-2 flex items-center gap-1 text-sm font-medium">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   Maintenance Schedule
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
                   {equipment.installation_date && (
                     <div>
                       <p className="text-muted-foreground">Installed</p>
@@ -395,7 +401,9 @@ export default function EquipmentDetailPage() {
                   {equipment.next_maintenance_date && (
                     <div>
                       <p className="text-muted-foreground">Next Maintenance</p>
-                      <p className={`font-medium ${new Date(equipment.next_maintenance_date) < new Date() ? 'text-destructive' : ''}`}>
+                      <p
+                        className={`font-medium ${new Date(equipment.next_maintenance_date) < new Date() ? 'text-destructive' : ''}`}
+                      >
                         {formatDate(equipment.next_maintenance_date)}
                         {new Date(equipment.next_maintenance_date) < new Date() && ' (overdue)'}
                       </p>
@@ -406,9 +414,9 @@ export default function EquipmentDetailPage() {
             )}
 
             {equipment.notes && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-sm text-muted-foreground mb-1">Notes</p>
-                <p className="text-sm whitespace-pre-wrap">{equipment.notes}</p>
+              <div className="mt-4 border-t pt-4">
+                <p className="mb-1 text-sm text-muted-foreground">Notes</p>
+                <p className="whitespace-pre-wrap text-sm">{equipment.notes}</p>
               </div>
             )}
           </CardContent>
@@ -416,31 +424,36 @@ export default function EquipmentDetailPage() {
 
         {/* Temperature History */}
         <Card>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Temperature History</CardTitle>
             <Button size="sm" variant="outline" onClick={() => setTempDialogOpen(true)}>
-              <Thermometer className="h-3.5 w-3.5 mr-1" /> Log
+              <Thermometer className="mr-1 h-3.5 w-3.5" /> Log
             </Button>
           </CardHeader>
           <CardContent className="px-0 sm:px-6">
             {logs.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-6 sm:px-0">No temperature readings recorded yet.</p>
+              <p className="px-6 text-sm text-muted-foreground sm:px-0">
+                No temperature readings recorded yet.
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[450px] text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 pl-6 sm:pl-0 font-medium">Temp</th>
+                      <th className="pb-2 pl-6 font-medium sm:pl-0">Temp</th>
                       <th className="pb-2 font-medium">Recorded</th>
                       <th className="pb-2 font-medium">By</th>
                       <th className="pb-2 font-medium">Status</th>
-                      <th className="pb-2 pr-6 sm:pr-0 font-medium">Action</th>
+                      <th className="pb-2 pr-6 font-medium sm:pr-0">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {logs.map((log) => (
-                      <tr key={log.id} className={`border-b last:border-0 ${log.is_excursion ? 'bg-red-50' : ''}`}>
-                        <td className="py-2 pl-6 sm:pl-0 font-mono font-medium">
+                      <tr
+                        key={log.id}
+                        className={`border-b last:border-0 ${log.is_excursion ? 'bg-red-50' : ''}`}
+                      >
+                        <td className="py-2 pl-6 font-mono font-medium sm:pl-0">
                           <span className={log.is_excursion ? 'text-destructive' : ''}>
                             {log.temperature}°C
                           </span>
@@ -449,12 +462,14 @@ export default function EquipmentDetailPage() {
                         <td className="py-2">{log.recorded_by_name || '—'}</td>
                         <td className="py-2">
                           {log.is_excursion ? (
-                            <Badge variant="destructive" className="text-xs">Excursion</Badge>
+                            <Badge variant="destructive" className="text-xs">
+                              Excursion
+                            </Badge>
                           ) : (
-                            <Badge className="bg-green-100 text-green-800 text-xs">Normal</Badge>
+                            <Badge className="bg-green-100 text-xs text-green-800">Normal</Badge>
                           )}
                         </td>
-                        <td className="py-2 pr-6 sm:pr-0 max-w-[200px] truncate">
+                        <td className="max-w-[200px] truncate py-2 pr-6 sm:pr-0">
                           {log.action_taken || '—'}
                         </td>
                       </tr>
@@ -477,21 +492,21 @@ export default function EquipmentDetailPage() {
                 {incidents.map((inc) => (
                   <div
                     key={inc.id}
-                    className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="flex cursor-pointer flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
                     onClick={() => router.push('/immunizations/incidents')}
                   >
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{inc.title}</p>
+                      <p className="truncate font-medium">{inc.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatDate(inc.occurred_at)}
                         {inc.doses_lost > 0 && ` • ${inc.doses_lost} doses lost`}
                       </p>
                     </div>
-                    <div className="flex gap-2 shrink-0">
-                      <Badge className={`${severityColors[inc.severity] || ''} text-xs w-fit`}>
+                    <div className="flex shrink-0 gap-2">
+                      <Badge className={`${severityColors[inc.severity] || ''} w-fit text-xs`}>
                         {inc.severity}
                       </Badge>
-                      <Badge className={`${incidentStatusColors[inc.status] || ''} text-xs w-fit`}>
+                      <Badge className={`${incidentStatusColors[inc.status] || ''} w-fit text-xs`}>
                         {inc.status}
                       </Badge>
                     </div>
@@ -511,14 +526,18 @@ export default function EquipmentDetailPage() {
                 <HelpPopover content="Record a temperature reading. Excursion alerts are triggered automatically if the reading falls outside the acceptable range." />
               </div>
             </DialogHeader>
-            <div className="space-y-3 sm:space-y-4 pt-2">
+            <div className="space-y-3 pt-2 sm:space-y-4">
               <p className="text-sm text-muted-foreground">
                 Equipment: <span className="font-medium text-foreground">{equipment.name}</span>
-                <span className="text-xs ml-1">({equipment.min_temp}°C – {equipment.max_temp}°C)</span>
+                <span className="ml-1 text-xs">
+                  ({equipment.min_temp}°C – {equipment.max_temp}°C)
+                </span>
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 <div>
-                  <Label>Temperature (°C) <span className="text-destructive">*</span></Label>
+                  <Label>
+                    Temperature (°C) <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     type="number"
                     step="0.1"
@@ -526,12 +545,20 @@ export default function EquipmentDetailPage() {
                     onChange={(e) => setTemperature(e.target.value)}
                     onBlur={() => setTempTouched((t) => ({ ...t, temperature: true }))}
                     placeholder="e.g. 4.5"
-                    className={tempTouched.temperature && !temperature ? 'border-destructive focus-visible:ring-destructive' : ''}
+                    className={
+                      tempTouched.temperature && !temperature
+                        ? 'border-destructive focus-visible:ring-destructive'
+                        : ''
+                    }
                   />
-                  {tempTouched.temperature && !temperature && <p className="text-xs text-destructive mt-1">Temperature is required</p>}
+                  {tempTouched.temperature && !temperature && (
+                    <p className="mt-1 text-xs text-destructive">Temperature is required</p>
+                  )}
                 </div>
                 <div>
-                  <Label>Recorded At <span className="text-destructive">*</span></Label>
+                  <Label>
+                    Recorded At <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     type="datetime-local"
                     value={recordedAt}
@@ -548,13 +575,15 @@ export default function EquipmentDetailPage() {
                   rows={2}
                 />
               </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                <Button variant="outline" onClick={() => setTempDialogOpen(false)}>Cancel</Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={() => setTempDialogOpen(false)}>
+                  Cancel
+                </Button>
                 <Button
                   onClick={() => logTempMutation.mutate()}
                   disabled={!temperature || logTempMutation.isPending}
                 >
-                  {logTempMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {logTempMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                   Log Reading
                 </Button>
               </div>
@@ -571,16 +600,23 @@ export default function EquipmentDetailPage() {
                 <HelpPopover content="Update equipment status and notes. Mark equipment as faulty, under repair, or decommissioned." />
               </div>
             </DialogHeader>
-            <div className="space-y-3 sm:space-y-4 pt-2">
+            <div className="space-y-3 pt-2 sm:space-y-4">
               <div>
-                <Label>Status <span className="text-destructive">*</span></Label>
-                <Select value={editStatus} onValueChange={(v) => setEditStatus(v as ColdChainEquipmentStatus)}>
+                <Label>
+                  Status <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={editStatus}
+                  onValueChange={(v) => setEditStatus(v as ColdChainEquipmentStatus)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {STATUS_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -594,13 +630,12 @@ export default function EquipmentDetailPage() {
                   rows={3}
                 />
               </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-                <Button
-                  onClick={() => updateMutation.mutate()}
-                  disabled={updateMutation.isPending}
-                >
-                  {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+                  {updateMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                   Save
                 </Button>
               </div>

@@ -1,6 +1,15 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  ReactNode,
+} from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, type FacilityModules, type UserFacility } from '@/lib/auth/context';
 import { facilitiesApi } from '@/lib/api/facilities';
@@ -85,8 +94,8 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
     queryKey: ['facility-detail', facilityId],
     queryFn: () => facilitiesApi.get(facilityId as number),
     enabled: facilityId !== null && !mustChangePassword,
-    staleTime: 5 * 60 * 1000,  // 5 minutes — facility data rarely changes
-    gcTime: 30 * 60 * 1000,    // 30 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes — facility data rarely changes
+    gcTime: 30 * 60 * 1000, // 30 minutes
   });
 
   // Sync active facility ID to API client for X-Facility-Id header.
@@ -127,9 +136,12 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
   }
 
   // switchFacility: convenience wrapper around setFacilityOverride for branch switching
-  const switchFacility = useCallback((target: UserFacility) => {
-    setFacilityOverride(target);
-  }, [setFacilityOverride]);
+  const switchFacility = useCallback(
+    (target: UserFacility) => {
+      setFacilityOverride(target);
+    },
+    [setFacilityOverride]
+  );
 
   const value = useMemo<FacilityContextValue>(
     () => ({
@@ -145,14 +157,21 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
       setFacilityOverride,
       clearFacilityOverride,
     }),
-    [facility, facilityDetail, organization, assignedFacility, facilityOverride, isLoading, hasModule, switchFacility, setFacilityOverride, clearFacilityOverride],
+    [
+      facility,
+      facilityDetail,
+      organization,
+      assignedFacility,
+      facilityOverride,
+      isLoading,
+      hasModule,
+      switchFacility,
+      setFacilityOverride,
+      clearFacilityOverride,
+    ]
   );
 
-  return (
-    <FacilityContext.Provider value={value}>
-      {children}
-    </FacilityContext.Provider>
-  );
+  return <FacilityContext.Provider value={value}>{children}</FacilityContext.Provider>;
 }
 
 export function useFacility(): FacilityContextValue {

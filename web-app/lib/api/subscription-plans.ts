@@ -14,7 +14,7 @@ import type {
 
 export const subscriptionPlansApi = {
   async list(
-    params?: Record<string, string | number | boolean | undefined>,
+    params?: Record<string, string | number | boolean | undefined>
   ): Promise<PaginatedResponse<SubscriptionPlanListItem>> {
     const response = await apiClient.get('/api/subscription-plans/', { params });
     return parseResponse(PaginatedSubscriptionPlanListSchema, response.data, {

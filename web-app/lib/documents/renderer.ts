@@ -95,9 +95,7 @@ export function renderSignatureColumn(signature?: SignatureInfo): string {
     return `<div class="sig">Signature &amp; Stamp</div>`;
   }
   const signedDate = formatDateTime(signature.signed_at);
-  const status = signature.is_valid !== false
-    ? '✓ Digitally Signed'
-    : '⚠ Signature Invalid';
+  const status = signature.is_valid !== false ? '✓ Digitally Signed' : '⚠ Signature Invalid';
   const statusColor = signature.is_valid !== false ? '#16a34a' : '#dc2626';
   return `<div class="sig">
       <span style="color: ${statusColor}; font-weight: 600; font-size: 11px;">${status}</span><br />
@@ -110,10 +108,7 @@ export function renderSignatureColumn(signature?: SignatureInfo): string {
  * Resolve a dot-notation path from an object
  * e.g., resolveDataPath({ patient: { name: "John" } }, "patient.name") → "John"
  */
-export function resolveDataPath(
-  data: Record<string, unknown>,
-  path: string
-): unknown {
+export function resolveDataPath(data: Record<string, unknown>, path: string): unknown {
   if (!path || !data) return undefined;
 
   const parts = path.split('.');
@@ -184,11 +179,7 @@ export function replaceBindings(
 /**
  * Process a repeater section (e.g., table rows for medications)
  */
-export function processRepeater(
-  template: string,
-  repeater: Repeater,
-  items: unknown[]
-): string {
+export function processRepeater(template: string, repeater: Repeater, items: unknown[]): string {
   if (!items || !Array.isArray(items) || items.length === 0) {
     return template;
   }
@@ -268,10 +259,7 @@ export async function generateQRHtml(
  * @param size - Size in pixels
  * @returns Promise resolving to img tag HTML
  */
-export async function generateQRImageHtml(
-  data: string,
-  size = 90
-): Promise<string> {
+export async function generateQRImageHtml(data: string, size = 90): Promise<string> {
   const dataUri = await generateQRDataUri(data, { size });
   return `<img src="${dataUri}" alt="QR Code" width="${size}" height="${size}" style="display: block;" />`;
 }
@@ -499,10 +487,7 @@ export function renderDocument(
   // 2. Process repeaters (table rows, etc.)
   if (schema.repeaters) {
     for (const repeater of schema.repeaters) {
-      const items = resolveDataPath(
-        data as Record<string, unknown>,
-        repeater.source
-      ) as unknown[];
+      const items = resolveDataPath(data as Record<string, unknown>, repeater.source) as unknown[];
       if (items) {
         html = processRepeater(html, repeater, items);
       }
@@ -512,20 +497,10 @@ export function renderDocument(
   // 3. Generate QR codes (placeholder for sync version)
   if (schema.assets?.qr) {
     const qrAsset = schema.assets.qr;
-    const qrData = resolveDataPath(
-      data as Record<string, unknown>,
-      qrAsset.source
-    );
+    const qrData = resolveDataPath(data as Record<string, unknown>, qrAsset.source);
     if (qrData) {
-      const qrHtml = generateQRPlaceholder(
-        String(qrData),
-        qrAsset.width,
-        qrAsset.height
-      );
-      html = html.replace(
-        /<div class="qr">[\s\S]*?<\/div>/i,
-        `<div class="qr">${qrHtml}</div>`
-      );
+      const qrHtml = generateQRPlaceholder(String(qrData), qrAsset.width, qrAsset.height);
+      html = html.replace(/<div class="qr">[\s\S]*?<\/div>/i, `<div class="qr">${qrHtml}</div>`);
     }
   }
 
@@ -561,10 +536,7 @@ export async function renderDocumentAsync(
     const qrBlockHtml = await generateQRBlockHtml(qrContent, {
       size: schema.assets?.qr?.width || 90,
     });
-    html = html.replace(
-      /<div class="qr">[\s\S]*?<\/div>/i,
-      `<div class="qr">${qrBlockHtml}</div>`
-    );
+    html = html.replace(/<div class="qr">[\s\S]*?<\/div>/i, `<div class="qr">${qrBlockHtml}</div>`);
   }
 
   return html;
@@ -603,8 +575,8 @@ export function buildPrintDocument(
 }
 
 function isTauriWebView(): boolean {
-  return typeof window !== 'undefined' && (
-    '__TAURI__' in window || '__TAURI_INTERNALS__' in window
+  return (
+    typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
   );
 }
 

@@ -139,6 +139,10 @@ curl -sSL https://get.vitora.digital/hub | sudo bash -s -- --non-interactive
 # Download and run (as Administrator)
 irm https://get.vitora.digital/hub.ps1 | iex
 
+# or
+
+irm https://get.vitora.digital/releases/install-hub-windows.ps1 | iex
+
 # Or with specific version
 powershell -ExecutionPolicy Bypass -File install-hub-windows.ps1 -Version 0.4.0
 ```

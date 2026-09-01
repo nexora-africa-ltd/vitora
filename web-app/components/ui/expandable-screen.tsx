@@ -1,83 +1,74 @@
-"use client"
+'use client';
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react"
-import { X } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
-import { cn } from "@/lib/utils"
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { cn } from '@/lib/utils';
 
 // Context
 interface ExpandableScreenContextValue {
-  isExpanded: boolean
-  expand: () => void
-  collapse: () => void
-  layoutId: string
-  triggerRadius: string
-  contentRadius: string
-  animationDuration: number
+  isExpanded: boolean;
+  expand: () => void;
+  collapse: () => void;
+  layoutId: string;
+  triggerRadius: string;
+  contentRadius: string;
+  animationDuration: number;
 }
 
-const ExpandableScreenContext =
-  createContext<ExpandableScreenContextValue | null>(null)
+const ExpandableScreenContext = createContext<ExpandableScreenContextValue | null>(null);
 
 function useExpandableScreen() {
-  const context = useContext(ExpandableScreenContext)
+  const context = useContext(ExpandableScreenContext);
   if (!context) {
-    throw new Error(
-      "useExpandableScreen must be used within an ExpandableScreen"
-    )
+    throw new Error('useExpandableScreen must be used within an ExpandableScreen');
   }
-  return context
+  return context;
 }
 
 // Root Component
 interface ExpandableScreenProps {
-  children: ReactNode
-  defaultExpanded?: boolean
-  onExpandChange?: (expanded: boolean) => void
-  layoutId?: string
-  triggerRadius?: string
-  contentRadius?: string
-  animationDuration?: number
-  lockScroll?: boolean
+  children: ReactNode;
+  defaultExpanded?: boolean;
+  onExpandChange?: (expanded: boolean) => void;
+  layoutId?: string;
+  triggerRadius?: string;
+  contentRadius?: string;
+  animationDuration?: number;
+  lockScroll?: boolean;
 }
 
 export function ExpandableScreen({
   children,
   defaultExpanded = false,
   onExpandChange,
-  layoutId = "expandable-card",
-  triggerRadius = "100px",
-  contentRadius = "24px",
+  layoutId = 'expandable-card',
+  triggerRadius = '100px',
+  contentRadius = '24px',
   animationDuration = 0.3,
   lockScroll = true,
 }: ExpandableScreenProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const expand = () => {
-    setIsExpanded(true)
-    onExpandChange?.(true)
-  }
+    setIsExpanded(true);
+    onExpandChange?.(true);
+  };
 
   const collapse = () => {
-    setIsExpanded(false)
-    onExpandChange?.(false)
-  }
+    setIsExpanded(false);
+    onExpandChange?.(false);
+  };
 
   useEffect(() => {
     if (lockScroll) {
       if (isExpanded) {
-        document.body.style.overflow = "hidden"
+        document.body.style.overflow = 'hidden';
       } else {
-        document.body.style.overflow = "unset"
+        document.body.style.overflow = 'unset';
       }
     }
-  }, [isExpanded, lockScroll])
+  }, [isExpanded, lockScroll]);
 
   return (
     <ExpandableScreenContext.Provider
@@ -93,27 +84,27 @@ export function ExpandableScreen({
     >
       {children}
     </ExpandableScreenContext.Provider>
-  )
+  );
 }
 
 // Trigger Component
 interface ExpandableScreenTriggerProps {
-  children: ReactNode
-  className?: string
-  backgroundClassName?: string
+  children: ReactNode;
+  className?: string;
+  backgroundClassName?: string;
 }
 
 export function ExpandableScreenTrigger({
   children,
-  className = "",
-  backgroundClassName = "",
+  className = '',
+  backgroundClassName = '',
 }: ExpandableScreenTriggerProps) {
-  const { isExpanded, expand, layoutId, triggerRadius } = useExpandableScreen()
+  const { isExpanded, expand, layoutId, triggerRadius } = useExpandableScreen();
 
   return (
     <AnimatePresence initial={false}>
       {!isExpanded && (
-        <motion.div className={`inline-block relative ${className}`}>
+        <motion.div className={`relative inline-block ${className}`}>
           {/* Background layer with shared layoutId for morphing */}
           <motion.div
             style={{
@@ -122,7 +113,7 @@ export function ExpandableScreenTrigger({
             layout
             layoutId={layoutId}
             className={cn(
-              "absolute inset-0 transform-gpu will-change-transform",
+              'absolute inset-0 transform-gpu will-change-transform',
               backgroundClassName
             )}
           />
@@ -141,38 +132,38 @@ export function ExpandableScreenTrigger({
         </motion.div>
       )}
     </AnimatePresence>
-  )
+  );
 }
 
 // Content Component
 interface ExpandableScreenContentProps {
-  children: ReactNode
-  className?: string
-  overlayClassName?: string
-  showCloseButton?: boolean
-  closeButtonClassName?: string
-  closeOnBackdropClick?: boolean
-  backdropClassName?: string
+  children: ReactNode;
+  className?: string;
+  overlayClassName?: string;
+  showCloseButton?: boolean;
+  closeButtonClassName?: string;
+  closeOnBackdropClick?: boolean;
+  backdropClassName?: string;
 }
 
 export function ExpandableScreenContent({
   children,
-  className = "",
-  overlayClassName = "",
+  className = '',
+  overlayClassName = '',
   showCloseButton = true,
-  closeButtonClassName = "",
+  closeButtonClassName = '',
   closeOnBackdropClick = false,
-  backdropClassName = "",
+  backdropClassName = '',
 }: ExpandableScreenContentProps) {
   const { isExpanded, collapse, layoutId, contentRadius, animationDuration } =
-    useExpandableScreen()
+    useExpandableScreen();
 
   return (
     <AnimatePresence initial={false}>
       {isExpanded && (
         <div
           className={cn(
-            "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-2",
+            'fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-2',
             overlayClassName
           )}
         >
@@ -180,10 +171,7 @@ export function ExpandableScreenContent({
             <button
               type="button"
               aria-label="Close"
-              className={cn(
-                "absolute inset-0 z-0 bg-black/50 backdrop-blur-sm",
-                backdropClassName
-              )}
+              className={cn('absolute inset-0 z-0 bg-black/50 backdrop-blur-sm', backdropClassName)}
               onClick={collapse}
             />
           )}
@@ -196,7 +184,7 @@ export function ExpandableScreenContent({
             }}
             layout
             className={cn(
-              "relative z-10 flex h-full w-full overflow-y-auto transform-gpu will-change-transform",
+              'relative z-10 flex h-full w-full transform-gpu overflow-y-auto will-change-transform',
               className
             )}
           >
@@ -212,9 +200,8 @@ export function ExpandableScreenContent({
             {showCloseButton && (
               <motion.button
                 onClick={collapse}
-                className={`absolute right-6 top-6 z-30 flex h-10 w-10 items-center justify-center transition-colors rounded-full ${
-                  closeButtonClassName ||
-                  "text-white bg-transparent hover:bg-white/10"
+                className={`absolute right-6 top-6 z-30 flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
+                  closeButtonClassName || 'bg-transparent text-white hover:bg-white/10'
                 }`}
                 aria-label="Close"
               >
@@ -225,32 +212,32 @@ export function ExpandableScreenContent({
         </div>
       )}
     </AnimatePresence>
-  )
+  );
 }
 
 // Background Component (optional)
 interface ExpandableScreenBackgroundProps {
-  trigger?: ReactNode
-  content?: ReactNode
-  className?: string
+  trigger?: ReactNode;
+  content?: ReactNode;
+  className?: string;
 }
 
 export function ExpandableScreenBackground({
   trigger,
   content,
-  className = "",
+  className = '',
 }: ExpandableScreenBackgroundProps) {
-  const { isExpanded } = useExpandableScreen()
+  const { isExpanded } = useExpandableScreen();
 
   if (isExpanded && content) {
-    return <div className={className}>{content}</div>
+    return <div className={className}>{content}</div>;
   }
 
   if (!isExpanded && trigger) {
-    return <div className={className}>{trigger}</div>
+    return <div className={className}>{trigger}</div>;
   }
 
-  return null
+  return null;
 }
 
-export { useExpandableScreen }
+export { useExpandableScreen };

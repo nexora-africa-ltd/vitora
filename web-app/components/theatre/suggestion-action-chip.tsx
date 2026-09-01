@@ -4,19 +4,17 @@ import { Check, X, Minus, ShoppingCart, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { AIAdvisoryOrderLink, AIAdvisoryOrderLinkActionRequest } from '@/lib/types/ai';
 
 interface SuggestionActionChipProps {
   /** The advisory link for this suggestion (undefined if not seeded yet). */
   link: AIAdvisoryOrderLink | undefined;
   /** Callback to action the link. */
-  onAction: (linkId: number, data: AIAdvisoryOrderLinkActionRequest) => Promise<AIAdvisoryOrderLink | null>;
+  onAction: (
+    linkId: number,
+    data: AIAdvisoryOrderLinkActionRequest
+  ) => Promise<AIAdvisoryOrderLink | null>;
   /** Whether this category is orderable (medications, investigations). */
   orderable?: boolean;
   /** Callback when user wants to create an order for this suggestion. */
@@ -24,8 +22,16 @@ interface SuggestionActionChipProps {
 }
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  SUGGESTED: { bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', label: 'Pending' },
-  ORDERED: { bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', label: 'Ordered' },
+  SUGGESTED: {
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-600 dark:text-amber-400',
+    label: 'Pending',
+  },
+  ORDERED: {
+    bg: 'bg-emerald-500/10',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    label: 'Ordered',
+  },
   DECLINED: { bg: 'bg-red-500/10', text: 'text-red-600 dark:text-red-400', label: 'Declined' },
   NOT_APPLICABLE: { bg: 'bg-muted', text: 'text-muted-foreground', label: 'N/A' },
 };
@@ -52,14 +58,21 @@ export function SuggestionActionChip({
 
   if (!link) return null;
 
-  const defaultStyle = { bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', label: 'Pending' };
+  const defaultStyle = {
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-600 dark:text-amber-400',
+    label: 'Pending',
+  };
   const style = STATUS_STYLES[link.status] ?? defaultStyle;
   const Icon = STATUS_ICONS[link.status] as typeof Check | undefined;
 
   // Already actioned — show status badge
   if (link.status !== 'SUGGESTED') {
     return (
-      <Badge variant="secondary" className={`ml-auto shrink-0 gap-1 text-[10px] ${style.bg} ${style.text}`}>
+      <Badge
+        variant="secondary"
+        className={`ml-auto shrink-0 gap-1 text-[10px] ${style.bg} ${style.text}`}
+      >
         {Icon ? <Icon className="h-3 w-3" /> : null}
         {style.label}
         {link.order_number ? ` • ${link.order_number}` : ''}
@@ -88,10 +101,16 @@ export function SuggestionActionChip({
                 disabled={acting}
                 onClick={() => onCreateOrder(link)}
               >
-                {acting ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShoppingCart className="h-3 w-3" />}
+                {acting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <ShoppingCart className="h-3 w-3" />
+                )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top"><p>Create order</p></TooltipContent>
+            <TooltipContent side="top">
+              <p>Create order</p>
+            </TooltipContent>
           </Tooltip>
         ) : null}
 
@@ -108,7 +127,9 @@ export function SuggestionActionChip({
               {acting ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top"><p>Decline</p></TooltipContent>
+          <TooltipContent side="top">
+            <p>Decline</p>
+          </TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -121,10 +142,16 @@ export function SuggestionActionChip({
               disabled={acting}
               onClick={() => void handleAction('NOT_APPLICABLE')}
             >
-              {acting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Minus className="h-3 w-3" />}
+              {acting ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Minus className="h-3 w-3" />
+              )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top"><p>Not applicable</p></TooltipContent>
+          <TooltipContent side="top">
+            <p>Not applicable</p>
+          </TooltipContent>
         </Tooltip>
       </span>
     </TooltipProvider>

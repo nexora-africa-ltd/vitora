@@ -58,7 +58,8 @@ export function VitalInput({
 
   const inputStatusClassName = cn(
     status === 'critical' && 'border-destructive bg-destructive/5 focus-within:ring-destructive/30',
-    status === 'warning' && 'border-amber-500 bg-amber-50 dark:bg-amber-950/20 focus-within:ring-amber-500/30'
+    status === 'warning' &&
+      'border-amber-500 bg-amber-50 dark:bg-amber-950/20 focus-within:ring-amber-500/30'
   );
 
   return (
@@ -123,7 +124,8 @@ export function BloodPressureInput({
 
   const inputStatusClassName = cn(
     status === 'critical' && 'border-destructive bg-destructive/5 focus-within:ring-destructive/30',
-    status === 'warning' && 'border-amber-500 bg-amber-50 dark:bg-amber-950/20 focus-within:ring-amber-500/30'
+    status === 'warning' &&
+      'border-amber-500 bg-amber-50 dark:bg-amber-950/20 focus-within:ring-amber-500/30'
   );
 
   const systolicError = formState.errors.blood_pressure_systolic;
@@ -132,9 +134,7 @@ export function BloodPressureInput({
 
   return (
     <FormItem className={cn('space-y-2', className)}>
-      <Label className="flex items-center gap-2">
-        Blood Pressure
-      </Label>
+      <Label className="flex items-center gap-2">Blood Pressure</Label>
       <InputGroup
         data-disabled={disabled}
         className={cn(inputStatusClassName, hasError && 'border-destructive')}
@@ -153,7 +153,7 @@ export function BloodPressureInput({
                 const val = e.target.value;
                 field.onChange(val === '' ? null : parseInt(val));
               }}
-              className="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               disabled={disabled}
             />
           )}
@@ -173,7 +173,7 @@ export function BloodPressureInput({
                 const val = e.target.value;
                 field.onChange(val === '' ? null : parseInt(val));
               }}
-              className="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               disabled={disabled}
             />
           )}

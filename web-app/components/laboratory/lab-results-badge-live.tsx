@@ -136,11 +136,5 @@ export function LabResultsBadgeLive({
     onMessage: handleMessage,
   });
 
-  return (
-    <LabResultsBadge
-      hasResult={!!result}
-      result={result}
-      showValue={showValue}
-    />
-  );
+  return <LabResultsBadge hasResult={!!result} result={result} showValue={showValue} />;
 }

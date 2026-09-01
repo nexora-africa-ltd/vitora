@@ -61,8 +61,11 @@ export default function SocialWorkDashboardPage() {
         title="Social Work Services"
         helpContent="Manage social work cases, referrals, and interventions. Track GBV, child protection, poverty assessment, and psychosocial support."
         actions={
-          <Button onClick={() => router.push('/allied-health/social-work/cases/new')} disabled={!canCreateRoute('/allied-health/social-work/cases/new')}>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button
+            onClick={() => router.push('/allied-health/social-work/cases/new')}
+            disabled={!canCreateRoute('/allied-health/social-work/cases/new')}
+          >
+            <Plus className="mr-2 h-4 w-4" />
             New Case
           </Button>
         }
@@ -77,7 +80,7 @@ export default function SocialWorkDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {statsLoading ? '...' : (queueStats?.waiting_count || 0)}
+              {statsLoading ? '...' : queueStats?.waiting_count || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               {queueStats?.in_consultation_count || 0} in session
@@ -92,11 +95,9 @@ export default function SocialWorkDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {statsLoading ? '...' : (swStats?.open_cases_count || 0)}
+              {statsLoading ? '...' : swStats?.open_cases_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Active interventions
-            </p>
+            <p className="text-xs text-muted-foreground">Active interventions</p>
           </CardContent>
         </Card>
 
@@ -107,11 +108,9 @@ export default function SocialWorkDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">
-              {statsLoading ? '...' : (swStats?.urgent_count || 0)}
+              {statsLoading ? '...' : swStats?.urgent_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Require immediate attention
-            </p>
+            <p className="text-xs text-muted-foreground">Require immediate attention</p>
           </CardContent>
         </Card>
 
@@ -122,11 +121,9 @@ export default function SocialWorkDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {statsLoading ? '...' : (swStats?.this_week_count || 0)}
+              {statsLoading ? '...' : swStats?.this_week_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              New cases opened
-            </p>
+            <p className="text-xs text-muted-foreground">New cases opened</p>
           </CardContent>
         </Card>
       </div>
@@ -177,11 +174,11 @@ export default function SocialWorkDashboardPage() {
                     {queueData.results.map((visit) => (
                       <div
                         key={visit.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                        className="flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                         onClick={() => router.push(`/clinics/visits/${visit.id}`)}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                             <User className="h-5 w-5 text-muted-foreground" />
                           </div>
                           <div>
@@ -194,7 +191,8 @@ export default function SocialWorkDashboardPage() {
                         <div className="flex items-center gap-3">
                           <div className="text-right text-sm">
                             <p className="text-muted-foreground">
-                              {visit.registered_at && format(new Date(visit.registered_at), 'HH:mm')}
+                              {visit.registered_at &&
+                                format(new Date(visit.registered_at), 'HH:mm')}
                             </p>
                           </div>
                           <Badge className={statusVariants[visit.status] || 'bg-gray-100'}>

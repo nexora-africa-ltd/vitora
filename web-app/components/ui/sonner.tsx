@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import {
   CircleCheckIcon,
@@ -6,16 +6,16 @@ import {
   Loader2Icon,
   OctagonXIcon,
   TriangleAlertIcon,
-} from "lucide-react"
-import { useTheme } from "next-themes"
-import { Toaster as Sonner, type ToasterProps } from "sonner"
+} from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { Toaster as Sonner, type ToasterProps } from 'sonner';
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const { theme = 'system' } = useTheme();
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={theme as ToasterProps['theme']}
       className="toaster group"
       position="bottom-right"
       visibleToasts={4}
@@ -32,33 +32,34 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       style={
         {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
+          '--normal-bg': 'var(--popover)',
+          '--normal-text': 'var(--popover-foreground)',
+          '--normal-border': 'var(--border)',
+          '--border-radius': 'var(--radius)',
         } as React.CSSProperties
       }
       toastOptions={{
         duration: 6000,
         classNames: {
-          toast: "group toast !shadow-lg",
-          title: "!font-medium",
-          description: "!text-current !opacity-80",
-          success: "!border-l-4 !border-l-green-500 !bg-green-500/80 !text-green-900 dark:!text-green-100 [&_svg]:!text-green-600 dark:[&_svg]:!text-green-400",
-          error: "!border-l-4 !border-l-red-500 !bg-red-500/50 [&_svg]:!text-red-500",
-          warning: "!border-l-4 !border-l-amber-500 !bg-amber-500/50 [&_svg]:!text-amber-500",
-          info: "!border-l-4 !border-l-blue-500 !bg-blue-500/50 [&_svg]:!text-blue-500",
-          actionButton: "!bg-primary !text-primary-foreground hover:!bg-primary/90 !font-medium",
-          cancelButton: "!bg-muted !text-muted-foreground hover:!bg-muted/80",
-          closeButton: "!bg-background !border-border hover:!bg-muted",
+          toast: 'group toast !shadow-lg',
+          title: '!font-medium',
+          description: '!text-current !opacity-80',
+          success:
+            '!border-l-4 !border-l-green-500 !bg-green-500/80 !text-green-900 dark:!text-green-100 [&_svg]:!text-green-600 dark:[&_svg]:!text-green-400',
+          error: '!border-l-4 !border-l-red-500 !bg-red-500/50 [&_svg]:!text-red-500',
+          warning: '!border-l-4 !border-l-amber-500 !bg-amber-500/50 [&_svg]:!text-amber-500',
+          info: '!border-l-4 !border-l-blue-500 !bg-blue-500/50 [&_svg]:!text-blue-500',
+          actionButton: '!bg-primary !text-primary-foreground hover:!bg-primary/90 !font-medium',
+          cancelButton: '!bg-muted !text-muted-foreground hover:!bg-muted/80',
+          closeButton: '!bg-background !border-border hover:!bg-muted',
         },
       }}
       {...props}
     />
-  )
-}
+  );
+};
 
 // Re-export custom toast with progress bar for convenience
 export { CustomToast, showProgressToast } from './custom-toast';
 
-export { Toaster }
+export { Toaster };

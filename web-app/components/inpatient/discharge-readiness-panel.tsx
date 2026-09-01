@@ -31,7 +31,13 @@ import { Badge } from '@/components/ui/badge';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useFacility } from '@/lib/context/facility-context';
-import { useAIDischargeAssess, useAIDischargeConditions, useAIEnabled, useStoredDischargeResults, aiKeys } from '@/lib/hooks/use-ai';
+import {
+  useAIDischargeAssess,
+  useAIDischargeConditions,
+  useAIEnabled,
+  useStoredDischargeResults,
+  aiKeys,
+} from '@/lib/hooks/use-ai';
 import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
 import { useQueryClient } from '@tanstack/react-query';
@@ -124,11 +130,15 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function CriterionItem({ criterion }: { criterion: AIDischargeCriterion }) {
   return (
-    <div className="flex items-start gap-2 py-1.5" role="listitem" aria-label={`${criterion.name}: ${criterion.met ? 'met' : 'not met'}`}>
+    <div
+      className="flex items-start gap-2 py-1.5"
+      role="listitem"
+      aria-label={`${criterion.name}: ${criterion.met ? 'met' : 'not met'}`}
+    >
       {criterion.met ? (
-        <Check className="h-4 w-4 mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
+        <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
       ) : (
-        <X className="h-4 w-4 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
+        <X className="mt-0.5 h-4 w-4 shrink-0 text-red-500 dark:text-red-400" />
       )}
       <div className="min-w-0">
         <p className={cn('text-sm', criterion.met ? 'text-muted-foreground' : 'font-medium')}>
@@ -179,22 +189,27 @@ export function DischargeReadinessPanel({
 
   // Load supported conditions (for condition-specific criteria indicators)
   const { data: conditionsData } = useAIDischargeConditions();
-  const hasConditionSpecificCriteria = conditionsData?.conditions?.some(
-    (c) => primaryDiagnosis.toLowerCase().includes(c.toLowerCase())
-  ) ?? false;
+  const hasConditionSpecificCriteria =
+    conditionsData?.conditions?.some((c) =>
+      primaryDiagnosis.toLowerCase().includes(c.toLowerCase())
+    ) ?? false;
 
   // Load stored discharge results
   const { data: storedResults } = useStoredDischargeResults(admissionId);
   const latestStored = storedResults?.[0];
-  const displayResult: AIDischargeAssessResponse | undefined = result
-    ?? (latestStored?.result_data as unknown as AIDischargeAssessResponse | undefined);
+  const displayResult: AIDischargeAssessResponse | undefined =
+    result ?? (latestStored?.result_data as unknown as AIDischargeAssessResponse | undefined);
 
   // Show success toast when assessment completes
   React.useEffect(() => {
     if (result && result.readiness_level) {
       const score = Math.round(result.readiness_score * 100);
-      const levelLabel = result.readiness_level === 'ready' ? 'Ready'
-        : result.readiness_level === 'near_ready' ? 'Near ready' : 'Not ready';
+      const levelLabel =
+        result.readiness_level === 'ready'
+          ? 'Ready'
+          : result.readiness_level === 'near_ready'
+            ? 'Near ready'
+            : 'Not ready';
       toast.success('Discharge assessment complete', {
         description: `${levelLabel} — ${score}% readiness score`,
       });
@@ -210,7 +225,13 @@ export function DischargeReadinessPanel({
   const hasFiredAutoTrigger = React.useRef(false);
 
   React.useEffect(() => {
-    if (autoTriggerRef.current && isAIEnabled && !isPending && !displayResult && !hasFiredAutoTrigger.current) {
+    if (
+      autoTriggerRef.current &&
+      isAIEnabled &&
+      !isPending &&
+      !displayResult &&
+      !hasFiredAutoTrigger.current
+    ) {
       hasFiredAutoTrigger.current = true;
       mutate({
         admission_id: admissionId,
@@ -230,7 +251,28 @@ export function DischargeReadinessPanel({
       });
       onAutoTriggerConsumed?.();
     }
-  }, [autoTrigger, isAIEnabled, isPending, displayResult, mutate, admissionId, patientAge, primaryDiagnosis, admissionType, daysAdmitted, vitalsHistory, labResults, currentMedications, canAmbulate, canTolerateOral, hasFollowUpArranged, hasCaregiverAtHome, hasNhifOrSha, chwReferralMade, onAutoTriggerConsumed]);
+  }, [
+    autoTrigger,
+    isAIEnabled,
+    isPending,
+    displayResult,
+    mutate,
+    admissionId,
+    patientAge,
+    primaryDiagnosis,
+    admissionType,
+    daysAdmitted,
+    vitalsHistory,
+    labResults,
+    currentMedications,
+    canAmbulate,
+    canTolerateOral,
+    hasFollowUpArranged,
+    hasCaregiverAtHome,
+    hasNhifOrSha,
+    chwReferralMade,
+    onAutoTriggerConsumed,
+  ]);
 
   // Map criteria categories to facility modules — hide criteria for disabled modules
   const CATEGORY_MODULE_MAP: Record<string, keyof import('@/lib/auth/context').FacilityModules> = {
@@ -249,7 +291,7 @@ export function DischargeReadinessPanel({
       acc[cat].push(c);
       return acc;
     }, {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayResult?.criteria, hasModule]);
 
   if (!isAIEnabled) return null;
@@ -276,16 +318,20 @@ export function DischargeReadinessPanel({
   const hasResult = displayResult && displayResult.readiness_level;
   const readinessConfig = hasResult ? READINESS_CONFIG[displayResult.readiness_level] : null;
   const isFallback = displayResult?.mode === 'fallback';
-  const readmissionRiskLabel = displayResult?.readmission_risk != null
-    ? `${Math.round(displayResult.readmission_risk * 100)}%`
-    : 'N/A';
+  const readmissionRiskLabel =
+    displayResult?.readmission_risk != null
+      ? `${Math.round(displayResult.readmission_risk * 100)}%`
+      : 'N/A';
   const readmissionRiskLevelLabel = displayResult?.readmission_risk_level?.trim() || 'Not provided';
 
   return (
-    <Card className={cn(
-      'transition-colors duration-500',
-      hasResult && 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/50 dark:bg-emerald-950/20'
-    )}>
+    <Card
+      className={cn(
+        'transition-colors duration-500',
+        hasResult &&
+          'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/50 dark:bg-emerald-950/20'
+      )}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -318,7 +364,7 @@ export function DischargeReadinessPanel({
               Assess Discharge Readiness
             </Button>
             {hasConditionSpecificCriteria && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Check className="h-3 w-3 text-green-500" />
                 Condition-specific criteria available for this diagnosis
               </p>
@@ -328,7 +374,7 @@ export function DischargeReadinessPanel({
 
         {/* Loading */}
         {isPending && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground p-3">
+          <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Evaluating discharge criteria...
           </div>
@@ -339,7 +385,11 @@ export function DischargeReadinessPanel({
           <div className="space-y-3">
             {/* Readiness Score Banner */}
             <div
-              className={cn('rounded-lg p-4 border', readinessConfig.bgColor, readinessConfig.borderColor)}
+              className={cn(
+                'rounded-lg border p-4',
+                readinessConfig.bgColor,
+                readinessConfig.borderColor
+              )}
               role="status"
               aria-label={`Discharge readiness: ${readinessConfig.label}, ${Math.round(displayResult.readiness_score * 100)} percent`}
             >
@@ -368,7 +418,7 @@ export function DischargeReadinessPanel({
                   <p className={cn('font-semibold', readinessConfig.color)}>
                     {readinessConfig.label}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {displayResult.unmet_criteria_count > 0
                       ? `${displayResult.unmet_criteria_count} unmet criteria remaining`
                       : 'All criteria met'}
@@ -381,12 +431,17 @@ export function DischargeReadinessPanel({
             {displayResult.vitals_stability && (
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Vitals:</span>
-                <Badge variant="secondary" className={cn(
-                  'text-xs',
-                  displayResult.vitals_stability === 'stable' ? 'text-green-700 dark:text-green-400' :
-                  displayResult.vitals_stability === 'improving' ? 'text-blue-700 dark:text-blue-400' :
-                  'text-red-700 dark:text-red-400'
-                )}>
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    'text-xs',
+                    displayResult.vitals_stability === 'stable'
+                      ? 'text-green-700 dark:text-green-400'
+                      : displayResult.vitals_stability === 'improving'
+                        ? 'text-blue-700 dark:text-blue-400'
+                        : 'text-red-700 dark:text-red-400'
+                  )}
+                >
                   {displayResult.vitals_stability}
                 </Badge>
               </div>
@@ -414,13 +469,27 @@ export function DischargeReadinessPanel({
               <span className="text-sm">
                 Criteria Checklist ({displayResult.criteria?.length ?? 0})
               </span>
-              {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {showDetails ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
             </Button>
 
             {showDetails && (
-              <div id={`${panelId}-criteria`} role="list" aria-label="Discharge criteria checklist" className="space-y-3">
+              <div
+                id={`${panelId}-criteria`}
+                role="list"
+                aria-label="Discharge criteria checklist"
+                className="space-y-3"
+              >
                 {Object.entries(groupedCriteria).map(([category, criteria]) => (
-                  <div key={category} className="space-y-1" role="group" aria-label={CATEGORY_LABELS[category] ?? category}>
+                  <div
+                    key={category}
+                    className="space-y-1"
+                    role="group"
+                    aria-label={CATEGORY_LABELS[category] ?? category}
+                  >
                     <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       {CATEGORY_LABELS[category] ?? category}
                     </h5>
@@ -438,7 +507,7 @@ export function DischargeReadinessPanel({
             {displayResult.recommendations && displayResult.recommendations.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Recommendations</h4>
-                <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 pl-1">
+                <ul className="list-inside list-disc space-y-1 pl-1 text-sm text-muted-foreground">
                   {displayResult.recommendations.map((rec, i) => (
                     <li key={i}>{rec}</li>
                   ))}
@@ -447,9 +516,12 @@ export function DischargeReadinessPanel({
             )}
 
             {/* Advisory */}
-            <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
-              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <span>AI-generated assessment. Discharge decisions require clinical judgment and attending physician approval.</span>
+            <div className="flex items-start gap-2 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                AI-generated assessment. Discharge decisions require clinical judgment and attending
+                physician approval.
+              </span>
             </div>
 
             {/* Feedback + Re-run */}
@@ -471,7 +543,10 @@ export function DischargeReadinessPanel({
                 variant="ghost"
                 size="sm"
                 disabled={disabled || isPending}
-                onClick={() => { reset(); handleAssess(); }}
+                onClick={() => {
+                  reset();
+                  handleAssess();
+                }}
                 className="gap-1.5 text-xs"
               >
                 <ClipboardCheck className="h-3.5 w-3.5" />
@@ -483,10 +558,14 @@ export function DischargeReadinessPanel({
 
         {/* Error */}
         {isError && (
-          <div className="flex items-start gap-2 text-sm text-muted-foreground bg-destructive/10 rounded-md p-3">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
+          <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-muted-foreground">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
             <div>
-              <p>{displayResult ? 'Re-assessment failed. Showing previous result.' : 'Failed to assess discharge readiness. Please try again.'}</p>
+              <p>
+                {displayResult
+                  ? 'Re-assessment failed. Showing previous result.'
+                  : 'Failed to assess discharge readiness. Please try again.'}
+              </p>
               <Button
                 type="button"
                 variant="ghost"
@@ -495,7 +574,11 @@ export function DischargeReadinessPanel({
                 disabled={isPending}
                 className="mt-2 gap-1.5"
               >
-                {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardCheck className="h-3.5 w-3.5" />}
+                {isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ClipboardCheck className="h-3.5 w-3.5" />
+                )}
                 Retry
               </Button>
             </div>

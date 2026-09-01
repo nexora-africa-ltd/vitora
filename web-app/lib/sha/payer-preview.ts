@@ -21,13 +21,20 @@ const PAYER_PREVIEW_VISIBLE_STATUSES = new Set([
   'paid',
 ]);
 
-export function getEffectiveClaimStatus(claim: Pick<Claim, 'status' | 'submitted_at' | 'dha_discharge_snapshot'>): ClaimStatus {
+export function getEffectiveClaimStatus(
+  claim: Pick<Claim, 'status' | 'submitted_at' | 'dha_discharge_snapshot'>
+): ClaimStatus {
   const snapshot =
     claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
       ? (claim.dha_discharge_snapshot as Record<string, unknown>)
       : null;
-  const workflowState = String(snapshot?.workflow_state || '').trim().toUpperCase();
-  if (claim.status === 'draft' && (!!claim.submitted_at || SUBMITTED_LIKE_WORKFLOW_STATES.has(workflowState))) {
+  const workflowState = String(snapshot?.workflow_state || '')
+    .trim()
+    .toUpperCase();
+  if (
+    claim.status === 'draft' &&
+    (!!claim.submitted_at || SUBMITTED_LIKE_WORKFLOW_STATES.has(workflowState))
+  ) {
     return 'submitted';
   }
   return claim.status;
@@ -37,7 +44,9 @@ export function isPayerPreviewEligibleStatus(status: string): boolean {
   return PAYER_PREVIEW_VISIBLE_STATUSES.has(status);
 }
 
-export function isPayerPreviewEligibleClaim(claim: Pick<Claim, 'status' | 'submitted_at' | 'dha_discharge_snapshot'>): boolean {
+export function isPayerPreviewEligibleClaim(
+  claim: Pick<Claim, 'status' | 'submitted_at' | 'dha_discharge_snapshot'>
+): boolean {
   return isPayerPreviewEligibleStatus(getEffectiveClaimStatus(claim));
 }
 

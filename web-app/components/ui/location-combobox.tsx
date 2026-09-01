@@ -12,11 +12,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export interface ComboboxOption {
   value: string;
@@ -55,7 +51,7 @@ export function LocationCombobox({
   const [open, setOpen] = React.useState(false);
 
   const selectedOption = React.useMemo(
-    () => options.find(opt => opt.value === value),
+    () => options.find((opt) => opt.value === value),
     [options, value]
   );
 

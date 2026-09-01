@@ -36,9 +36,7 @@ export function useRequiresActiveShift() {
     /** The raw attendance status for display purposes. */
     attendanceStatus: status as AttendanceStatus,
     /** Tooltip text to show on disabled buttons. */
-    gateTooltip: isOnDuty
-      ? undefined
-      : 'You must clock in before performing this action',
+    gateTooltip: isOnDuty ? undefined : 'You must clock in before performing this action',
     /**
      * Append `?emergency_override=true` to bypass the backend gate.
      * Use sparingly — logged in AuditLog.

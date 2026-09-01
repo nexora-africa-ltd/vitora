@@ -171,7 +171,7 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
             <span>Failed to load interventions.</span>
           </div>
         ) : interventions.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">
+          <p className="py-4 text-center text-sm text-muted-foreground">
             {search.trim().length > 0
               ? 'No interventions match your search.'
               : 'No interventions available for this facility level.'}
@@ -181,22 +181,26 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-2 font-medium hidden md:table-cell w-[48px]">More</th>
+                  <th className="hidden w-[48px] pb-2 pr-2 font-medium md:table-cell">More</th>
                   <th className="pb-2 pr-4 font-medium">Code</th>
                   <th className="pb-2 pr-4 font-medium">Intervention</th>
-                  <th className="pb-2 pr-4 font-medium hidden sm:table-cell">Category</th>
-                  <th className="pb-2 pr-4 font-medium hidden md:table-cell">Payment</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Tariff (KES)</th>
-                  <th className="pb-2 pr-4 font-medium text-right hidden lg:table-cell">Max/Test</th>
-                  <th className="pb-2 pr-4 font-medium text-right hidden lg:table-cell">Qty/Year</th>
-                  <th className="pb-2 font-medium hidden md:table-cell">Pre-auth</th>
+                  <th className="hidden pb-2 pr-4 font-medium sm:table-cell">Category</th>
+                  <th className="hidden pb-2 pr-4 font-medium md:table-cell">Payment</th>
+                  <th className="pb-2 pr-4 text-right font-medium">Tariff (KES)</th>
+                  <th className="hidden pb-2 pr-4 text-right font-medium lg:table-cell">
+                    Max/Test
+                  </th>
+                  <th className="hidden pb-2 pr-4 text-right font-medium lg:table-cell">
+                    Qty/Year
+                  </th>
+                  <th className="hidden pb-2 font-medium md:table-cell">Pre-auth</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {interventions.map((item) => (
                   <Fragment key={item.code}>
                     <tr key={item.code} className="hover:bg-muted/50">
-                      <td className="py-2 pr-2 hidden md:table-cell">
+                      <td className="hidden py-2 pr-2 md:table-cell">
                         <Button
                           type="button"
                           variant="ghost"
@@ -213,49 +217,52 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
                         </Button>
                       </td>
                       <td className="py-2 pr-4 font-mono text-xs">{item.code}</td>
-                      <td className="py-2 pr-4 max-w-[200px] sm:max-w-[300px] truncate">
+                      <td className="max-w-[200px] truncate py-2 pr-4 sm:max-w-[300px]">
                         {item.name}
                       </td>
-                      <td className="py-2 pr-4 hidden sm:table-cell">
+                      <td className="hidden py-2 pr-4 sm:table-cell">
                         {item.category && (
                           <Badge variant="outline" className="text-xs">
                             {item.category}
                           </Badge>
                         )}
                       </td>
-                      <td className="py-2 pr-4 hidden md:table-cell">
+                      <td className="hidden py-2 pr-4 md:table-cell">
                         <Badge variant="outline" className="text-xs">
                           {paymentMechanismLabel(item.payment_mechanism)}
                         </Badge>
                       </td>
                       <td className="py-2 pr-4 text-right font-medium tabular-nums">
                         {item.price
-                          ? (typeof item.price === 'number'
-                              ? item.price.toLocaleString()
-                              : Number(item.price).toLocaleString())
+                          ? typeof item.price === 'number'
+                            ? item.price.toLocaleString()
+                            : Number(item.price).toLocaleString()
                           : '—'}
                       </td>
-                      <td className="py-2 pr-4 text-right tabular-nums hidden lg:table-cell">
+                      <td className="hidden py-2 pr-4 text-right tabular-nums lg:table-cell">
                         {item.max_amount_per_test
                           ? Number(item.max_amount_per_test).toLocaleString()
                           : '—'}
                       </td>
-                      <td className="py-2 pr-4 text-right tabular-nums hidden lg:table-cell">
+                      <td className="hidden py-2 pr-4 text-right tabular-nums lg:table-cell">
                         {item.quantity_per_year ?? '—'}
                       </td>
-                      <td className="py-2 hidden md:table-cell">
+                      <td className="hidden py-2 md:table-cell">
                         {item.requires_preauthorization && (
-                          <ShieldAlert className="h-4 w-4 text-amber-500" aria-label="Requires pre-authorization" />
+                          <ShieldAlert
+                            className="h-4 w-4 text-amber-500"
+                            aria-label="Requires pre-authorization"
+                          />
                         )}
                       </td>
                     </tr>
                     {expandedCodes.has(item.code) && (
-                      <tr className="bg-muted/30 hidden md:table-row">
+                      <tr className="hidden bg-muted/30 md:table-row">
                         <td colSpan={9} className="px-4 py-3">
-                          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 text-xs">
+                          <div className="grid grid-cols-1 gap-3 text-xs lg:grid-cols-4">
                             <div>
                               <p className="text-muted-foreground">Description</p>
-                              <p className="font-medium break-words">{item.description || '—'}</p>
+                              <p className="break-words font-medium">{item.description || '—'}</p>
                             </div>
                             <div>
                               <p className="text-muted-foreground">Benefit Code</p>
@@ -299,7 +306,7 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-xs px-2 text-muted-foreground">
+              <span className="px-2 text-xs text-muted-foreground">
                 {page} / {Math.ceil(total / PAGE_SIZE)}
               </span>
               <Button

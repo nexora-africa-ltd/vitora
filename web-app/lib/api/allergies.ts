@@ -154,7 +154,9 @@ export const allergiesApi = {
    *
    * @param query - Search query (minimum 2 characters)
    */
-  async hptSubstanceSearch(query: string): Promise<{ count: number; results: HptSubstanceResult[] }> {
+  async hptSubstanceSearch(
+    query: string
+  ): Promise<{ count: number; results: HptSubstanceResult[] }> {
     const response = await apiClient.get('/api/patients/allergies/hpt-substance-search/', {
       params: { q: query },
     });

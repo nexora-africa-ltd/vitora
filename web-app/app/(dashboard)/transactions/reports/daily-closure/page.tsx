@@ -18,13 +18,7 @@ import {
   TableRow,
   TableFooter,
 } from '@/components/ui/table';
-import {
-  ArrowLeft,
-  Download,
-  Printer,
-  TrendingUp,
-  TrendingDown,
-} from 'lucide-react';
+import { ArrowLeft, Download, Printer, TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -35,7 +29,7 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-4">
       <Skeleton className="h-8 w-48" />
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-24" />
         ))}
@@ -58,7 +52,8 @@ export default function DailyClosurePage() {
   const totalInvoiced = parseFloat(report?.total_invoiced || '0');
   const totalCollected = parseFloat(report?.total_collected || '0');
   const outstanding = parseFloat(report?.outstanding || '0');
-  const collectionRate = totalInvoiced > 0 ? ((totalCollected / totalInvoiced) * 100).toFixed(1) : '0';
+  const collectionRate =
+    totalInvoiced > 0 ? ((totalCollected / totalInvoiced) * 100).toFixed(1) : '0';
   const byDepartment = report?.by_department || [];
   const byPaymentMethod = report?.by_payment_method || {};
   const transactionCount = report?.transaction_count || 0;
@@ -78,22 +73,19 @@ export default function DailyClosurePage() {
             End-of-day billing summary for {format(selectedDate, 'MMMM d, yyyy')}
           </p>
         </div>
-        <DatePicker
-          value={selectedDate}
-          onChange={(date) => date && setSelectedDate(date)}
-        />
+        <DatePicker value={selectedDate} onChange={(date) => date && setSelectedDate(date)} />
         <Button variant="outline">
-          <Printer className="h-4 w-4 mr-2" />
+          <Printer className="mr-2 h-4 w-4" />
           Print
         </Button>
         <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="mr-2 h-4 w-4" />
           Export
         </Button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -104,9 +96,7 @@ export default function DailyClosurePage() {
             <div className="text-2xl font-bold">
               KES {totalInvoiced.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {transactionCount} transactions
-            </p>
+            <p className="text-xs text-muted-foreground">{transactionCount} transactions</p>
           </CardContent>
         </Card>
 
@@ -121,7 +111,7 @@ export default function DailyClosurePage() {
               KES {totalCollected.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
             </div>
             <div className="flex items-center text-xs text-green-600">
-              <TrendingUp className="h-3 w-3 mr-1" />
+              <TrendingUp className="mr-1 h-3 w-3" />
               {collectionRate}% collection rate
             </div>
           </CardContent>
@@ -129,16 +119,14 @@ export default function DailyClosurePage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Outstanding
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">
               KES {outstanding.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
             </div>
             <div className="flex items-center text-xs text-amber-600">
-              <TrendingDown className="h-3 w-3 mr-1" />
+              <TrendingDown className="mr-1 h-3 w-3" />
               Pending collection
             </div>
           </CardContent>
@@ -154,9 +142,7 @@ export default function DailyClosurePage() {
             <div className="text-2xl font-bold">
               KES {totalCollected.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {transactionCount} transactions
-            </p>
+            <p className="text-xs text-muted-foreground">{transactionCount} transactions</p>
           </CardContent>
         </Card>
       </div>
@@ -232,7 +218,8 @@ export default function DailyClosurePage() {
             <TableBody>
               {Object.entries(byPaymentMethod).map(([method, amount]) => {
                 const amountNum = parseFloat(amount);
-                const percentage = totalCollected > 0 ? ((amountNum / totalCollected) * 100).toFixed(1) : '0';
+                const percentage =
+                  totalCollected > 0 ? ((amountNum / totalCollected) * 100).toFixed(1) : '0';
                 return (
                   <TableRow key={method}>
                     <TableCell className="font-medium capitalize">

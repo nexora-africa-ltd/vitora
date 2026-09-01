@@ -36,10 +36,7 @@ import { usePatientContext } from '@/lib/context/patient-context';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { useTriageAssessHistoryAvailability } from '@/lib/hooks/use-triage-assess-history-availability';
 import { calculateBMI, getBMIColorClass } from '@/lib/utils/bmi';
-import {
-  VitalAlertsPanel,
-  evaluateVitalSeverity,
-} from '@/components/triage';
+import { VitalAlertsPanel, evaluateVitalSeverity } from '@/components/triage';
 import { ProactiveInsightsPanel } from '@/components/shared/proactive-insight-card';
 import { useProactiveInsights } from '@/lib/hooks/use-proactive-insights';
 import type { TriageAlert, VitalType, AlertSeverity } from '@/lib/types/triage';
@@ -115,8 +112,8 @@ function InlineAlertBadge({ severity, message }: InlineAlertBadgeProps) {
 
   if (severity === 'emergency') {
     return (
-      <div className="flex items-center gap-1.5 mt-1 p-1.5 rounded-md bg-rose-100 dark:bg-rose-950/70 border-2 border-rose-500 dark:border-rose-600">
-        <AlertCircle className="h-3.5 w-3.5 text-rose-700 dark:text-rose-300 shrink-0 animate-pulse" />
+      <div className="mt-1 flex items-center gap-1.5 rounded-md border-2 border-rose-500 bg-rose-100 p-1.5 dark:border-rose-600 dark:bg-rose-950/70">
+        <AlertCircle className="h-3.5 w-3.5 shrink-0 animate-pulse text-rose-700 dark:text-rose-300" />
         <span className="text-xs font-bold text-rose-800 dark:text-rose-200">{message}</span>
       </div>
     );
@@ -124,16 +121,16 @@ function InlineAlertBadge({ severity, message }: InlineAlertBadgeProps) {
 
   if (severity === 'critical') {
     return (
-      <div className="flex items-center gap-1.5 mt-1 p-1.5 rounded-md bg-red-50 dark:bg-red-950/50 border border-red-300 dark:border-red-700">
-        <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0 animate-pulse" />
+      <div className="mt-1 flex items-center gap-1.5 rounded-md border border-red-300 bg-red-50 p-1.5 dark:border-red-700 dark:bg-red-950/50">
+        <AlertCircle className="h-3.5 w-3.5 shrink-0 animate-pulse text-red-600 dark:text-red-400" />
         <span className="text-xs font-medium text-red-700 dark:text-red-300">{message}</span>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-1.5 mt-1 p-1.5 rounded-md bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700">
-      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+    <div className="mt-1 flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 p-1.5 dark:border-amber-700 dark:bg-amber-950/50">
+      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
       <span className="text-xs font-medium text-amber-700 dark:text-amber-300">{message}</span>
     </div>
   );
@@ -187,7 +184,7 @@ export default function TriageVitalsPage() {
         });
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encounterIdNum]);
 
   // Parse blood pressure from string format if separate fields not available
@@ -245,21 +242,29 @@ export default function TriageVitalsPage() {
   // Calculate BMI if weight and height are available (age-aware)
   const weight = watchedVitals.weight;
   const height = watchedVitals.height;
-  const bmiResult = weight && height
-    ? calculateBMI(weight, height, patient?.date_of_birth, patient?.gender as 'M' | 'F' | 'O' | undefined)
-    : null;
+  const bmiResult =
+    weight && height
+      ? calculateBMI(
+          weight,
+          height,
+          patient?.date_of_birth,
+          patient?.gender as 'M' | 'F' | 'O' | undefined
+        )
+      : null;
   const bmiValue = bmiResult?.bmi;
   const bmiColor = bmiResult?.classification ? getBMIColorClass(bmiResult.classification) : '';
   const showNeonatalFields = patientAgeGroup ? isNeonateOrInfant(patientAgeGroup) : false;
   const showPediatricFields = patientAgeGroup ? isPediatric(patientAgeGroup) : false;
   const isUnder2 = patient
-    ? ((Date.now() - new Date(patient.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) < 2
+    ? (Date.now() - new Date(patient.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25) < 2
     : false;
 
   // Proactive insights — derived from live vitals as user types
   const proactivePatientCtx = useMemo(() => {
     if (!patient) return null;
-    const age = Math.floor((Date.now() - new Date(patient.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    const age = Math.floor(
+      (Date.now() - new Date(patient.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+    );
     return {
       patient_age: age,
       patient_sex: patient.gender ?? 'O',
@@ -277,12 +282,24 @@ export default function TriageVitalsPage() {
         pulse: watchedVitals.heart_rate ?? undefined,
         temperature: watchedVitals.temperature ?? undefined,
         rr: watchedVitals.respiratory_rate ?? undefined,
-        map: watchedVitals.systolic_bp && watchedVitals.diastolic_bp
-          ? Math.round(watchedVitals.diastolic_bp + (watchedVitals.systolic_bp - watchedVitals.diastolic_bp) / 3)
-          : undefined,
+        map:
+          watchedVitals.systolic_bp && watchedVitals.diastolic_bp
+            ? Math.round(
+                watchedVitals.diastolic_bp +
+                  (watchedVitals.systolic_bp - watchedVitals.diastolic_bp) / 3
+              )
+            : undefined,
       },
     };
-  }, [encounter?.chief_complaint, watchedVitals.spo2, watchedVitals.heart_rate, watchedVitals.temperature, watchedVitals.respiratory_rate, watchedVitals.systolic_bp, watchedVitals.diastolic_bp]);
+  }, [
+    encounter?.chief_complaint,
+    watchedVitals.spo2,
+    watchedVitals.heart_rate,
+    watchedVitals.temperature,
+    watchedVitals.respiratory_rate,
+    watchedVitals.systolic_bp,
+    watchedVitals.diastolic_bp,
+  ]);
 
   const {
     insights: proactiveInsights,
@@ -293,15 +310,34 @@ export default function TriageVitalsPage() {
     error: proactiveError,
     noInsightsFound: proactiveNoInsights,
     loadedFromCache: proactiveLoadedFromCache,
-  } = useProactiveInsights(proactivePatientCtx, proactiveEncounterCtx, { includeLLM: false, cacheKey: `triage_${encounterId}` });
+  } = useProactiveInsights(proactivePatientCtx, proactiveEncounterCtx, {
+    includeLLM: false,
+    cacheKey: `triage_${encounterId}`,
+  });
 
   // Real-time vital evaluation for inline field color-coding (age-adjusted)
-  const temperatureSeverity = evaluateVitalSeverity(watchedVitals.temperature, ageThresholds.temperature!, 'temperature');
-  const heartRateSeverity = evaluateVitalSeverity(watchedVitals.heart_rate, ageThresholds.heart_rate!);
+  const temperatureSeverity = evaluateVitalSeverity(
+    watchedVitals.temperature,
+    ageThresholds.temperature!,
+    'temperature'
+  );
+  const heartRateSeverity = evaluateVitalSeverity(
+    watchedVitals.heart_rate,
+    ageThresholds.heart_rate!
+  );
   const spo2Severity = evaluateVitalSeverity(watchedVitals.spo2, ageThresholds.spo2!);
-  const systolicSeverity = evaluateVitalSeverity(watchedVitals.systolic_bp, ageThresholds.systolic_bp!);
-  const diastolicSeverity = evaluateVitalSeverity(watchedVitals.diastolic_bp, ageThresholds.diastolic_bp!);
-  const respiratorySeverity = evaluateVitalSeverity(watchedVitals.respiratory_rate, ageThresholds.respiratory_rate!);
+  const systolicSeverity = evaluateVitalSeverity(
+    watchedVitals.systolic_bp,
+    ageThresholds.systolic_bp!
+  );
+  const diastolicSeverity = evaluateVitalSeverity(
+    watchedVitals.diastolic_bp,
+    ageThresholds.diastolic_bp!
+  );
+  const respiratorySeverity = evaluateVitalSeverity(
+    watchedVitals.respiratory_rate,
+    ageThresholds.respiratory_rate!
+  );
 
   // Helper to get input styling based on severity
   const getInputSeverityClass = (severity: ReturnType<typeof evaluateVitalSeverity>) => {
@@ -401,15 +437,16 @@ export default function TriageVitalsPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Row 1: Temperature, Heart Rate, SpO2 */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {/* Temperature */}
               <div className="space-y-2">
                 <Label htmlFor="temperature" className="flex items-center gap-1.5">
                   <Thermometer className="h-4 w-4 text-muted-foreground" />
                   Temperature
-                  {temperatureSeverity.severity === 'normal' && watchedVitals.temperature != null && (
-                    <CheckCircle className="h-3.5 w-3.5 text-green-500 ml-auto" />
-                  )}
+                  {temperatureSeverity.severity === 'normal' &&
+                    watchedVitals.temperature != null && (
+                      <CheckCircle className="ml-auto h-3.5 w-3.5 text-green-500" />
+                    )}
                 </Label>
                 <InputGroup className={cn(getInputSeverityClass(temperatureSeverity))}>
                   <InputGroupInput
@@ -426,9 +463,14 @@ export default function TriageVitalsPage() {
                 {errors.temperature ? (
                   <p className="text-sm text-destructive">{errors.temperature.message}</p>
                 ) : temperatureSeverity.message ? (
-                  <InlineAlertBadge severity={temperatureSeverity.severity} message={temperatureSeverity.message} />
+                  <InlineAlertBadge
+                    severity={temperatureSeverity.severity}
+                    message={temperatureSeverity.message}
+                  />
                 ) : (
-                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('temperature', patientAgeGroup)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getVitalRangeHint('temperature', patientAgeGroup)}
+                  </p>
                 )}
               </div>
 
@@ -438,7 +480,7 @@ export default function TriageVitalsPage() {
                   <Heart className="h-4 w-4 text-muted-foreground" />
                   Heart Rate
                   {heartRateSeverity.severity === 'normal' && watchedVitals.heart_rate != null && (
-                    <CheckCircle className="h-3.5 w-3.5 text-green-500 ml-auto" />
+                    <CheckCircle className="ml-auto h-3.5 w-3.5 text-green-500" />
                   )}
                 </Label>
                 <InputGroup className={cn(getInputSeverityClass(heartRateSeverity))}>
@@ -455,9 +497,14 @@ export default function TriageVitalsPage() {
                 {errors.heart_rate ? (
                   <p className="text-sm text-destructive">{errors.heart_rate.message}</p>
                 ) : heartRateSeverity.message ? (
-                  <InlineAlertBadge severity={heartRateSeverity.severity} message={heartRateSeverity.message} />
+                  <InlineAlertBadge
+                    severity={heartRateSeverity.severity}
+                    message={heartRateSeverity.message}
+                  />
                 ) : (
-                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('heart_rate', patientAgeGroup)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getVitalRangeHint('heart_rate', patientAgeGroup)}
+                  </p>
                 )}
               </div>
 
@@ -467,7 +514,7 @@ export default function TriageVitalsPage() {
                   <Activity className="h-4 w-4 text-muted-foreground" />
                   SpO₂
                   {spo2Severity.severity === 'normal' && watchedVitals.spo2 != null && (
-                    <CheckCircle className="h-3.5 w-3.5 text-green-500 ml-auto" />
+                    <CheckCircle className="ml-auto h-3.5 w-3.5 text-green-500" />
                   )}
                 </Label>
                 <InputGroup className={cn(getInputSeverityClass(spo2Severity))}>
@@ -484,21 +531,26 @@ export default function TriageVitalsPage() {
                 {errors.spo2 ? (
                   <p className="text-sm text-destructive">{errors.spo2.message}</p>
                 ) : spo2Severity.message ? (
-                  <InlineAlertBadge severity={spo2Severity.severity} message={spo2Severity.message} />
+                  <InlineAlertBadge
+                    severity={spo2Severity.severity}
+                    message={spo2Severity.message}
+                  />
                 ) : (
-                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('spo2', patientAgeGroup)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getVitalRangeHint('spo2', patientAgeGroup)}
+                  </p>
                 )}
               </div>
             </div>
 
             {/* Row 2: Blood Pressure, Respiratory Rate */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {/* Systolic BP */}
               <div className="space-y-2">
                 <Label htmlFor="systolic_bp" className="flex items-center gap-1.5">
                   Systolic BP
                   {systolicSeverity.severity === 'normal' && watchedVitals.systolic_bp != null && (
-                    <CheckCircle className="h-3.5 w-3.5 text-green-500 ml-auto" />
+                    <CheckCircle className="ml-auto h-3.5 w-3.5 text-green-500" />
                   )}
                 </Label>
                 <InputGroup className={cn(getInputSeverityClass(systolicSeverity))}>
@@ -515,9 +567,14 @@ export default function TriageVitalsPage() {
                 {errors.systolic_bp ? (
                   <p className="text-sm text-destructive">{errors.systolic_bp.message}</p>
                 ) : systolicSeverity.message ? (
-                  <InlineAlertBadge severity={systolicSeverity.severity} message={systolicSeverity.message} />
+                  <InlineAlertBadge
+                    severity={systolicSeverity.severity}
+                    message={systolicSeverity.message}
+                  />
                 ) : (
-                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('systolic_bp', patientAgeGroup)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getVitalRangeHint('systolic_bp', patientAgeGroup)}
+                  </p>
                 )}
               </div>
 
@@ -525,9 +582,10 @@ export default function TriageVitalsPage() {
               <div className="space-y-2">
                 <Label htmlFor="diastolic_bp" className="flex items-center gap-1.5">
                   Diastolic BP
-                  {diastolicSeverity.severity === 'normal' && watchedVitals.diastolic_bp != null && (
-                    <CheckCircle className="h-3.5 w-3.5 text-green-500 ml-auto" />
-                  )}
+                  {diastolicSeverity.severity === 'normal' &&
+                    watchedVitals.diastolic_bp != null && (
+                      <CheckCircle className="ml-auto h-3.5 w-3.5 text-green-500" />
+                    )}
                 </Label>
                 <InputGroup className={cn(getInputSeverityClass(diastolicSeverity))}>
                   <InputGroupInput
@@ -543,9 +601,14 @@ export default function TriageVitalsPage() {
                 {errors.diastolic_bp ? (
                   <p className="text-sm text-destructive">{errors.diastolic_bp.message}</p>
                 ) : diastolicSeverity.message ? (
-                  <InlineAlertBadge severity={diastolicSeverity.severity} message={diastolicSeverity.message} />
+                  <InlineAlertBadge
+                    severity={diastolicSeverity.severity}
+                    message={diastolicSeverity.message}
+                  />
                 ) : (
-                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('diastolic_bp', patientAgeGroup)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getVitalRangeHint('diastolic_bp', patientAgeGroup)}
+                  </p>
                 )}
               </div>
 
@@ -554,9 +617,10 @@ export default function TriageVitalsPage() {
                 <Label htmlFor="respiratory_rate" className="flex items-center gap-1.5">
                   <Wind className="h-4 w-4 text-muted-foreground" />
                   Respiratory Rate
-                  {respiratorySeverity.severity === 'normal' && watchedVitals.respiratory_rate != null && (
-                    <CheckCircle className="h-3.5 w-3.5 text-green-500 ml-auto" />
-                  )}
+                  {respiratorySeverity.severity === 'normal' &&
+                    watchedVitals.respiratory_rate != null && (
+                      <CheckCircle className="ml-auto h-3.5 w-3.5 text-green-500" />
+                    )}
                 </Label>
                 <InputGroup className={cn(getInputSeverityClass(respiratorySeverity))}>
                   <InputGroupInput
@@ -572,18 +636,23 @@ export default function TriageVitalsPage() {
                 {errors.respiratory_rate ? (
                   <p className="text-sm text-destructive">{errors.respiratory_rate.message}</p>
                 ) : respiratorySeverity.message ? (
-                  <InlineAlertBadge severity={respiratorySeverity.severity} message={respiratorySeverity.message} />
+                  <InlineAlertBadge
+                    severity={respiratorySeverity.severity}
+                    message={respiratorySeverity.message}
+                  />
                 ) : (
-                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('respiratory_rate', patientAgeGroup)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getVitalRangeHint('respiratory_rate', patientAgeGroup)}
+                  </p>
                 )}
               </div>
             </div>
 
             {/* Row 3: Weight, Height, BMI */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+            <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-3">
               {/* Weight */}
               <div className="space-y-2">
-                <Label htmlFor="weight" className="flex items-center gap-1.5 h-5">
+                <Label htmlFor="weight" className="flex h-5 items-center gap-1.5">
                   <Scale className="h-4 w-4 text-muted-foreground" />
                   Weight
                 </Label>
@@ -606,7 +675,7 @@ export default function TriageVitalsPage() {
 
               {/* Height / Length */}
               <div className="space-y-2">
-                <Label htmlFor="height" className="flex items-center gap-1.5 h-5">
+                <Label htmlFor="height" className="flex h-5 items-center gap-1.5">
                   <Ruler className="h-4 w-4 text-muted-foreground" />
                   {isUnder2 ? 'Length (recumbent)' : 'Height'}
                 </Label>
@@ -628,12 +697,12 @@ export default function TriageVitalsPage() {
 
               {/* BMI (calculated) — only for age ≥ 2 years */}
               <div className="space-y-2">
-                <Label className="flex items-center gap-1.5 h-5">
+                <Label className="flex h-5 items-center gap-1.5">
                   <Activity className="h-4 w-4 text-muted-foreground" />
                   {isUnder2 ? 'Growth' : 'BMI'}
                 </Label>
                 {isUnder2 ? (
-                  <div className="h-9 flex items-center px-3 rounded-md border bg-muted/50">
+                  <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3">
                     <span className="text-xs text-muted-foreground">
                       {weight && height
                         ? 'Use weight-for-length z-scores (WHO charts)'
@@ -641,7 +710,7 @@ export default function TriageVitalsPage() {
                     </span>
                   </div>
                 ) : (
-                  <div className="h-9 flex items-center justify-between px-3 rounded-md border bg-muted/50">
+                  <div className="flex h-9 items-center justify-between rounded-md border bg-muted/50 px-3">
                     {bmiValue ? (
                       <>
                         <span className={cn('font-medium', bmiColor)}>{bmiValue.toFixed(1)}</span>
@@ -666,11 +735,7 @@ export default function TriageVitalsPage() {
 
         {/* Navigation Buttons */}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push('/triage')}
-          >
+          <Button type="button" variant="outline" onClick={() => router.push('/triage')}>
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>

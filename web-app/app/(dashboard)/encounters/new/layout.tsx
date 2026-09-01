@@ -34,25 +34,15 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 // Layout Content
 // =============================================================================
 
-export default function NewEncounterLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function NewEncounterLayout({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const canCreateEncounter = hasPermission('encounters.add_encounter');
   const patientIdParam = searchParams.get('patient');
 
-  const {
-    initSession,
-    hasSession,
-    getSession,
-    setPatient,
-    clearSession,
-    isDirtyState,
-  } = useNewEncounterStore();
+  const { initSession, hasSession, getSession, setPatient, clearSession, isDirtyState } =
+    useNewEncounterStore();
 
   const [didNotifyDraftRecovery, setDidNotifyDraftRecovery] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -120,25 +110,23 @@ export default function NewEncounterLayout({
       <div className="p-4 sm:p-6">
         <Alert>
           <AlertTitle>Access denied</AlertTitle>
-          <AlertDescription>
-            You do not have permission to create encounters.
-          </AlertDescription>
+          <AlertDescription>You do not have permission to create encounters.</AlertDescription>
         </Alert>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex min-h-full flex-col">
       {/* Header */}
-      <div className="bg-background border-b px-3 py-3 sm:px-4 sm:py-4">
+      <div className="border-b bg-background px-3 py-3 sm:px-4 sm:py-4">
         <PageHeader
           title="New Encounter"
           helpContent="Create a new patient encounter. Follow the steps to select a patient, enter encounter details, and optionally add medical history and diagnoses."
           actions={
             isDirty ? (
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="gap-1 shrink-0">
+                <Badge variant="secondary" className="shrink-0 gap-1">
                   <Clock className="h-3 w-3" />
                   <span className="hidden sm:inline">Unsaved changes</span>
                   <span className="sm:hidden">Unsaved</span>

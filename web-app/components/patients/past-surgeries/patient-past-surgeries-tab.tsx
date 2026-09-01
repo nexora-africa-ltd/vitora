@@ -20,30 +20,64 @@ export function PatientPastSurgeriesTab({ patientId }: { patientId: number }) {
   const { data: surgeries, isLoading } = usePatientPastSurgeries(patientId);
   const deleteMutation = useDeletePastSurgery(patientId);
 
-  if (isLoading) return <div className="h-20 bg-muted/40 rounded animate-pulse" />;
+  if (isLoading) return <div className="h-20 animate-pulse rounded bg-muted/40" />;
 
   const items = surgeries ?? [];
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{items.length} surger{items.length !== 1 ? 'ies' : 'y'}</p>
-        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setShowAdd(true)}>
+        <p className="text-sm text-muted-foreground">
+          {items.length} surger{items.length !== 1 ? 'ies' : 'y'}
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 gap-1 text-xs"
+          onClick={() => setShowAdd(true)}
+        >
           <Plus className="h-3 w-3" /> Add
         </Button>
       </div>
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic p-4 text-center">No past surgeries recorded.</p>
+        <p className="p-4 text-center text-sm italic text-muted-foreground">
+          No past surgeries recorded.
+        </p>
       ) : (
         <div className="space-y-1.5">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 text-sm group">
-              <span className="font-medium truncate">{item.procedure_name}</span>
-              {item.procedure_date && <span className="text-xs text-muted-foreground shrink-0">({item.procedure_date})</span>}
-              <Badge className={`${outcomeColors[item.outcome] ?? ''} text-xs shrink-0`}>{item.outcome_display}</Badge>
-              <span className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button type="button" variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setEditItem(item)}>Edit</Button>
-                <Button type="button" variant="ghost" size="sm" className="h-6 text-xs px-2 text-destructive" onClick={() => deleteMutation.mutate(item.id)}>Delete</Button>
+            <div
+              key={item.id}
+              className="group flex items-center gap-2 rounded-lg border bg-muted/20 p-2 text-sm"
+            >
+              <span className="truncate font-medium">{item.procedure_name}</span>
+              {item.procedure_date && (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  ({item.procedure_date})
+                </span>
+              )}
+              <Badge className={`${outcomeColors[item.outcome] ?? ''} shrink-0 text-xs`}>
+                {item.outcome_display}
+              </Badge>
+              <span className="ml-auto flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setEditItem(item)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-destructive"
+                  onClick={() => deleteMutation.mutate(item.id)}
+                >
+                  Delete
+                </Button>
               </span>
             </div>
           ))}

@@ -14,12 +14,7 @@
  * - DELETE /api/pharmacy/drugs/{id}/ - Delete drug
  */
 import { test, expect } from '@playwright/test';
-import {
-  setupPharmacyMocks,
-  loginAndGoToPharmacy,
-  mockDrug,
-  mockDrugsData,
-} from './fixtures';
+import { setupPharmacyMocks, loginAndGoToPharmacy, mockDrug, mockDrugsData } from './fixtures';
 
 // =============================================================================
 // DRUG CATALOG - LIST VIEW
@@ -81,7 +76,10 @@ test.describe('Drug Catalog - List View', () => {
 
     // Metformin has 0 stock - should show out of stock indicator
     await expect(
-      page.getByTestId('out-of-stock-indicator').or(page.getByText(/out.of.stock/i)).first()
+      page
+        .getByTestId('out-of-stock-indicator')
+        .or(page.getByText(/out.of.stock/i))
+        .first()
     ).toBeVisible();
   });
 
@@ -115,16 +113,15 @@ test.describe('Drug Catalog - Search & Filter', () => {
 
   test('should have search input for drugs', async ({ page }) => {
     // Search functionality should exist
-    const searchInput = page.getByTestId('drug-search').or(
-      page.getByPlaceholder(/search.*drugs/i)
-    );
+    const searchInput = page.getByTestId('drug-search').or(page.getByPlaceholder(/search.*drugs/i));
     await expect(searchInput).toBeVisible();
   });
 
   test('should search drugs by generic name', async ({ page }) => {
-    const searchInput = page.getByPlaceholder(/search|find/i).or(
-      page.getByRole('searchbox')
-    ).first();
+    const searchInput = page
+      .getByPlaceholder(/search|find/i)
+      .or(page.getByRole('searchbox'))
+      .first();
 
     await searchInput.fill('Paracetamol');
     await page.waitForTimeout(500); // Debounce
@@ -155,55 +152,50 @@ test.describe('Drug Catalog - Search & Filter', () => {
 
   test('should filter drugs by category', async ({ page }) => {
     // Category filter dropdown should exist
-    const categoryFilter = page.getByRole('combobox', { name: /category/i }).or(
-      page.getByLabel(/category/i)
-    ).or(
-      page.getByTestId('category-filter')
-    );
+    const categoryFilter = page
+      .getByRole('combobox', { name: /category/i })
+      .or(page.getByLabel(/category/i))
+      .or(page.getByTestId('category-filter'));
 
     await expect(categoryFilter).toBeVisible();
   });
 
   test('should filter drugs by form', async ({ page }) => {
     // Form filter (tablet, capsule, etc.)
-    const formFilter = page.getByRole('combobox', { name: /form/i }).or(
-      page.getByLabel(/form/i)
-    ).or(
-      page.getByTestId('form-filter')
-    );
+    const formFilter = page
+      .getByRole('combobox', { name: /form/i })
+      .or(page.getByLabel(/form/i))
+      .or(page.getByTestId('form-filter'));
 
     await expect(formFilter).toBeVisible();
   });
 
   test('should filter drugs by schedule', async ({ page }) => {
     // Schedule filter (OTC, POM, P, CD)
-    const scheduleFilter = page.getByRole('combobox', { name: /schedule/i }).or(
-      page.getByLabel(/schedule/i)
-    ).or(
-      page.getByTestId('schedule-filter')
-    );
+    const scheduleFilter = page
+      .getByRole('combobox', { name: /schedule/i })
+      .or(page.getByLabel(/schedule/i))
+      .or(page.getByTestId('schedule-filter'));
 
     await expect(scheduleFilter).toBeVisible();
   });
 
   test('should filter to show only essential medicines', async ({ page }) => {
     // Toggle or checkbox for essential medicines
-    const essentialFilter = page.getByRole('checkbox', { name: /essential/i }).or(
-      page.getByLabel(/essential|keml/i)
-    ).or(
-      page.getByTestId('essential-filter')
-    );
+    const essentialFilter = page
+      .getByRole('checkbox', { name: /essential/i })
+      .or(page.getByLabel(/essential|keml/i))
+      .or(page.getByTestId('essential-filter'));
 
     await expect(essentialFilter).toBeVisible();
   });
 
   test('should filter to show only active drugs', async ({ page }) => {
     // Active/inactive filter
-    const activeFilter = page.getByRole('checkbox', { name: /active/i }).or(
-      page.getByLabel(/active/i)
-    ).or(
-      page.getByTestId('active-filter')
-    );
+    const activeFilter = page
+      .getByRole('checkbox', { name: /active/i })
+      .or(page.getByLabel(/active/i))
+      .or(page.getByTestId('active-filter'));
 
     await expect(activeFilter).toBeVisible();
   });
@@ -222,11 +214,10 @@ test.describe('Drug Catalog - Pagination', () => {
 
   test('should display pagination controls', async ({ page }) => {
     // Pagination should exist
-    const pagination = page.getByRole('navigation', { name: /pagination/i }).or(
-      page.getByTestId('pagination')
-    ).or(
-      page.locator('[class*="pagination"]')
-    );
+    const pagination = page
+      .getByRole('navigation', { name: /pagination/i })
+      .or(page.getByTestId('pagination'))
+      .or(page.locator('[class*="pagination"]'));
 
     await expect(pagination).toBeVisible();
   });
@@ -249,9 +240,9 @@ test.describe('Drug Catalog - Create Drug', () => {
   });
 
   test('should have add drug button', async ({ page }) => {
-    const addButton = page.getByRole('button', { name: /add.drug|new.drug|create/i }).or(
-      page.getByTestId('add-drug-button')
-    );
+    const addButton = page
+      .getByRole('button', { name: /add.drug|new.drug|create/i })
+      .or(page.getByTestId('add-drug-button'));
 
     await expect(addButton).toBeVisible();
   });
@@ -262,11 +253,10 @@ test.describe('Drug Catalog - Create Drug', () => {
 
     // Should open form/modal
     await expect(
-      page.getByRole('dialog').or(
-        page.getByRole('form')
-      ).or(
-        page.locator('[data-testid="drug-form"]')
-      )
+      page
+        .getByRole('dialog')
+        .or(page.getByRole('form'))
+        .or(page.locator('[data-testid="drug-form"]'))
     ).toBeVisible();
   });
 
@@ -345,9 +335,18 @@ test.describe('Drug Catalog - Create Drug', () => {
     await page.waitForSelector('form', { timeout: 5000 });
 
     // Fill form - use first() for each field to avoid strict mode
-    await page.getByLabel(/generic.name/i).first().fill('Test Drug');
-    await page.getByLabel(/drug.*code/i).first().fill('DRG-TEST');
-    await page.getByLabel(/strength/i).first().fill('100mg');
+    await page
+      .getByLabel(/generic.name/i)
+      .first()
+      .fill('Test Drug');
+    await page
+      .getByLabel(/drug.*code/i)
+      .first()
+      .fill('DRG-TEST');
+    await page
+      .getByLabel(/strength/i)
+      .first()
+      .fill('100mg');
 
     // The form submission is mocked, just verify we can interact
     const submitButton = page.getByRole('button', { name: /save|create|submit/i }).first();
@@ -362,7 +361,9 @@ test.describe('Drug Catalog - Create Drug', () => {
     await page.waitForSelector('form', { timeout: 5000 });
 
     // Check that required fields are marked (asterisk or required attribute)
-    await expect(page.getByText(/generic.name.*\*/i).or(page.locator('[required]').first())).toBeVisible();
+    await expect(
+      page.getByText(/generic.name.*\*/i).or(page.locator('[required]').first())
+    ).toBeVisible();
   });
 });
 
@@ -383,11 +384,10 @@ test.describe('Drug Catalog - View Drug Details', () => {
 
     // Should navigate to detail view or open modal
     await expect(
-      page.getByRole('dialog').or(
-        page.locator('[data-testid="drug-detail"]')
-      ).or(
-        page.getByText(/drug.details/i)
-      )
+      page
+        .getByRole('dialog')
+        .or(page.locator('[data-testid="drug-detail"]'))
+        .or(page.getByText(/drug.details/i))
     ).toBeVisible();
   });
 
@@ -437,11 +437,10 @@ test.describe('Drug Catalog - View Drug Details', () => {
 
     // Should be able to see related batches
     await expect(
-      page.getByRole('link', { name: /batch|inventory/i }).or(
-        page.getByRole('button', { name: /batch|inventory/i })
-      ).or(
-        page.getByText(/view.batches/i)
-      )
+      page
+        .getByRole('link', { name: /batch|inventory/i })
+        .or(page.getByRole('button', { name: /batch|inventory/i }))
+        .or(page.getByText(/view.batches/i))
     ).toBeVisible();
   });
 });
@@ -459,9 +458,11 @@ test.describe('Drug Catalog - Edit Drug', () => {
 
   test('should have edit action in drug row', async ({ page }) => {
     // Row should have edit button/menu
-    const editButton = page.locator('tr').filter({ hasText: 'Paracetamol' }).getByRole('button', { name: /edit/i }).or(
-      page.locator('tr').filter({ hasText: 'Paracetamol' }).getByTestId('edit-drug')
-    );
+    const editButton = page
+      .locator('tr')
+      .filter({ hasText: 'Paracetamol' })
+      .getByRole('button', { name: /edit/i })
+      .or(page.locator('tr').filter({ hasText: 'Paracetamol' }).getByTestId('edit-drug'));
 
     await expect(editButton).toBeVisible();
   });
@@ -505,9 +506,11 @@ test.describe('Drug Catalog - Delete Drug', () => {
 
   test('should have delete action', async ({ page }) => {
     // Row should have delete option
-    const deleteButton = page.locator('tr').filter({ hasText: 'Paracetamol' }).getByRole('button', { name: /delete|remove/i }).or(
-      page.locator('tr').filter({ hasText: 'Paracetamol' }).getByTestId('delete-drug')
-    );
+    const deleteButton = page
+      .locator('tr')
+      .filter({ hasText: 'Paracetamol' })
+      .getByRole('button', { name: /delete|remove/i })
+      .or(page.locator('tr').filter({ hasText: 'Paracetamol' }).getByTestId('delete-drug'));
 
     // Note: Delete might be in a dropdown menu
     await expect(deleteButton.or(page.getByRole('menuitem', { name: /delete/i }))).toBeVisible();

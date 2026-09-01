@@ -20,10 +20,7 @@ import { EncounterEditInsights } from '@/components/encounters/encounter-edit-in
 import { SOAPNoteSummary } from '@/components/encounters/soap-note-summary';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterEditStore } from '@/lib/stores/encounter-edit-store';
-import {
-  useUpdateEncounter,
-  useEncounterDiagnoses,
-} from '@/lib/hooks/use-encounters';
+import { useUpdateEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { useAuth } from '@/lib/auth/context';
@@ -67,9 +64,9 @@ export default function EncounterEditReviewPage() {
 
   // Get provider name
   const providerName = user
-    ? (user.first_name && user.last_name
-        ? `${user.first_name} ${user.last_name}`
-        : user.username)
+    ? user.first_name && user.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user.username
     : undefined;
 
   // Build form data for SOAP summary
@@ -97,12 +94,20 @@ export default function EncounterEditReviewPage() {
       }
 
       const icd11Display = d.icd11_display
-        ? (d.icd11_code ? `${d.icd11_display} (ICD-11: ${d.icd11_code})` : d.icd11_display)
-        : (d.icd11_code ? `ICD-11: ${d.icd11_code}` : null);
+        ? d.icd11_code
+          ? `${d.icd11_display} (ICD-11: ${d.icd11_code})`
+          : d.icd11_display
+        : d.icd11_code
+          ? `ICD-11: ${d.icd11_code}`
+          : null;
 
       const snomedDisplay = d.snomed_display
-        ? (d.snomed_code ? `${d.snomed_display} (SNOMED: ${d.snomed_code})` : d.snomed_display)
-        : (d.snomed_code ? `SNOMED: ${d.snomed_code}` : null);
+        ? d.snomed_code
+          ? `${d.snomed_display} (SNOMED: ${d.snomed_code})`
+          : d.snomed_display
+        : d.snomed_code
+          ? `SNOMED: ${d.snomed_code}`
+          : null;
 
       return {
         icd10_code: d.icd10_code,
@@ -124,9 +129,7 @@ export default function EncounterEditReviewPage() {
   const isEditable = encounter?.status !== 'CLOSED' && encounter?.status !== 'CANCELLED';
 
   // Count completed sections
-  const completedCount = completion
-    ? Object.values(completion).filter(Boolean).length
-    : 0;
+  const completedCount = completion ? Object.values(completion).filter(Boolean).length : 0;
 
   // Navigate to previous step
   const handlePrev = useCallback(() => {
@@ -138,9 +141,10 @@ export default function EncounterEditReviewPage() {
     if (!formData) return;
 
     try {
-      const bp = formData.blood_pressure_systolic && formData.blood_pressure_diastolic
-        ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
-        : '';
+      const bp =
+        formData.blood_pressure_systolic && formData.blood_pressure_diastolic
+          ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
+          : '';
 
       await updateEncounter.mutateAsync({
         id: encounterRouteId,
@@ -190,9 +194,10 @@ export default function EncounterEditReviewPage() {
 
     try {
       // First save all the data
-      const bp = formData.blood_pressure_systolic && formData.blood_pressure_diastolic
-        ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
-        : null;
+      const bp =
+        formData.blood_pressure_systolic && formData.blood_pressure_diastolic
+          ? `${formData.blood_pressure_systolic}/${formData.blood_pressure_diastolic}`
+          : null;
 
       await updateEncounter.mutateAsync({
         id: encounterRouteId,
@@ -287,9 +292,7 @@ export default function EncounterEditReviewPage() {
             <CheckSquare className="h-5 w-5" />
             Documentation Progress
           </CardTitle>
-          <CardDescription>
-            {completedCount} of 6 sections completed
-          </CardDescription>
+          <CardDescription>{completedCount} of 6 sections completed</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -308,7 +311,7 @@ export default function EncounterEditReviewPage() {
                   variant={isComplete ? 'default' : 'outline'}
                   className={isComplete ? 'bg-green-600' : ''}
                 >
-                  {isComplete && <CheckCircle className="h-3 w-3 mr-1" />}
+                  {isComplete && <CheckCircle className="mr-1 h-3 w-3" />}
                   {label}
                 </Badge>
               );
@@ -346,13 +349,11 @@ export default function EncounterEditReviewPage() {
       {/* Actions */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-            <p className="text-sm text-muted-foreground">
-              Step 7 of 7 — Ready for finalization
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">Step 7 of 7 — Ready for finalization</p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button variant="outline" onClick={handlePrev}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
               <Button
@@ -361,9 +362,9 @@ export default function EncounterEditReviewPage() {
                 disabled={updateEncounter.isPending || !isEditable}
               >
                 {updateEncounter.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="mr-2 h-4 w-4" />
                 )}
                 Save & Continue Later
               </Button>
@@ -374,9 +375,9 @@ export default function EncounterEditReviewPage() {
                   className="bg-green-600 hover:bg-green-700"
                 >
                   {updateEncounter.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <CheckCircle className="mr-2 h-4 w-4" />
                   )}
                   Finalize Encounter
                 </Button>

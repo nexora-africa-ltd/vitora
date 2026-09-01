@@ -48,12 +48,7 @@ export const TransferStatusSchema = z.enum([
   'CANCELLED',
 ]);
 
-export const WardTransactionTypeSchema = z.enum([
-  'CONSUME',
-  'REPLENISH',
-  'RETURN',
-  'ADJUSTMENT',
-]);
+export const WardTransactionTypeSchema = z.enum(['CONSUME', 'REPLENISH', 'RETURN', 'ADJUSTMENT']);
 
 export const StockCountTypeSchema = z.enum(['FULL', 'CYCLE', 'SPOT']);
 
@@ -80,11 +75,7 @@ export const ETIMSInvoiceStatusSchema = z.enum([
   'CANCELLED',
 ]);
 
-export const ForecastMethodSchema = z.enum([
-  'MOVING_AVERAGE',
-  'EXPONENTIAL_SMOOTHING',
-  'SEASONAL',
-]);
+export const ForecastMethodSchema = z.enum(['MOVING_AVERAGE', 'EXPONENTIAL_SMOOTHING', 'SEASONAL']);
 
 export const ReorderUrgencySchema = z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']);
 

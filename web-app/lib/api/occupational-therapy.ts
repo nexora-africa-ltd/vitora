@@ -229,11 +229,7 @@ export const occupationalTherapyApi = {
     });
   },
 
-  rescheduleSession: async (
-    id: number,
-    newDate: string,
-    newTime?: string
-  ): Promise<OTSession> => {
+  rescheduleSession: async (id: number, newDate: string, newTime?: string): Promise<OTSession> => {
     const response = await apiClient.post(`${BASE_URL}/sessions/${id}/reschedule/`, {
       scheduled_date: newDate,
       scheduled_time: newTime,

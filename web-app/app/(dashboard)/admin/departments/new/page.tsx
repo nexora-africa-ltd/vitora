@@ -79,16 +79,15 @@ export default function NewDepartmentPage() {
       />
 
       <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
-        Choose the department type and parent carefully so routing, ownership, and staffing reports remain accurate.
+        Choose the department type and parent carefully so routing, ownership, and staffing reports
+        remain accurate.
       </div>
 
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
             <CardTitle>Department Details</CardTitle>
-            <CardDescription>
-              Enter the basic information for the new department
-            </CardDescription>
+            <CardDescription>Enter the basic information for the new department</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
@@ -136,7 +135,9 @@ export default function NewDepartmentPage() {
                 <Label htmlFor="type">Type *</Label>
                 <Select
                   value={formData.department_type}
-                  onValueChange={(value) => setFormData({ ...formData, department_type: value as DepartmentType })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, department_type: value as DepartmentType })
+                  }
                 >
                   <SelectTrigger id="type">
                     <SelectValue placeholder="Select type" />
@@ -154,7 +155,9 @@ export default function NewDepartmentPage() {
                 <Label htmlFor="parent">Parent Department</Label>
                 <Select
                   value={formData.parent?.toString() || 'none'}
-                  onValueChange={(value) => setFormData({ ...formData, parent: value === 'none' ? null : parseInt(value) })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, parent: value === 'none' ? null : parseInt(value) })
+                  }
                 >
                   <SelectTrigger id="parent">
                     <SelectValue placeholder="Select parent" />
@@ -175,7 +178,9 @@ export default function NewDepartmentPage() {
               <Label htmlFor="head">Department Head</Label>
               <Select
                 value={formData.head?.toString() || 'none'}
-                onValueChange={(value) => setFormData({ ...formData, head: value === 'none' ? null : parseInt(value) })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, head: value === 'none' ? null : parseInt(value) })
+                }
               >
                 <SelectTrigger id="head">
                   <SelectValue placeholder="Select head" />
@@ -196,7 +201,7 @@ export default function NewDepartmentPage() {
                 <Link href="/admin/departments">Cancel</Link>
               </Button>
               <Button type="submit" disabled={createDepartment.isPending}>
-                {createDepartment.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {createDepartment.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Department
               </Button>
             </div>

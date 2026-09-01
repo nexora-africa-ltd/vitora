@@ -10,7 +10,15 @@
 
 import { useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, ArrowRightLeft, Beaker, ScanLine, Pill, Syringe } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowRightLeft,
+  Beaker,
+  ScanLine,
+  Pill,
+  Syringe,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -48,7 +56,8 @@ export default function EncounterEditOrdersPage() {
   const { data: prescriptions } = useEncounterPrescriptions(encounterStoreId);
   const { data: procOrdersData } = useQuery({
     queryKey: ['procedure-orders', { encounter: encounterStoreId }],
-    queryFn: () => proceduresApi.listOrders({ encounter: String(encounterStoreId), page_size: '50' }),
+    queryFn: () =>
+      proceduresApi.listOrders({ encounter: String(encounterStoreId), page_size: '50' }),
     enabled: !!encounterStoreId,
   });
 
@@ -106,29 +115,35 @@ export default function EncounterEditOrdersPage() {
           patientId={encounter?.patient}
           chiefComplaint={session.chief_complaint || encounter?.chief_complaint || undefined}
           diagnoses={session.diagnoses
-            .map(d => d.icd10_display || d.free_text_diagnosis)
+            .map((d) => d.icd10_display || d.free_text_diagnosis)
             .filter(Boolean)}
-          existingOrders={labOrders?.flatMap(order =>
-            (order.items || []).map(item => item.test_name)
+          existingOrders={labOrders?.flatMap((order) =>
+            (order.items || []).map((item) => item.test_name)
           )}
-          patientAge={encounter?.patient_date_of_birth
-            ? calculateAge(encounter.patient_date_of_birth)
-            : undefined}
+          patientAge={
+            encounter?.patient_date_of_birth
+              ? calculateAge(encounter.patient_date_of_birth)
+              : undefined
+          }
           patientSex={
-            encounter?.patient_gender === 'F' ? 'F' :
-            encounter?.patient_gender === 'M' ? 'M' : undefined}
+            encounter?.patient_gender === 'F'
+              ? 'F'
+              : encounter?.patient_gender === 'M'
+                ? 'M'
+                : undefined
+          }
           disabled={!isEditable}
         />
       )}
 
       {/* Orders Tabs */}
       <Tabs defaultValue="lab" className="space-y-4">
-        <TabsList className="w-full grid grid-cols-5">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="lab" className="gap-1.5 px-2 sm:px-4">
             <Beaker className="h-5 w-5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Lab</span>
             {labCount > 0 && (
-              <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+              <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
                 {labCount}
               </span>
             )}
@@ -137,7 +152,7 @@ export default function EncounterEditOrdersPage() {
             <ScanLine className="h-5 w-5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Imaging</span>
             {imagingCount > 0 && (
-              <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+              <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
                 {imagingCount}
               </span>
             )}
@@ -146,7 +161,7 @@ export default function EncounterEditOrdersPage() {
             <Pill className="h-5 w-5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Rx</span>
             {rxCount > 0 && (
-              <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+              <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
                 {rxCount}
               </span>
             )}
@@ -155,7 +170,7 @@ export default function EncounterEditOrdersPage() {
             <Syringe className="h-5 w-5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Proc</span>
             {procCount > 0 && (
-              <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+              <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
                 {procCount}
               </span>
             )}
@@ -178,10 +193,14 @@ export default function EncounterEditOrdersPage() {
             encounterType={encounter?.encounter_type ?? undefined}
             encounterDate={encounter?.encounter_date ?? undefined}
             chiefComplaint={encounter?.chief_complaint ?? undefined}
-            patientDemographics={encounter?.patient_date_of_birth ? {
-              patientAge: calculateAge(encounter.patient_date_of_birth),
-              patientSex: encounter.patient_gender === 'F' ? 'female' : 'male',
-            } : undefined}
+            patientDemographics={
+              encounter?.patient_date_of_birth
+                ? {
+                    patientAge: calculateAge(encounter.patient_date_of_birth),
+                    patientSex: encounter.patient_gender === 'F' ? 'female' : 'male',
+                  }
+                : undefined
+            }
           />
         </TabsContent>
 
@@ -222,18 +241,18 @@ export default function EncounterEditOrdersPage() {
       {/* Navigation */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {labCount + imagingCount + rxCount + procCount} orders placed
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handlePrev}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
               <Button onClick={handleNext}>
                 Review & Finalize
-                <ArrowRight className="h-4 w-4 ml-2" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>

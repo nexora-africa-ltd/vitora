@@ -85,7 +85,7 @@ export default function SickNotesPage() {
           actions={
             canCreateSickNote ? (
               <Button onClick={() => router.push('/sick-notes/new')} size="sm">
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">New Sick Note</span>
                 <span className="sm:hidden">New</span>
               </Button>
@@ -95,7 +95,7 @@ export default function SickNotesPage() {
 
         {/* Filters */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative max-w-sm flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by note number, patient..."
@@ -139,9 +139,7 @@ export default function SickNotesPage() {
               key: 'note_number',
               header: 'Note #',
               sortable: true,
-              cell: (item) => (
-                <span className="font-mono text-sm">{item.note_number}</span>
-              ),
+              cell: (item) => <span className="font-mono text-sm">{item.note_number}</span>,
             },
             {
               key: 'patient_name',
@@ -159,9 +157,7 @@ export default function SickNotesPage() {
               header: 'Diagnosis',
               sortable: true,
               cell: (item) => (
-                <span className="text-sm truncate max-w-[200px] block">
-                  {item.diagnosis_text}
-                </span>
+                <span className="block max-w-[200px] truncate text-sm">{item.diagnosis_text}</span>
               ),
               hideOnMobile: true,
             },
@@ -188,7 +184,9 @@ export default function SickNotesPage() {
               header: 'Status',
               sortable: true,
               cell: (item) => (
-                <Badge className={`${STATUS_COLORS[item.status as SickNoteStatus] || ''} shrink-0 w-fit`}>
+                <Badge
+                  className={`${STATUS_COLORS[item.status as SickNoteStatus] || ''} w-fit shrink-0`}
+                >
                   {SICK_NOTE_STATUS_CONFIG[item.status as SickNoteStatus]?.label || item.status}
                 </Badge>
               ),
@@ -197,9 +195,7 @@ export default function SickNotesPage() {
               key: 'issued_by_name',
               header: 'Issued By',
               sortable: true,
-              cell: (item) => (
-                <span className="text-sm">{item.issued_by_name}</span>
-              ),
+              cell: (item) => <span className="text-sm">{item.issued_by_name}</span>,
               hideOnMobile: true,
             },
           ]}
@@ -207,19 +203,19 @@ export default function SickNotesPage() {
             <div className="flex items-start justify-between gap-2 p-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="font-mono text-sm">{item.note_number}</span>
                 </div>
                 <div className="mt-1 font-medium">{item.patient_name}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {item.diagnosis_text}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
+                <div className="mt-0.5 text-xs text-muted-foreground">{item.diagnosis_text}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
                   {format(new Date(item.leave_start_date), 'dd MMM')} –{' '}
                   {format(new Date(item.leave_end_date), 'dd MMM yyyy')} ({item.leave_days}d)
                 </div>
               </div>
-              <Badge className={`${STATUS_COLORS[item.status as SickNoteStatus] || ''} shrink-0 w-fit self-start`}>
+              <Badge
+                className={`${STATUS_COLORS[item.status as SickNoteStatus] || ''} w-fit shrink-0 self-start`}
+              >
                 {SICK_NOTE_STATUS_CONFIG[item.status as SickNoteStatus]?.label || item.status}
               </Badge>
             </div>

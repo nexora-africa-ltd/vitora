@@ -4,7 +4,11 @@ import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Badge } from '@/components/ui/badge';
 import { useAlertSeveritySummary } from '@/lib/hooks/use-pharmacy';
-import { DashboardEmptyState, DashboardFooterLink, DashboardListSkeleton } from './widget-primitives';
+import {
+  DashboardEmptyState,
+  DashboardFooterLink,
+  DashboardListSkeleton,
+} from './widget-primitives';
 
 const severitySummaryStyles = {
   LOW: 'border-primary/20 bg-primary/5 text-primary',
@@ -12,7 +16,6 @@ const severitySummaryStyles = {
   HIGH: 'border-warning/20 bg-warning/5 text-warning',
   CRITICAL: 'border-destructive/20 bg-destructive/5 text-destructive',
 };
-
 
 interface AlertsWidgetProps {
   className?: string;
@@ -61,15 +64,15 @@ export function AlertsWidget({ className }: AlertsWidgetProps = {}) {
   }
 
   return (
-    <div data-testid="alerts-widget" className={cn('space-y-3 h-full', className)}>
+    <div data-testid="alerts-widget" className={cn('h-full space-y-3', className)}>
       <div className="flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">{unresolvedTotal} unresolved alerts</p>
-          <p className="mt-1 text-sm text-muted-foreground text-pretty">
+          <p className="mt-1 text-pretty text-sm text-muted-foreground">
             Prioritize stock-outs and expiring batches that need intervention today.
           </p>
         </div>
-        <Badge variant="destructive" className="shrink-0 w-fit self-start">
+        <Badge variant="destructive" className="w-fit shrink-0 self-start">
           {unresolvedTotal}
         </Badge>
       </div>
@@ -78,10 +81,7 @@ export function AlertsWidget({ className }: AlertsWidgetProps = {}) {
         {severitySummary.map((item) => (
           <div
             key={item.severity}
-            className={cn(
-              'rounded-xl border px-3 py-2',
-              severitySummaryStyles[item.severity]
-            )}
+            className={cn('rounded-xl border px-3 py-2', severitySummaryStyles[item.severity])}
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-medium text-muted-foreground">{item.label}</span>

@@ -27,7 +27,12 @@ import React, { createContext, useContext, useMemo, useEffect, useState, ReactNo
 import { useQuery } from '@tanstack/react-query';
 import { encountersApi } from '@/lib/api/encounters';
 import { useOptionalPatientContext } from './patient-context';
-import { usePatientJourneyStore, type TriageStatus, type ConsultationStatus, type TriageBypassReason } from '@/lib/stores/patient-journey';
+import {
+  usePatientJourneyStore,
+  type TriageStatus,
+  type ConsultationStatus,
+  type TriageBypassReason,
+} from '@/lib/stores/patient-journey';
 import type { Encounter } from '@/lib/types/encounter';
 
 // =============================================================================
@@ -79,12 +84,8 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
   const patientContext = useOptionalPatientContext();
 
   // Access patient journey store for syncing
-  const {
-    setEncounter,
-    syncFromEncounter,
-    checkInPatient,
-    activePatients,
-  } = usePatientJourneyStore();
+  const { setEncounter, syncFromEncounter, checkInPatient, activePatients } =
+    usePatientJourneyStore();
 
   // Track validation error separately
   const [validationError, setValidationError] = useState<Error | null>(null);
@@ -131,9 +132,17 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
 
         // Sync triage and consultation status from encounter
         const triageStatus = (encounter.triage_status || 'PENDING') as TriageStatus;
-        const consultationStatus = (encounter.consultation_status || 'WAITING') as ConsultationStatus;
-        const triageBypassReason = (encounter as unknown as Record<string, unknown>).triage_bypass_reason as TriageBypassReason | undefined;
-        const triageCategory = (encounter as unknown as Record<string, unknown>).triage_category as 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | undefined;
+        const consultationStatus = (encounter.consultation_status ||
+          'WAITING') as ConsultationStatus;
+        const triageBypassReason = (encounter as unknown as Record<string, unknown>)
+          .triage_bypass_reason as TriageBypassReason | undefined;
+        const triageCategory = (encounter as unknown as Record<string, unknown>).triage_category as
+          | 'RED'
+          | 'ORANGE'
+          | 'YELLOW'
+          | 'GREEN'
+          | 'BLUE'
+          | undefined;
 
         syncFromEncounter(patientId, {
           triage_status: triageStatus,
@@ -151,7 +160,8 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
 
         // Then sync status
         const triageStatus = (encounter.triage_status || 'PENDING') as TriageStatus;
-        const consultationStatus = (encounter.consultation_status || 'WAITING') as ConsultationStatus;
+        const consultationStatus = (encounter.consultation_status ||
+          'WAITING') as ConsultationStatus;
 
         syncFromEncounter(patientId, {
           triage_status: triageStatus,
@@ -159,7 +169,7 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
         });
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- Store actions are stable, only sync on encounter/validation changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Store actions are stable, only sync on encounter/validation changes
   }, [encounter?.id, encounter?.triage_status, validationError, patientContext?.patient?.id]);
 
   // Derive order permissions
@@ -183,35 +193,34 @@ export function EncounterProvider({ encounterId, children }: EncounterProviderPr
   const error = validationError ?? (fetchError as Error | null);
 
   // Build context value (memoized to prevent unnecessary rerenders)
-  const contextValue = useMemo<EncounterContextValue>(() => ({
-    encounter: validationError ? null : (encounter ?? null),
-    isLoading,
-    error,
-    canPlaceOrders: validationError ? false : canPlaceOrders,
-    isActiveEncounter: validationError ? false : isActiveEncounter,
-    encounterId,
-    patientId: encounter?.patient ?? null,
-    triageStatus,
-    consultationStatus,
-    refetch,
-  }), [
-    encounter,
-    isLoading,
-    error,
-    canPlaceOrders,
-    isActiveEncounter,
-    encounterId,
-    triageStatus,
-    consultationStatus,
-    refetch,
-    validationError,
-  ]);
-
-  return (
-    <EncounterContext.Provider value={contextValue}>
-      {children}
-    </EncounterContext.Provider>
+  const contextValue = useMemo<EncounterContextValue>(
+    () => ({
+      encounter: validationError ? null : (encounter ?? null),
+      isLoading,
+      error,
+      canPlaceOrders: validationError ? false : canPlaceOrders,
+      isActiveEncounter: validationError ? false : isActiveEncounter,
+      encounterId,
+      patientId: encounter?.patient ?? null,
+      triageStatus,
+      consultationStatus,
+      refetch,
+    }),
+    [
+      encounter,
+      isLoading,
+      error,
+      canPlaceOrders,
+      isActiveEncounter,
+      encounterId,
+      triageStatus,
+      consultationStatus,
+      refetch,
+      validationError,
+    ]
   );
+
+  return <EncounterContext.Provider value={contextValue}>{children}</EncounterContext.Provider>;
 }
 
 // =============================================================================

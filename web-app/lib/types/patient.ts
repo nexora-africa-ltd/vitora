@@ -150,11 +150,23 @@ export interface PatientCreateData {
 // Payment mode options
 export type PaymentMode = 'cash' | 'sha' | 'insurance_private' | 'insurance_corporate';
 
-export const PAYMENT_MODE_OPTIONS: Array<{ value: PaymentMode; label: string; description?: string }> = [
+export const PAYMENT_MODE_OPTIONS: Array<{
+  value: PaymentMode;
+  label: string;
+  description?: string;
+}> = [
   { value: 'cash', label: 'Cash', description: 'Patient pays out of pocket' },
   { value: 'sha', label: 'SHA', description: 'Government health insurance' },
-  { value: 'insurance_private', label: 'Private Insurance', description: 'Individual private health cover' },
-  { value: 'insurance_corporate', label: 'Corporate Insurance', description: 'Employer-provided health cover' },
+  {
+    value: 'insurance_private',
+    label: 'Private Insurance',
+    description: 'Individual private health cover',
+  },
+  {
+    value: 'insurance_corporate',
+    label: 'Corporate Insurance',
+    description: 'Employer-provided health cover',
+  },
 ];
 
 export interface PatientUpdateData extends Partial<PatientCreateData> {
@@ -189,7 +201,18 @@ export interface PatientListParams {
 export interface PatientEncounter {
   id: number;
   encounter_type: string;
-  status: 'CREATED' | 'CHECKED_IN' | 'TRIAGED' | 'IN_PROGRESS' | 'ON_HOLD' | 'ORDERS_PLACED' | 'RESULTS_PENDING' | 'READY_TO_CLOSE' | 'CLOSED' | 'COMPLETED' | 'CANCELLED';
+  status:
+    | 'CREATED'
+    | 'CHECKED_IN'
+    | 'TRIAGED'
+    | 'IN_PROGRESS'
+    | 'ON_HOLD'
+    | 'ORDERS_PLACED'
+    | 'RESULTS_PENDING'
+    | 'READY_TO_CLOSE'
+    | 'CLOSED'
+    | 'COMPLETED'
+    | 'CANCELLED';
   encounter_date: string;
   chief_complaint: string;
   created_at: string;

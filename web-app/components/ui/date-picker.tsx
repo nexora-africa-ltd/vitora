@@ -1,18 +1,14 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { ChevronDownIcon, CalendarIcon, X } from "lucide-react";
-import { format, parse, isValid } from "date-fns";
+import * as React from 'react';
+import { ChevronDownIcon, CalendarIcon, X } from 'lucide-react';
+import { format, parse, isValid } from 'date-fns';
 
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 interface DatePickerProps {
   value?: Date;
@@ -45,13 +41,13 @@ function parseFlexibleDate(input: string): Date | null {
 
   // Try multiple formats
   const formats = [
-    "dd/MM/yyyy",
-    "d/M/yyyy",
-    "MM/dd/yyyy",
-    "M/d/yyyy",
-    "yyyy-MM-dd",
-    "dd-MM-yyyy",
-    "d-M-yyyy",
+    'dd/MM/yyyy',
+    'd/M/yyyy',
+    'MM/dd/yyyy',
+    'M/d/yyyy',
+    'yyyy-MM-dd',
+    'dd-MM-yyyy',
+    'd-M-yyyy',
   ];
 
   for (const fmt of formats) {
@@ -72,15 +68,15 @@ function parseFlexibleDate(input: string): Date | null {
  */
 function formatDateInput(value: string, format: string): string {
   // Remove all non-digit characters
-  const digits = value.replace(/\D/g, "");
+  const digits = value.replace(/\D/g, '');
 
   // Determine separator from format (/ or -)
-  const separator = format.includes("/") ? "/" : "-";
+  const separator = format.includes('/') ? '/' : '-';
 
   // Format based on the expected format pattern
-  if (format.startsWith("dd") || format.startsWith("MM")) {
+  if (format.startsWith('dd') || format.startsWith('MM')) {
     // dd/MM/yyyy or MM/dd/yyyy format
-    let formatted = "";
+    let formatted = '';
     for (let i = 0; i < digits.length && i < 8; i++) {
       if (i === 2 || i === 4) {
         formatted += separator;
@@ -88,9 +84,9 @@ function formatDateInput(value: string, format: string): string {
       formatted += digits[i];
     }
     return formatted;
-  } else if (format.startsWith("yyyy")) {
+  } else if (format.startsWith('yyyy')) {
     // yyyy-MM-dd format
-    let formatted = "";
+    let formatted = '';
     for (let i = 0; i < digits.length && i < 8; i++) {
       if (i === 4 || i === 6) {
         formatted += separator;
@@ -101,7 +97,7 @@ function formatDateInput(value: string, format: string): string {
   }
 
   // Fallback: just return digits with dd/MM/yyyy format
-  let formatted = "";
+  let formatted = '';
   for (let i = 0; i < digits.length && i < 8; i++) {
     if (i === 2 || i === 4) {
       formatted += separator;
@@ -123,12 +119,12 @@ export function DatePicker({
   minDate,
   maxDate,
   allowInput = true,
-  inputFormat = "dd/MM/yyyy",
+  inputFormat = 'dd/MM/yyyy',
 }: DatePickerProps) {
   // Default placeholder shows the expected format (e.g., "DD/MM/YYYY")
   const displayPlaceholder = placeholder ?? inputFormat.toUpperCase();
   const [open, setOpen] = React.useState(false);
-  const [inputValue, setInputValue] = React.useState("");
+  const [inputValue, setInputValue] = React.useState('');
   const [inputError, setInputError] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -138,7 +134,7 @@ export function DatePicker({
       setInputValue(format(value, inputFormat));
       setInputError(false);
     } else {
-      setInputValue("");
+      setInputValue('');
     }
   }, [value, inputFormat]);
 
@@ -152,30 +148,36 @@ export function DatePicker({
     return d;
   }, [value, allowFuture]);
 
-  const isDateDisabled = React.useCallback((date: Date): boolean => {
-    // Check explicit min/max dates first
-    if (minDate && date < minDate) return true;
-    if (maxDate && date > maxDate) return true;
-    // Check past/future restrictions
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (!allowFuture && date > today) return true;
-    if (!allowPast && date < today) return true;
-    // Always enforce reasonable bounds
-    if (date < new Date("1900-01-01")) return true;
-    return false;
-  }, [minDate, maxDate, allowFuture, allowPast]);
+  const isDateDisabled = React.useCallback(
+    (date: Date): boolean => {
+      // Check explicit min/max dates first
+      if (minDate && date < minDate) return true;
+      if (maxDate && date > maxDate) return true;
+      // Check past/future restrictions
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (!allowFuture && date > today) return true;
+      if (!allowPast && date < today) return true;
+      // Always enforce reasonable bounds
+      if (date < new Date('1900-01-01')) return true;
+      return false;
+    },
+    [minDate, maxDate, allowFuture, allowPast]
+  );
 
-  const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
+  const handleInputChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
 
-    // Auto-format the input as user types
-    const formatted = formatDateInput(newValue, inputFormat);
-    setInputValue(formatted);
+      // Auto-format the input as user types
+      const formatted = formatDateInput(newValue, inputFormat);
+      setInputValue(formatted);
 
-    // Reset error state while typing
-    setInputError(false);
-  }, [inputFormat]);
+      // Reset error state while typing
+      setInputError(false);
+    },
+    [inputFormat]
+  );
 
   const handleInputBlur = React.useCallback(() => {
     if (!inputValue.trim()) {
@@ -212,40 +214,49 @@ export function DatePicker({
     }
   }, [inputValue, value, onChange, inputFormat, isDateDisabled]);
 
-  const handleInputKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleInputBlur();
-      inputRef.current?.blur();
-    } else if (e.key === "Escape") {
-      // Revert to previous value
-      if (value) {
-        setInputValue(format(value, inputFormat));
+  const handleInputKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleInputBlur();
+        inputRef.current?.blur();
+      } else if (e.key === 'Escape') {
+        // Revert to previous value
+        if (value) {
+          setInputValue(format(value, inputFormat));
+        } else {
+          setInputValue('');
+        }
+        setInputError(false);
+        inputRef.current?.blur();
+      }
+    },
+    [handleInputBlur, value, inputFormat]
+  );
+
+  const handleClear = React.useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onChange(undefined);
+      setInputValue('');
+      setInputError(false);
+    },
+    [onChange]
+  );
+
+  const handleCalendarSelect = React.useCallback(
+    (date?: Date) => {
+      onChange(date);
+      setOpen(false);
+      if (date) {
+        setInputValue(format(date, inputFormat));
       } else {
-        setInputValue("");
+        setInputValue('');
       }
       setInputError(false);
-      inputRef.current?.blur();
-    }
-  }, [handleInputBlur, value, inputFormat]);
-
-  const handleClear = React.useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange(undefined);
-    setInputValue("");
-    setInputError(false);
-  }, [onChange]);
-
-  const handleCalendarSelect = React.useCallback((date?: Date) => {
-    onChange(date);
-    setOpen(false);
-    if (date) {
-      setInputValue(format(date, inputFormat));
-    } else {
-      setInputValue("");
-    }
-    setInputError(false);
-  }, [onChange, inputFormat]);
+    },
+    [onChange, inputFormat]
+  );
 
   // If input is not allowed, use the original button-only UI
   if (!allowInput) {
@@ -258,31 +269,28 @@ export function DatePicker({
             disabled={disabled}
             aria-invalid={error}
             className={cn(
-              "h-10 w-full justify-between px-3 text-left font-normal",
-              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              !value && "text-muted-foreground",
-              error && "border-destructive focus-visible:ring-destructive",
+              'h-10 w-full justify-between px-3 text-left font-normal',
+              'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              !value && 'text-muted-foreground',
+              error && 'border-destructive focus-visible:ring-destructive',
               className
             )}
           >
             <span className="flex items-center gap-2 truncate">
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              {value ? format(value, "PPP") : displayPlaceholder}
+              {value ? format(value, 'PPP') : displayPlaceholder}
             </span>
 
             <ChevronDownIcon
               className={cn(
-                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                open && "rotate-180"
+                'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                open && 'rotate-180'
               )}
             />
           </Button>
         </PopoverTrigger>
 
-        <PopoverContent
-          align="start"
-          className="w-auto rounded-md border p-2 shadow-md"
-        >
+        <PopoverContent align="start" className="w-auto rounded-md border p-2 shadow-md">
           <Calendar
             mode="single"
             selected={value}
@@ -301,7 +309,7 @@ export function DatePicker({
 
   // Enhanced UI with input field
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn('relative', className)}>
       <div className="relative flex items-center">
         <Input
           ref={inputRef}
@@ -314,8 +322,8 @@ export function DatePicker({
           placeholder={displayPlaceholder}
           aria-invalid={error || inputError}
           className={cn(
-            "h-10 pr-16",
-            (error || inputError) && "border-destructive focus-visible:ring-destructive"
+            'h-10 pr-16',
+            (error || inputError) && 'border-destructive focus-visible:ring-destructive'
           )}
         />
 
@@ -351,10 +359,7 @@ export function DatePicker({
               </Button>
             </PopoverTrigger>
 
-            <PopoverContent
-              align="end"
-              className="w-auto rounded-md border p-2 shadow-md"
-            >
+            <PopoverContent align="end" className="w-auto rounded-md border p-2 shadow-md">
               <Calendar
                 mode="single"
                 selected={value}

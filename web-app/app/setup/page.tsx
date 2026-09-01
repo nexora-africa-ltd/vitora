@@ -163,10 +163,9 @@ export default function SetupWizardPage() {
     }
     setLoadingSubCounties(true);
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/locations/sub-counties/?county=${countyId}`,
-        { headers: { 'Content-Type': 'application/json' } }
-      );
+      const res = await fetch(`${API_BASE_URL}/api/locations/sub-counties/?county=${countyId}`, {
+        headers: { 'Content-Type': 'application/json' },
+      });
       if (res.ok) {
         const data = await res.json();
         setSubCounties(Array.isArray(data) ? data : data.results || []);
@@ -221,8 +220,7 @@ export default function SetupWizardPage() {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email))
       errors.admin_email = 'Invalid email';
     if (!formData.admin_password) errors.admin_password = 'Password is required';
-    else if (formData.admin_password.length < 8)
-      errors.admin_password = 'At least 8 characters';
+    else if (formData.admin_password.length < 8) errors.admin_password = 'At least 8 characters';
     if (formData.admin_password !== formData.confirm_password)
       errors.confirm_password = 'Passwords do not match';
     setValidationErrors(errors);
@@ -305,22 +303,22 @@ export default function SetupWizardPage() {
 
   if (success) {
     return (
-      <div className="relative flex min-h-screen items-center justify-center p-4 sm:p-8 bg-background">
-        <Card className="relative w-full max-w-md border-brand-burgundy-200 dark:border-muted/30 shadow-lg overflow-hidden">
+      <div className="relative flex min-h-screen items-center justify-center bg-background p-4 sm:p-8">
+        <Card className="relative w-full max-w-md overflow-hidden border-brand-burgundy-200 shadow-lg dark:border-muted/30">
           {mounted && (
             <VitoraLogo
               variant="icon"
               tone={isDark ? 'white' : 'teal'}
               alt=""
-              className="absolute top-1/2 left-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none select-none"
+              className="pointer-events-none absolute left-1/2 top-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 select-none opacity-[0.03]"
               imageClassName="pointer-events-none select-none"
             />
           )}
-          <CardContent className="relative z-10 flex flex-col items-center justify-center py-16 gap-4">
+          <CardContent className="relative z-10 flex flex-col items-center justify-center gap-4 py-16">
             <div className="rounded-full bg-green-500/10 p-3">
               <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <div className="text-center space-y-2 max-w-xs">
+            <div className="max-w-xs space-y-2 text-center">
               <p className="text-lg font-semibold">Setup Complete!</p>
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{success.org_name}</span> has been
@@ -344,11 +342,11 @@ export default function SetupWizardPage() {
   // ─── Wizard form ───────────────────────────────────────────────────────────
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4 sm:p-8 bg-background">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4 sm:p-8">
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-10"
+        className="absolute right-4 top-4 z-10"
         onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
       >
         <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -356,18 +354,18 @@ export default function SetupWizardPage() {
         <span className="sr-only">Toggle theme</span>
       </Button>
 
-      <Card className="relative w-full max-w-lg border-brand-burgundy-200 dark:border-muted/30 shadow-lg overflow-hidden">
+      <Card className="relative w-full max-w-lg overflow-hidden border-brand-burgundy-200 shadow-lg dark:border-muted/30">
         {mounted && (
           <VitoraLogo
             variant="icon"
             tone={isDark ? 'white' : 'teal'}
             alt=""
-            className="absolute top-1/2 left-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none select-none"
+            className="pointer-events-none absolute left-1/2 top-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 select-none opacity-[0.03]"
             imageClassName="pointer-events-none select-none"
           />
         )}
 
-        <CardHeader className="relative z-10 text-center space-y-4">
+        <CardHeader className="relative z-10 space-y-4 text-center">
           <div className="mx-auto">
             <VitoraLogo tone={isDark ? 'light' : 'dark'} alt={APP_NAME} className="w-36" />
           </div>
@@ -421,7 +419,7 @@ export default function SetupWizardPage() {
             className="space-y-4"
           >
             {error && (
-              <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -435,7 +433,7 @@ export default function SetupWizardPage() {
                     Organization Name <span className="text-destructive">*</span>
                   </label>
                   <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       id="org_name"
                       value={formData.org_name}
@@ -484,7 +482,7 @@ export default function SetupWizardPage() {
                     Facility Name <span className="text-destructive">*</span>
                   </label>
                   <div className="relative">
-                    <Hospital className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Hospital className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       id="facility_name"
                       value={formData.facility_name}
@@ -560,10 +558,7 @@ export default function SetupWizardPage() {
                     <label className="text-sm font-medium">
                       County <span className="text-destructive">*</span>
                     </label>
-                    <Select
-                      value={formData.facility_county}
-                      onValueChange={handleCountyChange}
-                    >
+                    <Select value={formData.facility_county} onValueChange={handleCountyChange}>
                       <SelectTrigger
                         className={`h-10 ${validationErrors.facility_county ? 'border-destructive' : ''}`}
                       >
@@ -731,7 +726,7 @@ export default function SetupWizardPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1 h-11"
+                  className="h-11 flex-1"
                   onClick={handleBack}
                   disabled={isSubmitting}
                 >
@@ -740,12 +735,12 @@ export default function SetupWizardPage() {
                 </Button>
               )}
               {step !== 'admin' ? (
-                <Button type="submit" className="flex-1 h-11">
+                <Button type="submit" className="h-11 flex-1">
                   Next
                   <ChevronRight className="ml-1 h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="submit" className="flex-1 h-11" disabled={isSubmitting}>
+                <Button type="submit" className="h-11 flex-1" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

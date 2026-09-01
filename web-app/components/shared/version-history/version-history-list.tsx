@@ -9,25 +9,13 @@
 
 import { useState } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  ChevronDown,
-  ChevronRight,
-  User,
-  Clock,
-} from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, User, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { VersionDiff } from './version-diff';
 import type { VersionHistoryItem, FieldDisplayConfig, HistoryType } from '@/lib/types/history';
 
@@ -122,16 +110,14 @@ function VersionHistoryItem({
         >
           <Icon className="h-4 w-4" />
         </div>
-        {!isLast && (
-          <div className="w-0.5 flex-1 bg-border min-h-[24px]" />
-        )}
+        {!isLast && <div className="min-h-[24px] w-0.5 flex-1 bg-border" />}
       </div>
 
       {/* Content */}
-      <Card className="flex-1 mb-3">
+      <Card className="mb-3 flex-1">
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger asChild>
-            <CardContent className="p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardContent className="cursor-pointer p-3 transition-colors hover:bg-muted/50">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <Badge
@@ -157,13 +143,13 @@ function VersionHistoryItem({
                     <Clock className="h-3 w-3" />
                     {formatDistanceToNow(historyDate, { addSuffix: true })}
                   </span>
-                  {hasChanges && version.history_type !== 'created' && (
-                    isOpen ? (
+                  {hasChanges &&
+                    version.history_type !== 'created' &&
+                    (isOpen ? (
                       <ChevronDown className="h-4 w-4" />
                     ) : (
                       <ChevronRight className="h-4 w-4" />
-                    )
-                  )}
+                    ))}
                 </div>
               </div>
             </CardContent>
@@ -195,7 +181,7 @@ export function VersionHistoryList({
       <div className={cn('space-y-3', className)}>
         {[1, 2, 3].map((i) => (
           <div key={i} className="flex gap-3">
-            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
             <Skeleton className="h-16 flex-1 rounded-lg" />
           </div>
         ))}
@@ -205,8 +191,8 @@ export function VersionHistoryList({
 
   if (!versions?.length) {
     return (
-      <div className={cn('text-center py-8', className)}>
-        <Clock className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+      <div className={cn('py-8 text-center', className)}>
+        <Clock className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
         <p className="text-muted-foreground">No version history available</p>
         <p className="text-sm text-muted-foreground/70">
           Changes will appear here when the record is modified
@@ -232,11 +218,7 @@ export function VersionHistoryList({
 
       {hasMore && !showAll && (
         <div className="flex justify-center pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAll(true)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowAll(true)}>
             Show {versions.length - initialLimit} more version(s)
           </Button>
         </div>
@@ -244,11 +226,7 @@ export function VersionHistoryList({
 
       {showAll && hasMore && (
         <div className="flex justify-center pt-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowAll(false)}
-          >
+          <Button variant="ghost" size="sm" onClick={() => setShowAll(false)}>
             Show less
           </Button>
         </div>

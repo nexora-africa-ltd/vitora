@@ -22,14 +22,14 @@ import { surveillanceApi } from '@/lib/api/surveillance';
 import { formatDateTime } from '@/lib/utils/format';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
-import type {
-  IHRNotificationListItem,
-  IHRNotificationListParams,
-} from '@/lib/types/surveillance';
+import type { IHRNotificationListItem, IHRNotificationListParams } from '@/lib/types/surveillance';
 
 const PAGE_SIZE = 20;
 
-const STATUS_BADGE_VARIANTS: Record<string, 'secondary' | 'warning' | 'info' | 'success' | 'destructive' | 'outline'> = {
+const STATUS_BADGE_VARIANTS: Record<
+  string,
+  'secondary' | 'warning' | 'info' | 'success' | 'destructive' | 'outline'
+> = {
   DRAFT: 'secondary',
   PENDING_REVIEW: 'warning',
   SUBMITTED_COUNTY: 'info',
@@ -116,7 +116,7 @@ export default function IHRNotificationsPage() {
           actions={
             canCreateIHRNotification ? (
               <Button size="sm" onClick={() => router.push('/surveillance/ihr/new')}>
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 <span className="hidden sm:inline">New Notification</span>
                 <span className="sm:hidden">New</span>
               </Button>
@@ -126,7 +126,7 @@ export default function IHRNotificationsPage() {
 
         {/* Dashboard Summary */}
         {dashboard && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Card className="p-3">
               <div className="text-xs text-muted-foreground">Total</div>
               <div className="text-2xl font-bold">{dashboard.total}</div>
@@ -281,7 +281,7 @@ export default function IHRNotificationsPage() {
                     <span className="hidden sm:inline">Overdue</span>
                   </Badge>
                 ) : (
-                  <span className="text-muted-foreground text-sm">
+                  <span className="text-sm text-muted-foreground">
                     {item.hours_since_detection != null ? `${item.hours_since_detection}h` : '-'}
                   </span>
                 ),
@@ -297,23 +297,31 @@ export default function IHRNotificationsPage() {
             <Card className="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="mb-1 flex items-center gap-2">
                     <span className="font-mono text-xs">{item.notification_reference}</span>
                     {item.is_overdue && (
-                      <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                      <Badge variant="destructive" className="text-xs">
+                        Overdue
+                      </Badge>
                     )}
                   </div>
-                  <p className="font-medium truncate">{item.disease_name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="truncate font-medium">{item.disease_name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {item.cases_count} cases, {item.deaths_count} deaths
                     {item.county_name && ` • ${item.county_name}`}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <Badge variant={URGENCY_BADGE_VARIANTS[item.urgency] ?? 'secondary'} className="text-xs">
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <Badge
+                    variant={URGENCY_BADGE_VARIANTS[item.urgency] ?? 'secondary'}
+                    className="text-xs"
+                  >
                     {item.urgency}
                   </Badge>
-                  <Badge variant={STATUS_BADGE_VARIANTS[item.status] ?? 'secondary'} className="text-xs">
+                  <Badge
+                    variant={STATUS_BADGE_VARIANTS[item.status] ?? 'secondary'}
+                    className="text-xs"
+                  >
                     {STATUS_LABELS[item.status] ?? item.status}
                   </Badge>
                 </div>

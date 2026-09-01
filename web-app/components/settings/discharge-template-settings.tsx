@@ -1,29 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Eye,
-  FileText,
-  Loader2,
-  Plus,
-  Star,
-  Trash2,
-  Pencil,
-  Check,
-  X,
-} from 'lucide-react';
+import { Eye, FileText, Loader2, Plus, Star, Trash2, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { printDischargeDocument } from '@/lib/documents';
 import { useFacility } from '@/lib/context/facility-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -64,8 +48,16 @@ import type {
 // =============================================================================
 
 const LAYOUT_OPTIONS: { value: DischargeTemplateLayout; label: string; description: string }[] = [
-  { value: 'STANDARD', label: 'Standard', description: 'Narrative layout — flowing clinical sections' },
-  { value: 'STRUCTURED', label: 'Structured', description: 'Labelled field grid — large hospital format' },
+  {
+    value: 'STANDARD',
+    label: 'Standard',
+    description: 'Narrative layout — flowing clinical sections',
+  },
+  {
+    value: 'STRUCTURED',
+    label: 'Structured',
+    description: 'Labelled field grid — large hospital format',
+  },
   { value: 'MINIMAL', label: 'Minimal', description: 'Compact single-page — dispensary / clinic' },
 ];
 
@@ -136,14 +128,19 @@ function TemplateForm({
   initial: TemplateFormData;
   onSubmit: (data: TemplateFormData) => void;
   onCancel: () => void;
-  onPreview: (layout: DischargeTemplateLayout, headerTitle: string, showSig: boolean, showQr: boolean) => void;
+  onPreview: (
+    layout: DischargeTemplateLayout,
+    headerTitle: string,
+    showSig: boolean,
+    showQr: boolean
+  ) => void;
   isSubmitting: boolean;
   submitLabel: string;
 }) {
   const [form, setForm] = useState<TemplateFormData>(initial);
 
   return (
-    <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+    <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="tpl-name">Template Name *</Label>
@@ -156,7 +153,10 @@ function TemplateForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor="tpl-layout">Layout</Label>
-          <Select value={form.layout} onValueChange={(v) => setForm({ ...form, layout: v as DischargeTemplateLayout })}>
+          <Select
+            value={form.layout}
+            onValueChange={(v) => setForm({ ...form, layout: v as DischargeTemplateLayout })}
+          >
             <SelectTrigger id="tpl-layout">
               <SelectValue>
                 {LAYOUT_OPTIONS.find((o) => o.value === form.layout)?.label}
@@ -232,13 +232,23 @@ function TemplateForm({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onPreview(form.layout, form.header_title, form.show_signature_lines, form.show_qr_code)}
+          onClick={() =>
+            onPreview(form.layout, form.header_title, form.show_signature_lines, form.show_qr_code)
+          }
         >
           <Eye className="mr-1.5 h-3.5 w-3.5" />
           Preview
         </Button>
-        <Button size="sm" onClick={() => onSubmit(form)} disabled={isSubmitting || !form.name.trim()}>
-          {isSubmitting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+        <Button
+          size="sm"
+          onClick={() => onSubmit(form)}
+          disabled={isSubmitting || !form.name.trim()}
+        >
+          {isSubmitting ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Check className="mr-1.5 h-3.5 w-3.5" />
+          )}
           {submitLabel}
         </Button>
       </div>
@@ -269,8 +279,8 @@ function TemplateRow({
     <div className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 space-y-1">
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="font-medium text-sm truncate">{template.name}</span>
+          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate text-sm font-medium">{template.name}</span>
           {template.is_default && (
             <Badge variant="default" className="shrink-0 gap-1 text-[10px]">
               <Star className="h-3 w-3" />
@@ -278,7 +288,9 @@ function TemplateRow({
             </Badge>
           )}
           {!template.is_active && (
-            <Badge variant="secondary" className="shrink-0 text-[10px]">Inactive</Badge>
+            <Badge variant="secondary" className="shrink-0 text-[10px]">
+              Inactive
+            </Badge>
           )}
         </div>
         <p className="text-xs text-muted-foreground">
@@ -286,18 +298,33 @@ function TemplateRow({
           {template.header_title ? ` • "${template.header_title}"` : ''}
         </p>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <Button variant="ghost" size="sm" onClick={() => onPreview(template)} className="gap-1.5 text-xs">
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onPreview(template)}
+          className="gap-1.5 text-xs"
+        >
           <Eye className="h-3.5 w-3.5" />
           Preview
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => onEdit(template)} className="gap-1.5 text-xs">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onEdit(template)}
+          className="gap-1.5 text-xs"
+        >
           <Pencil className="h-3.5 w-3.5" />
           Edit
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-destructive hover:text-destructive" disabled={isDeleting}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-xs text-destructive hover:text-destructive"
+              disabled={isDeleting}
+            >
               <Trash2 className="h-3.5 w-3.5" />
               Delete
             </Button>
@@ -306,12 +333,16 @@ function TemplateRow({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Template</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete &ldquo;{template.name}&rdquo;? This cannot be undone.
+                Are you sure you want to delete &ldquo;{template.name}&rdquo;? This cannot be
+                undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onDelete(template.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <AlertDialogAction
+                onClick={() => onDelete(template.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -412,7 +443,7 @@ export function DischargeTemplateSettings() {
           const msg = err instanceof Error ? err.message : 'Failed to update template';
           toast.error(msg);
         },
-      },
+      }
     );
   };
 
@@ -428,7 +459,7 @@ export function DischargeTemplateSettings() {
     layout: DischargeTemplateLayout,
     headerTitle: string,
     showSig: boolean,
-    showQr: boolean,
+    showQr: boolean
   ) => {
     printDischargeDocument({
       documentTitle: headerTitle || 'Discharge Summary',
@@ -465,15 +496,18 @@ export function DischargeTemplateSettings() {
             <HelpPopover content="Configure how discharge summaries are printed. Each template controls the print layout, header, and whether to include signatures and QR codes. Mark one as 'Default' for automatic use." />
           </div>
           {!showCreateForm && !editingTemplate && (
-            <Button size="sm" variant="outline" onClick={() => setShowCreateForm(true)} className="gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowCreateForm(true)}
+              className="gap-1.5"
+            >
               <Plus className="h-3.5 w-3.5" />
               New Template
             </Button>
           )}
         </div>
-        <CardDescription>
-          Control how discharge summaries print for this facility.
-        </CardDescription>
+        <CardDescription>Control how discharge summaries print for this facility.</CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -514,13 +548,13 @@ export function DischargeTemplateSettings() {
 
         {/* Template List */}
         {isLoading ? (
-          <div className="flex items-center gap-2 py-6 justify-center text-sm text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading templates…
           </div>
         ) : templates.length === 0 && !showCreateForm ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
-            <FileText className="mx-auto h-8 w-8 mb-2 opacity-40" />
+            <FileText className="mx-auto mb-2 h-8 w-8 opacity-40" />
             <p>No discharge templates configured.</p>
             <p className="mt-1">Create one to customise how discharge summaries print.</p>
           </div>

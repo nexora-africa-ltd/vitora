@@ -63,7 +63,12 @@ export default function InsurancePreauthsPage() {
   }, []);
 
   return (
-    <PullToRefresh onRefresh={async () => { await refetch(); }} isRefreshing={isFetching}>
+    <PullToRefresh
+      onRefresh={async () => {
+        await refetch();
+      }}
+      isRefreshing={isFetching}
+    >
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Pre-authorizations"
@@ -71,24 +76,29 @@ export default function InsurancePreauthsPage() {
         />
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search preauths..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="pl-9"
             />
           </div>
           <Select value={statusFilter} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-full sm:w-40">
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               {Object.entries(PREAUTH_STATUS_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -103,7 +113,7 @@ export default function InsurancePreauthsPage() {
               sortable: true,
               cell: (item) => (
                 <div>
-                  <p className="font-medium font-mono text-sm">{item.preauth_number}</p>
+                  <p className="font-mono text-sm font-medium">{item.preauth_number}</p>
                   <p className="text-xs text-muted-foreground">{item.provider_name}</p>
                 </div>
               ),
@@ -139,7 +149,7 @@ export default function InsurancePreauthsPage() {
               header: 'Status',
               sortable: true,
               cell: (item) => (
-                <Badge className={`${STATUS_COLORS[item.status] || ''} shrink-0 w-fit text-xs`}>
+                <Badge className={`${STATUS_COLORS[item.status] || ''} w-fit shrink-0 text-xs`}>
                   {PREAUTH_STATUS_LABELS[item.status] || item.status}
                 </Badge>
               ),
@@ -152,18 +162,24 @@ export default function InsurancePreauthsPage() {
           defaultSortDirection="desc"
           emptyMessage="No pre-authorizations found."
           mobileCard={(item) => (
-            <Card key={item.id} className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => handleRowClick(item)}>
+            <Card
+              key={item.id}
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => handleRowClick(item)}
+            >
               <CardContent className="p-3">
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-medium font-mono text-sm">{item.preauth_number}</p>
-                    <p className="text-xs text-muted-foreground">{item.patient_name} • {item.preauth_type}</p>
+                    <p className="font-mono text-sm font-medium">{item.preauth_number}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.patient_name} • {item.preauth_type}
+                    </p>
                   </div>
                   <Badge className={`${STATUS_COLORS[item.status] || ''} shrink-0 text-xs`}>
                     {PREAUTH_STATUS_LABELS[item.status] || item.status}
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center mt-2">
+                <div className="mt-2 flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">{item.provider_name}</p>
                   <p className="text-sm font-medium">{formatCurrency(item.estimated_cost)}</p>
                 </div>
@@ -175,10 +191,26 @@ export default function InsurancePreauthsPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-2">
-            <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Previous</Button>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Next</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
             </div>
           </div>
         )}

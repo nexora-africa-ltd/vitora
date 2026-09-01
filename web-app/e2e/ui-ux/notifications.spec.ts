@@ -90,10 +90,13 @@ const mockUnreadCount = { unread_count: 3 };
 /**
  * Setup all API mocks before any navigation
  */
-async function setupAllMocks(page: Page, options?: {
-  notifications?: typeof mockNotifications;
-  unreadCount?: typeof mockUnreadCount;
-}) {
+async function setupAllMocks(
+  page: Page,
+  options?: {
+    notifications?: typeof mockNotifications;
+    unreadCount?: typeof mockUnreadCount;
+  }
+) {
   const notifications = options?.notifications ?? mockNotifications;
   const unreadCount = options?.unreadCount ?? mockUnreadCount;
 
@@ -148,10 +151,18 @@ async function setupAllMocks(page: Page, options?: {
 
   // Dashboard mocks
   await page.route(/.*\/api\/patients\/.*/, async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 0, results: [] }) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ count: 0, results: [] }),
+    });
   });
   await page.route(/.*\/api\/encounters\/.*/, async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 0, results: [] }) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ count: 0, results: [] }),
+    });
   });
 }
 
@@ -212,7 +223,9 @@ test.describe.skip('Notification Popover (deprecated; use notifications-center.s
     await expect(page.getByText('Lab Results Ready')).toBeVisible();
   });
 
-  test('should show "Mark all read" button when there are unread notifications', async ({ page }) => {
+  test('should show "Mark all read" button when there are unread notifications', async ({
+    page,
+  }) => {
     await loginToDashboard(page);
 
     await page.getByRole('button', { name: /notifications/i }).click();
@@ -234,7 +247,13 @@ test.describe.skip('Notification Popover (deprecated; use notifications-center.s
 
   test('should show empty state when no notifications', async ({ page }) => {
     await setupAllMocks(page, {
-      notifications: { count: 0, next: null, previous: null, results: [], server_time: new Date().toISOString() },
+      notifications: {
+        count: 0,
+        next: null,
+        previous: null,
+        results: [],
+        server_time: new Date().toISOString(),
+      },
       unreadCount: { unread_count: 0 },
     });
 
@@ -245,7 +264,8 @@ test.describe.skip('Notification Popover (deprecated; use notifications-center.s
   });
 });
 
-test.describe.skip('Expanded Notification Center (deprecated; use notifications-center.spec.ts)', () => {
+test.describe
+  .skip('Expanded Notification Center (deprecated; use notifications-center.spec.ts)', () => {
   test.beforeEach(async ({ page }) => {
     await setupAllMocks(page);
   });
@@ -298,7 +318,10 @@ test.describe.skip('Expanded Notification Center (deprecated; use notifications-
     await page.waitForTimeout(500);
 
     // Click close button using force since it might be at edge of viewport
-    const closeButton = page.locator('button').filter({ has: page.locator('svg.lucide-x') }).last();
+    const closeButton = page
+      .locator('button')
+      .filter({ has: page.locator('svg.lucide-x') })
+      .last();
     await closeButton.click({ force: true });
     await page.waitForTimeout(300);
 
@@ -332,7 +355,11 @@ test.describe.skip('Notification Actions (deprecated; use notifications-center.s
     let markReadCalled = false;
     await page.route(/.*\/api\/notifications\/1\/mark-read\/?$/, async (route) => {
       markReadCalled = true;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'ok' }),
+      });
     });
 
     await loginToDashboard(page);
@@ -351,7 +378,11 @@ test.describe.skip('Notification Actions (deprecated; use notifications-center.s
     let markAllCalled = false;
     await page.route(/.*\/api\/notifications\/mark-all-read\/?$/, async (route) => {
       markAllCalled = true;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ marked_count: 3 }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ marked_count: 3 }),
+      });
     });
 
     await loginToDashboard(page);
@@ -371,7 +402,8 @@ test.describe.skip('Notification Actions (deprecated; use notifications-center.s
   });
 });
 
-test.describe.skip('Empty and Loading States (deprecated; use notifications-center.spec.ts)', () => {
+test.describe
+  .skip('Empty and Loading States (deprecated; use notifications-center.spec.ts)', () => {
   test('should not show badge when unread count is 0', async ({ page }) => {
     await setupAllMocks(page, {
       notifications: mockNotifications,
@@ -390,17 +422,29 @@ test.describe.skip('Empty and Loading States (deprecated; use notifications-cent
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ access: 'mock', refresh: 'mock', user: { id: 1, username: 'test' } }),
+        body: JSON.stringify({
+          access: 'mock',
+          refresh: 'mock',
+          user: { id: 1, username: 'test' },
+        }),
       });
     });
 
     await page.route(/.*\/api\/notifications\/unread-count\/?$/, async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ unread_count: 1 }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ unread_count: 1 }),
+      });
     });
 
     await page.route(/.*\/api\/notifications\/?(\?.*)?$/, async (route) => {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockNotifications) });
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockNotifications),
+      });
     });
 
     await loginToDashboard(page);

@@ -41,7 +41,10 @@ interface LabOrderTableProps {
   onSearch?: (query: string) => void;
 }
 
-const STATUS_CONFIG: Record<LabOrderStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+const STATUS_CONFIG: Record<
+  LabOrderStatus,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
+> = {
   DRAFT: { label: 'Draft', variant: 'outline' },
   ORDERED: { label: 'Ordered', variant: 'secondary' },
   SPECIMEN_COLLECTED: { label: 'Collected', variant: 'secondary' },
@@ -72,10 +75,11 @@ export function LabOrderTable({
 }: LabOrderTableProps) {
   const router = useRouter();
 
-  const isDonorUnitScreening = (order: LabOrder) => order.patient === null && !!order.blood_bank_unit;
+  const isDonorUnitScreening = (order: LabOrder) =>
+    order.patient === null && !!order.blood_bank_unit;
 
   const hasCriticalResults = (order: LabOrder) => {
-    return order.items?.some(item => item.result?.is_critical_result);
+    return order.items?.some((item) => item.result?.is_critical_result);
   };
 
   if (error) {
@@ -114,7 +118,7 @@ export function LabOrderTable({
             <Input
               placeholder="Search by patient or order #..."
               onChange={(e) => onSearch?.(e.target.value)}
-              className="pl-8 w-full sm:w-48 lg:w-56 xl:w-64"
+              className="w-full pl-8 sm:w-48 lg:w-56 xl:w-64"
             />
           </div>
         </div>
@@ -169,9 +173,7 @@ export function LabOrderTable({
             key: 'order_number',
             header: 'Order #',
             sortable: true,
-            cell: (order) => (
-              <span className="font-mono text-sm">{order.order_number}</span>
-            ),
+            cell: (order) => <span className="font-mono text-sm">{order.order_number}</span>,
           },
           {
             key: 'patient',
@@ -183,7 +185,9 @@ export function LabOrderTable({
                 <div className="flex items-center gap-2">
                   <div className="font-medium">{order.patient_name}</div>
                   {isDonorUnitScreening(order) && (
-                    <Badge variant="outline" className="text-[10px]">Donor Unit Screening</Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      Donor Unit Screening
+                    </Badge>
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground">{order.patient_mrn}</div>
@@ -221,7 +225,7 @@ export function LabOrderTable({
               const isCritical = hasCriticalResults(order);
               return (
                 <div className="flex items-center gap-2">
-                  <Badge className="shrink-0 w-fit" variant={status.variant}>
+                  <Badge className="w-fit shrink-0" variant={status.variant}>
                     {status.label}
                   </Badge>
                   {isCritical && <AlertTriangle className="h-4 w-4 text-red-500" />}
@@ -267,27 +271,27 @@ export function LabOrderTable({
           const isCritical = hasCriticalResults(order);
 
           return (
-            <Card className={cn('p-3 space-y-2', isCritical && 'border-destructive/30')}>
+            <Card className={cn('space-y-2 p-3', isCritical && 'border-destructive/30')}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">
+                  <p className="truncate font-medium">
                     {order.patient_name}
                     <span className="text-muted-foreground"> • {order.patient_mrn}</span>
                   </p>
                   {isDonorUnitScreening(order) && (
-                    <Badge variant="outline" className="mt-1 text-[10px]">Donor Unit Screening</Badge>
+                    <Badge variant="outline" className="mt-1 text-[10px]">
+                      Donor Unit Screening
+                    </Badge>
                   )}
-                  <p className="text-xs text-muted-foreground font-mono">{order.order_number}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{order.order_number}</p>
                 </div>
-                <Badge className="shrink-0 w-fit" variant={status.variant}>
+                <Badge className="w-fit shrink-0" variant={status.variant}>
                   {status.label}
                 </Badge>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className={priority.className}>{priority.label}</span>
-                <span className="text-muted-foreground">
-                  {order.items?.length || 0} test(s)
-                </span>
+                <span className="text-muted-foreground">{order.items?.length || 0} test(s)</span>
               </div>
             </Card>
           );
@@ -307,7 +311,7 @@ export function LabOrderTable({
               onClick={() => onPageChange(page - 1)}
               disabled={hasPreviousPage === undefined ? page <= 1 : !hasPreviousPage}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ChevronLeft className="mr-1 h-4 w-4" />
               Previous
             </Button>
             <Button
@@ -317,7 +321,7 @@ export function LabOrderTable({
               disabled={hasNextPage === undefined ? page >= totalPages : !hasNextPage}
             >
               Next
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
         </div>

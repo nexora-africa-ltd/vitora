@@ -79,7 +79,7 @@ export default function PrescriptionsPage() {
               {canCreatePrescription && canCreateFromCapabilities ? (
                 <Button asChild className="w-full sm:w-auto">
                   <Link href="/pharmacy/prescriptions/new">
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     New Prescription
                   </Link>
                 </Button>
@@ -109,8 +109,14 @@ export default function PrescriptionsPage() {
           totalCount={totalCount}
           totalPages={totalPages}
           onPageChange={setPage}
-          onStatusFilter={(s) => { setStatus(s); setPage(1); }}
-          onSearch={(q) => { setSearch(q); setPage(1); }}
+          onStatusFilter={(s) => {
+            setStatus(s);
+            setPage(1);
+          }}
+          onSearch={(q) => {
+            setSearch(q);
+            setPage(1);
+          }}
         />
       </div>
     </PullToRefresh>

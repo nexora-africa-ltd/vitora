@@ -39,16 +39,7 @@ import { ImagingEquipment, ImagingModality, MODALITY_LABELS } from '@/lib/types/
 import { formatDate } from '@/lib/utils/format';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from '@/lib/hooks';
-import {
-  Pencil,
-  Trash2,
-  AlertTriangle,
-  Bot,
-  Cpu,
-  CalendarClock,
-  X,
-  Save,
-} from 'lucide-react';
+import { Pencil, Trash2, AlertTriangle, Bot, Cpu, CalendarClock, X, Save } from 'lucide-react';
 
 export default function EquipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -63,15 +54,18 @@ export default function EquipmentDetailPage() {
 
   const equipmentId = Number(id);
 
-  const { data: equipment, isLoading, refetch } = useQuery({
+  const {
+    data: equipment,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['imaging-equipment', equipmentId],
     queryFn: () => imagingApi.getEquipment(equipmentId),
     enabled: !isNaN(equipmentId),
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: Partial<ImagingEquipment>) =>
-      imagingApi.updateEquipment(equipmentId, data),
+    mutationFn: (data: Partial<ImagingEquipment>) => imagingApi.updateEquipment(equipmentId, data),
     onSuccess: () => {
       toast({ title: 'Equipment updated' });
       setEditing(false);
@@ -130,11 +124,7 @@ export default function EquipmentDetailPage() {
   }
 
   if (!equipment) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        Equipment not found.
-      </div>
-    );
+    return <div className="py-12 text-center text-muted-foreground">Equipment not found.</div>;
   }
 
   return (
@@ -147,14 +137,14 @@ export default function EquipmentDetailPage() {
             <div className="flex items-center gap-2">
               {!editing && (
                 <Button variant="outline" size="sm" onClick={startEditing}>
-                  <Pencil className="h-4 w-4 mr-1" />
+                  <Pencil className="mr-1 h-4 w-4" />
                   Edit
                 </Button>
               )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
-                    <Trash2 className="h-4 w-4 mr-1" />
+                    <Trash2 className="mr-1 h-4 w-4" />
                     Delete
                   </Button>
                 </AlertDialogTrigger>
@@ -184,11 +174,11 @@ export default function EquipmentDetailPage() {
       />
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex items-center gap-3 min-w-0">
-          <Cpu className="h-5 w-5 text-muted-foreground shrink-0" />
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Cpu className="h-5 w-5 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate">
+            <p className="truncate text-sm font-medium">
               {equipment.manufacturer && equipment.model_name
                 ? `${equipment.manufacturer} ${equipment.model_name}`
                 : equipment.name}
@@ -199,7 +189,7 @@ export default function EquipmentDetailPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           {equipment.auto_registered && (
             <Badge variant="secondary" className="gap-1">
               <Bot className="h-3 w-3" />
@@ -225,15 +215,11 @@ export default function EquipmentDetailPage() {
                 onClick={() => setEditing(false)}
                 disabled={updateMutation.isPending}
               >
-                <X className="h-4 w-4 mr-1" />
+                <X className="mr-1 h-4 w-4" />
                 Cancel
               </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={updateMutation.isPending}
-              >
-                <Save className="h-4 w-4 mr-1" />
+              <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending}>
+                <Save className="mr-1 h-4 w-4" />
                 {updateMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
             </div>
@@ -258,7 +244,9 @@ export default function EquipmentDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(MODALITY_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -349,7 +337,9 @@ export default function EquipmentDetailPage() {
                 id="last_calibration_date"
                 type="date"
                 value={form.last_calibration_date || ''}
-                onChange={(e) => setForm((f) => ({ ...f, last_calibration_date: e.target.value || null }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, last_calibration_date: e.target.value || null }))
+                }
               />
             </div>
             <div className="space-y-2">
@@ -358,7 +348,9 @@ export default function EquipmentDetailPage() {
                 id="next_calibration_due"
                 type="date"
                 value={form.next_calibration_due || ''}
-                onChange={(e) => setForm((f) => ({ ...f, next_calibration_due: e.target.value || null }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, next_calibration_due: e.target.value || null }))
+                }
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
@@ -381,7 +373,14 @@ export default function EquipmentDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <DetailRow label="Name" value={equipment.name} />
-              <DetailRow label="Modality" value={equipment.modality_display || MODALITY_LABELS[equipment.modality as ImagingModality] || equipment.modality} />
+              <DetailRow
+                label="Modality"
+                value={
+                  equipment.modality_display ||
+                  MODALITY_LABELS[equipment.modality as ImagingModality] ||
+                  equipment.modality
+                }
+              />
               <DetailRow label="AE Title" value={equipment.ae_title} />
               <DetailRow label="Station Name" value={equipment.station_name} />
               <DetailRow label="Serial Number" value={equipment.serial_number} />
@@ -398,7 +397,10 @@ export default function EquipmentDetailPage() {
               <DetailRow label="Manufacturer" value={equipment.manufacturer} />
               <DetailRow label="Model" value={equipment.model_name} />
               <DetailRow label="Software" value={equipment.software_versions} />
-              <DetailRow label="Installed" value={equipment.installed_date ? formatDate(equipment.installed_date) : null} />
+              <DetailRow
+                label="Installed"
+                value={equipment.installed_date ? formatDate(equipment.installed_date) : null}
+              />
               <DetailRow label="Studies" value={String(equipment.studies_count)} />
             </CardContent>
           </Card>
@@ -406,25 +408,29 @@ export default function EquipmentDetailPage() {
           {/* Calibration Card */}
           <Card className="sm:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <CalendarClock className="h-4 w-4" />
                 Calibration & Maintenance
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-3 text-sm">
+              <div className="grid gap-3 text-sm sm:grid-cols-3">
                 <div>
-                  <p className="text-muted-foreground text-xs">Last Calibration</p>
+                  <p className="text-xs text-muted-foreground">Last Calibration</p>
                   <p className="font-medium">
-                    {equipment.last_calibration_date ? formatDate(equipment.last_calibration_date) : '—'}
+                    {equipment.last_calibration_date
+                      ? formatDate(equipment.last_calibration_date)
+                      : '—'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Next Due</p>
-                  <p className="font-medium flex items-center gap-1">
-                    {equipment.next_calibration_due ? formatDate(equipment.next_calibration_due) : '—'}
+                  <p className="text-xs text-muted-foreground">Next Due</p>
+                  <p className="flex items-center gap-1 font-medium">
+                    {equipment.next_calibration_due
+                      ? formatDate(equipment.next_calibration_due)
+                      : '—'}
                     {equipment.is_calibration_overdue && (
-                      <Badge variant="destructive" className="gap-1 ml-1">
+                      <Badge variant="destructive" className="ml-1 gap-1">
                         <AlertTriangle className="h-3 w-3" />
                         Overdue
                       </Badge>
@@ -432,16 +438,14 @@ export default function EquipmentDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Status</p>
-                  <p className="font-medium">
-                    {equipment.is_active ? 'Active' : 'Inactive'}
-                  </p>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="font-medium">{equipment.is_active ? 'Active' : 'Inactive'}</p>
                 </div>
               </div>
               {equipment.notes && (
-                <div className="mt-4 pt-3 border-t">
-                  <p className="text-muted-foreground text-xs mb-1">Notes</p>
-                  <p className="text-sm whitespace-pre-wrap">{equipment.notes}</p>
+                <div className="mt-4 border-t pt-3">
+                  <p className="mb-1 text-xs text-muted-foreground">Notes</p>
+                  <p className="whitespace-pre-wrap text-sm">{equipment.notes}</p>
                 </div>
               )}
             </CardContent>
@@ -456,7 +460,7 @@ function DetailRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex justify-between">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-right">{value || '—'}</span>
+      <span className="text-right font-medium">{value || '—'}</span>
     </div>
   );
 }

@@ -420,12 +420,12 @@ export const ARRIVAL_MODE_CONFIG: Record<ArrivalMode, { label: string }> = {
 
 /** WHO/ETAT age groups for age-adjusted vital sign thresholds */
 export type AgeGroup =
-  | 'neonate'     // 0-28 days
-  | 'infant'      // 1-12 months
+  | 'neonate' // 0-28 days
+  | 'infant' // 1-12 months
   | 'young_child' // 1-5 years
-  | 'school_age'  // 6-12 years
-  | 'adolescent'  // 12-18 years
-  | 'adult';      // 18+ years
+  | 'school_age' // 6-12 years
+  | 'adolescent' // 12-18 years
+  | 'adult'; // 18+ years
 
 /** ETAT danger signs — matches backend ETAT_DANGER_SIGNS list */
 export type EtATDangerSign =
@@ -440,23 +440,53 @@ export type EtATDangerSign =
   | 'severe_malnutrition_visible'
   | 'bleeding_severe';
 
-export const ETAT_DANGER_SIGNS_CONFIG: Record<EtATDangerSign, { label: string; description: string }> = {
-  obstructed_breathing: { label: 'Obstructed Breathing', description: 'Airway obstruction / stridor at rest' },
-  central_cyanosis: { label: 'Central Cyanosis', description: 'Blue discolouration of lips/tongue' },
-  severe_respiratory_distress: { label: 'Severe Respiratory Distress', description: 'Severe chest indrawing / grunting' },
-  shock_cold_extremities: { label: 'Shock (Cold Extremities)', description: 'Cold hands/feet with weak rapid pulse' },
+export const ETAT_DANGER_SIGNS_CONFIG: Record<
+  EtATDangerSign,
+  { label: string; description: string }
+> = {
+  obstructed_breathing: {
+    label: 'Obstructed Breathing',
+    description: 'Airway obstruction / stridor at rest',
+  },
+  central_cyanosis: {
+    label: 'Central Cyanosis',
+    description: 'Blue discolouration of lips/tongue',
+  },
+  severe_respiratory_distress: {
+    label: 'Severe Respiratory Distress',
+    description: 'Severe chest indrawing / grunting',
+  },
+  shock_cold_extremities: {
+    label: 'Shock (Cold Extremities)',
+    description: 'Cold hands/feet with weak rapid pulse',
+  },
   coma_unconscious: { label: 'Coma / Unconscious', description: 'No response to stimuli' },
   convulsing_now: { label: 'Convulsing Now', description: 'Active seizure at time of assessment' },
-  severe_dehydration_with_shock: { label: 'Severe Dehydration with Shock', description: 'Severe dehydration with altered consciousness' },
-  not_able_to_drink_breastfeed: { label: 'Not Able to Drink/Breastfeed', description: 'Unable to drink or breastfeed at all' },
-  severe_malnutrition_visible: { label: 'Severe Visible Malnutrition', description: 'Severe visible wasting / oedema' },
-  bleeding_severe: { label: 'Severe Bleeding', description: 'Active severe bleeding requiring intervention' },
+  severe_dehydration_with_shock: {
+    label: 'Severe Dehydration with Shock',
+    description: 'Severe dehydration with altered consciousness',
+  },
+  not_able_to_drink_breastfeed: {
+    label: 'Not Able to Drink/Breastfeed',
+    description: 'Unable to drink or breastfeed at all',
+  },
+  severe_malnutrition_visible: {
+    label: 'Severe Visible Malnutrition',
+    description: 'Severe visible wasting / oedema',
+  },
+  bleeding_severe: {
+    label: 'Severe Bleeding',
+    description: 'Active severe bleeding requiring intervention',
+  },
 };
 
 /** Dehydration levels per ETAT/IMCI classification */
 export type DehydrationLevel = 'NONE' | 'SOME' | 'SEVERE';
 
-export const DEHYDRATION_CONFIG: Record<DehydrationLevel, { label: string; severity: 'normal' | 'warning' | 'critical' }> = {
+export const DEHYDRATION_CONFIG: Record<
+  DehydrationLevel,
+  { label: string; severity: 'normal' | 'warning' | 'critical' }
+> = {
   NONE: { label: 'No Dehydration', severity: 'normal' },
   SOME: { label: 'Some Dehydration', severity: 'warning' },
   SEVERE: { label: 'Severe Dehydration', severity: 'critical' },
@@ -465,7 +495,10 @@ export const DEHYDRATION_CONFIG: Record<DehydrationLevel, { label: string; sever
 /** Fontanelle status for neonates/infants */
 export type FontanelleStatus = 'NORMAL' | 'BULGING' | 'SUNKEN';
 
-export const FONTANELLE_CONFIG: Record<FontanelleStatus, { label: string; severity: 'normal' | 'warning' | 'critical' }> = {
+export const FONTANELLE_CONFIG: Record<
+  FontanelleStatus,
+  { label: string; severity: 'normal' | 'warning' | 'critical' }
+> = {
   NORMAL: { label: 'Normal', severity: 'normal' },
   BULGING: { label: 'Bulging', severity: 'critical' },
   SUNKEN: { label: 'Sunken', severity: 'warning' },
@@ -474,7 +507,10 @@ export const FONTANELLE_CONFIG: Record<FontanelleStatus, { label: string; severi
 /** Breastfeeding ability for neonates/young infants */
 export type BreastfeedingAbility = 'NORMAL' | 'REDUCED' | 'UNABLE';
 
-export const BREASTFEEDING_CONFIG: Record<BreastfeedingAbility, { label: string; severity: 'normal' | 'warning' | 'critical' }> = {
+export const BREASTFEEDING_CONFIG: Record<
+  BreastfeedingAbility,
+  { label: string; severity: 'normal' | 'warning' | 'critical' }
+> = {
   NORMAL: { label: 'Feeding Well', severity: 'normal' },
   REDUCED: { label: 'Reduced Feeding', severity: 'warning' },
   UNABLE: { label: 'Unable to Feed', severity: 'critical' },
@@ -536,7 +572,10 @@ export type ChiefComplaintCategory =
   | 'SEVERE_MALARIA'
   | 'OTHER';
 
-export const CHIEF_COMPLAINT_CONFIG: Record<ChiefComplaintCategory, { label: string; ageRestriction?: 'neonatal' | 'pediatric' }> = {
+export const CHIEF_COMPLAINT_CONFIG: Record<
+  ChiefComplaintCategory,
+  { label: string; ageRestriction?: 'neonatal' | 'pediatric' }
+> = {
   CHEST_PAIN: { label: 'Chest Pain' },
   DIFFICULTY_BREATHING: { label: 'Difficulty Breathing' },
   TRAUMA: { label: 'Trauma/Injury' },
@@ -551,7 +590,10 @@ export const CHIEF_COMPLAINT_CONFIG: Record<ChiefComplaintCategory, { label: str
   // Neonatal-specific
   NEONATAL_SEPSIS: { label: 'Neonatal Sepsis', ageRestriction: 'neonatal' },
   NEONATAL_JAUNDICE: { label: 'Neonatal Jaundice', ageRestriction: 'neonatal' },
-  NEONATAL_RESPIRATORY_DISTRESS: { label: 'Neonatal Respiratory Distress', ageRestriction: 'neonatal' },
+  NEONATAL_RESPIRATORY_DISTRESS: {
+    label: 'Neonatal Respiratory Distress',
+    ageRestriction: 'neonatal',
+  },
   BIRTH_ASPHYXIA: { label: 'Birth Asphyxia', ageRestriction: 'neonatal' },
   // Pediatric-specific
   FEBRILE_CONVULSION: { label: 'Febrile Convulsion', ageRestriction: 'pediatric' },
@@ -585,7 +627,10 @@ export type AssignedArea =
  * Emergency area labels (for ER zone routing).
  * Note: OPD and SPECIALTY are deprecated in favor of clinic routing.
  */
-export const ASSIGNED_AREA_CONFIG: Record<Exclude<AssignedArea, ''>, { label: string; isEmergency?: boolean }> = {
+export const ASSIGNED_AREA_CONFIG: Record<
+  Exclude<AssignedArea, ''>,
+  { label: string; isEmergency?: boolean }
+> = {
   ER_RESUS: { label: 'ER - Resuscitation', isEmergency: true },
   ER_ACUTE: { label: 'ER - Acute Care', isEmergency: true },
   ER_FAST_TRACK: { label: 'ER - Fast Track', isEmergency: true },
@@ -780,7 +825,8 @@ export type {
 } from '@/lib/schemas/triage.schema';
 
 // Legacy alias for backwards compatibility
-export type PaginatedTriageAssessments = import('@/lib/schemas/triage.schema').PaginatedTriageAssessment;
+export type PaginatedTriageAssessments =
+  import('@/lib/schemas/triage.schema').PaginatedTriageAssessment;
 
 // =============================================================================
 // ER BED BOARD (Phase 3)
@@ -854,13 +900,16 @@ export interface ERBedZoneSummary {
 }
 
 /** Status display configuration for bed board */
-export const ER_BED_STATUS_CONFIG: Record<ERBedStatus, {
-  label: string;
-  color: string;
-  bgClass: string;
-  textClass: string;
-  borderClass: string;
-}> = {
+export const ER_BED_STATUS_CONFIG: Record<
+  ERBedStatus,
+  {
+    label: string;
+    color: string;
+    bgClass: string;
+    textClass: string;
+    borderClass: string;
+  }
+> = {
   AVAILABLE: {
     label: 'Available',
     color: '#22c55e',
@@ -987,12 +1036,15 @@ export interface EscalationCreateData {
 /**
  * Escalation type configuration for UI display
  */
-export const ESCALATION_TYPE_CONFIG: Record<EscalationType, {
-  label: string;
-  shortLabel: string;
-  description: string;
-  icon: string;
-}> = {
+export const ESCALATION_TYPE_CONFIG: Record<
+  EscalationType,
+  {
+    label: string;
+    shortLabel: string;
+    description: string;
+    icon: string;
+  }
+> = {
   CHARGE_NURSE: {
     label: 'Escalate to Charge Nurse',
     shortLabel: 'Charge Nurse',
@@ -1016,13 +1068,16 @@ export const ESCALATION_TYPE_CONFIG: Record<EscalationType, {
 /**
  * Breach severity configuration for UI display
  */
-export const BREACH_SEVERITY_CONFIG: Record<BreachSeverity, {
-  label: string;
-  color: string;
-  bgClass: string;
-  textClass: string;
-  borderClass: string;
-}> = {
+export const BREACH_SEVERITY_CONFIG: Record<
+  BreachSeverity,
+  {
+    label: string;
+    color: string;
+    bgClass: string;
+    textClass: string;
+    borderClass: string;
+  }
+> = {
   CRITICAL: {
     label: 'Critical',
     color: '#ef4444',

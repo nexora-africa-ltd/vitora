@@ -3,16 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { CreateRouteLink } from '@/components/auth/create-route-link';
-import {
-  Building2,
-  Bed,
-  Users,
-  AlertCircle,
-  Plus,
-  Search,
-  Filter,
-  Wand2,
-} from 'lucide-react';
+import { Building2, Bed, Users, AlertCircle, Plus, Search, Filter, Wand2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { PermissionGate } from '@/components/shared/permission-gate';
@@ -59,7 +50,7 @@ export default function WardsPage() {
   const { data: wards, isLoading: wardsLoading } = useInpatientWards();
   const { data: admissions, isLoading: admissionsLoading } = useAdmissions({
     admission_status: 'ACTIVE',
-    page_size: 100
+    page_size: 100,
   });
   const seedDefaultWards = useSeedDefaultWards();
 
@@ -69,8 +60,8 @@ export default function WardsPage() {
     if (!searchQuery && selectedWardType === 'all') return wardsList;
 
     return wardsList.filter((ward: InpatientWard) => {
-      const matchesSearch = !searchQuery ||
-        ward.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch =
+        !searchQuery || ward.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesFilter = selectedWardType === 'all' || ward.ward_type === selectedWardType;
       return matchesSearch && matchesFilter;
     });
@@ -81,7 +72,10 @@ export default function WardsPage() {
   }, [wardsList]);
 
   const occupiedBeds = useMemo(() => {
-    return wardsList.reduce((sum: number, ward: InpatientWard) => sum + (ward.occupied_beds || 0), 0);
+    return wardsList.reduce(
+      (sum: number, ward: InpatientWard) => sum + (ward.occupied_beds || 0),
+      0
+    );
   }, [wardsList]);
 
   const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
@@ -94,14 +88,14 @@ export default function WardsPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+      <div className="container mx-auto space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
         <PageHeader
           title="Wards"
           helpContent="Manage wards, bed occupancy, and inpatient locations. Pull down to refresh on mobile, or use the refresh button in the header."
           actions={
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex w-full gap-2 sm:w-auto">
               <PermissionGate action="inpatient.manage_ward">
-                <Button variant="outline" asChild className="gap-2 flex-1 sm:flex-none">
+                <Button variant="outline" asChild className="flex-1 gap-2 sm:flex-none">
                   <CreateRouteLink href="/wards/new">
                     <Plus className="h-4 w-4" />
                     <span className="sm:hidden">Ward</span>
@@ -110,7 +104,7 @@ export default function WardsPage() {
                 </Button>
               </PermissionGate>
               <PermissionGate action="inpatient.create_admission">
-                <Button asChild className="gap-2 flex-1 sm:flex-none">
+                <Button asChild className="flex-1 gap-2 sm:flex-none">
                   <CreateRouteLink href="/admissions/new">
                     <Plus className="h-4 w-4" />
                     <span className="sm:hidden">Admit</span>
@@ -122,159 +116,159 @@ export default function WardsPage() {
           }
         />
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <Building2 className="h-5 w-5" />
+        {/* Summary Cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-muted p-2">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Wards</p>
+                  <p className="text-2xl font-bold">{wardsList.length}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Wards</p>
-                <p className="text-2xl font-bold">{wardsList.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <Bed className="h-5 w-5" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-muted p-2">
+                  <Bed className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Beds</p>
+                  <p className="text-2xl font-bold">{totalBeds}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Beds</p>
-                <p className="text-2xl font-bold">{totalBeds}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <Users className="h-5 w-5" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-muted p-2">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Patients</p>
+                  <p className="text-2xl font-bold">
+                    {admissions?.count ?? admissions?.results?.length ?? 0}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Active Patients</p>
-                <p className="text-2xl font-bold">{admissions?.count ?? admissions?.results?.length ?? 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <AlertCircle className="h-5 w-5" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-muted p-2">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Occupancy Rate</p>
+                  <p className="text-2xl font-bold">{occupancyRate}%</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Occupancy Rate</p>
-                <p className="text-2xl font-bold">{occupancyRate}%</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Overall Occupancy Progress */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Hospital Bed Occupancy</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Progress value={occupancyRate} className="h-3" />
-          <p className="text-sm text-muted-foreground mt-2">
-            {occupiedBeds} of {totalBeds} beds occupied
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search wards..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+            </CardContent>
+          </Card>
         </div>
-        <Select value={selectedWardType} onValueChange={setSelectedWardType}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filter by ward type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Ward Types</SelectItem>
-            <SelectItem value="MEDICAL">Medical</SelectItem>
-            <SelectItem value="SURGICAL">Surgical</SelectItem>
-            <SelectItem value="PEDIATRIC">Pediatric</SelectItem>
-            <SelectItem value="MATERNITY">Maternity</SelectItem>
-            <SelectItem value="HDU">HDU</SelectItem>
-            <SelectItem value="ICU">ICU</SelectItem>
-            <SelectItem value="NBU">NBU</SelectItem>
-            <SelectItem value="ISOLATION">Isolation</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      {/* Ward Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {wardsList.length === 0 ? (
-          <Card className="col-span-full">
-            <CardContent className="py-12 text-center space-y-4">
-              <Building2 className="h-12 w-12 mx-auto text-muted-foreground" />
-              <div>
-                <p className="text-lg font-medium">No wards configured</p>
-                <p className="text-muted-foreground mt-1">
-                  Create default wards to get started with inpatient management.
-                </p>
-              </div>
-              <Button
-                className="gap-2"
-                onClick={() => {
-                  seedDefaultWards.mutate(facility?.id, {
-                    onSuccess: (data) => {
-                      toast({
-                        title: 'Default Wards Created',
-                        description: `${data.message} (${data.facility_name})`,
-                      });
-                    },
-                    onError: () => {
-                      toast({
-                        title: 'Error',
-                        description: 'Failed to seed default wards. Please try again.',
-                        variant: 'destructive',
-                      });
-                    },
-                  });
-                }}
-                disabled={seedDefaultWards.isPending}
-              >
-                <Wand2 className="h-4 w-4" />
-                {seedDefaultWards.isPending ? 'Creating...' : 'Create Default Wards'}
-              </Button>
-            </CardContent>
-          </Card>
-        ) : filteredWards.length === 0 ? (
-          <Card className="col-span-full">
-            <CardContent className="py-8 text-center">
-              <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No wards found matching your search.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredWards.map((ward) => (
-            <WardCard key={ward.id} ward={ward} />
-          ))
-        )}
-      </div>
+        {/* Overall Occupancy Progress */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Hospital Bed Occupancy</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Progress value={occupancyRate} className="h-3" />
+            <p className="mt-2 text-sm text-muted-foreground">
+              {occupiedBeds} of {totalBeds} beds occupied
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Filters */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search wards..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={selectedWardType} onValueChange={setSelectedWardType}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Filter by ward type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Ward Types</SelectItem>
+              <SelectItem value="MEDICAL">Medical</SelectItem>
+              <SelectItem value="SURGICAL">Surgical</SelectItem>
+              <SelectItem value="PEDIATRIC">Pediatric</SelectItem>
+              <SelectItem value="MATERNITY">Maternity</SelectItem>
+              <SelectItem value="HDU">HDU</SelectItem>
+              <SelectItem value="ICU">ICU</SelectItem>
+              <SelectItem value="NBU">NBU</SelectItem>
+              <SelectItem value="ISOLATION">Isolation</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Ward Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {wardsList.length === 0 ? (
+            <Card className="col-span-full">
+              <CardContent className="space-y-4 py-12 text-center">
+                <Building2 className="mx-auto h-12 w-12 text-muted-foreground" />
+                <div>
+                  <p className="text-lg font-medium">No wards configured</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Create default wards to get started with inpatient management.
+                  </p>
+                </div>
+                <Button
+                  className="gap-2"
+                  onClick={() => {
+                    seedDefaultWards.mutate(facility?.id, {
+                      onSuccess: (data) => {
+                        toast({
+                          title: 'Default Wards Created',
+                          description: `${data.message} (${data.facility_name})`,
+                        });
+                      },
+                      onError: () => {
+                        toast({
+                          title: 'Error',
+                          description: 'Failed to seed default wards. Please try again.',
+                          variant: 'destructive',
+                        });
+                      },
+                    });
+                  }}
+                  disabled={seedDefaultWards.isPending}
+                >
+                  <Wand2 className="h-4 w-4" />
+                  {seedDefaultWards.isPending ? 'Creating...' : 'Create Default Wards'}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : filteredWards.length === 0 ? (
+            <Card className="col-span-full">
+              <CardContent className="py-8 text-center">
+                <Building2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                <p className="text-muted-foreground">No wards found matching your search.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            filteredWards.map((ward) => <WardCard key={ward.id} ward={ward} />)
+          )}
+        </div>
       </div>
     </PullToRefresh>
   );
@@ -298,7 +292,8 @@ function WardCard({ ward }: { ward: InpatientWard }) {
     };
   }, [beds]);
 
-  const availableBeds = bedStatusCounts.available || ward.available_beds || Math.max(totalBeds - occupiedBeds, 0);
+  const availableBeds =
+    bedStatusCounts.available || ward.available_beds || Math.max(totalBeds - occupiedBeds, 0);
   const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
   const occupancyColor = occupancyRate >= 90 ? 'text-destructive' : 'text-muted-foreground';
@@ -310,7 +305,7 @@ function WardCard({ ward }: { ward: InpatientWard }) {
           <CardTitle className="text-lg">{ward.name}</CardTitle>
           <Badge
             variant={ward.ward_type === 'ICU' ? 'destructive' : 'outline'}
-            className="shrink-0 w-fit self-start sm:self-auto"
+            className="w-fit shrink-0 self-start sm:self-auto"
           >
             {ward.ward_type_display || ward.ward_type}
           </Badge>
@@ -328,38 +323,38 @@ function WardCard({ ward }: { ward: InpatientWard }) {
 
         {/* Bed Stats */}
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+          <div className="flex items-center justify-between rounded bg-muted/50 p-2">
             <span>Available</span>
-            <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
+            <Badge variant="secondary" className="w-fit shrink-0 self-start sm:self-auto">
               {bedStatusCounts.available || availableBeds}
             </Badge>
           </div>
-          <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+          <div className="flex items-center justify-between rounded bg-muted/50 p-2">
             <span>Occupied</span>
-            <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
+            <Badge variant="secondary" className="w-fit shrink-0 self-start sm:self-auto">
               {bedStatusCounts.occupied || occupiedBeds}
             </Badge>
           </div>
           {bedStatusCounts.maintenance > 0 && (
-            <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+            <div className="flex items-center justify-between rounded bg-muted/50 p-2">
               <span>Maintenance</span>
-              <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
+              <Badge variant="secondary" className="w-fit shrink-0 self-start sm:self-auto">
                 {bedStatusCounts.maintenance}
               </Badge>
             </div>
           )}
           {bedStatusCounts.cleaning > 0 && (
-            <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+            <div className="flex items-center justify-between rounded bg-muted/50 p-2">
               <span>Cleaning</span>
-              <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
+              <Badge variant="secondary" className="w-fit shrink-0 self-start sm:self-auto">
                 {bedStatusCounts.cleaning}
               </Badge>
             </div>
           )}
           {bedStatusCounts.reserved > 0 && (
-            <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+            <div className="flex items-center justify-between rounded bg-muted/50 p-2">
               <span>Reserved</span>
-              <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
+              <Badge variant="secondary" className="w-fit shrink-0 self-start sm:self-auto">
                 {bedStatusCounts.reserved}
               </Badge>
             </div>
@@ -368,7 +363,7 @@ function WardCard({ ward }: { ward: InpatientWard }) {
 
         {/* Generate Beds Button — shown when ward has capacity but no beds */}
         {totalBeds === 0 && ward.capacity > 0 && (
-          <div className="pt-2 border-t">
+          <div className="border-t pt-2">
             <Button
               variant="outline"
               size="sm"
@@ -401,15 +396,11 @@ function WardCard({ ward }: { ward: InpatientWard }) {
         {/* Actions */}
         <div className="flex flex-col gap-2 pt-2 sm:flex-row">
           <Button variant="outline" size="sm" className="w-full sm:flex-1" asChild>
-            <Link href={`/wards/${ward.id}`}>
-              View Details
-            </Link>
+            <Link href={`/wards/${ward.id}`}>View Details</Link>
           </Button>
           <PermissionGate action="inpatient.create_admission">
             <Button size="sm" className="w-full sm:flex-1" asChild disabled={availableBeds === 0}>
-              <Link href={`/admissions/new?ward=${ward.id}`}>
-                Admit Patient
-              </Link>
+              <Link href={`/admissions/new?ward=${ward.id}`}>Admit Patient</Link>
             </Button>
           </PermissionGate>
         </div>
@@ -420,7 +411,7 @@ function WardCard({ ward }: { ward: InpatientWard }) {
 
 function WardsSkeleton() {
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <Skeleton className="h-8 w-48" />

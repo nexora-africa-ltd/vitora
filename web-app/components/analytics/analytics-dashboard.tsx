@@ -32,7 +32,12 @@ import { RoomUtilizationPanel } from '@/components/analytics/room-utilization-pa
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { LineChart, BarChart, DonutChart } from '@/components/charts';
 import { ChartEmptyState } from '@/components/charts';
-import { useFacilitySummary, useDepartmentPerformance, useDiagnosisTrends, useDemographics } from '@/lib/hooks/use-analytics';
+import {
+  useFacilitySummary,
+  useDepartmentPerformance,
+  useDiagnosisTrends,
+  useDemographics,
+} from '@/lib/hooks/use-analytics';
 import { useCriticalCareWorkflowHealth } from '@/lib/hooks/use-inpatient';
 import type { ChartConfig } from '@/components/ui/chart';
 import type { FacilityDailySummary } from '@/lib/types/analytics';
@@ -159,7 +164,8 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
     top_n: 10,
   });
   const { data: demoData, isLoading: demoLoading } = useDemographics();
-  const { data: criticalCareData, isLoading: criticalCareLoading } = useCriticalCareWorkflowHealth(periodDays);
+  const { data: criticalCareData, isLoading: criticalCareLoading } =
+    useCriticalCareWorkflowHealth(periodDays);
 
   // Derived metrics
   const summaries = useMemo(() => summaryData?.results ?? [], [summaryData]);
@@ -176,35 +182,30 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
   const totalFollowUps = summaries.reduce((s, d) => s + d.follow_up_encounters, 0);
   const totalWalkIns = summaries.reduce((s, d) => s + d.walk_ins, 0);
   const totalReferralIns = summaries.reduce((s, d) => s + d.referral_ins, 0);
-  const returnRate = totalEncounters > 0
-    ? Math.round((totalReturnPatients / totalEncounters) * 100)
-    : 0;
+  const returnRate =
+    totalEncounters > 0 ? Math.round((totalReturnPatients / totalEncounters) * 100) : 0;
 
   // Chart data: encounter volume over time (most recent first → reverse)
   const volumeChartData = useMemo(
     () =>
-      [...summaries]
-        .reverse()
-        .map((d) => ({
-          date: formatShortDate(d.date),
-          encounters_opd: d.encounters_opd,
-          encounters_ipd: d.encounters_ipd,
-          encounters_emergency: d.encounters_emergency,
-        })),
+      [...summaries].reverse().map((d) => ({
+        date: formatShortDate(d.date),
+        encounters_opd: d.encounters_opd,
+        encounters_ipd: d.encounters_ipd,
+        encounters_emergency: d.encounters_emergency,
+      })),
     [summaries]
   );
 
   // Revenue stacked bar
   const revenueChartData = useMemo(
     () =>
-      [...summaries]
-        .reverse()
-        .map((d) => ({
-          date: formatShortDate(d.date),
-          revenue_cash: d.revenue_cash,
-          revenue_mpesa: d.revenue_mpesa,
-          revenue_insurance: d.revenue_insurance,
-        })),
+      [...summaries].reverse().map((d) => ({
+        date: formatShortDate(d.date),
+        revenue_cash: d.revenue_cash,
+        revenue_mpesa: d.revenue_mpesa,
+        revenue_insurance: d.revenue_insurance,
+      })),
     [summaries]
   );
 
@@ -253,7 +254,12 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
     return Object.entries(snap.gender_distribution).map(([key, val]) => ({
       name: key,
       value: val,
-      fill: key === 'M' ? 'hsl(var(--gender-male))' : key === 'F' ? 'hsl(var(--gender-female))' : 'hsl(var(--gender-other))',
+      fill:
+        key === 'M'
+          ? 'hsl(var(--gender-male))'
+          : key === 'F'
+            ? 'hsl(var(--gender-female))'
+            : 'hsl(var(--gender-other))',
     }));
   }, [demoData]);
 
@@ -298,12 +304,10 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
   const ageChartData = useMemo(() => {
     const snap = demoData?.results?.[0];
     if (!snap?.age_distribution) return [];
-    return AGE_BAND_ORDER
-      .filter((band) => snap.age_distribution[band] != null)
-      .map((band) => ({
-        age_band: band,
-        count: snap.age_distribution[band] ?? 0,
-      }));
+    return AGE_BAND_ORDER.filter((band) => snap.age_distribution[band] != null).map((band) => ({
+      age_band: band,
+      count: snap.age_distribution[band] ?? 0,
+    }));
   }, [demoData]);
 
   // Encounter volume with projection (simple linear extrapolation)
@@ -313,9 +317,9 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
     const n = data.length;
     // Simple moving average of last 7 data points for projection
     const windowSize = Math.min(7, n);
-    const recentTotals = data.slice(-windowSize).map(
-      (d) => d.encounters_opd + d.encounters_ipd + d.encounters_emergency
-    );
+    const recentTotals = data
+      .slice(-windowSize)
+      .map((d) => d.encounters_opd + d.encounters_ipd + d.encounters_emergency);
     const avgDaily = recentTotals.reduce((a, b) => a + b, 0) / windowSize;
     // Add 3 projected days
     for (let i = 1; i <= 3; i++) {
@@ -325,7 +329,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
         encounters_ipd: Math.round(avgDaily * 0.15),
         encounters_emergency: Math.round(avgDaily * 0.15),
         projected: true as unknown as number, // marker for styling
-      } as typeof data[0]);
+      } as (typeof data)[0]);
     }
     return data;
   }, [volumeChartData]);
@@ -347,7 +351,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
   return (
     <div className="space-y-6">
       {/* KPI Stats Row 1: Core */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatsCard
           title="Total Encounters"
           value={summaryLoading ? '—' : totalEncounters.toLocaleString()}
@@ -387,7 +391,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
       </div>
 
       {/* KPI Stats Row 2: Patient Flow */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatsCard
           title="Return Patients"
           value={summaryLoading ? '—' : `${totalReturnPatients} (${returnRate}%)`}
@@ -439,7 +443,9 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatsCard
               title="Critical Census"
-              value={criticalCareLoading ? '—' : (criticalCareData?.totals.critical_admissions ?? 0)}
+              value={
+                criticalCareLoading ? '—' : (criticalCareData?.totals.critical_admissions ?? 0)
+              }
               icon={BedDouble}
               variant="info"
               loading={criticalCareLoading}
@@ -459,7 +465,9 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
             />
             <StatsCard
               title="Step-Down Transfers"
-              value={criticalCareLoading ? '—' : (criticalCareData?.totals.step_down_transfers ?? 0)}
+              value={
+                criticalCareLoading ? '—' : (criticalCareData?.totals.step_down_transfers ?? 0)
+              }
               icon={ArrowDownRight}
               variant="success"
               loading={criticalCareLoading}
@@ -469,9 +477,15 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
             />
             <StatsCard
               title="Overdue Reviews"
-              value={criticalCareLoading ? '—' : (criticalCareData?.totals.review_requests_overdue ?? 0)}
+              value={
+                criticalCareLoading ? '—' : (criticalCareData?.totals.review_requests_overdue ?? 0)
+              }
               icon={AlertTriangle}
-              variant={(criticalCareData?.totals.review_requests_overdue ?? 0) > 0 ? 'destructive' : 'default'}
+              variant={
+                (criticalCareData?.totals.review_requests_overdue ?? 0) > 0
+                  ? 'destructive'
+                  : 'default'
+              }
               loading={criticalCareLoading}
               description="Pending past SLA"
               showTrendIndicator={false}
@@ -483,7 +497,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
 
       <RoomUtilizationPanel date={dateRange.date_to} />
 
-  <FacilityOperationsPanel />
+      <FacilityOperationsPanel />
 
       {/* Charts Row 1: Volume + Revenue */}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -525,7 +539,9 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => setRevenueChartView(revenueChartView === 'bar' ? 'pie' : 'bar')}
+                      onClick={() =>
+                        setRevenueChartView(revenueChartView === 'bar' ? 'pie' : 'bar')
+                      }
                     >
                       {revenueChartView === 'bar' ? (
                         <PieChartIcon className="h-4 w-4" />
@@ -579,7 +595,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
       {/* Charts Row 2: Top Diagnoses + Gender Distribution */}
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Top Diagnoses */}
-        <Card className="lg:col-span-2 min-w-0">
+        <Card className="min-w-0 lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base">Top 10 Diagnoses</CardTitle>
             {diagnosisChartData.length > 0 && (
@@ -608,13 +624,13 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           </CardHeader>
           <CardContent className="px-2 sm:px-6">
             {dxLoading ? (
-              <Skeleton className="h-[350px] sm:h-[400px] w-full" />
+              <Skeleton className="h-[350px] w-full sm:h-[400px]" />
             ) : diagnosisChartData.length === 0 ? (
               <ChartEmptyState chartType="bar" description="No diagnosis trends available" />
             ) : dxChartView === 'bar' ? (
               <>
                 {/* Bar view: scrollable on mobile, fits on desktop */}
-                <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+                <div className="-mx-2 overflow-x-auto px-2 sm:mx-0 sm:px-0">
                   <div className="min-w-[480px] sm:min-w-0">
                     <BarChart
                       data={diagnosisChartData}
@@ -626,12 +642,16 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
                       showTooltip
                       showYAxis
                       yAxisWidth={120}
-                      yAxisFormatter={(v) => String(v).length > 18 ? String(v).slice(0, 16) + '…' : String(v)}
+                      yAxisFormatter={(v) =>
+                        String(v).length > 18 ? String(v).slice(0, 16) + '…' : String(v)
+                      }
                       minHeight="400px"
                     />
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground text-center mt-2 sm:hidden">← Scroll to see full chart →</p>
+                <p className="mt-2 text-center text-xs text-muted-foreground sm:hidden">
+                  ← Scroll to see full chart →
+                </p>
               </>
             ) : (
               <DonutChart
@@ -657,7 +677,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           </CardHeader>
           <CardContent className="px-2 sm:px-6">
             {demoLoading ? (
-              <Skeleton className="h-[260px] sm:h-[300px] w-full" />
+              <Skeleton className="h-[260px] w-full sm:h-[300px]" />
             ) : genderChartData.length === 0 ? (
               <ChartEmptyState chartType="pie" description="No demographic data" />
             ) : (
@@ -794,36 +814,45 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
               ))}
             </div>
           ) : (deptData?.results ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
+            <p className="py-8 text-center text-sm text-muted-foreground">
               No department data for this month. Data is generated monthly by the analytics ETL.
             </p>
           ) : (
-            <div className="overflow-x-auto -mx-6 px-6">
-              <table className="w-full text-sm min-w-[500px]">
+            <div className="-mx-6 overflow-x-auto px-6">
+              <table className="w-full min-w-[500px] text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
                     <th className="pb-2 pr-4 font-medium">Department</th>
-                    <th className="pb-2 pr-4 font-medium text-right">Visits</th>
-                    <th className="pb-2 pr-4 font-medium text-right">Unique Patients</th>
-                    <th className="pb-2 pr-4 font-medium text-right">Revenue</th>
+                    <th className="pb-2 pr-4 text-right font-medium">Visits</th>
+                    <th className="pb-2 pr-4 text-right font-medium">Unique Patients</th>
+                    <th className="pb-2 pr-4 text-right font-medium">Revenue</th>
                     <th className="pb-2 font-medium">Top Diagnosis</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(deptData?.results ?? []).map((dept) => (
-                    <tr key={dept.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                    <tr
+                      key={dept.id}
+                      className="border-b transition-colors last:border-0 hover:bg-muted/50"
+                    >
                       <td className="py-2.5 pr-4 font-medium">
                         <Link
                           href={deptRouteMap[dept.department] || '/encounters?tab=all'}
-                          className="hover:underline text-primary"
+                          className="text-primary hover:underline"
                         >
                           {dept.department_display}
                         </Link>
                       </td>
-                      <td className="py-2.5 pr-4 text-right tabular-nums">{dept.visit_count.toLocaleString()}</td>
-                      <td className="py-2.5 pr-4 text-right tabular-nums">{dept.unique_patients.toLocaleString()}</td>
-                      <td className="py-2.5 pr-4 text-right tabular-nums">{formatKes(dept.revenue)}</td>
-                      <td className="py-2.5 text-muted-foreground truncate max-w-[200px]">
+                      <td className="py-2.5 pr-4 text-right tabular-nums">
+                        {dept.visit_count.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right tabular-nums">
+                        {dept.unique_patients.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right tabular-nums">
+                        {formatKes(dept.revenue)}
+                      </td>
+                      <td className="max-w-[200px] truncate py-2.5 text-muted-foreground">
                         {dept.top_diagnoses?.[0]?.name || '—'}
                       </td>
                     </tr>

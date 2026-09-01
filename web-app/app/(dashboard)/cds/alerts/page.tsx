@@ -25,7 +25,10 @@ import type { CDSAlertListItem, CDSAlertListParams } from '@/lib/types/cds';
 
 const PAGE_SIZE = 20;
 
-const STATUS_BADGE_VARIANTS: Record<string, 'warning' | 'info' | 'success' | 'destructive' | 'secondary' | 'outline'> = {
+const STATUS_BADGE_VARIANTS: Record<
+  string,
+  'warning' | 'info' | 'success' | 'destructive' | 'secondary' | 'outline'
+> = {
   PENDING: 'warning',
   ACKNOWLEDGED: 'info',
   ACCEPTED: 'success',
@@ -34,7 +37,10 @@ const STATUS_BADGE_VARIANTS: Record<string, 'warning' | 'info' | 'success' | 'de
   AUTO_RESOLVED: 'outline',
 };
 
-const PRIORITY_BADGE_VARIANTS: Record<string, 'destructive' | 'warning' | 'info' | 'secondary' | 'outline'> = {
+const PRIORITY_BADGE_VARIANTS: Record<
+  string,
+  'destructive' | 'warning' | 'info' | 'secondary' | 'outline'
+> = {
   CRITICAL: 'destructive',
   HIGH: 'warning',
   MEDIUM: 'info',
@@ -69,8 +75,10 @@ export default function CDSAlertsPage() {
     const params: CDSAlertListParams = { page, page_size: PAGE_SIZE, ordering: '-created_at' };
     if (search.trim()) params.search = search.trim();
     if (filters.status !== 'all') params.status = filters.status as CDSAlertListParams['status'];
-    if (filters.priority !== 'all') params.priority = filters.priority as CDSAlertListParams['priority'];
-    if (filters.category !== 'all') params.category = filters.category as CDSAlertListParams['category'];
+    if (filters.priority !== 'all')
+      params.priority = filters.priority as CDSAlertListParams['priority'];
+    if (filters.category !== 'all')
+      params.category = filters.category as CDSAlertListParams['category'];
     return params;
   }, [filters, page, search]);
 
@@ -97,12 +105,18 @@ export default function CDSAlertsPage() {
           <Input
             placeholder="Search alerts..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="w-full sm:max-w-xs"
           />
           <Select
             value={filters.status}
-            onValueChange={(value) => { setFilters((f) => ({ ...f, status: value })); setPage(1); }}
+            onValueChange={(value) => {
+              setFilters((f) => ({ ...f, status: value }));
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Status" />
@@ -119,7 +133,10 @@ export default function CDSAlertsPage() {
           </Select>
           <Select
             value={filters.priority}
-            onValueChange={(value) => { setFilters((f) => ({ ...f, priority: value })); setPage(1); }}
+            onValueChange={(value) => {
+              setFilters((f) => ({ ...f, priority: value }));
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="Priority" />
@@ -135,7 +152,10 @@ export default function CDSAlertsPage() {
           </Select>
           <Select
             value={filters.category}
-            onValueChange={(value) => { setFilters((f) => ({ ...f, category: value })); setPage(1); }}
+            onValueChange={(value) => {
+              setFilters((f) => ({ ...f, category: value }));
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Category" />
@@ -167,7 +187,9 @@ export default function CDSAlertsPage() {
               cell: (item) => (
                 <div>
                   <span className="font-mono text-xs">{item.rule_code}</span>
-                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">{item.rule_name}</p>
+                  <p className="max-w-[200px] truncate text-xs text-muted-foreground">
+                    {item.rule_name}
+                  </p>
                 </div>
               ),
             },
@@ -186,7 +208,7 @@ export default function CDSAlertsPage() {
               header: 'Priority',
               cell: (item) => (
                 <Badge variant={PRIORITY_BADGE_VARIANTS[item.priority] ?? 'secondary'}>
-                  {item.is_critical && <AlertTriangle className="h-3 w-3 mr-1" />}
+                  {item.is_critical && <AlertTriangle className="mr-1 h-3 w-3" />}
                   {item.priority}
                 </Badge>
               ),
@@ -212,7 +234,7 @@ export default function CDSAlertsPage() {
               key: 'message',
               header: 'Message',
               cell: (item) => (
-                <span className="text-sm text-muted-foreground truncate max-w-[200px] block">
+                <span className="block max-w-[200px] truncate text-sm text-muted-foreground">
                   {item.message}
                 </span>
               ),
@@ -229,24 +251,31 @@ export default function CDSAlertsPage() {
             <Card className="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="mb-1 flex items-center gap-2">
                     <span className="font-mono text-xs">{item.rule_code}</span>
                     {item.is_critical && (
-                      <Badge variant="destructive" className="text-xs">Critical</Badge>
+                      <Badge variant="destructive" className="text-xs">
+                        Critical
+                      </Badge>
                     )}
                   </div>
-                  <p className="text-sm truncate">{item.message}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {item.patient_name} ({item.patient_mrn})
-                    {' • '}
+                  <p className="truncate text-sm">{item.message}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {item.patient_name} ({item.patient_mrn}){' • '}
                     {CATEGORY_LABELS[item.category] ?? item.category}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <Badge variant={PRIORITY_BADGE_VARIANTS[item.priority] ?? 'secondary'} className="text-xs">
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <Badge
+                    variant={PRIORITY_BADGE_VARIANTS[item.priority] ?? 'secondary'}
+                    className="text-xs"
+                  >
                     {item.priority}
                   </Badge>
-                  <Badge variant={STATUS_BADGE_VARIANTS[item.status] ?? 'secondary'} className="text-xs">
+                  <Badge
+                    variant={STATUS_BADGE_VARIANTS[item.status] ?? 'secondary'}
+                    className="text-xs"
+                  >
                     {item.status.replace(/_/g, ' ')}
                   </Badge>
                 </div>
@@ -258,13 +287,23 @@ export default function CDSAlertsPage() {
         {/* Pagination */}
         {data && data.count > PAGE_SIZE && (
           <div className="flex justify-center gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
               Previous
             </Button>
             <span className="flex items-center text-sm text-muted-foreground">
               Page {page} of {Math.ceil(data.count / PAGE_SIZE)}
             </span>
-            <Button variant="outline" size="sm" disabled={!data.next} onClick={() => setPage((p) => p + 1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!data.next}
+              onClick={() => setPage((p) => p + 1)}
+            >
               Next
             </Button>
           </div>

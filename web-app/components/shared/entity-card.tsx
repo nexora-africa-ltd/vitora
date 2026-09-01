@@ -127,17 +127,20 @@ export function EntityCard({
   const cardContent = (
     <Card
       className={cn(
-        'group relative overflow-hidden transition-all hover:shadow-md h-full',
-        isClickable && 'cursor-pointer transition-colors hover:border-teal-400/50 hover:scale-105',
+        'group relative h-full overflow-hidden transition-all hover:shadow-md',
+        isClickable && 'cursor-pointer transition-colors hover:scale-105 hover:border-teal-400/50',
         className
       )}
       onClick={onClick}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+        aria-hidden="true"
+      />
       <CardContent className="relative p-4">
         {/* Actions dropdown */}
         {actions.length > 0 && (
-          <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -155,17 +158,17 @@ export function EntityCard({
                   <DropdownMenuItem
                     key={index}
                     className={action.variant === 'destructive' ? 'text-destructive' : ''}
-                    onClick={action.onClick ? (e) => {
-                      e.preventDefault();
-                      action.onClick?.();
-                    } : undefined}
+                    onClick={
+                      action.onClick
+                        ? (e) => {
+                            e.preventDefault();
+                            action.onClick?.();
+                          }
+                        : undefined
+                    }
                     asChild={!!action.href}
                   >
-                    {action.href ? (
-                      <Link href={action.href}>{action.label}</Link>
-                    ) : (
-                      action.label
-                    )}
+                    {action.href ? <Link href={action.href}>{action.label}</Link> : action.label}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -187,15 +190,15 @@ export function EntityCard({
             </AvatarFallback>
           </Avatar>
 
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-sm leading-tight truncate">{title}</h3>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-medium leading-tight">{title}</h3>
             {subtitle && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>
             )}
 
             {/* Badges row */}
             {(status || badges.length > 0) && (
-              <div className="flex flex-wrap items-center gap-1 mt-2">
+              <div className="mt-2 flex flex-wrap items-center gap-1">
                 {status && (
                   <Badge variant={status.variant || 'default'} className="text-xs">
                     {status.label}
@@ -213,13 +216,11 @@ export function EntityCard({
 
         {/* Metadata fields */}
         {metadata.length > 0 && (
-          <div className="mt-3 pt-3 border-t space-y-1.5">
+          <div className="mt-3 space-y-1.5 border-t pt-3">
             {metadata.map((item, index) => (
               <div key={index} className="flex items-center gap-2 text-xs">
-                {item.icon && (
-                  <span className="text-muted-foreground shrink-0">{item.icon}</span>
-                )}
-                <span className="text-muted-foreground shrink-0">{item.label}:</span>
+                {item.icon && <span className="shrink-0 text-muted-foreground">{item.icon}</span>}
+                <span className="shrink-0 text-muted-foreground">{item.label}:</span>
                 <span className="truncate">{item.value}</span>
               </div>
             ))}

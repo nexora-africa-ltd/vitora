@@ -14,11 +14,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { terminologyApi } from './api';
-import type {
-  TerminologySearchParams,
-  InterventionSearchParams,
-  DrugSearchParams,
-} from './types';
+import type { TerminologySearchParams, InterventionSearchParams, DrugSearchParams } from './types';
 
 // ============================================================================
 // Query Keys
@@ -34,8 +30,7 @@ export const terminologyQueryKeys = {
     [...terminologyQueryKeys.all, 'ichi', params] as const,
   loinc: (params?: TerminologySearchParams) =>
     [...terminologyQueryKeys.all, 'loinc', params] as const,
-  drugs: (params?: DrugSearchParams) =>
-    [...terminologyQueryKeys.all, 'drugs', params] as const,
+  drugs: (params?: DrugSearchParams) => [...terminologyQueryKeys.all, 'drugs', params] as const,
   activeComponents: (params?: TerminologySearchParams) =>
     [...terminologyQueryKeys.all, 'activeComponents', params] as const,
 };
@@ -171,10 +166,7 @@ export function useLOINCSearch(
  * @example
  * const { data } = useDrugsSearch({ search: 'paracetamol' });
  */
-export function useDrugsSearch(
-  params?: DrugSearchParams,
-  options?: UseTerminologySearchOptions
-) {
+export function useDrugsSearch(params?: DrugSearchParams, options?: UseTerminologySearchOptions) {
   const { minSearchLength, staleTime } = { ...DEFAULT_OPTIONS, ...options };
   const searchLength = params?.search?.length ?? 0;
 

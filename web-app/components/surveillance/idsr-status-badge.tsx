@@ -29,7 +29,7 @@ export function IDSRStatusBadge({ status, className, size }: IDSRStatusBadgeProp
     <Badge
       variant={STATUS_VARIANTS[status]}
       size={size}
-      className={cn('shrink-0 w-fit', className)}
+      className={cn('w-fit shrink-0', className)}
     >
       {STATUS_LABELS[status]}
     </Badge>

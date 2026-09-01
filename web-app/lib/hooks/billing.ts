@@ -67,17 +67,20 @@ export const billingKeys = {
 
   // Invoices
   invoices: () => [...billingKeys.all, 'invoices'] as const,
-  invoicesList: (params?: InvoiceListParams) => [...billingKeys.invoices(), 'list', params] as const,
+  invoicesList: (params?: InvoiceListParams) =>
+    [...billingKeys.invoices(), 'list', params] as const,
   invoiceDetail: (id: string | number) => [...billingKeys.invoices(), 'detail', id] as const,
   invoicesOverdue: () => [...billingKeys.invoices(), 'overdue'] as const,
 
   // Proformas
   proformas: () => [...billingKeys.all, 'proformas'] as const,
-  proformasList: (params?: InvoiceListParams) => [...billingKeys.proformas(), 'list', params] as const,
+  proformasList: (params?: InvoiceListParams) =>
+    [...billingKeys.proformas(), 'list', params] as const,
 
   // Payments
   payments: () => [...billingKeys.all, 'payments'] as const,
-  paymentsList: (params?: PaymentListParams) => [...billingKeys.payments(), 'list', params] as const,
+  paymentsList: (params?: PaymentListParams) =>
+    [...billingKeys.payments(), 'list', params] as const,
   paymentDetail: (id: number) => [...billingKeys.payments(), 'detail', id] as const,
   paymentReceipt: (id: number) => [...billingKeys.payments(), 'receipt', id] as const,
 
@@ -89,11 +92,17 @@ export const billingKeys = {
 
   // Services
   services: () => [...billingKeys.all, 'services'] as const,
-  servicesList: (params?: ServiceListParams) => [...billingKeys.services(), 'list', params] as const,
+  servicesList: (params?: ServiceListParams) =>
+    [...billingKeys.services(), 'list', params] as const,
   serviceDetail: (id: number) => [...billingKeys.services(), 'detail', id] as const,
   catalogItems: () => [...billingKeys.all, 'catalog-items'] as const,
-  catalogItemsList: (params?: { search?: string; kind?: string; is_active?: boolean; page?: number; page_size?: number }) =>
-    [...billingKeys.catalogItems(), 'list', params] as const,
+  catalogItemsList: (params?: {
+    search?: string;
+    kind?: string;
+    is_active?: boolean;
+    page?: number;
+    page_size?: number;
+  }) => [...billingKeys.catalogItems(), 'list', params] as const,
 
   // Categories
   categories: () => [...billingKeys.all, 'categories'] as const,
@@ -101,24 +110,30 @@ export const billingKeys = {
 
   // Credit Notes
   creditNotes: () => [...billingKeys.all, 'credit-notes'] as const,
-  creditNotesList: (params?: CreditNoteListParams) => [...billingKeys.creditNotes(), 'list', params] as const,
+  creditNotesList: (params?: CreditNoteListParams) =>
+    [...billingKeys.creditNotes(), 'list', params] as const,
   creditNoteDetail: (id: number) => [...billingKeys.creditNotes(), 'detail', id] as const,
 
   // Reports
   reports: () => [...billingKeys.all, 'reports'] as const,
   dailyCollection: (date: string) => [...billingKeys.reports(), 'daily-collection', date] as const,
-  revenueSummary: (startDate: string, endDate: string) => [...billingKeys.reports(), 'revenue-summary', startDate, endDate] as const,
+  revenueSummary: (startDate: string, endDate: string) =>
+    [...billingKeys.reports(), 'revenue-summary', startDate, endDate] as const,
   outstandingBalances: () => [...billingKeys.reports(), 'outstanding-balances'] as const,
-  serviceUtilization: (startDate: string, endDate: string) => [...billingKeys.reports(), 'service-utilization', startDate, endDate] as const,
-  paymentAnalysis: (startDate: string, endDate: string) => [...billingKeys.reports(), 'payment-analysis', startDate, endDate] as const,
+  serviceUtilization: (startDate: string, endDate: string) =>
+    [...billingKeys.reports(), 'service-utilization', startDate, endDate] as const,
+  paymentAnalysis: (startDate: string, endDate: string) =>
+    [...billingKeys.reports(), 'payment-analysis', startDate, endDate] as const,
 
   // M-Pesa
   mpesa: () => [...billingKeys.all, 'mpesa'] as const,
-  mpesaQuery: (checkoutRequestId: string) => [...billingKeys.mpesa(), 'query', checkoutRequestId] as const,
+  mpesaQuery: (checkoutRequestId: string) =>
+    [...billingKeys.mpesa(), 'query', checkoutRequestId] as const,
 
   // Facility Billing Config
   facilityConfigs: () => [...billingKeys.all, 'facility-configs'] as const,
-  facilityConfigsList: (params?: FacilityBillingConfigListParams) => [...billingKeys.facilityConfigs(), 'list', params] as const,
+  facilityConfigsList: (params?: FacilityBillingConfigListParams) =>
+    [...billingKeys.facilityConfigs(), 'list', params] as const,
   facilityConfigDetail: (id: number) => [...billingKeys.facilityConfigs(), 'detail', id] as const,
   shaContracts: () => [...billingKeys.facilityConfigs(), 'sha-contracts'] as const,
 };
@@ -127,7 +142,12 @@ export const billingKeys = {
 // Invoice Hooks
 // ============================================================================
 
-type InvoiceJoinedRow = InvoiceRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string };
+type InvoiceJoinedRow = InvoiceRow & {
+  id: string;
+  patient_first_name?: string;
+  patient_last_name?: string;
+  patient_mrn?: string;
+};
 
 /**
  * Fetch paginated list of invoices.
@@ -138,7 +158,9 @@ export function useInvoices(params?: InvoiceListParams) {
   const sqlParams: (string | number)[] = [];
 
   if (params?.search) {
-    conditions.push('(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR inv.invoice_number LIKE ?)');
+    conditions.push(
+      '(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR inv.invoice_number LIKE ?)'
+    );
     const pattern = `%${params.search}%`;
     sqlParams.push(pattern, pattern, pattern, pattern);
   }
@@ -189,7 +211,7 @@ export function useInvoices(params?: InvoiceListParams) {
       count: rows.length < limit ? offset + rows.length : offset + limit + 1,
       next: null,
       previous: null,
-      results: rows.map(r => transformInvoiceRow(r) as unknown as Invoice),
+      results: rows.map((r) => transformInvoiceRow(r) as unknown as Invoice),
     }),
     queryKey: billingKeys.invoicesList(params),
     queryFn: () => billingApi.getInvoices(params),
@@ -250,7 +272,7 @@ export function useOverdueInvoices() {
       count: rows.length,
       next: null,
       previous: null,
-      results: rows.map(r => transformInvoiceRow(r) as unknown as Invoice),
+      results: rows.map((r) => transformInvoiceRow(r) as unknown as Invoice),
     }),
     queryKey: billingKeys.invoicesOverdue(),
     queryFn: () => billingApi.getOverdueInvoices(),
@@ -1002,7 +1024,8 @@ export function useFacilityBillingConfig(id: number | undefined) {
 export function useCreateFacilityBillingConfig() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: FacilityBillingConfigCreateData) => billingApi.createFacilityBillingConfig(data),
+    mutationFn: (data: FacilityBillingConfigCreateData) =>
+      billingApi.createFacilityBillingConfig(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: billingKeys.facilityConfigs() });
     },

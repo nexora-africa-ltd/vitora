@@ -27,7 +27,6 @@ interface LocalReportFilters {
 }
 
 export default function TriageReportsPage() {
-
   const [filters, setFilters] = useState<LocalReportFilters>({
     dateRange: 'last_7_days',
     area: 'all',
@@ -35,7 +34,11 @@ export default function TriageReportsPage() {
   });
 
   // Fetch report data
-  const { data: reportData, isLoading, refetch } = useTriageReports({
+  const {
+    data: reportData,
+    isLoading,
+    refetch,
+  } = useTriageReports({
     dateRange: filters.dateRange,
     customStartDate: filters.customStartDate,
     customEndDate: filters.customEndDate,
@@ -112,22 +115,27 @@ export default function TriageReportsPage() {
   };
 
   return (
-    <PullToRefresh onRefresh={() => { refetch(); }} isRefreshing={isLoading}>
-    <div className="space-y-4 sm:space-y-6">
-      <PageHeader
-        title="Triage Reports"
-        helpContent="Performance analytics for triage wait times, volume distribution, and LWBS (Left Without Being Seen) statistics. Use filters to narrow by date range, area, or category."
-      />
+    <PullToRefresh
+      onRefresh={() => {
+        refetch();
+      }}
+      isRefreshing={isLoading}
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Triage Reports"
+          helpContent="Performance analytics for triage wait times, volume distribution, and LWBS (Left Without Being Seen) statistics. Use filters to narrow by date range, area, or category."
+        />
 
-      <TriageReportsComponent
-        reportData={reportData ?? defaultReportData}
-        isLoading={isLoading}
-        filters={filters}
-        onDateRangeChange={handleDateRangeChange}
-        onFilterChange={handleFilterChange}
-        onExport={handleExport}
-      />
-    </div>
+        <TriageReportsComponent
+          reportData={reportData ?? defaultReportData}
+          isLoading={isLoading}
+          filters={filters}
+          onDateRangeChange={handleDateRangeChange}
+          onFilterChange={handleFilterChange}
+          onExport={handleExport}
+        />
+      </div>
     </PullToRefresh>
   );
 }

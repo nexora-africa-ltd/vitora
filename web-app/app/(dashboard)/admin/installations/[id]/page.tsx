@@ -100,7 +100,7 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
 
   if (!isSuperuser) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <p className="text-muted-foreground">Superuser access required.</p>
       </div>
     );
@@ -146,7 +146,8 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
                     <AlertDialogHeader>
                       <AlertDialogTitle>Suspend Installation?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will block new writes from this installation. It can be reactivated later.
+                        This will block new writes from this installation. It can be reactivated
+                        later.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -168,7 +169,8 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
                     <AlertDialogHeader>
                       <AlertDialogTitle>Revoke License?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This permanently revokes this installation&apos;s license. It cannot be undone.
+                        This permanently revokes this installation&apos;s license. It cannot be
+                        undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -195,19 +197,19 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
       />
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {installation.org_name}
             {installation.facility_name && (
               <span className="text-muted-foreground"> • {installation.facility_name}</span>
             )}
           </p>
-          <p className="text-xs text-muted-foreground font-mono">
+          <p className="font-mono text-xs text-muted-foreground">
             {installation.installation_id || 'Not yet activated'}
           </p>
         </div>
-        <Badge className={`${statusColors[installation.status]} shrink-0 w-fit`}>
+        <Badge className={`${statusColors[installation.status]} w-fit shrink-0`}>
           {installation.status}
         </Badge>
       </div>
@@ -216,7 +218,7 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Monitor className="h-4 w-4" /> Installation Info
             </CardTitle>
           </CardHeader>
@@ -232,7 +234,7 @@ export default function InstallationDetailPage({ params }: { params: Promise<{ i
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Calendar className="h-4 w-4" /> Timeline
             </CardTitle>
           </CardHeader>
@@ -291,7 +293,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-right max-w-[60%] truncate">{value}</span>
+      <span className="max-w-[60%] truncate text-right font-medium">{value}</span>
     </div>
   );
 }
@@ -356,36 +358,26 @@ function ActivationCodeCard({
             tabIndex={-1}
             aria-hidden="true"
           />
-          <code className="text-lg font-mono bg-muted px-3 py-2 rounded block text-center select-all">
+          <code className="block select-all rounded bg-muted px-3 py-2 text-center font-mono text-lg">
             {code}
           </code>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={copyToClipboard}
-            >
+            <Button variant="outline" size="sm" className="gap-2" onClick={copyToClipboard}>
               <Copy className="h-4 w-4" />
               Copy Code
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={openCompose}
-            >
+            <Button variant="outline" size="sm" className="gap-2" onClick={openCompose}>
               <Send className="h-4 w-4" />
               Email to Organization
             </Button>
           </div>
           {orgEmail && (
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-center text-xs text-muted-foreground">
               Default recipient: {orgEmail}
             </p>
           )}
           {!orgEmail && (
-            <p className="text-xs text-destructive text-center">
+            <p className="text-center text-xs text-destructive">
               Organization has no contact email configured — you can enter one manually.
             </p>
           )}
@@ -422,8 +414,8 @@ function ActivationCodeCard({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              The activation code <span className="font-mono font-semibold">{code}</span> and
-              setup instructions will be included automatically.
+              The activation code <span className="font-mono font-semibold">{code}</span> and setup
+              instructions will be included automatically.
             </p>
           </div>
           <DialogFooter>
@@ -462,7 +454,7 @@ function FacilityLinkCard({
   organizationId: number;
 }) {
   const [selectedFacilityId, setSelectedFacilityId] = useState<string>(
-    currentFacilityId ? String(currentFacilityId) : '',
+    currentFacilityId ? String(currentFacilityId) : ''
   );
   const queryClient = useQueryClient();
 
@@ -486,7 +478,7 @@ function FacilityLinkCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
           <Building className="h-4 w-4" /> Facility
         </CardTitle>
       </CardHeader>

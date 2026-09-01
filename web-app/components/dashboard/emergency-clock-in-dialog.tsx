@@ -89,10 +89,10 @@ export function EmergencyClockInDialog({
 
         <div className="space-y-4 py-2">
           {/* Warning banner */}
-          <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3">
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
             <p className="text-sm text-amber-800 dark:text-amber-200">
-              This creates an unscheduled shift and is logged for audit purposes.
-              Only use when no shift is available and you need to provide immediate care.
+              This creates an unscheduled shift and is logged for audit purposes. Only use when no
+              shift is available and you need to provide immediate care.
             </p>
           </div>
 
@@ -158,12 +158,12 @@ export function EmergencyClockInDialog({
           <Button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="bg-amber-600 hover:bg-amber-700 text-white"
+            className="bg-amber-600 text-white hover:bg-amber-700"
           >
             {isPending ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
             ) : (
-              <LogIn className="h-4 w-4 mr-1" />
+              <LogIn className="mr-1 h-4 w-4" />
             )}
             Emergency Clock-In
           </Button>

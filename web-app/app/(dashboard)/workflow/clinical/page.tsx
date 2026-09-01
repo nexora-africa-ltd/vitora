@@ -45,9 +45,12 @@ export default function ClinicalWorkflowPage() {
         />
         <div className="relative flex flex-col gap-3 p-4 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Workflow-first clinical navigation</p>
+            <p className="text-sm font-medium text-foreground">
+              Workflow-first clinical navigation
+            </p>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              This hub keeps the current permission and facility capability model intact while surfacing the queues clinicians use most often.
+              This hub keeps the current permission and facility capability model intact while
+              surfacing the queues clinicians use most often.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
@@ -70,9 +73,12 @@ export default function ClinicalWorkflowPage() {
       {workflowItems.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center">
-            <p className="text-base font-medium text-foreground">No clinical workflow queues are available.</p>
+            <p className="text-base font-medium text-foreground">
+              No clinical workflow queues are available.
+            </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Your current role or facility configuration does not expose any workflow destinations yet.
+              Your current role or facility configuration does not expose any workflow destinations
+              yet.
             </p>
           </CardContent>
         </Card>
@@ -98,7 +104,9 @@ export default function ClinicalWorkflowPage() {
                         <Badge variant="secondary">
                           {isLoading
                             ? '...'
-                            : counts[workflowCountKeyById[item.id as keyof typeof workflowCountKeyById]]}
+                            : counts[
+                                workflowCountKeyById[item.id as keyof typeof workflowCountKeyById]
+                              ]}
                         </Badge>
                       </div>
                     </div>

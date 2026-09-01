@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CheckinLoading() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       {/* Header */}
       <div className="space-y-2">
         <Skeleton className="h-8 w-48" />
@@ -13,12 +13,12 @@ export default function CheckinLoading() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* Search Input */}
           <Skeleton className="h-12 w-full" />
 
           {/* Patient Card Placeholder */}
-          <div className="border rounded-lg p-6 space-y-4">
+          <div className="space-y-4 rounded-lg border p-6">
             <div className="flex items-center gap-3">
               <Skeleton className="h-12 w-12 rounded-full" />
               <div className="space-y-2">
@@ -39,7 +39,7 @@ export default function CheckinLoading() {
 
         {/* Right Column */}
         <div className="space-y-6">
-          <div className="border rounded-lg p-6 space-y-4">
+          <div className="space-y-4 rounded-lg border p-6">
             <Skeleton className="h-5 w-40" />
             <div className="space-y-3">
               <Skeleton className="h-12 w-full" />

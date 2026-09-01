@@ -47,19 +47,12 @@ const statusConfig: Record<
   },
 };
 
-export function ReportStatusBadge({
-  status,
-  className,
-  showIcon = true,
-}: ReportStatusBadgeProps) {
+export function ReportStatusBadge({ status, className, showIcon = true }: ReportStatusBadgeProps) {
   const config = statusConfig[status];
   const Icon = config.icon;
 
   return (
-    <Badge
-      variant="outline"
-      className={cn('gap-1 shrink-0 w-fit', config.color, className)}
-    >
+    <Badge variant="outline" className={cn('w-fit shrink-0 gap-1', config.color, className)}>
       {showIcon && <Icon className="h-3 w-3" />}
       {config.label}
     </Badge>

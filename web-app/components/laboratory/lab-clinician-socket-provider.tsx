@@ -17,9 +17,7 @@ interface LabClinicianSocketProviderProps {
   children: React.ReactNode;
 }
 
-export function LabClinicianSocketProvider({
-  children,
-}: LabClinicianSocketProviderProps) {
+export function LabClinicianSocketProvider({ children }: LabClinicianSocketProviderProps) {
   // Connect to the clinician WebSocket channel for critical alerts
   // This hook automatically:
   // - Shows toast notifications for critical lab results

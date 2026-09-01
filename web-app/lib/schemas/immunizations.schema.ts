@@ -23,38 +23,61 @@ function createPaginatedSchema<T extends z.ZodTypeAny>(itemSchema: T) {
 // ENUMS
 // =============================================================================
 
-export const TargetPopulationSchema = z.enum([
-  'INFANT', 'CHILD', 'ADOLESCENT', 'ADULT', 'ALL',
-]);
+export const TargetPopulationSchema = z.enum(['INFANT', 'CHILD', 'ADOLESCENT', 'ADULT', 'ALL']);
 
 export const VaccineProgramSchema = z.enum([
-  'KEPI', 'ROUTINE', 'CAMPAIGN', 'OCCUPATIONAL', 'TRAVEL', 'CATCH_UP',
+  'KEPI',
+  'ROUTINE',
+  'CAMPAIGN',
+  'OCCUPATIONAL',
+  'TRAVEL',
+  'CATCH_UP',
 ]);
 
 export const VaccineRouteSchema = z.enum(['IM', 'SC', 'ORAL', 'ID', '']);
 
 export const ImmunizationStatusSchema = z.enum([
-  'SCHEDULED', 'ADMINISTERED', 'MISSED', 'CONTRAINDICATED', 'DEFERRED',
+  'SCHEDULED',
+  'ADMINISTERED',
+  'MISSED',
+  'CONTRAINDICATED',
+  'DEFERRED',
 ]);
 
 export const AdministrationSiteSchema = z.enum([
-  'LEFT_ARM', 'RIGHT_ARM', 'LEFT_THIGH', 'RIGHT_THIGH', 'ORAL', '',
+  'LEFT_ARM',
+  'RIGHT_ARM',
+  'LEFT_THIGH',
+  'RIGHT_THIGH',
+  'ORAL',
+  '',
 ]);
 
-export const CampaignStatusSchema = z.enum([
-  'PLANNED', 'ACTIVE', 'COMPLETED', 'CANCELLED',
-]);
+export const CampaignStatusSchema = z.enum(['PLANNED', 'ACTIVE', 'COMPLETED', 'CANCELLED']);
 
 export const AEFIEventTypeSchema = z.enum([
-  'BCG_LYMPHADENITIS', 'INJECTION_SITE_ABSCESS', 'CONVULSION', 'HIGH_FEVER',
-  'SEVERE_LOCAL_REACTION', 'GENERALIZED_URTICARIA', 'ANAPHYLAXIS',
-  'ENCEPHALOPATHY', 'PARALYSIS', 'TOXIC_SHOCK', 'OTHER',
+  'BCG_LYMPHADENITIS',
+  'INJECTION_SITE_ABSCESS',
+  'CONVULSION',
+  'HIGH_FEVER',
+  'SEVERE_LOCAL_REACTION',
+  'GENERALIZED_URTICARIA',
+  'ANAPHYLAXIS',
+  'ENCEPHALOPATHY',
+  'PARALYSIS',
+  'TOXIC_SHOCK',
+  'OTHER',
 ]);
 
 export const AEFISeveritySchema = z.enum(['MILD', 'MODERATE', 'SEVERE']);
 
 export const AEFIOutcomeSchema = z.enum([
-  'RECOVERED', 'RECOVERING', 'NOT_RECOVERED', 'SEQUELAE', 'DEATH', 'UNKNOWN',
+  'RECOVERED',
+  'RECOVERING',
+  'NOT_RECOVERED',
+  'SEQUELAE',
+  'DEATH',
+  'UNKNOWN',
 ]);
 
 export const AEFIReportTypeSchema = z.enum(['INITIAL', 'FOLLOW_UP']);
@@ -140,7 +163,7 @@ export const ImmunizationRecordSchema = z.object({
 });
 
 export const PaginatedImmunizationRecordListSchema = createPaginatedSchema(
-  ImmunizationRecordListItemSchema,
+  ImmunizationRecordListItemSchema
 );
 
 export const ImmunizationRecordListItemArraySchema = z.array(ImmunizationRecordListItemSchema);
@@ -178,7 +201,7 @@ export const VaccineCampaignSchema = z.object({
 });
 
 export const PaginatedVaccineCampaignListSchema = createPaginatedSchema(
-  VaccineCampaignListItemSchema,
+  VaccineCampaignListItemSchema
 );
 
 // =============================================================================
@@ -295,8 +318,13 @@ export const CoverageStatsSchema = z.object({
 // =============================================================================
 
 export const StockTransactionTypeSchema = z.enum([
-  'RECEIVE', 'ISSUE', 'WASTAGE', 'ADJUSTMENT',
-  'TRANSFER_IN', 'TRANSFER_OUT', 'EXPIRED',
+  'RECEIVE',
+  'ISSUE',
+  'WASTAGE',
+  'ADJUSTMENT',
+  'TRANSFER_IN',
+  'TRANSFER_OUT',
+  'EXPIRED',
 ]);
 
 export const VaccineStockListItemSchema = z.object({
@@ -365,11 +393,18 @@ export const StockTransactionArraySchema = z.array(StockTransactionSchema);
 // =============================================================================
 
 export const ColdChainEquipmentTypeSchema = z.enum([
-  'FRIDGE', 'FREEZER', 'COLD_BOX', 'VACCINE_CARRIER', 'COLD_ROOM',
+  'FRIDGE',
+  'FREEZER',
+  'COLD_BOX',
+  'VACCINE_CARRIER',
+  'COLD_ROOM',
 ]);
 
 export const ColdChainEquipmentStatusSchema = z.enum([
-  'OPERATIONAL', 'FAULTY', 'DECOMMISSIONED', 'UNDER_REPAIR',
+  'OPERATIONAL',
+  'FAULTY',
+  'DECOMMISSIONED',
+  'UNDER_REPAIR',
 ]);
 
 export const ColdChainEquipmentListItemSchema = z.object({
@@ -407,7 +442,7 @@ export const ColdChainEquipmentSchema = z.object({
 });
 
 export const PaginatedColdChainEquipmentListSchema = createPaginatedSchema(
-  ColdChainEquipmentListItemSchema,
+  ColdChainEquipmentListItemSchema
 );
 
 export const TemperatureLogSchema = z.object({
@@ -430,8 +465,13 @@ export const PaginatedTemperatureLogListSchema = createPaginatedSchema(Temperatu
 // =============================================================================
 
 export const IncidentTypeSchema = z.enum([
-  'POWER_OUTAGE', 'COLD_CHAIN_BREAK', 'EQUIPMENT_FAILURE',
-  'STOCK_DAMAGE', 'THEFT', 'EXPIRED_STOCK', 'OTHER',
+  'POWER_OUTAGE',
+  'COLD_CHAIN_BREAK',
+  'EQUIPMENT_FAILURE',
+  'STOCK_DAMAGE',
+  'THEFT',
+  'EXPIRED_STOCK',
+  'OTHER',
 ]);
 
 export const IncidentSeveritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
@@ -477,5 +517,5 @@ export const VaccineIncidentSchema = z.object({
 });
 
 export const PaginatedVaccineIncidentListSchema = createPaginatedSchema(
-  VaccineIncidentListItemSchema,
+  VaccineIncidentListItemSchema
 );

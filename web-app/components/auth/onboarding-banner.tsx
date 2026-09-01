@@ -47,9 +47,10 @@ export function OnboardingBanner() {
       <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400" />
       <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm text-blue-800 dark:text-blue-200">
-          Your organization setup is incomplete. Complete the onboarding checklist to unlock all features.
+          Your organization setup is incomplete. Complete the onboarding checklist to unlock all
+          features.
         </span>
-        <span className="flex items-center gap-2 shrink-0">
+        <span className="flex shrink-0 items-center gap-2">
           <Button
             asChild
             size="sm"

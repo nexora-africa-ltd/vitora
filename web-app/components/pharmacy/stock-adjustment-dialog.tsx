@@ -153,7 +153,7 @@ export function StockAdjustmentDialog({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {/* Current Available Quantity */}
-            <div className="p-3 bg-muted rounded-lg">
+            <div className="rounded-lg bg-muted p-3">
               <div className="text-sm text-muted-foreground">Current Available</div>
               <div className="text-2xl font-bold">{batch.quantity_available}</div>
             </div>
@@ -205,7 +205,8 @@ export function StockAdjustmentDialog({
                     />
                   </FormControl>
                   <FormDescription>
-                    For reductions, enter positive number. For additions (e.g., corrections), enter positive number.
+                    For reductions, enter positive number. For additions (e.g., corrections), enter
+                    positive number.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -241,9 +242,7 @@ export function StockAdjustmentDialog({
                   <FormControl>
                     <Input placeholder="e.g., ADJ-2026-001" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Internal reference or document number
-                  </FormDescription>
+                  <FormDescription>Internal reference or document number</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

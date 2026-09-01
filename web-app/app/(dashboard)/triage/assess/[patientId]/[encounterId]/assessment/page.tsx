@@ -85,76 +85,79 @@ import {
 // Schema
 // =============================================================================
 
-const assessmentSchema = z.object({
-  arrival_mode: z.enum(['WALK_IN', 'AMBULANCE', 'POLICE', 'REFERRAL', 'OTHER'], {
-    required_error: 'Arrival mode is required',
-  }),
-  referring_facility_name: z.string().optional(),
-  arrival_time: z.string().min(1, 'Arrival time is required'),
-  chief_complaint_category: z.enum(
-    [
-      'CHEST_PAIN',
-      'DIFFICULTY_BREATHING',
-      'TRAUMA',
-      'FEVER',
-      'ABDOMINAL_PAIN',
-      'HEADACHE',
-      'ALTERED_CONSCIOUSNESS',
-      'BLEEDING',
-      'POISONING',
-      'OBSTETRIC',
-      'PEDIATRIC',
-      // Neonatal-specific
-      'NEONATAL_SEPSIS',
-      'NEONATAL_JAUNDICE',
-      'NEONATAL_RESPIRATORY_DISTRESS',
-      'BIRTH_ASPHYXIA',
-      // Pediatric-specific
-      'FEBRILE_CONVULSION',
-      'CROUP',
-      'BRONCHIOLITIS',
-      'SEVERE_MALARIA',
-      'OTHER',
-    ],
-    { required_error: 'Chief complaint category is required' }
-  ),
-  chief_complaint: z.string().min(1, 'Chief complaint details are required'),
-  pain_score: z.number().min(0).max(10).nullable().optional(),
-  mental_status: z.enum(['A', 'V', 'P', 'U'], {
-    required_error: 'Mental status (AVPU) is required',
-  }),
-  // Glasgow Coma Scale (optional - for trauma/neuro cases)
-  gcs_eye: z.number().min(1).max(4).nullable().optional(),
-  gcs_verbal: z.number().min(1).max(5).nullable().optional(),
-  gcs_motor: z.number().min(1).max(6).nullable().optional(),
-  mobility: z.enum(['AMBULATORY', 'WHEELCHAIR', 'STRETCHER', 'IMMOBILE'], {
-    required_error: 'Mobility status is required',
-  }),
-  triage_category: z.enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'], {
-    required_error: 'Triage category is required',
-  }),
-  auto_calculated_category: z.enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE']).optional(),
-  category_override_reason: z.string().optional(),
-  // ETAT pediatric fields
-  etat_danger_signs: z.array(z.string()).optional(),
-  dehydration_level: z.string().optional(),
-  fontanelle_status: z.string().optional(),
-  breastfeeding_ability: z.string().optional(),
-  capillary_refill_seconds: z.number().nullable().optional(),
-  muac_cm: z.number().nullable().optional(),
-}).refine(
-  (data) => {
-    // Referring facility name is required when arrival_mode is REFERRAL
-    if (data.arrival_mode === 'REFERRAL') {
-      return data.referring_facility_name && data.referring_facility_name.trim().length > 0;
+const assessmentSchema = z
+  .object({
+    arrival_mode: z.enum(['WALK_IN', 'AMBULANCE', 'POLICE', 'REFERRAL', 'OTHER'], {
+      required_error: 'Arrival mode is required',
+    }),
+    referring_facility_name: z.string().optional(),
+    arrival_time: z.string().min(1, 'Arrival time is required'),
+    chief_complaint_category: z.enum(
+      [
+        'CHEST_PAIN',
+        'DIFFICULTY_BREATHING',
+        'TRAUMA',
+        'FEVER',
+        'ABDOMINAL_PAIN',
+        'HEADACHE',
+        'ALTERED_CONSCIOUSNESS',
+        'BLEEDING',
+        'POISONING',
+        'OBSTETRIC',
+        'PEDIATRIC',
+        // Neonatal-specific
+        'NEONATAL_SEPSIS',
+        'NEONATAL_JAUNDICE',
+        'NEONATAL_RESPIRATORY_DISTRESS',
+        'BIRTH_ASPHYXIA',
+        // Pediatric-specific
+        'FEBRILE_CONVULSION',
+        'CROUP',
+        'BRONCHIOLITIS',
+        'SEVERE_MALARIA',
+        'OTHER',
+      ],
+      { required_error: 'Chief complaint category is required' }
+    ),
+    chief_complaint: z.string().min(1, 'Chief complaint details are required'),
+    pain_score: z.number().min(0).max(10).nullable().optional(),
+    mental_status: z.enum(['A', 'V', 'P', 'U'], {
+      required_error: 'Mental status (AVPU) is required',
+    }),
+    // Glasgow Coma Scale (optional - for trauma/neuro cases)
+    gcs_eye: z.number().min(1).max(4).nullable().optional(),
+    gcs_verbal: z.number().min(1).max(5).nullable().optional(),
+    gcs_motor: z.number().min(1).max(6).nullable().optional(),
+    mobility: z.enum(['AMBULATORY', 'WHEELCHAIR', 'STRETCHER', 'IMMOBILE'], {
+      required_error: 'Mobility status is required',
+    }),
+    triage_category: z.enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'], {
+      required_error: 'Triage category is required',
+    }),
+    auto_calculated_category: z.enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE']).optional(),
+    category_override_reason: z.string().optional(),
+    // ETAT pediatric fields
+    etat_danger_signs: z.array(z.string()).optional(),
+    dehydration_level: z.string().optional(),
+    fontanelle_status: z.string().optional(),
+    breastfeeding_ability: z.string().optional(),
+    capillary_refill_seconds: z.number().nullable().optional(),
+    muac_cm: z.number().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      // Referring facility name is required when arrival_mode is REFERRAL
+      if (data.arrival_mode === 'REFERRAL') {
+        return data.referring_facility_name && data.referring_facility_name.trim().length > 0;
+      }
+      return true;
+    },
+    {
+      message:
+        'Referring facility name is required when arrival mode is "Referral from another facility"',
+      path: ['referring_facility_name'],
     }
-    return true;
-  },
-  {
-    message: 'Referring facility name is required when arrival mode is "Referral from another facility"',
-    path: ['referring_facility_name'],
-  }
-);
+  );
 
 type AssessmentFormData = z.infer<typeof assessmentSchema>;
 
@@ -181,7 +184,8 @@ export default function TriageAssessmentPage() {
   const showNeonatalFields = patientAgeGroup ? isNeonateOrInfant(patientAgeGroup) : false;
 
   // Get triage store data
-  const { getVitals, getAssessment, setAssessment, markSectionComplete, markSectionVisited } = useTriageAssessStore();
+  const { getVitals, getAssessment, setAssessment, markSectionComplete, markSectionVisited } =
+    useTriageAssessStore();
   const currentVitals = getVitals(parseInt(encounterId, 10));
   const currentAssessment = getAssessment(parseInt(encounterId, 10));
 
@@ -215,15 +219,24 @@ export default function TriageAssessmentPage() {
           category_override_reason: currentValues.category_override_reason,
           // ETAT pediatric fields
           etat_danger_signs: currentValues.etat_danger_signs as EtATDangerSign[] | undefined,
-          dehydration_level: (currentValues.dehydration_level || undefined) as DehydrationLevel | '' | undefined,
-          fontanelle_status: (currentValues.fontanelle_status || undefined) as FontanelleStatus | '' | undefined,
-          breastfeeding_ability: (currentValues.breastfeeding_ability || undefined) as BreastfeedingAbility | '' | undefined,
+          dehydration_level: (currentValues.dehydration_level || undefined) as
+            | DehydrationLevel
+            | ''
+            | undefined,
+          fontanelle_status: (currentValues.fontanelle_status || undefined) as
+            | FontanelleStatus
+            | ''
+            | undefined,
+          breastfeeding_ability: (currentValues.breastfeeding_ability || undefined) as
+            | BreastfeedingAbility
+            | ''
+            | undefined,
           capillary_refill_seconds: currentValues.capillary_refill_seconds,
           muac_cm: currentValues.muac_cm,
         });
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encounterIdNum]);
 
   // Local state
@@ -241,10 +254,7 @@ export default function TriageAssessmentPage() {
   const PLACEHOLDER_COMPLAINTS = ['Triage assessment', 'Check-in', 'check-in', 'Checkin'];
   const getInitialChiefComplaint = () => {
     if (currentAssessment?.chief_complaint) return currentAssessment.chief_complaint;
-    if (
-      encounter?.chief_complaint &&
-      !PLACEHOLDER_COMPLAINTS.includes(encounter.chief_complaint)
-    ) {
+    if (encounter?.chief_complaint && !PLACEHOLDER_COMPLAINTS.includes(encounter.chief_complaint)) {
       return encounter.chief_complaint;
     }
     return '';
@@ -301,6 +311,9 @@ export default function TriageAssessmentPage() {
     'gcs_motor',
   ]);
   const [watchedChiefCategory, watchedMentalStatus, watchedMobility] = watchedFields;
+  const watchedGcsEye = watchedFields[5];
+  const watchedGcsVerbal = watchedFields[6];
+  const watchedGcsMotor = watchedFields[7];
   const selectedCategory = watch('triage_category');
   const overrideReason = watch('category_override_reason');
   const arrivalMode = watch('arrival_mode');
@@ -319,13 +332,13 @@ export default function TriageAssessmentPage() {
     if (!watchedMobility) missing.push('Mobility');
 
     // Check if ANY vitals were captured (at least one is recommended)
-    const hasAnyVitals = currentVitals && (
-      currentVitals.spo2 !== null && currentVitals.spo2 !== undefined ||
-      currentVitals.heart_rate !== null && currentVitals.heart_rate !== undefined ||
-      currentVitals.systolic_bp !== null && currentVitals.systolic_bp !== undefined ||
-      currentVitals.temperature !== null && currentVitals.temperature !== undefined ||
-      currentVitals.respiratory_rate !== null && currentVitals.respiratory_rate !== undefined
-    );
+    const hasAnyVitals =
+      currentVitals &&
+      ((currentVitals.spo2 !== null && currentVitals.spo2 !== undefined) ||
+        (currentVitals.heart_rate !== null && currentVitals.heart_rate !== undefined) ||
+        (currentVitals.systolic_bp !== null && currentVitals.systolic_bp !== undefined) ||
+        (currentVitals.temperature !== null && currentVitals.temperature !== undefined) ||
+        (currentVitals.respiratory_rate !== null && currentVitals.respiratory_rate !== undefined));
     if (!hasAnyVitals) missing.push('Vitals (at least one)');
 
     return missing;
@@ -338,9 +351,10 @@ export default function TriageAssessmentPage() {
     const formData = watch();
 
     // Calculate GCS total if all components are present
-    const gcsTotal = (formData.gcs_eye && formData.gcs_verbal && formData.gcs_motor)
-      ? formData.gcs_eye + formData.gcs_verbal + formData.gcs_motor
-      : undefined;
+    const gcsTotal =
+      formData.gcs_eye && formData.gcs_verbal && formData.gcs_motor
+        ? formData.gcs_eye + formData.gcs_verbal + formData.gcs_motor
+        : undefined;
 
     try {
       const result = await calculateCategoryMutation.mutateAsync({
@@ -367,10 +381,7 @@ export default function TriageAssessmentPage() {
           typeof formData.capillary_refill_seconds === 'number'
             ? formData.capillary_refill_seconds
             : undefined,
-        muac_cm:
-          typeof formData.muac_cm === 'number'
-            ? formData.muac_cm
-            : undefined,
+        muac_cm: typeof formData.muac_cm === 'number' ? formData.muac_cm : undefined,
       });
 
       setCalculatedCategory(result.suggested_category);
@@ -392,7 +403,15 @@ export default function TriageAssessmentPage() {
       handleCalculateCategory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedFields[0], watchedFields[1], watchedFields[2], watchedFields[5], watchedFields[6], watchedFields[7], canCalculate]);
+  }, [
+    watchedChiefCategory,
+    watchedMentalStatus,
+    watchedMobility,
+    watchedGcsEye,
+    watchedGcsVerbal,
+    watchedGcsMotor,
+    canCalculate,
+  ]);
 
   const onSubmit = useCallback(
     async (data: AssessmentFormData) => {
@@ -420,9 +439,18 @@ export default function TriageAssessmentPage() {
         category_override_reason: data.category_override_reason,
         // ETAT pediatric fields
         etat_danger_signs: data.etat_danger_signs as EtATDangerSign[] | undefined,
-        dehydration_level: (data.dehydration_level || undefined) as DehydrationLevel | '' | undefined,
-        fontanelle_status: (data.fontanelle_status || undefined) as FontanelleStatus | '' | undefined,
-        breastfeeding_ability: (data.breastfeeding_ability || undefined) as BreastfeedingAbility | '' | undefined,
+        dehydration_level: (data.dehydration_level || undefined) as
+          | DehydrationLevel
+          | ''
+          | undefined,
+        fontanelle_status: (data.fontanelle_status || undefined) as
+          | FontanelleStatus
+          | ''
+          | undefined,
+        breastfeeding_ability: (data.breastfeeding_ability || undefined) as
+          | BreastfeedingAbility
+          | ''
+          | undefined,
         capillary_refill_seconds: data.capillary_refill_seconds,
         muac_cm: data.muac_cm,
       });
@@ -437,7 +465,9 @@ export default function TriageAssessmentPage() {
   );
 
   const handleBack = useCallback(() => {
-    router.push(`/triage/assess/${patientId}/${encounterId}/${showHistoryStep ? 'history' : 'vitals'}`);
+    router.push(
+      `/triage/assess/${patientId}/${encounterId}/${showHistoryStep ? 'history' : 'vitals'}`
+    );
   }, [router, patientId, encounterId, showHistoryStep]);
 
   return (
@@ -454,12 +484,14 @@ export default function TriageAssessmentPage() {
                 <CardTitle className="text-lg">Arrival & Presentation</CardTitle>
                 <HelpPopover content="Document how and when the patient arrived and their presenting complaint." />
               </div>
-              <Badge variant="secondary">Step {showHistoryStep ? 3 : 2} of {showHistoryStep ? 4 : 3}</Badge>
+              <Badge variant="secondary">
+                Step {showHistoryStep ? 3 : 2} of {showHistoryStep ? 4 : 3}
+              </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Row 1: Arrival Mode, Arrival Time */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Arrival Mode */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
@@ -495,11 +527,7 @@ export default function TriageAssessmentPage() {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   Arrival Time *
                 </Label>
-                <Input
-                  id="arrival_time"
-                  type="datetime-local"
-                  {...register('arrival_time')}
-                />
+                <Input id="arrival_time" type="datetime-local" {...register('arrival_time')} />
                 {errors.arrival_time && (
                   <p className="text-sm text-destructive">{errors.arrival_time.message}</p>
                 )}
@@ -508,19 +536,24 @@ export default function TriageAssessmentPage() {
 
             {/* Referring Facility - Conditional */}
             {isReferral && (
-              <div className="space-y-2 p-4 rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-                <Label htmlFor="referring_facility_name" className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300">
+              <div className="space-y-2 rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800 dark:bg-blue-950/20">
+                <Label
+                  htmlFor="referring_facility_name"
+                  className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300"
+                >
                   <Ambulance className="h-4 w-4" />
                   Referring Facility Name *
                 </Label>
                 <Input
                   id="referring_facility_name"
                   placeholder="Enter the name of the referring facility"
-                  className="bg-white dark:bg-blue-950/30 border-blue-300 dark:border-blue-700"
+                  className="border-blue-300 bg-white dark:border-blue-700 dark:bg-blue-950/30"
                   {...register('referring_facility_name')}
                 />
                 {errors.referring_facility_name && (
-                  <p className="text-sm text-destructive">{errors.referring_facility_name.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.referring_facility_name.message}
+                  </p>
                 )}
                 <p className="text-xs text-muted-foreground">
                   This information is required for SHA claims and continuity of care documentation.
@@ -543,10 +576,12 @@ export default function TriageAssessmentPage() {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(Object.entries(CHIEF_COMPLAINT_CONFIG) as [
-                        ChiefComplaintCategory,
-                        { label: string; ageRestriction?: 'neonatal' | 'pediatric' },
-                      ][])
+                      {(
+                        Object.entries(CHIEF_COMPLAINT_CONFIG) as [
+                          ChiefComplaintCategory,
+                          { label: string; ageRestriction?: 'neonatal' | 'pediatric' },
+                        ][]
+                      )
                         .filter(([, config]) => {
                           // Filter categories by patient age
                           if (config.ageRestriction === 'neonatal') return showNeonatalFields;
@@ -554,16 +589,18 @@ export default function TriageAssessmentPage() {
                           return true;
                         })
                         .map(([key, config]) => (
-                        <SelectItem key={key} value={key}>
-                          {config.label}
-                        </SelectItem>
-                      ))}
+                          <SelectItem key={key} value={key}>
+                            {config.label}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 )}
               />
               {errors.chief_complaint_category && (
-                <p className="text-sm text-destructive">{errors.chief_complaint_category.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.chief_complaint_category.message}
+                </p>
               )}
             </div>
 
@@ -586,10 +623,7 @@ export default function TriageAssessmentPage() {
               name="pain_score"
               control={control}
               render={({ field }) => (
-                <PainScoreSlider
-                  value={field.value ?? null}
-                  onChange={field.onChange}
-                />
+                <PainScoreSlider value={field.value ?? null} onChange={field.onChange} />
               )}
             />
           </CardContent>
@@ -599,7 +633,7 @@ export default function TriageAssessmentPage() {
         {showPediatricSection && (
           <Card className="border-orange-200 dark:border-orange-800">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2 text-orange-700 dark:text-orange-300">
+              <CardTitle className="flex items-center gap-2 text-lg text-orange-700 dark:text-orange-300">
                 <ShieldAlert className="h-4 w-4" />
                 Pediatric Assessment (ETAT)
                 <Badge variant="outline" className="ml-auto text-xs">
@@ -612,7 +646,7 @@ export default function TriageAssessmentPage() {
               <div className="space-y-3">
                 <Label className="text-sm font-medium">
                   ETAT Danger Signs
-                  <span className="text-xs text-muted-foreground ml-2">(check all that apply)</span>
+                  <span className="ml-2 text-xs text-muted-foreground">(check all that apply)</span>
                 </Label>
                 <Controller
                   name="etat_danger_signs"
@@ -621,46 +655,51 @@ export default function TriageAssessmentPage() {
                     const selected = (field.value || []) as string[];
                     return (
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {(Object.entries(ETAT_DANGER_SIGNS_CONFIG) as [EtATDangerSign, { label: string; description: string }][]).map(
-                          ([sign, config]) => (
-                            <label
-                              key={sign}
-                              className={cn(
-                                'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-                                selected.includes(sign)
-                                  ? 'border-red-500 bg-red-50 dark:bg-red-950/30'
-                                  : 'border-border hover:border-muted-foreground'
-                              )}
-                            >
-                              <Checkbox
-                                checked={selected.includes(sign)}
-                                onCheckedChange={(checked) => {
-                                  const next = checked
-                                    ? [...selected, sign]
-                                    : selected.filter((s: string) => s !== sign);
-                                  field.onChange(next);
-                                }}
-                                className="mt-0.5"
-                              />
-                              <div>
-                                <span className="text-sm font-medium">{config.label}</span>
-                                <p className="text-xs text-muted-foreground">{config.description}</p>
-                              </div>
-                            </label>
-                          )
-                        )}
+                        {(
+                          Object.entries(ETAT_DANGER_SIGNS_CONFIG) as [
+                            EtATDangerSign,
+                            { label: string; description: string },
+                          ][]
+                        ).map(([sign, config]) => (
+                          <label
+                            key={sign}
+                            className={cn(
+                              'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+                              selected.includes(sign)
+                                ? 'border-red-500 bg-red-50 dark:bg-red-950/30'
+                                : 'border-border hover:border-muted-foreground'
+                            )}
+                          >
+                            <Checkbox
+                              checked={selected.includes(sign)}
+                              onCheckedChange={(checked) => {
+                                const next = checked
+                                  ? [...selected, sign]
+                                  : selected.filter((s: string) => s !== sign);
+                                field.onChange(next);
+                              }}
+                              className="mt-0.5"
+                            />
+                            <div>
+                              <span className="text-sm font-medium">{config.label}</span>
+                              <p className="text-xs text-muted-foreground">{config.description}</p>
+                            </div>
+                          </label>
+                        ))}
                       </div>
                     );
                   }}
                 />
-                {watch('etat_danger_signs') && (watch('etat_danger_signs') as string[]).length > 0 && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-                    <span className="text-sm font-medium text-red-700 dark:text-red-300">
-                      {(watch('etat_danger_signs') as string[]).length} danger sign(s) — auto-escalation to RED category
-                    </span>
-                  </div>
-                )}
+                {watch('etat_danger_signs') &&
+                  (watch('etat_danger_signs') as string[]).length > 0 && (
+                    <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-2 dark:border-red-800 dark:bg-red-950/30">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+                      <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                        {(watch('etat_danger_signs') as string[]).length} danger sign(s) —
+                        auto-escalation to RED category
+                      </span>
+                    </div>
+                  )}
               </div>
 
               {/* Capillary Refill & MUAC */}
@@ -689,15 +728,17 @@ export default function TriageAssessmentPage() {
                     placeholder="e.g. 12.5"
                   />
                   {watch('muac_cm') != null && (watch('muac_cm') as number) < 11.5 && (
-                    <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+                    <p className="text-sm font-medium text-red-600 dark:text-red-400">
                       ⚠ SAM: MUAC &lt; 11.5 cm
                     </p>
                   )}
-                  {watch('muac_cm') != null && (watch('muac_cm') as number) >= 11.5 && (watch('muac_cm') as number) < 12.5 && (
-                    <p className="text-sm text-orange-600 dark:text-orange-400">
-                      MAM: MUAC 11.5-12.5 cm
-                    </p>
-                  )}
+                  {watch('muac_cm') != null &&
+                    (watch('muac_cm') as number) >= 11.5 &&
+                    (watch('muac_cm') as number) < 12.5 && (
+                      <p className="text-sm text-orange-600 dark:text-orange-400">
+                        MAM: MUAC 11.5-12.5 cm
+                      </p>
+                    )}
                 </div>
               </div>
 
@@ -713,11 +754,16 @@ export default function TriageAssessmentPage() {
                         <SelectValue placeholder="Assess dehydration" />
                       </SelectTrigger>
                       <SelectContent>
-                        {(Object.entries(DEHYDRATION_CONFIG) as [DehydrationLevel, { label: string }][]).map(
-                          ([value, config]) => (
-                            <SelectItem key={value} value={value}>{config.label}</SelectItem>
-                          )
-                        )}
+                        {(
+                          Object.entries(DEHYDRATION_CONFIG) as [
+                            DehydrationLevel,
+                            { label: string },
+                          ][]
+                        ).map(([value, config]) => (
+                          <SelectItem key={value} value={value}>
+                            {config.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}
@@ -739,11 +785,16 @@ export default function TriageAssessmentPage() {
                             <SelectValue placeholder="Assess fontanelle" />
                           </SelectTrigger>
                           <SelectContent>
-                            {(Object.entries(FONTANELLE_CONFIG) as [FontanelleStatus, { label: string }][]).map(
-                              ([value, config]) => (
-                                <SelectItem key={value} value={value}>{config.label}</SelectItem>
-                              )
-                            )}
+                            {(
+                              Object.entries(FONTANELLE_CONFIG) as [
+                                FontanelleStatus,
+                                { label: string },
+                              ][]
+                            ).map(([value, config]) => (
+                              <SelectItem key={value} value={value}>
+                                {config.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       )}
@@ -762,11 +813,16 @@ export default function TriageAssessmentPage() {
                             <SelectValue placeholder="Assess feeding" />
                           </SelectTrigger>
                           <SelectContent>
-                            {(Object.entries(BREASTFEEDING_CONFIG) as [BreastfeedingAbility, { label: string }][]).map(
-                              ([value, config]) => (
-                                <SelectItem key={value} value={value}>{config.label}</SelectItem>
-                              )
-                            )}
+                            {(
+                              Object.entries(BREASTFEEDING_CONFIG) as [
+                                BreastfeedingAbility,
+                                { label: string },
+                              ][]
+                            ).map(([value, config]) => (
+                              <SelectItem key={value} value={value}>
+                                {config.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       )}
@@ -802,41 +858,42 @@ export default function TriageAssessmentPage() {
 
             {/* Glasgow Coma Scale - conditional for trauma/neuro cases or altered consciousness */}
             {/* Hidden for neonates/infants as GCS is unreliable in this age group */}
-            {!showNeonatalFields && (watchedChiefCategory === 'TRAUMA' ||
-              watchedChiefCategory === 'ALTERED_CONSCIOUSNESS' ||
-              watchedMentalStatus === 'P' ||
-              watchedMentalStatus === 'U') && (
-              <Controller
-                name="gcs_eye"
-                control={control}
-                render={({ field: eyeField }) => (
-                  <Controller
-                    name="gcs_verbal"
-                    control={control}
-                    render={({ field: verbalField }) => (
-                      <Controller
-                        name="gcs_motor"
-                        control={control}
-                        render={({ field: motorField }) => (
-                          <GCSScorePanel
-                            value={{
-                              eye: eyeField.value ?? null,
-                              verbal: verbalField.value ?? null,
-                              motor: motorField.value ?? null,
-                            }}
-                            onChange={(gcs: GCSScores) => {
-                              eyeField.onChange(gcs.eye);
-                              verbalField.onChange(gcs.verbal);
-                              motorField.onChange(gcs.motor);
-                            }}
-                          />
-                        )}
-                      />
-                    )}
-                  />
-                )}
-              />
-            )}
+            {!showNeonatalFields &&
+              (watchedChiefCategory === 'TRAUMA' ||
+                watchedChiefCategory === 'ALTERED_CONSCIOUSNESS' ||
+                watchedMentalStatus === 'P' ||
+                watchedMentalStatus === 'U') && (
+                <Controller
+                  name="gcs_eye"
+                  control={control}
+                  render={({ field: eyeField }) => (
+                    <Controller
+                      name="gcs_verbal"
+                      control={control}
+                      render={({ field: verbalField }) => (
+                        <Controller
+                          name="gcs_motor"
+                          control={control}
+                          render={({ field: motorField }) => (
+                            <GCSScorePanel
+                              value={{
+                                eye: eyeField.value ?? null,
+                                verbal: verbalField.value ?? null,
+                                motor: motorField.value ?? null,
+                              }}
+                              onChange={(gcs: GCSScores) => {
+                                eyeField.onChange(gcs.eye);
+                                verbalField.onChange(gcs.verbal);
+                                motorField.onChange(gcs.motor);
+                              }}
+                            />
+                          )}
+                        />
+                      )}
+                    />
+                  )}
+                />
+              )}
 
             {/* Mobility */}
             <div className="space-y-3">
@@ -856,35 +913,38 @@ export default function TriageAssessmentPage() {
                   };
 
                   return (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {(Object.entries(MOBILITY_CONFIG) as [MobilityStatus, typeof MOBILITY_CONFIG[MobilityStatus]][]).map(
-                        ([key, config]) => {
-                          const isSelected = field.value === key;
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => field.onChange(key)}
-                              className={`flex flex-col items-center justify-center rounded-xl border-2 p-3 cursor-pointer transition-all duration-200 min-h-[80px] ${
-                                isSelected
-                                  ? `${config.colors.bg} ${config.colors.border} ring-2 ring-offset-1 ${ringColorMap[key]} scale-[1.02] shadow-md`
-                                  : 'bg-card border-border hover:border-primary/30'
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      {(
+                        Object.entries(MOBILITY_CONFIG) as [
+                          MobilityStatus,
+                          (typeof MOBILITY_CONFIG)[MobilityStatus],
+                        ][]
+                      ).map(([key, config]) => {
+                        const isSelected = field.value === key;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => field.onChange(key)}
+                            className={`flex min-h-[80px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 p-3 transition-all duration-200 ${
+                              isSelected
+                                ? `${config.colors.bg} ${config.colors.border} ring-2 ring-offset-1 ${ringColorMap[key]} scale-[1.02] shadow-md`
+                                : 'border-border bg-card hover:border-primary/30'
+                            }`}
+                          >
+                            <span
+                              className={`text-sm font-medium ${
+                                isSelected ? config.colors.text : 'text-foreground'
                               }`}
                             >
-                              <span
-                                className={`text-sm font-medium ${
-                                  isSelected ? config.colors.text : 'text-foreground'
-                                }`}
-                              >
-                                {config.label}
-                              </span>
-                              <span className="text-xs text-muted-foreground text-center mt-1 hidden sm:block">
-                                {config.description}
-                              </span>
-                            </button>
-                          );
-                        }
-                      )}
+                              {config.label}
+                            </span>
+                            <span className="mt-1 hidden text-center text-xs text-muted-foreground sm:block">
+                              {config.description}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   );
                 }}
@@ -924,16 +984,21 @@ export default function TriageAssessmentPage() {
         <Card className={!canCalculate ? 'relative' : ''}>
           {/* Overlay for missing fields */}
           {!canCalculate && (
-            <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-10 rounded-lg flex items-center justify-center">
-              <div className="bg-card border shadow-lg rounded-lg p-4 max-w-sm mx-4">
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/60 backdrop-blur-[2px]">
+              <div className="mx-4 max-w-sm rounded-lg border bg-card p-4 shadow-lg">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
                   <div>
-                    <p className="font-medium text-sm">Cannot Calculate Triage Category</p>
-                    <p className="text-sm text-muted-foreground mt-1">Complete the following fields first:</p>
+                    <p className="text-sm font-medium">Cannot Calculate Triage Category</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Complete the following fields first:
+                    </p>
                     <ul className="mt-2 space-y-1">
                       {missingCalculationFields.map((field) => (
-                        <li key={field} className="text-sm text-destructive flex items-center gap-1.5">
+                        <li
+                          key={field}
+                          className="flex items-center gap-1.5 text-sm text-destructive"
+                        >
                           <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
                           {field}
                         </li>
@@ -957,7 +1022,9 @@ export default function TriageAssessmentPage() {
                 onClick={handleCalculateCategory}
                 disabled={calculateCategoryMutation.isPending || !canCalculate}
               >
-                <RefreshCw className={`h-4 w-4 mr-1.5 ${calculateCategoryMutation.isPending ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`mr-1.5 h-4 w-4 ${calculateCategoryMutation.isPending ? 'animate-spin' : ''}`}
+                />
                 Recalculate
               </Button>
             </div>
@@ -965,9 +1032,9 @@ export default function TriageAssessmentPage() {
           <CardContent className="space-y-6">
             {/* Calculated Category Display */}
             {calculatedCategory && (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg bg-muted/50 border">
+              <div className="flex flex-col gap-3 rounded-lg border bg-muted/50 p-4 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-3">
-                  <Calculator className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <Calculator className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <span className="text-sm font-medium">Calculated:</span>
                   <TriageCategoryBadge category={calculatedCategory} />
                 </div>
@@ -992,7 +1059,7 @@ export default function TriageAssessmentPage() {
                       }
                     }}
                     value={field.value}
-                    className="grid grid-cols-2 sm:grid-cols-5 gap-3"
+                    className="grid grid-cols-2 gap-3 sm:grid-cols-5"
                   >
                     {Object.entries(TRIAGE_CATEGORY_CONFIG).map(([key, config]) => (
                       <div key={key}>
@@ -1003,14 +1070,14 @@ export default function TriageAssessmentPage() {
                         />
                         <Label
                           htmlFor={`category-${key}`}
-                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted p-3 hover:border-primary/50 peer-data-[state=checked]:border-primary cursor-pointer transition-colors"
+                          className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted p-3 transition-colors hover:border-primary/50 peer-data-[state=checked]:border-primary"
                           style={{
                             backgroundColor:
                               field.value === key ? `${config.bgColor}20` : undefined,
                           }}
                         >
                           <TriageCategoryBadge category={key as TriageCategory} size="sm" />
-                          <span className="text-xs text-muted-foreground mt-1">
+                          <span className="mt-1 text-xs text-muted-foreground">
                             {config.targetWaitMinutes === 0
                               ? 'Immediate'
                               : `≤ ${config.targetWaitMinutes} min`}
@@ -1040,10 +1107,12 @@ export default function TriageAssessmentPage() {
                   {...register('category_override_reason')}
                 />
                 {errors.category_override_reason && (
-                  <p className="text-sm text-destructive">{errors.category_override_reason.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.category_override_reason.message}
+                  </p>
                 )}
                 {isOverridden && !overrideReason?.trim() && (
-                  <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
+                  <Alert variant="destructive" className="border-destructive/20 bg-destructive/10">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       Override reason is required when changing the calculated category.

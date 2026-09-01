@@ -27,7 +27,7 @@ export default function TheatreChecklistsPage() {
       setLoading(true);
       // Fetch all active cases that may need checklist attention
       const data = await theatreApi.listCases({ search: deferredSearch || undefined });
-      setCases(data.results.filter(c => ACTIVE_STATUSES.includes(c.status)));
+      setCases(data.results.filter((c) => ACTIVE_STATUSES.includes(c.status)));
     } catch {
       setCases([]);
     } finally {
@@ -35,17 +35,28 @@ export default function TheatreChecklistsPage() {
     }
   }, [deferredSearch]);
 
-  useEffect(() => { fetchCases(); }, [fetchCases]);
+  useEffect(() => {
+    fetchCases();
+  }, [fetchCases]);
 
-  const statusSummary = useMemo(() => (
-    ACTIVE_STATUSES.map((status) => ({
-      status,
-      count: cases.filter((item) => item.status === status).length,
-    })).filter((item) => item.count > 0)
-  ), [cases]);
+  const statusSummary = useMemo(
+    () =>
+      ACTIVE_STATUSES.map((status) => ({
+        status,
+        count: cases.filter((item) => item.status === status).length,
+      })).filter((item) => item.count > 0),
+    [cases]
+  );
 
   return (
-    <PullToRefresh onRefresh={() => { refresh(); return fetchCases(); }} isRefreshing={isRefreshing} className="min-h-full">
+    <PullToRefresh
+      onRefresh={() => {
+        refresh();
+        return fetchCases();
+      }}
+      isRefreshing={isRefreshing}
+      className="min-h-full"
+    >
       <div className="space-y-6">
         <PageHeader
           title="WHO Safety Checklists"
@@ -53,28 +64,43 @@ export default function TheatreChecklistsPage() {
         />
 
         <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search cases..."
             className="pl-9"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
           <TheatreMetricCard label="Active cases" value={cases.length} />
-          <TheatreMetricCard label="Pre-op queue" value={cases.filter((item) => item.status === 'PRE_OP').length} />
-          <TheatreMetricCard label="In theatre" value={cases.filter((item) => item.status === 'IN_THEATRE').length} />
-          <TheatreMetricCard label="In surgery" value={cases.filter((item) => item.status === 'IN_SURGERY').length} />
-          <TheatreMetricCard label="In PACU" value={cases.filter((item) => item.status === 'IN_PACU').length} />
+          <TheatreMetricCard
+            label="Pre-op queue"
+            value={cases.filter((item) => item.status === 'PRE_OP').length}
+          />
+          <TheatreMetricCard
+            label="In theatre"
+            value={cases.filter((item) => item.status === 'IN_THEATRE').length}
+          />
+          <TheatreMetricCard
+            label="In surgery"
+            value={cases.filter((item) => item.status === 'IN_SURGERY').length}
+          />
+          <TheatreMetricCard
+            label="In PACU"
+            value={cases.filter((item) => item.status === 'IN_PACU').length}
+          />
         </div>
 
         {statusSummary.length > 0 ? (
           <Card>
             <CardContent className="flex flex-wrap gap-2 p-4">
               {statusSummary.map((item) => (
-                <div key={item.status} className="flex items-center gap-2 rounded-full border px-3 py-1.5">
+                <div
+                  key={item.status}
+                  className="flex items-center gap-2 rounded-full border px-3 py-1.5"
+                >
                   <TheatreCaseStatusBadge status={item.status} />
                   <span className="text-sm font-medium text-muted-foreground">{item.count}</span>
                 </div>
@@ -84,27 +110,27 @@ export default function TheatreChecklistsPage() {
         ) : null}
 
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading...</div>
+          <div className="py-12 text-center text-muted-foreground">Loading...</div>
         ) : cases.length === 0 ? (
           <Card>
-            <CardContent className="text-center py-12">
-              <ShieldCheck className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+            <CardContent className="py-12 text-center">
+              <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
               <p className="text-muted-foreground">No active cases requiring checklists.</p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
-            {cases.map(c => (
+            {cases.map((c) => (
               <Card
                 key={c.id}
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                className="cursor-pointer transition-colors hover:bg-muted/50"
                 onClick={() => router.push(`/theatre/cases/${c.case_number}`)}
               >
                 <CardContent className="flex items-center gap-3 p-4">
-                  <ClipboardCheck className="h-5 w-5 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{c.primary_procedure_name}</p>
-                    <p className="text-sm text-muted-foreground truncate">
+                  <ClipboardCheck className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{c.primary_procedure_name}</p>
+                    <p className="truncate text-sm text-muted-foreground">
                       {c.patient_name} &middot; {c.case_number}
                     </p>
                   </div>

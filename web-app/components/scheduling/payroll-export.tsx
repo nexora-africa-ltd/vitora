@@ -50,7 +50,7 @@ export function PayrollExportDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Download className="h-4 w-4 mr-1" />
+          <Download className="mr-1 h-4 w-4" />
           <span className="hidden sm:inline">Payroll Export</span>
           <span className="sm:hidden">Export</span>
         </Button>
@@ -86,7 +86,7 @@ export function PayrollExportDialog() {
             onClick={() => exportMutation.mutate()}
             disabled={exportMutation.isPending || !fromDate || !toDate}
           >
-            <Download className="h-4 w-4 mr-1" />
+            <Download className="mr-1 h-4 w-4" />
             {exportMutation.isPending ? 'Generating...' : 'Download CSV'}
           </Button>
         </div>

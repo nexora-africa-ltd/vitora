@@ -7,16 +7,7 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
 import { ImagingModality, MODALITY_LABELS } from '@/lib/types/imaging';
-import {
-  Radio,
-  Waves,
-  Scan,
-  Image,
-  Activity,
-  CircleDot,
-  Cog,
-  HelpCircle,
-} from 'lucide-react';
+import { Radio, Waves, Scan, Image, Activity, CircleDot, Cog, HelpCircle } from 'lucide-react';
 
 interface ModalityBadgeProps {
   modality: ImagingModality;
@@ -88,7 +79,7 @@ export function ModalityBadge({
       className={cn(
         'gap-1 font-medium',
         config.className,
-        size === 'sm' && 'text-xs px-1.5 py-0',
+        size === 'sm' && 'px-1.5 py-0 text-xs',
         className
       )}
     >

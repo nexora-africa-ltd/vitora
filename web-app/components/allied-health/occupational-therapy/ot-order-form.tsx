@@ -38,22 +38,10 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  User,
-  AlertCircle,
-  Check,
-  ChevronsUpDown,
-  Wrench,
-  Target,
-  Home,
-} from 'lucide-react';
+import { User, AlertCircle, Check, ChevronsUpDown, Wrench, Target, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useOTTreatmentTypes,
@@ -79,7 +67,9 @@ const fimLevels = [1, 2, 3, 4, 5, 6, 7] as const;
 
 const orderSchema = z.object({
   patient_id: z.number({ required_error: 'Patient is required' }).min(1, 'Patient is required'),
-  treatment_type_id: z.number({ required_error: 'Treatment type is required' }).min(1, 'Treatment type is required'),
+  treatment_type_id: z
+    .number({ required_error: 'Treatment type is required' })
+    .min(1, 'Treatment type is required'),
   clinical_notes: z
     .string({ required_error: 'Clinical notes are required' })
     .min(10, 'Clinical notes must be at least 10 characters'),
@@ -127,11 +117,7 @@ interface OTOrderFormProps {
   };
 }
 
-export function OTOrderForm({
-  patientId,
-  encounterId,
-  order,
-}: OTOrderFormProps) {
+export function OTOrderForm({ patientId, encounterId, order }: OTOrderFormProps) {
   const router = useRouter();
   const isEditMode = !!order;
 
@@ -164,7 +150,7 @@ export function OTOrderForm({
 
   const treatmentTypes = useMemo(() => typesData?.results || [], [typesData?.results]);
   const patients = patientsData?.results || [];
-  const selectedType = treatmentTypes.find(t => t.id === selectedTypeId);
+  const selectedType = treatmentTypes.find((t) => t.id === selectedTypeId);
 
   // Form setup
   const form = useForm<OrderFormData>({
@@ -173,7 +159,7 @@ export function OTOrderForm({
       patient_id: patientId || order?.patient_id || 0,
       treatment_type_id: order?.treatment_type_id || 0,
       clinical_notes: order?.clinical_notes || '',
-      priority: (order?.priority as typeof priorities[number]) || 'ROUTINE',
+      priority: (order?.priority as (typeof priorities)[number]) || 'ROUTINE',
       recommended_sessions: order?.recommended_sessions || 8,
       frequency: order?.frequency || '',
       duration_per_session: order?.duration_per_session || 60,
@@ -198,29 +184,35 @@ export function OTOrderForm({
   }, [patientId, form]);
 
   // Handle patient selection
-  const handlePatientSelect = useCallback((id: number) => {
-    setSelectedPatientId(id);
-    form.setValue('patient_id', id);
-    setPatientOpen(false);
-    setPatientSearch('');
-  }, [form]);
+  const handlePatientSelect = useCallback(
+    (id: number) => {
+      setSelectedPatientId(id);
+      form.setValue('patient_id', id);
+      setPatientOpen(false);
+      setPatientSearch('');
+    },
+    [form]
+  );
 
   // Handle type selection
-  const handleTypeSelect = useCallback((id: number) => {
-    setSelectedTypeId(id);
-    form.setValue('treatment_type_id', id);
-    setTypeOpen(false);
+  const handleTypeSelect = useCallback(
+    (id: number) => {
+      setSelectedTypeId(id);
+      form.setValue('treatment_type_id', id);
+      setTypeOpen(false);
 
-    // Auto-populate from type
-    const type = treatmentTypes.find(t => t.id === id);
-    if (type && !isEditMode) {
-      form.setValue('recommended_sessions', type.recommended_sessions);
-      form.setValue('duration_per_session', type.typical_duration_minutes);
-      if (type.recommended_frequency) {
-        form.setValue('frequency', type.recommended_frequency);
+      // Auto-populate from type
+      const type = treatmentTypes.find((t) => t.id === id);
+      if (type && !isEditMode) {
+        form.setValue('recommended_sessions', type.recommended_sessions);
+        form.setValue('duration_per_session', type.typical_duration_minutes);
+        if (type.recommended_frequency) {
+          form.setValue('frequency', type.recommended_frequency);
+        }
       }
-    }
-  }, [form, treatmentTypes, isEditMode]);
+    },
+    [form, treatmentTypes, isEditMode]
+  );
 
   // Handle form submission
   const handleSubmit = async (data: OrderFormData) => {
@@ -304,7 +296,7 @@ export function OTOrderForm({
           {/* Patient Selection */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <User className="h-4 w-4 sm:h-5 sm:w-5" />
                 Patient
               </CardTitle>
@@ -320,17 +312,22 @@ export function OTOrderForm({
                       {patientId ? (
                         <div className="space-y-1">
                           {patientLoading ? (
-                            <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                            <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-2">
                               <LoadingSpinner className="h-4 w-4" />
-                              <span className="text-sm text-muted-foreground">Loading patient...</span>
+                              <span className="text-sm text-muted-foreground">
+                                Loading patient...
+                              </span>
                             </div>
                           ) : selectedPatient ? (
-                            <div className="p-2 border rounded-md bg-muted/50">
-                              <p className="font-medium">{selectedPatient.full_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}</p>
+                            <div className="rounded-md border bg-muted/50 p-2">
+                              <p className="font-medium">
+                                {selectedPatient.full_name ||
+                                  `${selectedPatient.first_name} ${selectedPatient.last_name}`}
+                              </p>
                               <p className="text-sm text-muted-foreground">{selectedPatient.mrn}</p>
                             </div>
                           ) : (
-                            <div className="p-2 border rounded-md bg-muted/50">
+                            <div className="rounded-md border bg-muted/50 p-2">
                               <p className="text-sm text-muted-foreground">Patient #{patientId}</p>
                             </div>
                           )}
@@ -360,7 +357,7 @@ export function OTOrderForm({
                               <CommandList>
                                 {patientsLoading ? (
                                   <div className="p-2 text-center">
-                                    <LoadingSpinner className="h-4 w-4 mx-auto" />
+                                    <LoadingSpinner className="mx-auto h-4 w-4" />
                                   </div>
                                 ) : patients.length === 0 ? (
                                   <CommandEmpty>No patients found.</CommandEmpty>
@@ -375,14 +372,19 @@ export function OTOrderForm({
                                         <Check
                                           className={cn(
                                             'mr-2 h-4 w-4',
-                                            selectedPatientId === patient.id ? 'opacity-100' : 'opacity-0'
+                                            selectedPatientId === patient.id
+                                              ? 'opacity-100'
+                                              : 'opacity-0'
                                           )}
                                         />
                                         <div>
                                           <p className="font-medium">
-                                            {patient.full_name || `${patient.first_name} ${patient.last_name}`}
+                                            {patient.full_name ||
+                                              `${patient.first_name} ${patient.last_name}`}
                                           </p>
-                                          <p className="text-sm text-muted-foreground">{patient.mrn}</p>
+                                          <p className="text-sm text-muted-foreground">
+                                            {patient.mrn}
+                                          </p>
                                         </div>
                                       </CommandItem>
                                     ))}
@@ -404,7 +406,7 @@ export function OTOrderForm({
           {/* Treatment Type */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Wrench className="h-4 w-4 sm:h-5 sm:w-5" />
                 Treatment Type
               </CardTitle>
@@ -451,7 +453,7 @@ export function OTOrderForm({
                                     />
                                     <div>
                                       <p className="font-medium">{type.name}</p>
-                                      <p className="text-sm text-muted-foreground capitalize">
+                                      <p className="text-sm capitalize text-muted-foreground">
                                         {type.category.toLowerCase().replace('_', ' ')}
                                       </p>
                                     </div>
@@ -572,7 +574,7 @@ export function OTOrderForm({
           {/* Functional Assessment */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 Functional Assessment
                 <HelpPopover content="FIM Levels: 1=Total Assistance to 7=Complete Independence" />
               </CardTitle>
@@ -669,7 +671,7 @@ export function OTOrderForm({
           {/* Goals */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Target className="h-4 w-4 sm:h-5 sm:w-5" />
                 Goals
               </CardTitle>
@@ -682,10 +684,7 @@ export function OTOrderForm({
                   <FormItem>
                     <FormLabel>Short-Term Goals</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Goals to achieve within 2-4 weeks..."
-                        {...field}
-                      />
+                      <Textarea placeholder="Goals to achieve within 2-4 weeks..." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -699,10 +698,7 @@ export function OTOrderForm({
                   <FormItem>
                     <FormLabel>Long-Term Goals</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Goals to achieve by end of treatment..."
-                        {...field}
-                      />
+                      <Textarea placeholder="Goals to achieve by end of treatment..." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -731,7 +727,7 @@ export function OTOrderForm({
           {/* Equipment & Modifications */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Home className="h-4 w-4 sm:h-5 sm:w-5" />
                 Equipment & Modifications
               </CardTitle>
@@ -784,11 +780,7 @@ export function OTOrderForm({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="w-full sm:w-auto"
-            >
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending && <LoadingSpinner className="mr-2 h-4 w-4" />}
               {isEditMode ? 'Update Order' : 'Create Order'}
             </Button>

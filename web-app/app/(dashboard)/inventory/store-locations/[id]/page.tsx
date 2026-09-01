@@ -69,11 +69,7 @@ const editSchema = z.object({
 
 type EditFormValues = z.infer<typeof editSchema>;
 
-export default function StoreLocationDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function StoreLocationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = parseInt(resolvedParams.id, 10);
   const router = useRouter();
@@ -120,13 +116,16 @@ export default function StoreLocationDetailPage({
       setEditOpen(false);
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Update failed', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Update failed',
+        description: getApiErrorMessage(err),
+      });
     },
   });
 
   const toggleActiveMutation = useMutation({
-    mutationFn: () =>
-      inventoryApi.updateStoreLocation(id, { is_active: !location?.is_active }),
+    mutationFn: () => inventoryApi.updateStoreLocation(id, { is_active: !location?.is_active }),
     onSuccess: (updated) => {
       queryClient.setQueryData(['inventory-store-location', id], updated);
       queryClient.invalidateQueries({ queryKey: ['inventory-store-locations'] });
@@ -136,7 +135,11 @@ export default function StoreLocationDetailPage({
       });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Toggle failed', description: getApiErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Toggle failed',
+        description: getApiErrorMessage(err),
+      });
     },
   });
 
@@ -253,11 +256,7 @@ export default function StoreLocationDetailPage({
                       )}
                     />
                     <DialogFooter>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setEditOpen(false)}
-                      >
+                      <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
                         Cancel
                       </Button>
                       <Button type="submit" disabled={updateMutation.isPending}>
@@ -276,19 +275,19 @@ export default function StoreLocationDetailPage({
       />
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {location.code}
             <span className="text-muted-foreground"> • {location.name}</span>
           </p>
           {location.managed_by_name && (
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               Managed by {location.managed_by_name}
             </p>
           )}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex shrink-0 gap-2">
           <Badge variant="outline" className={locationTypeColors[location.location_type]}>
             {locationTypeLabels[location.location_type]}
           </Badge>
@@ -304,7 +303,7 @@ export default function StoreLocationDetailPage({
           <CardTitle className="text-base">Location Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">Code</dt>
               <dd className="font-medium">{location.code}</dd>
@@ -335,14 +334,12 @@ export default function StoreLocationDetailPage({
             </div>
             <div>
               <dt className="text-muted-foreground">Created</dt>
-              <dd className="font-medium">
-                {new Date(location.created_at).toLocaleDateString()}
-              </dd>
+              <dd className="font-medium">{new Date(location.created_at).toLocaleDateString()}</dd>
             </div>
             {location.notes && (
               <div className="sm:col-span-2">
                 <dt className="text-muted-foreground">Notes</dt>
-                <dd className="font-medium whitespace-pre-wrap">{location.notes}</dd>
+                <dd className="whitespace-pre-wrap font-medium">{location.notes}</dd>
               </div>
             )}
           </dl>

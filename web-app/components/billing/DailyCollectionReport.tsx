@@ -63,7 +63,7 @@ const methodIcons: Record<string, React.ReactNode> = {
 function ReportSkeleton() {
   return (
     <div role="status" aria-label="Loading report">
-      <div className="grid md:grid-cols-4 gap-4 mb-6">
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-24" />
         ))}
@@ -93,7 +93,7 @@ export function DailyCollectionReportView({
   return (
     <div className="space-y-6">
       {/* Header with Date Picker */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-2xl font-bold">Daily Collection Report</h2>
           <p className="text-muted-foreground">
@@ -132,7 +132,7 @@ export function DailyCollectionReportView({
       ) : (
         <>
           {/* Summary Cards */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Total Collections */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -157,7 +157,11 @@ export function DailyCollectionReportView({
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {formatCurrency(parseFloat(String(report.by_payment_method?.cash || report.by_payment_method?.CASH || 0)))}
+                  {formatCurrency(
+                    parseFloat(
+                      String(report.by_payment_method?.cash || report.by_payment_method?.CASH || 0)
+                    )
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -170,7 +174,13 @@ export function DailyCollectionReportView({
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {formatCurrency(parseFloat(String(report.by_payment_method?.mpesa || report.by_payment_method?.MPESA || 0)))}
+                  {formatCurrency(
+                    parseFloat(
+                      String(
+                        report.by_payment_method?.mpesa || report.by_payment_method?.MPESA || 0
+                      )
+                    )
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -184,9 +194,23 @@ export function DailyCollectionReportView({
               <CardContent>
                 <div className="text-2xl font-bold">
                   {formatCurrency(
-                    parseFloat(String(report.by_payment_method?.card || report.by_payment_method?.CARD || 0)) +
-                    parseFloat(String(report.by_payment_method?.bank_transfer || report.by_payment_method?.BANK_TRANSFER || 0)) +
-                    parseFloat(String(report.by_payment_method?.insurance || report.by_payment_method?.INSURANCE || 0))
+                    parseFloat(
+                      String(report.by_payment_method?.card || report.by_payment_method?.CARD || 0)
+                    ) +
+                      parseFloat(
+                        String(
+                          report.by_payment_method?.bank_transfer ||
+                            report.by_payment_method?.BANK_TRANSFER ||
+                            0
+                        )
+                      ) +
+                      parseFloat(
+                        String(
+                          report.by_payment_method?.insurance ||
+                            report.by_payment_method?.INSURANCE ||
+                            0
+                        )
+                      )
                   )}
                 </div>
               </CardContent>
@@ -208,27 +232,29 @@ export function DailyCollectionReportView({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {report.by_payment_method && Object.entries(report.by_payment_method).map(([method, amount]) => {
-                    const methodAmount = parseFloat(String(amount));
-                    return (
-                      <TableRow key={method}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {methodIcons[method.toUpperCase()]}
-                            <span className="capitalize">{method.replace('_', ' ')}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(methodAmount)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {report.total_collections > 0
-                            ? ((methodAmount / report.total_collections) * 100).toFixed(1)
-                            : 0}%
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {report.by_payment_method &&
+                    Object.entries(report.by_payment_method).map(([method, amount]) => {
+                      const methodAmount = parseFloat(String(amount));
+                      return (
+                        <TableRow key={method}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {methodIcons[method.toUpperCase()]}
+                              <span className="capitalize">{method.replace('_', ' ')}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(methodAmount)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {report.total_collections > 0
+                              ? ((methodAmount / report.total_collections) * 100).toFixed(1)
+                              : 0}
+                            %
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
                 <TableFooter>
                   <TableRow>

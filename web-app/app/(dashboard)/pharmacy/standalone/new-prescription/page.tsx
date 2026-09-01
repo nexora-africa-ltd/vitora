@@ -64,16 +64,12 @@ export default function NewStandalonePrescriptionPage() {
   });
 
   const addItem = () =>
-    setItems([
-      ...items,
-      { drug_code: '', dosage: '', frequency: '', duration: '', quantity: 1 },
-    ]);
-  const removeItem = (index: number) =>
-    setItems(items.filter((_, i) => i !== index));
+    setItems([...items, { drug_code: '', dosage: '', frequency: '', duration: '', quantity: 1 }]);
+  const removeItem = (index: number) => setItems(items.filter((_, i) => i !== index));
   const updateItem = (
     index: number,
     field: keyof StandalonePrescriptionItem,
-    value: string | number,
+    value: string | number
   ) => {
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value } as StandalonePrescriptionItem;
@@ -83,7 +79,7 @@ export default function NewStandalonePrescriptionPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const validItems = items.filter(
-      (i) => i.drug_code && i.dosage && i.frequency && i.duration && i.quantity > 0,
+      (i) => i.drug_code && i.dosage && i.frequency && i.duration && i.quantity > 0
     );
     if (validItems.length === 0) {
       toast.error('Add at least one complete drug entry');
@@ -93,8 +89,7 @@ export default function NewStandalonePrescriptionPage() {
     const data: StandalonePrescriptionCreateData = {
       prescriber_name: formData.prescriber_name || undefined,
       prescriber_license: formData.prescriber_license || undefined,
-      external_prescription_number:
-        formData.external_prescription_number || undefined,
+      external_prescription_number: formData.external_prescription_number || undefined,
       clinical_notes: formData.clinical_notes || undefined,
       items: validItems,
     };
@@ -118,7 +113,7 @@ export default function NewStandalonePrescriptionPage() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
       <PageHeader
         title="New Standalone Prescription"
         helpContent="Create a prescription without a clinical encounter — for walk-in customers or external referrals."
@@ -146,9 +141,7 @@ export default function NewStandalonePrescriptionPage() {
                       id="walkin_name"
                       required
                       value={formData.walkin_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, walkin_name: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, walkin_name: e.target.value })}
                     />
                   </div>
                   <div>
@@ -156,9 +149,7 @@ export default function NewStandalonePrescriptionPage() {
                     <Input
                       id="walkin_phone"
                       value={formData.walkin_phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, walkin_phone: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, walkin_phone: e.target.value })}
                     />
                   </div>
                 </div>
@@ -215,9 +206,7 @@ export default function NewStandalonePrescriptionPage() {
                 <Input
                   id="prescriber_name"
                   value={formData.prescriber_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, prescriber_name: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, prescriber_name: e.target.value })}
                   placeholder="Dr. Name"
                 />
               </div>
@@ -236,9 +225,7 @@ export default function NewStandalonePrescriptionPage() {
               </div>
             </div>
             <div>
-              <Label htmlFor="external_prescription_number">
-                External Prescription #
-              </Label>
+              <Label htmlFor="external_prescription_number">External Prescription #</Label>
               <Input
                 id="external_prescription_number"
                 value={formData.external_prescription_number}
@@ -256,9 +243,7 @@ export default function NewStandalonePrescriptionPage() {
               <Textarea
                 id="clinical_notes"
                 value={formData.clinical_notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, clinical_notes: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, clinical_notes: e.target.value })}
                 rows={2}
               />
             </div>
@@ -268,20 +253,17 @@ export default function NewStandalonePrescriptionPage() {
         {/* Items */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Pill className="h-4 w-4" />
               Medications
             </CardTitle>
             <Button type="button" size="sm" variant="outline" onClick={addItem}>
-              <Plus className="h-3 w-3 mr-1" /> Add Item
+              <Plus className="mr-1 h-3 w-3" /> Add Item
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {items.map((item, index) => (
-              <div
-                key={index}
-                className="space-y-2 p-3 rounded-lg border bg-muted/30"
-              >
+              <div key={index} className="space-y-2 rounded-lg border bg-muted/30 p-3">
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <CatalogCombobox
@@ -317,16 +299,12 @@ export default function NewStandalonePrescriptionPage() {
                   <Input
                     placeholder="Frequency (e.g., BD)"
                     value={item.frequency}
-                    onChange={(e) =>
-                      updateItem(index, 'frequency', e.target.value)
-                    }
+                    onChange={(e) => updateItem(index, 'frequency', e.target.value)}
                   />
                   <Input
                     placeholder="Duration (e.g., 7 days)"
                     value={item.duration}
-                    onChange={(e) =>
-                      updateItem(index, 'duration', e.target.value)
-                    }
+                    onChange={(e) => updateItem(index, 'duration', e.target.value)}
                   />
                   <Input
                     type="number"
@@ -334,20 +312,14 @@ export default function NewStandalonePrescriptionPage() {
                     placeholder="Quantity"
                     value={item.quantity}
                     onChange={(e) =>
-                      updateItem(
-                        index,
-                        'quantity',
-                        parseInt(e.target.value, 10) || 0,
-                      )
+                      updateItem(index, 'quantity', parseInt(e.target.value, 10) || 0)
                     }
                   />
                 </div>
                 <Input
                   placeholder="Instructions (optional)"
                   value={item.instructions || ''}
-                  onChange={(e) =>
-                    updateItem(index, 'instructions', e.target.value)
-                  }
+                  onChange={(e) => updateItem(index, 'instructions', e.target.value)}
                 />
               </div>
             ))}
@@ -355,11 +327,7 @@ export default function NewStandalonePrescriptionPage() {
         </Card>
 
         <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-          >
+          <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
           <Button type="submit" disabled={createMutation.isPending}>

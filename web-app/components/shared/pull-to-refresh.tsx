@@ -131,8 +131,8 @@ export function PullToRefresh({
       {/* Pull indicator */}
       <div
         className={cn(
-          'absolute left-0 right-0 flex items-center justify-center transition-all duration-200 pointer-events-none z-10',
-          (isPulling || isRefreshing) ? 'opacity-100' : 'opacity-0'
+          'pointer-events-none absolute left-0 right-0 z-10 flex items-center justify-center transition-all duration-200',
+          isPulling || isRefreshing ? 'opacity-100' : 'opacity-0'
         )}
         style={{
           top: Math.max(pullDistance - 40, -40),
@@ -151,18 +151,13 @@ export function PullToRefresh({
               transform: `scale(${0.5 + progress * 0.5}) rotate(${progress * 180}deg)`,
             }}
           >
-            <RefreshCw
-              className={cn(
-                'h-5 w-5 transition-all',
-                isRefreshing && 'animate-spin'
-              )}
-            />
+            <RefreshCw className={cn('h-5 w-5 transition-all', isRefreshing && 'animate-spin')} />
           </div>
         )}
 
         {/* Prompt text */}
         {isAtThreshold && !isRefreshing && (
-          <span className="absolute top-full mt-1 text-xs text-primary font-medium animate-pulse">
+          <span className="absolute top-full mt-1 animate-pulse text-xs font-medium text-primary">
             Release to refresh
           </span>
         )}
@@ -181,7 +176,7 @@ export function PullToRefresh({
       {/* Top glow effect when at threshold */}
       {isAtThreshold && !isRefreshing && (
         <div
-          className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-b from-primary/50 to-transparent pointer-events-none animate-pulse"
+          className="pointer-events-none absolute left-0 right-0 top-0 h-1 animate-pulse bg-gradient-to-b from-primary/50 to-transparent"
           style={{
             transform: `translateY(${pullDistance}px)`,
           }}

@@ -75,7 +75,10 @@ const CLINIC_TYPES: { value: ClinicType; label: string }[] = [
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   clinic_type: z.string().min(1, 'Please select a clinic type'),
-  code: z.string().min(2, 'Code must be at least 2 characters').regex(/^[A-Z0-9-]+$/, 'Code must be uppercase letters, numbers, and dashes only'),
+  code: z
+    .string()
+    .min(2, 'Code must be at least 2 characters')
+    .regex(/^[A-Z0-9-]+$/, 'Code must be uppercase letters, numbers, and dashes only'),
   description: z.string().optional(),
   location: z.string().optional(),
   floor: z.string().optional(),
@@ -155,7 +158,7 @@ export default function NewClinicPage() {
         <PageHeader title="New Clinic" />
         <Card className="p-6 text-center">
           <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             You do not have permission to create clinics.
           </p>
         </Card>
@@ -168,7 +171,10 @@ export default function NewClinicPage() {
     const words = name.toUpperCase().split(' ');
     let code = words.map((w) => w.charAt(0)).join('');
     if (code.length < 3) {
-      code = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+      code = name
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 5);
     }
     return `${code}-001`;
   };
@@ -190,7 +196,7 @@ export default function NewClinicPage() {
                 <HelpPopover content="Enter the clinic name, code, type, and capacity. The code will be auto-generated from the name if left empty." />
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
+            <CardContent className="space-y-4 p-4 pt-0 sm:p-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -305,7 +311,7 @@ export default function NewClinicPage() {
                 <HelpPopover content="Physical location of the clinic within the facility (building, floor, room number)." />
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 grid gap-4 sm:grid-cols-2">
+            <CardContent className="grid gap-4 p-4 pt-0 sm:grid-cols-2 sm:p-6">
               <FormField
                 control={form.control}
                 name="location"
@@ -344,8 +350,8 @@ export default function NewClinicPage() {
                 <HelpPopover content="Configure patient flow requirements: appointments, walk-ins, referrals, and triage." />
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
-              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+            <CardContent className="space-y-4 p-4 pt-0 sm:p-6">
+              <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
                 <FormField
                   control={form.control}
                   name="requires_appointment"
@@ -423,7 +429,7 @@ export default function NewClinicPage() {
                 control={form.control}
                 name="is_sensitive"
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20 p-3 sm:p-4">
+                  <FormItem className="flex items-center justify-between rounded-lg border border-yellow-500/50 bg-yellow-50 p-3 dark:bg-yellow-950/20 sm:p-4">
                     <div className="space-y-0.5">
                       <FormLabel className="text-sm">Sensitive Clinic</FormLabel>
                       <FormDescription className="text-xs sm:text-sm">
@@ -447,7 +453,7 @@ export default function NewClinicPage() {
                 <HelpPopover content="Set default consultation fees and SHA service codes for claims integration." />
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 grid gap-4 sm:grid-cols-2">
+            <CardContent className="grid gap-4 p-4 pt-0 sm:grid-cols-2 sm:p-6">
               <FormField
                 control={form.control}
                 name="default_service_fee"
@@ -469,10 +475,7 @@ export default function NewClinicPage() {
                   <FormItem>
                     <FormLabel>SHA Service Code</FormLabel>
                     <FormControl>
-                      <SHATariffCombobox
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
+                      <SHATariffCombobox value={field.value} onValueChange={field.onChange} />
                     </FormControl>
                     <FormDescription>For SHA claims integration</FormDescription>
                     <FormMessage />
@@ -488,7 +491,7 @@ export default function NewClinicPage() {
               <Link href="/clinics">Cancel</Link>
             </Button>
             <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-              <Save className="h-4 w-4 mr-2" />
+              <Save className="mr-2 h-4 w-4" />
               {isPending ? 'Creating...' : 'Create Clinic'}
             </Button>
           </div>

@@ -64,7 +64,16 @@ export const DepartmentMonthlySummarySchema = z.object({
   facility_name: z.string(),
   year: z.number(),
   month: z.number(),
-  department: z.enum(['OPD', 'IPD', 'EMERGENCY', 'PHARMACY', 'LABORATORY', 'IMAGING', 'MCH', 'THEATRE']),
+  department: z.enum([
+    'OPD',
+    'IPD',
+    'EMERGENCY',
+    'PHARMACY',
+    'LABORATORY',
+    'IMAGING',
+    'MCH',
+    'THEATRE',
+  ]),
   department_display: z.string(),
   visit_count: z.number(),
   unique_patients: z.number(),
@@ -131,7 +140,9 @@ const paginatedResponse = <T extends z.ZodTypeAny>(itemSchema: T) =>
 export const PaginatedFacilitySummarySchema = paginatedResponse(FacilityDailySummarySchema);
 export const PaginatedDepartmentSummarySchema = paginatedResponse(DepartmentMonthlySummarySchema);
 export const PaginatedDiagnosisTrendSchema = paginatedResponse(DiagnosisTrendSchema);
-export const PaginatedDemographicSnapshotSchema = paginatedResponse(PatientDemographicSnapshotSchema);
+export const PaginatedDemographicSnapshotSchema = paginatedResponse(
+  PatientDemographicSnapshotSchema
+);
 
 // ---------------------------------------------------------------------------
 // Superset Embedding (primary)

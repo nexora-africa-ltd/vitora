@@ -92,7 +92,8 @@ export default function ImagingProceduresCatalogPage() {
   const seedDefaults = useSeedDefaultProcedures();
 
   const procedures = data?.results ?? [];
-  const isEmpty = !isLoading && procedures.length === 0 && !search && !modalityFilter && !bodyRegionFilter;
+  const isEmpty =
+    !isLoading && procedures.length === 0 && !search && !modalityFilter && !bodyRegionFilter;
 
   const openCreateDialog = () => {
     setEditingProcedure(null);
@@ -185,7 +186,7 @@ export default function ImagingProceduresCatalogPage() {
           actions={
             canManageCatalog ? (
               <Button onClick={openCreateDialog}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 Add Procedure
               </Button>
             ) : undefined
@@ -194,10 +195,10 @@ export default function ImagingProceduresCatalogPage() {
 
         {/* Filters */}
         <Card>
-          <CardContent className="pt-4 pb-4">
+          <CardContent className="pb-4 pt-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search procedures..."
                   value={search}
@@ -250,11 +251,11 @@ export default function ImagingProceduresCatalogPage() {
           </div>
         ) : isEmpty ? (
           <Card className="py-12">
-            <CardContent className="text-center space-y-4">
-              <Database className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+            <CardContent className="space-y-4 text-center">
+              <Database className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
               <div>
-                <p className="font-medium text-lg">No procedures in catalog</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-lg font-medium">No procedures in catalog</p>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {canManageCatalog
                     ? 'Seed common Kenya imaging procedures or add procedures manually.'
                     : 'No imaging procedures have been configured for this facility yet.'}
@@ -264,14 +265,14 @@ export default function ImagingProceduresCatalogPage() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                   <Button onClick={handleSeedDefaults} disabled={seedDefaults.isPending}>
                     {seedDefaults.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <Database className="h-4 w-4 mr-2" />
+                      <Database className="mr-2 h-4 w-4" />
                     )}
                     Seed Default Procedures
                   </Button>
                   <Button variant="outline" onClick={openCreateDialog}>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     Add Manually
                   </Button>
                 </div>
@@ -304,9 +305,7 @@ export default function ImagingProceduresCatalogPage() {
                   key: 'modality',
                   header: 'Modality',
                   sortable: true,
-                  cell: (item: ImagingProcedure) => (
-                    <ModalityBadge modality={item.modality} />
-                  ),
+                  cell: (item: ImagingProcedure) => <ModalityBadge modality={item.modality} />,
                 },
                 {
                   key: 'body_region',
@@ -335,49 +334,50 @@ export default function ImagingProceduresCatalogPage() {
                 {
                   key: 'actions',
                   header: '',
-                  cell: (item: ImagingProcedure) => canManageCatalog ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditDialog(item)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => handleDelete(item.code)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Remove
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : null,
+                  cell: (item: ImagingProcedure) =>
+                    canManageCatalog ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(item)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDelete(item.code)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Remove
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null,
                 },
               ]}
               mobileCard={(item: ImagingProcedure) => (
                 <Card className="p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{item.code}</p>
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <div className="min-w-0 space-y-1">
+                      <p className="truncate text-sm font-medium">{item.name}</p>
+                      <p className="font-mono text-xs text-muted-foreground">{item.code}</p>
+                      <div className="flex flex-wrap items-center gap-2">
                         <ModalityBadge modality={item.modality} size="sm" />
                         <span className="text-xs text-muted-foreground">
                           {BODY_REGION_LABELS[item.body_region]}
                         </span>
                       </div>
                     </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-sm font-medium">
-                            KES {Number(item.cost).toLocaleString()}
-                          </span>
-                        </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-sm font-medium">
+                          KES {Number(item.cost).toLocaleString()}
+                        </span>
+                      </div>
                       {canManageCatalog && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -387,14 +387,14 @@ export default function ImagingProceduresCatalogPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEditDialog(item)}>
-                              <Pencil className="h-4 w-4 mr-2" />
+                              <Pencil className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => handleDelete(item.code)}
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
+                              <Trash2 className="mr-2 h-4 w-4" />
                               Remove
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -406,7 +406,7 @@ export default function ImagingProceduresCatalogPage() {
               )}
             />
             {procedures.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="py-12 text-center text-muted-foreground">
                 <p className="font-medium">No procedures found</p>
                 <p className="text-sm">Try adjusting your filters or search term.</p>
               </div>
@@ -416,14 +416,12 @@ export default function ImagingProceduresCatalogPage() {
 
         {/* Create/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {editingProcedure ? 'Edit Procedure' : 'Add Procedure'}
-              </DialogTitle>
+              <DialogTitle>{editingProcedure ? 'Edit Procedure' : 'Add Procedure'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="code">Code *</Label>
                   <Input
@@ -444,12 +442,14 @@ export default function ImagingProceduresCatalogPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Modality *</Label>
                   <Select
                     value={formData.modality || ''}
-                    onValueChange={(v) => setFormData({ ...formData, modality: v as ImagingModality })}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, modality: v as ImagingModality })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select modality" />
@@ -467,7 +467,9 @@ export default function ImagingProceduresCatalogPage() {
                   <Label>Body Region *</Label>
                   <Select
                     value={formData.body_region || ''}
-                    onValueChange={(v) => setFormData({ ...formData, body_region: v as ImagingBodyRegion })}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, body_region: v as ImagingBodyRegion })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select body region" />
@@ -482,7 +484,7 @@ export default function ImagingProceduresCatalogPage() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="cost">Cost (KES) *</Label>
                   <Input
@@ -491,7 +493,9 @@ export default function ImagingProceduresCatalogPage() {
                     min="0"
                     step="100"
                     value={formData.cost ?? ''}
-                    onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -501,18 +505,22 @@ export default function ImagingProceduresCatalogPage() {
                     type="number"
                     min="1"
                     value={formData.turnaround_hours ?? 24}
-                    onChange={(e) => setFormData({ ...formData, turnaround_hours: parseInt(e.target.value) || 24 })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, turnaround_hours: parseInt(e.target.value) || 24 })
+                    }
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="sha_code">SHA Intervention Code</Label>
                   <Input
                     id="sha_code"
                     placeholder="SHA-XR-001"
                     value={formData.sha_intervention_code || ''}
-                    onChange={(e) => setFormData({ ...formData, sha_intervention_code: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, sha_intervention_code: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -521,7 +529,9 @@ export default function ImagingProceduresCatalogPage() {
                     id="special_preparation"
                     placeholder="NPO for 4 hours"
                     value={formData.special_preparation || ''}
-                    onChange={(e) => setFormData({ ...formData, special_preparation: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, special_preparation: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -532,7 +542,9 @@ export default function ImagingProceduresCatalogPage() {
                     checked={formData.available_in_house ?? true}
                     onCheckedChange={(v) => setFormData({ ...formData, available_in_house: v })}
                   />
-                  <Label htmlFor="available_in_house" className="text-sm">Available In-House</Label>
+                  <Label htmlFor="available_in_house" className="text-sm">
+                    Available In-House
+                  </Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
@@ -540,7 +552,9 @@ export default function ImagingProceduresCatalogPage() {
                     checked={formData.requires_contrast ?? false}
                     onCheckedChange={(v) => setFormData({ ...formData, requires_contrast: v })}
                   />
-                  <Label htmlFor="requires_contrast" className="text-sm">Requires Contrast</Label>
+                  <Label htmlFor="requires_contrast" className="text-sm">
+                    Requires Contrast
+                  </Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
@@ -548,7 +562,9 @@ export default function ImagingProceduresCatalogPage() {
                     checked={formData.requires_sedation ?? false}
                     onCheckedChange={(v) => setFormData({ ...formData, requires_sedation: v })}
                   />
-                  <Label htmlFor="requires_sedation" className="text-sm">Requires Sedation</Label>
+                  <Label htmlFor="requires_sedation" className="text-sm">
+                    Requires Sedation
+                  </Label>
                 </div>
               </div>
             </div>
@@ -557,7 +573,7 @@ export default function ImagingProceduresCatalogPage() {
                 Cancel
               </Button>
               <Button onClick={handleSubmit} disabled={isSaving}>
-                {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingProcedure ? 'Save Changes' : 'Create'}
               </Button>
             </DialogFooter>

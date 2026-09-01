@@ -70,10 +70,7 @@ export function queryLocal<T = Record<string, unknown>>(options: QueryOptions): 
 /**
  * Get a single record by ID from local SQLite.
  */
-export function getLocalById<T = Record<string, unknown>>(
-  table: string,
-  id: string
-): T | null {
+export function getLocalById<T = Record<string, unknown>>(table: string, id: string): T | null {
   if (!isLocalDbAvailable()) return null;
   const db = getLocalDb();
   return (db.prepare(`SELECT * FROM "${table}" WHERE id = ?`).get(id) as T) || null;
@@ -145,7 +142,12 @@ export function writeLocal(options: WriteOptions): Record<string, unknown> | nul
   if (operation === 'CREATE') {
     // Generate ID if not provided
     const id = (data.id as string) || generateUUID();
-    const record: Record<string, unknown> = { ...data, id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const record: Record<string, unknown> = {
+      ...data,
+      id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
 
     const columns = Object.keys(record);
     const placeholders = columns.map(() => '?').join(', ');

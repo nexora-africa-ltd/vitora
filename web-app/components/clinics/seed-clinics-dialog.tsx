@@ -33,39 +33,295 @@ interface DefaultClinic {
 
 const DEFAULT_CLINICS: DefaultClinic[] = [
   // Primary Care
-  { code: 'OPD-DEFAULT', name: 'General OPD', clinic_type: 'GENERAL_OPD', location: 'Outpatient Block, Room 1', capacity: 3, default_service_fee: '500.00', triage_required: true, category: 'Primary Care' },
-  { code: 'FILTER-DEFAULT', name: 'Filter/Screening Clinic', clinic_type: 'FILTER_CLINIC', location: 'Outpatient Block, Triage Area', capacity: 2, default_service_fee: '0.00', triage_required: false, category: 'Primary Care' },
+  {
+    code: 'OPD-DEFAULT',
+    name: 'General OPD',
+    clinic_type: 'GENERAL_OPD',
+    location: 'Outpatient Block, Room 1',
+    capacity: 3,
+    default_service_fee: '500.00',
+    triage_required: true,
+    category: 'Primary Care',
+  },
+  {
+    code: 'FILTER-DEFAULT',
+    name: 'Filter/Screening Clinic',
+    clinic_type: 'FILTER_CLINIC',
+    location: 'Outpatient Block, Triage Area',
+    capacity: 2,
+    default_service_fee: '0.00',
+    triage_required: false,
+    category: 'Primary Care',
+  },
   // MCH
-  { code: 'ANC-DEFAULT', name: 'Antenatal Clinic', clinic_type: 'ANC', location: 'MCH Wing, Room 2', capacity: 2, default_service_fee: '300.00', triage_required: false, category: 'Maternal & Child Health' },
-  { code: 'PNC-DEFAULT', name: 'Postnatal Clinic', clinic_type: 'PNC', location: 'MCH Wing, Room 3', capacity: 1, default_service_fee: '300.00', triage_required: false, category: 'Maternal & Child Health' },
-  { code: 'FP-DEFAULT', name: 'Family Planning Clinic', clinic_type: 'FP', location: 'MCH Wing, Room 4', capacity: 1, default_service_fee: '200.00', triage_required: false, category: 'Maternal & Child Health' },
-  { code: 'CWC-DEFAULT', name: 'Child Welfare Clinic', clinic_type: 'CWC', location: 'MCH Wing, Room 1', capacity: 2, default_service_fee: '200.00', triage_required: false, category: 'Maternal & Child Health' },
-  { code: 'IMM-DEFAULT', name: 'Immunization Clinic', clinic_type: 'IMMUNIZATION', location: 'MCH Wing, Vaccination Room', capacity: 2, default_service_fee: '0.00', triage_required: false, category: 'Maternal & Child Health' },
-  { code: 'NUTRITION-DEFAULT', name: 'Nutrition Clinic', clinic_type: 'NUTRITION', location: 'Outpatient Block, Room 5', capacity: 1, default_service_fee: '200.00', triage_required: true, category: 'Maternal & Child Health' },
+  {
+    code: 'ANC-DEFAULT',
+    name: 'Antenatal Clinic',
+    clinic_type: 'ANC',
+    location: 'MCH Wing, Room 2',
+    capacity: 2,
+    default_service_fee: '300.00',
+    triage_required: false,
+    category: 'Maternal & Child Health',
+  },
+  {
+    code: 'PNC-DEFAULT',
+    name: 'Postnatal Clinic',
+    clinic_type: 'PNC',
+    location: 'MCH Wing, Room 3',
+    capacity: 1,
+    default_service_fee: '300.00',
+    triage_required: false,
+    category: 'Maternal & Child Health',
+  },
+  {
+    code: 'FP-DEFAULT',
+    name: 'Family Planning Clinic',
+    clinic_type: 'FP',
+    location: 'MCH Wing, Room 4',
+    capacity: 1,
+    default_service_fee: '200.00',
+    triage_required: false,
+    category: 'Maternal & Child Health',
+  },
+  {
+    code: 'CWC-DEFAULT',
+    name: 'Child Welfare Clinic',
+    clinic_type: 'CWC',
+    location: 'MCH Wing, Room 1',
+    capacity: 2,
+    default_service_fee: '200.00',
+    triage_required: false,
+    category: 'Maternal & Child Health',
+  },
+  {
+    code: 'IMM-DEFAULT',
+    name: 'Immunization Clinic',
+    clinic_type: 'IMMUNIZATION',
+    location: 'MCH Wing, Vaccination Room',
+    capacity: 2,
+    default_service_fee: '0.00',
+    triage_required: false,
+    category: 'Maternal & Child Health',
+  },
+  {
+    code: 'NUTRITION-DEFAULT',
+    name: 'Nutrition Clinic',
+    clinic_type: 'NUTRITION',
+    location: 'Outpatient Block, Room 5',
+    capacity: 1,
+    default_service_fee: '200.00',
+    triage_required: true,
+    category: 'Maternal & Child Health',
+  },
   // Specialist
-  { code: 'DENTAL-DEFAULT', name: 'Dental Clinic', clinic_type: 'DENTAL', location: 'Specialist Block, Dental Suite', capacity: 1, default_service_fee: '1500.00', triage_required: false, category: 'Specialist' },
-  { code: 'EYE-DEFAULT', name: 'Eye Clinic', clinic_type: 'EYE', location: 'Specialist Block, Ophthalmology', capacity: 1, default_service_fee: '1500.00', triage_required: false, category: 'Specialist' },
-  { code: 'ENT-DEFAULT', name: 'ENT Clinic', clinic_type: 'ENT', location: 'Specialist Block, ENT', capacity: 1, default_service_fee: '1500.00', triage_required: false, category: 'Specialist' },
-  { code: 'SURGICAL-DEFAULT', name: 'Surgical Outpatient Clinic', clinic_type: 'SURGICAL', location: 'Specialist Block, Surgery OPD', capacity: 1, default_service_fee: '1500.00', triage_required: true, category: 'Specialist' },
-  { code: 'ORTHO-DEFAULT', name: 'Orthopedic Clinic', clinic_type: 'ORTHO', location: 'Specialist Block, Ortho', capacity: 1, default_service_fee: '1500.00', triage_required: true, category: 'Specialist' },
-  { code: 'DERM-DEFAULT', name: 'Dermatology Clinic', clinic_type: 'DERM', location: 'Specialist Block, Dermatology', capacity: 1, default_service_fee: '1500.00', triage_required: false, category: 'Specialist' },
+  {
+    code: 'DENTAL-DEFAULT',
+    name: 'Dental Clinic',
+    clinic_type: 'DENTAL',
+    location: 'Specialist Block, Dental Suite',
+    capacity: 1,
+    default_service_fee: '1500.00',
+    triage_required: false,
+    category: 'Specialist',
+  },
+  {
+    code: 'EYE-DEFAULT',
+    name: 'Eye Clinic',
+    clinic_type: 'EYE',
+    location: 'Specialist Block, Ophthalmology',
+    capacity: 1,
+    default_service_fee: '1500.00',
+    triage_required: false,
+    category: 'Specialist',
+  },
+  {
+    code: 'ENT-DEFAULT',
+    name: 'ENT Clinic',
+    clinic_type: 'ENT',
+    location: 'Specialist Block, ENT',
+    capacity: 1,
+    default_service_fee: '1500.00',
+    triage_required: false,
+    category: 'Specialist',
+  },
+  {
+    code: 'SURGICAL-DEFAULT',
+    name: 'Surgical Outpatient Clinic',
+    clinic_type: 'SURGICAL',
+    location: 'Specialist Block, Surgery OPD',
+    capacity: 1,
+    default_service_fee: '1500.00',
+    triage_required: true,
+    category: 'Specialist',
+  },
+  {
+    code: 'ORTHO-DEFAULT',
+    name: 'Orthopedic Clinic',
+    clinic_type: 'ORTHO',
+    location: 'Specialist Block, Ortho',
+    capacity: 1,
+    default_service_fee: '1500.00',
+    triage_required: true,
+    category: 'Specialist',
+  },
+  {
+    code: 'DERM-DEFAULT',
+    name: 'Dermatology Clinic',
+    clinic_type: 'DERM',
+    location: 'Specialist Block, Dermatology',
+    capacity: 1,
+    default_service_fee: '1500.00',
+    triage_required: false,
+    category: 'Specialist',
+  },
   // Allied Health
-  { code: 'PHYSIO-DEFAULT', name: 'Physiotherapy Clinic', clinic_type: 'PHYSIO', location: 'Rehab Wing', capacity: 2, default_service_fee: '800.00', triage_required: false, category: 'Allied Health' },
-  { code: 'OT-DEFAULT', name: 'Occupational Therapy', clinic_type: 'OT', location: 'Rehab Wing', capacity: 1, default_service_fee: '800.00', triage_required: false, category: 'Allied Health' },
-  { code: 'SOCIALWORK-DEFAULT', name: 'Social Work Services', clinic_type: 'SOCIAL_WORK', location: 'Counseling Wing', capacity: 1, default_service_fee: '0.00', triage_required: false, category: 'Allied Health' },
-  { code: 'COUNSELLING-DEFAULT', name: 'Counselling Services', clinic_type: 'COUNSELLING', location: 'Counseling Wing', capacity: 2, default_service_fee: '0.00', triage_required: false, category: 'Allied Health' },
+  {
+    code: 'PHYSIO-DEFAULT',
+    name: 'Physiotherapy Clinic',
+    clinic_type: 'PHYSIO',
+    location: 'Rehab Wing',
+    capacity: 2,
+    default_service_fee: '800.00',
+    triage_required: false,
+    category: 'Allied Health',
+  },
+  {
+    code: 'OT-DEFAULT',
+    name: 'Occupational Therapy',
+    clinic_type: 'OT',
+    location: 'Rehab Wing',
+    capacity: 1,
+    default_service_fee: '800.00',
+    triage_required: false,
+    category: 'Allied Health',
+  },
+  {
+    code: 'SOCIALWORK-DEFAULT',
+    name: 'Social Work Services',
+    clinic_type: 'SOCIAL_WORK',
+    location: 'Counseling Wing',
+    capacity: 1,
+    default_service_fee: '0.00',
+    triage_required: false,
+    category: 'Allied Health',
+  },
+  {
+    code: 'COUNSELLING-DEFAULT',
+    name: 'Counselling Services',
+    clinic_type: 'COUNSELLING',
+    location: 'Counseling Wing',
+    capacity: 2,
+    default_service_fee: '0.00',
+    triage_required: false,
+    category: 'Allied Health',
+  },
   // Chronic Care
-  { code: 'CCC-DEFAULT', name: 'Comprehensive Care Clinic', clinic_type: 'CCC', location: 'Chronic Care Wing', capacity: 2, default_service_fee: '0.00', triage_required: false, is_sensitive: true, required_permission: 'clinics.view_ccc_clinic', category: 'Chronic Care' },
-  { code: 'TB-DEFAULT', name: 'TB Clinic', clinic_type: 'TB', location: 'Chronic Care Wing', capacity: 1, default_service_fee: '0.00', triage_required: false, category: 'Chronic Care' },
-  { code: 'DIABETIC-DEFAULT', name: 'Diabetic Clinic', clinic_type: 'DIABETIC', location: 'Chronic Care Wing', capacity: 1, default_service_fee: '0.00', triage_required: false, category: 'Chronic Care' },
-  { code: 'HYPERTENSION-DEFAULT', name: 'Hypertension Clinic', clinic_type: 'HYPERTENSION', location: 'Chronic Care Wing', capacity: 1, default_service_fee: '0.00', triage_required: false, category: 'Chronic Care' },
-  { code: 'MENTAL-DEFAULT', name: 'Mental Health Clinic', clinic_type: 'MENTAL_HEALTH', location: 'Chronic Care Wing, Counseling Room', capacity: 1, default_service_fee: '0.00', triage_required: false, is_sensitive: true, required_permission: 'clinics.view_mental_health_clinic', category: 'Chronic Care' },
-  { code: 'ONCO-DEFAULT', name: 'Oncology Clinic', clinic_type: 'ONCOLOGY', location: 'Specialist Block, Oncology', capacity: 1, default_service_fee: '0.00', triage_required: true, category: 'Chronic Care' },
-  { code: 'DIALYSIS-DEFAULT', name: 'Dialysis Unit', clinic_type: 'DIALYSIS', location: 'Renal Unit', capacity: 4, default_service_fee: '0.00', triage_required: false, category: 'Chronic Care' },
+  {
+    code: 'CCC-DEFAULT',
+    name: 'Comprehensive Care Clinic',
+    clinic_type: 'CCC',
+    location: 'Chronic Care Wing',
+    capacity: 2,
+    default_service_fee: '0.00',
+    triage_required: false,
+    is_sensitive: true,
+    required_permission: 'clinics.view_ccc_clinic',
+    category: 'Chronic Care',
+  },
+  {
+    code: 'TB-DEFAULT',
+    name: 'TB Clinic',
+    clinic_type: 'TB',
+    location: 'Chronic Care Wing',
+    capacity: 1,
+    default_service_fee: '0.00',
+    triage_required: false,
+    category: 'Chronic Care',
+  },
+  {
+    code: 'DIABETIC-DEFAULT',
+    name: 'Diabetic Clinic',
+    clinic_type: 'DIABETIC',
+    location: 'Chronic Care Wing',
+    capacity: 1,
+    default_service_fee: '0.00',
+    triage_required: false,
+    category: 'Chronic Care',
+  },
+  {
+    code: 'HYPERTENSION-DEFAULT',
+    name: 'Hypertension Clinic',
+    clinic_type: 'HYPERTENSION',
+    location: 'Chronic Care Wing',
+    capacity: 1,
+    default_service_fee: '0.00',
+    triage_required: false,
+    category: 'Chronic Care',
+  },
+  {
+    code: 'MENTAL-DEFAULT',
+    name: 'Mental Health Clinic',
+    clinic_type: 'MENTAL_HEALTH',
+    location: 'Chronic Care Wing, Counseling Room',
+    capacity: 1,
+    default_service_fee: '0.00',
+    triage_required: false,
+    is_sensitive: true,
+    required_permission: 'clinics.view_mental_health_clinic',
+    category: 'Chronic Care',
+  },
+  {
+    code: 'ONCO-DEFAULT',
+    name: 'Oncology Clinic',
+    clinic_type: 'ONCOLOGY',
+    location: 'Specialist Block, Oncology',
+    capacity: 1,
+    default_service_fee: '0.00',
+    triage_required: true,
+    category: 'Chronic Care',
+  },
+  {
+    code: 'DIALYSIS-DEFAULT',
+    name: 'Dialysis Unit',
+    clinic_type: 'DIALYSIS',
+    location: 'Renal Unit',
+    capacity: 4,
+    default_service_fee: '0.00',
+    triage_required: false,
+    category: 'Chronic Care',
+  },
   // Procedure Areas
-  { code: 'PROCEDURE-DEFAULT', name: 'Procedure Room', clinic_type: 'PROCEDURE', location: 'Outpatient Block, Procedure Room', capacity: 1, default_service_fee: '1200.00', triage_required: false, category: 'Procedure Areas' },
-  { code: 'DRESSING-DEFAULT', name: 'Dressing/Wound Care', clinic_type: 'DRESSING', location: 'Outpatient Block, Dressing Room', capacity: 1, default_service_fee: '300.00', triage_required: false, category: 'Procedure Areas' },
-  { code: 'INJECTION-DEFAULT', name: 'Injection Room', clinic_type: 'INJECTION', location: 'Outpatient Block, Treatment Room', capacity: 1, default_service_fee: '200.00', triage_required: false, category: 'Procedure Areas' },
+  {
+    code: 'PROCEDURE-DEFAULT',
+    name: 'Procedure Room',
+    clinic_type: 'PROCEDURE',
+    location: 'Outpatient Block, Procedure Room',
+    capacity: 1,
+    default_service_fee: '1200.00',
+    triage_required: false,
+    category: 'Procedure Areas',
+  },
+  {
+    code: 'DRESSING-DEFAULT',
+    name: 'Dressing/Wound Care',
+    clinic_type: 'DRESSING',
+    location: 'Outpatient Block, Dressing Room',
+    capacity: 1,
+    default_service_fee: '300.00',
+    triage_required: false,
+    category: 'Procedure Areas',
+  },
+  {
+    code: 'INJECTION-DEFAULT',
+    name: 'Injection Room',
+    clinic_type: 'INJECTION',
+    location: 'Outpatient Block, Treatment Room',
+    capacity: 1,
+    default_service_fee: '200.00',
+    triage_required: false,
+    category: 'Procedure Areas',
+  },
 ];
 
 const CATEGORIES = [...new Set(DEFAULT_CLINICS.map((c) => c.category))];
@@ -136,9 +392,10 @@ export function SeedClinicsDialog() {
         setSeededCount(created);
       } catch (err: unknown) {
         // If it's a duplicate code error (clinic already exists), count as success
-        const resp = err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: Record<string, unknown> } }).response
-          : null;
+        const resp =
+          err && typeof err === 'object' && 'response' in err
+            ? (err as { response?: { data?: Record<string, unknown> } }).response
+            : null;
         const isDuplicate = resp?.data?.code || resp?.data?.detail?.toString().includes('already');
         if (isDuplicate) {
           created++;
@@ -173,7 +430,7 @@ export function SeedClinicsDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Sparkles className="h-4 w-4 mr-2" />
+          <Sparkles className="mr-2 h-4 w-4" />
           Seed Default Clinics
         </Button>
       </DialogTrigger>
@@ -208,7 +465,7 @@ export function SeedClinicsDialog() {
 
               return (
                 <div key={category}>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="mb-2 flex items-center gap-2">
                     <Checkbox
                       checked={allSelected}
                       ref={undefined}
@@ -220,19 +477,19 @@ export function SeedClinicsDialog() {
                       {categoryClinics.length}
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 ml-6">
+                  <div className="ml-6 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                     {categoryClinics.map((clinic) => (
                       <label
                         key={clinic.code}
-                        className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                        className="flex cursor-pointer items-center gap-2 rounded-md p-2 transition-colors hover:bg-muted/50"
                       >
                         <Checkbox
                           checked={selected.has(clinic.code)}
                           onCheckedChange={() => toggleClinic(clinic.code)}
                         />
                         <div className="min-w-0 flex-1">
-                          <span className="text-sm truncate block">{clinic.name}</span>
-                          <span className="text-xs text-muted-foreground truncate block">
+                          <span className="block truncate text-sm">{clinic.name}</span>
+                          <span className="block truncate text-xs text-muted-foreground">
                             {clinic.location}
                           </span>
                         </div>
@@ -245,7 +502,7 @@ export function SeedClinicsDialog() {
           </div>
         </ScrollArea>
 
-        <div className="flex items-center justify-between pt-4 border-t">
+        <div className="flex items-center justify-between border-t pt-4">
           {isSeeding && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -257,19 +514,15 @@ export function SeedClinicsDialog() {
             <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={isSeeding}>
               Cancel
             </Button>
-            <Button
-              size="sm"
-              onClick={handleSeed}
-              disabled={selected.size === 0 || isSeeding}
-            >
+            <Button size="sm" onClick={handleSeed} disabled={selected.size === 0 || isSeeding}>
               {isSeeding ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
                   Create {selected.size} Clinic{selected.size !== 1 ? 's' : ''}
                 </>
               )}

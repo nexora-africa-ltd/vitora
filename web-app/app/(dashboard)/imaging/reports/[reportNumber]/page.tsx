@@ -8,12 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  ExternalLink,
-  Printer,
-} from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ExternalLink, Printer } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { SignatureBadge } from '@/components/shared/signature-badge';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -50,7 +45,12 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
 
     try {
       let signatureData:
-        | { signer_full_name: string; signed_at: string; certificate_serial?: string; is_valid?: boolean }
+        | {
+            signer_full_name: string;
+            signed_at: string;
+            certificate_serial?: string;
+            is_valid?: boolean;
+          }
         | undefined;
       try {
         const sigs = await signaturesApi.forDocument('RadiologyReport', report.id);
@@ -83,7 +83,11 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
         facility: facilityDetail
           ? {
               name: facilityDetail.name,
-              address: `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(/^, |, $/g, ''),
+              address:
+                `${facilityDetail.county_name ?? ''}, ${facilityDetail.sub_county_name ?? ''}`.replace(
+                  /^, |, $/g,
+                  ''
+                ),
               phone: '',
               license: facilityDetail.mfl_code || '',
             }
@@ -104,9 +108,17 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-16 w-full rounded-lg" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card><CardContent className="pt-6"><Skeleton className="h-24 w-full" /></CardContent></Card>
-          <Card><CardContent className="pt-6"><Skeleton className="h-24 w-full" /></CardContent></Card>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <CardContent className="pt-6">
+              <Skeleton className="h-24 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <Skeleton className="h-24 w-full" />
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -114,10 +126,10 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
 
   if (error || !report) {
     return (
-      <div className="text-center py-12">
-        <AlertTriangle className="h-12 w-12 mx-auto text-yellow-500 mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Report Not Found</h2>
-        <p className="text-muted-foreground mb-4">
+      <div className="py-12 text-center">
+        <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-yellow-500" />
+        <h2 className="mb-2 text-xl font-semibold">Report Not Found</h2>
+        <p className="mb-4 text-muted-foreground">
           {error?.message || 'Unable to load imaging report.'}
         </p>
         <Button variant="outline" onClick={() => router.push('/imaging/reports')}>
@@ -138,12 +150,12 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
           actions={
             <>
               <Button variant="outline" onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-2" />
+                <Printer className="mr-2 h-4 w-4" />
                 Print
               </Button>
               <Link href={`/imaging/orders/${report.order_number}/report`}>
                 <Button variant="outline">
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                  <ExternalLink className="mr-2 h-4 w-4" />
                   Edit Report
                 </Button>
               </Link>
@@ -152,21 +164,19 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
         />
 
         {/* Summary Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-sm font-medium truncate">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="truncate text-sm font-medium">
               {report.patient_name}
               <span className="text-muted-foreground">
-                {' '}•{' '}
-                <Link
-                  href={`/imaging/orders/${report.order_number}`}
-                  className="hover:underline"
-                >
+                {' '}
+                •{' '}
+                <Link href={`/imaging/orders/${report.order_number}`} className="hover:underline">
                   {report.order_number}
                 </Link>
               </span>
             </p>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               Created {formatDateTime(report.created_at)}
             </p>
           </div>
@@ -174,9 +184,7 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
             <Badge className={STATUS_COLORS[report.status] || ''}>
               {REPORT_STATUS_LABELS[report.status] || report.status}
             </Badge>
-            {report.is_critical && (
-              <Badge variant="destructive">Critical</Badge>
-            )}
+            {report.is_critical && <Badge variant="destructive">Critical</Badge>}
             <SignatureBadge
               documentType="RadiologyReport"
               documentId={report.id}
@@ -187,22 +195,24 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
 
         {/* Critical Finding Alert */}
         {report.is_critical && (
-          <Card className="border-red-500 dark:border-red-800 bg-red-50 dark:bg-red-950/30">
+          <Card className="border-red-500 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
             <CardContent className="py-3">
               <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                 <AlertTriangle className="h-4 w-4" />
                 <span className="text-sm font-medium">Critical Finding</span>
               </div>
               {report.critical_finding_description && (
-                <p className="text-sm text-red-600 dark:text-red-300 mt-1">
+                <p className="mt-1 text-sm text-red-600 dark:text-red-300">
                   {report.critical_finding_description}
                 </p>
               )}
               {report.critical_communicated && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  <CheckCircle2 className="h-3 w-3 inline mr-1 text-green-600 dark:text-green-400" />
-                  Communicated to {report.critical_communicated_to} via {report.critical_communicated_method}
-                  {report.critical_communicated_at && ` on ${formatDateTime(report.critical_communicated_at)}`}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="mr-1 inline h-3 w-3 text-green-600 dark:text-green-400" />
+                  Communicated to {report.critical_communicated_to} via{' '}
+                  {report.critical_communicated_method}
+                  {report.critical_communicated_at &&
+                    ` on ${formatDateTime(report.critical_communicated_at)}`}
                 </p>
               )}
             </CardContent>
@@ -210,16 +220,16 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
         )}
 
         {/* Report Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Findings</CardTitle>
             </CardHeader>
             <CardContent>
               {report.findings ? (
-                <p className="text-sm whitespace-pre-wrap">{report.findings}</p>
+                <p className="whitespace-pre-wrap text-sm">{report.findings}</p>
               ) : (
-                <p className="text-sm text-muted-foreground italic">No findings recorded.</p>
+                <p className="text-sm italic text-muted-foreground">No findings recorded.</p>
               )}
             </CardContent>
           </Card>
@@ -229,9 +239,9 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
             </CardHeader>
             <CardContent>
               {report.impression ? (
-                <p className="text-sm whitespace-pre-wrap">{report.impression}</p>
+                <p className="whitespace-pre-wrap text-sm">{report.impression}</p>
               ) : (
-                <p className="text-sm text-muted-foreground italic">No impression recorded.</p>
+                <p className="text-sm italic text-muted-foreground">No impression recorded.</p>
               )}
             </CardContent>
           </Card>
@@ -247,7 +257,7 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
               {report.technique && (
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Technique</p>
-                  <p className="text-sm whitespace-pre-wrap mt-1">{report.technique}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm">{report.technique}</p>
                 </div>
               )}
               {report.comparison && (
@@ -255,7 +265,7 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
                   <Separator />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Comparison</p>
-                    <p className="text-sm whitespace-pre-wrap mt-1">{report.comparison}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm">{report.comparison}</p>
                   </div>
                 </>
               )}
@@ -264,7 +274,7 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
                   <Separator />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Recommendations</p>
-                    <p className="text-sm whitespace-pre-wrap mt-1">{report.recommendations}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm">{report.recommendations}</p>
                   </div>
                 </>
               )}
@@ -278,7 +288,7 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
             <CardTitle className="text-base">Report Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
               <div>
                 <p className="text-muted-foreground">Modality</p>
                 <p className="font-medium">{report.modality || '—'}</p>
@@ -297,7 +307,7 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
                 <p className="text-muted-foreground">Order</p>
                 <Link
                   href={`/imaging/orders/${report.order_number}`}
-                  className="font-medium text-primary hover:underline inline-flex items-center gap-1"
+                  className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                 >
                   {report.order_number}
                   <ExternalLink className="h-3 w-3" />
@@ -309,8 +319,8 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
             {report.last_amended_by_name && (
               <>
                 <Separator className="my-4" />
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
-                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                <div className="rounded-md bg-blue-50 p-3 dark:bg-blue-900/20">
+                  <p className="mb-1 text-sm font-medium text-blue-700 dark:text-blue-300">
                     Last Amendment
                   </p>
                   <div className="grid grid-cols-2 gap-3 text-sm">
@@ -333,18 +343,20 @@ export default function ImagingReportDetailPage({ params }: PageProps) {
         {report.amendments && report.amendments.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Amendment History ({report.amendments.length})</CardTitle>
+              <CardTitle className="text-base">
+                Amendment History ({report.amendments.length})
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {report.amendments.map((amendment) => (
                   <div
                     key={amendment.id}
-                    className="border-l-2 border-amber-500 pl-3 py-2 bg-amber-50/50 dark:bg-amber-950/20 rounded-r"
+                    className="rounded-r border-l-2 border-amber-500 bg-amber-50/50 py-2 pl-3 dark:bg-amber-950/20"
                   >
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">Amendment #{amendment.amendment_number}</span>
-                      <span className="text-muted-foreground text-xs">
+                      <span className="text-xs text-muted-foreground">
                         {formatDateTime(amendment.amended_at)}
                       </span>
                     </div>

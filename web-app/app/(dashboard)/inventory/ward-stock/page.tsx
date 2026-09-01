@@ -105,28 +105,46 @@ export default function WardStockPage() {
   const aboveMaxCount = items.filter((i) => i.is_above_max).length;
 
   const createMutation = useMutation({
-    mutationFn: (payload: { store_location: number; drug: number; quantity_available: number; par_level: number; max_level: number }) =>
-      inventoryApi.createWardStock(payload),
+    mutationFn: (payload: {
+      store_location: number;
+      drug: number;
+      quantity_available: number;
+      par_level: number;
+      max_level: number;
+    }) => inventoryApi.createWardStock(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-ward-stock'] });
       toast({ title: 'Ward stock created', variant: 'success' });
       closeAddDialog();
     },
     onError: (err) => {
-      toast({ title: 'Failed to create', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Failed to create',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data: payload }: { id: number; data: { par_level: number; max_level: number } }) =>
-      inventoryApi.updateWardStock(id, payload),
+    mutationFn: ({
+      id,
+      data: payload,
+    }: {
+      id: number;
+      data: { par_level: number; max_level: number };
+    }) => inventoryApi.updateWardStock(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-ward-stock'] });
       toast({ title: 'Ward stock updated', variant: 'success' });
       setEditItem(null);
     },
     onError: (err) => {
-      toast({ title: 'Failed to update', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Failed to update',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -138,7 +156,11 @@ export default function WardStockPage() {
       setDeleteItem(null);
     },
     onError: (err) => {
-      toast({ title: 'Failed to delete', description: getApiErrorMessage(err), variant: 'destructive' });
+      toast({
+        title: 'Failed to delete',
+        description: getApiErrorMessage(err),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -185,7 +207,7 @@ export default function WardStockPage() {
           actions={
             canAdd ? (
               <Button onClick={() => setAddOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Add Ward Stock</span>
                 <span className="sm:hidden">Add</span>
               </Button>
@@ -194,7 +216,7 @@ export default function WardStockPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {[
             { label: 'Total Items', value: totalCount },
             { label: 'Below Par Level', value: belowParCount, alert: belowParCount > 0 },
@@ -207,7 +229,9 @@ export default function WardStockPage() {
               />
               <CardContent className="relative p-3 sm:p-4">
                 <p className="text-xs text-muted-foreground">{stat.label}</p>
-                <p className={`text-lg sm:text-2xl font-bold ${stat.alert ? 'text-destructive' : ''}`}>
+                <p
+                  className={`text-lg font-bold sm:text-2xl ${stat.alert ? 'text-destructive' : ''}`}
+                >
                   {stat.value}
                 </p>
               </CardContent>
@@ -219,7 +243,10 @@ export default function WardStockPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Select
             value={storeFilter}
-            onValueChange={(v) => { setStoreFilter(v); setPage(1); }}
+            onValueChange={(v) => {
+              setStoreFilter(v);
+              setPage(1);
+            }}
           >
             <SelectTrigger className="sm:w-56">
               <SelectValue placeholder="All Store Locations" />
@@ -269,9 +296,9 @@ export default function WardStockPage() {
                   <span
                     className={
                       item.is_below_par
-                        ? 'text-destructive font-semibold'
+                        ? 'font-semibold text-destructive'
                         : item.is_above_max
-                          ? 'text-amber-600 dark:text-amber-400 font-semibold'
+                          ? 'font-semibold text-amber-600 dark:text-amber-400'
                           : ''
                     }
                   >
@@ -302,15 +329,24 @@ export default function WardStockPage() {
                 sortable: true,
                 cell: (item) =>
                   item.is_below_par ? (
-                    <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                    <Badge
+                      variant="outline"
+                      className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                    >
                       <AlertTriangle className="mr-1 h-3 w-3" /> Below Par
                     </Badge>
                   ) : item.is_above_max ? (
-                    <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                    >
                       Above Max
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                    <Badge
+                      variant="outline"
+                      className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                    >
                       OK
                     </Badge>
                   ),
@@ -322,10 +358,20 @@ export default function WardStockPage() {
                       header: '',
                       cell: (item: WardStock) => (
                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(item)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => openEditDialog(item)}
+                          >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteItem(item)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteItem(item)}
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -338,34 +384,53 @@ export default function WardStockPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <Pill className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="font-medium truncate">{item.drug_name}</span>
+                    <Pill className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate font-medium">{item.drug_name}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{item.store_location_name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.store_location_name}</p>
                   <p className="text-xs text-muted-foreground">
                     Qty: {item.quantity_available} · Par: {item.par_level} · Max: {item.max_level}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   {item.is_below_par ? (
-                    <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 w-fit">
+                    <Badge
+                      variant="outline"
+                      className="w-fit bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                    >
                       <AlertTriangle className="mr-1 h-3 w-3" /> Below Par
                     </Badge>
                   ) : item.is_above_max ? (
-                    <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 w-fit">
+                    <Badge
+                      variant="outline"
+                      className="w-fit bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                    >
                       Above Max
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 w-fit">
+                    <Badge
+                      variant="outline"
+                      className="w-fit bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                    >
                       OK
                     </Badge>
                   )}
                   {canManage && (
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(item)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => openEditDialog(item)}
+                      >
                         <Pencil className="h-3 w-3" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteItem(item)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => setDeleteItem(item)}
+                      >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -383,10 +448,20 @@ export default function WardStockPage() {
               Page {page} of {totalPages} ({totalCount} items)
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
                 Previous
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
                 Next
               </Button>
             </div>
@@ -395,7 +470,12 @@ export default function WardStockPage() {
       </div>
 
       {/* Add Ward Stock Dialog */}
-      <Dialog open={addOpen} onOpenChange={(open) => { if (!open) closeAddDialog(); }}>
+      <Dialog
+        open={addOpen}
+        onOpenChange={(open) => {
+          if (!open) closeAddDialog();
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Ward Stock</DialogTitle>
@@ -434,22 +514,42 @@ export default function WardStockPage() {
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label>Initial Qty</Label>
-                <Input type="number" min={0} value={formQty} onChange={(e) => setFormQty(e.target.value)} />
+                <Input
+                  type="number"
+                  min={0}
+                  value={formQty}
+                  onChange={(e) => setFormQty(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Par Level</Label>
-                <Input type="number" min={0} value={formPar} onChange={(e) => setFormPar(e.target.value)} />
+                <Input
+                  type="number"
+                  min={0}
+                  value={formPar}
+                  onChange={(e) => setFormPar(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Max Level</Label>
-                <Input type="number" min={0} value={formMax} onChange={(e) => setFormMax(e.target.value)} />
+                <Input
+                  type="number"
+                  min={0}
+                  value={formMax}
+                  onChange={(e) => setFormMax(e.target.value)}
+                />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeAddDialog}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={!formDrug || !formStore || createMutation.isPending}>
-              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            <Button variant="outline" onClick={closeAddDialog}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={!formDrug || !formStore || createMutation.isPending}
+            >
+              {createMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Create
             </Button>
           </DialogFooter>
@@ -457,7 +557,12 @@ export default function WardStockPage() {
       </Dialog>
 
       {/* Edit Ward Stock Dialog */}
-      <Dialog open={!!editItem} onOpenChange={(open) => { if (!open) setEditItem(null); }}>
+      <Dialog
+        open={!!editItem}
+        onOpenChange={(open) => {
+          if (!open) setEditItem(null);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Ward Stock Levels</DialogTitle>
@@ -470,19 +575,31 @@ export default function WardStockPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Par Level</Label>
-                  <Input type="number" min={0} value={formPar} onChange={(e) => setFormPar(e.target.value)} />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formPar}
+                    onChange={(e) => setFormPar(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Max Level</Label>
-                  <Input type="number" min={0} value={formMax} onChange={(e) => setFormMax(e.target.value)} />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formMax}
+                    onChange={(e) => setFormMax(e.target.value)}
+                  />
                 </div>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditItem(null)}>
+              Cancel
+            </Button>
             <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Save
             </Button>
           </DialogFooter>
@@ -490,7 +607,12 @@ export default function WardStockPage() {
       </Dialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteItem} onOpenChange={(open) => { if (!open) setDeleteItem(null); }}>
+      <AlertDialog
+        open={!!deleteItem}
+        onOpenChange={(open) => {
+          if (!open) setDeleteItem(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Ward Stock</AlertDialogTitle>
@@ -505,7 +627,7 @@ export default function WardStockPage() {
               onClick={() => deleteItem && deleteMutation.mutate(deleteItem.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -481,8 +481,18 @@ export const mockStockSummaryReport = {
       reorder_level: 100,
       is_below_reorder: false,
       batches: [
-        { batch_number: 'BATCH-2026-001', quantity_available: 450, expiry_date: '2028-06-01', days_to_expiry: 880 },
-        { batch_number: 'BATCH-2025-010', quantity_available: 50, expiry_date: '2026-02-15', days_to_expiry: 37 },
+        {
+          batch_number: 'BATCH-2026-001',
+          quantity_available: 450,
+          expiry_date: '2028-06-01',
+          days_to_expiry: 880,
+        },
+        {
+          batch_number: 'BATCH-2025-010',
+          quantity_available: 50,
+          expiry_date: '2026-02-15',
+          days_to_expiry: 37,
+        },
       ],
     },
     {
@@ -492,7 +502,12 @@ export const mockStockSummaryReport = {
       reorder_level: 100,
       is_below_reorder: false,
       batches: [
-        { batch_number: 'BATCH-2026-002', quantity_available: 200, expiry_date: '2027-01-01', days_to_expiry: 357 },
+        {
+          batch_number: 'BATCH-2026-002',
+          quantity_available: 200,
+          expiry_date: '2027-01-01',
+          days_to_expiry: 357,
+        },
       ],
     },
     {
@@ -518,7 +533,7 @@ export const mockExpiryReport = {
       days_to_expiry: 37,
       quantity_available: 50,
       status: 'WARNING',
-      value: 250.00,
+      value: 250.0,
     },
   ],
 };
@@ -714,7 +729,9 @@ export async function setupPharmacyMocks(page: Page) {
       // Handle by-drug filter (either as path segment or query param)
       if (url.includes('by_drug') || url.includes('drug=')) {
         // Return batches for the specified drug in paginated format
-        const availableBatches = mockStockBatchesData.results.filter((b) => b.status === 'AVAILABLE');
+        const availableBatches = mockStockBatchesData.results.filter(
+          (b) => b.status === 'AVAILABLE'
+        );
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -727,7 +744,8 @@ export async function setupPharmacyMocks(page: Page) {
         });
       } else if (url.match(/\/stock\/\d+\/?$/)) {
         const id = parseInt(url.match(/\/stock\/(\d+)/)?.[1] || '1');
-        const batch = mockStockBatchesData.results.find((b) => b.id === id) || mockStockBatch({ id });
+        const batch =
+          mockStockBatchesData.results.find((b) => b.id === id) || mockStockBatch({ id });
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -762,13 +780,19 @@ export async function setupPharmacyMocks(page: Page) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(mockAlertsData.results.filter((a) => a.alert_type === 'LOW_STOCK' || a.alert_type === 'OUT_OF_STOCK')),
+          body: JSON.stringify(
+            mockAlertsData.results.filter(
+              (a) => a.alert_type === 'LOW_STOCK' || a.alert_type === 'OUT_OF_STOCK'
+            )
+          ),
         });
       } else if (url.includes('expiring')) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(mockAlertsData.results.filter((a) => a.alert_type.includes('EXPIR'))),
+          body: JSON.stringify(
+            mockAlertsData.results.filter((a) => a.alert_type.includes('EXPIR'))
+          ),
         });
       } else {
         await route.fulfill({
@@ -785,13 +809,23 @@ export async function setupPharmacyMocks(page: Page) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ ...alert, acknowledged: true, acknowledged_by: 1, acknowledged_by_name: 'Test User' }),
+          body: JSON.stringify({
+            ...alert,
+            acknowledged: true,
+            acknowledged_by: 1,
+            acknowledged_by_name: 'Test User',
+          }),
         });
       } else if (url.includes('resolve')) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ ...alert, resolved: true, resolved_by: 1, resolved_by_name: 'Test User' }),
+          body: JSON.stringify({
+            ...alert,
+            resolved: true,
+            resolved_by: 1,
+            resolved_by_name: 'Test User',
+          }),
         });
       } else {
         await route.continue();
@@ -815,7 +849,8 @@ export async function setupPharmacyMocks(page: Page) {
         });
       } else if (url.match(/\/prescriptions\/\d+\/?$/)) {
         const id = parseInt(url.match(/\/prescriptions\/(\d+)/)?.[1] || '1');
-        const rx = mockPrescriptionsData.results.find((p) => p.id === id) || mockPrescription({ id });
+        const rx =
+          mockPrescriptionsData.results.find((p) => p.id === id) || mockPrescription({ id });
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -878,7 +913,9 @@ export async function setupPharmacyMocks(page: Page) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(mockDispensing({ verified_by: 1, verified_by_name: 'Verifier User' })),
+          body: JSON.stringify(
+            mockDispensing({ verified_by: 1, verified_by_name: 'Verifier User' })
+          ),
         });
       } else {
         await route.continue();
@@ -904,7 +941,9 @@ export async function setupPharmacyMocks(page: Page) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(mockStockAdjustment({ approved_by: 1, approved_by_name: 'Admin User' })),
+          body: JSON.stringify(
+            mockStockAdjustment({ approved_by: 1, approved_by_name: 'Admin User' })
+          ),
         });
       } else {
         const postData = route.request().postDataJSON();
@@ -983,7 +1022,9 @@ export async function loginAndGoToPharmacy(page: Page) {
   await page.getByRole('button', { name: /sign in|login/i }).click();
 
   // Wait for dashboard
-  await page.waitForURL((url) => url.pathname.includes('dashboard') || url.pathname === '/', { timeout: 15000 });
+  await page.waitForURL((url) => url.pathname.includes('dashboard') || url.pathname === '/', {
+    timeout: 15000,
+  });
 
   // Navigate to pharmacy
   await page.goto('/pharmacy');

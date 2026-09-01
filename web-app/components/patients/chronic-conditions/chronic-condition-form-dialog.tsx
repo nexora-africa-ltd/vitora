@@ -4,12 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DiagnosisCodeInput, emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import {
+  DiagnosisCodeInput,
+  emptyDiagnosisCodeValue,
+} from '@/components/shared/diagnosis-code-input';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { HelpPopover } from '@/components/shared/help-popover';
 import {
@@ -45,7 +43,14 @@ interface ChronicConditionFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   patientId: number;
-  editData?: { id: number; condition_name: string; icd10_code: string; status: ConditionStatus; onset_date: string | null; notes: string };
+  editData?: {
+    id: number;
+    condition_name: string;
+    icd10_code: string;
+    status: ConditionStatus;
+    onset_date: string | null;
+    notes: string;
+  };
 }
 
 export function ChronicConditionFormDialog({
@@ -197,10 +202,20 @@ export function ChronicConditionFormDialog({
           </div>
           <div className="space-y-2">
             <Label>Notes</Label>
-            <Textarea {...register('notes')} placeholder="Additional details..." rows={2} className="resize-none" />
+            <Textarea
+              {...register('notes')}
+              placeholder="Additional details..."
+              rows={2}
+              className="resize-none"
+            />
           </div>
           <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">

@@ -205,7 +205,10 @@ export const DrugSchema = z.object({
   default_reorder_quantity: z.number(),
   shelf_life_months: z.number().optional().nullable(),
   storage_requirements: z.string().optional().nullable(),
-  reference_price: z.union([z.number(), z.string().transform(Number)]).optional().nullable(),
+  reference_price: z
+    .union([z.number(), z.string().transform(Number)])
+    .optional()
+    .nullable(),
   is_active: z.boolean(),
   current_stock: z.number(),
   created_at: z.string(),
@@ -392,7 +395,11 @@ export const DispensingSchema = z.object({
   quantity: z.number().optional().nullable(),
   quantity_dispensed: z.number().optional().nullable(),
   quantity_returned: z.number().optional().nullable(),
-  discount: z.union([z.number(), z.string()]).transform((v) => (typeof v === 'string' ? parseFloat(v) || 0 : v)).optional().nullable(),
+  discount: z
+    .union([z.number(), z.string()])
+    .transform((v) => (typeof v === 'string' ? parseFloat(v) || 0 : v))
+    .optional()
+    .nullable(),
   instructions_given: z.string().optional().nullable(),
   patient_counseled: z.boolean().optional().nullable(),
   patient: z.number().optional().nullable(),
@@ -405,8 +412,12 @@ export const DispensingSchema = z.object({
   verified_by_name: z.string().optional().nullable(),
   verified_at: z.string().optional().nullable(),
   status: DispensingStatusSchema.optional().nullable(),
-  unit_price: z.union([z.number(), z.string()]).transform((v) => (typeof v === 'string' ? parseFloat(v) || 0 : v)),
-  total_price: z.union([z.number(), z.string()]).transform((v) => (typeof v === 'string' ? parseFloat(v) || 0 : v)),
+  unit_price: z
+    .union([z.number(), z.string()])
+    .transform((v) => (typeof v === 'string' ? parseFloat(v) || 0 : v)),
+  total_price: z
+    .union([z.number(), z.string()])
+    .transform((v) => (typeof v === 'string' ? parseFloat(v) || 0 : v)),
   payment_status: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   is_direct_sale: z.boolean().optional().nullable(),

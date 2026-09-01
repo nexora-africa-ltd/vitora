@@ -23,11 +23,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -90,7 +86,7 @@ export function LOINCSelect({
       try {
         const response = await terminologyApi.searchLOINC({
           search: searchQuery,
-          page_size: 20
+          page_size: 20,
         });
         setResults(response.results);
       } catch (error) {
@@ -123,15 +119,15 @@ export function LOINCSelect({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'w-full justify-between h-auto min-h-10 py-2',
+            'h-auto min-h-10 w-full justify-between py-2',
             !value && 'text-muted-foreground',
             className
           )}
         >
           {value ? (
-            <div className="flex items-center gap-2 text-left flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
               <span className="font-mono text-xs">{value.code}</span>
-              <span className="text-sm truncate">{value.name}</span>
+              <span className="truncate text-sm">{value.name}</span>
             </div>
           ) : (
             <span className="truncate">{placeholder}</span>
@@ -139,7 +135,10 @@ export function LOINCSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[400px] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] min-w-[400px] p-0"
+        align="start"
+      >
         <Command shouldFilter={false}>
           <div className="flex items-center border-b px-3">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -157,7 +156,7 @@ export function LOINCSelect({
                 Type at least {minSearchLength} characters to search...
               </div>
             ) : isLoading ? (
-              <div className="p-4 space-y-2">
+              <div className="space-y-2 p-4">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
@@ -176,18 +175,18 @@ export function LOINCSelect({
                     >
                       <Check
                         className={cn(
-                          'h-4 w-4 mt-0.5',
+                          'mt-0.5 h-4 w-4',
                           value?.code === code.loinc_num ? 'opacity-100' : 'opacity-0'
                         )}
                       />
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="font-mono text-xs text-muted-foreground">
                           {code.loinc_num}
                         </span>
-                        <p className="text-sm font-medium">{code.long_common_name || code.component}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {code.component}
+                        <p className="text-sm font-medium">
+                          {code.long_common_name || code.component}
                         </p>
+                        <p className="text-xs text-muted-foreground">{code.component}</p>
                       </div>
                     </CommandItem>
                   ))}

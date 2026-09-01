@@ -7,12 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -97,13 +92,9 @@ export function TestSelector({
   const isSearching = debouncedSearch.length >= 2;
   const isLoading = isSearching ? searchResults.isLoading : catalogResults.isLoading;
 
-  const tests = isSearching
-    ? (searchResults.data || [])
-    : (catalogResults.data?.results || []);
+  const tests = isSearching ? searchResults.data || [] : catalogResults.data?.results || [];
 
-  const filteredTests = tests.filter(
-    (test) => !excludeTestIds.includes(test.id)
-  );
+  const filteredTests = tests.filter((test) => !excludeTestIds.includes(test.id));
 
   // Handle LOINC selection
   const handleLOINCSelect = (loinc: { code: string; name: string }) => {
@@ -115,7 +106,7 @@ export function TestSelector({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-h-[80vh] max-w-2xl">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle className="flex items-center gap-2">
@@ -128,12 +119,9 @@ export function TestSelector({
 
         {/* Test Source Toggle */}
         {showLOINCTab && (
-          <div className="flex items-center gap-2 pb-4 border-b">
+          <div className="flex items-center gap-2 border-b pb-4">
             <span className={`text-sm ${!useLOINC ? 'font-medium' : ''}`}>Local Catalog</span>
-            <Switch
-              checked={useLOINC}
-              onCheckedChange={setUseLOINC}
-            />
+            <Switch checked={useLOINC} onCheckedChange={setUseLOINC} />
             <span className={`text-sm ${useLOINC ? 'font-medium' : ''}`}>LOINC</span>
           </div>
         )}
@@ -175,21 +163,18 @@ export function TestSelector({
               {isLoading ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, i) => (
-                    <div key={i} className="p-3 border rounded-lg">
-                      <Skeleton className="h-5 w-48 mb-2" />
+                    <div key={i} className="rounded-lg border p-3">
+                      <Skeleton className="mb-2 h-5 w-48" />
                       <Skeleton className="h-4 w-32" />
                     </div>
                   ))}
                 </div>
               ) : filteredTests.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FlaskConical className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <div className="py-8 text-center text-muted-foreground">
+                  <FlaskConical className="mx-auto mb-3 h-12 w-12 opacity-50" />
                   <p>No tests found</p>
                   {searchQuery && (
-                    <Button
-                      variant="link"
-                      onClick={() => setSearchQuery('')}
-                    >
+                    <Button variant="link" onClick={() => setSearchQuery('')}>
                       Clear search
                     </Button>
                   )}
@@ -197,11 +182,7 @@ export function TestSelector({
               ) : (
                 <div className="space-y-2">
                   {filteredTests.map((test) => (
-                    <TestCard
-                      key={test.id}
-                      test={test}
-                      onClick={() => onSelect(test)}
-                    />
+                    <TestCard key={test.id} test={test} onClick={() => onSelect(test)} />
                   ))}
                 </div>
               )}
@@ -219,9 +200,12 @@ export function TestSelector({
             />
 
             <div className="rounded-lg border bg-muted/50 p-4">
-              <h4 className="text-sm font-medium mb-2">About LOINC Codes</h4>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• LOINC (Logical Observation Identifiers Names and Codes) is a universal standard for lab tests</li>
+              <h4 className="mb-2 text-sm font-medium">About LOINC Codes</h4>
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                <li>
+                  • LOINC (Logical Observation Identifiers Names and Codes) is a universal standard
+                  for lab tests
+                </li>
                 <li>• Used for insurance claims and interoperability</li>
               </ul>
             </div>
@@ -230,7 +214,7 @@ export function TestSelector({
 
         {/* Pagination for catalog view */}
         {!isSearching && catalogResults.data && catalogResults.data.count > 20 && (
-          <div className="flex justify-between items-center pt-2 border-t">
+          <div className="flex items-center justify-between border-t pt-2">
             <p className="text-sm text-muted-foreground">
               Showing {filteredTests.length} of {catalogResults.data.count} tests
             </p>
@@ -239,7 +223,7 @@ export function TestSelector({
                 variant="outline"
                 size="sm"
                 disabled={page === 1}
-                onClick={() => setPage(p => p - 1)}
+                onClick={() => setPage((p) => p - 1)}
               >
                 Previous
               </Button>
@@ -247,7 +231,7 @@ export function TestSelector({
                 variant="outline"
                 size="sm"
                 disabled={!catalogResults.data.next}
-                onClick={() => setPage(p => p + 1)}
+                onClick={() => setPage((p) => p + 1)}
               >
                 Next
               </Button>
@@ -258,7 +242,7 @@ export function TestSelector({
         {/* Close Button */}
         <div className="flex justify-end pt-2">
           <Button variant="outline" onClick={onClose}>
-            <X className="h-4 w-4 mr-1" />
+            <X className="mr-1 h-4 w-4" />
             Close
           </Button>
         </div>
@@ -275,36 +259,30 @@ interface TestCardProps {
 function TestCard({ test, onClick }: TestCardProps) {
   const categoryColor = CATEGORY_COLORS[test.category] || CATEGORY_COLORS.OTHER;
   // Parse cost as number (backend may send as string from DecimalField)
-  const cost = typeof test.cost === 'string' ? parseFloat(test.cost) : (test.cost || 0);
+  const cost = typeof test.cost === 'string' ? parseFloat(test.cost) : test.cost || 0;
 
   return (
     <div
       className={cn(
-        'p-3 border rounded-lg cursor-pointer transition-colors',
-        'hover:bg-muted/50 hover:border-primary/50'
+        'cursor-pointer rounded-lg border p-3 transition-colors',
+        'hover:border-primary/50 hover:bg-muted/50'
       )}
       onClick={onClick}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="mb-1 flex items-center gap-2">
             <span className="font-medium">{test.name}</span>
             <Badge variant="outline" className="text-xs">
               {test.code}
             </Badge>
           </div>
           <div className="flex flex-wrap gap-2 text-sm">
-            <Badge className={cn('text-xs', categoryColor)}>
-              {test.category}
-            </Badge>
-            <span className="text-muted-foreground">
-              {test.specimen_type}
-            </span>
+            <Badge className={cn('text-xs', categoryColor)}>{test.category}</Badge>
+            <span className="text-muted-foreground">{test.specimen_type}</span>
           </div>
           {test.short_name && test.short_name !== test.name && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {test.short_name}
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{test.short_name}</p>
           )}
         </div>
         <div className="text-right">

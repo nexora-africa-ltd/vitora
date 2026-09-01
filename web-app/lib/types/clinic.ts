@@ -76,12 +76,7 @@ export type ClinicVisitStatus =
 /**
  * Clinical priority levels (used in queue statistics)
  */
-export type ClinicalPriority =
-  | 'EMERGENCY'
-  | 'URGENT'
-  | 'PRIORITY'
-  | 'STANDARD'
-  | 'NON_URGENT';
+export type ClinicalPriority = 'EMERGENCY' | 'URGENT' | 'PRIORITY' | 'STANDARD' | 'NON_URGENT';
 
 /**
  * Visit priority levels
@@ -126,12 +121,7 @@ export type ClinicVisitType =
 /**
  * Visit source
  */
-export type ClinicVisitSource =
-  | 'TRIAGE'
-  | 'DIRECT'
-  | 'REFERRAL'
-  | 'APPOINTMENT'
-  | 'INPATIENT';
+export type ClinicVisitSource = 'TRIAGE' | 'DIRECT' | 'REFERRAL' | 'APPOINTMENT' | 'INPATIENT';
 
 /**
  * Session status
@@ -171,7 +161,14 @@ export type {
  * Staff role in clinic
  * Matches backend ClinicStaff.ROLE_CHOICES
  */
-export type ClinicStaffRole = 'LEAD' | 'DOCTOR' | 'NURSE' | 'COUNSELOR' | 'NUTRITIONIST' | 'CLERK' | 'OTHER';
+export type ClinicStaffRole =
+  | 'LEAD'
+  | 'DOCTOR'
+  | 'NURSE'
+  | 'COUNSELOR'
+  | 'NUTRITIONIST'
+  | 'CLERK'
+  | 'OTHER';
 
 // =============================================================================
 // PRIORITY CONFIGURATION

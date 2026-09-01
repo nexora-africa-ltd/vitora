@@ -42,13 +42,17 @@ export interface CheckinSuccessData {
 /**
  * Create CheckinSuccessData from CheckInResponse
  */
-export function fromCheckInResponse(response: CheckInResponse, patientId?: number, dateOfBirth?: string): CheckinSuccessData {
+export function fromCheckInResponse(
+  response: CheckInResponse,
+  patientId?: number,
+  dateOfBirth?: string
+): CheckinSuccessData {
   const isTriage = response.destination === 'TRIAGE' || response.destination === 'Triage';
   return {
     patientName: response.patient_name,
     patientMrn: response.patient_mrn,
     destination: isTriage ? 'triage' : 'clinic',
-    destinationName: isTriage ? 'Triage' : (response.destination_clinic_name || response.destination),
+    destinationName: isTriage ? 'Triage' : response.destination_clinic_name || response.destination,
     destinationUrl: isTriage ? '/triage' : `/clinics/${response.destination_clinic_id}/queue`,
     queuePosition: response.queue_position,
     estimatedWaitMinutes: response.estimated_wait_minutes,
@@ -101,9 +105,8 @@ export function CheckinSuccessModal({
   if (!checkInResult) return null;
 
   // Normalize the data - accept both CheckInResponse and CheckinSuccessData
-  const data: CheckinSuccessData = 'patientName' in checkInResult
-    ? checkInResult
-    : fromCheckInResponse(checkInResult);
+  const data: CheckinSuccessData =
+    'patientName' in checkInResult ? checkInResult : fromCheckInResponse(checkInResult);
 
   const isTriage = data.destination === 'triage';
 
@@ -128,8 +131,8 @@ export function CheckinSuccessModal({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
-        <SheetHeader className="text-center space-y-3">
+      <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
+        <SheetHeader className="space-y-3 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
             <CheckCircle2 className="h-6 w-6 text-success" />
           </div>
@@ -139,10 +142,10 @@ export function CheckinSuccessModal({
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <ScrollArea className="-mx-6 flex-1 px-6">
           <div className="space-y-4 py-4">
             {/* Queue Info */}
-            <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
+            <div className="space-y-3 rounded-lg border bg-muted/50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Destination</span>
                 <div className="flex items-center gap-2">
@@ -167,9 +170,7 @@ export function CheckinSuccessModal({
               {data.estimatedWaitMinutes !== undefined && data.estimatedWaitMinutes > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Estimated Wait</span>
-                  <span className="text-sm font-medium">
-                    ~{data.estimatedWaitMinutes} min
-                  </span>
+                  <span className="text-sm font-medium">~{data.estimatedWaitMinutes} min</span>
                 </div>
               )}
 
@@ -181,9 +182,7 @@ export function CheckinSuccessModal({
               )}
             </div>
 
-            {data.warning && (
-              <p className="text-sm text-warning text-center">{data.warning}</p>
-            )}
+            {data.warning && <p className="text-center text-sm text-warning">{data.warning}</p>}
 
             {/* SHA Consent Step — shown for SHA-eligible patients (skip if already obtained) */}
             {data.patientId && !skipSHAConsent && (
@@ -200,7 +199,7 @@ export function CheckinSuccessModal({
             {consentError && (
               <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                   <p className="text-sm text-destructive">{consentError}</p>
                 </div>
               </div>
@@ -208,12 +207,21 @@ export function CheckinSuccessModal({
           </div>
         </ScrollArea>
 
-        <SheetFooter className="flex-col gap-2 sm:flex-row sm:justify-end pt-4 border-t">
-          <Button variant="outline" onClick={handleDismiss} className="w-full sm:w-auto" disabled={data.patientId ? shaConsentPending : false}>
+        <SheetFooter className="flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            onClick={handleDismiss}
+            className="w-full sm:w-auto"
+            disabled={data.patientId ? shaConsentPending : false}
+          >
             <X className="mr-2 h-4 w-4" />
             {dismissLabel || 'Stay Here'}
           </Button>
-          <Button onClick={handleGoToDestination} className="w-full sm:w-auto" disabled={data.patientId ? shaConsentPending : false}>
+          <Button
+            onClick={handleGoToDestination}
+            className="w-full sm:w-auto"
+            disabled={data.patientId ? shaConsentPending : false}
+          >
             <ArrowRight className="mr-2 h-4 w-4" />
             Go to {data.destinationName}
           </Button>

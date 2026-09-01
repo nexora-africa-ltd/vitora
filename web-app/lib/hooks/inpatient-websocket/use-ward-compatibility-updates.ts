@@ -80,11 +80,7 @@ export function useWardCompatibilityUpdates(
   }, [onEvent, onConnectionChange]);
 
   // WebSocket connection
-  const {
-    isConnected,
-    connectionState,
-    reconnect,
-  } = useWardCompatibilitySocket(wardId, {
+  const { isConnected, connectionState, reconnect } = useWardCompatibilitySocket(wardId, {
     onMessage: (message) => {
       const wsMessage = message as unknown as WardWebSocketMessage;
       const event: WardUpdateEvent = {
@@ -103,10 +99,7 @@ export function useWardCompatibilityUpdates(
   // Polling fallback (only when WebSocket disconnected and polling enabled)
   const shouldPoll = enablePolling && !isConnected && wardId !== null;
 
-  const {
-    data: pollingData,
-    refetch: refetchPolling,
-  } = useQuery({
+  const { data: pollingData, refetch: refetchPolling } = useQuery({
     queryKey: ['ward-updates', wardId, 'polling'],
     queryFn: async () => {
       if (!wardId) return null;

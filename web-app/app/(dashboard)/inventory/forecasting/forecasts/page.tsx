@@ -2,13 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  BarChart3,
-  TrendingUp,
-  AlertTriangle,
-  Loader2,
-  Sparkles,
-} from 'lucide-react';
+import { BarChart3, TrendingUp, AlertTriangle, Loader2, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -58,7 +52,7 @@ const METHOD_CONFIG: Record<ForecastMethod, { label: string; color: string }> = 
 
 function MethodBadge({ method }: { method: ForecastMethod }) {
   const cfg = METHOD_CONFIG[method] ?? METHOD_CONFIG.MOVING_AVERAGE;
-  return <Badge className={`${cfg.color} shrink-0 w-fit`}>{cfg.label}</Badge>;
+  return <Badge className={`${cfg.color} w-fit shrink-0`}>{cfg.label}</Badge>;
 }
 
 export default function DemandForecastsPage() {
@@ -70,7 +64,9 @@ export default function DemandForecastsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Generate form state
-  const [genMethod, setGenMethod] = useState<'MOVING_AVERAGE' | 'EXPONENTIAL_SMOOTHING'>('MOVING_AVERAGE');
+  const [genMethod, setGenMethod] = useState<'MOVING_AVERAGE' | 'EXPONENTIAL_SMOOTHING'>(
+    'MOVING_AVERAGE'
+  );
   const [genPeriod, setGenPeriod] = useState('3');
 
   const params = {
@@ -89,7 +85,10 @@ export default function DemandForecastsPage() {
   const totalPages = Math.ceil(totalCount / 20);
 
   const belowReorder = forecasts.filter(
-    (f) => f.reorder_point != null && f.suggested_order_quantity != null && Number(f.suggested_order_quantity) > 0
+    (f) =>
+      f.reorder_point != null &&
+      f.suggested_order_quantity != null &&
+      Number(f.suggested_order_quantity) > 0
   ).length;
 
   const generateMutation = useMutation({
@@ -101,7 +100,8 @@ export default function DemandForecastsPage() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['demand-forecasts'] });
       queryClient.invalidateQueries({ queryKey: ['reorder-suggestions'] });
-      const msg = 'count' in result ? `Generated ${result.count} forecast(s)` : 'Forecast generated';
+      const msg =
+        'count' in result ? `Generated ${result.count} forecast(s)` : 'Forecast generated';
       toast({ variant: 'success', title: msg });
       setDialogOpen(false);
     },
@@ -140,7 +140,9 @@ export default function DemandForecastsPage() {
                     <Label>Method</Label>
                     <Select
                       value={genMethod}
-                      onValueChange={(v) => setGenMethod(v as 'MOVING_AVERAGE' | 'EXPONENTIAL_SMOOTHING')}
+                      onValueChange={(v) =>
+                        setGenMethod(v as 'MOVING_AVERAGE' | 'EXPONENTIAL_SMOOTHING')
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -167,7 +169,9 @@ export default function DemandForecastsPage() {
                     onClick={() => generateMutation.mutate()}
                     disabled={generateMutation.isPending}
                   >
-                    {generateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {generateMutation.isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     Generate
                   </Button>
                 </DialogFooter>
@@ -179,30 +183,44 @@ export default function DemandForecastsPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-4">
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Total Forecasts</p>
               </div>
-              <p className="text-xl font-bold mt-1">{isLoading ? '...' : totalCount}</p>
+              <p className="mt-1 text-xl font-bold">{isLoading ? '...' : totalCount}</p>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+              aria-hidden="true"
+            />
             <CardContent className="relative p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                 <p className="text-xs text-muted-foreground">Need Reorder</p>
               </div>
-              <p className="text-xl font-bold mt-1 text-amber-600">{isLoading ? '...' : belowReorder}</p>
+              <p className="mt-1 text-xl font-bold text-amber-600">
+                {isLoading ? '...' : belowReorder}
+              </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Filter */}
         <div className="flex items-center gap-3">
-          <Select value={methodFilter} onValueChange={(v) => { setMethodFilter(v); setPage(1); }}>
+          <Select
+            value={methodFilter}
+            onValueChange={(v) => {
+              setMethodFilter(v);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-44">
               <SelectValue placeholder="Method" />
             </SelectTrigger>
@@ -252,15 +270,18 @@ export default function DemandForecastsPage() {
                   header: 'Predicted',
                   sortable: true,
                   sortType: 'number' as const,
-                  cell: (f) => <span className="font-mono">{Number(f.predicted_demand).toLocaleString()}</span>,
+                  cell: (f) => (
+                    <span className="font-mono">{Number(f.predicted_demand).toLocaleString()}</span>
+                  ),
                 },
                 {
                   key: 'confidence_lower',
                   header: 'Confidence',
                   cell: (f) =>
                     f.confidence_lower != null && f.confidence_upper != null ? (
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {Number(f.confidence_lower).toLocaleString()} – {Number(f.confidence_upper).toLocaleString()}
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {Number(f.confidence_lower).toLocaleString()} –{' '}
+                        {Number(f.confidence_upper).toLocaleString()}
                       </span>
                     ) : (
                       '—'
@@ -287,7 +308,9 @@ export default function DemandForecastsPage() {
                   sortType: 'number' as const,
                   cell: (f) =>
                     f.suggested_order_quantity != null ? (
-                      <span className={`font-mono ${Number(f.suggested_order_quantity) > 0 ? 'text-amber-600 font-medium' : ''}`}>
+                      <span
+                        className={`font-mono ${Number(f.suggested_order_quantity) > 0 ? 'font-medium text-amber-600' : ''}`}
+                      >
                         {Number(f.suggested_order_quantity).toLocaleString()}
                       </span>
                     ) : (
@@ -307,17 +330,19 @@ export default function DemandForecastsPage() {
                 <Card className="p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{f.drug_name}</p>
+                      <p className="truncate font-medium">{f.drug_name}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(f.forecast_date).toLocaleDateString()} &bull; {f.period_months}mo
                       </p>
                     </div>
                     <MethodBadge method={f.method} />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className="text-xs text-muted-foreground">Predicted</span>
-                      <p className="font-mono font-medium">{Number(f.predicted_demand).toLocaleString()}</p>
+                      <p className="font-mono font-medium">
+                        {Number(f.predicted_demand).toLocaleString()}
+                      </p>
                     </div>
                     {f.suggested_order_quantity != null && (
                       <div>
@@ -339,14 +364,14 @@ export default function DemandForecastsPage() {
                 </p>
                 <div className="flex gap-2">
                   <button
-                    className="px-3 py-1 rounded border disabled:opacity-50"
+                    className="rounded border px-3 py-1 disabled:opacity-50"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
                     Previous
                   </button>
                   <button
-                    className="px-3 py-1 rounded border disabled:opacity-50"
+                    className="rounded border px-3 py-1 disabled:opacity-50"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >

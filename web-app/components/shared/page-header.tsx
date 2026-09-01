@@ -22,12 +22,12 @@ export function PageHeader({ title, description, helpContent, actions }: PageHea
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{title}</h1>
+          <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
           {effectiveHelpContent && <HelpPopover content={effectiveHelpContent} />}
         </div>
       </div>
       {actions && (
-        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center shrink-0">
+        <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           {actions}
         </div>
       )}

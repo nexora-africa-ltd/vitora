@@ -19,7 +19,7 @@ export function OfflineBanner() {
   return (
     <div
       className={cn(
-        'fixed top-0 left-0 right-0 z-[100] px-4 py-2 text-center text-sm font-medium transition-all',
+        'fixed left-0 right-0 top-0 z-[100] px-4 py-2 text-center text-sm font-medium transition-all',
         showOffline && 'bg-amber-500 text-amber-950',
         showBackOnline && 'bg-green-500 text-white',
         showPending && 'bg-blue-500 text-white',
@@ -29,7 +29,8 @@ export function OfflineBanner() {
       {showOffline && (
         <span className="flex items-center justify-center gap-2">
           <WifiOff className="h-4 w-4" />
-          You&apos;re offline.{isSustainedOffline
+          You&apos;re offline.
+          {isSustainedOffline
             ? ' Some modules have been hidden because they require internet.'
             : pendingChanges > 0
               ? ` ${pendingChanges} change${pendingChanges !== 1 ? 's' : ''} will sync when reconnected.`

@@ -66,7 +66,7 @@ export interface UseOfflineQueryResult<TResult> {
  */
 export function useOfflineQuery<
   TRow extends Record<string, unknown> = Record<string, unknown>,
-  TResult = TRow[]
+  TResult = TRow[],
 >(options: UseOfflineQueryOptions<TRow, TResult>): UseOfflineQueryResult<TResult> {
   const {
     sql,
@@ -174,7 +174,9 @@ export function useOfflineQuery<
     isError: apiResult.isError,
     isFetching: apiResult.isFetching,
     error: apiResult.error ?? null,
-    refetch: () => { apiResult.refetch(); },
+    refetch: () => {
+      apiResult.refetch();
+    },
     source: 'api',
   };
 }

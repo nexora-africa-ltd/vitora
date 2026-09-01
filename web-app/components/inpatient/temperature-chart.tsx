@@ -2,14 +2,7 @@
 
 import { useState } from 'react';
 import { Plus, Thermometer } from 'lucide-react';
-import {
-  Line,
-  LineChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  ReferenceLine,
-} from 'recharts';
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,10 +27,7 @@ import {
 } from '@/components/ui/chart';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import {
-  useTemperatureReadings,
-  useCreateTemperatureReading,
-} from '@/lib/hooks/use-inpatient';
+import { useTemperatureReadings, useCreateTemperatureReading } from '@/lib/hooks/use-inpatient';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
 import type { TemperatureReading } from '@/lib/types/inpatient';
@@ -79,19 +69,31 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
   const handleSubmit = async () => {
     const tempValue = parseFloat(temperature);
     if (isNaN(tempValue) || tempValue < 30 || tempValue > 45) {
-      toast({ title: 'Invalid temperature', description: 'Enter a value between 30°C and 45°C', variant: 'destructive' });
+      toast({
+        title: 'Invalid temperature',
+        description: 'Enter a value between 30°C and 45°C',
+        variant: 'destructive',
+      });
       return;
     }
 
     const pulseValue = pulse ? parseInt(pulse, 10) : undefined;
     if (pulseValue !== undefined && (pulseValue < 0 || pulseValue > 250)) {
-      toast({ title: 'Invalid pulse', description: 'Enter a value between 0 and 250 BPM', variant: 'destructive' });
+      toast({
+        title: 'Invalid pulse',
+        description: 'Enter a value between 0 and 250 BPM',
+        variant: 'destructive',
+      });
       return;
     }
 
     const rrValue = respiratoryRate ? parseInt(respiratoryRate, 10) : undefined;
     if (rrValue !== undefined && (rrValue < 0 || rrValue > 80)) {
-      toast({ title: 'Invalid respiratory rate', description: 'Enter a value between 0 and 80', variant: 'destructive' });
+      toast({
+        title: 'Invalid respiratory rate',
+        description: 'Enter a value between 0 and 80',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -108,7 +110,11 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
       setDialogOpen(false);
       resetForm();
     } catch {
-      toast({ title: 'Error', description: 'Failed to record temperature', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to record temperature',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -125,7 +131,7 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Temperature Chart</h3>
           <HelpPopover content="Track temperature, pulse, and respiratory rate trends over time. Based on the Kenya hospital temperature chart form." />
@@ -134,7 +140,7 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-1.5" />
+                <Plus className="mr-1.5 h-4 w-4" />
                 Record Temperature
               </Button>
             </DialogTrigger>
@@ -195,7 +201,13 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                 </div>
               </div>
               <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
-                <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={createReading.isPending}>Cancel</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                  disabled={createReading.isPending}
+                >
+                  Cancel
+                </Button>
                 <Button onClick={handleSubmit} disabled={createReading.isPending || !temperature}>
                   {createReading.isPending ? 'Saving...' : 'Save Reading'}
                 </Button>
@@ -208,7 +220,7 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
       {readings.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <Thermometer className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <Thermometer className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">No temperature readings recorded yet.</p>
           </CardContent>
         </Card>
@@ -228,7 +240,7 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                     tickLine={false}
                     tickMargin={10}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    className="fill-muted-foreground text-xs"
                     tickFormatter={(v) => {
                       const parts = v.split(' ');
                       return parts.length > 1 ? parts[1] : v;
@@ -239,7 +251,7 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                     tickLine={false}
                     axisLine={false}
                     domain={[35, 42]}
-                    className="text-xs fill-muted-foreground"
+                    className="fill-muted-foreground text-xs"
                     width={40}
                     tickFormatter={(v: number) => `${v}°`}
                   />
@@ -249,11 +261,23 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                     tickLine={false}
                     axisLine={false}
                     domain={[0, 'auto']}
-                    className="text-xs fill-muted-foreground"
+                    className="fill-muted-foreground text-xs"
                     width={40}
                   />
-                  <ReferenceLine yAxisId="temp" y={37.5} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="Febrile" />
-                  <ReferenceLine yAxisId="temp" y={36.1} stroke="hsl(var(--chart-4))" strokeDasharray="3 3" label="Low" />
+                  <ReferenceLine
+                    yAxisId="temp"
+                    y={37.5}
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="3 3"
+                    label="Febrile"
+                  />
+                  <ReferenceLine
+                    yAxisId="temp"
+                    y={36.1}
+                    stroke="hsl(var(--chart-4))"
+                    strokeDasharray="3 3"
+                    label="Low"
+                  />
                   <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
                   <ChartLegend content={<ChartLegendContent />} />
                   <Line
@@ -312,10 +336,22 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                     sortType: 'number' as const,
                     cell: (item: TemperatureReading) => (
                       <div>
-                        <span className={item.is_febrile ? 'text-destructive font-semibold' : item.is_hypothermic ? 'text-blue-600 font-semibold' : ''}>
+                        <span
+                          className={
+                            item.is_febrile
+                              ? 'font-semibold text-destructive'
+                              : item.is_hypothermic
+                                ? 'font-semibold text-blue-600'
+                                : ''
+                          }
+                        >
                           {Number(item.temperature).toFixed(1)}°C
                         </span>
-                        {item.is_febrile && <Badge variant="destructive" className="ml-1 text-xs">Febrile</Badge>}
+                        {item.is_febrile && (
+                          <Badge variant="destructive" className="ml-1 text-xs">
+                            Febrile
+                          </Badge>
+                        )}
                       </div>
                     ),
                   },
@@ -344,14 +380,30 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                   <Card className="p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium whitespace-nowrap">{formatDateTime(item.recorded_at)}</p>
-                        <p className="text-xs text-muted-foreground mt-1">Recorded by {item.recorded_by_username ?? '—'}</p>
+                        <p className="whitespace-nowrap text-sm font-medium">
+                          {formatDateTime(item.recorded_at)}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Recorded by {item.recorded_by_username ?? '—'}
+                        </p>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className={item.is_febrile ? 'text-destructive font-semibold' : item.is_hypothermic ? 'text-blue-600 font-semibold' : 'font-semibold'}>
+                      <div className="shrink-0 text-right">
+                        <p
+                          className={
+                            item.is_febrile
+                              ? 'font-semibold text-destructive'
+                              : item.is_hypothermic
+                                ? 'font-semibold text-blue-600'
+                                : 'font-semibold'
+                          }
+                        >
                           {Number(item.temperature).toFixed(1)}°C
                         </p>
-                        {item.is_febrile && <Badge variant="destructive" className="mt-1 text-xs">Febrile</Badge>}
+                        {item.is_febrile && (
+                          <Badge variant="destructive" className="mt-1 text-xs">
+                            Febrile
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
@@ -359,7 +411,8 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                         <span className="text-muted-foreground">Pulse:</span> {item.pulse ?? '—'}
                       </div>
                       <div>
-                        <span className="text-muted-foreground">RR:</span> {item.respiratory_rate ?? '—'}
+                        <span className="text-muted-foreground">RR:</span>{' '}
+                        {item.respiratory_rate ?? '—'}
                       </div>
                     </div>
                   </Card>

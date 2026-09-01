@@ -55,7 +55,9 @@ const DEFAULT_FILES = [
 ];
 
 const configuredFiles = process.env.API_GUARD_FILES
-  ? process.env.API_GUARD_FILES.split(',').map((entry) => entry.trim()).filter(Boolean)
+  ? process.env.API_GUARD_FILES.split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
   : DEFAULT_FILES;
 
 const forbiddenReturnRegex = /^\s*return\s+response\.data(?!\s+as\s+Blob)/;

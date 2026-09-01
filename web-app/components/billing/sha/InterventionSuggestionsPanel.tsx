@@ -174,9 +174,7 @@ export function InterventionSuggestionsPanel({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Lightbulb className="h-4 w-4 text-blue-500" />
-            <CardTitle className="text-sm">
-              Suggested Interventions ({data.count})
-            </CardTitle>
+            <CardTitle className="text-sm">Suggested Interventions ({data.count})</CardTitle>
           </div>
           <div className="flex gap-2">
             {dhaPatientId && (
@@ -187,9 +185,9 @@ export function InterventionSuggestionsPanel({
                 disabled={isVerifying || !data?.suggestions?.length}
               >
                 {isVerifying ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                  <ShieldCheck className="mr-1 h-3.5 w-3.5" />
                 )}
                 Verify All
               </Button>
@@ -201,19 +199,15 @@ export function InterventionSuggestionsPanel({
                 onClick={handleAttachSelected}
                 disabled={attachMutation.isPending}
               >
-                <Plus className="h-3.5 w-3.5 mr-1" />
+                <Plus className="mr-1 h-3.5 w-3.5" />
                 Add Selected ({selected.size})
               </Button>
             )}
-            <Button
-              size="sm"
-              onClick={handleAttachAll}
-              disabled={attachMutation.isPending}
-            >
+            <Button size="sm" onClick={handleAttachAll} disabled={attachMutation.isPending}>
               {attachMutation.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Check className="h-3.5 w-3.5 mr-1" />
+                <Check className="mr-1 h-3.5 w-3.5" />
               )}
               Add All
             </Button>
@@ -221,44 +215,51 @@ export function InterventionSuggestionsPanel({
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-xs text-muted-foreground mb-3">
-          These interventions were matched from clinical actions. Verify entitlement before attaching to confirm the patient&apos;s benefit package covers them.
+        <p className="mb-3 text-xs text-muted-foreground">
+          These interventions were matched from clinical actions. Verify entitlement before
+          attaching to confirm the patient&apos;s benefit package covers them.
         </p>
-        <div className="space-y-2 max-h-52 overflow-y-auto">
+        <div className="max-h-52 space-y-2 overflow-y-auto">
           {data.suggestions.map((suggestion: InterventionSuggestion) => (
             <div
               key={suggestion.code}
-              className="flex items-start gap-2 rounded-md border px-3 py-2 hover:bg-muted/50 transition-colors"
+              className="flex items-start gap-2 rounded-md border px-3 py-2 transition-colors hover:bg-muted/50"
             >
               <Checkbox
                 checked={selected.has(suggestion.code)}
                 onCheckedChange={() => toggleSelection(suggestion.code)}
                 className="mt-0.5"
               />
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   {SOURCE_ICONS[suggestion.source] || null}
-                  <span className="text-xs font-medium truncate">
-                    {suggestion.name}
-                  </span>
-                  {suggestion.needs_entitlement_check && !verifiedCodes.has(suggestion.code) && !deniedCodes.has(suggestion.code) && (
-                    <Badge variant="outline" className="text-[9px] px-1 border-amber-300 text-amber-700 dark:text-amber-400">
-                      unverified
-                    </Badge>
-                  )}
+                  <span className="truncate text-xs font-medium">{suggestion.name}</span>
+                  {suggestion.needs_entitlement_check &&
+                    !verifiedCodes.has(suggestion.code) &&
+                    !deniedCodes.has(suggestion.code) && (
+                      <Badge
+                        variant="outline"
+                        className="border-amber-300 px-1 text-[9px] text-amber-700 dark:text-amber-400"
+                      >
+                        unverified
+                      </Badge>
+                    )}
                   {verifiedCodes.has(suggestion.code) && (
-                    <Badge variant="outline" className="text-[9px] px-1 border-green-300 text-green-700 dark:text-green-400">
+                    <Badge
+                      variant="outline"
+                      className="border-green-300 px-1 text-[9px] text-green-700 dark:text-green-400"
+                    >
                       entitled
                     </Badge>
                   )}
                   {deniedCodes.has(suggestion.code) && (
-                    <Badge variant="destructive" className="text-[9px] px-1">
+                    <Badge variant="destructive" className="px-1 text-[9px]">
                       exhausted
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <Badge variant="secondary" className="text-[10px] px-1">
+                <div className="mt-0.5 flex items-center gap-2">
+                  <Badge variant="secondary" className="px-1 text-[10px]">
                     {suggestion.code}
                   </Badge>
                   {suggestion.tariff && (

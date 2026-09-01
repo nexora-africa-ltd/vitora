@@ -64,9 +64,7 @@ function buildUrl(baseUrl: string, params?: object): string {
  * @example
  * const results = await searchICD11({ search: 'malaria', page_size: 20 });
  */
-export async function searchICD11(
-  params?: TerminologySearchParams
-): Promise<PaginatedICD11Codes> {
+export async function searchICD11(params?: TerminologySearchParams): Promise<PaginatedICD11Codes> {
   const url = buildUrl('/api/billing/terminology/icd11/', params);
   const response = await apiClient.get(url);
   return response.data;
@@ -104,9 +102,7 @@ export async function searchInterventions(
  * @example
  * const results = await searchICHI({ search: 'appendectomy' });
  */
-export async function searchICHI(
-  params?: TerminologySearchParams
-): Promise<PaginatedICHICodes> {
+export async function searchICHI(params?: TerminologySearchParams): Promise<PaginatedICHICodes> {
   const url = buildUrl('/api/billing/terminology/ichi/', params);
   const response = await apiClient.get(url);
   return response.data;
@@ -125,9 +121,7 @@ export async function searchICHI(
  * @example
  * const results = await searchLOINC({ search: 'hemoglobin' });
  */
-export async function searchLOINC(
-  params?: TerminologySearchParams
-): Promise<PaginatedLOINCCodes> {
+export async function searchLOINC(params?: TerminologySearchParams): Promise<PaginatedLOINCCodes> {
   const query = params?.search || '';
   const limit = params?.page_size || 20;
   const response = await apiClient.get('/api/lab/loinc-search/', {
@@ -163,9 +157,7 @@ export async function searchLOINC(
  *   dosage_form: 'Tablet'
  * });
  */
-export async function searchDrugs(
-  params?: DrugSearchParams
-): Promise<PaginatedDrugProducts> {
+export async function searchDrugs(params?: DrugSearchParams): Promise<PaginatedDrugProducts> {
   const url = buildUrl('/api/billing/terminology/drugs/', params);
   const response = await apiClient.get(url);
   return response.data;

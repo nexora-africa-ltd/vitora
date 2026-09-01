@@ -6,10 +6,6 @@
  */
 import { InvoicesCapabilityGate } from './capability-gate';
 
-export default function InvoicesLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function InvoicesLayout({ children }: { children: React.ReactNode }) {
   return <InvoicesCapabilityGate>{children}</InvoicesCapabilityGate>;
 }

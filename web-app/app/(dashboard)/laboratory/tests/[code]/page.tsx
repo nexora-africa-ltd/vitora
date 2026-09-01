@@ -229,7 +229,7 @@ export default function TestCatalogDetailPage() {
         actions={
           canManage && !isEditing ? (
             <Button onClick={startEditing} variant="outline">
-              <Pencil className="h-4 w-4 mr-2" />
+              <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Button>
           ) : undefined
@@ -237,25 +237,23 @@ export default function TestCatalogDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {test.code}
             <span className="text-muted-foreground"> • {test.short_name}</span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {test.category} • {test.specimen_type}
             {test.loinc_code && ` • LOINC: ${test.loinc_code}`}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant={test.is_active ? 'default' : 'secondary'}>
             {test.is_active ? 'Active' : 'Inactive'}
           </Badge>
           {test.requires_fasting && <Badge variant="outline">Fasting Required</Badge>}
-          {test.requires_clinical_signoff && (
-            <Badge variant="outline">Pathologist Sign-off</Badge>
-          )}
+          {test.requires_clinical_signoff && <Badge variant="outline">Pathologist Sign-off</Badge>}
         </div>
       </div>
 
@@ -267,7 +265,7 @@ export default function TestCatalogDetailPage() {
               <CardHeader>
                 <CardTitle className="text-base">Basic Information</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="name"
@@ -377,7 +375,7 @@ export default function TestCatalogDetailPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <FormField
                     control={form.control}
                     name="result_type"
@@ -435,12 +433,12 @@ export default function TestCatalogDetailPage() {
 
                 {/* Reference Ranges */}
                 <div>
-                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <h4 className="mb-3 flex items-center gap-2 text-sm font-medium">
                     <Ruler className="h-4 w-4" />
                     Reference Ranges
                     <HelpPopover content="Set normal ranges per demographic group. Format: low-high (e.g., 4.5-5.5). These auto-populate during result entry." />
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <FormField
                       control={form.control}
                       name="normal_range_male"
@@ -493,7 +491,7 @@ export default function TestCatalogDetailPage() {
                   <HelpPopover content="Configure pricing and facility availability." />
                 </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="cost"
@@ -539,10 +537,7 @@ export default function TestCatalogDetailPage() {
                   render={({ field }) => (
                     <FormItem className="flex items-center gap-2 space-y-0 pt-2">
                       <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                       <FormLabel className="font-normal">Available In-House</FormLabel>
                     </FormItem>
@@ -554,10 +549,7 @@ export default function TestCatalogDetailPage() {
                   render={({ field }) => (
                     <FormItem className="flex items-center gap-2 space-y-0 pt-2">
                       <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                       <FormLabel className="font-normal">Active</FormLabel>
                     </FormItem>
@@ -582,10 +574,7 @@ export default function TestCatalogDetailPage() {
                     render={({ field }) => (
                       <FormItem className="flex items-center gap-2 space-y-0">
                         <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
                         <FormLabel className="font-normal">Requires Fasting</FormLabel>
                       </FormItem>
@@ -597,14 +586,9 @@ export default function TestCatalogDetailPage() {
                     render={({ field }) => (
                       <FormItem className="flex items-center gap-2 space-y-0">
                         <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
-                        <FormLabel className="font-normal">
-                          Requires Pathologist Sign-off
-                        </FormLabel>
+                        <FormLabel className="font-normal">Requires Pathologist Sign-off</FormLabel>
                       </FormItem>
                     )}
                   />
@@ -614,10 +598,7 @@ export default function TestCatalogDetailPage() {
                     render={({ field }) => (
                       <FormItem className="flex items-center gap-2 space-y-0">
                         <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
                         <FormLabel className="font-normal">Panel Test</FormLabel>
                       </FormItem>
@@ -652,11 +633,11 @@ export default function TestCatalogDetailPage() {
                 onClick={() => setIsEditing(false)}
                 disabled={isSaving}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="mr-2 h-4 w-4" />
                 Cancel
               </Button>
               <Button type="submit" disabled={isSaving}>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="mr-2 h-4 w-4" />
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
@@ -674,39 +655,41 @@ export default function TestCatalogDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Result Type</p>
+                  <p className="mb-1 text-xs text-muted-foreground">Result Type</p>
                   <p className="font-medium">{test.result_type}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Unit</p>
+                  <p className="mb-1 text-xs text-muted-foreground">Unit</p>
                   <p className="font-medium">{test.result_unit || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Turnaround</p>
+                  <p className="mb-1 text-xs text-muted-foreground">Turnaround</p>
                   <p className="font-medium">
                     {test.turnaround_hours ? `${test.turnaround_hours} hours` : '-'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Specimen</p>
+                  <p className="mb-1 text-xs text-muted-foreground">Specimen</p>
                   <p className="font-medium">{test.specimen_type}</p>
                 </div>
               </div>
               {test.result_type === 'OPTIONS' && test.result_options?.length ? (
                 <div className="mt-4">
-                  <p className="text-muted-foreground text-xs mb-2">Result Options</p>
+                  <p className="mb-2 text-xs text-muted-foreground">Result Options</p>
                   <div className="flex flex-wrap gap-1.5">
                     {test.result_options.map((opt) => (
-                      <Badge key={opt} variant="outline">{opt}</Badge>
+                      <Badge key={opt} variant="outline">
+                        {opt}
+                      </Badge>
                     ))}
                   </div>
                 </div>
               ) : null}
               {test.special_instructions && (
-                <div className="mt-4 p-3 bg-muted/50 rounded text-sm">
-                  <p className="text-muted-foreground text-xs mb-1">Special Instructions</p>
+                <div className="mt-4 rounded bg-muted/50 p-3 text-sm">
+                  <p className="mb-1 text-xs text-muted-foreground">Special Instructions</p>
                   <p>{test.special_instructions}</p>
                 </div>
               )}
@@ -723,10 +706,10 @@ export default function TestCatalogDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                <div className="p-3 rounded-lg border">
-                  <p className="text-muted-foreground text-xs mb-1">Male</p>
-                  <p className="font-medium text-lg">
+              <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+                <div className="rounded-lg border p-3">
+                  <p className="mb-1 text-xs text-muted-foreground">Male</p>
+                  <p className="text-lg font-medium">
                     {test.normal_range_male || (
                       <span className="text-muted-foreground">Not set</span>
                     )}
@@ -735,9 +718,9 @@ export default function TestCatalogDetailPage() {
                     <p className="text-xs text-muted-foreground">{test.result_unit}</p>
                   )}
                 </div>
-                <div className="p-3 rounded-lg border">
-                  <p className="text-muted-foreground text-xs mb-1">Female</p>
-                  <p className="font-medium text-lg">
+                <div className="rounded-lg border p-3">
+                  <p className="mb-1 text-xs text-muted-foreground">Female</p>
+                  <p className="text-lg font-medium">
                     {test.normal_range_female || (
                       <span className="text-muted-foreground">Not set</span>
                     )}
@@ -746,9 +729,9 @@ export default function TestCatalogDetailPage() {
                     <p className="text-xs text-muted-foreground">{test.result_unit}</p>
                   )}
                 </div>
-                <div className="p-3 rounded-lg border">
-                  <p className="text-muted-foreground text-xs mb-1">Child (&lt;18y)</p>
-                  <p className="font-medium text-lg">
+                <div className="rounded-lg border p-3">
+                  <p className="mb-1 text-xs text-muted-foreground">Child (&lt;18y)</p>
+                  <p className="text-lg font-medium">
                     {test.normal_range_child || (
                       <span className="text-muted-foreground">Not set</span>
                     )}
@@ -770,20 +753,20 @@ export default function TestCatalogDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Cost</p>
-                  <p className="font-medium text-lg">{formatCurrency(test.cost)}</p>
+                  <p className="mb-1 text-xs text-muted-foreground">Cost</p>
+                  <p className="text-lg font-medium">{formatCurrency(test.cost)}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">In-House</p>
+                  <p className="mb-1 text-xs text-muted-foreground">In-House</p>
                   <Badge variant={test.available_in_house ? 'default' : 'secondary'}>
                     {test.available_in_house ? 'Yes' : 'No'}
                   </Badge>
                 </div>
                 {test.external_lab_partner && (
                   <div>
-                    <p className="text-muted-foreground text-xs mb-1">External Lab</p>
+                    <p className="mb-1 text-xs text-muted-foreground">External Lab</p>
                     <p className="font-medium">{test.external_lab_partner}</p>
                   </div>
                 )}
@@ -802,11 +785,11 @@ export default function TestCatalogDetailPage() {
                   {test.panel_components.map((comp) => (
                     <div
                       key={comp.id}
-                      className="flex items-center justify-between p-2 rounded border cursor-pointer hover:bg-muted/50"
+                      className="flex cursor-pointer items-center justify-between rounded border p-2 hover:bg-muted/50"
                       onClick={() => router.push(`/laboratory/tests/${comp.code}`)}
                     >
                       <div>
-                        <p className="font-medium text-sm">{comp.name}</p>
+                        <p className="text-sm font-medium">{comp.name}</p>
                         <p className="text-xs text-muted-foreground">{comp.code}</p>
                       </div>
                       <Badge variant="outline" className="text-xs">

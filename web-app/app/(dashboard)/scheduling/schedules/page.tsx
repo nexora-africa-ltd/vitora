@@ -42,11 +42,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Table,
   TableBody,
@@ -59,7 +55,13 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { toast } from 'sonner';
-import { appointmentsApi, attendanceApi, schedulesApi, resourcesApi, shiftsApi } from '@/lib/api/scheduling';
+import {
+  appointmentsApi,
+  attendanceApi,
+  schedulesApi,
+  resourcesApi,
+  shiftsApi,
+} from '@/lib/api/scheduling';
 import type {
   ScheduleType,
   Schedule,
@@ -71,8 +73,13 @@ import type {
 } from '@/lib/types/scheduling';
 
 const DAY_LABELS: Record<number, string> = {
-  0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday',
-  4: 'Friday', 5: 'Saturday', 6: 'Sunday',
+  0: 'Monday',
+  1: 'Tuesday',
+  2: 'Wednesday',
+  3: 'Thursday',
+  4: 'Friday',
+  5: 'Saturday',
+  6: 'Sunday',
 };
 
 const SCHEDULE_TYPE_OPTIONS: { value: ScheduleType; label: string }[] = [
@@ -115,26 +122,28 @@ function ResourceGroup({
   selectedId: number | null;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const recurringCount = schedules.filter(s => s.schedule_type === 'RECURRING').length;
-  const oneTimeCount = schedules.filter(s => s.schedule_type === 'ONE_TIME').length;
-  const blockCount = schedules.filter(s => s.schedule_type === 'BLOCK').length;
+  const recurringCount = schedules.filter((s) => s.schedule_type === 'RECURRING').length;
+  const oneTimeCount = schedules.filter((s) => s.schedule_type === 'ONE_TIME').length;
+  const blockCount = schedules.filter((s) => s.schedule_type === 'BLOCK').length;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
+          <CardHeader className="cursor-pointer px-4 py-3 transition-colors hover:bg-muted/50">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex min-w-0 items-center gap-3">
                 {open ? (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                 ) : (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
-                <CardTitle className="text-sm font-semibold truncate">{resourceName}</CardTitle>
-                <Badge variant="secondary" className="text-xs shrink-0">{schedules.length}</Badge>
+                <CardTitle className="truncate text-sm font-semibold">{resourceName}</CardTitle>
+                <Badge variant="secondary" className="shrink-0 text-xs">
+                  {schedules.length}
+                </Badge>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex shrink-0 items-center gap-1.5">
                 {recurringCount > 0 && (
                   <Badge className={`${typeColors.RECURRING} text-xs`} variant="secondary">
                     {recurringCount} weekly
@@ -155,7 +164,7 @@ function ResourceGroup({
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="pt-0 px-0 sm:px-4 pb-2">
+          <CardContent className="px-0 pb-2 pt-0 sm:px-4">
             {/* Desktop table */}
             <div className="hidden sm:block">
               <div className="overflow-x-auto">
@@ -185,8 +194,15 @@ function ResourceGroup({
                           <TableCell>
                             <div className="flex items-center gap-1.5">
                               <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                              <Badge className={`${typeColors[s.schedule_type]} text-xs`} variant="secondary">
-                                {s.schedule_type === 'RECURRING' ? 'Weekly' : s.schedule_type === 'ONE_TIME' ? 'Once' : 'Block'}
+                              <Badge
+                                className={`${typeColors[s.schedule_type]} text-xs`}
+                                variant="secondary"
+                              >
+                                {s.schedule_type === 'RECURRING'
+                                  ? 'Weekly'
+                                  : s.schedule_type === 'ONE_TIME'
+                                    ? 'Once'
+                                    : 'Block'}
                               </Badge>
                             </div>
                           </TableCell>
@@ -195,9 +211,12 @@ function ResourceGroup({
                               ? s.day_of_week_display || DAY_LABELS[s.day_of_week!]
                               : s.specific_date || '—'}
                           </TableCell>
-                          <TableCell>{s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}</TableCell>
+                          <TableCell>
+                            {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
+                          </TableCell>
                           <TableCell className="text-muted-foreground">
-                            {s.slot_duration_minutes}min{s.buffer_minutes ? ` +${s.buffer_minutes}buf` : ''}
+                            {s.slot_duration_minutes}min
+                            {s.buffer_minutes ? ` +${s.buffer_minutes}buf` : ''}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -206,7 +225,10 @@ function ResourceGroup({
                                 variant="ghost"
                                 size="sm"
                                 className="h-6 w-6 p-0"
-                                onClick={(e) => { e.stopPropagation(); onAddBreak(s.id); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onAddBreak(s.id);
+                                }}
                                 title="Add break"
                               >
                                 <Coffee className="h-3 w-3" />
@@ -214,7 +236,10 @@ function ResourceGroup({
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={s.is_active ? 'default' : 'secondary'} className="text-xs">
+                            <Badge
+                              variant={s.is_active ? 'default' : 'secondary'}
+                              className="text-xs"
+                            >
                               {s.is_active ? 'Yes' : 'No'}
                             </Badge>
                           </TableCell>
@@ -223,7 +248,10 @@ function ResourceGroup({
                               variant="ghost"
                               size="sm"
                               className="h-7 w-7 p-0 text-destructive"
-                              onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(s.id);
+                              }}
                               title="Delete schedule"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -238,25 +266,35 @@ function ResourceGroup({
             </div>
 
             {/* Mobile cards */}
-            <div className="sm:hidden space-y-2 px-3">
+            <div className="space-y-2 px-3 sm:hidden">
               {schedules.map((s) => {
                 const Icon = typeIcons[s.schedule_type];
                 return (
                   <div
                     key={s.id}
-                    className={`rounded-lg border p-3 cursor-pointer transition-colors ${
+                    className={`cursor-pointer rounded-lg border p-3 transition-colors ${
                       selectedId === s.id ? 'border-primary/40 bg-primary/5' : 'hover:bg-muted/50'
                     }`}
                     onClick={() => onRowClick(s)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 mb-1">
+                        <div className="mb-1 flex items-center gap-1.5">
                           <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                          <Badge className={`${typeColors[s.schedule_type]} text-xs`} variant="secondary">
-                            {s.schedule_type === 'RECURRING' ? 'Weekly' : s.schedule_type === 'ONE_TIME' ? 'Once' : 'Block'}
+                          <Badge
+                            className={`${typeColors[s.schedule_type]} text-xs`}
+                            variant="secondary"
+                          >
+                            {s.schedule_type === 'RECURRING'
+                              ? 'Weekly'
+                              : s.schedule_type === 'ONE_TIME'
+                                ? 'Once'
+                                : 'Block'}
                           </Badge>
-                          <Badge variant={s.is_active ? 'default' : 'secondary'} className="text-xs">
+                          <Badge
+                            variant={s.is_active ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
                             {s.is_active ? 'Active' : 'Inactive'}
                           </Badge>
                         </div>
@@ -265,17 +303,22 @@ function ResourceGroup({
                             ? s.day_of_week_display || DAY_LABELS[s.day_of_week!]
                             : s.specific_date}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)} · {s.slot_duration_minutes}min slots
-                          {s.breaks.length > 0 && ` · ${s.breaks.length} break${s.breaks.length > 1 ? 's' : ''}`}
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)} ·{' '}
+                          {s.slot_duration_minutes}min slots
+                          {s.breaks.length > 0 &&
+                            ` · ${s.breaks.length} break${s.breaks.length > 1 ? 's' : ''}`}
                         </p>
                       </div>
-                      <div className="flex gap-1 shrink-0">
+                      <div className="flex shrink-0 gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 p-0"
-                          onClick={(e) => { e.stopPropagation(); onAddBreak(s.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddBreak(s.id);
+                          }}
                         >
                           <Coffee className="h-3.5 w-3.5" />
                         </Button>
@@ -283,7 +326,10 @@ function ResourceGroup({
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 p-0 text-destructive"
-                          onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(s.id);
+                          }}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -295,56 +341,60 @@ function ResourceGroup({
             </div>
 
             {/* Inline detail panel when a schedule is selected */}
-            {selectedId && schedules.find(s => s.id === selectedId) && (() => {
-              const s = schedules.find(s => s.id === selectedId)!;
-              return (
-                <div className="mx-3 sm:mx-0 mt-3 rounded-lg border bg-muted/30 p-3 sm:p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold">Schedule Details</p>
-                    <Badge variant={s.is_active ? 'default' : 'secondary'} className="text-xs">
-                      {s.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Time</p>
-                      <p className="font-medium">{s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}</p>
+            {selectedId &&
+              schedules.find((s) => s.id === selectedId) &&
+              (() => {
+                const s = schedules.find((s) => s.id === selectedId)!;
+                return (
+                  <div className="mx-3 mt-3 space-y-2 rounded-lg border bg-muted/30 p-3 sm:mx-0 sm:p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">Schedule Details</p>
+                      <Badge variant={s.is_active ? 'default' : 'secondary'} className="text-xs">
+                        {s.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Slot Duration</p>
-                      <p className="font-medium">{s.slot_duration_minutes} min</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Buffer</p>
-                      <p className="font-medium">{s.buffer_minutes} min</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Max Appointments</p>
-                      <p className="font-medium">{s.max_appointments ?? '∞'}</p>
-                    </div>
-                  </div>
-                  {s.breaks.length > 0 && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Breaks</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {s.breaks.map((b, i) => (
-                          <Badge key={i} variant="outline" className="text-xs">
-                            {b.start_time.slice(0, 5)}–{b.end_time.slice(0, 5)}
-                            {b.reason && ` (${b.reason})`}
-                          </Badge>
-                        ))}
+                    <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Time</p>
+                        <p className="font-medium">
+                          {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Slot Duration</p>
+                        <p className="font-medium">{s.slot_duration_minutes} min</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Buffer</p>
+                        <p className="font-medium">{s.buffer_minutes} min</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Max Appointments</p>
+                        <p className="font-medium">{s.max_appointments ?? '∞'}</p>
                       </div>
                     </div>
-                  )}
-                  {s.notes && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Notes</p>
-                      <p className="text-sm">{s.notes}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+                    {s.breaks.length > 0 && (
+                      <div>
+                        <p className="mb-1 text-xs text-muted-foreground">Breaks</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {s.breaks.map((b, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">
+                              {b.start_time.slice(0, 5)}–{b.end_time.slice(0, 5)}
+                              {b.reason && ` (${b.reason})`}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {s.notes && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Notes</p>
+                        <p className="text-sm">{s.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
           </CardContent>
         </CollapsibleContent>
       </Card>
@@ -391,18 +441,20 @@ export default function SchedulesPage() {
   // Resources
   const { data: resourceData } = useQuery({
     queryKey: ['scheduling-resources-all'],
-    queryFn: () => resourcesApi.list({ is_active: true, page_size: 200, ordering: 'resource_type,name' }),
+    queryFn: () =>
+      resourcesApi.list({ is_active: true, page_size: 200, ordering: 'resource_type,name' }),
   });
   const resources = useMemo(() => resourceData?.results || [], [resourceData]);
 
   // Schedules
   const { data: scheduleData, isLoading } = useQuery({
     queryKey: ['scheduling-schedules', resourceFilter, page],
-    queryFn: () => schedulesApi.list({
-      resource: resourceFilter ? Number(resourceFilter) : undefined,
-      page,
-      page_size: PAGE_SIZE,
-    }),
+    queryFn: () =>
+      schedulesApi.list({
+        resource: resourceFilter ? Number(resourceFilter) : undefined,
+        page,
+        page_size: PAGE_SIZE,
+      }),
   });
   const schedules = useMemo(() => scheduleData?.results || [], [scheduleData?.results]);
   const totalCount = scheduleData?.count || 0;
@@ -423,7 +475,7 @@ export default function SchedulesPage() {
   // Resources and schedules filtered by active tab
   const tabResources = useMemo(
     () => resources.filter((r) => r.resource_type === activeTab),
-    [resources, activeTab],
+    [resources, activeTab]
   );
   const resourcesByType = useMemo(
     () => ({
@@ -431,23 +483,21 @@ export default function SchedulesPage() {
       PLACE: resources.filter((r) => r.resource_type === 'PLACE'),
       ASSET: resources.filter((r) => r.resource_type === 'ASSET'),
     }),
-    [resources],
+    [resources]
   );
-  const tabResourceIds = useMemo(
-    () => new Set(tabResources.map((r) => r.id)),
-    [tabResources],
-  );
+  const tabResourceIds = useMemo(() => new Set(tabResources.map((r) => r.id)), [tabResources]);
   const tabGroupedSchedules = useMemo(
-    () => groupedSchedules.filter(([, scheds]) =>
-      scheds.some((s) => tabResourceIds.has(s.resource)),
-    ),
-    [groupedSchedules, tabResourceIds],
+    () =>
+      groupedSchedules.filter(([, scheds]) => scheds.some((s) => tabResourceIds.has(s.resource))),
+    [groupedSchedules, tabResourceIds]
   );
   const tabCounts = useMemo(() => {
     const byType: Record<ResourceType, number> = { PERSON: 0, PLACE: 0, ASSET: 0 };
     for (const s of schedules) {
       const res = resources.find((r) => r.id === s.resource);
-      if (res) byType[res.resource_type as ResourceType] = (byType[res.resource_type as ResourceType] || 0) + 1;
+      if (res)
+        byType[res.resource_type as ResourceType] =
+          (byType[res.resource_type as ResourceType] || 0) + 1;
     }
     return byType;
   }, [schedules, resources]);
@@ -472,12 +522,13 @@ export default function SchedulesPage() {
 
   const { data: shiftsData } = useQuery({
     queryKey: ['schedules-page-shifts', weekStart, weekEnd],
-    queryFn: () => shiftsApi.list({
-      from_date: weekStart,
-      to_date: weekEnd,
-      page_size: 500,
-      ordering: 'shift_date,start_time',
-    }),
+    queryFn: () =>
+      shiftsApi.list({
+        from_date: weekStart,
+        to_date: weekEnd,
+        page_size: 500,
+        ordering: 'shift_date,start_time',
+      }),
   });
   const weekShifts = useMemo(() => shiftsData?.results || [], [shiftsData]);
 
@@ -502,7 +553,7 @@ export default function SchedulesPage() {
     return new Set(
       [...(onDutyData?.clocked_in || []), ...(onDutyData?.late || [])]
         .map((entry) => entry.staff_resource_id)
-        .filter((id): id is number => typeof id === 'number'),
+        .filter((id): id is number => typeof id === 'number')
     );
   }, [onDutyData, resourceStatusDate, today]);
 
@@ -511,7 +562,7 @@ export default function SchedulesPage() {
     return new Set(
       (resourceDateAppointmentsData?.results || [])
         .filter((appointment) => activeStatuses.has(appointment.status))
-        .map((appointment) => appointment.resource),
+        .map((appointment) => appointment.resource)
     );
   }, [resourceDateAppointmentsData]);
 
@@ -520,7 +571,7 @@ export default function SchedulesPage() {
     return new Set(
       (resourceDateAppointmentsData?.results || [])
         .filter((appointment) => appointment.status === 'IN_PROGRESS')
-        .map((appointment) => appointment.resource),
+        .map((appointment) => appointment.resource)
     );
   }, [resourceDateAppointmentsData, resourceStatusDate, today]);
 
@@ -529,17 +580,20 @@ export default function SchedulesPage() {
       const scopedResources = resourcesByType[resourceType];
       const isOccupied = (resource: ResourceListItem): boolean => {
         if (resourceType === 'PERSON') {
-          return occupiedStaffResourceIds.has(resource.id) || occupiedInProgressResourceIds.has(resource.id);
+          return (
+            occupiedStaffResourceIds.has(resource.id) ||
+            occupiedInProgressResourceIds.has(resource.id)
+          );
         }
         return occupiedInProgressResourceIds.has(resource.id);
       };
 
       const occupied = scopedResources.filter((resource) => isOccupied(resource));
       const scheduled = scopedResources.filter(
-        (resource) => !isOccupied(resource) && scheduledResourceIds.has(resource.id),
+        (resource) => !isOccupied(resource) && scheduledResourceIds.has(resource.id)
       );
       const available = scopedResources.filter(
-        (resource) => !isOccupied(resource) && !scheduledResourceIds.has(resource.id),
+        (resource) => !isOccupied(resource) && !scheduledResourceIds.has(resource.id)
       );
 
       return {
@@ -549,7 +603,7 @@ export default function SchedulesPage() {
         available,
       };
     },
-    [resourcesByType, occupiedStaffResourceIds, occupiedInProgressResourceIds, scheduledResourceIds],
+    [resourcesByType, occupiedStaffResourceIds, occupiedInProgressResourceIds, scheduledResourceIds]
   );
 
   // Group shifts by staff name
@@ -640,7 +694,7 @@ export default function SchedulesPage() {
           helpContent="Define when resources are available for booking. Add recurring weekly schedules or one-time availability. Breaks exclude time blocks from scheduling. Schedules are grouped by resource — click a row to see details."
           actions={
             <Button size="sm" onClick={() => setShowCreate(true)}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">Add Schedule</span>
               <span className="sm:hidden">Add</span>
             </Button>
@@ -650,11 +704,19 @@ export default function SchedulesPage() {
         {/* Summary + Filter */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
-            {totalCount} schedule{totalCount !== 1 ? 's' : ''} across {groupedSchedules.length} resource{groupedSchedules.length !== 1 ? 's' : ''}
+            {totalCount} schedule{totalCount !== 1 ? 's' : ''} across {groupedSchedules.length}{' '}
+            resource{groupedSchedules.length !== 1 ? 's' : ''}
           </p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as ResourceType); setResourceFilter(''); setPage(1); }}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => {
+            setActiveTab(v as ResourceType);
+            setResourceFilter('');
+            setPage(1);
+          }}
+        >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <TabsList>
               <TabsTrigger value="PERSON" className="gap-1.5">
@@ -662,14 +724,18 @@ export default function SchedulesPage() {
                 <span className="hidden sm:inline">Staff</span>
                 <span className="sm:hidden">Staff</span>
                 {tabCounts.PERSON > 0 && (
-                  <Badge variant="secondary" className="text-xs ml-1 h-5 px-1.5">{tabCounts.PERSON}</Badge>
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                    {tabCounts.PERSON}
+                  </Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value="PLACE" className="gap-1.5">
                 <MapPin className="h-4 w-4" />
                 <span>Rooms</span>
                 {tabCounts.PLACE > 0 && (
-                  <Badge variant="secondary" className="text-xs ml-1 h-5 px-1.5">{tabCounts.PLACE}</Badge>
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                    {tabCounts.PLACE}
+                  </Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value="ASSET" className="gap-1.5">
@@ -677,19 +743,27 @@ export default function SchedulesPage() {
                 <span className="hidden sm:inline">Equipment</span>
                 <span className="sm:hidden">Equip</span>
                 {tabCounts.ASSET > 0 && (
-                  <Badge variant="secondary" className="text-xs ml-1 h-5 px-1.5">{tabCounts.ASSET}</Badge>
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                    {tabCounts.ASSET}
+                  </Badge>
                 )}
               </TabsTrigger>
             </TabsList>
             <Select
               value={resourceFilter || '_all'}
-              onValueChange={(v) => { setResourceFilter(v === '_all' ? '' : v); setPage(1); }}
+              onValueChange={(v) => {
+                setResourceFilter(v === '_all' ? '' : v);
+                setPage(1);
+              }}
             >
               <SelectTrigger className="w-full sm:w-[220px]">
                 <SelectValue placeholder="Filter by resource" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="_all">All {activeTab === 'PERSON' ? 'Staff' : activeTab === 'PLACE' ? 'Rooms' : 'Equipment'}</SelectItem>
+                <SelectItem value="_all">
+                  All{' '}
+                  {activeTab === 'PERSON' ? 'Staff' : activeTab === 'PLACE' ? 'Rooms' : 'Equipment'}
+                </SelectItem>
                 {tabResources.map((r) => (
                   <SelectItem key={r.id} value={r.id.toString()}>
                     {r.name}
@@ -705,66 +779,80 @@ export default function SchedulesPage() {
               {(() => {
                 const statusSummary = getResourceStatusSummary(tabType);
                 return (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center justify-between">
-                      <span>
-                        {tabType === 'PERSON'
-                          ? 'Staff Scheduling Status'
-                          : tabType === 'PLACE'
-                          ? 'Room Scheduling Status'
-                          : 'Equipment Scheduling Status'}
-                      </span>
-                      <Input
-                        type="date"
-                        value={resourceStatusDate}
-                        onChange={(e) => setResourceStatusDate(e.target.value || today)}
-                        className="w-[190px]"
-                      />
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs">
-                        {statusSummary.available.length} available
-                      </Badge>
-                      <Badge className="bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300 text-xs">
-                        {statusSummary.scheduled.length} scheduled
-                      </Badge>
-                      <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 text-xs">
-                        {statusSummary.occupied.length} occupied
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {statusSummary.resources.length} total {tabType === 'PERSON' ? 'staff' : tabType === 'PLACE' ? 'rooms' : 'equipment'}
-                      </Badge>
-                    </div>
-                    <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                      {statusSummary.resources.slice(0, 12).map((resource: ResourceListItem) => {
-                        const isOccupied = statusSummary.occupied.some((item) => item.id === resource.id);
-                        const isScheduled = !isOccupied && statusSummary.scheduled.some((item) => item.id === resource.id);
-                        return (
-                          <div key={resource.id} className="flex items-center justify-between rounded-md border px-2.5 py-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{resource.name}</p>
-                              <p className="text-xs text-muted-foreground font-mono">{resource.code}</p>
-                            </div>
-                            <Badge
-                              className={`text-xs ml-2 ${
-                                isOccupied
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
-                                  : isScheduled
-                                  ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
-                                  : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                              }`}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between text-sm">
+                        <span>
+                          {tabType === 'PERSON'
+                            ? 'Staff Scheduling Status'
+                            : tabType === 'PLACE'
+                              ? 'Room Scheduling Status'
+                              : 'Equipment Scheduling Status'}
+                        </span>
+                        <Input
+                          type="date"
+                          value={resourceStatusDate}
+                          onChange={(e) => setResourceStatusDate(e.target.value || today)}
+                          className="w-[190px]"
+                        />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge className="bg-green-100 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
+                          {statusSummary.available.length} available
+                        </Badge>
+                        <Badge className="bg-cyan-100 text-xs text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300">
+                          {statusSummary.scheduled.length} scheduled
+                        </Badge>
+                        <Badge className="bg-amber-100 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-300">
+                          {statusSummary.occupied.length} occupied
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {statusSummary.resources.length} total{' '}
+                          {tabType === 'PERSON'
+                            ? 'staff'
+                            : tabType === 'PLACE'
+                              ? 'rooms'
+                              : 'equipment'}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {statusSummary.resources.slice(0, 12).map((resource: ResourceListItem) => {
+                          const isOccupied = statusSummary.occupied.some(
+                            (item) => item.id === resource.id
+                          );
+                          const isScheduled =
+                            !isOccupied &&
+                            statusSummary.scheduled.some((item) => item.id === resource.id);
+                          return (
+                            <div
+                              key={resource.id}
+                              className="flex items-center justify-between rounded-md border px-2.5 py-2"
                             >
-                              {isOccupied ? 'Occupied' : isScheduled ? 'Scheduled' : 'Available'}
-                            </Badge>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium">{resource.name}</p>
+                                <p className="font-mono text-xs text-muted-foreground">
+                                  {resource.code}
+                                </p>
+                              </div>
+                              <Badge
+                                className={`ml-2 text-xs ${
+                                  isOccupied
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
+                                    : isScheduled
+                                      ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
+                                      : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                }`}
+                              >
+                                {isOccupied ? 'Occupied' : isScheduled ? 'Scheduled' : 'Available'}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
                 );
               })()}
 
@@ -788,20 +876,27 @@ export default function SchedulesPage() {
                     </Card>
                   ))}
                 </div>
-              ) : tabGroupedSchedules.length === 0 && (tabType !== 'PERSON' || groupedShifts.length === 0) ? (
+              ) : tabGroupedSchedules.length === 0 &&
+                (tabType !== 'PERSON' || groupedShifts.length === 0) ? (
                 <Card className="border-dashed">
                   <CardContent className="py-12 text-center">
-                    <Settings className="h-10 w-10 mx-auto text-muted-foreground mb-3 opacity-50" />
-                    <p className="text-sm font-medium text-muted-foreground">No availability schedules defined</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Appointments may still exist. Add schedules to define when {tabType === 'PERSON' ? 'staff' : tabType === 'PLACE' ? 'rooms' : 'equipment'} are available.
+                    <Settings className="mx-auto mb-3 h-10 w-10 text-muted-foreground opacity-50" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      No availability schedules defined
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Appointments may still exist. Add schedules to define when{' '}
+                      {tabType === 'PERSON' ? 'staff' : tabType === 'PLACE' ? 'rooms' : 'equipment'}{' '}
+                      are available.
                     </p>
                   </CardContent>
                 </Card>
               ) : tabGroupedSchedules.length > 0 ? (
                 <>
                   {tabType === 'PERSON' && (
-                    <h3 className="text-sm font-medium text-muted-foreground">Appointment Availability</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      Appointment Availability
+                    </h3>
                   )}
                   <div className="space-y-3">
                     {tabGroupedSchedules.map(([resourceName, groupSchedules], index) => (
@@ -812,7 +907,9 @@ export default function SchedulesPage() {
                         defaultOpen={index < 3}
                         onAddBreak={setShowBreakDialog}
                         onDelete={(id) => deleteMutation.mutate(id)}
-                        onRowClick={(s) => setSelectedScheduleId(selectedScheduleId === s.id ? null : s.id)}
+                        onRowClick={(s) =>
+                          setSelectedScheduleId(selectedScheduleId === s.id ? null : s.id)
+                        }
                         selectedId={selectedScheduleId}
                       />
                     ))}
@@ -830,10 +927,20 @@ export default function SchedulesPage() {
               Page {page} of {totalPages}
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
+              >
                 Previous
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage(page + 1)}
+              >
                 Next
               </Button>
             </div>
@@ -850,7 +957,7 @@ export default function SchedulesPage() {
               <HelpPopover content="Define availability for a resource. Recurring schedules repeat weekly; one-time schedules apply to a specific date." />
             </div>
           </DialogHeader>
-          <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto">
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto py-2">
             <div>
               <Label>Resource *</Label>
               <Select value={formResource} onValueChange={setFormResource}>
@@ -874,7 +981,9 @@ export default function SchedulesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {SCHEDULE_TYPE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -888,7 +997,9 @@ export default function SchedulesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(DAY_LABELS).map(([v, l]) => (
-                      <SelectItem key={v} value={v}>{l}</SelectItem>
+                      <SelectItem key={v} value={v}>
+                        {l}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -897,13 +1008,21 @@ export default function SchedulesPage() {
             {formType !== 'RECURRING' && (
               <div>
                 <Label>Date *</Label>
-                <Input type="date" value={formSpecificDate} onChange={(e) => setFormSpecificDate(e.target.value)} />
+                <Input
+                  type="date"
+                  value={formSpecificDate}
+                  onChange={(e) => setFormSpecificDate(e.target.value)}
+                />
               </div>
             )}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>Start Time *</Label>
-                <Input type="time" value={formStart} onChange={(e) => setFormStart(e.target.value)} />
+                <Input
+                  type="time"
+                  value={formStart}
+                  onChange={(e) => setFormStart(e.target.value)}
+                />
               </div>
               <div>
                 <Label>End Time *</Label>
@@ -913,15 +1032,30 @@ export default function SchedulesPage() {
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <Label>Slot (min)</Label>
-                <Input type="number" value={formSlotDuration} onChange={(e) => setFormSlotDuration(e.target.value)} min="5" />
+                <Input
+                  type="number"
+                  value={formSlotDuration}
+                  onChange={(e) => setFormSlotDuration(e.target.value)}
+                  min="5"
+                />
               </div>
               <div>
                 <Label>Buffer (min)</Label>
-                <Input type="number" value={formBuffer} onChange={(e) => setFormBuffer(e.target.value)} min="0" />
+                <Input
+                  type="number"
+                  value={formBuffer}
+                  onChange={(e) => setFormBuffer(e.target.value)}
+                  min="0"
+                />
               </div>
               <div>
                 <Label>Max Appts</Label>
-                <Input type="number" value={formMaxAppts} onChange={(e) => setFormMaxAppts(e.target.value)} placeholder="∞" />
+                <Input
+                  type="number"
+                  value={formMaxAppts}
+                  onChange={(e) => setFormMaxAppts(e.target.value)}
+                  placeholder="∞"
+                />
               </div>
             </div>
             <div>
@@ -930,7 +1064,9 @@ export default function SchedulesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeCreate}>Cancel</Button>
+            <Button variant="outline" onClick={closeCreate}>
+              Cancel
+            </Button>
             <Button
               onClick={handleSubmit}
               disabled={!formResource || !formStart || !formEnd || createMutation.isPending}
@@ -954,7 +1090,11 @@ export default function SchedulesPage() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>Start</Label>
-                <Input type="time" value={breakStart} onChange={(e) => setBreakStart(e.target.value)} />
+                <Input
+                  type="time"
+                  value={breakStart}
+                  onChange={(e) => setBreakStart(e.target.value)}
+                />
               </div>
               <div>
                 <Label>End</Label>
@@ -963,11 +1103,17 @@ export default function SchedulesPage() {
             </div>
             <div>
               <Label>Reason</Label>
-              <Input value={breakReason} onChange={(e) => setBreakReason(e.target.value)} placeholder="e.g., Lunch Break" />
+              <Input
+                value={breakReason}
+                onChange={(e) => setBreakReason(e.target.value)}
+                placeholder="e.g., Lunch Break"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBreakDialog(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowBreakDialog(null)}>
+              Cancel
+            </Button>
             <Button onClick={handleAddBreak} disabled={addBreakMutation.isPending}>
               Add Break
             </Button>
@@ -1005,9 +1151,9 @@ function WeekRosterSection({
   const today = new Date().toISOString().split('T')[0];
   return (
     <Card>
-      <CardHeader className="pb-2 px-4 pt-4">
+      <CardHeader className="px-4 pb-2 pt-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <CalendarDays className="h-4 w-4" />
             This Week&apos;s Roster
           </CardTitle>
@@ -1024,10 +1170,13 @@ function WeekRosterSection({
               <TableRow>
                 <TableHead className="w-[140px]">Staff</TableHead>
                 {weekDates.map((date, i) => (
-                  <TableHead key={date} className={`text-center text-xs ${date === today ? 'bg-primary/5 font-bold' : ''}`}>
+                  <TableHead
+                    key={date}
+                    className={`text-center text-xs ${date === today ? 'bg-primary/5 font-bold' : ''}`}
+                  >
                     {SHORT_DAYS[i]}
                     <br />
-                    <span className="text-muted-foreground font-normal">{date.slice(8)}</span>
+                    <span className="font-normal text-muted-foreground">{date.slice(8)}</span>
                   </TableHead>
                 ))}
               </TableRow>
@@ -1035,19 +1184,24 @@ function WeekRosterSection({
             <TableBody>
               {groupedShifts.map(([staffName, shifts]) => (
                 <TableRow key={staffName}>
-                  <TableCell className="font-medium text-sm truncate max-w-[140px]">{staffName}</TableCell>
+                  <TableCell className="max-w-[140px] truncate text-sm font-medium">
+                    {staffName}
+                  </TableCell>
                   {weekDates.map((date) => {
                     const dayShifts = shifts.filter((s) => s.shift_date === date);
                     return (
-                      <TableCell key={date} className={`text-center p-1 ${date === today ? 'bg-primary/5' : ''}`}>
+                      <TableCell
+                        key={date}
+                        className={`p-1 text-center ${date === today ? 'bg-primary/5' : ''}`}
+                      >
                         {dayShifts.length === 0 ? (
-                          <span className="text-muted-foreground text-xs">—</span>
+                          <span className="text-xs text-muted-foreground">—</span>
                         ) : (
                           <div className="space-y-0.5">
                             {dayShifts.map((s) => (
                               <Badge
                                 key={s.id}
-                                className={`text-[10px] px-1 py-0 block w-fit mx-auto ${SHIFT_STATUS_COLORS[s.status] || ''}`}
+                                className={`mx-auto block w-fit px-1 py-0 text-[10px] ${SHIFT_STATUS_COLORS[s.status] || ''}`}
                               >
                                 {s.shift_type_display || s.shift_type}
                               </Badge>

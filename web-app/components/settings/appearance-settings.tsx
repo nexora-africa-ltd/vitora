@@ -37,7 +37,8 @@ export function AppearanceSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Switch between the current module navigation and a workflow-first clinical landing experience.
+          Switch between the current module navigation and a workflow-first clinical landing
+          experience.
         </p>
 
         {isClinicalNavigationEligible ? (
@@ -59,7 +60,10 @@ export function AppearanceSettings() {
                     <RadioGroupItem value={option.value} id={optionId} className="mt-1" />
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor={optionId} className="cursor-pointer font-medium text-foreground">
+                        <Label
+                          htmlFor={optionId}
+                          className="cursor-pointer font-medium text-foreground"
+                        >
                           {option.title}
                         </Label>
                         {isSelected ? <Badge variant="secondary">Active</Badge> : null}
@@ -75,7 +79,8 @@ export function AppearanceSettings() {
           <div className="rounded-lg border border-dashed border-border/70 bg-muted/30 p-4">
             <p className="text-sm font-medium text-foreground">Clinical Mode rollout is limited.</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Clinical Mode is currently available to clinical roles and selected front-desk workflows. Your current role will keep the standard navigation for now.
+              Clinical Mode is currently available to clinical roles and selected front-desk
+              workflows. Your current role will keep the standard navigation for now.
             </p>
           </div>
         )}

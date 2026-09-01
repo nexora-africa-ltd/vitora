@@ -25,7 +25,11 @@ import { useDebounce } from '@/lib/hooks/use-debounce';
 import { proceduresApi } from '@/lib/api/procedures';
 import { formatDate, formatTime } from '@/lib/utils/format';
 import type { ProcedureOrderListItem, ProcedureOrderStatus } from '@/lib/types/procedure';
-import { PROCEDURE_STATUS_COLORS, PROCEDURE_STATUS_LABELS, PROCEDURE_PRIORITY_COLORS } from '@/lib/types/procedure';
+import {
+  PROCEDURE_STATUS_COLORS,
+  PROCEDURE_STATUS_LABELS,
+  PROCEDURE_PRIORITY_COLORS,
+} from '@/lib/types/procedure';
 
 export default function ProceduresDashboardPage() {
   const router = useRouter();
@@ -51,7 +55,7 @@ export default function ProceduresDashboardPage() {
 
   const orders = useMemo(
     () => (todayOrders?.results || []) as ProcedureOrderListItem[],
-    [todayOrders],
+    [todayOrders]
   );
 
   const columns = [
@@ -83,7 +87,7 @@ export default function ProceduresDashboardPage() {
       header: 'Priority',
       sortable: true,
       cell: (item: ProcedureOrderListItem) => (
-        <Badge className={`${PROCEDURE_PRIORITY_COLORS[item.priority]} shrink-0 w-fit`}>
+        <Badge className={`${PROCEDURE_PRIORITY_COLORS[item.priority]} w-fit shrink-0`}>
           {item.priority}
         </Badge>
       ),
@@ -94,7 +98,7 @@ export default function ProceduresDashboardPage() {
       header: 'Status',
       sortable: true,
       cell: (item: ProcedureOrderListItem) => (
-        <Badge className={`${PROCEDURE_STATUS_COLORS[item.status]} shrink-0 w-fit`}>
+        <Badge className={`${PROCEDURE_STATUS_COLORS[item.status]} w-fit shrink-0`}>
           {PROCEDURE_STATUS_LABELS[item.status]}
         </Badge>
       ),
@@ -117,18 +121,16 @@ export default function ProceduresDashboardPage() {
           helpContent="Monitor scheduled procedures, consent status, and performance. Manage procedure orders and track outcomes."
           actions={
             <Button onClick={() => router.push('/procedures/orders')}>
-              <SquareDashedTopSolid className="h-4 w-4 mr-2" />
+              <SquareDashedTopSolid className="mr-2 h-4 w-4" />
               All Orders
             </Button>
           }
         />
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {statsLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-24" />
-            ))
+            Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
           ) : (
             <>
               <StatsCard
@@ -162,7 +164,7 @@ export default function ProceduresDashboardPage() {
 
         {/* Search */}
         <div className="relative w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search orders..."
             value={search}

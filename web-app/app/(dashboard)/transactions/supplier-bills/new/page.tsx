@@ -45,7 +45,9 @@ export default function NewSupplierBillPage() {
   const [issueDate, setIssueDate] = React.useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = React.useState('');
   const [notes, setNotes] = React.useState('');
-  const [items, setItems] = React.useState<LineItem[]>([{ description: '', quantity: '1', unit_cost: '' }]);
+  const [items, setItems] = React.useState<LineItem[]>([
+    { description: '', quantity: '1', unit_cost: '' },
+  ]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // Fetch suppliers for dropdown
@@ -82,11 +84,19 @@ export default function NewSupplierBillPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supplierId) {
-      toast({ title: 'Validation Error', description: 'Please select a supplier.', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Please select a supplier.',
+        variant: 'destructive',
+      });
       return;
     }
     if (items.length === 0 || !items[0]?.description) {
-      toast({ title: 'Validation Error', description: 'Please add at least one line item.', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Please add at least one line item.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -112,10 +122,17 @@ export default function NewSupplierBillPage() {
       const bill = await billingApi.supplierBills.create(createData);
 
       queryClient.invalidateQueries({ queryKey: ['supplier-bills'] });
-      toast({ title: 'Bill created', description: `Bill ${bill.bill_number} created successfully.` });
+      toast({
+        title: 'Bill created',
+        description: `Bill ${bill.bill_number} created successfully.`,
+      });
       router.push(`/transactions/supplier-bills/${bill.id}`);
     } catch {
-      toast({ title: 'Error', description: 'Failed to create supplier bill.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to create supplier bill.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -135,7 +152,7 @@ export default function NewSupplierBillPage() {
             <CardTitle className="text-base">Bill Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="supplier">Supplier *</Label>
                 <Select value={supplierId} onValueChange={setSupplierId}>
@@ -197,13 +214,13 @@ export default function NewSupplierBillPage() {
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">Line Items</CardTitle>
             <Button type="button" size="sm" variant="outline" onClick={addItem}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               Add Item
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
             {items.map((item, index) => (
-              <div key={index} className="grid grid-cols-12 gap-2 items-end">
+              <div key={index} className="grid grid-cols-12 items-end gap-2">
                 <div className="col-span-12 sm:col-span-5">
                   {index === 0 && <Label className="text-xs">Description</Label>}
                   <Input
@@ -231,10 +248,12 @@ export default function NewSupplierBillPage() {
                     placeholder="0.00"
                   />
                 </div>
-                <div className="col-span-3 sm:col-span-2 flex items-center gap-2">
-                  {index === 0 && <Label className="text-xs invisible">Actions</Label>}
-                  <span className="text-sm font-medium flex-1 text-right">
-                    {((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_cost) || 0)).toFixed(2)}
+                <div className="col-span-3 flex items-center gap-2 sm:col-span-2">
+                  {index === 0 && <Label className="invisible text-xs">Actions</Label>}
+                  <span className="flex-1 text-right text-sm font-medium">
+                    {((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_cost) || 0)).toFixed(
+                      2
+                    )}
                   </span>
                   {items.length > 1 && (
                     <Button
@@ -250,21 +269,15 @@ export default function NewSupplierBillPage() {
                 </div>
               </div>
             ))}
-            <div className="flex justify-end pt-2 border-t">
-              <p className="text-sm font-semibold">
-                Total: KES {totalAmount.toFixed(2)}
-              </p>
+            <div className="flex justify-end border-t pt-2">
+              <p className="text-sm font-semibold">Total: KES {totalAmount.toFixed(2)}</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Submit */}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-          >
+          <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>

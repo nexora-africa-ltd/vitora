@@ -2,12 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Loader2,
-  Plus,
-  CalendarCheck,
-  Users,
-} from 'lucide-react';
+import { Loader2, Plus, CalendarCheck, Users } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -15,12 +10,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -109,7 +99,10 @@ export default function CampaignsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      toast({ title: 'Campaign Created', description: 'New vaccination campaign has been created.' });
+      toast({
+        title: 'Campaign Created',
+        description: 'New vaccination campaign has been created.',
+      });
       setDialogOpen(false);
       resetForm();
     },
@@ -139,7 +132,7 @@ export default function CampaignsPage() {
           helpContent="Manage mass vaccination campaigns (e.g., COVID-19 boosters, Polio mop-ups). Create campaigns, track progress, and monitor target coverage."
           actions={
             <Button size="sm" onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">New Campaign</span>
               <span className="sm:hidden">New</span>
             </Button>
@@ -200,9 +193,7 @@ export default function CampaignsPage() {
               header: 'Target',
               sortable: true,
               sortType: 'number',
-              cell: (c) => (
-                <span className="text-sm">{c.target_count.toLocaleString()}</span>
-              ),
+              cell: (c) => <span className="text-sm">{c.target_count.toLocaleString()}</span>,
               hideOnMobile: true,
             },
             {
@@ -210,7 +201,7 @@ export default function CampaignsPage() {
               header: 'Status',
               sortable: true,
               cell: (c) => (
-                <Badge className={`${campaignStatusColors[c.status]} shrink-0 w-fit`}>
+                <Badge className={`${campaignStatusColors[c.status]} w-fit shrink-0`}>
                   {c.status}
                 </Badge>
               ),
@@ -218,20 +209,20 @@ export default function CampaignsPage() {
           ]}
           mobileCard={(c: VaccineCampaignListItem) => (
             <Card className="p-3">
-              <div className="flex justify-between items-start">
+              <div className="flex items-start justify-between">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{c.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="truncate font-medium">{c.name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {formatDate(c.start_date)} – {formatDate(c.end_date)}
                   </p>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="mt-1 flex items-center gap-2">
                     <Users className="h-3 w-3 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">
                       Target: {c.target_count.toLocaleString()} • {c.target_population}
                     </span>
                   </div>
                 </div>
-                <Badge className={`${campaignStatusColors[c.status]} shrink-0 w-fit self-start`}>
+                <Badge className={`${campaignStatusColors[c.status]} w-fit shrink-0 self-start`}>
                   {c.status}
                 </Badge>
               </div>
@@ -248,17 +239,23 @@ export default function CampaignsPage() {
                 <HelpPopover content="Create a new mass vaccination campaign. Set the target population, date range, and associated vaccines." />
               </div>
             </DialogHeader>
-            <div className="space-y-3 sm:space-y-4 pt-2">
+            <div className="space-y-3 pt-2 sm:space-y-4">
               <div>
-                <Label>Campaign Name <span className="text-destructive">*</span></Label>
+                <Label>
+                  Campaign Name <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onBlur={() => setTouched((t) => ({ ...t, name: true }))}
                   placeholder="e.g. COVID-19 Booster Campaign 2026"
-                  className={touched.name && !name ? 'border-destructive focus-visible:ring-destructive' : ''}
+                  className={
+                    touched.name && !name ? 'border-destructive focus-visible:ring-destructive' : ''
+                  }
                 />
-                {touched.name && !name && <p className="text-xs text-destructive mt-1">Campaign name is required</p>}
+                {touched.name && !name && (
+                  <p className="mt-1 text-xs text-destructive">Campaign name is required</p>
+                )}
               </div>
               <div>
                 <Label>Description</Label>
@@ -269,40 +266,63 @@ export default function CampaignsPage() {
                   rows={2}
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 <div>
-                  <Label>Start Date <span className="text-destructive">*</span></Label>
+                  <Label>
+                    Start Date <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     type="date"
                     value={startDateVal}
                     onChange={(e) => setStartDateVal(e.target.value)}
                     onBlur={() => setTouched((t) => ({ ...t, startDate: true }))}
-                    className={touched.startDate && !startDateVal ? 'border-destructive focus-visible:ring-destructive' : ''}
+                    className={
+                      touched.startDate && !startDateVal
+                        ? 'border-destructive focus-visible:ring-destructive'
+                        : ''
+                    }
                   />
-                  {touched.startDate && !startDateVal && <p className="text-xs text-destructive mt-1">Start date is required</p>}
+                  {touched.startDate && !startDateVal && (
+                    <p className="mt-1 text-xs text-destructive">Start date is required</p>
+                  )}
                 </div>
                 <div>
-                  <Label>End Date <span className="text-destructive">*</span></Label>
+                  <Label>
+                    End Date <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     type="date"
                     value={endDateVal}
                     onChange={(e) => setEndDateVal(e.target.value)}
                     onBlur={() => setTouched((t) => ({ ...t, endDate: true }))}
-                    className={touched.endDate && !endDateVal ? 'border-destructive focus-visible:ring-destructive' : ''}
+                    className={
+                      touched.endDate && !endDateVal
+                        ? 'border-destructive focus-visible:ring-destructive'
+                        : ''
+                    }
                   />
-                  {touched.endDate && !endDateVal && <p className="text-xs text-destructive mt-1">End date is required</p>}
+                  {touched.endDate && !endDateVal && (
+                    <p className="mt-1 text-xs text-destructive">End date is required</p>
+                  )}
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 <div>
-                  <Label>Target Population <span className="text-destructive">*</span></Label>
-                  <Select value={targetPopulation} onValueChange={(v) => setTargetPopulation(v as TargetPopulation)}>
+                  <Label>
+                    Target Population <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={targetPopulation}
+                    onValueChange={(v) => setTargetPopulation(v as TargetPopulation)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {POPULATION_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -320,7 +340,7 @@ export default function CampaignsPage() {
               {vaccines && vaccines.length > 0 && (
                 <div>
                   <Label>Vaccines</Label>
-                  <div className="flex flex-wrap gap-2 mt-1">
+                  <div className="mt-1 flex flex-wrap gap-2">
                     {vaccines.map((v) => {
                       const selected = selectedVaccineIds.includes(v.id);
                       return (
@@ -341,13 +361,15 @@ export default function CampaignsPage() {
                   </div>
                 </div>
               )}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
                 <Button
                   onClick={() => createMutation.mutate()}
                   disabled={!name || !startDateVal || !endDateVal || createMutation.isPending}
                 >
-                  {createMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {createMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                   Create Campaign
                 </Button>
               </div>

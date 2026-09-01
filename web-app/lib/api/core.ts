@@ -5,10 +5,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
-import {
-  PRCNumberResponseSchema,
-  CaseNumberResponseSchema,
-} from '@/lib/schemas/core.schema';
+import { PRCNumberResponseSchema, CaseNumberResponseSchema } from '@/lib/schemas/core.schema';
 
 export interface PRCNumberResponse {
   prc_number: string;
@@ -26,10 +23,9 @@ export const coreApi = {
    */
   async generatePRCNumber(facilityCode?: string): Promise<string> {
     const params = facilityCode ? { facility_code: facilityCode } : {};
-    const response = await apiClient.get<PRCNumberResponse>(
-      '/api/core/generate/prc-number/',
-      { params }
-    );
+    const response = await apiClient.get<PRCNumberResponse>('/api/core/generate/prc-number/', {
+      params,
+    });
     const validated = parseResponse(PRCNumberResponseSchema, response.data, {
       context: 'coreApi.generatePRCNumber',
     });
@@ -46,10 +42,9 @@ export const coreApi = {
     if (facilityCode) {
       params.facility_code = facilityCode;
     }
-    const response = await apiClient.get<CaseNumberResponse>(
-      '/api/core/generate/case-number/',
-      { params }
-    );
+    const response = await apiClient.get<CaseNumberResponse>('/api/core/generate/case-number/', {
+      params,
+    });
     const validated = parseResponse(CaseNumberResponseSchema, response.data, {
       context: 'coreApi.generateCaseNumber',
     });

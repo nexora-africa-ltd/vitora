@@ -21,16 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Calendar,
-  User,
-  Heart,
-  Shield,
-  CheckCircle,
-  XCircle,
-  Edit,
-  Plus,
-} from 'lucide-react';
+import { Calendar, User, Heart, Shield, CheckCircle, XCircle, Edit, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
@@ -43,9 +34,7 @@ import {
   useStartCounsellingReferral,
   useCompleteCounsellingReferral,
 } from '@/lib/hooks/use-counselling';
-import {
-  RISK_LEVEL_CONFIG,
-} from '@/lib/types/counselling';
+import { RISK_LEVEL_CONFIG } from '@/lib/types/counselling';
 import { useToast } from '@/lib/hooks/use-toast';
 
 interface CounsellingReferralDetailProps {
@@ -58,7 +47,8 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
 
   const { data: referral, isLoading, error } = useCounsellingReferral(referralId);
-  const { data: sessionsData, isLoading: sessionsLoading } = useCounsellingReferralSessions(referralId);
+  const { data: sessionsData, isLoading: sessionsLoading } =
+    useCounsellingReferralSessions(referralId);
 
   const acceptMutation = useAcceptCounsellingReferral();
   const rejectMutation = useRejectCounsellingReferral();
@@ -74,11 +64,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
   }
 
   if (error || !referral) {
-    return (
-      <div className="p-4 text-center text-destructive">
-        Failed to load referral details
-      </div>
-    );
+    return <div className="p-4 text-center text-destructive">Failed to load referral details</div>;
   }
 
   const handleAction = async (action: string) => {
@@ -117,7 +103,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
   const canEdit = !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(referral.status);
 
   const sessions = sessionsData?.results || [];
-  const completedSessions = sessions.filter(s => s.status === 'COMPLETED').length;
+  const completedSessions = sessions.filter((s) => s.status === 'COMPLETED').length;
 
   return (
     <div className="space-y-6">
@@ -127,12 +113,12 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
       />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
             <OrderStatusBadge status={referral.status} />
           </div>
-          <p className="text-muted-foreground mt-1">
+          <p className="mt-1 text-muted-foreground">
             Created {format(parseISO(referral.created_at), 'PPP')}
           </p>
         </div>
@@ -143,31 +129,31 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
               variant="outline"
               onClick={() => router.push(`/allied-health/counselling/referrals/${referralId}/edit`)}
             >
-              <Edit className="h-4 w-4 mr-2" />
+              <Edit className="mr-2 h-4 w-4" />
               Edit
             </Button>
           )}
           {canAccept && (
             <>
               <Button onClick={() => setConfirmAction('accept')}>
-                <CheckCircle className="h-4 w-4 mr-2" />
+                <CheckCircle className="mr-2 h-4 w-4" />
                 Accept
               </Button>
               <Button variant="destructive" onClick={() => setConfirmAction('reject')}>
-                <XCircle className="h-4 w-4 mr-2" />
+                <XCircle className="mr-2 h-4 w-4" />
                 Reject
               </Button>
             </>
           )}
           {canStart && (
             <Button onClick={() => setConfirmAction('start')}>
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle className="mr-2 h-4 w-4" />
               Start
             </Button>
           )}
           {canComplete && (
             <Button onClick={() => setConfirmAction('complete')}>
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle className="mr-2 h-4 w-4" />
               Complete
             </Button>
           )}
@@ -176,7 +162,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Info */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* Patient & Type */}
           <Card>
             <CardHeader>
@@ -201,9 +187,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Assigned Counsellor</h4>
-                <p className="font-medium">
-                  {referral.assigned_counsellor_name || 'Not assigned'}
-                </p>
+                <p className="font-medium">{referral.assigned_counsellor_name || 'Not assigned'}</p>
               </div>
             </CardContent>
           </Card>
@@ -221,7 +205,9 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
 
               {referral.clinical_summary && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Clinical Summary</h4>
+                  <h4 className="mb-1 text-sm font-medium text-muted-foreground">
+                    Clinical Summary
+                  </h4>
                   <p className="whitespace-pre-wrap">{referral.clinical_summary}</p>
                 </div>
               )}
@@ -237,7 +223,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="mb-3 flex items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground">Risk Assessment:</span>
               </div>
 
@@ -260,9 +246,11 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
                 {referral.status === 'IN_PROGRESS' && (
                   <Button
                     size="sm"
-                    onClick={() => router.push(`/allied-health/counselling/referrals/${referralId}/sessions/new`)}
+                    onClick={() =>
+                      router.push(`/allied-health/counselling/referrals/${referralId}/sessions/new`)
+                    }
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     Add Session
                   </Button>
                 )}
@@ -272,14 +260,16 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
               {sessionsLoading ? (
                 <LoadingSpinner />
               ) : sessions.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No sessions recorded yet</p>
+                <p className="py-4 text-center text-muted-foreground">No sessions recorded yet</p>
               ) : (
                 <div className="space-y-3">
                   {sessions.map((session) => (
                     <div
                       key={session.id}
-                      className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50"
-                      onClick={() => router.push(`/allied-health/counselling/sessions/${session.id}`)}
+                      className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                      onClick={() =>
+                        router.push(`/allied-health/counselling/sessions/${session.id}`)
+                      }
                     >
                       <div>
                         <p className="font-medium">Session {session.session_number}</p>
@@ -306,10 +296,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
               <CardTitle>Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <SessionProgress
-                completed={completedSessions}
-                total={referral.total_sessions}
-              />
+              <SessionProgress completed={completedSessions} total={referral.total_sessions} />
             </CardContent>
           </Card>
 
@@ -367,8 +354,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
                 'This will reject the referral. This action cannot be undone.'}
               {confirmAction === 'start' &&
                 'This will start the counselling process and enable session recording.'}
-              {confirmAction === 'complete' &&
-                'This will mark the counselling as completed.'}
+              {confirmAction === 'complete' && 'This will mark the counselling as completed.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

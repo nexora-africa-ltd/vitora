@@ -91,19 +91,29 @@ function ApgarBadge({ score, label }: { score: number | null; label: string }) {
         : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
   return (
     <div className="text-center">
-      <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full text-lg font-bold ${color}`}>
+      <div
+        className={`inline-flex h-10 w-10 items-center justify-center rounded-full text-lg font-bold ${color}`}
+      >
         {score}
       </div>
-      <p className="text-xs text-muted-foreground mt-1">{label}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }
 
-function InfoRow({ label, value, className }: { label: string; value: React.ReactNode; className?: string }) {
+function InfoRow({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div className={`flex justify-between text-sm ${className ?? ''}`}>
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-right">{value ?? '—'}</span>
+      <span className="text-right font-medium">{value ?? '—'}</span>
     </div>
   );
 }
@@ -121,9 +131,11 @@ export default function DeliveryDetailPage({ params }: PageProps) {
   const { refresh, isRefreshing } = usePageRefresh();
   const deliveryId = parseInt(id, 10);
 
-  const { data: delivery, isLoading, error } = useDelivery(
-    Number.isFinite(deliveryId) ? deliveryId : undefined,
-  );
+  const {
+    data: delivery,
+    isLoading,
+    error,
+  } = useDelivery(Number.isFinite(deliveryId) ? deliveryId : undefined);
 
   if (isLoading) {
     return (
@@ -151,7 +163,10 @@ export default function DeliveryDetailPage({ params }: PageProps) {
     );
   }
 
-  const hasApgar = delivery.apgar_score_1min !== null || delivery.apgar_score_5min !== null || delivery.apgar_score_10min !== null;
+  const hasApgar =
+    delivery.apgar_score_1min !== null ||
+    delivery.apgar_score_5min !== null ||
+    delivery.apgar_score_10min !== null;
   const hasComplications = delivery.maternal_complications || delivery.neonatal_complications;
 
   return (
@@ -163,7 +178,7 @@ export default function DeliveryDetailPage({ params }: PageProps) {
           actions={
             <Button variant="outline" size="sm" asChild>
               <Link href={`/mch/${delivery.registration}?tab=delivery`}>
-                <ExternalLink className="h-4 w-4 mr-1.5" />
+                <ExternalLink className="mr-1.5 h-4 w-4" />
                 MCH Record
               </Link>
             </Button>
@@ -171,23 +186,26 @@ export default function DeliveryDetailPage({ params }: PageProps) {
         />
 
         {/* Summary bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-          <div className="flex flex-col gap-1 min-w-0">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 flex-col gap-1">
             <p className="text-sm font-medium">
               {formatDate(delivery.delivery_date)}
               {delivery.delivery_time && (
-                <span className="text-muted-foreground"> at {delivery.delivery_time.slice(0, 5)}</span>
+                <span className="text-muted-foreground">
+                  {' '}
+                  at {delivery.delivery_time.slice(0, 5)}
+                </span>
               )}
             </p>
             <p className="text-xs text-muted-foreground">
               {TYPE_LABELS[delivery.delivery_type]} • {PLACE_LABELS[delivery.place_of_delivery]}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge className={`${OUTCOME_COLORS[delivery.delivery_outcome]} shrink-0 w-fit`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className={`${OUTCOME_COLORS[delivery.delivery_outcome]} w-fit shrink-0`}>
               {OUTCOME_LABELS[delivery.delivery_outcome]}
             </Badge>
-            <Badge className={`${STATUS_COLORS[delivery.status]} shrink-0 w-fit`}>
+            <Badge className={`${STATUS_COLORS[delivery.status]} w-fit shrink-0`}>
               {delivery.status}
             </Badge>
           </div>
@@ -196,7 +214,7 @@ export default function DeliveryDetailPage({ params }: PageProps) {
         {/* Alerts */}
         {delivery.alerts.length > 0 && (
           <Card className="border-destructive/50 bg-destructive/5">
-            <CardContent className="py-3 flex flex-wrap gap-2">
+            <CardContent className="flex flex-wrap gap-2 py-3">
               {delivery.alerts.map((alert) => (
                 <Badge key={alert} variant="destructive" className="gap-1">
                   <AlertTriangle className="h-3 w-3" />
@@ -211,7 +229,7 @@ export default function DeliveryDetailPage({ params }: PageProps) {
           {/* Baby Information */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Baby className="h-4 w-4" />
                 Baby Information
               </CardTitle>
@@ -225,25 +243,35 @@ export default function DeliveryDetailPage({ params }: PageProps) {
                     <span>
                       {delivery.birth_weight} kg
                       {delivery.is_low_birth_weight && (
-                        <Badge variant="destructive" className="ml-2 text-xs">Low</Badge>
+                        <Badge variant="destructive" className="ml-2 text-xs">
+                          Low
+                        </Badge>
                       )}
                       {delivery.is_macrosomia && (
-                        <Badge variant="outline" className="ml-2 text-xs border-orange-400 text-orange-700">Macrosomia</Badge>
+                        <Badge
+                          variant="outline"
+                          className="ml-2 border-orange-400 text-xs text-orange-700"
+                        >
+                          Macrosomia
+                        </Badge>
                       )}
                     </span>
                   ) : null
                 }
               />
               <InfoRow label="Resuscitation" value={delivery.resuscitation_done ? 'Yes' : 'No'} />
-              <InfoRow label="Placenta Complete" value={delivery.placenta_complete ? 'Yes' : 'No'} />
+              <InfoRow
+                label="Placenta Complete"
+                value={delivery.placenta_complete ? 'Yes' : 'No'}
+              />
               {delivery.baby_patient && (
                 <>
                   <Separator className="my-2" />
-                  <div className="flex justify-between items-center text-sm">
+                  <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Baby Patient Record</span>
                     <Link
                       href={`/patients/${delivery.baby_patient}`}
-                      className="text-primary hover:underline font-medium flex items-center gap-1"
+                      className="flex items-center gap-1 font-medium text-primary hover:underline"
                     >
                       {delivery.baby_patient_mrn}
                       <ExternalLink className="h-3 w-3" />
@@ -257,7 +285,7 @@ export default function DeliveryDetailPage({ params }: PageProps) {
           {/* APGAR Scores */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Heart className="h-4 w-4" />
                 APGAR Scores
               </CardTitle>
@@ -270,7 +298,7 @@ export default function DeliveryDetailPage({ params }: PageProps) {
                   <ApgarBadge score={delivery.apgar_score_10min} label="10 min" />
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="py-4 text-center text-sm text-muted-foreground">
                   No APGAR scores recorded
                 </p>
               )}
@@ -280,7 +308,7 @@ export default function DeliveryDetailPage({ params }: PageProps) {
           {/* Delivery Details */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Stethoscope className="h-4 w-4" />
                 Delivery Details
               </CardTitle>
@@ -293,21 +321,15 @@ export default function DeliveryDetailPage({ params }: PageProps) {
                 label="Blood Loss"
                 value={delivery.blood_loss_ml ? `${delivery.blood_loss_ml} mL` : null}
               />
-              <InfoRow
-                label="Delivered By"
-                value={delivery.delivered_by_name}
-              />
-              <InfoRow
-                label="Recorded"
-                value={formatDateTime(delivery.created_at)}
-              />
+              <InfoRow label="Delivered By" value={delivery.delivered_by_name} />
+              <InfoRow label="Recorded" value={formatDateTime(delivery.created_at)} />
             </CardContent>
           </Card>
 
           {/* Complications & Notes */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <FileText className="h-4 w-4" />
                 Complications & Notes
               </CardTitle>
@@ -315,29 +337,39 @@ export default function DeliveryDetailPage({ params }: PageProps) {
             <CardContent className="space-y-3">
               {delivery.maternal_complications ? (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Maternal Complications</p>
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Maternal Complications
+                  </p>
                   <p className="text-sm">{delivery.maternal_complications}</p>
                 </div>
               ) : (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Maternal Complications</p>
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Maternal Complications
+                  </p>
                   <p className="text-sm text-muted-foreground">None recorded</p>
                 </div>
               )}
               {delivery.neonatal_complications ? (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Neonatal Complications</p>
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Neonatal Complications
+                  </p>
                   <p className="text-sm">{delivery.neonatal_complications}</p>
                 </div>
               ) : (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Neonatal Complications</p>
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Neonatal Complications
+                  </p>
                   <p className="text-sm text-muted-foreground">None recorded</p>
                 </div>
               )}
               {delivery.notes && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Notes</p>
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Notes
+                  </p>
                   <p className="text-sm">{delivery.notes}</p>
                 </div>
               )}
@@ -355,14 +387,14 @@ export default function DeliveryDetailPage({ params }: PageProps) {
               {delivery.admission && (
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/admissions/${delivery.admission}`}>
-                    <Building2 className="h-4 w-4 mr-1.5" />
+                    <Building2 className="mr-1.5 h-4 w-4" />
                     Admission
                   </Link>
                 </Button>
               )}
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/mch/${delivery.registration}?tab=partograph`}>
-                  <Clock className="h-4 w-4 mr-1.5" />
+                  <Clock className="mr-1.5 h-4 w-4" />
                   Partograph
                 </Link>
               </Button>

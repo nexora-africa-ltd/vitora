@@ -13,12 +13,11 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
     '^msw/node$': '<rootDir>/node_modules/msw/lib/node/index.js',
     '^msw$': '<rootDir>/node_modules/msw/lib/core/index.js',
-    '^@mswjs/interceptors/ClientRequest$': '<rootDir>/node_modules/@mswjs/interceptors/lib/node/interceptors/ClientRequest/index.js',
+    '^@mswjs/interceptors/ClientRequest$':
+      '<rootDir>/node_modules/@mswjs/interceptors/lib/node/interceptors/ClientRequest/index.js',
   },
   // Handle ESM modules that need to be transformed
-  transformIgnorePatterns: [
-    '/node_modules/(?!(msw|@mswjs)/)/',
-  ],
+  transformIgnorePatterns: ['/node_modules/(?!(msw|@mswjs)/)/'],
   collectCoverageFrom: [
     'lib/**/*.{js,jsx,ts,tsx}',
     'components/**/*.{js,jsx,ts,tsx}',
@@ -35,10 +34,7 @@ const customJestConfig = {
       statements: 40,
     },
   },
-  testMatch: [
-    '**/__tests__/**/*.test.[jt]s?(x)',
-    '**/__tests__/**/*.spec.[jt]s?(x)',
-  ],
+  testMatch: ['**/__tests__/**/*.test.[jt]s?(x)', '**/__tests__/**/*.spec.[jt]s?(x)'],
   // Exclude E2E tests - run with Playwright separately
   testPathIgnorePatterns: [
     '/node_modules/',

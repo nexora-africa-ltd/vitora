@@ -82,11 +82,7 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
   }
 
   if (error || !plan) {
-    return (
-      <div className="p-4 text-center text-destructive">
-        Failed to load diet plan details
-      </div>
-    );
+    return <div className="p-4 text-center text-destructive">Failed to load diet plan details</div>;
   }
 
   const handleAction = async (action: ActionType) => {
@@ -143,12 +139,10 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
   };
 
   const actionDescriptions: Record<string, string> = {
-    activate:
-      'This will activate the diet plan. The patient should start following this plan.',
+    activate: 'This will activate the diet plan. The patient should start following this plan.',
     complete:
       'This will mark the diet plan as completed. Use this when the plan duration has ended or goals have been met.',
-    discontinue:
-      'This will discontinue the diet plan. Please provide a reason.',
+    discontinue: 'This will discontinue the diet plan. Please provide a reason.',
     hold: 'This will temporarily pause the diet plan. Please provide a reason.',
   };
 
@@ -160,8 +154,8 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
       />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
           <Badge variant="outline" className={statusConfig?.className}>
             {statusConfig?.label || plan.status}
           </Badge>
@@ -173,43 +167,33 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
           {canEdit && (
             <Button
               variant="outline"
-              onClick={() =>
-                router.push(
-                  `/allied-health/nutrition/diet-plans/${dietPlanId}/edit`
-                )
-              }
+              onClick={() => router.push(`/allied-health/nutrition/diet-plans/${dietPlanId}/edit`)}
             >
-              <Edit className="h-4 w-4 mr-2" />
+              <Edit className="mr-2 h-4 w-4" />
               Edit
             </Button>
           )}
           {canActivate && (
             <Button onClick={() => setConfirmAction('activate')}>
-              <PlayCircle className="h-4 w-4 mr-2" />
+              <PlayCircle className="mr-2 h-4 w-4" />
               Activate
             </Button>
           )}
           {canHold && (
-            <Button
-              variant="outline"
-              onClick={() => setConfirmAction('hold')}
-            >
-              <PauseCircle className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={() => setConfirmAction('hold')}>
+              <PauseCircle className="mr-2 h-4 w-4" />
               Hold
             </Button>
           )}
           {canComplete && (
             <Button onClick={() => setConfirmAction('complete')}>
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle className="mr-2 h-4 w-4" />
               Complete
             </Button>
           )}
           {canDiscontinue && (
-            <Button
-              variant="ghost"
-              onClick={() => setConfirmAction('discontinue')}
-            >
-              <XCircle className="h-4 w-4 mr-2" />
+            <Button variant="ghost" onClick={() => setConfirmAction('discontinue')}>
+              <XCircle className="mr-2 h-4 w-4" />
               Discontinue
             </Button>
           )}
@@ -217,16 +201,13 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
       </div>
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {plan.patient_name}
-            <span className="text-muted-foreground">
-              {' '}
-              &bull; {plan.patient_mrn}
-            </span>
+            <span className="text-muted-foreground"> &bull; {plan.patient_mrn}</span>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Consultation {plan.consultation_number || 'N/A'}
           </p>
         </div>
@@ -245,7 +226,7 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* Description */}
           {plan.description && (
             <Card>
@@ -285,54 +266,42 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
             <CardContent className="space-y-4">
               {plan.foods_to_avoid && (
                 <div>
-                  <h4 className="text-sm font-medium flex items-center gap-1 mb-1">
+                  <h4 className="mb-1 flex items-center gap-1 text-sm font-medium">
                     <Ban className="h-3.5 w-3.5 text-destructive" />
                     Foods to Avoid
                   </h4>
-                  <p className="whitespace-pre-wrap text-sm">
-                    {plan.foods_to_avoid}
-                  </p>
+                  <p className="whitespace-pre-wrap text-sm">{plan.foods_to_avoid}</p>
                 </div>
               )}
               {plan.foods_to_include && (
                 <div>
-                  <h4 className="text-sm font-medium flex items-center gap-1 mb-1">
+                  <h4 className="mb-1 flex items-center gap-1 text-sm font-medium">
                     <ThumbsUp className="h-3.5 w-3.5 text-green-600" />
                     Foods to Include
                   </h4>
-                  <p className="whitespace-pre-wrap text-sm">
-                    {plan.foods_to_include}
-                  </p>
+                  <p className="whitespace-pre-wrap text-sm">{plan.foods_to_include}</p>
                 </div>
               )}
               {plan.supplements && (
                 <div>
-                  <h4 className="text-sm font-medium flex items-center gap-1 mb-1">
+                  <h4 className="mb-1 flex items-center gap-1 text-sm font-medium">
                     <Pill className="h-3.5 w-3.5" />
                     Supplements
                   </h4>
-                  <p className="whitespace-pre-wrap text-sm">
-                    {plan.supplements}
-                  </p>
+                  <p className="whitespace-pre-wrap text-sm">{plan.supplements}</p>
                 </div>
               )}
               {plan.special_instructions && (
                 <div>
-                  <h4 className="text-sm font-medium mb-1">
-                    Special Instructions
-                  </h4>
-                  <p className="whitespace-pre-wrap text-sm">
-                    {plan.special_instructions}
-                  </p>
+                  <h4 className="mb-1 text-sm font-medium">Special Instructions</h4>
+                  <p className="whitespace-pre-wrap text-sm">{plan.special_instructions}</p>
                 </div>
               )}
               {!plan.foods_to_avoid &&
                 !plan.foods_to_include &&
                 !plan.supplements &&
                 !plan.special_instructions && (
-                  <p className="text-muted-foreground text-sm">
-                    No food guidance recorded
-                  </p>
+                  <p className="text-sm text-muted-foreground">No food guidance recorded</p>
                 )}
             </CardContent>
           </Card>
@@ -349,44 +318,16 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <NutrientRow
-                label="Calories"
-                value={plan.target_calories}
-                unit="kcal"
-              />
-              <NutrientRow
-                label="Protein"
-                value={plan.target_protein}
-                unit="g"
-              />
-              <NutrientRow
-                label="Carbohydrates"
-                value={plan.target_carbs}
-                unit="g"
-              />
-              <NutrientRow
-                label="Fat"
-                value={plan.target_fat}
-                unit="g"
-              />
-              <NutrientRow
-                label="Fiber"
-                value={plan.target_fiber}
-                unit="g"
-              />
-              <NutrientRow
-                label="Sodium"
-                value={plan.target_sodium}
-                unit="mg"
-              />
+              <NutrientRow label="Calories" value={plan.target_calories} unit="kcal" />
+              <NutrientRow label="Protein" value={plan.target_protein} unit="g" />
+              <NutrientRow label="Carbohydrates" value={plan.target_carbs} unit="g" />
+              <NutrientRow label="Fat" value={plan.target_fat} unit="g" />
+              <NutrientRow label="Fiber" value={plan.target_fiber} unit="g" />
+              <NutrientRow label="Sodium" value={plan.target_sodium} unit="mg" />
               {!plan.target_calories &&
                 !plan.target_protein &&
                 !plan.target_carbs &&
-                !plan.target_fat && (
-                  <p className="text-sm text-muted-foreground">
-                    No targets set
-                  </p>
-                )}
+                !plan.target_fat && <p className="text-sm text-muted-foreground">No targets set</p>}
             </CardContent>
           </Card>
 
@@ -401,32 +342,26 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
             <CardContent className="space-y-3">
               <div>
                 <p className="text-xs text-muted-foreground">Patient</p>
-                <p className="font-medium">
-                  {plan.patient_name}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {plan.patient_mrn}
-                </p>
+                <p className="font-medium">{plan.patient_name}</p>
+                <p className="text-sm text-muted-foreground">{plan.patient_mrn}</p>
               </div>
               {plan.consultation && (
-              <div>
-                <p className="text-xs text-muted-foreground">Consultation</p>
-                <Button
-                  variant="link"
-                  className="h-auto p-0 text-sm"
-                  onClick={() =>
-                    router.push(
-                      `/allied-health/nutrition/consultations/${plan.consultation}`
-                    )
-                  }
-                >
-                  {plan.consultation_number}
-                </Button>
-              </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Consultation</p>
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 text-sm"
+                    onClick={() =>
+                      router.push(`/allied-health/nutrition/consultations/${plan.consultation}`)
+                    }
+                  >
+                    {plan.consultation_number}
+                  </Button>
+                </div>
               )}
               <div>
                 <p className="text-xs text-muted-foreground">Created By</p>
-                <p className="text-sm flex items-center gap-1">
+                <p className="flex items-center gap-1 text-sm">
                   <User className="h-3.5 w-3.5" />
                   {plan.created_by_name || 'Unknown'}
                 </p>
@@ -483,9 +418,7 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmAction && actionLabels[confirmAction]}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{confirmAction && actionLabels[confirmAction]}</AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction && actionDescriptions[confirmAction]}
             </AlertDialogDescription>
@@ -507,9 +440,7 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
             <AlertDialogAction
               onClick={() => handleAction(confirmAction)}
               className={
-                confirmAction === 'discontinue'
-                  ? 'bg-destructive hover:bg-destructive/90'
-                  : ''
+                confirmAction === 'discontinue' ? 'bg-destructive hover:bg-destructive/90' : ''
               }
             >
               Confirm
@@ -534,9 +465,9 @@ function NutrientRow({
 }) {
   if (value === null) return null;
   return (
-    <div className="flex justify-between items-center">
+    <div className="flex items-center justify-between">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="font-medium tabular-nums text-sm">
+      <span className="text-sm font-medium tabular-nums">
         {value} {unit}
       </span>
     </div>
@@ -563,9 +494,7 @@ function MealGrid({
   const hasMeals = meals.some((m) => m.value);
 
   if (!hasMeals) {
-    return (
-      <p className="text-sm text-muted-foreground">No meal plan specified</p>
-    );
+    return <p className="text-sm text-muted-foreground">No meal plan specified</p>;
   }
 
   return (
@@ -573,14 +502,11 @@ function MealGrid({
       {meals.map(
         (meal) =>
           meal.value && (
-            <div
-              key={meal.label}
-              className="p-3 rounded-lg border bg-muted/30"
-            >
-              <h4 className="text-sm font-medium mb-1">
+            <div key={meal.label} className="rounded-lg border bg-muted/30 p-3">
+              <h4 className="mb-1 text-sm font-medium">
                 {meal.icon} {meal.label}
               </h4>
-              <p className="text-sm whitespace-pre-wrap">{meal.value}</p>
+              <p className="whitespace-pre-wrap text-sm">{meal.value}</p>
             </div>
           )
       )}

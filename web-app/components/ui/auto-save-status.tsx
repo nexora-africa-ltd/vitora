@@ -8,12 +8,7 @@
 
 import { Cloud, CloudOff, Check, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils/cn';
 import type { AutoSaveStatus } from '@/lib/hooks/use-auto-save';
 
@@ -26,12 +21,15 @@ interface AutoSaveStatusIndicatorProps {
   className?: string;
 }
 
-const STATUS_CONFIG: Record<AutoSaveStatus, {
-  icon: React.ElementType;
-  label: string;
-  color: string;
-  animate?: boolean;
-}> = {
+const STATUS_CONFIG: Record<
+  AutoSaveStatus,
+  {
+    icon: React.ElementType;
+    label: string;
+    color: string;
+    animate?: boolean;
+  }
+> = {
   idle: {
     icon: Cloud,
     label: 'All changes saved',
@@ -103,21 +101,22 @@ export function AutoSaveStatusIndicator({
               className
             )}
           >
-            <Icon
-              className={cn(
-                'h-4 w-4',
-                config.animate && 'animate-spin'
-              )}
-            />
+            <Icon className={cn('h-4 w-4', config.animate && 'animate-spin')} />
             <span className="hidden sm:inline">
-              {status === 'saved' ? 'Saved' :
-               status === 'saving' ? 'Saving...' :
-               status === 'offline' ? 'Offline' :
-               status === 'error' ? 'Error' :
-               isDirty ? 'Unsaved' : 'Saved'}
+              {status === 'saved'
+                ? 'Saved'
+                : status === 'saving'
+                  ? 'Saving...'
+                  : status === 'offline'
+                    ? 'Offline'
+                    : status === 'error'
+                      ? 'Error'
+                      : isDirty
+                        ? 'Unsaved'
+                        : 'Saved'}
             </span>
             {status === 'offline' && pendingCount > 0 && (
-              <Badge variant="secondary" className="text-xs px-1.5 py-0">
+              <Badge variant="secondary" className="px-1.5 py-0 text-xs">
                 {pendingCount}
               </Badge>
             )}
@@ -131,9 +130,7 @@ export function AutoSaveStatusIndicator({
                 Last saved: {formatLastSaved(lastSaved)}
               </p>
             )}
-            {error && (
-              <p className="text-xs text-destructive">{error}</p>
-            )}
+            {error && <p className="text-xs text-destructive">{error}</p>}
             {status === 'offline' && pendingCount > 0 && (
               <p className="text-xs text-muted-foreground">
                 {pendingCount} change(s) will sync when online

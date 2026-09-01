@@ -71,25 +71,28 @@ test.describe('Notifications Center', () => {
     ]);
 
     // Seed auth before any navigation (middleware checks this cookie)
-    await page.addInitScript(({ user, tokens }) => {
-      localStorage.setItem('vitora_access_token', tokens.access);
-      localStorage.setItem('vitora_refresh_token', tokens.refresh);
-      localStorage.setItem('vitora_user', JSON.stringify(user));
-    }, {
-      user: {
-        id: 1,
-        username: TEST_USER.username,
-        email: 'test@vitora.health',
-        first_name: 'Test',
-        last_name: 'User',
-        is_staff: false,
-        permissions: [],
+    await page.addInitScript(
+      ({ user, tokens }) => {
+        localStorage.setItem('vitora_access_token', tokens.access);
+        localStorage.setItem('vitora_refresh_token', tokens.refresh);
+        localStorage.setItem('vitora_user', JSON.stringify(user));
       },
-      tokens: {
-        access: 'mock-access-token',
-        refresh: 'mock-refresh-token',
-      },
-    });
+      {
+        user: {
+          id: 1,
+          username: TEST_USER.username,
+          email: 'test@vitora.health',
+          first_name: 'Test',
+          last_name: 'User',
+          is_staff: false,
+          permissions: [],
+        },
+        tokens: {
+          access: 'mock-access-token',
+          refresh: 'mock-refresh-token',
+        },
+      }
+    );
 
     // Auth
     await page.route(/.*\/api\/token\/.*/, async (route) => {

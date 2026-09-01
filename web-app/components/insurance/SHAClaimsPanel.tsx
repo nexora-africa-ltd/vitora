@@ -56,7 +56,14 @@ import { Badge } from '@/components/ui/badge';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 
 import { ClaimsStatusChart } from '@/components/widgets';
 import { TimeBarBadge } from '@/components/billing/sha/TimeBarBadge';
@@ -80,7 +87,9 @@ function claimAmountValue(claim: Claim): number {
 }
 
 function inferClaimType(encounterType: string | null | undefined): SHAClaimType {
-  const normalized = String(encounterType || '').trim().toUpperCase();
+  const normalized = String(encounterType || '')
+    .trim()
+    .toUpperCase();
   if (normalized === 'IPD') return 'inpatient';
   if (normalized === 'EMERGENCY') return 'emergency';
   return 'outpatient';
@@ -114,7 +123,7 @@ function StatsCard({ title, value, description, icon, className }: StatsCardProp
       </CardHeader>
       <CardContent className="relative">
         <div className="text-2xl font-bold">{value}</div>
-        {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+        {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
       </CardContent>
     </Card>
   );
@@ -122,7 +131,17 @@ function StatsCard({ title, value, description, icon, className }: StatsCardProp
 
 /** Export claims to CSV. */
 function exportClaimsCSV(claims: Claim[]) {
-  const headers = ['Claim Number', 'Patient', 'MRN', 'Status', 'Flow', 'Amount', 'Approved', 'Service Date', 'Submitted'];
+  const headers = [
+    'Claim Number',
+    'Patient',
+    'MRN',
+    'Status',
+    'Flow',
+    'Amount',
+    'Approved',
+    'Service Date',
+    'Submitted',
+  ];
   const rows = claims.map((c) => [
     c.claim_number || `#${c.id}`,
     c.patient_name || '',
@@ -134,7 +153,9 @@ function exportClaimsCSV(claims: Claim[]) {
     c.service_date || '',
     c.submitted_at ? format(parseISO(c.submitted_at), 'yyyy-MM-dd HH:mm') : '',
   ]);
-  const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const csv = [headers, ...rows]
+    .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -144,7 +165,10 @@ function exportClaimsCSV(claims: Claim[]) {
   URL.revokeObjectURL(url);
 }
 
-export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHeader = true }: SHAClaimsPanelProps) {
+export function SHAClaimsPanel({
+  basePath = '/transactions/sha-claims',
+  showHeader = true,
+}: SHAClaimsPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { facility } = useFacility();
@@ -165,7 +189,10 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
   const [selectedEncounterId, setSelectedEncounterId] = useState('');
   const [selectedClaimType, setSelectedClaimType] = useState<SHAClaimType>('outpatient');
   const [claimTypeOverridden, setClaimTypeOverridden] = useState(false);
-  const [existingClaimHint, setExistingClaimHint] = useState<{ id: number; claimNumber?: string } | null>(null);
+  const [existingClaimHint, setExistingClaimHint] = useState<{
+    id: number;
+    claimNumber?: string;
+  } | null>(null);
   const debouncedSearch = useDebounce(searchQuery, 300);
   const debouncedPatientSearch = useDebounce(patientSearchQuery, 300);
   const createClaim = useCreateClaim();
@@ -210,7 +237,12 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     ordering: '-created_at',
   });
 
-  const { data: claimsData, isLoading, refetch, isRefetching } = useClaims({
+  const {
+    data: claimsData,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useClaims({
     status: statusFilter !== 'all' ? (statusFilter as ClaimStatus) : undefined,
     search: debouncedSearch || undefined,
   });
@@ -223,10 +255,12 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
         ? (claim.dha_discharge_snapshot as Record<string, unknown>)
         : null;
-    const workflowState = String(snapshot?.workflow_state || '').trim().toUpperCase();
+    const workflowState = String(snapshot?.workflow_state || '')
+      .trim()
+      .toUpperCase();
     if (
-      claim.submitted_at
-      || ['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
+      claim.submitted_at ||
+      ['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
     ) {
       return 'submitted';
     }
@@ -252,13 +286,13 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       claim.dha_discharge_snapshot && typeof claim.dha_discharge_snapshot === 'object'
         ? (claim.dha_discharge_snapshot as Record<string, unknown>)
         : null;
-    const workflowState = String(snapshot?.workflow_state || '').trim().toUpperCase();
+    const workflowState = String(snapshot?.workflow_state || '')
+      .trim()
+      .toUpperCase();
     if (
-      claim.status === 'draft'
-      && (
-        !!claim.submitted_at
-        || ['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState)
-      )
+      claim.status === 'draft' &&
+      (!!claim.submitted_at ||
+        ['SUBMITTED', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'PROCESSED', 'PAID'].includes(workflowState))
     ) {
       return true;
     }
@@ -266,16 +300,19 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     return false;
   }, []);
 
-  const stats = useMemo(() => ({
-    total: claims.length,
-    pending: claims.filter((c) => isInProgressClaim(c)).length,
-    approved: claims.filter((c) => c.status === 'approved').length,
-    rejected: claims.filter((c) => c.status === 'rejected').length,
-    totalAmount: claims.reduce((sum, c) => sum + claimAmountValue(c), 0),
-    approvedAmount: claims
-      .filter((c) => c.approved_amount)
-      .reduce((sum, c) => sum + parseFloat(c.approved_amount || '0'), 0),
-  }), [claims, isInProgressClaim]);
+  const stats = useMemo(
+    () => ({
+      total: claims.length,
+      pending: claims.filter((c) => isInProgressClaim(c)).length,
+      approved: claims.filter((c) => c.status === 'approved').length,
+      rejected: claims.filter((c) => c.status === 'rejected').length,
+      totalAmount: claims.reduce((sum, c) => sum + claimAmountValue(c), 0),
+      approvedAmount: claims
+        .filter((c) => c.approved_amount)
+        .reduce((sum, c) => sum + parseFloat(c.approved_amount || '0'), 0),
+    }),
+    [claims, isInProgressClaim]
+  );
 
   const claimsStatusData = useMemo(() => {
     const statusCounts = new Map<ClaimStatus, { count: number; amount: number }>();
@@ -298,8 +335,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     () =>
       claims.filter(
         (c) =>
-          c.is_time_barred ||
-          (c.hours_until_time_barred != null && c.hours_until_time_barred <= 12)
+          c.is_time_barred || (c.hours_until_time_barred != null && c.hours_until_time_barred <= 12)
       ),
     [claims]
   );
@@ -386,14 +422,16 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       : undefined;
   const autoClaimType = inferClaimType(selectedEncounter?.encounter_type);
   const selectedInvoice =
-    selectedEncounterIdNumber != null ? invoicesByEncounter.get(selectedEncounterIdNumber) : undefined;
+    selectedEncounterIdNumber != null
+      ? invoicesByEncounter.get(selectedEncounterIdNumber)
+      : undefined;
   const canCreateClaim =
-    !!selectedPatientIdNumber
-    && !!selectedEncounterIdNumber
-    && !!selectedInvoice
-    && !selectedEncounterClaim
-    && !!eligibility.data?.is_eligible
-    && !createClaim.isPending;
+    !!selectedPatientIdNumber &&
+    !!selectedEncounterIdNumber &&
+    !!selectedInvoice &&
+    !selectedEncounterClaim &&
+    !!eligibility.data?.is_eligible &&
+    !createClaim.isPending;
 
   const handleCreateClaim = useCallback(async () => {
     if (!selectedPatientIdNumber) {
@@ -478,8 +516,10 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       {showHeader && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">SHA Claims</h2>
-            <p className="text-sm text-muted-foreground">Manage and track Social Health Authority claims</p>
+            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">SHA Claims</h2>
+            <p className="text-sm text-muted-foreground">
+              Manage and track Social Health Authority claims
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Dialog
@@ -500,7 +540,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
             >
               <DialogTrigger asChild>
                 <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">New Claim</span>
                   <span className="sm:hidden">New</span>
                 </Button>
@@ -509,7 +549,8 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                 <DialogHeader>
                   <DialogTitle>Create SHA claim</DialogTitle>
                   <DialogDescription>
-                    Search patient, confirm SHA eligibility, then pick an encounter and linked invoice.
+                    Search patient, confirm SHA eligibility, then pick an encounter and linked
+                    invoice.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -521,7 +562,10 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                           variant="outline"
                           role="combobox"
                           aria-expanded={patientPickerOpen}
-                          className={cn('w-full justify-between font-normal', !selectedPatientOption && 'text-muted-foreground')}
+                          className={cn(
+                            'w-full justify-between font-normal',
+                            !selectedPatientOption && 'text-muted-foreground'
+                          )}
                         >
                           <span className="truncate">
                             {selectedPatientOption?.label || 'Search and select patient'}
@@ -529,7 +573,10 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <PopoverContent
+                        className="w-[--radix-popover-trigger-width] p-0"
+                        align="start"
+                      >
                         <Command shouldFilter={false}>
                           <CommandInput
                             placeholder="Type name, MRN, phone, or national ID"
@@ -538,13 +585,21 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                           />
                           <CommandList className="max-h-[220px]">
                             {isPatientSearchFetching ? (
-                              <div className="py-6 text-center text-sm text-muted-foreground">Searching...</div>
-                            ) : patientSearchQuery.trim().length > 0 && patientSearchQuery.trim().length < 2 ? (
-                              <div className="py-6 text-center text-sm text-muted-foreground">Type at least 2 characters to search</div>
-                            ) : patientSearchQuery.trim().length >= 2 && patientOptions.length === 0 ? (
+                              <div className="py-6 text-center text-sm text-muted-foreground">
+                                Searching...
+                              </div>
+                            ) : patientSearchQuery.trim().length > 0 &&
+                              patientSearchQuery.trim().length < 2 ? (
+                              <div className="py-6 text-center text-sm text-muted-foreground">
+                                Type at least 2 characters to search
+                              </div>
+                            ) : patientSearchQuery.trim().length >= 2 &&
+                              patientOptions.length === 0 ? (
                               <CommandEmpty>No matching patients found.</CommandEmpty>
                             ) : patientSearchQuery.trim().length === 0 ? (
-                              <div className="py-6 text-center text-sm text-muted-foreground">Start typing to search for a patient</div>
+                              <div className="py-6 text-center text-sm text-muted-foreground">
+                                Start typing to search for a patient
+                              </div>
                             ) : (
                               <CommandGroup>
                                 {patientOptions.map((option) => (
@@ -565,12 +620,18 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                                     <Check
                                       className={cn(
                                         'mr-2 h-4 w-4 shrink-0',
-                                        selectedPatientId === option.value ? 'opacity-100' : 'opacity-0',
+                                        selectedPatientId === option.value
+                                          ? 'opacity-100'
+                                          : 'opacity-0'
                                       )}
                                     />
                                     <div className="min-w-0">
                                       <p className="truncate">{option.label}</p>
-                                      {option.sublabel && <p className="truncate text-xs text-muted-foreground">{option.sublabel}</p>}
+                                      {option.sublabel && (
+                                        <p className="truncate text-xs text-muted-foreground">
+                                          {option.sublabel}
+                                        </p>
+                                      )}
                                     </div>
                                   </CommandItem>
                                 ))}
@@ -584,16 +645,24 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                   <div className="rounded-md border px-3 py-2 text-sm">
                     <div className="font-medium">SHA eligibility</div>
                     {!selectedPatientIdNumber && (
-                      <p className="text-muted-foreground">Select a patient to check eligibility.</p>
+                      <p className="text-muted-foreground">
+                        Select a patient to check eligibility.
+                      </p>
                     )}
                     {selectedPatientIdNumber && eligibility.isLoading && (
                       <p className="text-muted-foreground">Checking eligibility...</p>
                     )}
                     {selectedPatientIdNumber && !eligibility.isLoading && eligibility.data && (
-                      <p className={eligibility.data.is_eligible ? 'text-green-700' : 'text-amber-700'}>
+                      <p
+                        className={
+                          eligibility.data.is_eligible ? 'text-green-700' : 'text-amber-700'
+                        }
+                      >
                         {eligibility.data.is_eligible
                           ? 'Eligible'
-                          : eligibility.data.ineligibility_reason || eligibility.data.coverage_caveat || 'Not eligible'}
+                          : eligibility.data.ineligibility_reason ||
+                            eligibility.data.coverage_caveat ||
+                            'Not eligible'}
                       </p>
                     )}
                   </div>
@@ -604,7 +673,9 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                       value={selectedEncounterId}
                       onValueChange={(value) => {
                         setSelectedEncounterId(value);
-                        const encounter = (encountersData ?? []).find((entry) => String(entry.id) === value);
+                        const encounter = (encountersData ?? []).find(
+                          (entry) => String(entry.id) === value
+                        );
                         if (!claimTypeOverridden) {
                           setSelectedClaimType(inferClaimType(encounter?.encounter_type));
                         }
@@ -624,14 +695,17 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                     </p>
                     {selectedEncounterClaim && (
                       <p className="text-xs text-amber-700">
-                        Encounter already linked to claim {selectedEncounterClaim.claim_number || `#${selectedEncounterClaim.id}`}. Choose a different encounter.
+                        Encounter already linked to claim{' '}
+                        {selectedEncounterClaim.claim_number || `#${selectedEncounterClaim.id}`}.
+                        Choose a different encounter.
                       </p>
                     )}
                     {existingClaimHint && (
                       <div className="flex items-center justify-between gap-2 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
                         <span>
-                          This encounter already has claim {existingClaimHint.claimNumber || `#${existingClaimHint.id}`}.{' '}
-                          Open it to continue.
+                          This encounter already has claim{' '}
+                          {existingClaimHint.claimNumber || `#${existingClaimHint.id}`}. Open it to
+                          continue.
                         </span>
                         <Button
                           type="button"
@@ -668,33 +742,50 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Auto-detected from encounter: {selectedEncounterIdNumber ? autoClaimType : 'select encounter first'}. You can override before creating the claim.
+                      Auto-detected from encounter:{' '}
+                      {selectedEncounterIdNumber ? autoClaimType : 'select encounter first'}. You
+                      can override before creating the claim.
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium" htmlFor="new-claim-invoice-id">Invoice (auto from encounter)</label>
+                    <label className="text-sm font-medium" htmlFor="new-claim-invoice-id">
+                      Invoice (auto from encounter)
+                    </label>
                     <Input
                       id="new-claim-invoice-id"
-                      value={selectedInvoice ? `${selectedInvoice.invoice_number} (#${selectedInvoice.id})` : ''}
-                      placeholder={selectedEncounterIdNumber ? 'No invoice found for encounter' : 'Select encounter first'}
+                      value={
+                        selectedInvoice
+                          ? `${selectedInvoice.invoice_number} (#${selectedInvoice.id})`
+                          : ''
+                      }
+                      placeholder={
+                        selectedEncounterIdNumber
+                          ? 'No invoice found for encounter'
+                          : 'Select encounter first'
+                      }
                       readOnly
                     />
                     {selectedEncounterIdNumber && !selectedInvoice && (
                       <p className="text-xs text-amber-700">
-                        This encounter has no linked invoice yet. Claims require an encounter invoice.
+                        This encounter has no linked invoice yet. Claims require an encounter
+                        invoice.
                       </p>
                     )}
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowCreateDialog(false)} disabled={createClaim.isPending}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCreateDialog(false)}
+                    disabled={createClaim.isPending}
+                  >
                     Cancel
                   </Button>
                   <Button onClick={handleCreateClaim} disabled={!canCreateClaim}>
                     {createClaim.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Plus className="mr-2 h-4 w-4" />
                     )}
                     Create claim
                   </Button>
@@ -703,9 +794,9 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
             </Dialog>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
               {isRefetching ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="mr-2 h-4 w-4" />
               )}
               <span className="hidden sm:inline">Refresh</span>
             </Button>
@@ -717,7 +808,11 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => exportClaimsCSV(selectedClaims.length > 0 ? selectedClaims : claims)}>
+                <DropdownMenuItem
+                  onClick={() =>
+                    exportClaimsCSV(selectedClaims.length > 0 ? selectedClaims : claims)
+                  }
+                >
                   Export as CSV {selectedIds.size > 0 && `(${selectedIds.size} selected)`}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -727,7 +822,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
       )}
 
       {/* Stats Row */}
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatsCard
           title="Total Claims"
           value={stats.total}
@@ -759,7 +854,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
 
       {/* Charts — hidden on mobile for decluttering */}
       {claims.length > 0 && (
-        <div className="hidden md:grid gap-4 md:grid-cols-2">
+        <div className="hidden gap-4 md:grid md:grid-cols-2">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Claims by Status</CardTitle>
@@ -781,12 +876,15 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
 
       {/* Time-Barring Alerts */}
       {expiringClaims.length > 0 && (
-        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
+        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-900/10">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               <CardTitle className="text-base">Time-Barring Alerts</CardTitle>
-              <Badge variant="secondary" className="bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">
+              <Badge
+                variant="secondary"
+                className="bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200"
+              >
                 {expiringClaims.length}
               </Badge>
             </div>
@@ -796,14 +894,14 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
               {expiringClaims.slice(0, 5).map((claim) => (
                 <div
                   key={claim.id}
-                  className="flex items-center justify-between p-2 rounded-md border bg-background cursor-pointer hover:bg-muted/50 transition-colors"
+                  className="flex cursor-pointer items-center justify-between rounded-md border bg-background p-2 transition-colors hover:bg-muted/50"
                   onClick={() => handleClaimClick(claim)}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="font-mono text-sm font-medium truncate">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="truncate font-mono text-sm font-medium">
                       {claim.claim_number || `#${claim.id}`}
                     </span>
-                    <span className="text-sm text-muted-foreground truncate hidden sm:inline">
+                    <span className="hidden truncate text-sm text-muted-foreground sm:inline">
                       {claim.patient_name}
                     </span>
                   </div>
@@ -811,7 +909,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                 </div>
               ))}
               {expiringClaims.length > 5 && (
-                <p className="text-xs text-muted-foreground text-center pt-1">
+                <p className="pt-1 text-center text-xs text-muted-foreground">
                   +{expiringClaims.length - 5} more approaching deadline
                 </p>
               )}
@@ -822,14 +920,10 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
 
       {/* Batch Actions Toolbar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => exportClaimsCSV(selectedClaims)}
-          >
-            <Download className="h-3.5 w-3.5 mr-1.5" />
+          <Button size="sm" variant="outline" onClick={() => exportClaimsCSV(selectedClaims)}>
+            <Download className="mr-1.5 h-3.5 w-3.5" />
             Export
           </Button>
           <Button
@@ -843,7 +937,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
             }}
             disabled={!selectedClaims.some((c) => c.status === 'draft')}
           >
-            <Send className="h-3.5 w-3.5 mr-1.5" />
+            <Send className="mr-1.5 h-3.5 w-3.5" />
             Submit Drafts
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
@@ -857,21 +951,24 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">
-              Claims {claims.length > 0 && <span className="text-muted-foreground font-normal">({claims.length})</span>}
+              Claims{' '}
+              {claims.length > 0 && (
+                <span className="font-normal text-muted-foreground">({claims.length})</span>
+              )}
             </CardTitle>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
                 <Input
                   placeholder="Search claims..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 w-full sm:w-52"
+                  className="h-9 w-full pl-9 sm:w-52"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="h-9 w-full sm:w-[150px]">
-                  <Filter className="h-3.5 w-3.5 mr-1.5" />
+                  <Filter className="mr-1.5 h-3.5 w-3.5" />
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -915,9 +1012,11 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                 sortable: true,
                 cell: (claim) => (
                   <div className="space-y-0.5">
-                    <p className="font-medium font-mono text-sm">{claim.claim_number || `#${claim.id}`}</p>
+                    <p className="font-mono text-sm font-medium">
+                      {claim.claim_number || `#${claim.id}`}
+                    </p>
                     {claim.sha_reference && (
-                      <p className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">
+                      <p className="max-w-[120px] truncate font-mono text-xs text-muted-foreground">
                         {claim.sha_reference}
                       </p>
                     )}
@@ -991,8 +1090,8 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
               },
             ]}
             mobileCard={(claim) => (
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                   <div onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selectedIds.has(claim.id)}
@@ -1001,15 +1100,15 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-medium truncate">
+                      <span className="truncate font-mono text-sm font-medium">
                         {claim.claim_number || `#${claim.id}`}
                       </span>
                       <ClaimStatusBadge status={effectiveStatus(claim)} />
                     </div>
-                    <p className="text-sm text-muted-foreground truncate mt-0.5">
+                    <p className="mt-0.5 truncate text-sm text-muted-foreground">
                       {claim.patient_name} • {claim.patient_mrn}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="mt-1 flex items-center gap-2">
                       <span className="text-sm font-medium">
                         {formatCurrency(claimAmountValue(claim))}
                       </span>
@@ -1017,7 +1116,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
                     </div>
                   </div>
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </div>
             )}
           />

@@ -11,8 +11,8 @@ export function getClinicVisitDestination(
   >
 ): string | null {
   const encounterId = toPositiveNumber(visit.encounter);
-  const registrationId = toPositiveNumber(visit.mch_registration_id)
-    ?? toPositiveNumber(visit.source_record_id);
+  const registrationId =
+    toPositiveNumber(visit.mch_registration_id) ?? toPositiveNumber(visit.source_record_id);
 
   if (visit.source_module === 'MCH_ANC' && registrationId) {
     const params = new URLSearchParams({

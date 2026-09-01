@@ -22,10 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { encountersApi } from '@/lib/api/encounters';
 import type { EncounterStatus } from '@/lib/types/encounter';
-import {
-  VALID_ENCOUNTER_TRANSITIONS,
-  ENCOUNTER_STATUS_DISPLAY,
-} from '@/lib/types/encounter';
+import { VALID_ENCOUNTER_TRANSITIONS, ENCOUNTER_STATUS_DISPLAY } from '@/lib/types/encounter';
 import { EncounterStatusBadge } from './encounter-status-badge';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -67,9 +64,7 @@ export function EncounterStateTransition({
         to_status: targetStatus,
         reason: transitionReason || reason,
       });
-      toast.success(
-        `Encounter transitioned to ${ENCOUNTER_STATUS_DISPLAY[result.status]}`
-      );
+      toast.success(`Encounter transitioned to ${ENCOUNTER_STATUS_DISPLAY[result.status]}`);
       onTransitionComplete?.(result.status);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to transition encounter';
@@ -102,9 +97,9 @@ export function EncounterStateTransition({
             onClick={() => handleTransitionClick(targetStatus)}
           >
             {isLoading && selectedStatus === targetStatus && (
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
             )}
-            <ArrowRight className="h-3 w-3 mr-1" />
+            <ArrowRight className="mr-1 h-3 w-3" />
             {ENCOUNTER_STATUS_DISPLAY[targetStatus]}
           </Button>
         ))}
@@ -114,9 +109,7 @@ export function EncounterStateTransition({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {selectedStatus === 'CANCELLED'
-                ? 'Cancel Encounter?'
-                : `Close Encounter?`}
+              {selectedStatus === 'CANCELLED' ? 'Cancel Encounter?' : `Close Encounter?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {selectedStatus === 'CANCELLED'
@@ -153,13 +146,8 @@ export function EncounterStateTransition({
                   : ''
               }
             >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : null}
-              Confirm{' '}
-              {selectedStatus
-                ? ENCOUNTER_STATUS_DISPLAY[selectedStatus]
-                : ''}
+              {isLoading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+              Confirm {selectedStatus ? ENCOUNTER_STATUS_DISPLAY[selectedStatus] : ''}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

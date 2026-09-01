@@ -35,17 +35,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { shaApi } from '@/lib/api/sha';
 import type { SHAMember } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
@@ -101,11 +92,14 @@ function StatusBadge({ status }: { status: string }) {
     icon: <XCircle className="h-3 w-3" />,
     className: 'bg-red-100 text-red-800',
   };
-  const config: Record<string, {
-    label: string;
-    icon: React.ReactNode;
-    className: string;
-  }> = {
+  const config: Record<
+    string,
+    {
+      label: string;
+      icon: React.ReactNode;
+      className: string;
+    }
+  > = {
     ACTIVE: {
       label: 'Active',
       icon: <CheckCircle2 className="h-3 w-3" />,
@@ -148,7 +142,7 @@ function DependentsViewSkeleton() {
       <CardContent>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-4 p-3 rounded-lg border">
+            <div key={i} className="flex items-center gap-4 rounded-lg border p-3">
               <Skeleton className="h-10 w-10 rounded-full" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-32" />
@@ -169,10 +163,10 @@ function DependentsViewSkeleton() {
 
 function EmptyDependents({ onAddDependent }: { onAddDependent?: () => void }) {
   return (
-    <div className="text-center py-8">
+    <div className="py-8 text-center">
       <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
       <h3 className="mt-4 text-lg font-medium">No Dependents</h3>
-      <p className="text-sm text-muted-foreground mt-1">
+      <p className="mt-1 text-sm text-muted-foreground">
         No dependents are currently linked to this member.
       </p>
       {onAddDependent && (
@@ -268,12 +262,7 @@ export function DependentsView({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                >
+                <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
                   <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
                 </Button>
               </TooltipTrigger>
@@ -307,20 +296,16 @@ export function DependentsView({
               {dependents.map((dependent) => (
                 <TableRow
                   key={dependent.id}
-                  className={cn(
-                    onDependentClick && 'cursor-pointer hover:bg-muted/50'
-                  )}
+                  className={cn(onDependentClick && 'cursor-pointer hover:bg-muted/50')}
                   onClick={() => onDependentClick?.(dependent)}
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
                         <User className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div>
-                        <div className="font-medium">
-                          {dependent.patient_name || 'Unknown'}
-                        </div>
+                        <div className="font-medium">{dependent.patient_name || 'Unknown'}</div>
                         {dependent.patient_mrn && (
                           <div className="text-xs text-muted-foreground">
                             MRN: {dependent.patient_mrn}
@@ -329,9 +314,7 @@ export function DependentsView({
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">
-                    {dependent.sha_member_number}
-                  </TableCell>
+                  <TableCell className="font-mono text-sm">{dependent.sha_member_number}</TableCell>
                   <TableCell>
                     <MembershipTypeBadge type={dependent.membership_type || 'OTHER'} />
                   </TableCell>
@@ -348,9 +331,7 @@ export function DependentsView({
                     )}
                   </TableCell>
                   <TableCell>
-                    {onDependentClick && (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
+                    {onDependentClick && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                   </TableCell>
                 </TableRow>
               ))}
@@ -359,7 +340,7 @@ export function DependentsView({
         )}
 
         {/* Principal Member Info */}
-        <div className="mt-4 pt-4 border-t">
+        <div className="mt-4 border-t pt-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <SHALogo size="sm" />
             <span>Principal: {principalMember.patient_name}</span>

@@ -34,10 +34,9 @@ export const checkinApi = {
    * @returns List of matching patients
    */
   async searchPatients(query: string, limit?: number): Promise<PatientSearchResponse> {
-    const response = await apiClient.get<PatientSearchResponse>(
-      `/api/checkin/search/`,
-      { params: { q: query, limit } }
-    );
+    const response = await apiClient.get<PatientSearchResponse>(`/api/checkin/search/`, {
+      params: { q: query, limit },
+    });
     return parseResponse(PatientSearchResponseSchema, response.data, {
       context: 'checkinApi.searchPatients',
     }) as PatientSearchResponse;
@@ -52,10 +51,9 @@ export const checkinApi = {
    * @returns Patient lookup response with clinical snapshot
    */
   async lookupPatient(query: string): Promise<PatientLookupResponse> {
-    const response = await apiClient.get<PatientLookupResponse>(
-      `/api/checkin/lookup/`,
-      { params: { q: query } }
-    );
+    const response = await apiClient.get<PatientLookupResponse>(`/api/checkin/lookup/`, {
+      params: { q: query },
+    });
     return parseResponse(PatientLookupResponseSchema, response.data, {
       context: 'checkinApi.lookupPatient',
     }) as PatientLookupResponse;

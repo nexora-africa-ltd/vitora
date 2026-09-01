@@ -14,13 +14,7 @@
 
 import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Activity,
-  History,
-  ClipboardCheck,
-  ArrowRightCircle,
-  Check,
-} from 'lucide-react';
+import { Activity, History, ClipboardCheck, ArrowRightCircle, Check } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useTriageAssessStore, getSectionStatus } from '@/lib/stores/triage-assess-store';
@@ -123,7 +117,7 @@ export function TriageAssessTabs() {
   return (
     <div className="border-b bg-card">
       <nav
-        className="flex items-center gap-1 px-2 sm:px-4 overflow-x-auto"
+        className="flex items-center gap-1 overflow-x-auto px-2 sm:px-4"
         aria-label="Triage assessment tabs"
       >
         {visibleTabs.map((tab, index) => {
@@ -140,19 +134,19 @@ export function TriageAssessTabs() {
               key={tab.id}
               href={href}
               className={cn(
-                'relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-sm font-medium',
-                'border-b-2 transition-colors whitespace-nowrap',
+                'relative flex items-center gap-1.5 px-2.5 py-2.5 text-sm font-medium sm:gap-2 sm:px-4 sm:py-3',
+                'whitespace-nowrap border-b-2 transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 isActive
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                  : 'border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground'
               )}
               aria-current={isActive ? 'page' : undefined}
             >
               {/* Amber pulsing dot for incomplete sections */}
               {isIncomplete && !isActive && (
                 <span
-                  className="absolute -top-0.5 right-1 sm:right-2 flex h-2.5 w-2.5"
+                  className="absolute -top-0.5 right-1 flex h-2.5 w-2.5 sm:right-2"
                   title="This section has missing required fields"
                 >
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
@@ -163,13 +157,13 @@ export function TriageAssessTabs() {
               {/* Step number — green tick when complete, amber outline when incomplete */}
               <span
                 className={cn(
-                  'hidden sm:flex items-center justify-center w-5 h-5 rounded-full text-xs',
+                  'hidden h-5 w-5 items-center justify-center rounded-full text-xs sm:flex',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : isComplete
                       ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
                       : isIncomplete
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 ring-1 ring-amber-400/50'
+                        ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-400/50 dark:bg-amber-900 dark:text-amber-300'
                         : 'bg-muted text-muted-foreground'
                 )}
               >
@@ -177,15 +171,17 @@ export function TriageAssessTabs() {
               </span>
 
               {/* Icon — green when complete, amber when incomplete */}
-              <span className={cn(
-                isActive
-                  ? 'text-primary'
-                  : isComplete
-                    ? 'text-green-600 dark:text-green-400'
-                    : isIncomplete
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-muted-foreground'
-              )}>
+              <span
+                className={cn(
+                  isActive
+                    ? 'text-primary'
+                    : isComplete
+                      ? 'text-green-600 dark:text-green-400'
+                      : isIncomplete
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-muted-foreground'
+                )}
+              >
                 {tab.icon}
               </span>
 
@@ -198,7 +194,10 @@ export function TriageAssessTabs() {
 
         {/* Status indicator */}
         {isCompleted && (
-          <Badge variant="outline" className="ml-auto shrink-0 text-green-600 border-green-300 bg-green-50">
+          <Badge
+            variant="outline"
+            className="ml-auto shrink-0 border-green-300 bg-green-50 text-green-600"
+          >
             Completed
           </Badge>
         )}

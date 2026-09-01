@@ -22,15 +22,9 @@ export const LoadingButton = React.forwardRef<HTMLButtonElement, LoadingButtonPr
         className={cn('relative', className)}
         {...props}
       >
-        {isLoading && (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-        )}
-        <span className={cn(isLoading && !loadingText && 'opacity-0')}>
-          {children}
-        </span>
-        {isLoading && loadingText && (
-          <span>{loadingText}</span>
-        )}
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+        <span className={cn(isLoading && !loadingText && 'opacity-0')}>{children}</span>
+        {isLoading && loadingText && <span>{loadingText}</span>}
         {isLoading && !loadingText && (
           <span className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

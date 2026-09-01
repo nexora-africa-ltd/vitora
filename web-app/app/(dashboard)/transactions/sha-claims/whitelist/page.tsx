@@ -70,9 +70,7 @@ function getStatusBadge(status: string) {
 }
 
 function formatReasonType(type: string): string {
-  return type
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (l) => l.toUpperCase());
+  return type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
 // ============================================================================
@@ -108,12 +106,15 @@ export default function WhitelistRequestsPage() {
   }, [rows, search]);
 
   // Stat counts
-  const stats = useMemo(() => ({
-    total: rows.length,
-    pending: rows.filter((r) => r.status === 'requested').length,
-    approved: rows.filter((r) => r.status === 'approved').length,
-    rejected: rows.filter((r) => r.status === 'rejected').length,
-  }), [rows]);
+  const stats = useMemo(
+    () => ({
+      total: rows.length,
+      pending: rows.filter((r) => r.status === 'requested').length,
+      approved: rows.filter((r) => r.status === 'approved').length,
+      rejected: rows.filter((r) => r.status === 'rejected').length,
+    }),
+    [rows]
+  );
 
   const handleRefreshAll = async () => {
     await refresh();
@@ -136,7 +137,12 @@ export default function WhitelistRequestsPage() {
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 Request Whitelist
               </Button>
-              <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={isRefreshing}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshAll}
+                disabled={isRefreshing}
+              >
                 <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
@@ -145,11 +151,14 @@ export default function WhitelistRequestsPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="cursor-pointer" onClick={() => {
-            setStatusFilter('');
-            setOpenRequestsOnly(false);
-          }}>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Card
+            className="cursor-pointer"
+            onClick={() => {
+              setStatusFilter('');
+              setOpenRequestsOnly(false);
+            }}
+          >
             <CardContent className="p-3">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4 text-muted-foreground" />
@@ -160,10 +169,13 @@ export default function WhitelistRequestsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer" onClick={() => {
-            setStatusFilter('requested');
-            setOpenRequestsOnly(true);
-          }}>
+          <Card
+            className="cursor-pointer"
+            onClick={() => {
+              setStatusFilter('requested');
+              setOpenRequestsOnly(true);
+            }}
+          >
             <CardContent className="p-3">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-amber-500" />
@@ -174,10 +186,13 @@ export default function WhitelistRequestsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer" onClick={() => {
-            setStatusFilter('approved');
-            setOpenRequestsOnly(false);
-          }}>
+          <Card
+            className="cursor-pointer"
+            onClick={() => {
+              setStatusFilter('approved');
+              setOpenRequestsOnly(false);
+            }}
+          >
             <CardContent className="p-3">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -188,10 +203,13 @@ export default function WhitelistRequestsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer" onClick={() => {
-            setStatusFilter('rejected');
-            setOpenRequestsOnly(false);
-          }}>
+          <Card
+            className="cursor-pointer"
+            onClick={() => {
+              setStatusFilter('rejected');
+              setOpenRequestsOnly(false);
+            }}
+          >
             <CardContent className="p-3">
               <div className="flex items-center gap-2">
                 <XCircle className="h-4 w-4 text-destructive" />
@@ -207,15 +225,15 @@ export default function WhitelistRequestsPage() {
         {/* Search + quick filter */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by CR ID, reason, or GUID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9"
+              className="h-9 pl-9"
             />
           </div>
-          <div className="flex items-center gap-2 rounded-md border px-3 h-9">
+          <div className="flex h-9 items-center gap-2 rounded-md border px-3">
             <Switch
               id="open-requests-only"
               checked={openRequestsOnly}
@@ -224,7 +242,7 @@ export default function WhitelistRequestsPage() {
                 setStatusFilter(checked ? 'requested' : '');
               }}
             />
-            <Label htmlFor="open-requests-only" className="text-xs cursor-pointer">
+            <Label htmlFor="open-requests-only" className="cursor-pointer text-xs">
               Open Requests Only
             </Label>
           </div>
@@ -260,9 +278,7 @@ export default function WhitelistRequestsPage() {
               header: 'Attempts',
               sortable: true,
               sortType: 'number',
-              cell: (row) => (
-                <span className="text-sm">{row.biometric_attempts ?? '—'}</span>
-              ),
+              cell: (row) => <span className="text-sm">{row.biometric_attempts ?? '—'}</span>,
               hideOnMobile: true,
             },
             {
@@ -287,7 +303,7 @@ export default function WhitelistRequestsPage() {
               key: 'dha_guid',
               header: 'DHA GUID',
               cell: (row) => (
-                <span className="font-mono text-[10px] text-muted-foreground truncate max-w-[100px] inline-block">
+                <span className="inline-block max-w-[100px] truncate font-mono text-[10px] text-muted-foreground">
                   {row.dha_guid || '—'}
                 </span>
               ),
@@ -297,8 +313,10 @@ export default function WhitelistRequestsPage() {
           mobileCard={(row) => (
             <div className="flex items-center justify-between gap-2 p-3">
               <div className="min-w-0 space-y-0.5">
-                <p className="font-mono text-xs truncate">{row.beneficiary_cr_id}</p>
-                <p className="text-xs text-muted-foreground">{formatReasonType(row.reason_type || 'Unknown')}</p>
+                <p className="truncate font-mono text-xs">{row.beneficiary_cr_id}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatReasonType(row.reason_type || 'Unknown')}
+                </p>
                 {row.requested_at && (
                   <p className="text-[10px] text-muted-foreground">
                     {format(parseISO(row.requested_at), 'dd MMM yyyy HH:mm')}

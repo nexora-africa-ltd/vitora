@@ -125,8 +125,7 @@ export const inpatientQueryKeys = {
   reviewRequests: (params?: ReviewRequestListParams) =>
     [...inpatientQueryKeys.all, 'review-requests', params] as const,
   reviewRequest: (id: number) => [...inpatientQueryKeys.all, 'review-requests', id] as const,
-  kardex: (params?: KardexListParams) =>
-    [...inpatientQueryKeys.all, 'kardex', params] as const,
+  kardex: (params?: KardexListParams) => [...inpatientQueryKeys.all, 'kardex', params] as const,
   kardexById: (id: number) => [...inpatientQueryKeys.all, 'kardex', id] as const,
   carePlanEntryHistory: (kardexId: number, entryId: number) =>
     [...inpatientQueryKeys.kardexById(kardexId), 'care-plan-entry-history', entryId] as const,
@@ -143,11 +142,20 @@ export const inpatientQueryKeys = {
   shiftHandover: (id: number) => [...inpatientQueryKeys.all, 'shift-handovers', id] as const,
   temperatureReadings: (admissionId: string | number) =>
     [...inpatientQueryKeys.all, 'temperature-readings', admissionId] as const,
-  fluidBalanceSheets: (params?: { admission?: number; chart_date?: string; page?: number; page_size?: number }) =>
-    [...inpatientQueryKeys.all, 'fluid-balance-sheets', params] as const,
-  fluidBalanceSheet: (id: number) => [...inpatientQueryKeys.all, 'fluid-balance-sheets', id] as const,
-  fluidBalanceEntries: (params?: { fluid_balance_sheet?: number; entry_type?: string; page?: number; page_size?: number }) =>
-    [...inpatientQueryKeys.all, 'fluid-balance-entries', params] as const,
+  fluidBalanceSheets: (params?: {
+    admission?: number;
+    chart_date?: string;
+    page?: number;
+    page_size?: number;
+  }) => [...inpatientQueryKeys.all, 'fluid-balance-sheets', params] as const,
+  fluidBalanceSheet: (id: number) =>
+    [...inpatientQueryKeys.all, 'fluid-balance-sheets', id] as const,
+  fluidBalanceEntries: (params?: {
+    fluid_balance_sheet?: number;
+    entry_type?: string;
+    page?: number;
+    page_size?: number;
+  }) => [...inpatientQueryKeys.all, 'fluid-balance-entries', params] as const,
   bloodTransfusions: (admissionId: string | number) =>
     [...inpatientQueryKeys.all, 'blood-transfusions', admissionId] as const,
   bloodTransfusion: (id: number) =>
@@ -156,8 +164,7 @@ export const inpatientQueryKeys = {
     [...inpatientQueryKeys.all, 'bp-readings', admissionId] as const,
   atrReports: (params?: { transfusion__admission?: number; status?: string }) =>
     [...inpatientQueryKeys.all, 'atr-reports', params] as const,
-  atrReport: (id: number) =>
-    [...inpatientQueryKeys.all, 'atr-reports', 'detail', id] as const,
+  atrReport: (id: number) => [...inpatientQueryKeys.all, 'atr-reports', 'detail', id] as const,
   dischargeTemplates: (params?: { layout?: string; is_active?: boolean }) =>
     [...inpatientQueryKeys.all, 'discharge-templates', params] as const,
   dischargeTemplate: (id: number) =>
@@ -263,7 +270,8 @@ export function useBeds(params?: BedListParams) {
 export function useUpdateBed() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Bed> }) => inpatientApi.updateBed(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<Bed> }) =>
+      inpatientApi.updateBed(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
     },
@@ -349,7 +357,14 @@ export function useCheckWardCompatibility() {
       requiresIsolation?: boolean;
       requiresOxygen?: boolean;
       requiresVentilator?: boolean;
-    }) => inpatientApi.checkWardCompatibility(wardId, patientId, requiresIsolation, requiresOxygen, requiresVentilator),
+    }) =>
+      inpatientApi.checkWardCompatibility(
+        wardId,
+        patientId,
+        requiresIsolation,
+        requiresOxygen,
+        requiresVentilator
+      ),
   });
 }
 
@@ -398,7 +413,8 @@ export function useAdmissionRecommendation(id: number | undefined) {
 export function useCreateAdmissionRecommendation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<AdmissionRecommendation>) => inpatientApi.createAdmissionRecommendation(data),
+    mutationFn: (data: Partial<AdmissionRecommendation>) =>
+      inpatientApi.createAdmissionRecommendation(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.recommendations() });
     },
@@ -498,7 +514,8 @@ export function useCreateAdmission() {
 export function useUpdateAdmission() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Admission> }) => inpatientApi.updateAdmission(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<Admission> }) =>
+      inpatientApi.updateAdmission(id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admission(variables.id) });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admissions() });
@@ -512,7 +529,9 @@ export function useOverrideBed() {
     mutationFn: ({ admissionId, data }: { admissionId: number; data: BedOverrideRequest }) =>
       inpatientApi.overrideBed(admissionId, data),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admission(result.admission.id) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.admission(result.admission.id),
+      });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admissions() });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.beds() });
@@ -540,7 +559,9 @@ export function useSetExpectedDischarge() {
       data: SetExpectedDischargeRequest;
     }) => inpatientApi.setExpectedDischarge(admissionId, data),
     onSuccess: (_result, variables) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admission(variables.admissionId) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.admission(variables.admissionId),
+      });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admissions() });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
     },
@@ -575,7 +596,9 @@ export function useSaveAdmissionDischargeDraft(admissionId: string | number | un
       inpatientApi.saveAdmissionDischargeDraft(admissionId!, data),
     onSuccess: () => {
       if (admissionId !== undefined) {
-        queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admissionDischargeDraft(admissionId) });
+        queryClient.invalidateQueries({
+          queryKey: inpatientQueryKeys.admissionDischargeDraft(admissionId),
+        });
       }
     },
   });
@@ -625,7 +648,9 @@ export function useCreateDischarge() {
     mutationFn: (data: DischargeCreateData) => inpatientApi.createDischarge(data),
     onSuccess: (discharge) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.discharges() });
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admission(discharge.admission) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.admission(discharge.admission),
+      });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admissions() });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.beds() });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
@@ -678,7 +703,9 @@ export function useCreateTransfer() {
   });
 }
 
-export function useInterFacilityTransfers(params?: Record<string, string | number | boolean | undefined>) {
+export function useInterFacilityTransfers(
+  params?: Record<string, string | number | boolean | undefined>
+) {
   return useQuery({
     queryKey: inpatientQueryKeys.interFacilityTransfers(params),
     queryFn: () => inpatientApi.listInterFacilityTransfers(params),
@@ -735,7 +762,8 @@ function invalidateInterFacilityTransferQueries(
 export function useCreateInterFacilityTransfer() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: InterFacilityTransferCreateData) => inpatientApi.createInterFacilityTransfer(data),
+    mutationFn: (data: InterFacilityTransferCreateData) =>
+      inpatientApi.createInterFacilityTransfer(data),
     onSuccess: (transfer) => {
       invalidateInterFacilityTransferQueries(queryClient, transfer);
     },
@@ -745,7 +773,8 @@ export function useCreateInterFacilityTransfer() {
 export function useSubmitInterFacilityTransfer() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (transferId: number | string) => inpatientApi.submitInterFacilityTransfer(transferId),
+    mutationFn: (transferId: number | string) =>
+      inpatientApi.submitInterFacilityTransfer(transferId),
     onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
   });
 }
@@ -776,7 +805,8 @@ export function useRejectInterFacilityTransfer() {
 export function useDispatchInterFacilityTransfer() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (transferId: number | string) => inpatientApi.dispatchInterFacilityTransfer(transferId),
+    mutationFn: (transferId: number | string) =>
+      inpatientApi.dispatchInterFacilityTransfer(transferId),
     onSuccess: (transfer) => invalidateInterFacilityTransferQueries(queryClient, transfer),
   });
 }
@@ -870,7 +900,9 @@ export function useCreateWardRound() {
     mutationFn: (data: WardRoundCreateData) => inpatientApi.createWardRound(data),
     onSuccess: (wardRound) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wardRounds() });
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wardRounds({ admission: wardRound.admission }) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.wardRounds({ admission: wardRound.admission }),
+      });
     },
   });
 }
@@ -928,7 +960,9 @@ export function useCreateReviewRequest() {
     mutationFn: (data: ReviewRequestCreateData) => inpatientApi.createReviewRequest(data),
     onSuccess: (reviewRequest) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequests() });
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequests({ admission: reviewRequest.admission }) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.reviewRequests({ admission: reviewRequest.admission }),
+      });
     },
   });
 }
@@ -938,7 +972,9 @@ export function useAcknowledgeReviewRequest() {
   return useMutation({
     mutationFn: (requestId: number) => inpatientApi.acknowledgeReviewRequest(requestId),
     onSuccess: (reviewRequest) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequest(reviewRequest.id) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.reviewRequest(reviewRequest.id),
+      });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequests() });
     },
   });
@@ -949,7 +985,9 @@ export function useCompleteReviewRequest() {
   return useMutation({
     mutationFn: (requestId: number) => inpatientApi.completeReviewRequest(requestId),
     onSuccess: (reviewRequest) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequest(reviewRequest.id) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.reviewRequest(reviewRequest.id),
+      });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequests() });
     },
   });
@@ -961,7 +999,9 @@ export function useCancelReviewRequest() {
     mutationFn: ({ requestId, reason }: { requestId: number; reason: string }) =>
       inpatientApi.cancelReviewRequest(requestId, reason),
     onSuccess: (reviewRequest) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequest(reviewRequest.id) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.reviewRequest(reviewRequest.id),
+      });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequests() });
     },
   });
@@ -1016,7 +1056,9 @@ export function useAddKardexShiftNote() {
     mutationFn: ({ kardexId, data }: { kardexId: number; data: KardexShiftNoteCreateData }) =>
       inpatientApi.addKardexShiftNote(kardexId, data),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.kardexById(variables.kardexId),
+      });
       queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
@@ -1028,7 +1070,9 @@ export function useAddKardexHandoverNote() {
     mutationFn: ({ kardexId, data }: { kardexId: number; data: KardexHandoverNoteCreateData }) =>
       inpatientApi.addKardexHandoverNote(kardexId, data),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.kardexById(variables.kardexId),
+      });
       queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
@@ -1037,10 +1081,17 @@ export function useAddKardexHandoverNote() {
 export function useAddKardexScheduleItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ kardexId, data }: { kardexId: number; data: import('@/lib/types/inpatient').KardexScheduleItemCreateData }) =>
-      inpatientApi.addKardexScheduleItem(kardexId, data),
+    mutationFn: ({
+      kardexId,
+      data,
+    }: {
+      kardexId: number;
+      data: import('@/lib/types/inpatient').KardexScheduleItemCreateData;
+    }) => inpatientApi.addKardexScheduleItem(kardexId, data),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.kardexById(variables.kardexId),
+      });
       queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
@@ -1049,10 +1100,19 @@ export function useAddKardexScheduleItem() {
 export function useUpdateKardexScheduleItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ kardexId, itemId, data }: { kardexId: number; itemId: number; data: import('@/lib/types/inpatient').KardexScheduleItemUpdateData }) =>
-      inpatientApi.updateKardexScheduleItem(kardexId, itemId, data),
+    mutationFn: ({
+      kardexId,
+      itemId,
+      data,
+    }: {
+      kardexId: number;
+      itemId: number;
+      data: import('@/lib/types/inpatient').KardexScheduleItemUpdateData;
+    }) => inpatientApi.updateKardexScheduleItem(kardexId, itemId, data),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.kardexById(variables.kardexId),
+      });
       queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
@@ -1064,7 +1124,9 @@ export function useDeleteKardexScheduleItem() {
     mutationFn: ({ kardexId, itemId }: { kardexId: number; itemId: number }) =>
       inpatientApi.deleteKardexScheduleItem(kardexId, itemId),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.kardexById(variables.kardexId),
+      });
       queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
@@ -1076,7 +1138,9 @@ export function useAddCarePlanEntry() {
     mutationFn: ({ kardexId, data }: { kardexId: number; data: NursingCarePlanEntryCreateData }) =>
       inpatientApi.addCarePlanEntry(kardexId, data),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.kardexById(variables.kardexId),
+      });
       queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
@@ -1085,10 +1149,19 @@ export function useAddCarePlanEntry() {
 export function useUpdateCarePlanEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ kardexId, entryId, data }: { kardexId: number; entryId: number; data: NursingCarePlanEntryUpdateData }) =>
-      inpatientApi.updateCarePlanEntry(kardexId, entryId, data),
+    mutationFn: ({
+      kardexId,
+      entryId,
+      data,
+    }: {
+      kardexId: number;
+      entryId: number;
+      data: NursingCarePlanEntryUpdateData;
+    }) => inpatientApi.updateCarePlanEntry(kardexId, entryId, data),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.kardexById(variables.kardexId),
+      });
       queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
@@ -1100,7 +1173,9 @@ export function useResolveAllCarePlans() {
     mutationFn: ({ kardexId, evaluation }: { kardexId: number; evaluation?: string }) =>
       inpatientApi.resolveAllCarePlans(kardexId, evaluation),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.kardexById(variables.kardexId),
+      });
       queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
@@ -1109,10 +1184,19 @@ export function useResolveAllCarePlans() {
 export function useDiscontinueCarePlanEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ kardexId, entryId, reason }: { kardexId: number; entryId: number; reason: string }) =>
-      inpatientApi.discontinueCarePlanEntry(kardexId, entryId, reason),
+    mutationFn: ({
+      kardexId,
+      entryId,
+      reason,
+    }: {
+      kardexId: number;
+      entryId: number;
+      reason: string;
+    }) => inpatientApi.discontinueCarePlanEntry(kardexId, entryId, reason),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.kardexById(variables.kardexId),
+      });
       queryClient.invalidateQueries({ queryKey: [...inpatientQueryKeys.all, 'kardex'] });
     },
   });
@@ -1224,8 +1308,13 @@ export function useAdmissionConsumableUsage(admissionId: string | number | undef
 export function useRecordAdmissionConsumableUsage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ admissionId, data }: { admissionId: number; data: InpatientConsumableUsageCreateData }) =>
-      inpatientApi.recordAdmissionConsumableUsage(admissionId, data),
+    mutationFn: ({
+      admissionId,
+      data,
+    }: {
+      admissionId: number;
+      data: InpatientConsumableUsageCreateData;
+    }) => inpatientApi.recordAdmissionConsumableUsage(admissionId, data),
     onSuccess: (usage) => {
       queryClient.invalidateQueries({
         queryKey: inpatientQueryKeys.admissionConsumableUsage(usage.admission),
@@ -1265,7 +1354,8 @@ export function useReverseAdmissionConsumableUsage() {
 export function useTemperatureReadings(admissionId: number | undefined, pageSize = 100) {
   return useQuery({
     queryKey: inpatientQueryKeys.temperatureReadings(admissionId!),
-    queryFn: () => inpatientApi.listTemperatureReadings({ admission: admissionId!, page_size: pageSize }),
+    queryFn: () =>
+      inpatientApi.listTemperatureReadings({ admission: admissionId!, page_size: pageSize }),
     enabled: typeof admissionId === 'number',
   });
 }
@@ -1292,8 +1382,12 @@ export function useFluidBalanceSheets(admissionId: number | undefined) {
 
 export function useFluidBalanceEntries(sheetId: number | undefined) {
   return useQuery({
-    queryKey: inpatientQueryKeys.fluidBalanceEntries({ fluid_balance_sheet: sheetId!, page_size: 200 }),
-    queryFn: () => inpatientApi.listFluidBalanceEntries({ fluid_balance_sheet: sheetId!, page_size: 200 }),
+    queryKey: inpatientQueryKeys.fluidBalanceEntries({
+      fluid_balance_sheet: sheetId!,
+      page_size: 200,
+    }),
+    queryFn: () =>
+      inpatientApi.listFluidBalanceEntries({ fluid_balance_sheet: sheetId!, page_size: 200 }),
     enabled: typeof sheetId === 'number',
   });
 }
@@ -1332,7 +1426,10 @@ export function useCreateFluidBalanceEntry() {
     mutationFn: (data: FluidBalanceEntryCreateData) => inpatientApi.createFluidBalanceEntry(data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: inpatientQueryKeys.fluidBalanceEntries({ fluid_balance_sheet: variables.fluid_balance_sheet, page_size: 200 }),
+        queryKey: inpatientQueryKeys.fluidBalanceEntries({
+          fluid_balance_sheet: variables.fluid_balance_sheet,
+          page_size: 200,
+        }),
       });
       queryClient.invalidateQueries({
         queryKey: [...inpatientQueryKeys.all, 'fluid-balance-sheets'],
@@ -1387,8 +1484,10 @@ export function useAddTransfusionObservation() {
 export function useMarkTransfusionReaction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (args: { transfusionId: number; data: { reaction_type: string; action_taken?: string } }) =>
-      inpatientApi.markTransfusionReaction(args.transfusionId, args.data),
+    mutationFn: (args: {
+      transfusionId: number;
+      data: { reaction_type: string; action_taken?: string };
+    }) => inpatientApi.markTransfusionReaction(args.transfusionId, args.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
     },

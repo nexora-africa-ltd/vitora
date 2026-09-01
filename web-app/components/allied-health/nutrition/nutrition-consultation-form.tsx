@@ -39,21 +39,10 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  User,
-  AlertCircle,
-  Check,
-  ChevronsUpDown,
-  Apple,
-  Scale,
-} from 'lucide-react';
+import { User, AlertCircle, Check, ChevronsUpDown, Apple, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useCreateNutritionConsultation,
@@ -61,7 +50,11 @@ import {
 } from '@/lib/hooks/use-nutrition';
 import { usePatients, usePatient } from '@/lib/hooks/use-patients';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
-import { REFERRAL_REASON_LABELS, type NutritionReferralReason, type ActivityLevel } from '@/lib/types/nutrition';
+import {
+  REFERRAL_REASON_LABELS,
+  type NutritionReferralReason,
+  type ActivityLevel,
+} from '@/lib/types/nutrition';
 
 // =============================================================================
 // Types & Validation
@@ -198,13 +191,14 @@ export function NutritionConsultationForm({
       patient_id: patientId || consultation?.patient_id || 0,
       referral_reason: consultation?.referral_reason || '',
       clinical_notes: consultation?.clinical_notes || '',
-      priority: (consultation?.priority as typeof priorities[number]) || 'ROUTINE',
+      priority: (consultation?.priority as (typeof priorities)[number]) || 'ROUTINE',
       weight_kg: consultation?.weight_kg ?? undefined,
       height_cm: consultation?.height_cm ?? undefined,
       waist_cm: consultation?.waist_cm ?? undefined,
       hip_circumference: consultation?.hip_circumference ?? undefined,
       muac_cm: consultation?.muac_cm ?? undefined,
-      activity_level: (consultation?.activity_level as typeof activityLevels[number]) || 'SEDENTARY',
+      activity_level:
+        (consultation?.activity_level as (typeof activityLevels)[number]) || 'SEDENTARY',
       dietary_restrictions: consultation?.dietary_restrictions || '',
       food_allergies: consultation?.food_allergies || '',
       current_diet: consultation?.current_diet || '',
@@ -237,12 +231,15 @@ export function NutritionConsultationForm({
   }, [encounter, form, isEditMode]);
 
   // Handle patient selection
-  const handlePatientSelect = useCallback((id: number) => {
-    setSelectedPatientId(id);
-    form.setValue('patient_id', id);
-    setPatientOpen(false);
-    setPatientSearch('');
-  }, [form]);
+  const handlePatientSelect = useCallback(
+    (id: number) => {
+      setSelectedPatientId(id);
+      form.setValue('patient_id', id);
+      setPatientOpen(false);
+      setPatientSearch('');
+    },
+    [form]
+  );
 
   // Calculate BMI dynamically
   const watchWeight = form.watch('weight_kg');
@@ -310,7 +307,9 @@ export function NutritionConsultationForm({
         <Alert variant="default">
           <Check className="h-4 w-4" />
           <AlertDescription>
-            {isEditMode ? 'Consultation updated successfully!' : 'Consultation created successfully!'}
+            {isEditMode
+              ? 'Consultation updated successfully!'
+              : 'Consultation created successfully!'}
           </AlertDescription>
         </Alert>
       )}
@@ -328,7 +327,7 @@ export function NutritionConsultationForm({
           {/* Patient Selection */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <User className="h-4 w-4 sm:h-5 sm:w-5" />
                 Patient
               </CardTitle>
@@ -344,17 +343,22 @@ export function NutritionConsultationForm({
                       {patientId ? (
                         <div className="space-y-1">
                           {patientLoading ? (
-                            <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                            <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-2">
                               <LoadingSpinner className="h-4 w-4" />
-                              <span className="text-sm text-muted-foreground">Loading patient...</span>
+                              <span className="text-sm text-muted-foreground">
+                                Loading patient...
+                              </span>
                             </div>
                           ) : selectedPatient ? (
-                            <div className="p-2 border rounded-md bg-muted/50">
-                              <p className="font-medium">{selectedPatient.full_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}</p>
+                            <div className="rounded-md border bg-muted/50 p-2">
+                              <p className="font-medium">
+                                {selectedPatient.full_name ||
+                                  `${selectedPatient.first_name} ${selectedPatient.last_name}`}
+                              </p>
                               <p className="text-sm text-muted-foreground">{selectedPatient.mrn}</p>
                             </div>
                           ) : (
-                            <div className="p-2 border rounded-md bg-muted/50">
+                            <div className="rounded-md border bg-muted/50 p-2">
                               <p className="text-sm text-muted-foreground">Patient #{patientId}</p>
                             </div>
                           )}
@@ -384,7 +388,7 @@ export function NutritionConsultationForm({
                               <CommandList>
                                 {patientsLoading ? (
                                   <div className="p-2 text-center">
-                                    <LoadingSpinner className="h-4 w-4 mx-auto" />
+                                    <LoadingSpinner className="mx-auto h-4 w-4" />
                                   </div>
                                 ) : patients.length === 0 ? (
                                   <CommandEmpty>No patients found.</CommandEmpty>
@@ -399,14 +403,19 @@ export function NutritionConsultationForm({
                                         <Check
                                           className={cn(
                                             'mr-2 h-4 w-4',
-                                            selectedPatientId === patient.id ? 'opacity-100' : 'opacity-0'
+                                            selectedPatientId === patient.id
+                                              ? 'opacity-100'
+                                              : 'opacity-0'
                                           )}
                                         />
                                         <div>
                                           <p className="font-medium">
-                                            {patient.full_name || `${patient.first_name} ${patient.last_name}`}
+                                            {patient.full_name ||
+                                              `${patient.first_name} ${patient.last_name}`}
                                           </p>
-                                          <p className="text-sm text-muted-foreground">{patient.mrn}</p>
+                                          <p className="text-sm text-muted-foreground">
+                                            {patient.mrn}
+                                          </p>
                                         </div>
                                       </CommandItem>
                                     ))}
@@ -428,7 +437,7 @@ export function NutritionConsultationForm({
           {/* Referral Details */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Apple className="h-4 w-4 sm:h-5 sm:w-5" />
                 Referral Details
               </CardTitle>
@@ -488,8 +497,8 @@ export function NutritionConsultationForm({
 
               {/* Encounter Diagnoses (read-only context from referring encounter) */}
               {encounterDiagnoses && encounterDiagnoses.length > 0 && (
-                <div className="rounded-lg border p-3 sm:p-4 bg-muted/30 space-y-2">
-                  <h4 className="text-sm font-medium flex items-center gap-2">
+                <div className="space-y-2 rounded-lg border bg-muted/30 p-3 sm:p-4">
+                  <h4 className="flex items-center gap-2 text-sm font-medium">
                     Encounter Diagnoses
                     <HelpPopover content="Diagnoses from the referring encounter. These provide clinical context for the nutrition consultation." />
                   </h4>
@@ -498,12 +507,15 @@ export function NutritionConsultationForm({
                       <div key={dx.id} className="flex items-start gap-2 text-sm">
                         <Badge
                           variant={dx.diagnosis_type === 'PRIMARY' ? 'default' : 'outline'}
-                          className="shrink-0 text-xs mt-0.5"
+                          className="mt-0.5 shrink-0 text-xs"
                         >
                           {dx.diagnosis_type}
                         </Badge>
                         <span>
-                          {dx.icd10_code_display || dx.icd10_display || dx.free_text_diagnosis || 'Unknown'}
+                          {dx.icd10_code_display ||
+                            dx.icd10_display ||
+                            dx.free_text_diagnosis ||
+                            'Unknown'}
                           {dx.icd10_description && (
                             <span className="text-muted-foreground"> — {dx.icd10_description}</span>
                           )}
@@ -537,7 +549,7 @@ export function NutritionConsultationForm({
           {/* Anthropometrics */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Scale className="h-4 w-4 sm:h-5 sm:w-5" />
                 Anthropometrics
                 <HelpPopover content="Body measurements for nutritional assessment. BMI is calculated automatically. When opened from an encounter, weight and height are pre-filled from triage vitals." />
@@ -548,7 +560,9 @@ export function NutritionConsultationForm({
                 <Alert>
                   <Scale className="h-4 w-4" />
                   <AlertDescription>
-                    Weight and height have been pre-filled from {encounter.vitals_source === 'TRIAGE' ? 'triage' : 'encounter'} vitals. You can adjust if needed.
+                    Weight and height have been pre-filled from{' '}
+                    {encounter.vitals_source === 'TRIAGE' ? 'triage' : 'encounter'} vitals. You can
+                    adjust if needed.
                   </AlertDescription>
                 </Alert>
               )}
@@ -566,7 +580,9 @@ export function NutritionConsultationForm({
                           placeholder="e.g., 70.5"
                           {...field}
                           value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                          onChange={(e) =>
+                            field.onChange(e.target.value ? parseFloat(e.target.value) : null)
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -587,7 +603,9 @@ export function NutritionConsultationForm({
                           placeholder="e.g., 175"
                           {...field}
                           value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                          onChange={(e) =>
+                            field.onChange(e.target.value ? parseFloat(e.target.value) : null)
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -597,9 +615,9 @@ export function NutritionConsultationForm({
 
                 {bmi && (
                   <div className="flex items-end">
-                    <div className="p-2 border rounded-md bg-muted/50 w-full">
+                    <div className="w-full rounded-md border bg-muted/50 p-2">
                       <p className="text-sm text-muted-foreground">Calculated BMI</p>
-                      <p className="font-medium text-lg">{bmi}</p>
+                      <p className="text-lg font-medium">{bmi}</p>
                     </div>
                   </div>
                 )}
@@ -617,7 +635,9 @@ export function NutritionConsultationForm({
                           placeholder="e.g., 80"
                           {...field}
                           value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                          onChange={(e) =>
+                            field.onChange(e.target.value ? parseFloat(e.target.value) : null)
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -638,7 +658,9 @@ export function NutritionConsultationForm({
                           placeholder="e.g., 95"
                           {...field}
                           value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                          onChange={(e) =>
+                            field.onChange(e.target.value ? parseFloat(e.target.value) : null)
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -662,7 +684,9 @@ export function NutritionConsultationForm({
                           placeholder="e.g., 28"
                           {...field}
                           value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                          onChange={(e) =>
+                            field.onChange(e.target.value ? parseFloat(e.target.value) : null)
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -701,7 +725,7 @@ export function NutritionConsultationForm({
           {/* Dietary Information */}
           <Card>
             <CardHeader className="py-3 sm:py-4">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 Dietary Information
               </CardTitle>
             </CardHeader>
@@ -787,11 +811,7 @@ export function NutritionConsultationForm({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="w-full sm:w-auto"
-            >
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending && <LoadingSpinner className="mr-2 h-4 w-4" />}
               {isEditMode ? 'Update Consultation' : 'Create Consultation'}
             </Button>

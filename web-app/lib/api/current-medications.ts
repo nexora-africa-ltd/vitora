@@ -17,9 +17,7 @@ export const currentMedicationsApi = {
   },
 
   async get(patientId: number, id: number): Promise<CurrentMedication> {
-    const response = await apiClient.get(
-      `/api/patients/${patientId}/current-medications/${id}/`
-    );
+    const response = await apiClient.get(`/api/patients/${patientId}/current-medications/${id}/`);
     return parseResponse(CurrentMedicationSchema, response.data, {
       context: 'currentMedicationsApi.get',
     });
@@ -29,10 +27,7 @@ export const currentMedicationsApi = {
     patientId: number,
     data: CurrentMedicationCreatePayload
   ): Promise<CurrentMedication> {
-    const response = await apiClient.post(
-      `/api/patients/${patientId}/current-medications/`,
-      data
-    );
+    const response = await apiClient.post(`/api/patients/${patientId}/current-medications/`, data);
     return parseResponse(CurrentMedicationSchema, response.data, {
       context: 'currentMedicationsApi.create',
     });

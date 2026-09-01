@@ -9,7 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -26,7 +32,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast as sonnerToast } from 'sonner';
 import { Plus, Trash2, FlaskConical, User, AlertTriangle } from 'lucide-react';
 import { TestSelector } from './test-selector';
-import { LabOrderCreateData, OrderType, LabPriority, TestCatalogListItem } from '@/lib/types/laboratory';
+import {
+  LabOrderCreateData,
+  OrderType,
+  LabPriority,
+  TestCatalogListItem,
+} from '@/lib/types/laboratory';
 import { useCreateLabOrder, useSubmitLabOrder, useTestCatalog } from '@/lib/hooks/use-laboratory';
 import { useBloodUnits } from '@/lib/hooks/use-blood-bank';
 import { useRouter } from 'next/navigation';
@@ -49,16 +60,18 @@ const orderSchema = z.object({
   clinical_notes: z.string().optional(),
   bill_patient: z.boolean().default(true),
   blood_bank_unit: z.number().positive().optional(),
-  items: z.array(
-    z.object({
-      test: z.number().min(0, 'Test is required'),
-      test_name: z.string().optional(),
-      test_code: z.string().min(1, 'Test code is required'),
-      loinc_code: z.string().optional(),
-      cost: z.number().optional(),
-      special_instructions: z.string().optional(),
-    })
-  ).min(1, 'At least one test is required'),
+  items: z
+    .array(
+      z.object({
+        test: z.number().min(0, 'Test is required'),
+        test_name: z.string().optional(),
+        test_code: z.string().min(1, 'Test code is required'),
+        loinc_code: z.string().optional(),
+        cost: z.number().optional(),
+        special_instructions: z.string().optional(),
+      })
+    )
+    .min(1, 'At least one test is required'),
 });
 
 type OrderFormData = z.infer<typeof orderSchema>;
@@ -153,7 +166,9 @@ export function LabOrderForm({
   // Resolved values: explicit props take precedence over optional context
   const patientId = propPatientId ?? contextPatient?.id;
   const encounterId = propEncounterId ?? contextEncounter?.id;
-  const patientName = propPatientName ?? (contextPatient ? `${contextPatient.first_name} ${contextPatient.last_name}` : undefined);
+  const patientName =
+    propPatientName ??
+    (contextPatient ? `${contextPatient.first_name} ${contextPatient.last_name}` : undefined);
   const patientMrn = propPatientMrn ?? contextPatient?.mrn;
   const patientGender = propPatientGender ?? contextPatient?.gender;
   const patientDateOfBirth = propPatientDateOfBirth ?? contextPatient?.date_of_birth;
@@ -168,9 +183,9 @@ export function LabOrderForm({
 
   // Get current user's display name
   const requestedByName = user
-    ? (user.first_name && user.last_name
-        ? `${user.first_name} ${user.last_name}`
-        : user.username)
+    ? user.first_name && user.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user.username
     : 'Unknown';
 
   const form = useForm<OrderFormData>({
@@ -204,7 +219,11 @@ export function LabOrderForm({
   const bloodBankModuleEnabled = hasModule('blood_bank');
 
   const { data: bloodUnits, isLoading: loadingBloodUnits } = useBloodUnits({ page_size: 200 });
-  const { data: testCatalogPage } = useTestCatalog({ is_active: true, available_in_house: true, page_size: 200 });
+  const { data: testCatalogPage } = useTestCatalog({
+    is_active: true,
+    available_in_house: true,
+    page_size: 200,
+  });
 
   const selectableBloodUnits = (bloodUnits?.results || []).filter(
     (unit) => unit.status !== 'EXPIRED' && unit.status !== 'ISSUED'
@@ -266,7 +285,7 @@ export function LabOrderForm({
         continue;
       }
 
-      const cost = typeof match.cost === 'string' ? parseFloat(match.cost) : (match.cost || 0);
+      const cost = typeof match.cost === 'string' ? parseFloat(match.cost) : match.cost || 0;
       testsToAppend.push({
         test: match.id,
         test_name: match.name,
@@ -288,73 +307,79 @@ export function LabOrderForm({
 
   // Calculate total, ensuring cost is treated as number
   const totalCost = items.reduce((sum, item) => {
-    const cost = typeof item.cost === 'string' ? parseFloat(item.cost) : (item.cost || 0);
+    const cost = typeof item.cost === 'string' ? parseFloat(item.cost) : item.cost || 0;
     return sum + (isNaN(cost) ? 0 : cost);
   }, 0);
 
-  const handleAddTest = useCallback((test: TestCatalogListItem) => {
-    // Check if test is already added (use fields for accurate current state)
-    const currentItems = form.getValues('items');
-    const exists = currentItems.some(item => item.test === test.id);
-    if (exists) {
-      toast({
-        title: 'Test already added',
-        description: `${test.name} is already in the order.`,
-        variant: 'destructive',
+  const handleAddTest = useCallback(
+    (test: TestCatalogListItem) => {
+      // Check if test is already added (use fields for accurate current state)
+      const currentItems = form.getValues('items');
+      const exists = currentItems.some((item) => item.test === test.id);
+      if (exists) {
+        toast({
+          title: 'Test already added',
+          description: `${test.name} is already in the order.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Parse cost as number (backend may send as string from DecimalField)
+      const cost = typeof test.cost === 'string' ? parseFloat(test.cost) : test.cost || 0;
+
+      append({
+        test: test.id,
+        test_name: test.name,
+        test_code: test.code,
+        cost: isNaN(cost) ? 0 : cost,
+        special_instructions: '',
       });
-      return;
-    }
 
-    // Parse cost as number (backend may send as string from DecimalField)
-    const cost = typeof test.cost === 'string' ? parseFloat(test.cost) : (test.cost || 0);
+      // Trigger validation for items field to clear any previous errors
+      form.trigger('items');
 
-    append({
-      test: test.id,
-      test_name: test.name,
-      test_code: test.code,
-      cost: isNaN(cost) ? 0 : cost,
-      special_instructions: '',
-    });
-
-    // Trigger validation for items field to clear any previous errors
-    form.trigger('items');
-
-    setShowTestSelector(false);
-  }, [form, append, toast]);
+      setShowTestSelector(false);
+    },
+    [form, append, toast]
+  );
 
   // Handle LOINC test selection from SHA
-  const handleAddLOINCTest = useCallback((loinc: { code: string; title: string; component?: string }) => {
-    // Check if LOINC code is already added
-    const currentItems = form.getValues('items');
-    const exists = currentItems.some(item => item.test_code === loinc.code);
-    if (exists) {
-      toast({
-        title: 'Test already added',
-        description: `${loinc.title} is already in the order.`,
-        variant: 'destructive',
+  const handleAddLOINCTest = useCallback(
+    (loinc: { code: string; title: string; component?: string }) => {
+      // Check if LOINC code is already added
+      const currentItems = form.getValues('items');
+      const exists = currentItems.some((item) => item.test_code === loinc.code);
+      if (exists) {
+        toast({
+          title: 'Test already added',
+          description: `${loinc.title} is already in the order.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      append({
+        test: 0, // LOINC tests may not have local catalog entry
+        test_name: loinc.title,
+        test_code: loinc.code,
+        loinc_code: loinc.code, // Store LOINC code for SHA claims
+        cost: 0, // Cost to be determined
+        special_instructions: '',
       });
-      return;
-    }
 
-    append({
-      test: 0, // LOINC tests may not have local catalog entry
-      test_name: loinc.title,
-      test_code: loinc.code,
-      loinc_code: loinc.code, // Store LOINC code for SHA claims
-      cost: 0, // Cost to be determined
-      special_instructions: '',
-    });
+      // Trigger validation for items field to clear any previous errors
+      form.trigger('items');
 
-    // Trigger validation for items field to clear any previous errors
-    form.trigger('items');
+      setShowTestSelector(false);
 
-    setShowTestSelector(false);
-
-    toast({
-      title: 'LOINC Test Added',
-      description: `${loinc.title} (${loinc.code}) added. Cost will be determined by lab.`,
-    });
-  }, [form, append, toast]);
+      toast({
+        title: 'LOINC Test Added',
+        description: `${loinc.title} (${loinc.code}) added. Cost will be determined by lab.`,
+      });
+    },
+    [form, append, toast]
+  );
 
   const onSubmit = async (data: OrderFormData) => {
     if (encounterRequired && !data.encounter) {
@@ -374,7 +399,7 @@ export function LabOrderForm({
         clinical_notes: data.clinical_notes,
         bill_patient: data.bill_patient,
         ...(data.blood_bank_unit ? { blood_bank_unit: data.blood_bank_unit } : {}),
-        items: data.items.map(item => ({
+        items: data.items.map((item) => ({
           test_code: item.test_code,
           special_instructions: item.special_instructions,
         })),
@@ -419,8 +444,8 @@ export function LabOrderForm({
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Encounter Required</AlertTitle>
         <AlertDescription>
-          Lab orders must be created within the context of a patient encounter.
-          Please select or create an encounter first.
+          Lab orders must be created within the context of a patient encounter. Please select or
+          create an encounter first.
         </AlertDescription>
       </Alert>
     );
@@ -433,8 +458,8 @@ export function LabOrderForm({
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Encounter Not Active</AlertTitle>
         <AlertDescription>
-          Lab orders can only be created for active encounters. This encounter has been
-          completed or cancelled. Please create a new encounter to place orders.
+          Lab orders can only be created for active encounters. This encounter has been completed or
+          cancelled. Please create a new encounter to place orders.
         </AlertDescription>
       </Alert>
     );
@@ -449,7 +474,7 @@ export function LabOrderForm({
             <CardTitle className="text-base">Order Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {/* Patient Name */}
               {patientName && (
                 <div>
@@ -469,7 +494,7 @@ export function LabOrderForm({
               {patientMrn && (
                 <div>
                   <Label className="text-xs text-muted-foreground">MRN</Label>
-                  <p className="font-medium font-mono text-sm">{patientMrn}</p>
+                  <p className="font-mono text-sm font-medium">{patientMrn}</p>
                 </div>
               )}
 
@@ -477,9 +502,14 @@ export function LabOrderForm({
               {(patientGender || patientDateOfBirth) && (
                 <div>
                   <Label className="text-xs text-muted-foreground">Gender / Date of Birth</Label>
-                  <p className="font-medium text-sm">
-                    {patientGender === 'M' ? 'Male' : patientGender === 'F' ? 'Female' : patientGender || '—'}
-                    {patientDateOfBirth && ` • ${new Date(patientDateOfBirth).toLocaleDateString()}`}
+                  <p className="text-sm font-medium">
+                    {patientGender === 'M'
+                      ? 'Male'
+                      : patientGender === 'F'
+                        ? 'Female'
+                        : patientGender || '—'}
+                    {patientDateOfBirth &&
+                      ` • ${new Date(patientDateOfBirth).toLocaleDateString()}`}
                   </p>
                 </div>
               )}
@@ -488,7 +518,7 @@ export function LabOrderForm({
               {encounterType && (
                 <div>
                   <Label className="text-xs text-muted-foreground">Encounter Type</Label>
-                  <p className="font-medium text-sm">{encounterType}</p>
+                  <p className="text-sm font-medium">{encounterType}</p>
                 </div>
               )}
 
@@ -496,33 +526,36 @@ export function LabOrderForm({
               {encounterDate && (
                 <div>
                   <Label className="text-xs text-muted-foreground">Encounter Date</Label>
-                  <p className="font-medium text-sm">{new Date(encounterDate).toLocaleDateString()}</p>
+                  <p className="text-sm font-medium">
+                    {new Date(encounterDate).toLocaleDateString()}
+                  </p>
                 </div>
               )}
 
               {/* Requested By */}
               <div>
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <Label className="flex items-center gap-1 text-xs text-muted-foreground">
                   <User className="h-3 w-3" />
                   Requested By
                 </Label>
-                <p className="font-medium text-sm">{requestedByName}</p>
+                <p className="text-sm font-medium">{requestedByName}</p>
               </div>
 
               {/* Requested At */}
               <div>
                 <Label className="text-xs text-muted-foreground">Requested At</Label>
-                <p className="font-medium text-sm">
-                  {requestedAt.toLocaleDateString()} {requestedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <p className="text-sm font-medium">
+                  {requestedAt.toLocaleDateString()}{' '}
+                  {requestedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             </div>
 
             {/* Chief Complaint if provided */}
             {chiefComplaint && (
-              <div className="mt-4 pt-4 border-t">
+              <div className="mt-4 border-t pt-4">
                 <Label className="text-xs text-muted-foreground">Chief Complaint</Label>
-                <p className="text-sm mt-1">{chiefComplaint}</p>
+                <p className="mt-1 text-sm">{chiefComplaint}</p>
               </div>
             )}
           </CardContent>
@@ -537,7 +570,7 @@ export function LabOrderForm({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="order_type"
@@ -552,10 +585,19 @@ export function LabOrderForm({
                       >
                         {ORDER_TYPE_OPTIONS.map((option) => (
                           <div key={option.value} className="flex items-start space-x-3">
-                            <RadioGroupItem value={option.value} id={`order-type-${option.value}`} className="mt-1" />
-                            <Label htmlFor={`order-type-${option.value}`} className="cursor-pointer font-normal">
+                            <RadioGroupItem
+                              value={option.value}
+                              id={`order-type-${option.value}`}
+                              className="mt-1"
+                            />
+                            <Label
+                              htmlFor={`order-type-${option.value}`}
+                              className="cursor-pointer font-normal"
+                            >
                               <span className="font-medium">{option.label}</span>
-                              <span className="text-xs text-muted-foreground ml-2">- {option.description}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                - {option.description}
+                              </span>
                             </Label>
                           </div>
                         ))}
@@ -580,10 +622,19 @@ export function LabOrderForm({
                       >
                         {PRIORITY_OPTIONS.map((option) => (
                           <div key={option.value} className="flex items-start space-x-3">
-                            <RadioGroupItem value={option.value} id={`priority-${option.value}`} className="mt-1" />
-                            <Label htmlFor={`priority-${option.value}`} className="cursor-pointer font-normal">
+                            <RadioGroupItem
+                              value={option.value}
+                              id={`priority-${option.value}`}
+                              className="mt-1"
+                            />
+                            <Label
+                              htmlFor={`priority-${option.value}`}
+                              className="cursor-pointer font-normal"
+                            >
                               <span className="font-medium">{option.label}</span>
-                              <span className="text-xs text-muted-foreground ml-2">- {option.description}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                - {option.description}
+                              </span>
                             </Label>
                           </div>
                         ))}
@@ -621,13 +672,10 @@ export function LabOrderForm({
                 render={({ field }) => (
                   <FormItem className="flex items-center gap-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="flex items-center gap-2">
-                      <FormLabel className="font-normal cursor-pointer">
+                      <FormLabel className="cursor-pointer font-normal">
                         Bill patient for these tests
                       </FormLabel>
                       <HelpPopover content="External lab orders are not billed by default. Enable this if the facility should charge the patient for these tests." />
@@ -652,8 +700,8 @@ export function LabOrderForm({
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-                )}
-              />
+              )}
+            />
 
             {bloodBankModuleEnabled && (
               <FormField
@@ -668,7 +716,9 @@ export function LabOrderForm({
                     <FormControl>
                       <Select
                         value={field.value ? String(field.value) : 'none'}
-                        onValueChange={(value) => field.onChange(value === 'none' ? undefined : Number(value))}
+                        onValueChange={(value) =>
+                          field.onChange(value === 'none' ? undefined : Number(value))
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select blood unit (optional)" />
@@ -677,7 +727,8 @@ export function LabOrderForm({
                           <SelectItem value="none">No linked blood unit</SelectItem>
                           {selectableBloodUnits.map((unit) => (
                             <SelectItem key={unit.id} value={String(unit.id)}>
-                              {unit.unit_number} - {unit.blood_group} - {unit.component.replace('_', ' ')}
+                              {unit.unit_number} - {unit.blood_group} -{' '}
+                              {unit.component.replace('_', ' ')}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -687,7 +738,9 @@ export function LabOrderForm({
                       <p className="text-xs text-muted-foreground">Loading blood units...</p>
                     )}
                     {!loadingBloodUnits && selectableBloodUnits.length === 0 && (
-                      <p className="text-xs text-muted-foreground">No eligible blood units found (expired and transfused/issued are excluded).</p>
+                      <p className="text-xs text-muted-foreground">
+                        No eligible blood units found (expired and transfused/issued are excluded).
+                      </p>
                     )}
                     <FormMessage />
                   </FormItem>
@@ -711,31 +764,24 @@ export function LabOrderForm({
                 size="sm"
                 onClick={() => setShowTestSelector(true)}
               >
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 Add Test
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             {fields.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FlaskConical className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <div className="py-8 text-center text-muted-foreground">
+                <FlaskConical className="mx-auto mb-3 h-12 w-12 opacity-50" />
                 <p>No tests added yet</p>
-                <Button
-                  type="button"
-                  variant="link"
-                  onClick={() => setShowTestSelector(true)}
-                >
+                <Button type="button" variant="link" onClick={() => setShowTestSelector(true)}>
                   Click to add tests
                 </Button>
               </div>
             ) : (
               <div className="space-y-3">
                 {fields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className="flex items-start gap-3 p-3 border rounded-lg"
-                  >
+                  <div key={field.id} className="flex items-start gap-3 rounded-lg border p-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{field.test_name}</span>
@@ -743,7 +789,7 @@ export function LabOrderForm({
                           {field.test_code}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         Cost: {formatCurrency(field.cost || 0)}
                       </p>
                       <Input
@@ -752,12 +798,7 @@ export function LabOrderForm({
                         {...form.register(`items.${index}.special_instructions`)}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove(index)}
-                    >
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
                   </div>
@@ -765,17 +806,15 @@ export function LabOrderForm({
 
                 <Separator className="my-4" />
 
-                <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">Total ({fields.length} tests)</span>
-                  <span className="font-bold text-lg">{formatCurrency(totalCost)}</span>
+                  <span className="text-lg font-bold">{formatCurrency(totalCost)}</span>
                 </div>
               </div>
             )}
 
             {form.formState.errors.items && (
-              <p className="text-sm text-red-500 mt-2">
-                {form.formState.errors.items.message}
-              </p>
+              <p className="mt-2 text-sm text-red-500">{form.formState.errors.items.message}</p>
             )}
           </CardContent>
         </Card>
@@ -784,19 +823,18 @@ export function LabOrderForm({
         <div className="flex flex-col gap-3">
           {/* Show form errors */}
           {form.formState.isSubmitted && Object.keys(form.formState.errors).length > 0 && (
-            <div className="p-3 rounded-lg border border-destructive bg-destructive/10 text-sm text-destructive">
-              <p className="font-medium mb-1">Please fix the following errors:</p>
-              <ul className="list-disc list-inside">
+            <div className="rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+              <p className="mb-1 font-medium">Please fix the following errors:</p>
+              <ul className="list-inside list-disc">
                 {Object.entries(form.formState.errors).map(([field, error]) => (
                   <li key={field}>
                     {field === 'items'
                       ? (error as { message?: string })?.message || 'At least one test is required'
                       : field === 'patient'
-                      ? 'Patient is required unless a blood unit donor workflow is selected'
-                      : field === 'encounter'
-                      ? 'Encounter is required'
-                      : `${field}: ${(error as { message?: string })?.message || 'Invalid'}`
-                    }
+                        ? 'Patient is required unless a blood unit donor workflow is selected'
+                        : field === 'encounter'
+                          ? 'Encounter is required'
+                          : `${field}: ${(error as { message?: string })?.message || 'Invalid'}`}
                   </li>
                 ))}
               </ul>
@@ -809,9 +847,9 @@ export function LabOrderForm({
               </Button>
             )}
             <ShiftGate>
-            <Button type="submit" disabled={createOrder.isPending}>
-              {createOrder.isPending ? 'Creating...' : 'Create Lab Order'}
-            </Button>
+              <Button type="submit" disabled={createOrder.isPending}>
+                {createOrder.isPending ? 'Creating...' : 'Create Lab Order'}
+              </Button>
             </ShiftGate>
           </div>
         </div>

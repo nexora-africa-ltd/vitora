@@ -104,11 +104,7 @@ export function NavigationModeProvider({ children }: { children: ReactNode }) {
     [navigationMode, setNavigationMode, isClinicalNavigationEligible]
   );
 
-  return (
-    <NavigationModeContext.Provider value={value}>
-      {children}
-    </NavigationModeContext.Provider>
-  );
+  return <NavigationModeContext.Provider value={value}>{children}</NavigationModeContext.Provider>;
 }
 
 export function useNavigationMode(): NavigationModeContextValue {

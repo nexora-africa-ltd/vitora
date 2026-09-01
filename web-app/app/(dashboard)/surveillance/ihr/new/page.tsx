@@ -29,20 +29,7 @@ export default function NewIHRNotificationPage() {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
   const canCreateIHRNotification = hasPermission('surveillance.add_ihrnotification');
-
-  if (!canCreateIHRNotification) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New IHR Notification" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create IHR notifications.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  const hasIHRNotificationAccess = canCreateIHRNotification;
 
   const [formData, setFormData] = useState<IHRNotificationCreateData>({
     disease: 0,
@@ -80,8 +67,7 @@ export default function NewIHRNotificationPage() {
   });
 
   const { mutateAsync: createNotification, isPending } = useMutation({
-    mutationFn: (data: IHRNotificationCreateData) =>
-      surveillanceApi.createIHRNotification(data),
+    mutationFn: (data: IHRNotificationCreateData) => surveillanceApi.createIHRNotification(data),
     onSuccess: (result) => {
       toast({
         title: 'IHR notification created',
@@ -115,7 +101,7 @@ export default function NewIHRNotificationPage() {
 
   const updateField = <K extends keyof IHRNotificationCreateData>(
     key: K,
-    value: IHRNotificationCreateData[K],
+    value: IHRNotificationCreateData[K]
   ) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
@@ -123,9 +109,18 @@ export default function NewIHRNotificationPage() {
   // WHO IHR Annex 2 decision criteria
   const annex2Questions: Array<{ key: string; label: string }> = [
     { key: 'unusual_or_unexpected', label: 'Is the event unusual or unexpected?' },
-    { key: 'significant_public_health_risk', label: 'Is there a significant risk of international spread?' },
-    { key: 'significant_international_travel', label: 'Is there a significant risk to international travel or trade?' },
-    { key: 'requires_coordinated_response', label: 'Does the event require a coordinated international response?' },
+    {
+      key: 'significant_public_health_risk',
+      label: 'Is there a significant risk of international spread?',
+    },
+    {
+      key: 'significant_international_travel',
+      label: 'Is there a significant risk to international travel or trade?',
+    },
+    {
+      key: 'requires_coordinated_response',
+      label: 'Does the event require a coordinated international response?',
+    },
   ];
 
   const toggleAnnex2 = (key: string, checked: boolean) => {
@@ -137,6 +132,20 @@ export default function NewIHRNotificationPage() {
       is_annex2_positive: isPositive,
     }));
   };
+
+  if (!hasIHRNotificationAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New IHR Notification" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to create IHR notifications.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -296,7 +305,9 @@ export default function NewIHRNotificationPage() {
                   disabled={!formData.county}
                 >
                   <SelectTrigger id="sub_county">
-                    <SelectValue placeholder={formData.county ? 'Select sub-county' : 'Select county first'} />
+                    <SelectValue
+                      placeholder={formData.county ? 'Select sub-county' : 'Select county first'}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {subCounties.map((sc) => (
@@ -315,9 +326,7 @@ export default function NewIHRNotificationPage() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-base sm:text-lg">
-                IHR Annex 2 Assessment
-              </CardTitle>
+              <CardTitle className="text-base sm:text-lg">IHR Annex 2 Assessment</CardTitle>
               <HelpPopover content="The IHR (2005) Annex 2 Decision Instrument helps determine whether a public health event must be notified to WHO. If any criterion is met, the event is considered Annex 2 positive." />
             </div>
           </CardHeader>
@@ -331,7 +340,7 @@ export default function NewIHRNotificationPage() {
                 />
                 <Label
                   htmlFor={`annex2_${q.key}`}
-                  className="text-sm font-normal leading-snug cursor-pointer"
+                  className="cursor-pointer text-sm font-normal leading-snug"
                 >
                   {q.label}
                 </Label>
@@ -339,8 +348,9 @@ export default function NewIHRNotificationPage() {
             ))}
 
             {formData.is_annex2_positive && (
-              <div className="mt-3 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
-                This event meets IHR Annex 2 criteria and <strong>must be notified to WHO within 24 hours</strong> per IHR Article 6.
+              <div className="mt-3 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                This event meets IHR Annex 2 criteria and{' '}
+                <strong>must be notified to WHO within 24 hours</strong> per IHR Article 6.
               </div>
             )}
           </CardContent>

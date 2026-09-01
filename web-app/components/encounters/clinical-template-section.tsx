@@ -46,13 +46,8 @@ export function ClinicalTemplateFormContent({
         </p>
         <div className="flex items-center gap-2">
           {selectedTemplate && templateData && !disabled && onSaveSnapshot && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onSaveSnapshot}
-            >
-              <FileText className="h-4 w-4 mr-1" />
+            <Button type="button" variant="outline" size="sm" onClick={onSaveSnapshot}>
+              <FileText className="mr-1 h-4 w-4" />
               Save as Attachment
             </Button>
           )}
@@ -82,12 +77,10 @@ export function ClinicalTemplateFormContent({
           />
         </div>
       ) : (
-        <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
-          <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
+        <div className="rounded-lg border-2 border-dashed py-6 text-center text-muted-foreground">
+          <FileText className="mx-auto mb-3 h-10 w-10 opacity-50" />
           <p className="font-medium">No template selected</p>
-          <p className="text-sm mt-1">
-            Select a template above to guide your clinical assessment
-          </p>
+          <p className="mt-1 text-sm">Select a template above to guide your clinical assessment</p>
         </div>
       )}
     </div>

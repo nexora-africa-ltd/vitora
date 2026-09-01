@@ -36,11 +36,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from '@/components/ui/tooltip';
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -133,7 +136,10 @@ export default function PatientDetailPage() {
   const { patient, isLoading, error } = usePatientContext();
 
   // Vitals history for trend chart
-  const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(patient?.id ?? patientId, 'all');
+  const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(
+    patient?.id ?? patientId,
+    'all'
+  );
   const { canEditPatient } = usePermissions();
   const { hasModule, facility } = useFacility();
   const { data: emergencyContacts } = usePatientEmergencyContacts(patient?.id ?? 0);
@@ -143,9 +149,12 @@ export default function PatientDetailPage() {
   const { refresh, isRefreshing } = usePageRefresh();
 
   // Fetch prescriptions and lab orders
-  const { data: prescriptionsData, isLoading: loadingPrescriptions } =
-    usePatientPrescriptions(patient?.id ?? 0);
-  const { data: labOrdersData, isLoading: loadingLabOrders } = usePatientLabOrders(patient?.id ?? 0);
+  const { data: prescriptionsData, isLoading: loadingPrescriptions } = usePatientPrescriptions(
+    patient?.id ?? 0
+  );
+  const { data: labOrdersData, isLoading: loadingLabOrders } = usePatientLabOrders(
+    patient?.id ?? 0
+  );
   const patientProcedureOrdersQuery = usePatientProcedureOrders(patient?.id ?? 0);
   const procedureOrdersData: PaginatedResponse<ProcedureOrderListItem> | undefined =
     patientProcedureOrdersQuery.data as PaginatedResponse<ProcedureOrderListItem> | undefined;
@@ -233,7 +242,12 @@ export default function PatientDetailPage() {
               />
               <div className="flex min-w-0 flex-col gap-1">
                 <p className="truncate font-mono text-sm font-medium">
-                  MRN: {isPendingSync(patient.mrn) ? <PendingSyncBadge label="MRN pending" /> : patient.mrn}
+                  MRN:{' '}
+                  {isPendingSync(patient.mrn) ? (
+                    <PendingSyncBadge label="MRN pending" />
+                  ) : (
+                    patient.mrn
+                  )}
                   {patient.sha_number && (
                     <span className="text-muted-foreground"> • SHA: {patient.sha_number}</span>
                   )}
@@ -329,79 +343,88 @@ export default function PatientDetailPage() {
         {ENABLE_SMS && (
           <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>
             <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Contact Patient</DialogTitle>
-              <DialogDescription>
-                Send a custom SMS to {patient.first_name} {patient.last_name}.
-              </DialogDescription>
-            </DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Contact Patient</DialogTitle>
+                <DialogDescription>
+                  Send a custom SMS to {patient.first_name} {patient.last_name}.
+                </DialogDescription>
+              </DialogHeader>
 
-            <div className="space-y-3">
-              <div className="text-sm text-muted-foreground">
-                Recipient: {patient.phone_number ? formatPhoneNumber(patient.phone_number) : 'No phone number on file'}
+              <div className="space-y-3">
+                <div className="text-sm text-muted-foreground">
+                  Recipient:{' '}
+                  {patient.phone_number
+                    ? formatPhoneNumber(patient.phone_number)
+                    : 'No phone number on file'}
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="sms-template">Template</Label>
+                  <Select
+                    value={contactTemplate}
+                    onValueChange={(value) => {
+                      if (!isSmsTemplate(value)) return;
+                      setContactTemplate(value);
+                      if (value !== 'custom') {
+                        setContactMessage(getTemplateMessage(value));
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="sms-template">
+                      <SelectValue placeholder="Select template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="follow_up">Follow-up Reminder</SelectItem>
+                      <SelectItem value="appointment">Appointment Reminder</SelectItem>
+                      <SelectItem value="lab_results">Lab Results Ready</SelectItem>
+                      <SelectItem value="medication">Medication Adherence</SelectItem>
+                      <SelectItem value="custom">Custom Message</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Textarea
+                  value={contactMessage}
+                  onChange={(e) => setContactMessage(e.target.value)}
+                  placeholder="Type your SMS message"
+                  rows={5}
+                />
+                <div className="text-xs text-muted-foreground">
+                  {contactMessage.length}/500 characters
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="sms-template">Template</Label>
-                <Select
-                  value={contactTemplate}
-                  onValueChange={(value) => {
-                    if (!isSmsTemplate(value)) return;
-                    setContactTemplate(value);
-                    if (value !== 'custom') {
-                      setContactMessage(getTemplateMessage(value));
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setContactDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!patient.phone_number) {
+                      toast.error('Patient has no phone number on file');
+                      return;
                     }
+
+                    contactPatientSms.mutate(
+                      { id: patient.id, message: contactMessage.trim() },
+                      {
+                        onSuccess: () => {
+                          toast.success('SMS sent to patient');
+                          setContactDialogOpen(false);
+                        },
+                        onError: () => {
+                          toast.error('Failed to send SMS to patient');
+                        },
+                      }
+                    );
                   }}
-                >
-                  <SelectTrigger id="sms-template">
-                    <SelectValue placeholder="Select template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="follow_up">Follow-up Reminder</SelectItem>
-                    <SelectItem value="appointment">Appointment Reminder</SelectItem>
-                    <SelectItem value="lab_results">Lab Results Ready</SelectItem>
-                    <SelectItem value="medication">Medication Adherence</SelectItem>
-                    <SelectItem value="custom">Custom Message</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Textarea
-                value={contactMessage}
-                onChange={(e) => setContactMessage(e.target.value)}
-                placeholder="Type your SMS message"
-                rows={5}
-              />
-              <div className="text-xs text-muted-foreground">{contactMessage.length}/500 characters</div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setContactDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (!patient.phone_number) {
-                    toast.error('Patient has no phone number on file');
-                    return;
+                  disabled={
+                    contactPatientSms.isPending ||
+                    !contactMessage.trim() ||
+                    contactMessage.length > 500
                   }
-
-                  contactPatientSms.mutate(
-                    { id: patient.id, message: contactMessage.trim() },
-                    {
-                      onSuccess: () => {
-                        toast.success('SMS sent to patient');
-                        setContactDialogOpen(false);
-                      },
-                      onError: () => {
-                        toast.error('Failed to send SMS to patient');
-                      },
-                    }
-                  );
-                }}
-                disabled={contactPatientSms.isPending || !contactMessage.trim() || contactMessage.length > 500}
-              >
-                Send SMS
-              </Button>
-            </DialogFooter>
+                >
+                  Send SMS
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
@@ -471,7 +494,11 @@ export default function PatientDetailPage() {
             <CardContent className="space-y-3">
               <InfoRow icon={FileText} label="CR Number" value={patient.cr_number || '—'} />
               <InfoRow icon={Shield} label="SHA Number" value={patient.sha_number || '—'} />
-              <InfoRow icon={Users} label="Household Number" value={patient.household_number || '—'} />
+              <InfoRow
+                icon={Users}
+                label="Household Number"
+                value={patient.household_number || '—'}
+              />
               <InfoRow
                 icon={FileText}
                 label={
@@ -491,10 +518,13 @@ export default function PatientDetailPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {patient.household_members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                  >
                     <div className="min-w-0">
-                      <p className="font-medium break-words">{member.full_name}</p>
-                      <p className="text-xs text-muted-foreground break-words">
+                      <p className="break-words font-medium">{member.full_name}</p>
+                      <p className="break-words text-xs text-muted-foreground">
                         {member.mrn}
                         {member.cr_number ? ` • CR: ${member.cr_number}` : ''}
                         {member.sha_number ? ` • SHA: ${member.sha_number}` : ''}
@@ -566,7 +596,6 @@ export default function PatientDetailPage() {
               />
             </CardContent>
           </Card>
-
         </div>
 
         {/* Consent Status */}
@@ -594,43 +623,55 @@ export default function PatientDetailPage() {
         {/* Tabs — grouped: Encounters | Clinical | Orders | More */}
         <Tabs defaultValue="encounters" className="space-y-4">
           <TooltipProvider delayDuration={400}>
-          <TabsList className="flex h-auto flex-wrap gap-1 justify-start p-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <TabsTrigger value="encounters" className="text-xs sm:text-sm gap-1.5">
-                  <Clipboard className="h-4 w-4" />
-                  Encounters
-                </TabsTrigger>
-              </TooltipTrigger>
-              <TooltipContent><p>Visit history and encounter records</p></TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <TabsTrigger value="clinical" className="text-xs sm:text-sm gap-1.5">
-                  <HeartPulse className="h-4 w-4" />
-                  Clinical
-                </TabsTrigger>
-              </TooltipTrigger>
-              <TooltipContent><p>Vitals trends, allergies & emergency contacts</p></TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <TabsTrigger value="orders" className="text-xs sm:text-sm gap-1.5">
-                  Orders ({(prescriptions?.length || 0) + (labOrders?.length || 0) + procedureOrders.length})
-                </TabsTrigger>
-              </TooltipTrigger>
-              <TooltipContent><p>Prescriptions, procedures, lab results & imaging orders</p></TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <TabsTrigger value="more" className="text-xs sm:text-sm gap-1.5">
-                  <MoreHorizontal className="h-4 w-4" />
-                  More
-                </TabsTrigger>
-              </TooltipTrigger>
-              <TooltipContent><p>Allied health services & audit trail</p></TooltipContent>
-            </Tooltip>
-          </TabsList>
+            <TabsList className="flex h-auto flex-wrap justify-start gap-1 p-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="encounters" className="gap-1.5 text-xs sm:text-sm">
+                    <Clipboard className="h-4 w-4" />
+                    Encounters
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Visit history and encounter records</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="clinical" className="gap-1.5 text-xs sm:text-sm">
+                    <HeartPulse className="h-4 w-4" />
+                    Clinical
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Vitals trends, allergies & emergency contacts</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="orders" className="gap-1.5 text-xs sm:text-sm">
+                    Orders (
+                    {(prescriptions?.length || 0) +
+                      (labOrders?.length || 0) +
+                      procedureOrders.length}
+                    )
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Prescriptions, procedures, lab results & imaging orders</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="more" className="gap-1.5 text-xs sm:text-sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                    More
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Allied health services & audit trail</p>
+                </TooltipContent>
+              </Tooltip>
+            </TabsList>
           </TooltipProvider>
 
           {/* Encounters */}
@@ -640,7 +681,21 @@ export default function PatientDetailPage() {
 
           {/* Clinical — Vitals | Allergies | Emergency Contacts */}
           <TabsContent value="clinical">
-            <Accordion type="multiple" defaultValue={['vitals', 'vital-flags', 'egfr-trend', 'allergies', 'social-history', 'chronic-conditions', 'current-medications', 'past-surgeries', 'family-history', 'emergency-contacts']}>
+            <Accordion
+              type="multiple"
+              defaultValue={[
+                'vitals',
+                'vital-flags',
+                'egfr-trend',
+                'allergies',
+                'social-history',
+                'chronic-conditions',
+                'current-medications',
+                'past-surgeries',
+                'family-history',
+                'emergency-contacts',
+              ]}
+            >
               <AccordionItem value="vitals">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
@@ -667,7 +722,7 @@ export default function PatientDetailPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                    <EGFRTrendChart patientId={patient.id} />
+                  <EGFRTrendChart patientId={patient.id} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -761,7 +816,9 @@ export default function PatientDetailPage() {
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <span>Emergency Contacts</span>
                     {(emergencyContacts?.length || 0) > 0 && (
-                      <Badge variant="secondary" className="text-xs">{emergencyContacts?.length}</Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {emergencyContacts?.length}
+                      </Badge>
                     )}
                   </div>
                 </AccordionTrigger>
@@ -774,14 +831,19 @@ export default function PatientDetailPage() {
 
           {/* Orders — Prescriptions | Procedures | Lab Results | Imaging */}
           <TabsContent value="orders">
-            <Accordion type="multiple" defaultValue={['prescriptions', 'procedures', 'lab-results', 'imaging']}>
+            <Accordion
+              type="multiple"
+              defaultValue={['prescriptions', 'procedures', 'lab-results', 'imaging']}
+            >
               <AccordionItem value="prescriptions">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <Pill className="h-4 w-4 text-muted-foreground" />
                     <span>Prescriptions</span>
                     {(prescriptions?.length || 0) > 0 && (
-                      <Badge variant="secondary" className="text-xs">{prescriptions?.length}</Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {prescriptions?.length}
+                      </Badge>
                     )}
                   </div>
                 </AccordionTrigger>
@@ -800,7 +862,9 @@ export default function PatientDetailPage() {
                     <Clipboard className="h-4 w-4 text-muted-foreground" />
                     <span>Procedures</span>
                     {procedureOrders.length > 0 && (
-                      <Badge variant="secondary" className="text-xs">{procedureOrders.length}</Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {procedureOrders.length}
+                      </Badge>
                     )}
                   </div>
                 </AccordionTrigger>
@@ -819,7 +883,9 @@ export default function PatientDetailPage() {
                     <TestTube2 className="h-4 w-4 text-muted-foreground" />
                     <span>Lab Results</span>
                     {(labOrders?.length || 0) > 0 && (
-                      <Badge variant="secondary" className="text-xs">{labOrders?.length}</Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {labOrders?.length}
+                      </Badge>
                     )}
                   </div>
                 </AccordionTrigger>
@@ -832,7 +898,10 @@ export default function PatientDetailPage() {
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="imaging" className={!hasModule('blood_bank') && !hasModule('dialysis') ? 'border-b-0' : ''}>
+              <AccordionItem
+                value="imaging"
+                className={!hasModule('blood_bank') && !hasModule('dialysis') ? 'border-b-0' : ''}
+              >
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <ScanLine className="h-4 w-4 text-muted-foreground" />
@@ -845,7 +914,10 @@ export default function PatientDetailPage() {
               </AccordionItem>
 
               {hasModule('blood_bank') && (
-                <AccordionItem value="blood-bank" className={!hasModule('dialysis') ? 'border-b-0' : ''}>
+                <AccordionItem
+                  value="blood-bank"
+                  className={!hasModule('dialysis') ? 'border-b-0' : ''}
+                >
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex items-center gap-2">
                       <Droplets className="h-4 w-4 text-muted-foreground" />
@@ -1234,7 +1306,9 @@ function PatientProceduresSection({
               <p className="truncate text-sm font-medium">{order.procedure_name}</p>
               <p className="text-xs text-muted-foreground">
                 #{order.order_number}
-                {order.scheduled_date ? ` • ${formatDate(order.scheduled_date)}` : ` • Ordered ${formatDate(order.ordered_at)}`}
+                {order.scheduled_date
+                  ? ` • ${formatDate(order.scheduled_date)}`
+                  : ` • Ordered ${formatDate(order.ordered_at)}`}
                 {order.scheduled_clinic_name ? ` • ${order.scheduled_clinic_name}` : ''}
               </p>
             </div>
@@ -1301,9 +1375,7 @@ function PatientBloodRequestsSection({ patientId }: { patientId: number }) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base sm:text-lg">
-          Blood Requests ({requests.length})
-        </CardTitle>
+        <CardTitle className="text-base sm:text-lg">Blood Requests ({requests.length})</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {requests.map((req) => (
@@ -1323,10 +1395,13 @@ function PatientBloodRequestsSection({ patientId }: { patientId: number }) {
             <Badge
               className={cn(
                 'w-fit shrink-0 self-start sm:self-auto',
-                req.status === 'PENDING' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' :
-                req.status === 'READY' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' :
-                req.status === 'ISSUED' || req.status === 'TRANSFUSED' ? 'bg-primary/15 text-primary' :
-                'bg-muted text-muted-foreground'
+                req.status === 'PENDING'
+                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                  : req.status === 'READY'
+                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                    : req.status === 'ISSUED' || req.status === 'TRANSFUSED'
+                      ? 'bg-primary/15 text-primary'
+                      : 'bg-muted text-muted-foreground'
               )}
             >
               {req.status}
@@ -1384,9 +1459,7 @@ function PatientDialysisOrdersSection({ patientId }: { patientId: number }) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base sm:text-lg">
-          Dialysis Orders ({orders.length})
-        </CardTitle>
+        <CardTitle className="text-base sm:text-lg">Dialysis Orders ({orders.length})</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {orders.map((order) => (
@@ -1400,15 +1473,18 @@ function PatientDialysisOrdersSection({ patientId }: { patientId: number }) {
                 {order.dialysis_type} — {order.frequency}
               </p>
               <p className="text-xs text-muted-foreground">
-                Duration: {order.target_duration_minutes}min • Started {formatDate(order.start_date)}
+                Duration: {order.target_duration_minutes}min • Started{' '}
+                {formatDate(order.start_date)}
               </p>
             </div>
             <Badge
               className={cn(
                 'w-fit shrink-0 self-start sm:self-auto',
-                order.status === 'ACTIVE' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' :
-                order.status === 'SUSPENDED' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' :
-                'bg-muted text-muted-foreground'
+                order.status === 'ACTIVE'
+                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                  : order.status === 'SUSPENDED'
+                    ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                    : 'bg-muted text-muted-foreground'
               )}
             >
               {order.status}

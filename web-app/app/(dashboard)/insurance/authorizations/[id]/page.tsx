@@ -3,9 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
-import {
-  HealthcloudEligibilityCards,
-} from '@/components/insurance/healthcloud-eligibility-cards';
+import { HealthcloudEligibilityCards } from '@/components/insurance/healthcloud-eligibility-cards';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,55 +51,67 @@ export default function AuthorizationSessionDetailPage() {
   const [authToken, setAuthToken] = useState('');
 
   const eligibilityPayload = useMemo(
-    () => (session?.eligibility_payload && typeof session.eligibility_payload === 'object'
-      ? (session.eligibility_payload as Record<string, unknown>)
-      : {}),
+    () =>
+      session?.eligibility_payload && typeof session.eligibility_payload === 'object'
+        ? (session.eligibility_payload as Record<string, unknown>)
+        : {},
     [session?.eligibility_payload]
   );
 
-  const member = eligibilityPayload.member && typeof eligibilityPayload.member === 'object'
-    ? (eligibilityPayload.member as Record<string, unknown>)
-    : {};
-  const cover = eligibilityPayload.cover && typeof eligibilityPayload.cover === 'object'
-    ? (eligibilityPayload.cover as Record<string, unknown>)
-    : {};
-  const contacts = useMemo(() => (
-    Array.isArray(member.contacts)
-      ? member.contacts
-          .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
-          .map((row) => ({ id: Number(row.id ?? 0), value: String(row.contactValue ?? '') }))
-          .filter((row) => row.id > 0)
-      : []
-  ), [member.contacts]);
+  const member =
+    eligibilityPayload.member && typeof eligibilityPayload.member === 'object'
+      ? (eligibilityPayload.member as Record<string, unknown>)
+      : {};
+  const cover =
+    eligibilityPayload.cover && typeof eligibilityPayload.cover === 'object'
+      ? (eligibilityPayload.cover as Record<string, unknown>)
+      : {};
+  const contacts = useMemo(
+    () =>
+      Array.isArray(member.contacts)
+        ? member.contacts
+            .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
+            .map((row) => ({ id: Number(row.id ?? 0), value: String(row.contactValue ?? '') }))
+            .filter((row) => row.id > 0)
+        : [],
+    [member.contacts]
+  );
 
-  const benefits = useMemo(() => (
-    Array.isArray(eligibilityPayload.benefits)
-      ? eligibilityPayload.benefits
-          .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
-          .map((row) => ({
-            code: String(row.benefitCode ?? ''),
-            type: String(row.benefitType ?? ''),
-            name: String(row.benefitName ?? 'Unknown benefit'),
-          }))
-          .filter((row) => row.code)
-      : []
-  ), [eligibilityPayload.benefits]);
+  const benefits = useMemo(
+    () =>
+      Array.isArray(eligibilityPayload.benefits)
+        ? eligibilityPayload.benefits
+            .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
+            .map((row) => ({
+              code: String(row.benefitCode ?? ''),
+              type: String(row.benefitType ?? ''),
+              name: String(row.benefitName ?? 'Unknown benefit'),
+            }))
+            .filter((row) => row.code)
+        : [],
+    [eligibilityPayload.benefits]
+  );
 
   const selectedBenefit = benefits.find((b) => b.code === selectedBenefitCode);
-  const isValidated = session?.workflow_step === 'authorization_validated' || session?.status === 'validated';
+  const isValidated =
+    session?.workflow_step === 'authorization_validated' || session?.status === 'validated';
   const hasEncounter = Boolean(session?.encounter);
   const requireBalanceReservation = Boolean(providerConfig?.require_balance_reservation);
   const openEncounterUrl = hasEncounter
     ? `/encounters/${session?.encounter}/edit`
     : `/encounters/new?patient=${session?.patient}&returnTo=${encodeURIComponent(`/insurance/authorizations/${sessionId}`)}`;
   const claimUrl = `/insurance/claims/new?enrollment=${session?.enrollment ?? ''}&patient=${session?.patient ?? ''}&authorization=${session?.id ?? ''}`;
-  const canRequestOtp = session?.workflow_step === 'eligibility_verified' || session?.workflow_step === 'otp_requested';
-  const canStartVisit = session?.status === 'otp_requested' || session?.workflow_step === 'otp_requested';
-  const canValidate = session?.status === 'authorized' || session?.workflow_step === 'visit_authorized';
+  const canRequestOtp =
+    session?.workflow_step === 'eligibility_verified' || session?.workflow_step === 'otp_requested';
+  const canStartVisit =
+    session?.status === 'otp_requested' || session?.workflow_step === 'otp_requested';
+  const canValidate =
+    session?.status === 'authorized' || session?.workflow_step === 'visit_authorized';
 
   const progressStep = (() => {
     if (!session) return 0;
-    if (session.workflow_step === 'authorization_validated' || session.status === 'validated') return 3;
+    if (session.workflow_step === 'authorization_validated' || session.status === 'validated')
+      return 3;
     if (session.workflow_step === 'visit_authorized' || session.status === 'authorized') return 2;
     if (session.workflow_step === 'otp_requested' || session.status === 'otp_requested') return 1;
     return 0;
@@ -130,8 +140,12 @@ export default function AuthorizationSessionDetailPage() {
       }
     : null;
 
-  const firstName = (session?.patient_name || '').trim().split(/\s+/)[0] || session?.patient_name || '';
-  const lastName = (session?.patient_name || '').trim().split(/\s+/).slice(1).join(' ') || session?.patient_name || '';
+  const firstName =
+    (session?.patient_name || '').trim().split(/\s+/)[0] || session?.patient_name || '';
+  const lastName =
+    (session?.patient_name || '').trim().split(/\s+/).slice(1).join(' ') ||
+    session?.patient_name ||
+    '';
 
   useEffect(() => {
     if (!session) return;
@@ -175,9 +189,10 @@ export default function AuthorizationSessionDetailPage() {
         id: session.enrollment,
         data: { session_id: session.id, contact_id: Number(selectedContactId) },
       });
-      const raw = response.raw_payload && typeof response.raw_payload === 'object'
-        ? (response.raw_payload as Record<string, unknown>)
-        : {};
+      const raw =
+        response.raw_payload && typeof response.raw_payload === 'object'
+          ? (response.raw_payload as Record<string, unknown>)
+          : {};
       const otpMessage = typeof raw.success === 'string' ? raw.success : '';
       if (process.env.NODE_ENV !== 'production' && otpMessage) {
         const match = otpMessage.match(/\b(\d{4,8})\b/);
@@ -191,22 +206,38 @@ export default function AuthorizationSessionDetailPage() {
       });
       await refetch();
     } catch {
-      toast({ title: 'OTP request failed', description: 'Could not request OTP.', variant: 'destructive' });
+      toast({
+        title: 'OTP request failed',
+        description: 'Could not request OTP.',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleStartVisit = async () => {
-    if (!session || !selectedContactId || !selectedBenefit || !otp || !policyNumber || !policyEffectiveDate) {
+    if (
+      !session ||
+      !selectedContactId ||
+      !selectedBenefit ||
+      !otp ||
+      !policyNumber ||
+      !policyEffectiveDate
+    ) {
       toast({
         title: 'Missing fields',
-        description: 'Contact, benefit, OTP, policy number, and policy effective date are required.',
+        description:
+          'Contact, benefit, OTP, policy number, and policy effective date are required.',
         variant: 'destructive',
       });
       return;
     }
     const beneficiaryId = Number(member.id ?? session.beneficiary_id ?? 0);
     if (!beneficiaryId) {
-      toast({ title: 'Missing beneficiary', description: 'No beneficiary ID found in session payload.', variant: 'destructive' });
+      toast({
+        title: 'Missing beneficiary',
+        description: 'No beneficiary ID found in session payload.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -229,13 +260,21 @@ export default function AuthorizationSessionDetailPage() {
       toast({ title: 'Visit authorization started' });
       await refetch();
     } catch {
-      toast({ title: 'Start visit failed', description: 'Could not start visit authorization.', variant: 'destructive' });
+      toast({
+        title: 'Start visit failed',
+        description: 'Could not start visit authorization.',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleValidate = async () => {
     if (!session || !authToken) {
-      toast({ title: 'Missing token', description: 'Provide an auth token to validate.', variant: 'destructive' });
+      toast({
+        title: 'Missing token',
+        description: 'Provide an auth token to validate.',
+        variant: 'destructive',
+      });
       return;
     }
     try {
@@ -254,7 +293,11 @@ export default function AuthorizationSessionDetailPage() {
       toast({ title: 'Authorization validated' });
       await refetch();
     } catch {
-      toast({ title: 'Validation failed', description: 'Could not validate authorization token.', variant: 'destructive' });
+      toast({
+        title: 'Validation failed',
+        description: 'Could not validate authorization token.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -304,7 +347,7 @@ export default function AuthorizationSessionDetailPage() {
             <CardHeader>
               <CardTitle className="text-base">Session Overview</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <CardContent className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
               <div>
                 <p className="text-xs text-muted-foreground">Patient</p>
                 <p className="font-medium">{session.patient_name}</p>
@@ -345,37 +388,34 @@ export default function AuthorizationSessionDetailPage() {
               <CardTitle className="text-base">Next Steps</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-3 text-sm">
+              <div className="grid gap-3 text-sm md:grid-cols-3">
                 <div className="rounded border p-3">
                   <p className="text-xs text-muted-foreground">Step 1</p>
                   <p className="font-medium">Request OTP</p>
                   <p className="text-xs text-muted-foreground">Send OTP to beneficiary contact.</p>
-                  <Badge className={`mt-2 ${stepBadge(1).className}`}>
-                    {stepBadge(1).label}
-                  </Badge>
+                  <Badge className={`mt-2 ${stepBadge(1).className}`}>{stepBadge(1).label}</Badge>
                 </div>
                 <div className="rounded border p-3">
                   <p className="text-xs text-muted-foreground">Step 2</p>
                   <p className="font-medium">Start Visit</p>
                   <p className="text-xs text-muted-foreground">Submit OTP + benefit selection.</p>
-                  <Badge className={`mt-2 ${stepBadge(2).className}`}>
-                    {stepBadge(2).label}
-                  </Badge>
+                  <Badge className={`mt-2 ${stepBadge(2).className}`}>{stepBadge(2).label}</Badge>
                 </div>
                 <div className="rounded border p-3">
                   <p className="text-xs text-muted-foreground">Step 3</p>
                   <p className="font-medium">Validate Token</p>
                   <p className="text-xs text-muted-foreground">Confirm authorization token.</p>
-                  <Badge className={`mt-2 ${stepBadge(3).className}`}>
-                    {stepBadge(3).label}
-                  </Badge>
+                  <Badge className={`mt-2 ${stepBadge(3).className}`}>{stepBadge(3).label}</Badge>
                 </div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Benefit</Label>
-                  <Select value={selectedBenefitCode || undefined} onValueChange={setSelectedBenefitCode}>
+                  <Select
+                    value={selectedBenefitCode || undefined}
+                    onValueChange={setSelectedBenefitCode}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select benefit" />
                     </SelectTrigger>
@@ -392,7 +432,10 @@ export default function AuthorizationSessionDetailPage() {
                 <div className="space-y-2 md:col-span-2">
                   <Label>Beneficiary Contact + OTP + Authorization Token</Label>
                   <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1fr_auto_150px_auto_190px_auto]">
-                    <Select value={selectedContactId || undefined} onValueChange={setSelectedContactId}>
+                    <Select
+                      value={selectedContactId || undefined}
+                      onValueChange={setSelectedContactId}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select contact" />
                       </SelectTrigger>
@@ -411,7 +454,11 @@ export default function AuthorizationSessionDetailPage() {
                     >
                       {requestOtp.isPending ? 'Requesting OTP...' : 'Send OTP'}
                     </Button>
-                    <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter OTP" />
+                    <Input
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder="Enter OTP"
+                    />
                     <Button
                       disabled={
                         !canStartVisit ||
@@ -424,7 +471,11 @@ export default function AuthorizationSessionDetailPage() {
                     >
                       {startVisit.isPending ? 'Starting Visit...' : '1. Start Visit Authorization'}
                     </Button>
-                    <Input value={authToken} onChange={(e) => setAuthToken(e.target.value)} placeholder="Authorization token" />
+                    <Input
+                      value={authToken}
+                      onChange={(e) => setAuthToken(e.target.value)}
+                      placeholder="Authorization token"
+                    />
                     <Button
                       variant="secondary"
                       disabled={!canValidate || validateToken.isPending || !authToken}
@@ -437,7 +488,7 @@ export default function AuthorizationSessionDetailPage() {
               </div>
 
               {isValidated && (
-                <div className="rounded border p-3 space-y-3">
+                <div className="space-y-3 rounded border p-3">
                   <p className="text-sm font-medium">After Validation</p>
                   <div className="flex flex-wrap gap-2">
                     <Button onClick={() => router.push(openEncounterUrl)}>
@@ -464,7 +515,9 @@ export default function AuthorizationSessionDetailPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Proceed to Billing/Claim is enabled after an encounter is linked. Reserve Balance appears when provider config requires it and runs from the claim workflow.
+                    Proceed to Billing/Claim is enabled after an encounter is linked. Reserve
+                    Balance appears when provider config requires it and runs from the claim
+                    workflow.
                   </p>
                 </div>
               )}
@@ -477,7 +530,11 @@ export default function AuthorizationSessionDetailPage() {
                 <CardTitle className="text-base">Eligibility Snapshot</CardTitle>
               </CardHeader>
               <CardContent>
-                <HealthcloudEligibilityCards eligibility={eligibilityCardModel} patientName={session.patient_name} showRaw={false} />
+                <HealthcloudEligibilityCards
+                  eligibility={eligibilityCardModel}
+                  patientName={session.patient_name}
+                  showRaw={false}
+                />
               </CardContent>
             </Card>
           )}

@@ -6,12 +6,7 @@ import { Download, Maximize2, Printer } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { patientsApi } from '@/lib/api/patients';
 
@@ -67,9 +62,11 @@ export function PatientQRCode({
 
   const previewSize = variant === 'inline' ? 56 : 100;
   const preview = isLoading ? (
-    <Skeleton className={variant === 'inline' ? 'h-14 w-14 rounded-lg' : 'h-[100px] w-[100px] rounded-lg'} />
+    <Skeleton
+      className={variant === 'inline' ? 'h-14 w-14 rounded-lg' : 'h-[100px] w-[100px] rounded-lg'}
+    />
   ) : data ? (
-    <div className="relative group">
+    <div className="group relative">
       <button
         type="button"
         onClick={() => setExpanded(true)}
@@ -87,7 +84,7 @@ export function PatientQRCode({
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="absolute top-1 right-1 rounded-md bg-background/80 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+        className="absolute right-1 top-1 rounded-md bg-background/80 p-1 opacity-0 transition-opacity hover:bg-background group-hover:opacity-100"
         aria-label="Expand QR code"
       >
         <Maximize2 className="h-3.5 w-3.5 text-[#800020]" />
@@ -98,9 +95,7 @@ export function PatientQRCode({
   return (
     <>
       {variant === 'inline' ? (
-        <div className="shrink-0">
-          {preview}
-        </div>
+        <div className="shrink-0">{preview}</div>
       ) : (
         <Card>
           <CardHeader className="pb-2">

@@ -43,20 +43,17 @@ export function EncounterTimeline({ stateHistory }: EncounterTimelineProps) {
           {stateHistory.map((entry) => (
             <div
               key={entry.id}
-              className="flex items-start gap-3 text-sm border-l-2 border-muted pl-3 pb-3 last:pb-0"
+              className="flex items-start gap-3 border-l-2 border-muted pb-3 pl-3 text-sm last:pb-0"
             >
               <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-wrap items-center gap-2">
                   <EncounterStatusBadge status={entry.from_status} size="sm" showIcon={false} />
                   <ArrowRight className="h-3 w-3 text-muted-foreground" />
                   <EncounterStatusBadge status={entry.to_status} size="sm" />
                 </div>
-                {entry.reason && (
-                  <p className="text-xs text-muted-foreground">{entry.reason}</p>
-                )}
+                {entry.reason && <p className="text-xs text-muted-foreground">{entry.reason}</p>}
                 <div className="text-xs text-muted-foreground">
-                  {entry.changed_by} &middot;{' '}
-                  {new Date(entry.changed_at).toLocaleString()}
+                  {entry.changed_by} &middot; {new Date(entry.changed_at).toLocaleString()}
                 </div>
               </div>
             </div>

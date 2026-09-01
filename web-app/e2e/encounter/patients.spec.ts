@@ -139,10 +139,11 @@ test.describe('Patient Management', () => {
 
       let results = [...mockPatients.results];
       if (search) {
-        results = results.filter(p =>
-          p.first_name.toLowerCase().includes(search.toLowerCase()) ||
-          p.last_name.toLowerCase().includes(search.toLowerCase()) ||
-          p.mrn.toLowerCase().includes(search.toLowerCase())
+        results = results.filter(
+          (p) =>
+            p.first_name.toLowerCase().includes(search.toLowerCase()) ||
+            p.last_name.toLowerCase().includes(search.toLowerCase()) ||
+            p.mrn.toLowerCase().includes(search.toLowerCase())
         );
       }
 
@@ -216,7 +217,10 @@ test.describe('Patient Management', () => {
     }
 
     // Click sidebar Patients link (stable: role-based, scoped to the sidebar)
-    await page.getByRole('complementary').getByRole('link', { name: /^patients$/i }).click();
+    await page
+      .getByRole('complementary')
+      .getByRole('link', { name: /^patients$/i })
+      .click();
     await expect(page).toHaveURL(/.*patients.*/);
 
     // Wait for the page to settle and API to respond
@@ -241,7 +245,10 @@ test.describe('Patient Management', () => {
       }
     }
 
-    await page.getByRole('complementary').getByRole('link', { name: /^patients$/i }).click();
+    await page
+      .getByRole('complementary')
+      .getByRole('link', { name: /^patients$/i })
+      .click();
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
 
@@ -266,7 +273,10 @@ test.describe('Patient Management', () => {
       }
     }
 
-    await page.getByRole('complementary').getByRole('link', { name: /^patients$/i }).click();
+    await page
+      .getByRole('complementary')
+      .getByRole('link', { name: /^patients$/i })
+      .click();
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
 
@@ -294,7 +304,10 @@ test.describe('Patient Management', () => {
       }
     }
 
-    await page.getByRole('complementary').getByRole('link', { name: /^patients$/i }).click();
+    await page
+      .getByRole('complementary')
+      .getByRole('link', { name: /^patients$/i })
+      .click();
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
 
@@ -323,7 +336,10 @@ test.describe('Patient Management', () => {
       }
     }
 
-    await page.getByRole('complementary').getByRole('link', { name: /^patients$/i }).click();
+    await page
+      .getByRole('complementary')
+      .getByRole('link', { name: /^patients$/i })
+      .click();
     await expect(page).toHaveURL(/.*patients.*/);
     await page.waitForLoadState('networkidle');
 

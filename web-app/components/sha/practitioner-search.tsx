@@ -124,7 +124,9 @@ export function DHAPractitionerSearch({
     } catch (err: unknown) {
       // Check if it's a 404 (not found) response - treat as "not found" not an error
       const is404 =
-        (err && typeof err === 'object' && 'response' in err &&
+        (err &&
+          typeof err === 'object' &&
+          'response' in err &&
           (err as { response?: { status?: number } }).response?.status === 404) ||
         (err instanceof Error && err.message.includes('404'));
 
@@ -201,12 +203,14 @@ export function DHAPractitionerSearch({
             </SelectContent>
           </Select>
           <div className="relative flex-1">
-            <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <IdCard className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={idNumber}
               onChange={(e) => setIdNumber(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={idType === 'National ID' ? 'Enter National ID number' : 'Enter Passport number'}
+              placeholder={
+                idType === 'National ID' ? 'Enter National ID number' : 'Enter Passport number'
+              }
               disabled={disabled || isLoading}
               className="pl-9"
             />
@@ -226,7 +230,8 @@ export function DHAPractitionerSearch({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Search the Kenya Digital Health Authority registry to verify and auto-fill practitioner details
+          Search the Kenya Digital Health Authority registry to verify and auto-fill practitioner
+          details
         </p>
       </div>
 
@@ -235,7 +240,7 @@ export function DHAPractitionerSearch({
         <Card className="border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20">
           <CardContent className="py-4">
             <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40">
                 <UserX className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="flex-1 space-y-1">
@@ -246,12 +251,14 @@ export function DHAPractitionerSearch({
                   No practitioner was found in the DHA Health Worker Registry with {idType}{' '}
                   <span className="font-mono font-medium">{idNumber}</span>
                 </p>
-                <div className="pt-2 space-y-1 text-xs text-amber-600 dark:text-amber-500">
+                <div className="space-y-1 pt-2 text-xs text-amber-600 dark:text-amber-500">
                   <p>This could mean:</p>
-                  <ul className="list-disc list-inside space-y-0.5 ml-1">
+                  <ul className="ml-1 list-inside list-disc space-y-0.5">
                     <li>The identification number was entered incorrectly</li>
                     <li>The practitioner is not registered with a Kenyan licensing body</li>
-                    <li>The registration is under a different ID type (try Passport or National ID)</li>
+                    <li>
+                      The registration is under a different ID type (try Passport or National ID)
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -262,8 +269,8 @@ export function DHAPractitionerSearch({
 
       {/* Error Display */}
       {error && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-          <XCircle className="h-5 w-5 text-destructive shrink-0" />
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+          <XCircle className="h-5 w-5 shrink-0 text-destructive" />
           <span className="text-sm text-destructive">{error}</span>
         </div>
       )}
@@ -281,7 +288,7 @@ export function DHAPractitionerSearch({
               </div>
               {!autoSelect && (
                 <Button size="sm" onClick={handleUseData}>
-                  <UserCheck className="h-4 w-4 mr-2" />
+                  <UserCheck className="mr-2 h-4 w-4" />
                   Use This Data
                 </Button>
               )}
@@ -291,11 +298,16 @@ export function DHAPractitionerSearch({
             {/* Membership Info */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold flex items-center gap-2">
+                <h4 className="flex items-center gap-2 font-semibold">
                   <SHALogo size="sm" />
                   Registration Details
                 </h4>
-                <Badge className={getStatusColor(practitioner.membership.status, practitioner.membership.is_active)}>
+                <Badge
+                  className={getStatusColor(
+                    practitioner.membership.status,
+                    practitioner.membership.is_active
+                  )}
+                >
                   {practitioner.membership.status}
                 </Badge>
               </div>
@@ -312,23 +324,29 @@ export function DHAPractitionerSearch({
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Licensing Body</p>
-                  <p className="font-medium text-sm">{practitioner.membership.licensing_body}</p>
+                  <p className="text-sm font-medium">{practitioner.membership.licensing_body}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Specialty</p>
-                  <p className="font-medium text-sm">{practitioner.membership.specialty || 'N/A'}</p>
+                  <p className="text-sm font-medium">
+                    {practitioner.membership.specialty || 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">License Expires In</p>
                   {(() => {
-                    const expiry = formatLicenseExpiry(practitioner.membership.license_expires_in_days);
-                    return <p className={cn('font-medium text-sm', expiry.color)}>{expiry.text}</p>;
+                    const expiry = formatLicenseExpiry(
+                      practitioner.membership.license_expires_in_days
+                    );
+                    return <p className={cn('text-sm font-medium', expiry.color)}>{expiry.text}</p>;
                   })()}
                 </div>
                 {practitioner.membership.is_withdrawn === 1 && (
                   <div>
                     <p className="text-xs text-muted-foreground">Withdrawal Reason</p>
-                    <p className="font-medium text-sm text-red-600">{practitioner.membership.withdrawal_reason || 'N/A'}</p>
+                    <p className="text-sm font-medium text-red-600">
+                      {practitioner.membership.withdrawal_reason || 'N/A'}
+                    </p>
                   </div>
                 )}
               </div>
@@ -338,36 +356,46 @@ export function DHAPractitionerSearch({
 
             {/* Professional Details */}
             <div className="space-y-3">
-              <h4 className="font-semibold flex items-center gap-2">
+              <h4 className="flex items-center gap-2 font-semibold">
                 <GraduationCap className="h-4 w-4" />
                 Professional Details
               </h4>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-xs text-muted-foreground">Professional Cadre</p>
-                  <p className="font-medium text-sm">{practitioner.professional_details.professional_cadre}</p>
+                  <p className="text-sm font-medium">
+                    {practitioner.professional_details.professional_cadre}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Practice Type</p>
-                  <p className="font-medium text-sm">{practitioner.professional_details.practice_type}</p>
+                  <p className="text-sm font-medium">
+                    {practitioner.professional_details.practice_type}
+                  </p>
                 </div>
                 {practitioner.professional_details.specialty && (
                   <div>
                     <p className="text-xs text-muted-foreground">Specialty</p>
-                    <p className="font-medium text-sm">{practitioner.professional_details.specialty}</p>
+                    <p className="text-sm font-medium">
+                      {practitioner.professional_details.specialty}
+                    </p>
                   </div>
                 )}
                 {practitioner.professional_details.subspecialty && (
                   <div>
                     <p className="text-xs text-muted-foreground">Subspecialty</p>
-                    <p className="font-medium text-sm">{practitioner.professional_details.subspecialty}</p>
+                    <p className="text-sm font-medium">
+                      {practitioner.professional_details.subspecialty}
+                    </p>
                   </div>
                 )}
               </div>
               {practitioner.professional_details.educational_qualifications && (
                 <div>
                   <p className="text-xs text-muted-foreground">Educational Qualifications</p>
-                  <p className="font-medium text-sm">{practitioner.professional_details.educational_qualifications}</p>
+                  <p className="text-sm font-medium">
+                    {practitioner.professional_details.educational_qualifications}
+                  </p>
                 </div>
               )}
             </div>
@@ -376,7 +404,7 @@ export function DHAPractitionerSearch({
 
             {/* Contact Info */}
             <div className="space-y-3">
-              <h4 className="font-semibold flex items-center gap-2">
+              <h4 className="flex items-center gap-2 font-semibold">
                 <Phone className="h-4 w-4" />
                 Contact Information
               </h4>
@@ -394,8 +422,8 @@ export function DHAPractitionerSearch({
                   </div>
                 )}
                 {practitioner.contacts.postal_address && (
-                  <div className="flex items-center gap-2 col-span-full">
-                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="col-span-full flex items-center gap-2">
+                    <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="text-sm">{practitioner.contacts.postal_address}</span>
                   </div>
                 )}
@@ -407,7 +435,7 @@ export function DHAPractitionerSearch({
               <>
                 <Separator />
                 <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
+                  <h4 className="flex items-center gap-2 font-semibold">
                     <Calendar className="h-4 w-4" />
                     License History
                   </h4>
@@ -415,19 +443,23 @@ export function DHAPractitionerSearch({
                     {practitioner.licenses.map((license, index) => (
                       <div
                         key={license.id || index}
-                        className="flex items-center justify-between p-2 rounded bg-muted/50 text-sm"
+                        className="flex items-center justify-between rounded bg-muted/50 p-2 text-sm"
                       >
                         <div>
                           <span className="font-medium">{license.license_type}</span>
-                          <span className="text-muted-foreground ml-2">({license.external_reference_id})</span>
+                          <span className="ml-2 text-muted-foreground">
+                            ({license.external_reference_id})
+                          </span>
                         </div>
                         <div className="text-right text-muted-foreground">
                           {license.license_start !== 'None' && (
                             <span>{license.license_start} → </span>
                           )}
-                          <span className={
-                            new Date(license.license_end) < new Date() ? 'text-red-600' : ''
-                          }>
+                          <span
+                            className={
+                              new Date(license.license_end) < new Date() ? 'text-red-600' : ''
+                            }
+                          >
                             {license.license_end}
                           </span>
                         </div>
@@ -441,19 +473,25 @@ export function DHAPractitionerSearch({
             {/* Identifiers */}
             <Separator />
             <div className="space-y-3">
-              <h4 className="font-semibold flex items-center gap-2">
+              <h4 className="flex items-center gap-2 font-semibold">
                 <IdCard className="h-4 w-4" />
                 Identifiers
               </h4>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-muted-foreground">{practitioner.identifiers.identification_type}</p>
-                  <p className="font-mono text-sm">{practitioner.identifiers.identification_number}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {practitioner.identifiers.identification_type}
+                  </p>
+                  <p className="font-mono text-sm">
+                    {practitioner.identifiers.identification_number}
+                  </p>
                 </div>
                 {practitioner.identifiers.client_registry_id && (
                   <div>
                     <p className="text-xs text-muted-foreground">Client Registry ID</p>
-                    <p className="font-mono text-sm">{practitioner.identifiers.client_registry_id}</p>
+                    <p className="font-mono text-sm">
+                      {practitioner.identifiers.client_registry_id}
+                    </p>
                   </div>
                 )}
               </div>
@@ -464,7 +502,7 @@ export function DHAPractitionerSearch({
 
       {/* Compact result (when showDetailedResult is false) */}
       {practitioner && !showDetailedResult && (
-        <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+        <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/20">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
             <div>
@@ -472,11 +510,17 @@ export function DHAPractitionerSearch({
                 {practitioner.membership.full_name.trim()}
               </p>
               <p className="text-sm text-green-600 dark:text-green-500">
-                {practitioner.professional_details.professional_cadre} • {practitioner.membership.licensing_body}
+                {practitioner.professional_details.professional_cadre} •{' '}
+                {practitioner.membership.licensing_body}
               </p>
             </div>
           </div>
-          <Badge className={getStatusColor(practitioner.membership.status, practitioner.membership.is_active)}>
+          <Badge
+            className={getStatusColor(
+              practitioner.membership.status,
+              practitioner.membership.is_active
+            )}
+          >
             {practitioner.membership.status}
           </Badge>
         </div>

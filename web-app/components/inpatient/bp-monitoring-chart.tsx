@@ -2,14 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Plus, HeartPulse } from 'lucide-react';
-import {
-  Line,
-  LineChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  ReferenceLine,
-} from 'recharts';
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,10 +33,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  useBPReadings,
-  useCreateBPReading,
-} from '@/lib/hooks/use-inpatient';
+import { useBPReadings, useCreateBPReading } from '@/lib/hooks/use-inpatient';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
 import { getAgeGroupFromYears, getVitalPlaceholder, isPediatric } from '@/lib/vitals';
@@ -77,7 +67,10 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Age group for paediatric awareness
-  const ageGroup = useMemo(() => (patientAge != null ? getAgeGroupFromYears(patientAge) : null), [patientAge]);
+  const ageGroup = useMemo(
+    () => (patientAge != null ? getAgeGroupFromYears(patientAge) : null),
+    [patientAge]
+  );
   const isPaediatric = ageGroup ? isPediatric(ageGroup) : false;
 
   // Form state
@@ -103,11 +96,19 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
     const sys = parseInt(systolic);
     const dia = parseInt(diastolic);
     if (isNaN(sys) || isNaN(dia) || sys <= 0 || dia <= 0) {
-      toast({ title: 'Validation Error', description: 'Enter valid systolic and diastolic values', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Enter valid systolic and diastolic values',
+        variant: 'destructive',
+      });
       return;
     }
     if (dia >= sys) {
-      toast({ title: 'Validation Error', description: 'Diastolic must be less than systolic', variant: 'destructive' });
+      toast({
+        title: 'Validation Error',
+        description: 'Diastolic must be less than systolic',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -143,12 +144,15 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">BP Monitoring Chart</h3>
           <HelpPopover content="Track blood pressure trends over time. Useful for patients with hypertension, pre-eclampsia, or post-operative BP monitoring. Shows systolic, diastolic, MAP, and pulse." />
           {isPaediatric && (
-            <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 dark:text-blue-400">
+            <Badge
+              variant="outline"
+              className="border-blue-300 text-xs text-blue-700 dark:text-blue-400"
+            >
               Paediatric
             </Badge>
           )}
@@ -157,7 +161,7 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-1.5" />
+                <Plus className="mr-1.5 h-4 w-4" />
                 Record BP
               </Button>
             </DialogTrigger>
@@ -166,7 +170,10 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
                 <div className="flex items-center gap-2">
                   <DialogTitle>Record Blood Pressure</DialogTitle>
                   {isPaediatric && (
-                    <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 dark:text-blue-400">
+                    <Badge
+                      variant="outline"
+                      className="border-blue-300 text-xs text-blue-700 dark:text-blue-400"
+                    >
                       Paediatric
                     </Badge>
                   )}
@@ -215,10 +222,14 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
                   <div className="space-y-2">
                     <Label htmlFor="position">Position</Label>
                     <Select value={position} onValueChange={(v) => setPosition(v as BPPosition)}>
-                      <SelectTrigger id="position"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="position">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         {POSITIONS.map((p) => (
-                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                          <SelectItem key={p.value} value={p.value}>
+                            {p.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -228,7 +239,9 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
                   <div className="space-y-2">
                     <Label htmlFor="arm">Arm</Label>
                     <Select value={arm} onValueChange={setArm}>
-                      <SelectTrigger id="arm"><SelectValue placeholder="Select arm" /></SelectTrigger>
+                      <SelectTrigger id="arm">
+                        <SelectValue placeholder="Select arm" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Left">Left</SelectItem>
                         <SelectItem value="Right">Right</SelectItem>
@@ -247,8 +260,13 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
                 </div>
               </div>
               <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSubmit} disabled={createReading.isPending || !systolic || !diastolic}>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={createReading.isPending || !systolic || !diastolic}
+                >
                   {createReading.isPending ? 'Saving...' : 'Save Reading'}
                 </Button>
               </DialogFooter>
@@ -260,7 +278,7 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
       {readings.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <HeartPulse className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <HeartPulse className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">No blood pressure readings recorded yet.</p>
           </CardContent>
         </Card>
@@ -280,7 +298,7 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
                     tickLine={false}
                     tickMargin={10}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    className="fill-muted-foreground text-xs"
                     tickFormatter={(v) => {
                       const parts = v.split(' ');
                       return parts.length > 1 ? parts[1] : v;
@@ -291,7 +309,7 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
                     tickLine={false}
                     axisLine={false}
                     domain={[40, 200]}
-                    className="text-xs fill-muted-foreground"
+                    className="fill-muted-foreground text-xs"
                     width={40}
                   />
                   <YAxis
@@ -300,14 +318,32 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
                     tickLine={false}
                     axisLine={false}
                     domain={[0, 'auto']}
-                    className="text-xs fill-muted-foreground"
+                    className="fill-muted-foreground text-xs"
                     width={40}
                   />
                   {/* Hypertension thresholds */}
-                  <ReferenceLine yAxisId="bp" y={140} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="Hyp SYS" />
-                  <ReferenceLine yAxisId="bp" y={90} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="Hyp DIA" />
+                  <ReferenceLine
+                    yAxisId="bp"
+                    y={140}
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="3 3"
+                    label="Hyp SYS"
+                  />
+                  <ReferenceLine
+                    yAxisId="bp"
+                    y={90}
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="3 3"
+                    label="Hyp DIA"
+                  />
                   {/* Hypotension threshold */}
-                  <ReferenceLine yAxisId="bp" y={60} stroke="hsl(var(--chart-4))" strokeDasharray="3 3" label="Low" />
+                  <ReferenceLine
+                    yAxisId="bp"
+                    y={60}
+                    stroke="hsl(var(--chart-4))"
+                    strokeDasharray="3 3"
+                    label="Low"
+                  />
                   <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
                   <ChartLegend content={<ChartLegendContent />} />
                   <Line
@@ -359,7 +395,7 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
             </CardHeader>
             <CardContent className="px-0 sm:px-6">
               <div className="overflow-x-auto">
-                <table className="min-w-[560px] w-full text-sm">
+                <table className="w-full min-w-[560px] text-sm">
                   <thead>
                     <tr className="border-b text-left">
                       <th className="p-2 font-medium">Date/Time</th>
@@ -374,22 +410,28 @@ export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonit
                   <tbody>
                     {readings.slice(0, 15).map((r) => (
                       <tr key={r.id} className="border-b last:border-0">
-                        <td className="p-2 whitespace-nowrap">{formatDateTime(r.recorded_at)}</td>
+                        <td className="whitespace-nowrap p-2">{formatDateTime(r.recorded_at)}</td>
                         <td className="p-2">
-                          <span className={
-                            r.is_hypertensive
-                              ? 'text-destructive font-semibold'
-                              : r.is_hypotensive
-                                ? 'text-blue-600 font-semibold'
-                                : ''
-                          }>
+                          <span
+                            className={
+                              r.is_hypertensive
+                                ? 'font-semibold text-destructive'
+                                : r.is_hypotensive
+                                  ? 'font-semibold text-blue-600'
+                                  : ''
+                            }
+                          >
                             {r.systolic}/{r.diastolic}
                           </span>
                           {r.is_hypertensive && (
-                            <Badge variant="destructive" className="ml-1 text-xs">High</Badge>
+                            <Badge variant="destructive" className="ml-1 text-xs">
+                              High
+                            </Badge>
                           )}
                           {r.is_hypotensive && (
-                            <Badge variant="warning" className="ml-1 text-xs">Low</Badge>
+                            <Badge variant="warning" className="ml-1 text-xs">
+                              Low
+                            </Badge>
                           )}
                         </td>
                         <td className="p-2">{r.mean_arterial_pressure ?? '—'}</td>

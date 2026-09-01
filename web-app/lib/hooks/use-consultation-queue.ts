@@ -15,7 +15,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { consultationQueueApi } from '@/lib/api/consultation-queue';
 import { encountersApi } from '@/lib/api/encounters';
-import type { ConsultationQueueFilters, MyClaimedEncountersParams, AllClaimedEncountersParams } from '@/lib/types/encounter';
+import type {
+  ConsultationQueueFilters,
+  MyClaimedEncountersParams,
+  AllClaimedEncountersParams,
+} from '@/lib/types/encounter';
 
 // =============================================================================
 // Query Keys
@@ -111,7 +115,7 @@ export function useBypassTriage() {
     mutationFn: ({
       encounterId,
       reason,
-      notes
+      notes,
     }: {
       encounterId: number;
       reason: string;

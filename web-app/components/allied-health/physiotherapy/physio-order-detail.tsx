@@ -79,11 +79,7 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
   }
 
   if (error || !order) {
-    return (
-      <div className="p-4 text-center text-destructive">
-        Failed to load order details
-      </div>
-    );
+    return <div className="p-4 text-center text-destructive">Failed to load order details</div>;
   }
 
   const handleAction = async (action: string) => {
@@ -126,21 +122,22 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
 
   const canApprove = order.status === 'PENDING';
   const canStart = order.status === 'APPROVED';
-  const canComplete = order.status === 'IN_PROGRESS' && order.sessions_completed >= order.total_sessions;
+  const canComplete =
+    order.status === 'IN_PROGRESS' && order.sessions_completed >= order.total_sessions;
   const canCancel = ['PENDING', 'APPROVED', 'IN_PROGRESS'].includes(order.status);
   const canGenerateSessions = ['APPROVED', 'IN_PROGRESS'].includes(order.status);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold">{order.order_number}</h1>
             <OrderStatusBadge status={order.status} />
             <PriorityBadge priority={order.priority} showIcon />
           </div>
-          <p className="text-muted-foreground mt-1">
+          <p className="mt-1 text-muted-foreground">
             Created {format(parseISO(order.ordered_at), 'PPP')}
           </p>
         </div>
@@ -149,36 +146,36 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
           {canApprove && (
             <>
               <Button onClick={() => setConfirmAction('approve')}>
-                <CheckCircle className="h-4 w-4 mr-2" />
+                <CheckCircle className="mr-2 h-4 w-4" />
                 Approve
               </Button>
               <Button variant="destructive" onClick={() => setConfirmAction('reject')}>
-                <XCircle className="h-4 w-4 mr-2" />
+                <XCircle className="mr-2 h-4 w-4" />
                 Reject
               </Button>
             </>
           )}
           {canStart && (
             <Button onClick={() => setConfirmAction('start')}>
-              <Play className="h-4 w-4 mr-2" />
+              <Play className="mr-2 h-4 w-4" />
               Start Treatment
             </Button>
           )}
           {canGenerateSessions && (
             <Button variant="outline" onClick={() => handleAction('generate')}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Generate Sessions
             </Button>
           )}
           {canComplete && (
             <Button onClick={() => setConfirmAction('complete')}>
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle className="mr-2 h-4 w-4" />
               Complete
             </Button>
           )}
           {canCancel && (
             <Button variant="ghost" onClick={() => setConfirmAction('cancel')}>
-              <XCircle className="h-4 w-4 mr-2" />
+              <XCircle className="mr-2 h-4 w-4" />
               Cancel
             </Button>
           )}
@@ -187,7 +184,7 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Info */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* Patient & Treatment */}
           <Card>
             <CardHeader>
@@ -215,9 +212,7 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Assigned Therapist</h4>
-                <p className="font-medium">
-                  {order.assigned_therapist_name || 'Not assigned'}
-                </p>
+                <p className="font-medium">{order.assigned_therapist_name || 'Not assigned'}</p>
               </div>
             </CardContent>
           </Card>
@@ -231,7 +226,9 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap">{order.clinical_indication || 'No clinical notes'}</p>
+              <p className="whitespace-pre-wrap">
+                {order.clinical_indication || 'No clinical notes'}
+              </p>
             </CardContent>
           </Card>
 
@@ -246,24 +243,22 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
             <CardContent className="space-y-4">
               {order.treatment_goals && (
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Goals</h4>
+                  <h4 className="mb-1 text-sm font-medium text-muted-foreground">Goals</h4>
                   <p className="whitespace-pre-wrap">{order.treatment_goals}</p>
                 </div>
               )}
               {order.contraindications && (
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-2">
+                  <h4 className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <AlertTriangle className="h-4 w-4 text-destructive" />
                     Contraindications
                   </h4>
-                  <p className="whitespace-pre-wrap text-destructive">
-                    {order.contraindications}
-                  </p>
+                  <p className="whitespace-pre-wrap text-destructive">{order.contraindications}</p>
                 </div>
               )}
               {order.precautions && (
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Precautions</h4>
+                  <h4 className="mb-1 text-sm font-medium text-muted-foreground">Precautions</h4>
                   <p className="whitespace-pre-wrap">{order.precautions}</p>
                 </div>
               )}
@@ -283,10 +278,7 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
               {sessionsLoading ? (
                 <LoadingSpinner />
               ) : (
-                <PhysioSessionTable
-                  sessions={sessionsData?.results || []}
-                  orderId={orderId}
-                />
+                <PhysioSessionTable sessions={sessionsData?.results || []} orderId={orderId} />
               )}
             </CardContent>
           </Card>
@@ -300,10 +292,7 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
               <CardTitle>Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <SessionProgress
-                completed={order.sessions_completed}
-                total={order.total_sessions}
-              />
+              <SessionProgress completed={order.sessions_completed} total={order.total_sessions} />
             </CardContent>
           </Card>
 
@@ -350,8 +339,7 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
                 'This will reject the order. This action cannot be undone.'}
               {confirmAction === 'start' &&
                 'This will start the treatment and enable session completion.'}
-              {confirmAction === 'complete' &&
-                'This will mark the treatment as completed.'}
+              {confirmAction === 'complete' && 'This will mark the treatment as completed.'}
               {confirmAction === 'cancel' &&
                 'This will cancel the order. Any scheduled sessions will also be cancelled.'}
             </AlertDialogDescription>

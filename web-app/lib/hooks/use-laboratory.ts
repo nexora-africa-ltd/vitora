@@ -73,7 +73,12 @@ export function useResolveTests() {
 
 // ============ Lab Order Hooks — Dual-mode: PowerSync + API fallback ============
 
-type LabOrderJoinedRow = LabOrderRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string };
+type LabOrderJoinedRow = LabOrderRow & {
+  id: string;
+  patient_first_name?: string;
+  patient_last_name?: string;
+  patient_mrn?: string;
+};
 
 /**
  * Hook for fetching paginated lab orders.
@@ -99,7 +104,9 @@ export function useLabOrders(params?: LabOrderListParams) {
     sqlParams.push(params.priority);
   }
   if (params?.search) {
-    conditions.push('(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR lo.order_number LIKE ?)');
+    conditions.push(
+      '(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR lo.order_number LIKE ?)'
+    );
     const pattern = `%${params.search}%`;
     sqlParams.push(pattern, pattern, pattern, pattern);
   }
@@ -120,7 +127,7 @@ export function useLabOrders(params?: LabOrderListParams) {
       count: rows.length < limit ? offset + rows.length : offset + limit + 1,
       next: null,
       previous: null,
-      results: rows.map(r => transformLabOrderRow(r) as unknown as LabOrder),
+      results: rows.map((r) => transformLabOrderRow(r) as unknown as LabOrder),
     }),
     queryKey: ['lab-orders', params],
     queryFn: () => laboratoryApi.listOrders(params),
@@ -164,7 +171,7 @@ export function usePatientLabOrders(patientId: number) {
       WHERE lo.patient_id = ?
       ORDER BY lo.created_at DESC`,
     params: [String(patientId)],
-    transform: (rows) => rows.map(r => transformLabOrderRow(r) as unknown as LabOrder),
+    transform: (rows) => rows.map((r) => transformLabOrderRow(r) as unknown as LabOrder),
     queryKey: ['patients', patientId, 'lab-orders'],
     queryFn: () => laboratoryApi.getPatientOrders(patientId),
     forceApi: true,
@@ -185,7 +192,7 @@ export function useEncounterLabOrders(encounterId: number) {
       WHERE lo.encounter_id = ?
       ORDER BY lo.created_at DESC`,
     params: [String(encounterId)],
-    transform: (rows) => rows.map(r => transformLabOrderRow(r) as unknown as LabOrder),
+    transform: (rows) => rows.map((r) => transformLabOrderRow(r) as unknown as LabOrder),
     queryKey: ['encounters', encounterId, 'lab-orders'],
     queryFn: () => laboratoryApi.getEncounterOrders(encounterId),
     forceApi: true,
@@ -411,8 +418,13 @@ export function useAddLabResultsBatch() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ orderNumber, results }: { orderNumber: string; results: LabResultCreateData[] }) =>
-      laboratoryApi.addResultsBatch(orderNumber, results),
+    mutationFn: ({
+      orderNumber,
+      results,
+    }: {
+      orderNumber: string;
+      results: LabResultCreateData[];
+    }) => laboratoryApi.addResultsBatch(orderNumber, results),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['lab-orders', variables.orderNumber],
@@ -462,7 +474,9 @@ export function useVerifyLabResult() {
       queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
       queryClient.invalidateQueries({ queryKey: ['lab-results'] });
       queryClient.invalidateQueries({ queryKey: ['lab-results', 'pending-verification'] });
-      queryClient.invalidateQueries({ queryKey: ['lab-results', variables.resultId, 'validations'] });
+      queryClient.invalidateQueries({
+        queryKey: ['lab-results', variables.resultId, 'validations'],
+      });
       queryClient.invalidateQueries({ queryKey: ['lab-results', 'pending-validations'] });
     },
   });
@@ -544,8 +558,13 @@ export function useAssignQueueEntry() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ queueNumber, technicianId }: { queueNumber: string; technicianId: number | null }) =>
-      laboratoryApi.assignQueueEntry(queueNumber, technicianId),
+    mutationFn: ({
+      queueNumber,
+      technicianId,
+    }: {
+      queueNumber: string;
+      technicianId: number | null;
+    }) => laboratoryApi.assignQueueEntry(queueNumber, technicianId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
     },
@@ -617,8 +636,15 @@ export function useUpdateNotes() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ queueNumber, notes, append }: { queueNumber: string; notes: string; append?: boolean }) =>
-      laboratoryApi.updateNotes(queueNumber, notes, append),
+    mutationFn: ({
+      queueNumber,
+      notes,
+      append,
+    }: {
+      queueNumber: string;
+      notes: string;
+      append?: boolean;
+    }) => laboratoryApi.updateNotes(queueNumber, notes, append),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
     },
@@ -682,13 +708,8 @@ export function useCreateResultValidation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      resultId,
-      data,
-    }: {
-      resultId: number;
-      data: ResultValidationCreateData;
-    }) => laboratoryApi.createResultValidation(resultId, data),
+    mutationFn: ({ resultId, data }: { resultId: number; data: ResultValidationCreateData }) =>
+      laboratoryApi.createResultValidation(resultId, data),
     onSuccess: (validation: ResultValidation) => {
       // Invalidate specific result validations
       queryClient.invalidateQueries({
@@ -769,8 +790,7 @@ export function useCreateDiagnosticReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: DiagnosticReportCreateData) =>
-      laboratoryApi.createDiagnosticReport(data),
+    mutationFn: (data: DiagnosticReportCreateData) => laboratoryApi.createDiagnosticReport(data),
     onSuccess: (newReport: DiagnosticReport) => {
       queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
       queryClient.invalidateQueries({
@@ -787,8 +807,13 @@ export function useUpdateDiagnosticReport() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ reportNumber, data }: { reportNumber: string; data: Partial<DiagnosticReport> }) =>
-      laboratoryApi.updateDiagnosticReport(reportNumber, data),
+    mutationFn: ({
+      reportNumber,
+      data,
+    }: {
+      reportNumber: string;
+      data: Partial<DiagnosticReport>;
+    }) => laboratoryApi.updateDiagnosticReport(reportNumber, data),
     onSuccess: (updatedReport: DiagnosticReport) => {
       queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
       queryClient.invalidateQueries({
@@ -1021,7 +1046,11 @@ export function useSearchLabResults(search?: string) {
   });
 }
 
-export function useOrganisms(params?: { gram_stain?: string; organism_type?: string; search?: string }) {
+export function useOrganisms(params?: {
+  gram_stain?: string;
+  organism_type?: string;
+  search?: string;
+}) {
   return useQuery({
     queryKey: ['microbiology', 'organisms', params],
     queryFn: () => microbiologyApi.listOrganisms(params),
@@ -1035,7 +1064,12 @@ export function useAntibiotics(params?: { antibiotic_class?: string; search?: st
   });
 }
 
-export function useCultures(params?: { status?: string; organism?: number; search?: string; page?: number }) {
+export function useCultures(params?: {
+  status?: string;
+  organism?: number;
+  search?: string;
+  page?: number;
+}) {
   return useQuery({
     queryKey: ['microbiology', 'cultures', params],
     queryFn: () => microbiologyApi.listCultures(params),

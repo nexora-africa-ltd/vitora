@@ -12,15 +12,16 @@ const RULES = [
 ];
 
 export function PasswordStrengthIndicator({ password }: { password: string }) {
-  const results = useMemo(
-    () => RULES.map((r) => ({ ...r, pass: r.test(password) })),
-    [password],
-  );
+  const results = useMemo(() => RULES.map((r) => ({ ...r, pass: r.test(password) })), [password]);
 
   const passCount = results.filter((r) => r.pass).length;
   const strength = passCount <= 2 ? 'weak' : passCount <= 4 ? 'fair' : 'strong';
   const barColor =
-    strength === 'weak' ? 'bg-destructive' : strength === 'fair' ? 'bg-yellow-500' : 'bg-emerald-500';
+    strength === 'weak'
+      ? 'bg-destructive'
+      : strength === 'fair'
+        ? 'bg-yellow-500'
+        : 'bg-emerald-500';
   const barWidth = `${(passCount / RULES.length) * 100}%`;
 
   return (
@@ -33,9 +34,15 @@ export function PasswordStrengthIndicator({ password }: { password: string }) {
             style={{ width: barWidth }}
           />
         </div>
-        <span className={`text-xs font-medium ${
-          strength === 'weak' ? 'text-destructive' : strength === 'fair' ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400'
-        }`}>
+        <span
+          className={`text-xs font-medium ${
+            strength === 'weak'
+              ? 'text-destructive'
+              : strength === 'fair'
+                ? 'text-yellow-600 dark:text-yellow-400'
+                : 'text-emerald-600 dark:text-emerald-400'
+          }`}
+        >
           {strength === 'weak' ? 'Weak' : strength === 'fair' ? 'Fair' : 'Strong'}
         </span>
       </div>

@@ -31,16 +31,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  HandHelping,
-  AlertCircle,
-  Check,
-  CalendarIcon,
-} from 'lucide-react';
-import {
-  useCreateIntervention,
-  useUpdateIntervention,
-} from '@/lib/hooks/use-social-work';
+import { HandHelping, AlertCircle, Check, CalendarIcon } from 'lucide-react';
+import { useCreateIntervention, useUpdateIntervention } from '@/lib/hooks/use-social-work';
 import type { SWIntervention } from '@/lib/types/social-work';
 import { useToast } from '@/lib/hooks/use-toast';
 
@@ -128,8 +120,7 @@ export function InterventionForm({
       description: existingIntervention?.description || '',
       objectives: '',
       activities: '',
-      planned_date:
-        existingIntervention?.planned_date || format(new Date(), 'yyyy-MM-dd'),
+      planned_date: existingIntervention?.planned_date || format(new Date(), 'yyyy-MM-dd'),
       external_agency: '',
       external_contact: '',
       cost: undefined,
@@ -163,9 +154,7 @@ export function InterventionForm({
       onSuccess?.();
     } catch (err) {
       console.error('Failed to save intervention:', err);
-      setSubmitError(
-        err instanceof Error ? err.message : 'Failed to save intervention'
-      );
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save intervention');
     }
   };
 
@@ -174,13 +163,11 @@ export function InterventionForm({
   return (
     <Card>
       <CardHeader className="py-3 sm:py-4">
-        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
           <HandHelping className="h-4 w-4 sm:h-5 sm:w-5" />
           {isEditMode ? 'Edit Intervention' : 'Add Intervention'}
           {caseNumber && (
-            <span className="text-sm font-normal text-muted-foreground">
-              — {caseNumber}
-            </span>
+            <span className="text-sm font-normal text-muted-foreground">— {caseNumber}</span>
           )}
           <HelpPopover content="Record a specific intervention such as counselling, crisis response, resource linking, or material support for this case." />
         </CardTitle>
@@ -194,10 +181,7 @@ export function InterventionForm({
         )}
 
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4 sm:space-y-6"
-          >
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 sm:space-y-6">
             {/* Intervention Type & Date */}
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
@@ -206,10 +190,7 @@ export function InterventionForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Intervention Type *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
@@ -236,7 +217,7 @@ export function InterventionForm({
                     <FormLabel>Planned Date *</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <CalendarIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input type="date" className="pl-10" {...field} />
                       </div>
                     </FormControl>
@@ -307,9 +288,7 @@ export function InterventionForm({
             <div className="space-y-4 rounded-lg border p-4">
               <h4 className="text-sm font-medium">
                 External Agency
-                <span className="ml-1 text-muted-foreground font-normal">
-                  (if applicable)
-                </span>
+                <span className="ml-1 font-normal text-muted-foreground">(if applicable)</span>
               </h4>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
@@ -319,10 +298,7 @@ export function InterventionForm({
                     <FormItem>
                       <FormLabel>Agency Name</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="e.g. Kenya Red Cross, UNHCR"
-                          {...field}
-                        />
+                        <Input placeholder="e.g. Kenya Red Cross, UNHCR" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -335,10 +311,7 @@ export function InterventionForm({
                     <FormItem>
                       <FormLabel>Contact Person</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Name of contact at agency"
-                          {...field}
-                        />
+                        <Input placeholder="Name of contact at agency" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -351,7 +324,7 @@ export function InterventionForm({
             <div className="space-y-4 rounded-lg border p-4">
               <h4 className="text-sm font-medium">
                 Cost
-                <span className="ml-1 text-muted-foreground font-normal">
+                <span className="ml-1 font-normal text-muted-foreground">
                   (for material/financial assistance)
                 </span>
               </h4>
@@ -383,10 +356,7 @@ export function InterventionForm({
                     <FormItem>
                       <FormLabel>Funding Source</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="e.g. Hospital fund, NGO grant"
-                          {...field}
-                        />
+                        <Input placeholder="e.g. Hospital fund, NGO grant" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -417,12 +387,7 @@ export function InterventionForm({
             {/* Actions */}
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               {onCancel && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onCancel}
-                  disabled={isPending}
-                >
+                <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
                   Cancel
                 </Button>
               )}
@@ -431,7 +396,7 @@ export function InterventionForm({
                   <>Saving...</>
                 ) : (
                   <>
-                    <Check className="h-4 w-4 mr-2" />
+                    <Check className="mr-2 h-4 w-4" />
                     {isEditMode ? 'Update Intervention' : 'Create Intervention'}
                   </>
                 )}

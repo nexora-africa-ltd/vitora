@@ -18,11 +18,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { useStaffList } from '@/lib/hooks/use-rbac';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -79,9 +75,7 @@ export function StaffSearchCombobox({
   // Filter out excluded users
   const availableStaff = React.useMemo(() => {
     if (!staffData?.results) return [];
-    return staffData.results.filter(
-      (staff) => !excludeUserIds.includes(staff.user)
-    );
+    return staffData.results.filter((staff) => !excludeUserIds.includes(staff.user));
   }, [staffData?.results, excludeUserIds]);
 
   // Find selected staff for display
@@ -102,7 +96,7 @@ export function StaffSearchCombobox({
         >
           {selectedStaff ? (
             <div className="flex items-center gap-2 truncate">
-              <User className="h-4 w-4 text-muted-foreground shrink-0" />
+              <User className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="truncate">{selectedStaff.full_name}</span>
               {selectedStaff.primary_role_name && (
                 <Badge variant="secondary" className="ml-1 shrink-0 text-xs">
@@ -132,7 +126,7 @@ export function StaffSearchCombobox({
           <CommandList className="max-h-[200px]">
             {isLoading ? (
               <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 <span className="text-sm text-muted-foreground">Searching...</span>
               </div>
             ) : searchQuery.length > 0 && searchQuery.length < 2 ? (
@@ -160,19 +154,19 @@ export function StaffSearchCombobox({
                         value === staff.user ? 'opacity-100' : 'opacity-0'
                       )}
                     />
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{staff.full_name}</span>
+                        <span className="truncate font-medium">{staff.full_name}</span>
                         {staff.employee_id && (
-                          <Badge variant="outline" className="shrink-0 text-xs font-mono">
+                          <Badge variant="outline" className="shrink-0 font-mono text-xs">
                             {staff.employee_id}
                           </Badge>
                         )}
                       </div>
-                      <div className="text-sm text-muted-foreground truncate">
+                      <div className="truncate text-sm text-muted-foreground">
                         {staff.user_email}
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="mt-1 flex items-center gap-2">
                         {staff.primary_role_name && (
                           <Badge variant="secondary" className="text-xs">
                             {staff.primary_role_name}

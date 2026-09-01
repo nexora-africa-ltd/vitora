@@ -13,17 +13,8 @@ import type {
   SampleRejectionReport,
 } from '@/lib/types/laboratory';
 import type { FacilityInfo, LayoutType } from './types';
-import {
-  buildPrintDocument,
-  escapeHtml,
-  formatDate,
-  openPrintWindow,
-} from './renderer';
-import {
-  generateQRDataUri,
-  getLabAnalyticsQRContent,
-  type QRContent,
-} from '@/lib/utils/qr';
+import { buildPrintDocument, escapeHtml, formatDate, openPrintWindow } from './renderer';
+import { generateQRDataUri, getLabAnalyticsQRContent, type QRContent } from '@/lib/utils/qr';
 import {
   labAnalyticsDefaults,
   getCriticalClass,

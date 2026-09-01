@@ -59,14 +59,11 @@ export default function StaffListPage() {
   const [page, setPage] = useState(1);
   const { refresh, isRefreshing } = usePageRefresh();
 
-  const {
-    data: departments,
-    refetch: refetchDepartments,
-  } = useDepartments({ is_active: true, page_size: 100 });
-  const {
-    data: roles,
-    refetch: refetchRoles,
-  } = useRoles({ page_size: 100 });
+  const { data: departments, refetch: refetchDepartments } = useDepartments({
+    is_active: true,
+    page_size: 100,
+  });
+  const { data: roles, refetch: refetchRoles } = useRoles({ page_size: 100 });
 
   const {
     data,
@@ -189,10 +186,19 @@ export default function StaffListPage() {
                   name="staff-search"
                   placeholder="Search by name, username, or employee ID…"
                   value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                 />
               </div>
-              <Select value={departmentFilter} onValueChange={(v) => { setDepartmentFilter(v); setPage(1); }}>
+              <Select
+                value={departmentFilter}
+                onValueChange={(v) => {
+                  setDepartmentFilter(v);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger aria-label="Filter by department">
                   <SelectValue placeholder="All Departments" />
                 </SelectTrigger>
@@ -205,7 +211,13 @@ export default function StaffListPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
+              <Select
+                value={roleFilter}
+                onValueChange={(v) => {
+                  setRoleFilter(v);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger aria-label="Filter by role">
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
@@ -220,7 +232,10 @@ export default function StaffListPage() {
               </Select>
               <Select
                 value={statusFilter}
-                onValueChange={(value) => { setStatusFilter(value as EmploymentStatus | 'all'); setPage(1); }}
+                onValueChange={(value) => {
+                  setStatusFilter(value as EmploymentStatus | 'all');
+                  setPage(1);
+                }}
               >
                 <SelectTrigger aria-label="Filter by employment status">
                   <SelectValue placeholder="All Status" />
@@ -276,13 +291,23 @@ export default function StaffListPage() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between pt-4">
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={!hasPrev}
+                >
                   Previous
                 </Button>
                 <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!hasNext}
+                >
                   Next
                 </Button>
               </div>
@@ -311,8 +336,8 @@ function StaffTableView({
         <Card className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
-              <p className="font-medium truncate">{member.full_name}</p>
-              <p className="text-sm text-muted-foreground truncate">@{member.user_username}</p>
+              <p className="truncate font-medium">{member.full_name}</p>
+              <p className="truncate text-sm text-muted-foreground">@{member.user_username}</p>
             </div>
             <Badge variant={member.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
               {formatEmploymentStatus(member.employment_status)}
@@ -332,7 +357,7 @@ function StaffTableView({
               <span>{member.primary_role_name || 'Role not assigned'}</span>
             </div>
             {member.user_email ? (
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
                 <Mail className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{member.user_email}</span>
               </div>
@@ -348,8 +373,8 @@ function StaffTableView({
           sortFn: (a, b) => a.full_name.localeCompare(b.full_name),
           cell: (member) => (
             <div className="min-w-0">
-              <p className="font-medium truncate">{member.full_name}</p>
-              <p className="text-sm text-muted-foreground truncate">@{member.user_username}</p>
+              <p className="truncate font-medium">{member.full_name}</p>
+              <p className="truncate text-sm text-muted-foreground">@{member.user_username}</p>
             </div>
           ),
         },
@@ -364,7 +389,8 @@ function StaffTableView({
           header: 'Department',
           hideOnMobile: true,
           sortable: true,
-          sortFn: (a, b) => (a.primary_department_name || '').localeCompare(b.primary_department_name || ''),
+          sortFn: (a, b) =>
+            (a.primary_department_name || '').localeCompare(b.primary_department_name || ''),
           cell: (member) => member.primary_department_name || 'Unassigned',
         },
         {
@@ -380,7 +406,8 @@ function StaffTableView({
           header: 'Facility',
           hideOnMobile: true,
           sortable: true,
-          sortFn: (a, b) => (a.primary_facility_name || '').localeCompare(b.primary_facility_name || ''),
+          sortFn: (a, b) =>
+            (a.primary_facility_name || '').localeCompare(b.primary_facility_name || ''),
           cell: (member) => member.primary_facility_name || 'Unassigned',
         },
         {
@@ -442,7 +469,10 @@ function StaffGridView({ staff }: { staff: StaffProfile[] }) {
           initials={getInitials(member.user_first_name, member.user_last_name)}
           href={`/admin/staff/${member.id}`}
           status={{
-            label: member.employment_status === 'ACTIVE' ? 'Active' : member.employment_status?.toLowerCase() || 'Unknown',
+            label:
+              member.employment_status === 'ACTIVE'
+                ? 'Active'
+                : member.employment_status?.toLowerCase() || 'Unknown',
             variant: member.employment_status === 'ACTIVE' ? 'default' : 'secondary',
           }}
           badges={member.primary_role_name ? [{ label: member.primary_role_name }] : []}
@@ -463,11 +493,13 @@ function StaffGridView({ staff }: { staff: StaffProfile[] }) {
               value: member.primary_facility_name || 'Unassigned',
             },
             ...(member.user_email
-              ? [{
-                  icon: <Mail className="h-3 w-3" />,
-                  label: 'Email',
-                  value: member.user_email,
-                }]
+              ? [
+                  {
+                    icon: <Mail className="h-3 w-3" />,
+                    label: 'Email',
+                    value: member.user_email,
+                  },
+                ]
               : []),
           ]}
           actions={[

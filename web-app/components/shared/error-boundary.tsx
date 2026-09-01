@@ -3,7 +3,14 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
@@ -47,11 +54,11 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-muted/20">
+        <div className="flex min-h-screen items-center justify-center bg-muted/20 p-4">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
-              <div className="flex justify-center mb-4">
-                <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
+              <div className="mb-4 flex justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
                   <AlertTriangle className="h-8 w-8 text-destructive" />
                 </div>
               </div>
@@ -62,18 +69,18 @@ export class ErrorBoundary extends Component<Props, State> {
             </CardHeader>
             <CardContent>
               {process.env.NODE_ENV === 'development' && this.state.error && (
-                <pre className="p-3 bg-muted rounded-md text-xs overflow-auto max-h-40">
+                <pre className="max-h-40 overflow-auto rounded-md bg-muted p-3 text-xs">
                   {this.state.error.message}
                 </pre>
               )}
             </CardContent>
-            <CardFooter className="flex gap-2 justify-center">
+            <CardFooter className="flex justify-center gap-2">
               <Button variant="outline" onClick={() => (window.location.href = '/')}>
-                <Home className="h-4 w-4 mr-2" />
+                <Home className="mr-2 h-4 w-4" />
                 Go Home
               </Button>
               <Button onClick={this.handleReset}>
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="mr-2 h-4 w-4" />
                 Try Again
               </Button>
             </CardFooter>

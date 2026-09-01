@@ -249,7 +249,7 @@ export interface User {
   is_staff: boolean;
   is_superuser?: boolean;
   permissions: string[];
-  role?: string;  // User role (ADMIN, NURSE, DOCTOR, BILLING_CLERK, etc.)
+  role?: string; // User role (ADMIN, NURSE, DOCTOR, BILLING_CLERK, etc.)
 }
 
 // Patient types

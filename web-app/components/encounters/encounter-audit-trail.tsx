@@ -39,30 +39,39 @@ export function EncounterAuditTrail({ encounterId }: EncounterAuditTrailProps) {
       }
     }
 
-    const normalizedChanges: FieldChanges = Object.entries(version.changes).reduce((acc, [field, change]) => {
-      if (!userReferenceFields.has(field)) {
-        acc[field] = change;
+    const normalizedChanges: FieldChanges = Object.entries(version.changes).reduce(
+      (acc, [field, change]) => {
+        if (!userReferenceFields.has(field)) {
+          acc[field] = change;
+          return acc;
+        }
+
+        const resolveUserDisplay = (
+          value: string | number | boolean | null
+        ): string | number | boolean | null => {
+          if (typeof value !== 'number') {
+            return value;
+          }
+
+          if (
+            field === 'finalized_by' &&
+            version.history_user_id === value &&
+            version.history_user
+          ) {
+            return version.history_user;
+          }
+
+          return userIdToName.get(value) || value;
+        };
+
+        acc[field] = {
+          old: resolveUserDisplay(change.old),
+          new: resolveUserDisplay(change.new),
+        };
         return acc;
-      }
-
-      const resolveUserDisplay = (value: string | number | boolean | null): string | number | boolean | null => {
-        if (typeof value !== 'number') {
-          return value;
-        }
-
-        if (field === 'finalized_by' && version.history_user_id === value && version.history_user) {
-          return version.history_user;
-        }
-
-        return userIdToName.get(value) || value;
-      };
-
-      acc[field] = {
-        old: resolveUserDisplay(change.old),
-        new: resolveUserDisplay(change.new),
-      };
-      return acc;
-    }, {} as FieldChanges);
+      },
+      {} as FieldChanges
+    );
 
     return {
       ...version,
@@ -75,7 +84,7 @@ export function EncounterAuditTrail({ encounterId }: EncounterAuditTrailProps) {
       <Card>
         <CardContent className="py-8 text-center">
           <p className="text-destructive">Failed to load audit trail</p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             {error instanceof Error ? error.message : 'Unknown error'}
           </p>
         </CardContent>

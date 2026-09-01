@@ -77,7 +77,11 @@ export default function PreauthDetailPage() {
       toast({ title: 'Pre-authorization submitted' });
       refetch();
     } catch {
-      toast({ title: 'Error', description: 'Failed to submit pre-authorization.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to submit pre-authorization.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -92,7 +96,11 @@ export default function PreauthDetailPage() {
       setApproveOpen(false);
       refetch();
     } catch {
-      toast({ title: 'Error', description: 'Failed to approve pre-authorization.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to approve pre-authorization.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -103,7 +111,11 @@ export default function PreauthDetailPage() {
       setDenyOpen(false);
       refetch();
     } catch {
-      toast({ title: 'Error', description: 'Failed to deny pre-authorization.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to deny pre-authorization.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -113,7 +125,11 @@ export default function PreauthDetailPage() {
       toast({ title: 'Pre-authorization cancelled' });
       refetch();
     } catch {
-      toast({ title: 'Error', description: 'Failed to cancel pre-authorization.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to cancel pre-authorization.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -156,8 +172,8 @@ export default function PreauthDetailPage() {
       />
 
       {/* Summary Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <p className="text-sm font-medium">
             {preauth.patient_name}
             <span className="text-muted-foreground"> • {preauth.member_number}</span>
@@ -167,7 +183,7 @@ export default function PreauthDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className={`${STATUS_COLORS[preauth.status] || ''} shrink-0 w-fit`}>
+          <Badge className={`${STATUS_COLORS[preauth.status] || ''} w-fit shrink-0`}>
             {PREAUTH_STATUS_LABELS[preauth.status] || preauth.status}
           </Badge>
           {preauth.is_expired && <Badge variant="destructive">Expired</Badge>}
@@ -180,7 +196,12 @@ export default function PreauthDetailPage() {
           <CardContent className="p-3">
             <div className="flex flex-wrap gap-2">
               {canSubmit && (
-                <Button size="sm" onClick={handleSubmit} disabled={submitPreauth.isPending} className="gap-1">
+                <Button
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={submitPreauth.isPending}
+                  className="gap-1"
+                >
                   <Send className="h-3 w-3" /> Submit
                 </Button>
               )}
@@ -192,19 +213,38 @@ export default function PreauthDetailPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-sm">
-                    <DialogHeader><DialogTitle>Approve Pre-authorization</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                      <DialogTitle>Approve Pre-authorization</DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <Label>Approved Amount (KES) *</Label>
-                        <Input type="number" value={approvedAmount} onChange={e => setApprovedAmount(e.target.value)} placeholder={preauth.estimated_cost} />
+                        <Input
+                          type="number"
+                          value={approvedAmount}
+                          onChange={(e) => setApprovedAmount(e.target.value)}
+                          placeholder={preauth.estimated_cost}
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label>Validity Period (days)</Label>
-                        <Input type="number" value={validityDays} onChange={e => setValidityDays(e.target.value)} placeholder="30" />
+                        <Input
+                          type="number"
+                          value={validityDays}
+                          onChange={(e) => setValidityDays(e.target.value)}
+                          placeholder="30"
+                        />
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setApproveOpen(false)}>Cancel</Button>
-                        <Button onClick={handleApprove} disabled={approvePreauth.isPending || !approvedAmount}>Approve</Button>
+                        <Button variant="outline" onClick={() => setApproveOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleApprove}
+                          disabled={approvePreauth.isPending || !approvedAmount}
+                        >
+                          Approve
+                        </Button>
                       </div>
                     </div>
                   </DialogContent>
@@ -218,22 +258,42 @@ export default function PreauthDetailPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-sm">
-                    <DialogHeader><DialogTitle>Deny Pre-authorization</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                      <DialogTitle>Deny Pre-authorization</DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <Label>Reason *</Label>
-                        <Textarea value={denyReason} onChange={e => setDenyReason(e.target.value)} rows={3} />
+                        <Textarea
+                          value={denyReason}
+                          onChange={(e) => setDenyReason(e.target.value)}
+                          rows={3}
+                        />
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setDenyOpen(false)}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleDeny} disabled={denyPreauth.isPending || !denyReason}>Deny</Button>
+                        <Button variant="outline" onClick={() => setDenyOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={handleDeny}
+                          disabled={denyPreauth.isPending || !denyReason}
+                        >
+                          Deny
+                        </Button>
                       </div>
                     </div>
                   </DialogContent>
                 </Dialog>
               )}
               {canCancel && (
-                <Button size="sm" variant="ghost" className="gap-1 text-destructive hover:text-destructive" onClick={handleCancel} disabled={cancelPreauth.isPending}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1 text-destructive hover:text-destructive"
+                  onClick={handleCancel}
+                  disabled={cancelPreauth.isPending}
+                >
                   <XCircle className="h-3 w-3" /> Cancel
                 </Button>
               )}
@@ -243,23 +303,31 @@ export default function PreauthDetailPage() {
       )}
 
       {/* Financial Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Estimated Cost</p>
-            <p className="text-lg font-semibold">KES {Number(preauth.estimated_cost || 0).toLocaleString()}</p>
+            <p className="text-lg font-semibold">
+              KES {Number(preauth.estimated_cost || 0).toLocaleString()}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Approved Amount</p>
-            <p className="text-lg font-semibold">{preauth.approved_amount ? `KES ${Number(preauth.approved_amount).toLocaleString()}` : '—'}</p>
+            <p className="text-lg font-semibold">
+              {preauth.approved_amount
+                ? `KES ${Number(preauth.approved_amount).toLocaleString()}`
+                : '—'}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Validity</p>
-            <p className="text-lg font-semibold">{preauth.validity_period_days ? `${preauth.validity_period_days} days` : '—'}</p>
+            <p className="text-lg font-semibold">
+              {preauth.validity_period_days ? `${preauth.validity_period_days} days` : '—'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -273,12 +341,12 @@ export default function PreauthDetailPage() {
       {/* Details */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Calendar className="h-4 w-4" /> Details
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
             {preauth.approved_at && (
               <>
                 <dt className="text-muted-foreground">Approved At</dt>
@@ -301,8 +369,10 @@ export default function PreauthDetailPage() {
               <>
                 <dt className="text-muted-foreground">Diagnosis Codes</dt>
                 <dd className="flex flex-wrap gap-1">
-                  {preauth.diagnosis_codes.map(code => (
-                    <Badge key={code} variant="outline" className="text-xs">{code}</Badge>
+                  {preauth.diagnosis_codes.map((code) => (
+                    <Badge key={code} variant="outline" className="text-xs">
+                      {code}
+                    </Badge>
                   ))}
                 </dd>
               </>
@@ -319,7 +389,7 @@ export default function PreauthDetailPage() {
       {preauth.rejection_reason && (
         <Card className="border-destructive/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2 text-destructive">
+            <CardTitle className="flex items-center gap-2 text-base text-destructive">
               <AlertCircle className="h-4 w-4" /> Denial Reason
             </CardTitle>
           </CardHeader>
@@ -333,7 +403,7 @@ export default function PreauthDetailPage() {
       {preauth.requested_services?.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <ClipboardList className="h-4 w-4" /> Requested Services
             </CardTitle>
           </CardHeader>
@@ -342,10 +412,10 @@ export default function PreauthDetailPage() {
               <table className="w-full min-w-[400px] text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left font-medium p-2">Description</th>
-                    <th className="text-left font-medium p-2">Code</th>
-                    <th className="text-right font-medium p-2">Qty</th>
-                    <th className="text-right font-medium p-2">Est. Cost</th>
+                    <th className="p-2 text-left font-medium">Description</th>
+                    <th className="p-2 text-left font-medium">Code</th>
+                    <th className="p-2 text-right font-medium">Qty</th>
+                    <th className="p-2 text-right font-medium">Est. Cost</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -354,7 +424,11 @@ export default function PreauthDetailPage() {
                       <td className="p-2">{svc.description}</td>
                       <td className="p-2 font-mono text-xs">{svc.code || '—'}</td>
                       <td className="p-2 text-right">{svc.quantity || 1}</td>
-                      <td className="p-2 text-right">{svc.estimated_cost ? `KES ${Number(svc.estimated_cost).toLocaleString()}` : '—'}</td>
+                      <td className="p-2 text-right">
+                        {svc.estimated_cost
+                          ? `KES ${Number(svc.estimated_cost).toLocaleString()}`
+                          : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -368,12 +442,12 @@ export default function PreauthDetailPage() {
       {preauth.clinical_notes && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Shield className="h-4 w-4" /> Clinical Notes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{preauth.clinical_notes}</p>
+            <p className="whitespace-pre-wrap text-sm">{preauth.clinical_notes}</p>
           </CardContent>
         </Card>
       )}
@@ -385,7 +459,7 @@ export default function PreauthDetailPage() {
             <CardTitle className="text-base">Notes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{preauth.notes}</p>
+            <p className="whitespace-pre-wrap text-sm">{preauth.notes}</p>
           </CardContent>
         </Card>
       )}

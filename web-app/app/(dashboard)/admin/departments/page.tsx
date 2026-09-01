@@ -8,7 +8,17 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { CreateRouteLink } from '@/components/auth/create-route-link';
 import { useRouter } from 'next/navigation';
-import { Plus, Building2, Users, Search, Filter, Network, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Plus,
+  Building2,
+  Users,
+  Search,
+  Filter,
+  Network,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
@@ -228,8 +238,10 @@ export default function DepartmentsPage() {
                     sortFn: (a, b) => a.name.localeCompare(b.name),
                     cell: (dept) => (
                       <div className="min-w-0">
-                        <p className="font-medium truncate">{dept.name}</p>
-                        <p className="font-mono text-sm text-muted-foreground truncate">{dept.code}</p>
+                        <p className="truncate font-medium">{dept.name}</p>
+                        <p className="truncate font-mono text-sm text-muted-foreground">
+                          {dept.code}
+                        </p>
                       </div>
                     ),
                   },
@@ -237,7 +249,10 @@ export default function DepartmentsPage() {
                     key: 'type',
                     header: 'Type',
                     sortable: true,
-                    sortFn: (a, b) => (a.department_type_display || '').localeCompare(b.department_type_display || ''),
+                    sortFn: (a, b) =>
+                      (a.department_type_display || '').localeCompare(
+                        b.department_type_display || ''
+                      ),
                     cell: (dept) => (
                       <Badge variant={getDepartmentTypeBadgeVariant(dept.department_type)}>
                         {dept.department_type_display}
@@ -326,8 +341,8 @@ function DepartmentMobileCard({ dept }: { dept: Department }) {
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <p className="font-medium truncate">{dept.name}</p>
-          <p className="font-mono text-sm text-muted-foreground truncate">{dept.code}</p>
+          <p className="truncate font-medium">{dept.name}</p>
+          <p className="truncate font-mono text-sm text-muted-foreground">{dept.code}</p>
         </div>
         <Badge variant={dept.is_active ? 'default' : 'secondary'}>
           {dept.is_active ? 'Active' : 'Inactive'}

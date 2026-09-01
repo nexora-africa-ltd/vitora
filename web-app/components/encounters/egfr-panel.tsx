@@ -109,7 +109,9 @@ export function EGFRPanel({
 }: EGFRPanelProps) {
   // Form state
   const [creatinine, setCreatinine] = React.useState(initialCreatinine?.toString() ?? '');
-  const [creatinineUnit, setCreatinineUnit] = React.useState<'mg/dL' | 'umol/L'>(initialUnit ?? 'umol/L');
+  const [creatinineUnit, setCreatinineUnit] = React.useState<'mg/dL' | 'umol/L'>(
+    initialUnit ?? 'umol/L'
+  );
   const [age, setAge] = React.useState(patientAge?.toString() ?? '');
   const [sex, setSex] = React.useState<'male' | 'female' | ''>(patientSex ?? '');
   const [weight, setWeight] = React.useState(weightKg?.toString() ?? '');
@@ -154,7 +156,9 @@ export function EGFRPanel({
       {
         onSuccess: (data) => {
           setResult(data);
-          toast.success(`eGFR calculated: ${data.egfr_ckd_epi} mL/min — CKD Stage ${data.ckd_stage}`);
+          toast.success(
+            `eGFR calculated: ${data.egfr_ckd_epi} mL/min — CKD Stage ${data.ckd_stage}`
+          );
         },
         onError: (error) => {
           toast.error(`eGFR calculation failed: ${error.message}`);
@@ -164,7 +168,10 @@ export function EGFRPanel({
   };
 
   // Show stored result if available and no fresh result
-  const displayResult = result ?? (storedResults?.[0]?.result_data as unknown as AIEGFRCalculateResponse | undefined) ?? null;
+  const displayResult =
+    result ??
+    (storedResults?.[0]?.result_data as unknown as AIEGFRCalculateResponse | undefined) ??
+    null;
 
   return (
     <Card className={cn('relative overflow-hidden', className)}>
@@ -174,7 +181,9 @@ export function EGFRPanel({
           <CardTitle className="text-base">eGFR Calculator</CardTitle>
           <HelpPopover content="Calculates estimated Glomerular Filtration Rate using CKD-EPI 2021 (race-free) equation with CKD staging and renal dose adjustment guidance. Kenya labs typically report creatinine in µmol/L." />
           {displayResult?.mode === 'fallback' && (
-            <Badge variant="outline" className="text-xs">Offline</Badge>
+            <Badge variant="outline" className="text-xs">
+              Offline
+            </Badge>
           )}
         </div>
       </CardHeader>
@@ -200,7 +209,10 @@ export function EGFRPanel({
             <Label htmlFor="egfr-unit" className="text-xs">
               Unit
             </Label>
-            <Select value={creatinineUnit} onValueChange={(v) => setCreatinineUnit(v as 'mg/dL' | 'umol/L')}>
+            <Select
+              value={creatinineUnit}
+              onValueChange={(v) => setCreatinineUnit(v as 'mg/dL' | 'umol/L')}
+            >
               <SelectTrigger id="egfr-unit">
                 <SelectValue />
               </SelectTrigger>
@@ -275,11 +287,16 @@ export function EGFRPanel({
 
         {/* Results */}
         {displayResult && (
-          <div className="space-y-3 pt-2 border-t">
+          <div className="space-y-3 border-t pt-2">
             {/* CKD Stage Badge */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Badge className={cn('text-sm font-semibold', CKD_STAGE_COLORS[displayResult.ckd_stage] ?? 'bg-muted')}>
+                <Badge
+                  className={cn(
+                    'text-sm font-semibold',
+                    CKD_STAGE_COLORS[displayResult.ckd_stage] ?? 'bg-muted'
+                  )}
+                >
                   CKD {displayResult.ckd_stage}
                 </Badge>
                 <span className="text-sm text-muted-foreground">{displayResult.category}</span>
@@ -295,9 +312,7 @@ export function EGFRPanel({
               </div>
               <div className="rounded-md bg-muted/50 p-2">
                 <div className="text-xs text-muted-foreground">Cockcroft-Gault</div>
-                <div className="text-lg font-bold">
-                  {displayResult.egfr_cockcroft_gault ?? '—'}
-                </div>
+                <div className="text-lg font-bold">{displayResult.egfr_cockcroft_gault ?? '—'}</div>
                 <div className="text-xs text-muted-foreground">mL/min</div>
               </div>
             </div>
@@ -306,7 +321,12 @@ export function EGFRPanel({
             <div className="flex items-center gap-2">
               <Pill className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm">Dose Adjustment:</span>
-              <Badge className={cn('capitalize', DOSE_BAND_COLORS[displayResult.dose_adjustment_band] ?? 'bg-muted')}>
+              <Badge
+                className={cn(
+                  'capitalize',
+                  DOSE_BAND_COLORS[displayResult.dose_adjustment_band] ?? 'bg-muted'
+                )}
+              >
                 {displayResult.dose_adjustment_band}
               </Badge>
             </div>
@@ -322,11 +342,7 @@ export function EGFRPanel({
                   {displayResult.flags.map((flag) => {
                     const IconComponent = FLAG_ICONS[flag] ?? Info;
                     return (
-                      <Badge
-                        key={flag}
-                        variant="outline"
-                        className="text-xs gap-1"
-                      >
+                      <Badge key={flag} variant="outline" className="gap-1 text-xs">
                         <IconComponent className="h-3 w-3" />
                         {flag.replace(/_/g, ' ')}
                       </Badge>
@@ -343,16 +359,13 @@ export function EGFRPanel({
 
             {/* Feedback */}
             {result?.stored_id && (
-              <AIFeedbackButtons
-                messageId={result.stored_id}
-                serviceType="egfr_calculator"
-              />
+              <AIFeedbackButtons messageId={result.stored_id} serviceType="egfr_calculator" />
             )}
           </div>
         )}
 
         {/* Advisory Disclaimer */}
-        <p className="text-xs text-muted-foreground italic pt-1">
+        <p className="pt-1 text-xs italic text-muted-foreground">
           Advisory only — verify results and correlate clinically before prescribing decisions.
         </p>
       </CardContent>

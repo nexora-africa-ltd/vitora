@@ -16,7 +16,12 @@ import { ChartCard } from './chart-card';
 import { PatientVolumeChart } from '@/components/widgets/patient-volume-chart';
 import { RevenueBreakdownChart } from '@/components/widgets/revenue-chart';
 import { RecentActivity } from '@/components/widgets/recent-activity';
-import { DonutChart, createChartConfig, formatChartValue, ChartEmptyState } from '@/components/charts';
+import {
+  DonutChart,
+  createChartConfig,
+  formatChartValue,
+  ChartEmptyState,
+} from '@/components/charts';
 import { useDashboardMetrics } from '@/lib/hooks/use-dashboard-metrics';
 import { useFacility } from '@/lib/context/facility-context';
 import type { DateRangeFilter } from '@/lib/types/dashboard';
@@ -77,7 +82,8 @@ export function DashboardOverview() {
     return <DashboardSkeleton />;
   }
 
-  const selectedPresetLabel = datePresets.find((p) => p.value === dateFilter.preset)?.label ?? dateFilter.preset;
+  const selectedPresetLabel =
+    datePresets.find((p) => p.value === dateFilter.preset)?.label ?? dateFilter.preset;
 
   return (
     <div ref={printRef} className="space-y-4 sm:space-y-6">
@@ -88,7 +94,14 @@ export function DashboardOverview() {
           <p style={{ fontSize: '10pt', color: '#555', marginTop: '2pt' }}>{selectedPresetLabel}</p>
         </div>
         <div className="print-meta">
-          <div>Printed: {new Date().toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+          <div>
+            Printed:{' '}
+            {new Date().toLocaleDateString('en-KE', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </div>
         </div>
       </div>
       {/* Header with filters and actions */}
@@ -110,43 +123,36 @@ export function DashboardOverview() {
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isFetching}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
           <Button variant="outline" size="sm" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
+            <Printer className="mr-2 h-4 w-4" />
             Print
           </Button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 print-kpi-grid">
+      <div className="print-kpi-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         {metrics?.kpis.map((kpi) => (
           <KPICard key={kpi.id} {...kpi} />
         ))}
       </div>
 
       {/* Charts Row */}
-      <div className="grid gap-6 md:grid-cols-2 print-chart-grid">
+      <div className="print-chart-grid grid gap-6 md:grid-cols-2">
         <ChartCard
           title="Patient Volume"
           description="Daily registrations and encounters"
           isLoading={isLoading}
         >
-          {metrics?.patientVolume && (
-            <PatientVolumeChart data={metrics.patientVolume} />
-          )}
+          {metrics?.patientVolume && <PatientVolumeChart data={metrics.patientVolume} />}
         </ChartCard>
 
         <ChartCard
@@ -154,9 +160,7 @@ export function DashboardOverview() {
           description="Revenue breakdown for selected period"
           isLoading={isLoading}
         >
-          {metrics?.revenueBreakdown && (
-            <RevenueBreakdownChart data={metrics.revenueBreakdown} />
-          )}
+          {metrics?.revenueBreakdown && <RevenueBreakdownChart data={metrics.revenueBreakdown} />}
         </ChartCard>
       </div>
 
@@ -185,7 +189,11 @@ export function DashboardOverview() {
 }
 
 // Encounter Types DonutChart component
-function EncounterTypesChart({ patientVolume }: { patientVolume: Array<{ opd: number; ipd: number; emergency: number }> }) {
+function EncounterTypesChart({
+  patientVolume,
+}: {
+  patientVolume: Array<{ opd: number; ipd: number; emergency: number }>;
+}) {
   const chartData = useMemo(() => {
     // Sum up all encounter types from the volume data
     const opd = patientVolume.reduce((sum, d) => sum + (d.opd || 0), 0);
@@ -197,7 +205,7 @@ function EncounterTypesChart({ patientVolume }: { patientVolume: Array<{ opd: nu
       { name: 'opd', value: opd },
       { name: 'ipd', value: ipd },
       { name: 'emergency', value: emergency },
-    ].filter(item => item.value > 0);
+    ].filter((item) => item.value > 0);
   }, [patientVolume]);
 
   const totalEncounters = useMemo(
@@ -206,18 +214,19 @@ function EncounterTypesChart({ patientVolume }: { patientVolume: Array<{ opd: nu
   );
 
   const chartConfig = useMemo(
-    () => createChartConfig(['opd', 'ipd', 'emergency'], {
-      labels: {
-        opd: 'OPD Visits',
-        ipd: 'IPD Admissions',
-        emergency: 'Emergency',
-      },
-      colors: {
-        opd: 'hsl(var(--chart-1))',
-        ipd: 'hsl(var(--chart-2))',
-        emergency: 'hsl(var(--critical))',
-      },
-    }),
+    () =>
+      createChartConfig(['opd', 'ipd', 'emergency'], {
+        labels: {
+          opd: 'OPD Visits',
+          ipd: 'IPD Admissions',
+          emergency: 'Emergency',
+        },
+        colors: {
+          opd: 'hsl(var(--chart-1))',
+          ipd: 'hsl(var(--chart-2))',
+          emergency: 'hsl(var(--critical))',
+        },
+      }),
     []
   );
 
@@ -262,7 +271,7 @@ function DashboardSkeleton() {
       </div>
 
       {/* KPI cards skeleton */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <Skeleton key={i} className="h-24" />
         ))}

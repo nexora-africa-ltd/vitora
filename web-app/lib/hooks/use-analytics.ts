@@ -138,10 +138,7 @@ export function useRoomUtilizationSummary(
  * Fetch a signed Metabase embed URL for a dashboard or question.
  * Token is short-lived (10 min), so refetch every 8 min.
  */
-export function useMetabaseEmbedUrl(
-  resourceType: MetabaseResourceType,
-  resourceId: number
-) {
+export function useMetabaseEmbedUrl(resourceType: MetabaseResourceType, resourceId: number) {
   return useQuery({
     queryKey: ANALYTICS_KEYS.metabaseEmbed(resourceType, resourceId),
     queryFn: () => analyticsApi.getMetabaseEmbedUrl(resourceType, resourceId),

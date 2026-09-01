@@ -1,16 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pastSurgeriesApi } from '@/lib/api/past-surgeries';
 import { toast } from 'sonner';
-import type {
-  PastSurgeryCreatePayload,
-  PastSurgeryUpdatePayload,
-} from '@/lib/types/past-surgery';
+import type { PastSurgeryCreatePayload, PastSurgeryUpdatePayload } from '@/lib/types/past-surgery';
 
 export const pastSurgeryKeys = {
   all: ['past-surgeries'] as const,
   patient: (patientId: number) => [...pastSurgeryKeys.all, 'patient', patientId] as const,
-  detail: (patientId: number, id: number) =>
-    [...pastSurgeryKeys.patient(patientId), id] as const,
+  detail: (patientId: number, id: number) => [...pastSurgeryKeys.patient(patientId), id] as const,
 };
 
 export function usePatientPastSurgeries(patientId: number) {

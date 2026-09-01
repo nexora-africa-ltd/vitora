@@ -298,10 +298,13 @@ async function loginAndNavigate(page: Page, path: string) {
   await page.getByRole('button', { name: /sign in|login/i }).click();
 
   // Wait for login to complete - the app redirects / -> /dashboard
-  await page.waitForURL((url) => {
-    const pathname = url.pathname;
-    return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
-  }, { timeout: 15000 });
+  await page.waitForURL(
+    (url) => {
+      const pathname = url.pathname;
+      return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
+    },
+    { timeout: 15000 }
+  );
 
   // If we landed on /, wait for redirect to /dashboard
   if (page.url().endsWith('/')) {
@@ -323,10 +326,13 @@ async function loginAndNavigateWithOptions(
   await page.getByRole('button', { name: /sign in|login/i }).click();
 
   // Wait for login to complete - the app redirects / -> /dashboard
-  await page.waitForURL((url) => {
-    const pathname = url.pathname;
-    return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
-  }, { timeout: 15000 });
+  await page.waitForURL(
+    (url) => {
+      const pathname = url.pathname;
+      return pathname === '/dashboard' || pathname === '/' || pathname.startsWith('/dashboard');
+    },
+    { timeout: 15000 }
+  );
 
   // If we landed on /, wait for redirect to /dashboard
   if (page.url().endsWith('/')) {
@@ -347,9 +353,7 @@ test.describe('Patient Check-in Page Display', () => {
 
   test('displays page title and search input', async ({ page }) => {
     await expect(page.getByRole('heading', { name: /patient check-in/i })).toBeVisible();
-    await expect(
-      page.getByPlaceholder(/scan or enter mrn.*national id.*phone/i)
-    ).toBeVisible();
+    await expect(page.getByPlaceholder(/scan or enter mrn.*national id.*phone/i)).toBeVisible();
   });
 
   test('displays ready to check-in empty state', async ({ page }) => {
@@ -433,9 +437,11 @@ test.describe('Patient Lookup', () => {
     await page.getByPlaceholder(/scan or enter mrn/i).fill('MRN-20260103-0001');
 
     // Brief loading state (may be fast with mocks)
-    await expect(page.getByText(/searching/i)).toBeVisible({ timeout: 1000 }).catch(() => {
-      // Loading may be too fast to catch, which is ok
-    });
+    await expect(page.getByText(/searching/i))
+      .toBeVisible({ timeout: 1000 })
+      .catch(() => {
+        // Loading may be too fast to catch, which is ok
+      });
   });
 });
 
@@ -612,7 +618,10 @@ test.describe('Visit Reason Selection', () => {
 
   test('can change visit reason', async ({ page }) => {
     // Click the visit reason dropdown
-    await page.getByRole('combobox').filter({ hasText: /chronic care/i }).click();
+    await page
+      .getByRole('combobox')
+      .filter({ hasText: /chronic care/i })
+      .click();
 
     // Should show all options
     await expect(page.getByText('New Complaint')).toBeVisible();
@@ -626,7 +635,10 @@ test.describe('Visit Reason Selection', () => {
 
   test('shows skip triage indicator for eligible reasons', async ({ page }) => {
     // Change to a skip-triage reason
-    await page.getByRole('combobox').filter({ hasText: /chronic care/i }).click();
+    await page
+      .getByRole('combobox')
+      .filter({ hasText: /chronic care/i })
+      .click();
     await page.getByText(/medication refill only.*skip triage/i).click();
 
     // Should show skip triage message
@@ -763,7 +775,9 @@ test.describe('Error Handling', () => {
     await page.getByLabel(/username/i).fill(TEST_USER.username);
     await page.getByLabel(/password/i).fill(TEST_USER.password);
     await page.getByRole('button', { name: /sign in|login/i }).click();
-    await page.waitForURL((url) => url.pathname.includes('dashboard') || url.pathname === '/', { timeout: 15000 });
+    await page.waitForURL((url) => url.pathname.includes('dashboard') || url.pathname === '/', {
+      timeout: 15000,
+    });
     await page.goto('/patients/checkin');
 
     await page.getByPlaceholder(/scan or enter mrn/i).fill('MRN-20260103-0001');
@@ -793,7 +807,9 @@ test.describe('Error Handling', () => {
     await page.getByLabel(/username/i).fill(TEST_USER.username);
     await page.getByLabel(/password/i).fill(TEST_USER.password);
     await page.getByRole('button', { name: /sign in|login/i }).click();
-    await page.waitForURL((url) => url.pathname.includes('dashboard') || url.pathname === '/', { timeout: 15000 });
+    await page.waitForURL((url) => url.pathname.includes('dashboard') || url.pathname === '/', {
+      timeout: 15000,
+    });
     await page.goto('/patients/checkin');
 
     await page.getByPlaceholder(/scan or enter mrn/i).fill('MRN-test');

@@ -23,11 +23,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -93,7 +89,7 @@ export function ICD11Select({
       try {
         const response = await terminologyApi.searchICD11({
           search: searchQuery,
-          page_size: 20
+          page_size: 20,
         });
         setResults(response.results);
         setSearchError(null);
@@ -128,15 +124,15 @@ export function ICD11Select({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'w-full justify-between h-auto min-h-10 py-2 text-foreground',
+            'h-auto min-h-10 w-full justify-between py-2 text-foreground',
             !value && 'text-muted-foreground',
             className
           )}
         >
           {value ? (
-            <div className="flex flex-col items-start gap-0.5 text-left flex-1 min-w-0 sm:flex-row sm:items-center sm:gap-2">
-              <span className="font-mono text-xs text-primary shrink-0">{value.code}</span>
-              <span className="text-sm text-foreground truncate">{value.title}</span>
+            <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left sm:flex-row sm:items-center sm:gap-2">
+              <span className="shrink-0 font-mono text-xs text-primary">{value.code}</span>
+              <span className="truncate text-sm text-foreground">{value.title}</span>
             </div>
           ) : (
             <span className="truncate">{placeholder}</span>
@@ -151,7 +147,7 @@ export function ICD11Select({
         sideOffset={4}
       >
         <Command shouldFilter={false}>
-          <div className="flex items-center border-b border-border px-3 bg-background">
+          <div className="flex items-center border-b border-border bg-background px-3">
             <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               placeholder="Search ICD-11 codes..."
@@ -167,7 +163,7 @@ export function ICD11Select({
                 Type at least {minSearchLength} characters to search...
               </div>
             ) : isLoading ? (
-              <div className="p-4 space-y-2">
+              <div className="space-y-2 p-4">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
@@ -175,37 +171,35 @@ export function ICD11Select({
             ) : searchError ? (
               <div className="p-2.5">
                 <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-                  <p className="text-xs sm:text-sm text-destructive">{searchError}</p>
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  <p className="text-xs text-destructive sm:text-sm">{searchError}</p>
                 </div>
               </div>
             ) : results.length === 0 ? (
               <CommandEmpty className="text-muted-foreground">No ICD-11 codes found.</CommandEmpty>
             ) : (
               <CommandGroup>
-                <ScrollArea
-                  className="h-[280px] overscroll-contain"
-                >
+                <ScrollArea className="h-[280px] overscroll-contain">
                   {results.map((code, idx) => (
                     <CommandItem
                       key={code.code || code.id || idx}
                       value={`${code.code}-${code.title}`}
                       onSelect={() => handleSelect(code)}
-                      className="flex items-start gap-2 py-2.5 px-3 cursor-pointer"
+                      className="flex cursor-pointer items-start gap-2 px-3 py-2.5"
                     >
                       <Check
                         className={cn(
-                          'h-4 w-4 mt-0.5 shrink-0 text-primary',
+                          'mt-0.5 h-4 w-4 shrink-0 text-primary',
                           value?.code === code.code ? 'opacity-100' : 'opacity-0'
                         )}
                       />
-                      <div className="flex-1 min-w-0">
-                        <span className="font-mono text-xs text-primary">
-                          {code.code}
-                        </span>
-                        <p className="text-sm font-medium text-foreground leading-snug">{code.title}</p>
+                      <div className="min-w-0 flex-1">
+                        <span className="font-mono text-xs text-primary">{code.code}</span>
+                        <p className="text-sm font-medium leading-snug text-foreground">
+                          {code.title}
+                        </p>
                         {code.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                             {code.description}
                           </p>
                         )}

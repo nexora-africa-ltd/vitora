@@ -56,7 +56,10 @@ export const criticalValuesApi = {
     });
   },
 
-  async updateRange(id: number, data: Partial<CriticalValueRangeCreateData>): Promise<CriticalValueRange> {
+  async updateRange(
+    id: number,
+    data: Partial<CriticalValueRangeCreateData>
+  ): Promise<CriticalValueRange> {
     const response = await apiClient.patch(`${BASE}/ranges/${id}/`, data);
     return parseResponse(CriticalValueRangeSchema, response.data, {
       context: 'criticalValuesApi.updateRange',

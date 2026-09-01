@@ -21,7 +21,14 @@ import { SHALogo } from '@/components/ui/sha-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
@@ -56,8 +63,8 @@ export function SHASettingsTab() {
   const SHA_PROVIDER_PORTAL_URL =
     process.env.NEXT_PUBLIC_SHA_PROVIDER_PORTAL_URL?.trim() || 'https://mis.apeiro-digital.com';
   const SHA_CLAIMS_GUIDELINES_URL =
-    process.env.NEXT_PUBLIC_SHA_CLAIMS_GUIDELINES_URL?.trim()
-    || 'https://hie-docs.dha.go.ke/docs/userJourney';
+    process.env.NEXT_PUBLIC_SHA_CLAIMS_GUIDELINES_URL?.trim() ||
+    'https://hie-docs.dha.go.ke/docs/userJourney';
   const TERMINOLOGY_BROWSER_URL = '/admin/interoperability';
 
   const fetchHealth = useCallback(async () => {
@@ -96,12 +103,18 @@ export function SHASettingsTab() {
 
   const getStatusIcon = (ok: boolean | undefined) => {
     if (ok === undefined) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
-    return ok
-      ? <CheckCircle2 className="h-5 w-5 text-green-600" />
-      : <XCircle className="h-5 w-5 text-destructive" />;
+    return ok ? (
+      <CheckCircle2 className="h-5 w-5 text-green-600" />
+    ) : (
+      <XCircle className="h-5 w-5 text-destructive" />
+    );
   };
 
-  const getStatusText = (ok: boolean | undefined, activeLabel = 'Connected', inactiveLabel = 'Disconnected') => {
+  const getStatusText = (
+    ok: boolean | undefined,
+    activeLabel = 'Connected',
+    inactiveLabel = 'Disconnected'
+  ) => {
     if (ok === undefined) return 'Checking...';
     return ok ? activeLabel : inactiveLabel;
   };
@@ -127,7 +140,8 @@ export function SHASettingsTab() {
             </Button>
           </div>
           <CardDescription>
-            Live status of Social Health Authority integration ({healthStatus?.auth_mode || '...'} mode)
+            Live status of Social Health Authority integration ({healthStatus?.auth_mode || '...'}{' '}
+            mode)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -140,9 +154,13 @@ export function SHASettingsTab() {
           )}
 
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                {healthLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : getStatusIcon(healthStatus?.token_valid)}
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                {healthLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  getStatusIcon(healthStatus?.token_valid)
+                )}
               </div>
               <div>
                 <p className="text-sm font-medium">API Connection</p>
@@ -152,26 +170,46 @@ export function SHASettingsTab() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                {healthLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : getStatusIcon(healthStatus?.services.client_registry)}
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                {healthLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  getStatusIcon(healthStatus?.services.client_registry)
+                )}
               </div>
               <div>
                 <p className="text-sm font-medium">Client Registry</p>
                 <p className="text-xs text-muted-foreground">
-                  {healthLoading ? 'Checking...' : getStatusText(healthStatus?.services.client_registry, 'Active', 'Not configured')}
+                  {healthLoading
+                    ? 'Checking...'
+                    : getStatusText(
+                        healthStatus?.services.client_registry,
+                        'Active',
+                        'Not configured'
+                      )}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                {healthLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : getStatusIcon(healthStatus?.services.claims_submission)}
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                {healthLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  getStatusIcon(healthStatus?.services.claims_submission)
+                )}
               </div>
               <div>
                 <p className="text-sm font-medium">Claims Submission</p>
                 <p className="text-xs text-muted-foreground">
-                  {healthLoading ? 'Checking...' : getStatusText(healthStatus?.services.claims_submission, 'Enabled', 'Unavailable')}
+                  {healthLoading
+                    ? 'Checking...'
+                    : getStatusText(
+                        healthStatus?.services.claims_submission,
+                        'Enabled',
+                        'Unavailable'
+                      )}
                 </p>
               </div>
             </div>
@@ -187,16 +225,19 @@ export function SHASettingsTab() {
             </Alert>
           )}
 
-          {healthStatus && !healthStatus.token_error && healthStatus.configured && healthStatus.token_valid && (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>SHA Integration Active</AlertTitle>
-              <AlertDescription>
-                Your facility is connected to SHA systems. You can verify patient eligibility,
-                submit claims, and use standardized terminologies (ICD-11, LOINC).
-              </AlertDescription>
-            </Alert>
-          )}
+          {healthStatus &&
+            !healthStatus.token_error &&
+            healthStatus.configured &&
+            healthStatus.token_valid && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>SHA Integration Active</AlertTitle>
+                <AlertDescription>
+                  Your facility is connected to SHA systems. You can verify patient eligibility,
+                  submit claims, and use standardized terminologies (ICD-11, LOINC).
+                </AlertDescription>
+              </Alert>
+            )}
 
           {healthStatus && !healthStatus.configured && (
             <Alert variant="destructive">
@@ -248,7 +289,7 @@ export function SHASettingsTab() {
           )}
 
           {validatedFacility && (
-            <div className="rounded-lg border p-4 bg-muted/50">
+            <div className="rounded-lg border bg-muted/50 p-4">
               <div className="flex items-start justify-between">
                 <div>
                   <h4 className="font-medium">{validatedFacility.name}</h4>
@@ -303,21 +344,26 @@ export function SHASettingsTab() {
           )}
 
           {validatedPractitioner && (
-            <div className="rounded-lg border p-4 bg-muted/50">
+            <div className="rounded-lg border bg-muted/50 p-4">
               <div className="flex items-start justify-between">
                 <div>
                   <h4 className="font-medium">{validatedPractitioner.name}</h4>
                   <p className="text-sm text-muted-foreground">
                     {validatedPractitioner.cadre}
-                    {validatedPractitioner.specialization && ` • ${validatedPractitioner.specialization}`}
+                    {validatedPractitioner.specialization &&
+                      ` • ${validatedPractitioner.specialization}`}
                   </p>
                   {validatedPractitioner.license_expiry && (
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Expires: {new Date(validatedPractitioner.license_expiry).toLocaleDateString()}
                     </p>
                   )}
                 </div>
-                <Badge variant={validatedPractitioner.license_status === 'Active' ? 'default' : 'destructive'}>
+                <Badge
+                  variant={
+                    validatedPractitioner.license_status === 'Active' ? 'default' : 'destructive'
+                  }
+                >
                   {validatedPractitioner.license_status}
                 </Badge>
               </div>
@@ -330,56 +376,55 @@ export function SHASettingsTab() {
       <Card>
         <CardHeader>
           <CardTitle>Medical Terminologies</CardTitle>
-          <CardDescription>
-            Standardized coding systems enabled for SHA claims
-          </CardDescription>
+          <CardDescription>Standardized coding systems enabled for SHA claims</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="p-3 rounded-lg border">
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="outline" className="font-mono">ICD-11</Badge>
+            <div className="rounded-lg border p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <Badge variant="outline" className="font-mono">
+                  ICD-11
+                </Badge>
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Diagnoses & Conditions
-              </p>
+              <p className="text-xs text-muted-foreground">Diagnoses & Conditions</p>
             </div>
 
-            <div className="p-3 rounded-lg border">
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="outline" className="font-mono">LOINC</Badge>
+            <div className="rounded-lg border p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <Badge variant="outline" className="font-mono">
+                  LOINC
+                </Badge>
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Laboratory Tests
-              </p>
+              <p className="text-xs text-muted-foreground">Laboratory Tests</p>
             </div>
 
-            <div className="p-3 rounded-lg border">
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="outline" className="font-mono">SHA Drugs</Badge>
+            <div className="rounded-lg border p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <Badge variant="outline" className="font-mono">
+                  SHA Drugs
+                </Badge>
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Pharmaceutical Products
-              </p>
+              <p className="text-xs text-muted-foreground">Pharmaceutical Products</p>
             </div>
 
-            <div className="p-3 rounded-lg border">
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="outline" className="font-mono">ICHI</Badge>
+            <div className="rounded-lg border p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <Badge variant="outline" className="font-mono">
+                  ICHI
+                </Badge>
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Health Interventions
-              </p>
+              <p className="text-xs text-muted-foreground">Health Interventions</p>
             </div>
           </div>
         </CardContent>
         <CardFooter>
           <p className="text-xs text-muted-foreground">
-            These terminologies are automatically available in diagnosis, prescription, and lab order forms.
+            These terminologies are automatically available in diagnosis, prescription, and lab
+            order forms.
           </p>
         </CardFooter>
       </Card>
@@ -388,9 +433,7 @@ export function SHASettingsTab() {
       <Card>
         <CardHeader>
           <CardTitle>SHA Resources</CardTitle>
-          <CardDescription>
-            Helpful links and documentation
-          </CardDescription>
+          <CardDescription>Helpful links and documentation</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -407,7 +450,12 @@ export function SHASettingsTab() {
               </a>
             </Button>
             <Button variant="outline" className="justify-start" asChild>
-              <a href={SHA_CLAIMS_GUIDELINES_URL} className="gap-2" target="_blank" rel="noreferrer">
+              <a
+                href={SHA_CLAIMS_GUIDELINES_URL}
+                className="gap-2"
+                target="_blank"
+                rel="noreferrer"
+              >
                 <ExternalLink className="h-4 w-4" />
                 Claims Guidelines
               </a>

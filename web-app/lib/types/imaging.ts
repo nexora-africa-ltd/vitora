@@ -12,13 +12,13 @@
 // =============================================================================
 
 export type ImagingModality =
-  | 'XR'      // X-Ray
-  | 'US'      // Ultrasound
-  | 'CT'      // Computed Tomography
-  | 'MRI'     // Magnetic Resonance Imaging
-  | 'NM'      // Nuclear Medicine
-  | 'MG'      // Mammography
-  | 'FL'      // Fluoroscopy
+  | 'XR' // X-Ray
+  | 'US' // Ultrasound
+  | 'CT' // Computed Tomography
+  | 'MRI' // Magnetic Resonance Imaging
+  | 'NM' // Nuclear Medicine
+  | 'MG' // Mammography
+  | 'FL' // Fluoroscopy
   | 'OTHER';
 
 export type ImagingBodyRegion =

@@ -2,7 +2,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Shield, Key, Loader2, Smartphone, Archive, AlertTriangle, Fingerprint } from 'lucide-react';
+import {
+  Shield,
+  Key,
+  Loader2,
+  Smartphone,
+  Archive,
+  AlertTriangle,
+  Fingerprint,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
 import { mfaApi } from '@/lib/api/mfa';
 import { Button } from '@/components/ui/button';
@@ -23,7 +31,11 @@ interface MFAVerificationProps {
   onCancel: () => void;
 }
 
-export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_code'], onCancel }: MFAVerificationProps) {
+export function MFAVerification({
+  mfaToken,
+  availableMethods = ['totp', 'backup_code'],
+  onCancel,
+}: MFAVerificationProps) {
   const [token, setToken] = useState('');
   const [backupCode, setBackupCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -88,31 +100,40 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
 
   // Smooth green → amber → red color coding based on percentage remaining
   const timerStroke =
-    progressValue > 75 ? 'stroke-emerald-500' :
-    progressValue > 50 ? 'stroke-lime-500' :
-    progressValue > 30 ? 'stroke-amber-500' :
-    progressValue > 15 ? 'stroke-orange-500' :
-    'stroke-red-500';
+    progressValue > 75
+      ? 'stroke-emerald-500'
+      : progressValue > 50
+        ? 'stroke-lime-500'
+        : progressValue > 30
+          ? 'stroke-amber-500'
+          : progressValue > 15
+            ? 'stroke-orange-500'
+            : 'stroke-red-500';
   const timerText =
-    progressValue > 75 ? 'text-emerald-600 dark:text-emerald-400' :
-    progressValue > 50 ? 'text-lime-600 dark:text-lime-400' :
-    progressValue > 30 ? 'text-amber-600 dark:text-amber-400' :
-    progressValue > 15 ? 'text-orange-600 dark:text-orange-400' :
-    'text-red-600 dark:text-red-400';
+    progressValue > 75
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : progressValue > 50
+        ? 'text-lime-600 dark:text-lime-400'
+        : progressValue > 30
+          ? 'text-amber-600 dark:text-amber-400'
+          : progressValue > 15
+            ? 'text-orange-600 dark:text-orange-400'
+            : 'text-red-600 dark:text-red-400';
 
   const handleVerify = async (method: 'token' | 'backup') => {
     setIsLoading(true);
 
     try {
-      const options = method === 'token'
-        ? { token: token.replace(/\s/g, '') }
-        : { backupCode: backupCode.replace(/\s/g, '') };
+      const options =
+        method === 'token'
+          ? { token: token.replace(/\s/g, '') }
+          : { backupCode: backupCode.replace(/\s/g, '') };
 
       const result = await verifyMFA(mfaToken, options);
       mfaToast.success();
 
       // Small delay to ensure localStorage writes are committed before navigation
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       if (result.mustChangePassword) {
         router.replace('/change-password');
@@ -168,7 +189,7 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
       const result = await verifyMFAWithWebAuthn(mfaToken, credential);
 
       mfaToast.success();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       if (result.mustChangePassword) {
         router.replace('/change-password');
@@ -190,14 +211,14 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
   // Expired state — prompt user to log in again
   if (isExpired) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-background via-background to-muted/30">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-destructive/5 rounded-full blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-destructive/5 rounded-full blur-3xl" />
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4 sm:p-6">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -right-40 -top-40 h-80 w-80 rounded-full bg-destructive/5 blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-destructive/5 blur-3xl" />
         </div>
-        <Card className="relative w-full max-w-sm sm:max-w-md border-border/50 shadow-xl backdrop-blur-sm">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-destructive/60 via-destructive to-destructive/60 rounded-t-lg" />
-          <CardHeader className="text-center pb-4 pt-6">
+        <Card className="relative w-full max-w-sm border-border/50 shadow-xl backdrop-blur-sm sm:max-w-md">
+          <div className="absolute left-0 right-0 top-0 h-1 rounded-t-lg bg-gradient-to-r from-destructive/60 via-destructive to-destructive/60" />
+          <CardHeader className="pb-4 pt-6 text-center">
             <div className="mx-auto mb-4">
               <CircularProgress
                 value={0}
@@ -209,13 +230,15 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
                 <AlertTriangle className="h-7 w-7 text-destructive" />
               </CircularProgress>
             </div>
-            <CardTitle className="text-xl sm:text-2xl font-semibold">Verification Expired</CardTitle>
-            <p className="text-sm text-muted-foreground mt-2">
+            <CardTitle className="text-xl font-semibold sm:text-2xl">
+              Verification Expired
+            </CardTitle>
+            <p className="mt-2 text-sm text-muted-foreground">
               The verification code has expired. Please sign in again to generate a new code.
             </p>
           </CardHeader>
           <CardContent className="pb-6">
-            <Button onClick={handleExpiredReturn} className="w-full h-11 sm:h-12" size="lg">
+            <Button onClick={handleExpiredReturn} className="h-11 w-full sm:h-12" size="lg">
               ← Return to Login
             </Button>
           </CardContent>
@@ -225,19 +248,19 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-background via-background to-muted/30">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4 sm:p-6">
       {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -right-40 -top-40 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
       </div>
 
-      <Card className="relative w-full max-w-sm sm:max-w-md border-border/50 shadow-xl shadow-primary/5 backdrop-blur-sm">
+      <Card className="relative w-full max-w-sm border-border/50 shadow-xl shadow-primary/5 backdrop-blur-sm sm:max-w-md">
         {/* Security indicator strip */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60 rounded-t-lg" />
+        <div className="absolute left-0 right-0 top-0 h-1 rounded-t-lg bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
 
-        <CardHeader className="text-center pb-4 pt-6">
-          <div className="mx-auto mb-4 relative">
+        <CardHeader className="pb-4 pt-6 text-center">
+          <div className="relative mx-auto mb-4">
             {/* Circular countdown timer */}
             <CircularProgress
               value={progressValue}
@@ -246,30 +269,34 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
               indicatorClassName={timerStroke}
               trackClassName="stroke-muted"
             >
-              <div className={cn(
-                "text-xs font-mono font-bold tabular-nums",
-                timerText
-              )}>
+              <div className={cn('font-mono text-xs font-bold tabular-nums', timerText)}>
                 {countdownText}
               </div>
             </CircularProgress>
           </div>
           <div className="flex items-center justify-center gap-2">
-            <CardTitle className="text-xl sm:text-2xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Verification Required</CardTitle>
+            <CardTitle className="bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-xl font-semibold sm:text-2xl">
+              Verification Required
+            </CardTitle>
             <HelpPopover content="Enter the code from your authenticator app or use a backup code to complete login securely." />
           </div>
-          <p className="text-sm text-muted-foreground mt-2">Complete two-factor authentication</p>
+          <p className="mt-2 text-sm text-muted-foreground">Complete two-factor authentication</p>
         </CardHeader>
 
         <CardContent className="space-y-5 pb-6">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className={cn("grid w-full h-11 p-1 bg-muted/50", hasWebAuthn ? "grid-cols-3" : "grid-cols-2")}>
+            <TabsList
+              className={cn(
+                'grid h-11 w-full bg-muted/50 p-1',
+                hasWebAuthn ? 'grid-cols-3' : 'grid-cols-2'
+              )}
+            >
               {hasWebAuthn && (
                 <TabsTrigger
                   value="passkey"
                   className={cn(
-                    "gap-1.5 text-xs sm:text-sm transition-all data-[state=active]:shadow-sm",
-                    "data-[state=active]:bg-background data-[state=active]:text-foreground"
+                    'gap-1.5 text-xs transition-all data-[state=active]:shadow-sm sm:text-sm',
+                    'data-[state=active]:bg-background data-[state=active]:text-foreground'
                   )}
                 >
                   <Fingerprint className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -280,8 +307,8 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
               <TabsTrigger
                 value="token"
                 className={cn(
-                  "gap-1.5 text-xs sm:text-sm transition-all data-[state=active]:shadow-sm",
-                  "data-[state=active]:bg-background data-[state=active]:text-foreground"
+                  'gap-1.5 text-xs transition-all data-[state=active]:shadow-sm sm:text-sm',
+                  'data-[state=active]:bg-background data-[state=active]:text-foreground'
                 )}
               >
                 <Smartphone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -291,8 +318,8 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
               <TabsTrigger
                 value="backup"
                 className={cn(
-                  "gap-1.5 text-xs sm:text-sm transition-all data-[state=active]:shadow-sm",
-                  "data-[state=active]:bg-background data-[state=active]:text-foreground"
+                  'gap-1.5 text-xs transition-all data-[state=active]:shadow-sm sm:text-sm',
+                  'data-[state=active]:bg-background data-[state=active]:text-foreground'
                 )}
               >
                 <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -304,9 +331,12 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
             <TabsContent value="token" className="mt-4">
               <form onSubmit={handleTokenSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="token" className="text-sm font-medium flex items-center gap-1.5">
+                  <label htmlFor="token" className="flex items-center gap-1.5 text-sm font-medium">
                     6-digit code
-                    <HelpPopover content="Open your authenticator app (Google Authenticator, Authy, etc.) and enter the current 6-digit code." size="sm" />
+                    <HelpPopover
+                      content="Open your authenticator app (Google Authenticator, Authy, etc.) and enter the current 6-digit code."
+                      size="sm"
+                    />
                   </label>
                   <Input
                     id="token"
@@ -319,10 +349,10 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
                       setToken(value);
                     }}
                     className={cn(
-                      "text-center text-xl sm:text-2xl tracking-[0.4em] font-mono h-14",
-                      "border-2 focus:border-primary focus:ring-2 focus:ring-primary/20",
-                      "transition-all duration-200",
-                      token.length === 6 && "border-green-500/50 bg-green-500/5"
+                      'h-14 text-center font-mono text-xl tracking-[0.4em] sm:text-2xl',
+                      'border-2 focus:border-primary focus:ring-2 focus:ring-primary/20',
+                      'transition-all duration-200',
+                      token.length === 6 && 'border-green-500/50 bg-green-500/5'
                     )}
                     disabled={isLoading}
                     autoFocus
@@ -333,10 +363,10 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
                 <Button
                   type="submit"
                   className={cn(
-                    "w-full h-11 sm:h-12 text-sm sm:text-base font-medium",
-                    "bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary",
-                    "shadow-lg shadow-primary/25 hover:shadow-primary/40",
-                    "transition-all duration-200"
+                    'h-11 w-full text-sm font-medium sm:h-12 sm:text-base',
+                    'bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary',
+                    'shadow-lg shadow-primary/25 hover:shadow-primary/40',
+                    'transition-all duration-200'
                   )}
                   disabled={token.length !== 6 || isLoading}
                 >
@@ -358,15 +388,15 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
             {hasWebAuthn && (
               <TabsContent value="passkey" className="mt-4">
                 <div className="space-y-4">
-                  <div className="text-center space-y-2">
-                    <Fingerprint className="h-12 w-12 mx-auto text-primary/70" />
+                  <div className="space-y-2 text-center">
+                    <Fingerprint className="mx-auto h-12 w-12 text-primary/70" />
                     <p className="text-sm text-muted-foreground">
                       Use Windows Hello, Touch ID, Face ID, or a security key to verify.
                     </p>
                   </div>
 
                   {webAuthnError && (
-                    <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+                    <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                       {webAuthnError}
                     </div>
                   )}
@@ -374,10 +404,10 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
                   <Button
                     onClick={handleWebAuthnVerify}
                     className={cn(
-                      "w-full h-11 sm:h-12 text-sm sm:text-base font-medium",
-                      "bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary",
-                      "shadow-lg shadow-primary/25 hover:shadow-primary/40",
-                      "transition-all duration-200"
+                      'h-11 w-full text-sm font-medium sm:h-12 sm:text-base',
+                      'bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary',
+                      'shadow-lg shadow-primary/25 hover:shadow-primary/40',
+                      'transition-all duration-200'
                     )}
                     disabled={isLoading}
                   >
@@ -400,9 +430,15 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
             <TabsContent value="backup" className="mt-4">
               <form onSubmit={handleBackupSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="backupCode" className="text-sm font-medium flex items-center gap-1.5">
+                  <label
+                    htmlFor="backupCode"
+                    className="flex items-center gap-1.5 text-sm font-medium"
+                  >
                     Backup code
-                    <HelpPopover content="Enter one of the backup codes you saved when setting up MFA. Each code can only be used once." size="sm" />
+                    <HelpPopover
+                      content="Enter one of the backup codes you saved when setting up MFA. Each code can only be used once."
+                      size="sm"
+                    />
                   </label>
                   <Input
                     id="backupCode"
@@ -411,10 +447,10 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
                     value={backupCode}
                     onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
                     className={cn(
-                      "text-center font-mono text-lg sm:text-xl tracking-widest h-14",
-                      "border-2 focus:border-primary focus:ring-2 focus:ring-primary/20",
-                      "transition-all duration-200",
-                      backupCode.length >= 8 && "border-green-500/50 bg-green-500/5"
+                      'h-14 text-center font-mono text-lg tracking-widest sm:text-xl',
+                      'border-2 focus:border-primary focus:ring-2 focus:ring-primary/20',
+                      'transition-all duration-200',
+                      backupCode.length >= 8 && 'border-green-500/50 bg-green-500/5'
                     )}
                     disabled={isLoading}
                   />
@@ -423,10 +459,10 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
                 <Button
                   type="submit"
                   className={cn(
-                    "w-full h-11 sm:h-12 text-sm sm:text-base font-medium",
-                    "bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary",
-                    "shadow-lg shadow-primary/25 hover:shadow-primary/40",
-                    "transition-all duration-200"
+                    'h-11 w-full text-sm font-medium sm:h-12 sm:text-base',
+                    'bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary',
+                    'shadow-lg shadow-primary/25 hover:shadow-primary/40',
+                    'transition-all duration-200'
                   )}
                   disabled={!backupCode.trim() || isLoading}
                 >
@@ -460,7 +496,7 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
               size="sm"
               onClick={onCancel}
               disabled={isLoading}
-              className="text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              className="text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             >
               ← Back to Login
             </Button>

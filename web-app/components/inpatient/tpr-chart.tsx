@@ -2,14 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Plus, Thermometer } from 'lucide-react';
-import {
-  Line,
-  LineChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  ReferenceLine,
-} from 'recharts';
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,13 +27,16 @@ import {
 } from '@/components/ui/chart';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import {
-  useTemperatureReadings,
-  useCreateTemperatureReading,
-} from '@/lib/hooks/use-inpatient';
+import { useTemperatureReadings, useCreateTemperatureReading } from '@/lib/hooks/use-inpatient';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
-import { getAgeGroupFromYears, getVitalRangeHint, getVitalPlaceholder, isPediatric, type AgeGroup } from '@/lib/vitals';
+import {
+  getAgeGroupFromYears,
+  getVitalRangeHint,
+  getVitalPlaceholder,
+  isPediatric,
+  type AgeGroup,
+} from '@/lib/vitals';
 import type { TemperatureReading } from '@/lib/types/inpatient';
 
 const chartConfig: ChartConfig = {
@@ -75,7 +71,10 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Age group for paediatric-adjusted ranges
-  const ageGroup = useMemo(() => (patientAge != null ? getAgeGroupFromYears(patientAge) : null), [patientAge]);
+  const ageGroup = useMemo(
+    () => (patientAge != null ? getAgeGroupFromYears(patientAge) : null),
+    [patientAge]
+  );
   const tempRefLines = useMemo(() => getTempReferenceLines(ageGroup), [ageGroup]);
 
   // Form state
@@ -98,19 +97,31 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
   const handleSubmit = async () => {
     const tempValue = parseFloat(temperature);
     if (isNaN(tempValue) || tempValue < 30 || tempValue > 45) {
-      toast({ title: 'Invalid temperature', description: 'Enter a value between 30°C and 45°C', variant: 'destructive' });
+      toast({
+        title: 'Invalid temperature',
+        description: 'Enter a value between 30°C and 45°C',
+        variant: 'destructive',
+      });
       return;
     }
 
     const pulseValue = pulse ? parseInt(pulse, 10) : undefined;
     if (pulseValue !== undefined && (pulseValue < 0 || pulseValue > 250)) {
-      toast({ title: 'Invalid pulse', description: 'Enter a value between 0 and 250 BPM', variant: 'destructive' });
+      toast({
+        title: 'Invalid pulse',
+        description: 'Enter a value between 0 and 250 BPM',
+        variant: 'destructive',
+      });
       return;
     }
 
     const rrValue = respiratoryRate ? parseInt(respiratoryRate, 10) : undefined;
     if (rrValue !== undefined && (rrValue < 0 || rrValue > 80)) {
-      toast({ title: 'Invalid respiratory rate', description: 'Enter a value between 0 and 80', variant: 'destructive' });
+      toast({
+        title: 'Invalid respiratory rate',
+        description: 'Enter a value between 0 and 80',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -127,7 +138,11 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
       setDialogOpen(false);
       resetForm();
     } catch {
-      toast({ title: 'Error', description: 'Failed to record TPR reading', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to record TPR reading',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -144,7 +159,7 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">TPR Chart</h3>
           <HelpPopover content="Temperature, Pulse, and Respiration (TPR) chart. Track trends over time based on the Kenya hospital observation chart form." />
@@ -153,7 +168,7 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-1.5" />
+                <Plus className="mr-1.5 h-4 w-4" />
                 Record TPR
               </Button>
             </DialogTrigger>
@@ -162,7 +177,10 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                 <div className="flex items-center gap-2">
                   <DialogTitle>Record TPR Reading</DialogTitle>
                   {ageGroup && isPediatric(ageGroup) && (
-                    <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 dark:text-blue-400">
+                    <Badge
+                      variant="outline"
+                      className="border-blue-300 text-xs text-blue-700 dark:text-blue-400"
+                    >
                       Paediatric
                     </Badge>
                   )}
@@ -182,7 +200,9 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                       value={temperature}
                       onChange={(e) => setTemperature(e.target.value)}
                     />
-                    <p className="text-xs text-muted-foreground">{getVitalRangeHint('temperature', ageGroup)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {getVitalRangeHint('temperature', ageGroup)}
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pulse">Pulse (BPM)</Label>
@@ -195,7 +215,9 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                       value={pulse}
                       onChange={(e) => setPulse(e.target.value)}
                     />
-                    <p className="text-xs text-muted-foreground">{getVitalRangeHint('pulse', ageGroup)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {getVitalRangeHint('pulse', ageGroup)}
+                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -210,7 +232,9 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                       value={respiratoryRate}
                       onChange={(e) => setRespiratoryRate(e.target.value)}
                     />
-                    <p className="text-xs text-muted-foreground">{getVitalRangeHint('respiratory_rate', ageGroup)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {getVitalRangeHint('respiratory_rate', ageGroup)}
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="notes">Notes</Label>
@@ -224,7 +248,13 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                 </div>
               </div>
               <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
-                <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={createReading.isPending}>Cancel</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                  disabled={createReading.isPending}
+                >
+                  Cancel
+                </Button>
                 <Button onClick={handleSubmit} disabled={createReading.isPending || !temperature}>
                   {createReading.isPending ? 'Saving...' : 'Save Reading'}
                 </Button>
@@ -237,7 +267,7 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
       {readings.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <Thermometer className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <Thermometer className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">No TPR readings recorded yet.</p>
           </CardContent>
         </Card>
@@ -257,7 +287,7 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                     tickLine={false}
                     tickMargin={10}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    className="fill-muted-foreground text-xs"
                     tickFormatter={(v) => {
                       const parts = v.split(' ');
                       return parts.length > 1 ? parts[1] : v;
@@ -268,7 +298,7 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                     tickLine={false}
                     axisLine={false}
                     domain={[35, 42]}
-                    className="text-xs fill-muted-foreground"
+                    className="fill-muted-foreground text-xs"
                     width={40}
                     tickFormatter={(v: number) => `${v}°`}
                   />
@@ -278,11 +308,23 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                     tickLine={false}
                     axisLine={false}
                     domain={[0, 'auto']}
-                    className="text-xs fill-muted-foreground"
+                    className="fill-muted-foreground text-xs"
                     width={40}
                   />
-                  <ReferenceLine yAxisId="temp" y={tempRefLines.febrile} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="Febrile" />
-                  <ReferenceLine yAxisId="temp" y={tempRefLines.low} stroke="hsl(var(--chart-4))" strokeDasharray="3 3" label="Low" />
+                  <ReferenceLine
+                    yAxisId="temp"
+                    y={tempRefLines.febrile}
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="3 3"
+                    label="Febrile"
+                  />
+                  <ReferenceLine
+                    yAxisId="temp"
+                    y={tempRefLines.low}
+                    stroke="hsl(var(--chart-4))"
+                    strokeDasharray="3 3"
+                    label="Low"
+                  />
                   <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
                   <ChartLegend content={<ChartLegendContent />} />
                   <Line
@@ -341,10 +383,22 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                     sortType: 'number' as const,
                     cell: (item: TemperatureReading) => (
                       <div>
-                        <span className={item.is_febrile ? 'text-destructive font-semibold' : item.is_hypothermic ? 'text-blue-600 font-semibold' : ''}>
+                        <span
+                          className={
+                            item.is_febrile
+                              ? 'font-semibold text-destructive'
+                              : item.is_hypothermic
+                                ? 'font-semibold text-blue-600'
+                                : ''
+                          }
+                        >
                           {Number(item.temperature).toFixed(1)}°C
                         </span>
-                        {item.is_febrile && <Badge variant="destructive" className="ml-1 text-xs">Febrile</Badge>}
+                        {item.is_febrile && (
+                          <Badge variant="destructive" className="ml-1 text-xs">
+                            Febrile
+                          </Badge>
+                        )}
                       </div>
                     ),
                   },
@@ -373,14 +427,30 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                   <Card className="p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium whitespace-nowrap">{formatDateTime(item.recorded_at)}</p>
-                        <p className="text-xs text-muted-foreground mt-1">Recorded by {item.recorded_by_username ?? '—'}</p>
+                        <p className="whitespace-nowrap text-sm font-medium">
+                          {formatDateTime(item.recorded_at)}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Recorded by {item.recorded_by_username ?? '—'}
+                        </p>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className={item.is_febrile ? 'text-destructive font-semibold' : item.is_hypothermic ? 'text-blue-600 font-semibold' : 'font-semibold'}>
+                      <div className="shrink-0 text-right">
+                        <p
+                          className={
+                            item.is_febrile
+                              ? 'font-semibold text-destructive'
+                              : item.is_hypothermic
+                                ? 'font-semibold text-blue-600'
+                                : 'font-semibold'
+                          }
+                        >
                           {Number(item.temperature).toFixed(1)}°C
                         </p>
-                        {item.is_febrile && <Badge variant="destructive" className="mt-1 text-xs">Febrile</Badge>}
+                        {item.is_febrile && (
+                          <Badge variant="destructive" className="mt-1 text-xs">
+                            Febrile
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
@@ -388,7 +458,8 @@ export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
                         <span className="text-muted-foreground">Pulse:</span> {item.pulse ?? '—'}
                       </div>
                       <div>
-                        <span className="text-muted-foreground">RR:</span> {item.respiratory_rate ?? '—'}
+                        <span className="text-muted-foreground">RR:</span>{' '}
+                        {item.respiratory_rate ?? '—'}
                       </div>
                     </div>
                   </Card>

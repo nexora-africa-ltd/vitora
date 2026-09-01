@@ -90,10 +90,10 @@ export function SWReferralTable({ initialParams }: SWReferralTableProps) {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <form onSubmit={handleSearch} className="flex flex-1 gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search referrals, patients..."
               value={searchTerm}
@@ -122,7 +122,7 @@ export function SWReferralTable({ initialParams }: SWReferralTableProps) {
           </Select>
 
           <Button onClick={() => router.push('/allied-health/social-work/referrals/new')}>
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             New Referral
           </Button>
         </div>
@@ -144,7 +144,7 @@ export function SWReferralTable({ initialParams }: SWReferralTableProps) {
         />
       ) : (
         <>
-          <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -163,9 +163,7 @@ export function SWReferralTable({ initialParams }: SWReferralTableProps) {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleRowClick(referral)}
                   >
-                    <TableCell className="font-mono text-sm">
-                      {referral.referral_number}
-                    </TableCell>
+                    <TableCell className="font-mono text-sm">{referral.referral_number}</TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium">{referral.patient_name}</p>
@@ -181,13 +179,13 @@ export function SWReferralTable({ initialParams }: SWReferralTableProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={urgencyConfig[referral.urgency]?.className || 'bg-gray-100'}>
+                      <Badge
+                        className={urgencyConfig[referral.urgency]?.className || 'bg-gray-100'}
+                      >
                         {urgencyConfig[referral.urgency]?.label || referral.urgency}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      {format(parseISO(referral.created_at), 'MMM d, yyyy')}
-                    </TableCell>
+                    <TableCell>{format(parseISO(referral.created_at), 'MMM d, yyyy')}</TableCell>
                     <TableCell>
                       <Badge className={statusConfig[referral.status]?.className || 'bg-gray-100'}>
                         {statusConfig[referral.status]?.label || referral.status}
@@ -204,7 +202,8 @@ export function SWReferralTable({ initialParams }: SWReferralTableProps) {
             <div className="flex items-center justify-between px-2">
               <p className="text-sm text-muted-foreground">
                 Showing {((params.page || 1) - 1) * (params.page_size || 20) + 1} to{' '}
-                {Math.min((params.page || 1) * (params.page_size || 20), data.count)} of {data.count}
+                {Math.min((params.page || 1) * (params.page_size || 20), data.count)} of{' '}
+                {data.count}
               </p>
               <div className="flex gap-2">
                 <Button

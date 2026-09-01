@@ -23,7 +23,7 @@ export function ChartCard({
   action,
 }: ChartCardProps) {
   return (
-    <Card className={cn('overflow-hidden min-h-[20rem]', className)}>
+    <Card className={cn('min-h-[20rem] overflow-hidden', className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex items-center gap-2">
           <CardTitle className="text-base font-medium">{title}</CardTitle>
@@ -33,7 +33,7 @@ export function ChartCard({
       </CardHeader>
       <CardContent className="pb-4">
         {isLoading ? (
-          <div className="h-[250px] flex items-center justify-center">
+          <div className="flex h-[250px] items-center justify-center">
             <Skeleton className="h-full w-full" />
           </div>
         ) : (

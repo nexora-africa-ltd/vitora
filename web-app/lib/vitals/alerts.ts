@@ -27,7 +27,10 @@ import type { AgeGroup } from './age-groups';
  */
 export function checkValueAgainstThreshold(
   value: number | null | undefined,
-  threshold: Pick<VitalThreshold, 'critical_low' | 'warning_low' | 'warning_high' | 'critical_high' | 'is_active'>
+  threshold: Pick<
+    VitalThreshold,
+    'critical_low' | 'warning_low' | 'warning_high' | 'critical_high' | 'is_active'
+  >
 ): FieldStatus {
   if (value === null || value === undefined || !threshold.is_active) {
     return 'normal';
@@ -65,7 +68,8 @@ export function evaluateVitalSeverity(
     return { severity: null, message: null };
   }
 
-  const { emergencyLow, emergencyHigh, criticalLow, criticalHigh, warningLow, warningHigh, unit } = thresholds;
+  const { emergencyLow, emergencyHigh, criticalLow, criticalHigh, warningLow, warningHigh, unit } =
+    thresholds;
 
   // Check emergency thresholds first (SpO2 ≤85 = severe hypoxemia)
   if (emergencyLow !== undefined && value <= emergencyLow) {
@@ -87,7 +91,10 @@ export function evaluateVitalSeverity(
       return { severity: 'critical', message: `Critical: ${value}${unit} - Severe hypothermia` };
     }
     if (value >= 40) {
-      return { severity: 'critical', message: `Critical: ${value}${unit} - High fever / Hyperpyrexia` };
+      return {
+        severity: 'critical',
+        message: `Critical: ${value}${unit} - High fever / Hyperpyrexia`,
+      };
     }
     if (value >= 38.5) {
       return { severity: 'warning', message: `Warning: ${value}${unit} - Moderate fever` };
@@ -146,11 +153,17 @@ function getAlertMessage(
   status: FieldStatus,
   threshold: Pick<VitalThreshold, 'critical_low' | 'warning_low' | 'warning_high' | 'critical_high'>
 ): { message: string; clinical_note?: string } {
-  const messages: Record<VitalType, { low: { message: string; note?: string }; high: { message: string; note?: string } }> = {
+  const messages: Record<
+    VitalType,
+    { low: { message: string; note?: string }; high: { message: string; note?: string } }
+  > = {
     SPO2: {
       low: {
         message: `SpO₂ ${value}% - ${status === 'critical' ? 'Severe hypoxemia' : 'Below normal'}`,
-        note: status === 'critical' ? 'Requires immediate oxygen therapy' : 'Consider supplemental oxygen',
+        note:
+          status === 'critical'
+            ? 'Requires immediate oxygen therapy'
+            : 'Consider supplemental oxygen',
       },
       high: { message: `SpO₂ ${value}%`, note: undefined },
     },
@@ -174,7 +187,10 @@ function getAlertMessage(
     HEART_RATE: {
       low: {
         message: `Pulse ${value} bpm - ${status === 'critical' ? 'Severe bradycardia' : 'Bradycardia'}`,
-        note: status === 'critical' ? 'Check cardiac rhythm, consider atropine' : 'Monitor for symptoms',
+        note:
+          status === 'critical'
+            ? 'Check cardiac rhythm, consider atropine'
+            : 'Monitor for symptoms',
       },
       high: {
         message: `Pulse ${value} bpm - ${status === 'critical' ? 'Severe tachycardia' : 'Tachycardia'}`,
@@ -184,11 +200,21 @@ function getAlertMessage(
     TEMPERATURE: {
       low: {
         message: `Temperature ${value}°C - ${status === 'critical' ? 'Severe hypothermia' : value >= 35 ? 'Mild hypothermia' : 'Moderate hypothermia'}`,
-        note: status === 'critical' ? 'Life-threatening; risk of cardiac arrest' : value >= 35 ? 'Usually mild, monitor closely' : 'Symptoms: shivering, confusion, slurred speech',
+        note:
+          status === 'critical'
+            ? 'Life-threatening; risk of cardiac arrest'
+            : value >= 35
+              ? 'Usually mild, monitor closely'
+              : 'Symptoms: shivering, confusion, slurred speech',
       },
       high: {
         message: `Temperature ${value}°C - ${status === 'critical' ? 'High fever / Hyperpyrexia' : value >= 38.5 ? 'Moderate fever' : 'Low-grade fever'}`,
-        note: status === 'critical' ? 'Potentially life-threatening; urgent evaluation needed' : value >= 38.5 ? 'Clinical attention may be required' : 'Usually mild, often infection-related',
+        note:
+          status === 'critical'
+            ? 'Potentially life-threatening; urgent evaluation needed'
+            : value >= 38.5
+              ? 'Clinical attention may be required'
+              : 'Usually mild, often infection-related',
       },
     },
     RESPIRATORY_RATE: {
@@ -207,7 +233,10 @@ function getAlertMessage(
     },
     PAIN_SCORE: {
       low: { message: 'Pain assessment', note: undefined },
-      high: { message: `Pain score ${value}/10 - ${status === 'critical' ? 'Severe pain' : 'Significant pain'}`, note: status === 'critical' ? 'Consider immediate analgesia' : 'Pain management needed' },
+      high: {
+        message: `Pain score ${value}/10 - ${status === 'critical' ? 'Severe pain' : 'Significant pain'}`,
+        note: status === 'critical' ? 'Consider immediate analgesia' : 'Pain management needed',
+      },
     },
     GENERAL: {
       low: { message: 'Clinical alert', note: undefined },
@@ -216,8 +245,9 @@ function getAlertMessage(
   };
 
   // Determine if low or high
-  const isLow = (threshold.critical_low !== null && value < threshold.critical_low) ||
-                (threshold.warning_low !== null && value < threshold.warning_low);
+  const isLow =
+    (threshold.critical_low !== null && value < threshold.critical_low) ||
+    (threshold.warning_low !== null && value < threshold.warning_low);
 
   const msgConfig = isLow ? messages[vitalType].low : messages[vitalType].high;
   return {
@@ -238,7 +268,10 @@ function getAlertMessage(
  * Critical low: <65 mmHg (inadequate organ perfusion)
  * Critical high: >105 mmHg (hypertensive)
  */
-export function calculateMAP(systolic: number | null | undefined, diastolic: number | null | undefined): number | null {
+export function calculateMAP(
+  systolic: number | null | undefined,
+  diastolic: number | null | undefined
+): number | null {
   if (systolic == null || diastolic == null) return null;
   return Math.round((systolic + 2 * diastolic) / 3);
 }
@@ -272,13 +305,16 @@ export function parseBPAndCalculateMAP(bp: string | null | undefined): number | 
 }
 
 // Age-adjusted MAP thresholds (mirrors backend triage/services.py MAP_THRESHOLDS)
-const MAP_AGE_THRESHOLDS: Record<string, { criticalLow: number; warningLow: number; warningHigh: number; criticalHigh: number }> = {
-  neonate:     { criticalLow: 30, warningLow: 40, warningHigh: 55, criticalHigh: 65 },
-  infant:      { criticalLow: 40, warningLow: 50, warningHigh: 70, criticalHigh: 85 },
+const MAP_AGE_THRESHOLDS: Record<
+  string,
+  { criticalLow: number; warningLow: number; warningHigh: number; criticalHigh: number }
+> = {
+  neonate: { criticalLow: 30, warningLow: 40, warningHigh: 55, criticalHigh: 65 },
+  infant: { criticalLow: 40, warningLow: 50, warningHigh: 70, criticalHigh: 85 },
   young_child: { criticalLow: 45, warningLow: 55, warningHigh: 80, criticalHigh: 95 },
-  school_age:  { criticalLow: 50, warningLow: 60, warningHigh: 85, criticalHigh: 100 },
-  adolescent:  { criticalLow: 55, warningLow: 65, warningHigh: 95, criticalHigh: 105 },
-  adult:       { criticalLow: 65, warningLow: 70, warningHigh: 100, criticalHigh: 105 },
+  school_age: { criticalLow: 50, warningLow: 60, warningHigh: 85, criticalHigh: 100 },
+  adolescent: { criticalLow: 55, warningLow: 65, warningHigh: 95, criticalHigh: 105 },
+  adult: { criticalLow: 65, warningLow: 70, warningHigh: 100, criticalHigh: 105 },
 };
 
 /**
@@ -287,7 +323,7 @@ const MAP_AGE_THRESHOLDS: Record<string, { criticalLow: number; warningLow: numb
 function getMAPAlert(
   systolic: number | null | undefined,
   diastolic: number | null | undefined,
-  ageGroup?: AgeGroup | null,
+  ageGroup?: AgeGroup | null
 ): VitalAlert | null {
   const map = calculateMAP(systolic, diastolic);
   if (map === null) return null;
@@ -362,17 +398,31 @@ function getMAPAlert(
  */
 export function evaluateVitals(
   values: VitalValues,
-  thresholds: Record<VitalType, Pick<VitalThreshold, 'vital_type' | 'critical_low' | 'warning_low' | 'warning_high' | 'critical_high' | 'is_active'>> = DEFAULT_THRESHOLDS,
-  ageGroup?: AgeGroup | null,
+  thresholds: Record<
+    VitalType,
+    Pick<
+      VitalThreshold,
+      'vital_type' | 'critical_low' | 'warning_low' | 'warning_high' | 'critical_high' | 'is_active'
+    >
+  > = DEFAULT_THRESHOLDS,
+  ageGroup?: AgeGroup | null
 ): VitalAlert[] {
   const alerts: VitalAlert[] = [];
 
   // Field mapping from form fields to vital types
-  const fieldMapping: Array<{ field: string; vitalType: VitalType; getValue: () => number | null | undefined }> = [
+  const fieldMapping: Array<{
+    field: string;
+    vitalType: VitalType;
+    getValue: () => number | null | undefined;
+  }> = [
     { field: 'spo2', vitalType: 'SPO2', getValue: () => values.spo2 },
     { field: 'temperature', vitalType: 'TEMPERATURE', getValue: () => values.temperature },
     { field: 'pulse', vitalType: 'HEART_RATE', getValue: () => values.pulse ?? values.heart_rate },
-    { field: 'respiratory_rate', vitalType: 'RESPIRATORY_RATE', getValue: () => values.respiratory_rate },
+    {
+      field: 'respiratory_rate',
+      vitalType: 'RESPIRATORY_RATE',
+      getValue: () => values.respiratory_rate,
+    },
     { field: 'pain_score', vitalType: 'PAIN_SCORE', getValue: () => values.pain_score },
   ];
 
@@ -391,7 +441,10 @@ export function evaluateVitals(
     if (ageInputThresholds) {
       const fieldKey = field === 'pulse' ? 'heart_rate' : field;
       const ageThreshold = ageInputThresholds[fieldKey];
-      if (ageThreshold && (ageThreshold.criticalLow !== undefined || ageThreshold.warningLow !== undefined)) {
+      if (
+        ageThreshold &&
+        (ageThreshold.criticalLow !== undefined || ageThreshold.warningLow !== undefined)
+      ) {
         threshold = {
           ...threshold,
           critical_low: ageThreshold.criticalLow ?? threshold.critical_low,
@@ -438,8 +491,14 @@ export function evaluateVitals(
  */
 export function generateVitalAlerts(
   vitals: VitalValues,
-  customThresholds?: Record<VitalType, Pick<VitalThreshold, 'vital_type' | 'critical_low' | 'warning_low' | 'warning_high' | 'critical_high' | 'is_active'>>,
-  ageGroup?: AgeGroup | null,
+  customThresholds?: Record<
+    VitalType,
+    Pick<
+      VitalThreshold,
+      'vital_type' | 'critical_low' | 'warning_low' | 'warning_high' | 'critical_high' | 'is_active'
+    >
+  >,
+  ageGroup?: AgeGroup | null
 ): VitalAlert[] {
   return evaluateVitals(vitals, customThresholds ?? DEFAULT_THRESHOLDS, ageGroup);
 }
@@ -451,13 +510,16 @@ export function generateVitalAlerts(
 /**
  * Get field status for styling
  */
-export function getFieldStatus(
-  field: string,
-  alerts: VitalAlert[]
-): FieldStatus {
+export function getFieldStatus(field: string, alerts: VitalAlert[]): FieldStatus {
   // Map field aliases
   const fieldAliases: Record<string, string[]> = {
-    blood_pressure: ['blood_pressure_systolic', 'blood_pressure_diastolic', 'systolic_bp', 'diastolic_bp', 'blood_pressure'],
+    blood_pressure: [
+      'blood_pressure_systolic',
+      'blood_pressure_diastolic',
+      'systolic_bp',
+      'diastolic_bp',
+      'blood_pressure',
+    ],
     pulse: ['pulse', 'heart_rate'],
   };
 

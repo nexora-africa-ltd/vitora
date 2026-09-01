@@ -65,12 +65,12 @@ export interface VitalAlert {
  */
 export interface VitalValues {
   temperature?: number | null;
-  pulse?: number | null;  // Encounter form uses 'pulse'
-  heart_rate?: number | null;  // Triage uses 'heart_rate'
-  blood_pressure_systolic?: number | null;  // Encounter form
-  systolic_bp?: number | null;  // Triage
-  blood_pressure_diastolic?: number | null;  // Encounter form
-  diastolic_bp?: number | null;  // Triage
+  pulse?: number | null; // Encounter form uses 'pulse'
+  heart_rate?: number | null; // Triage uses 'heart_rate'
+  blood_pressure_systolic?: number | null; // Encounter form
+  systolic_bp?: number | null; // Triage
+  blood_pressure_diastolic?: number | null; // Encounter form
+  diastolic_bp?: number | null; // Triage
   respiratory_rate?: number | null;
   spo2?: number | null;
   weight?: number | null;

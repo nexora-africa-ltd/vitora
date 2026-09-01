@@ -17,18 +17,9 @@ export const InsuranceProviderTypeSchema = z.enum([
   'other',
 ]);
 
-export const InsuranceProviderStatusSchema = z.enum([
-  'active',
-  'suspended',
-  'inactive',
-]);
+export const InsuranceProviderStatusSchema = z.enum(['active', 'suspended', 'inactive']);
 
-export const InsurancePlanTypeSchema = z.enum([
-  'individual',
-  'family',
-  'group',
-  'corporate',
-]);
+export const InsurancePlanTypeSchema = z.enum(['individual', 'family', 'group', 'corporate']);
 
 export const InsuranceCoverageTypeSchema = z.enum([
   'inpatient',
@@ -136,22 +127,9 @@ export const AccreditationStatusSchema = z.enum([
   'not_accredited',
 ]);
 
-export const SubmissionFormatSchema = z.enum([
-  'api',
-  'csv',
-  'excel',
-  'pdf',
-  'manual',
-]);
+export const SubmissionFormatSchema = z.enum(['api', 'csv', 'excel', 'pdf', 'manual']);
 
-export const ApiAuthTypeSchema = z.enum([
-  'none',
-  'basic',
-  'bearer',
-  'oauth2',
-  'api_key',
-  'custom',
-]);
+export const ApiAuthTypeSchema = z.enum(['none', 'basic', 'bearer', 'oauth2', 'api_key', 'custom']);
 
 // ---------------------------------------------------------------------------
 // Model schemas
@@ -493,12 +471,14 @@ export const InsuranceClaimSchema = z.object({
   submitted_by: z.number().nullable(),
   reviewed_by: z.number().nullable(),
   notes: z.string(),
-  attachments_meta: z.array(z.object({
-    filename: z.string(),
-    url: z.string(),
-    content_type: z.string().optional(),
-    uploaded_at: z.string().optional(),
-  })),
+  attachments_meta: z.array(
+    z.object({
+      filename: z.string(),
+      url: z.string(),
+      content_type: z.string().optional(),
+      uploaded_at: z.string().optional(),
+    })
+  ),
   days_since_submission: z.number().nullable(),
   is_overdue: z.boolean(),
   is_appealable: z.boolean(),
@@ -589,16 +569,18 @@ export const InsuranceRemittanceSchema = z.object({
   updated_at: z.string(),
 });
 
-export const RemittanceDrilldownClaimSchema = z.object({
-  claim_id: z.union([z.string(), z.number()]).optional(),
-  claim_number: z.string().optional(),
-  provider_invoice_no: z.string().optional(),
-  proposed_amount: z.union([z.string(), z.number()]).optional(),
-  approved_amount: z.union([z.string(), z.number()]).optional(),
-  balanced_paid_amount: z.union([z.string(), z.number()]).optional(),
-  balance_invoiced_amount: z.union([z.string(), z.number()]).optional(),
-  copay_amount: z.union([z.string(), z.number()]).optional(),
-}).passthrough();
+export const RemittanceDrilldownClaimSchema = z
+  .object({
+    claim_id: z.union([z.string(), z.number()]).optional(),
+    claim_number: z.string().optional(),
+    provider_invoice_no: z.string().optional(),
+    proposed_amount: z.union([z.string(), z.number()]).optional(),
+    approved_amount: z.union([z.string(), z.number()]).optional(),
+    balanced_paid_amount: z.union([z.string(), z.number()]).optional(),
+    balance_invoiced_amount: z.union([z.string(), z.number()]).optional(),
+    copay_amount: z.union([z.string(), z.number()]).optional(),
+  })
+  .passthrough();
 
 export const InsuranceRemittanceClaimsDrilldownSchema = z.object({
   remittance: InsuranceRemittanceSchema,
@@ -653,5 +635,7 @@ export const PaginatedInsurancePreauthsSchema = paginated(InsurancePreauthSchema
 export const PaginatedInsuranceRemittancesSchema = paginated(InsuranceRemittanceSchema);
 export const PaginatedPayerTariffsSchema = paginated(PayerTariffSchema);
 export const PaginatedProviderConfigsSchema = paginated(InsuranceProviderConfigSchema);
-export const PaginatedInsuranceVisitAuthorizationsSchema = paginated(InsuranceVisitAuthorizationSchema);
+export const PaginatedInsuranceVisitAuthorizationsSchema = paginated(
+  InsuranceVisitAuthorizationSchema
+);
 export const PaginatedFacilitySladeCredentialsSchema = paginated(FacilitySladeCredentialSchema);

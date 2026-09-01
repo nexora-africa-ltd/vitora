@@ -2,32 +2,15 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Building2,
-  FileText,
-  ShieldCheck,
-  ArrowRight,
-  TrendingUp,
-  Wallet,
-} from 'lucide-react';
+import { Building2, FileText, ShieldCheck, ArrowRight, TrendingUp, Wallet } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SHAVerificationModal } from '@/components/billing/sha';
 import { SHAClaimsPanel } from '@/components/insurance/SHAClaimsPanel';
@@ -56,7 +39,7 @@ function StatCard({
   const router = useRouter();
   return (
     <Card
-      className={`relative overflow-hidden ${href ? 'cursor-pointer hover:bg-accent/50 transition-colors' : ''}`}
+      className={`relative overflow-hidden ${href ? 'cursor-pointer transition-colors hover:bg-accent/50' : ''}`}
       onClick={href ? () => router.push(href) : undefined}
     >
       <div
@@ -68,9 +51,9 @@ function StatCard({
           <div>
             <p className="text-xs text-muted-foreground">{label}</p>
             {isLoading ? (
-              <Skeleton className="h-7 w-16 mt-1" />
+              <Skeleton className="mt-1 h-7 w-16" />
             ) : (
-              <p className="text-2xl font-bold mt-1">{value}</p>
+              <p className="mt-1 text-2xl font-bold">{value}</p>
             )}
           </div>
           <div className="rounded-full bg-primary/10 p-2">
@@ -145,16 +128,20 @@ export default function InsurancePage() {
   const totalClaims = claimsData?.count ?? 0;
   const totalPreauths = preauthsData?.count ?? 0;
 
-  const pendingClaims = claimsData?.results?.filter(
-    (c) => ['submitted', 'acknowledged', 'under_review', 'query'].includes(c.status)
-  ).length ?? 0;
+  const pendingClaims =
+    claimsData?.results?.filter((c) =>
+      ['submitted', 'acknowledged', 'under_review', 'query'].includes(c.status)
+    ).length ?? 0;
 
   const sessions = authorizationsData?.results ?? [];
   const sessionSteps = {
     started: sessions.filter((session) => session.workflow_step === 'eligibility_verified').length,
     otpRequested: sessions.filter((session) => session.workflow_step === 'otp_requested').length,
-    visitAuthorized: sessions.filter((session) => session.workflow_step === 'visit_authorized').length,
-    tokenValidated: sessions.filter((session) => session.workflow_step === 'authorization_validated').length,
+    visitAuthorized: sessions.filter((session) => session.workflow_step === 'visit_authorized')
+      .length,
+    tokenValidated: sessions.filter(
+      (session) => session.workflow_step === 'authorization_validated'
+    ).length,
   };
   const sessionConversion =
     sessionSteps.started > 0
@@ -169,7 +156,7 @@ export default function InsurancePage() {
       />
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           icon={Building2}
           label="Providers"
@@ -214,7 +201,7 @@ export default function InsurancePage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="private" className="space-y-4 mt-4">
+        <TabsContent value="private" className="mt-4 space-y-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">HealthCloud Sync Health</CardTitle>
@@ -225,35 +212,102 @@ export default function InsurancePage() {
               ) : syncStatus ? (
                 <>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openSyncDrilldown('all', 'Sync Total')}>
-                      <Badge variant="secondary" className="hover:bg-secondary/80">Sync Total: {syncStatus.sync.total}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0"
+                      onClick={() => openSyncDrilldown('all', 'Sync Total')}
+                    >
+                      <Badge variant="secondary" className="hover:bg-secondary/80">
+                        Sync Total: {syncStatus.sync.total}
+                      </Badge>
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openSyncDrilldown('success', 'Sync Success')}>
-                      <Badge variant="outline" className="hover:bg-accent">Success: {syncStatus.sync.success}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0"
+                      onClick={() => openSyncDrilldown('success', 'Sync Success')}
+                    >
+                      <Badge variant="outline" className="hover:bg-accent">
+                        Success: {syncStatus.sync.success}
+                      </Badge>
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openSyncDrilldown('pending', 'Sync Pending')}>
-                      <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending: {syncStatus.sync.pending}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0"
+                      onClick={() => openSyncDrilldown('pending', 'Sync Pending')}
+                    >
+                      <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+                        Pending: {syncStatus.sync.pending}
+                      </Badge>
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openSyncDrilldown('failed', 'Sync Failed')}>
-                      <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Failed: {syncStatus.sync.failed}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0"
+                      onClick={() => openSyncDrilldown('failed', 'Sync Failed')}
+                    >
+                      <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+                        Failed: {syncStatus.sync.failed}
+                      </Badge>
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Click any pill to drill into records behind the metric.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Click any pill to drill into records behind the metric.
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openRemittanceDrilldown('all', 'Remittances Total')}>
-                      <Badge variant="secondary" className="hover:bg-secondary/80">Remittances: {syncStatus.remittances.total}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0"
+                      onClick={() => openRemittanceDrilldown('all', 'Remittances Total')}
+                    >
+                      <Badge variant="secondary" className="hover:bg-secondary/80">
+                        Remittances: {syncStatus.remittances.total}
+                      </Badge>
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openRemittanceDrilldown('received', 'Remittances Received')}>
-                      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Received: {syncStatus.remittances.received}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0"
+                      onClick={() => openRemittanceDrilldown('received', 'Remittances Received')}
+                    >
+                      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                        Received: {syncStatus.remittances.received}
+                      </Badge>
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openRemittanceDrilldown('partial', 'Remittances Partial')}>
-                      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">Partial: {syncStatus.remittances.partial}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0"
+                      onClick={() => openRemittanceDrilldown('partial', 'Remittances Partial')}
+                    >
+                      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">
+                        Partial: {syncStatus.remittances.partial}
+                      </Badge>
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openRemittanceDrilldown('reconciled', 'Remittances Reconciled')}>
-                      <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Reconciled: {syncStatus.remittances.reconciled}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0"
+                      onClick={() =>
+                        openRemittanceDrilldown('reconciled', 'Remittances Reconciled')
+                      }
+                    >
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+                        Reconciled: {syncStatus.remittances.reconciled}
+                      </Badge>
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => openRemittanceDrilldown('disputed', 'Remittances Disputed')}>
-                      <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Disputed: {syncStatus.remittances.disputed}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0"
+                      onClick={() => openRemittanceDrilldown('disputed', 'Remittances Disputed')}
+                    >
+                      <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+                        Disputed: {syncStatus.remittances.disputed}
+                      </Badge>
                     </Button>
                   </div>
                 </>
@@ -263,8 +317,11 @@ export default function InsurancePage() {
             </CardContent>
           </Card>
 
-          <Dialog open={!!drilldownTarget} onOpenChange={(open) => !open && setDrilldownTarget(null)}>
-            <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <Dialog
+            open={!!drilldownTarget}
+            onOpenChange={(open) => !open && setDrilldownTarget(null)}
+          >
+            <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{drilldownTarget?.title || 'HealthCloud Drilldown'}</DialogTitle>
               </DialogHeader>
@@ -280,18 +337,22 @@ export default function InsurancePage() {
                   </div>
                 )}
 
-                {drilldownTarget?.kind === 'sync' && (
-                  filteredSyncItems.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No sync records found for this pill.</p>
+                {drilldownTarget?.kind === 'sync' &&
+                  (filteredSyncItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No sync records found for this pill.
+                    </p>
                   ) : (
                     <div className="space-y-3">
                       {filteredSyncItems.map((item) => (
-                        <div key={item.id} className="rounded-lg border p-3 space-y-2">
-                          <div className="flex flex-wrap gap-2 items-center">
+                        <div key={item.id} className="space-y-2 rounded-lg border p-3">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Badge className="bg-slate-100 text-slate-800">{item.operation}</Badge>
                             <Badge variant="outline">Status: {item.status}</Badge>
                             <Badge variant="secondary">Attempts: {item.attempt_count}</Badge>
-                            {item.status === 'failed' && <Badge className="bg-red-100 text-red-800">{item.bucket.label}</Badge>}
+                            {item.status === 'failed' && (
+                              <Badge className="bg-red-100 text-red-800">{item.bucket.label}</Badge>
+                            )}
                           </div>
                           {item.status === 'failed' && (
                             <p className="text-sm text-muted-foreground">{item.error}</p>
@@ -305,38 +366,46 @@ export default function InsurancePage() {
                         </div>
                       ))}
                     </div>
-                  )
-                )}
+                  ))}
 
-                {drilldownTarget?.kind === 'remittance' && (
-                  filteredRemittanceItems.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No remittance records found for this pill.</p>
+                {drilldownTarget?.kind === 'remittance' &&
+                  (filteredRemittanceItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No remittance records found for this pill.
+                    </p>
                   ) : (
                     <div className="space-y-3">
                       {filteredRemittanceItems.map((item) => (
-                        <div key={item.id} className="rounded-lg border p-3 space-y-2">
-                          <div className="flex flex-wrap gap-2 items-center">
-                            <Badge className="bg-blue-100 text-blue-800">{item.remittance_number}</Badge>
+                        <div key={item.id} className="space-y-2 rounded-lg border p-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge className="bg-blue-100 text-blue-800">
+                              {item.remittance_number}
+                            </Badge>
                             <Badge variant="outline">{item.provider_name}</Badge>
                             <Badge variant="secondary">Status: {item.status}</Badge>
                           </div>
                           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                             <span>Total: KES {Number(item.total_amount).toLocaleString()}</span>
-                            <span>Reconciled: KES {Number(item.reconciled_amount).toLocaleString()}</span>
+                            <span>
+                              Reconciled: KES {Number(item.reconciled_amount).toLocaleString()}
+                            </span>
                             <span>Date: {item.remittance_date}</span>
                             <span>Updated: {formatDateTime(item.updated_at)}</span>
-                            {item.payment_reference && <span>Payment Ref: {item.payment_reference}</span>}
+                            {item.payment_reference && (
+                              <span>Payment Ref: {item.payment_reference}</span>
+                            )}
                             {item.bank_reference && <span>Bank Ref: {item.bank_reference}</span>}
                           </div>
                         </div>
                       ))}
                     </div>
-                  )
-                )}
+                  ))}
 
                 {drilldownTarget?.kind !== 'sync' && drilldownTarget?.kind !== 'remittance' && (
                   <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">Select a drilldown pill to view details.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Select a drilldown pill to view details.
+                    </p>
                   </div>
                 )}
               </div>
@@ -344,9 +413,13 @@ export default function InsurancePage() {
           </Dialog>
 
           <Card>
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-base">HealthCloud Session Funnel</CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => router.push('/insurance/authorizations')}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/insurance/authorizations')}
+              >
                 Open Queue
               </Button>
             </CardHeader>
@@ -355,7 +428,7 @@ export default function InsurancePage() {
                 <Skeleton className="h-16 w-full" />
               ) : (
                 <>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
                     <div className="rounded border p-2">
                       <p className="text-xs text-muted-foreground">1. Eligibility</p>
                       <p className="font-semibold">{sessionSteps.started}</p>
@@ -377,7 +450,13 @@ export default function InsurancePage() {
                     <Badge variant="secondary">Conversion: {sessionConversion}%</Badge>
                     <Badge variant="outline">Total Sessions: {sessions.length}</Badge>
                     <Badge className="bg-yellow-100 text-yellow-800">
-                      Needs Action: {Math.max(sessionSteps.started + sessionSteps.otpRequested - sessionSteps.tokenValidated, 0)}
+                      Needs Action:{' '}
+                      {Math.max(
+                        sessionSteps.started +
+                          sessionSteps.otpRequested -
+                          sessionSteps.tokenValidated,
+                        0
+                      )}
                     </Badge>
                   </div>
                 </>
@@ -386,44 +465,53 @@ export default function InsurancePage() {
           </Card>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/providers')}>
-              <CardContent className="p-4 flex items-center justify-between">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Card
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => router.push('/insurance/providers')}
+            >
+              <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <Building2 className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium text-sm">Providers</p>
+                    <p className="text-sm font-medium">Providers</p>
                     <p className="text-xs text-muted-foreground">Manage providers & plans</p>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/claims')}>
-              <CardContent className="p-4 flex items-center justify-between">
+            <Card
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => router.push('/insurance/claims')}
+            >
+              <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium text-sm">Claims</p>
+                    <p className="text-sm font-medium">Claims</p>
                     <p className="text-xs text-muted-foreground">Submit & track claims</p>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/preauths')}>
-              <CardContent className="p-4 flex items-center justify-between">
+            <Card
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => router.push('/insurance/preauths')}
+            >
+              <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-sm">Pre-authorizations</p>
+                      <p className="text-sm font-medium">Pre-authorizations</p>
                       <TooltipProvider delayDuration={250}>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Badge
                               variant="outline"
-                              className="h-5 px-1.5 text-[10px] font-medium border-amber-300 text-amber-700 bg-amber-50"
+                              className="h-5 border-amber-300 bg-amber-50 px-1.5 text-[10px] font-medium text-amber-700"
                             >
                               HealthCloud pending
                             </Badge>
@@ -440,72 +528,90 @@ export default function InsurancePage() {
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/enrollments')}>
-              <CardContent className="p-4 flex items-center justify-between">
+            <Card
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => router.push('/insurance/enrollments')}
+            >
+              <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium text-sm">Enrollments</p>
+                    <p className="text-sm font-medium">Enrollments</p>
                     <p className="text-xs text-muted-foreground">Create & verify membership</p>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/provider-configs')}>
-              <CardContent className="p-4 flex items-center justify-between">
+            <Card
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => router.push('/insurance/provider-configs')}
+            >
+              <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <Building2 className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium text-sm">Provider Configs</p>
+                    <p className="text-sm font-medium">Provider Configs</p>
                     <p className="text-xs text-muted-foreground">Facility API setup</p>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/authorizations')}>
-              <CardContent className="p-4 flex items-center justify-between">
+            <Card
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => router.push('/insurance/authorizations')}
+            >
+              <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium text-sm">Authorizations</p>
+                    <p className="text-sm font-medium">Authorizations</p>
                     <p className="text-xs text-muted-foreground">Validate visit tokens</p>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/remittances')}>
-              <CardContent className="p-4 flex items-center justify-between">
+            <Card
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => router.push('/insurance/remittances')}
+            >
+              <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <TrendingUp className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium text-sm">Remittances</p>
+                    <p className="text-sm font-medium">Remittances</p>
                     <p className="text-xs text-muted-foreground">Create & reconcile batches</p>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/reservations')}>
-              <CardContent className="p-4 flex items-center justify-between">
+            <Card
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => router.push('/insurance/reservations')}
+            >
+              <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <Wallet className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium text-sm">Reservations</p>
+                    <p className="text-sm font-medium">Reservations</p>
                     <p className="text-xs text-muted-foreground">Reserve balances for claims</p>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push('/insurance/tariffs')}>
-              <CardContent className="p-4 flex items-center justify-between">
+            <Card
+              className="cursor-pointer transition-colors hover:bg-accent/50"
+              onClick={() => router.push('/insurance/tariffs')}
+            >
+              <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium text-sm">Tariffs</p>
+                    <p className="text-sm font-medium">Tariffs</p>
                     <p className="text-xs text-muted-foreground">Payer code mapping</p>
                   </div>
                 </div>
@@ -519,7 +625,12 @@ export default function InsurancePage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Recent Claims</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => router.push('/insurance/claims')} className="gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push('/insurance/claims')}
+                  className="gap-1"
+                >
                   View All <ArrowRight className="h-3 w-3" />
                 </Button>
               </CardHeader>
@@ -528,16 +639,22 @@ export default function InsurancePage() {
                   {claimsData.results.slice(0, 5).map((claim) => (
                     <div
                       key={claim.id}
-                      className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                      className="flex cursor-pointer items-center justify-between rounded-md p-2 transition-colors hover:bg-accent/50"
                       onClick={() => router.push(`/insurance/claims/${claim.id}`)}
                     >
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{claim.claim_number}</p>
-                        <p className="text-xs text-muted-foreground truncate">{claim.patient_name} • {claim.provider_name}</p>
+                        <p className="truncate text-sm font-medium">{claim.claim_number}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {claim.patient_name} • {claim.provider_name}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-2">
-                        <span className="text-sm font-medium">KES {Number(claim.total_amount).toLocaleString()}</span>
-                        <Badge variant="secondary" className="text-xs capitalize">{claim.status.replace('_', ' ')}</Badge>
+                      <div className="ml-2 flex shrink-0 items-center gap-2">
+                        <span className="text-sm font-medium">
+                          KES {Number(claim.total_amount).toLocaleString()}
+                        </span>
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {claim.status.replace('_', ' ')}
+                        </Badge>
                       </div>
                     </div>
                   ))}
@@ -547,7 +664,7 @@ export default function InsurancePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="sha" className="space-y-4 mt-4">
+        <TabsContent value="sha" className="mt-4 space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>SHA Verification</CardTitle>

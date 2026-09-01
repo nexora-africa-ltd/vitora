@@ -99,10 +99,7 @@ export function MFAEnforcementOverlay() {
   // dialog content to sit behind that backdrop, dimming all text to near-invisible.
   if (showSetupWizard) {
     return (
-      <MFASetupWizard
-        onComplete={handleSetupComplete}
-        onCancel={() => setShowSetupWizard(false)}
-      />
+      <MFASetupWizard onComplete={handleSetupComplete} onCancel={() => setShowSetupWizard(false)} />
     );
   }
 
@@ -110,32 +107,30 @@ export function MFAEnforcementOverlay() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-sm">
       <div className="mx-4 w-full max-w-md">
         <div className="rounded-lg border bg-card p-6 shadow-lg">
-          <div className="flex flex-col items-center text-center space-y-4">
+          <div className="flex flex-col items-center space-y-4 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
               <Shield className="h-8 w-8 text-destructive" />
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-xl font-semibold">
-                Multi-Factor Authentication Required
-              </h2>
+              <h2 className="text-xl font-semibold">Multi-Factor Authentication Required</h2>
               <p className="text-sm text-muted-foreground">
-                Your MFA setup grace period has expired. You must configure
-                multi-factor authentication before you can continue using the system.
+                Your MFA setup grace period has expired. You must configure multi-factor
+                authentication before you can continue using the system.
               </p>
             </div>
 
-            <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-50 p-3 dark:bg-amber-950/20 w-full">
-              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-              <p className="text-xs text-amber-800 dark:text-amber-200 text-left">
-                Access to all system features is blocked until MFA is enabled.
-                This is required by your organization&apos;s security policy.
+            <div className="flex w-full items-start gap-2 rounded-md border border-amber-500/50 bg-amber-50 p-3 dark:bg-amber-950/20">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="text-left text-xs text-amber-800 dark:text-amber-200">
+                Access to all system features is blocked until MFA is enabled. This is required by
+                your organization&apos;s security policy.
               </p>
             </div>
 
             <button
               onClick={() => setShowSetupWizard(true)}
-              className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Set Up MFA Now
             </button>

@@ -24,11 +24,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils/format';
@@ -102,9 +98,7 @@ export function AddInvoiceItemDialog({
       item.code?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalAmount = selectedItem
-    ? parseFloat(unitPrice || '0') * quantity
-    : 0;
+  const totalAmount = selectedItem ? parseFloat(unitPrice || '0') * quantity : 0;
 
   const kindLabel: Record<BillingCatalogItem['kind'], string> = {
     service: 'Service',
@@ -221,20 +215,13 @@ export function AddInvoiceItemDialog({
             <div className="rounded-md bg-muted p-3">
               <div className="flex justify-between text-sm">
                 <span>Total Amount:</span>
-                <span className="font-semibold">
-                  {formatCurrency(totalAmount)}
-                </span>
+                <span className="font-semibold">{formatCurrency(totalAmount)}</span>
               </div>
             </div>
           )}
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isLoading}
-            >
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" disabled={!selectedItem || isLoading}>

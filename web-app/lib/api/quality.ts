@@ -102,14 +102,16 @@ const EvaluateMeasuresResponseSchema = z.object({
   results: z.array(EvaluateMeasureResultSchema).optional(),
   total_evaluated: z.number().optional(),
   clinics_evaluated: z.number().optional(),
-  clinic_results: z.array(
-    z.object({
-      clinic_id: z.number(),
-      clinic_name: z.string(),
-      results: z.array(EvaluateMeasureResultSchema),
-      total_evaluated: z.number(),
-    }),
-  ).optional(),
+  clinic_results: z
+    .array(
+      z.object({
+        clinic_id: z.number(),
+        clinic_name: z.string(),
+        results: z.array(EvaluateMeasureResultSchema),
+        total_evaluated: z.number(),
+      })
+    )
+    .optional(),
 });
 
 // =============================================================================
@@ -122,11 +124,11 @@ export const qualityApi = {
   // -------------------------------------------------------------------------
 
   listQuarterlyReports: async (
-    params?: QuarterlyReportListParams,
+    params?: QuarterlyReportListParams
   ): Promise<PaginatedResponse<QuarterlyReport>> => {
     const response = await apiClient.get<PaginatedResponse<QuarterlyReport>>(
       `${BASE}/quarterly-reports/`,
-      { params },
+      { params }
     );
     return parseResponse(PaginatedQuarterlyReportSchema, response.data, {
       context: 'qualityApi.listQuarterlyReports',
@@ -134,20 +136,16 @@ export const qualityApi = {
   },
 
   getQuarterlyReport: async (id: number): Promise<QuarterlyReport> => {
-    const response = await apiClient.get<QuarterlyReport>(
-      `${BASE}/quarterly-reports/${id}/`,
-    );
+    const response = await apiClient.get<QuarterlyReport>(`${BASE}/quarterly-reports/${id}/`);
     return parseResponse(QuarterlyReportSchema, response.data, {
       context: 'qualityApi.getQuarterlyReport',
     });
   },
 
-  generateQuarterlyReport: async (
-    data: QuarterlyReportGenerateData,
-  ): Promise<QuarterlyReport> => {
+  generateQuarterlyReport: async (data: QuarterlyReportGenerateData): Promise<QuarterlyReport> => {
     const response = await apiClient.post<QuarterlyReport>(
       `${BASE}/quarterly-reports/generate/`,
-      data,
+      data
     );
     return parseResponse(QuarterlyReportSchema, response.data, {
       context: 'qualityApi.generateQuarterlyReport',
@@ -160,14 +158,14 @@ export const qualityApi = {
   }): Promise<QuarterlyReport[]> => {
     const response = await apiClient.post<QuarterlyReport[]>(
       `${BASE}/quarterly-reports/generate-all/`,
-      data,
+      data
     );
     // Response is an array, validate each item
     const results = Array.isArray(response.data) ? response.data : [];
     return results.map((item, i) =>
       parseResponse(QuarterlyReportSchema, item, {
         context: `qualityApi.generateAllQuarterlyReports[${i}]`,
-      }),
+      })
     );
   },
 
@@ -176,11 +174,11 @@ export const qualityApi = {
   // -------------------------------------------------------------------------
 
   listAnnualReports: async (
-    params?: AnnualReportListParams,
+    params?: AnnualReportListParams
   ): Promise<PaginatedResponse<AnnualReport>> => {
     const response = await apiClient.get<PaginatedResponse<AnnualReport>>(
       `${BASE}/annual-reports/`,
-      { params },
+      { params }
     );
     return parseResponse(PaginatedAnnualReportSchema, response.data, {
       context: 'qualityApi.listAnnualReports',
@@ -188,21 +186,14 @@ export const qualityApi = {
   },
 
   getAnnualReport: async (id: number): Promise<AnnualReport> => {
-    const response = await apiClient.get<AnnualReport>(
-      `${BASE}/annual-reports/${id}/`,
-    );
+    const response = await apiClient.get<AnnualReport>(`${BASE}/annual-reports/${id}/`);
     return parseResponse(AnnualReportSchema, response.data, {
       context: 'qualityApi.getAnnualReport',
     });
   },
 
-  generateAnnualReport: async (
-    data: AnnualReportGenerateData,
-  ): Promise<AnnualReport> => {
-    const response = await apiClient.post<AnnualReport>(
-      `${BASE}/annual-reports/generate/`,
-      data,
-    );
+  generateAnnualReport: async (data: AnnualReportGenerateData): Promise<AnnualReport> => {
+    const response = await apiClient.post<AnnualReport>(`${BASE}/annual-reports/generate/`, data);
     return parseResponse(AnnualReportSchema, response.data, {
       context: 'qualityApi.generateAnnualReport',
     });
@@ -213,33 +204,25 @@ export const qualityApi = {
   // -------------------------------------------------------------------------
 
   listMeasures: async (
-    params?: QualityMeasureListParams,
+    params?: QualityMeasureListParams
   ): Promise<PaginatedResponse<QualityMeasure>> => {
-    const response = await apiClient.get<PaginatedResponse<QualityMeasure>>(
-      `${BASE}/measures/`,
-      { params },
-    );
+    const response = await apiClient.get<PaginatedResponse<QualityMeasure>>(`${BASE}/measures/`, {
+      params,
+    });
     return parseResponse(PaginatedQualityMeasureSchema, response.data, {
       context: 'qualityApi.listMeasures',
     });
   },
 
   getMeasure: async (id: number): Promise<QualityMeasure> => {
-    const response = await apiClient.get<QualityMeasure>(
-      `${BASE}/measures/${id}/`,
-    );
+    const response = await apiClient.get<QualityMeasure>(`${BASE}/measures/${id}/`);
     return parseResponse(QualityMeasureSchema, response.data, {
       context: 'qualityApi.getMeasure',
     });
   },
 
-  createMeasure: async (
-    data: QualityMeasureCreateData,
-  ): Promise<QualityMeasure> => {
-    const response = await apiClient.post<QualityMeasure>(
-      `${BASE}/measures/`,
-      data,
-    );
+  createMeasure: async (data: QualityMeasureCreateData): Promise<QualityMeasure> => {
+    const response = await apiClient.post<QualityMeasure>(`${BASE}/measures/`, data);
     return parseResponse(QualityMeasureSchema, response.data, {
       context: 'qualityApi.createMeasure',
     });
@@ -247,12 +230,9 @@ export const qualityApi = {
 
   updateMeasure: async (
     id: number,
-    data: Partial<QualityMeasureCreateData>,
+    data: Partial<QualityMeasureCreateData>
   ): Promise<QualityMeasure> => {
-    const response = await apiClient.patch<QualityMeasure>(
-      `${BASE}/measures/${id}/`,
-      data,
-    );
+    const response = await apiClient.patch<QualityMeasure>(`${BASE}/measures/${id}/`, data);
     return parseResponse(QualityMeasureSchema, response.data, {
       context: 'qualityApi.updateMeasure',
     });
@@ -265,7 +245,7 @@ export const qualityApi = {
   previewRule: async (data: QualityRulePreviewRequest): Promise<QualityRulePreviewResponse> => {
     const response = await apiClient.post<QualityRulePreviewResponse>(
       `${BASE}/measures/preview-rule/`,
-      data,
+      data
     );
     return parseResponse(QualityRulePreviewResponseSchema, response.data, {
       context: 'qualityApi.previewRule',
@@ -274,7 +254,7 @@ export const qualityApi = {
 
   importMeasures: async (
     file: File,
-    format: 'csv' | 'json' = 'json',
+    format: 'csv' | 'json' = 'json'
   ): Promise<QualityMeasureImportResult> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -282,7 +262,7 @@ export const qualityApi = {
     const response = await apiClient.post<QualityMeasureImportResult>(
       `${BASE}/measures/import/`,
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     );
     return parseResponse(QualityMeasureImportResultSchema, response.data, {
       context: 'qualityApi.importMeasures',
@@ -306,32 +286,26 @@ export const qualityApi = {
   // -------------------------------------------------------------------------
 
   listResults: async (
-    params?: QualityMeasureResultListParams,
+    params?: QualityMeasureResultListParams
   ): Promise<PaginatedResponse<QualityMeasureResult>> => {
-    const response = await apiClient.get<
-      PaginatedResponse<QualityMeasureResult>
-    >(`${BASE}/results/`, { params });
+    const response = await apiClient.get<PaginatedResponse<QualityMeasureResult>>(
+      `${BASE}/results/`,
+      { params }
+    );
     return parseResponse(PaginatedQualityMeasureResultSchema, response.data, {
       context: 'qualityApi.listResults',
     });
   },
 
   getResult: async (id: number): Promise<QualityMeasureResult> => {
-    const response = await apiClient.get<QualityMeasureResult>(
-      `${BASE}/results/${id}/`,
-    );
+    const response = await apiClient.get<QualityMeasureResult>(`${BASE}/results/${id}/`);
     return parseResponse(QualityMeasureResultSchema, response.data, {
       context: 'qualityApi.getResult',
     });
   },
 
-  createResult: async (
-    data: QualityMeasureResultCreateData,
-  ): Promise<QualityMeasureResult> => {
-    const response = await apiClient.post<QualityMeasureResult>(
-      `${BASE}/results/`,
-      data,
-    );
+  createResult: async (data: QualityMeasureResultCreateData): Promise<QualityMeasureResult> => {
+    const response = await apiClient.post<QualityMeasureResult>(`${BASE}/results/`, data);
     return parseResponse(QualityMeasureResultSchema, response.data, {
       context: 'qualityApi.createResult',
     });
@@ -339,12 +313,9 @@ export const qualityApi = {
 
   updateResult: async (
     id: number,
-    data: Partial<QualityMeasureResultCreateData>,
+    data: Partial<QualityMeasureResultCreateData>
   ): Promise<QualityMeasureResult> => {
-    const response = await apiClient.patch<QualityMeasureResult>(
-      `${BASE}/results/${id}/`,
-      data,
-    );
+    const response = await apiClient.patch<QualityMeasureResult>(`${BASE}/results/${id}/`, data);
     return parseResponse(QualityMeasureResultSchema, response.data, {
       context: 'qualityApi.updateResult',
     });
@@ -355,18 +326,17 @@ export const qualityApi = {
   },
 
   getResultTrends: async (
-    params: QualityMeasureResultTrendParams,
+    params: QualityMeasureResultTrendParams
   ): Promise<QualityMeasureResult[]> => {
-    const response = await apiClient.get<QualityMeasureResult[]>(
-      `${BASE}/results/trends/`,
-      { params },
-    );
+    const response = await apiClient.get<QualityMeasureResult[]>(`${BASE}/results/trends/`, {
+      params,
+    });
     // Trend endpoint returns a flat array
     const results = Array.isArray(response.data) ? response.data : [];
     return results.map((item, i) =>
       parseResponse(QualityMeasureResultSchema, item, {
         context: `qualityApi.getResultTrends[${i}]`,
-      }),
+      })
     );
   },
 
@@ -374,13 +344,8 @@ export const qualityApi = {
   // Quality Dashboard
   // -------------------------------------------------------------------------
 
-  getDashboard: async (
-    params?: QualityDashboardParams,
-  ): Promise<QualityDashboardData> => {
-    const response = await apiClient.get<QualityDashboardData>(
-      `${BASE}/dashboard/`,
-      { params },
-    );
+  getDashboard: async (params?: QualityDashboardParams): Promise<QualityDashboardData> => {
+    const response = await apiClient.get<QualityDashboardData>(`${BASE}/dashboard/`, { params });
     return parseResponse(QualityDashboardSchema, response.data, {
       context: 'qualityApi.getDashboard',
     });

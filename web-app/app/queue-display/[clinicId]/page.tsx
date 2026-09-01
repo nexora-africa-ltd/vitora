@@ -8,14 +8,18 @@ import { cn } from '@/lib/utils/cn';
 import { API_BASE_URL } from '@/lib/utils/constants';
 import type { PublicQueueResponse } from '@/lib/types/clinic';
 
-const DEFAULT_STATUS: { label: string; border: string; bg: string; text: string; pulse?: boolean } = {
-  label: 'Waiting',
-  border: 'border-slate-600',
-  bg: 'bg-slate-800',
-  text: 'text-slate-300',
-};
+const DEFAULT_STATUS: { label: string; border: string; bg: string; text: string; pulse?: boolean } =
+  {
+    label: 'Waiting',
+    border: 'border-slate-600',
+    bg: 'bg-slate-800',
+    text: 'text-slate-300',
+  };
 
-const STATUS_CONFIG: Record<string, { label: string; border: string; bg: string; text: string; pulse?: boolean }> = {
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; border: string; bg: string; text: string; pulse?: boolean }
+> = {
   WAITING: DEFAULT_STATUS,
   CALLED: {
     label: 'Called',
@@ -82,11 +86,11 @@ export default function QueueDisplayPage() {
 
   if (isError) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <Monitor className="h-16 w-16 text-slate-500 mx-auto mb-4" />
+          <Monitor className="mx-auto mb-4 h-16 w-16 text-slate-500" />
           <p className="text-xl text-slate-400">Unable to load queue</p>
-          <p className="text-sm text-slate-600 mt-2">Check the clinic ID and try again</p>
+          <p className="mt-2 text-sm text-slate-600">Check the clinic ID and try again</p>
         </div>
       </div>
     );
@@ -97,14 +101,14 @@ export default function QueueDisplayPage() {
   const otherItems = queue.filter((q) => q.status !== 'CALLED');
 
   return (
-    <div className="flex flex-col min-h-screen p-4 sm:p-6 lg:p-8">
+    <div className="flex min-h-screen flex-col p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6 lg:mb-8">
+      <header className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between lg:mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
             {data?.clinic_name ?? 'Loading...'}
           </h1>
-          <p className="text-sm sm:text-base text-slate-400 mt-1">
+          <p className="mt-1 text-sm text-slate-400 sm:text-base">
             {data?.session_date
               ? new Date(data.session_date + 'T00:00:00').toLocaleDateString('en-KE', {
                   weekday: 'long',
@@ -116,7 +120,7 @@ export default function QueueDisplayPage() {
           </p>
         </div>
         <div className="flex items-center gap-4 text-slate-400">
-          <div className="flex items-center gap-2 text-lg sm:text-xl lg:text-2xl font-mono">
+          <div className="flex items-center gap-2 font-mono text-lg sm:text-xl lg:text-2xl">
             <Clock className="h-5 w-5 lg:h-6 lg:w-6" />
             <LiveClock />
           </div>
@@ -125,9 +129,9 @@ export default function QueueDisplayPage() {
 
       {/* Session not open */}
       {data && data.session_status !== 'OPEN' && (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
-            <Monitor className="h-20 w-20 text-slate-600 mx-auto mb-4" />
+            <Monitor className="mx-auto mb-4 h-20 w-20 text-slate-600" />
             <p className="text-2xl text-slate-400">
               {data.session_status === null ? 'No session today' : 'Session closed'}
             </p>
@@ -139,7 +143,7 @@ export default function QueueDisplayPage() {
       {data?.session_status === 'OPEN' && (
         <div className="flex-1">
           {queue.length === 0 ? (
-            <div className="flex items-center justify-center flex-1 min-h-[300px]">
+            <div className="flex min-h-[300px] flex-1 items-center justify-center">
               <div className="text-center">
                 <p className="text-2xl text-slate-500">No patients in queue</p>
               </div>
@@ -149,7 +153,7 @@ export default function QueueDisplayPage() {
               {/* Called patients — prominent */}
               {calledItems.length > 0 && (
                 <section>
-                  <h2 className="text-sm uppercase tracking-wider text-slate-500 font-semibold mb-3">
+                  <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">
                     Now Calling
                   </h2>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -163,7 +167,7 @@ export default function QueueDisplayPage() {
               {/* Other patients */}
               {otherItems.length > 0 && (
                 <section>
-                  <h2 className="text-sm uppercase tracking-wider text-slate-500 font-semibold mb-3">
+                  <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">
                     {calledItems.length > 0 ? 'Queue' : 'Current Queue'}
                   </h2>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
@@ -179,12 +183,10 @@ export default function QueueDisplayPage() {
       )}
 
       {/* Footer */}
-      <footer className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between text-sm text-slate-600">
+      <footer className="mt-6 flex items-center justify-between border-t border-slate-800 pt-4 text-sm text-slate-600">
         <div className="flex items-center gap-2">
           <RefreshCw className="h-3.5 w-3.5" />
-          <span>
-            Updated {Math.round((Date.now() - lastRefresh.getTime()) / 1000)}s ago
-          </span>
+          <span>Updated {Math.round((Date.now() - lastRefresh.getTime()) / 1000)}s ago</span>
         </div>
         <span>Vitora HMIS</span>
       </footer>
@@ -192,33 +194,47 @@ export default function QueueDisplayPage() {
   );
 }
 
-function QueueCard({ item }: { item: { queue_number: number; status: string; room_name: string | null; called_at: string | null } }) {
+function QueueCard({
+  item,
+}: {
+  item: {
+    queue_number: number;
+    status: string;
+    room_name: string | null;
+    called_at: string | null;
+  };
+}) {
   const config = STATUS_CONFIG[item.status] ?? DEFAULT_STATUS;
 
   return (
     <div
       className={cn(
-        'rounded-xl border-2 p-4 lg:p-5 transition-all',
+        'rounded-xl border-2 p-4 transition-all lg:p-5',
         config.border,
         config.bg,
-        config.pulse && 'animate-pulse',
+        config.pulse && 'animate-pulse'
       )}
     >
       {/* Queue number */}
       <div className="text-center">
-        <span className="text-4xl sm:text-5xl lg:text-6xl font-black tabular-nums">
+        <span className="text-4xl font-black tabular-nums sm:text-5xl lg:text-6xl">
           #{item.queue_number}
         </span>
       </div>
 
       {/* Status */}
-      <div className={cn('text-center mt-2 text-sm sm:text-base font-semibold uppercase tracking-wide', config.text)}>
+      <div
+        className={cn(
+          'mt-2 text-center text-sm font-semibold uppercase tracking-wide sm:text-base',
+          config.text
+        )}
+      >
         {config.label}
       </div>
 
       {/* Room */}
       {item.room_name && (
-        <div className="flex items-center justify-center gap-1.5 mt-2 text-sm sm:text-base">
+        <div className="mt-2 flex items-center justify-center gap-1.5 text-sm sm:text-base">
           <DoorOpen className="h-4 w-4 text-blue-400" />
           <span className="font-semibold text-blue-300">{item.room_name}</span>
         </div>

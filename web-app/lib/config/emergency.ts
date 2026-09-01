@@ -57,13 +57,62 @@ export interface ZoneMetadata {
 }
 
 export const ZONE_METADATA: ZoneMetadata[] = [
-  { label: 'Resuscitation', shortLabel: 'Resus', route: 'resus', code: 'ER_RESUS', primaryCategory: 'RED', defaultCapacity: 4 },
-  { label: 'Acute Care', shortLabel: 'Acute', route: 'acute', code: 'ER_ACUTE', primaryCategory: 'ORANGE', defaultCapacity: 10 },
-  { label: 'Trauma Bay', shortLabel: 'Trauma', route: 'trauma', code: 'TRAUMA', primaryCategory: 'RED', defaultCapacity: 2 },
-  { label: 'Fast Track', shortLabel: 'Fast Trk', route: 'fast-track', code: 'ER_FAST_TRACK', primaryCategory: 'GREEN', defaultCapacity: 12 },
-  { label: 'Observation', shortLabel: 'Obs', route: 'observation', code: 'OBSERVATION', primaryCategory: 'YELLOW', defaultCapacity: 8 },
-  { label: 'Pediatric ER', shortLabel: 'Peds', route: 'pediatric', code: 'PEDIATRIC_ER', primaryCategory: 'ORANGE', defaultCapacity: 6 },
-  { label: 'Maternity', shortLabel: 'Maternity', route: 'maternity', code: 'MATERNITY', primaryCategory: 'ORANGE', defaultCapacity: 4 },
+  {
+    label: 'Resuscitation',
+    shortLabel: 'Resus',
+    route: 'resus',
+    code: 'ER_RESUS',
+    primaryCategory: 'RED',
+    defaultCapacity: 4,
+  },
+  {
+    label: 'Acute Care',
+    shortLabel: 'Acute',
+    route: 'acute',
+    code: 'ER_ACUTE',
+    primaryCategory: 'ORANGE',
+    defaultCapacity: 10,
+  },
+  {
+    label: 'Trauma Bay',
+    shortLabel: 'Trauma',
+    route: 'trauma',
+    code: 'TRAUMA',
+    primaryCategory: 'RED',
+    defaultCapacity: 2,
+  },
+  {
+    label: 'Fast Track',
+    shortLabel: 'Fast Trk',
+    route: 'fast-track',
+    code: 'ER_FAST_TRACK',
+    primaryCategory: 'GREEN',
+    defaultCapacity: 12,
+  },
+  {
+    label: 'Observation',
+    shortLabel: 'Obs',
+    route: 'observation',
+    code: 'OBSERVATION',
+    primaryCategory: 'YELLOW',
+    defaultCapacity: 8,
+  },
+  {
+    label: 'Pediatric ER',
+    shortLabel: 'Peds',
+    route: 'pediatric',
+    code: 'PEDIATRIC_ER',
+    primaryCategory: 'ORANGE',
+    defaultCapacity: 6,
+  },
+  {
+    label: 'Maternity',
+    shortLabel: 'Maternity',
+    route: 'maternity',
+    code: 'MATERNITY',
+    primaryCategory: 'ORANGE',
+    defaultCapacity: 4,
+  },
 ];
 
 // =============================================================================
@@ -76,7 +125,12 @@ export const ZONE_METADATA: ZoneMetadata[] = [
  */
 export const CATEGORY_COLORS: Record<
   TriageCategory,
-  { bg: string; text: string; border: string; indicatorState: 'active' | 'down' | 'fixing' | 'idle' }
+  {
+    bg: string;
+    text: string;
+    border: string;
+    indicatorState: 'active' | 'down' | 'fixing' | 'idle';
+  }
 > = {
   RED: {
     bg: 'bg-destructive/10',

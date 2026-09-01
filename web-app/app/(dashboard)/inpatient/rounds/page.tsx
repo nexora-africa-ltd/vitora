@@ -77,19 +77,15 @@ export default function WardRoundsPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Ward Rounds"
           helpContent="View all ward round documentation. Track patient conditions, review SOAP notes, and monitor patients requiring consultant review."
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard
-            title="Today's Rounds"
-            value={stats.todayRounds}
-            icon={Stethoscope}
-          />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatsCard title="Today's Rounds" value={stats.todayRounds} icon={Stethoscope} />
           <StatsCard
             title="Critical Patients"
             value={stats.criticalPatients}
@@ -113,7 +109,7 @@ export default function WardRoundsPage() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row">
               <Select value={conditionFilter} onValueChange={setConditionFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Condition" />
@@ -146,7 +142,7 @@ export default function WardRoundsPage() {
         {/* Rounds List */}
         {isLoading ? (
           <Card>
-            <CardContent className="pt-6 space-y-4">
+            <CardContent className="space-y-4 pt-6">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
@@ -184,7 +180,8 @@ export default function WardRoundsPage() {
                 header: 'Date/Time',
                 sortable: true,
                 sortType: 'date',
-                sortFn: (a, b) => new Date(a.round_date).getTime() - new Date(b.round_date).getTime(),
+                sortFn: (a, b) =>
+                  new Date(a.round_date).getTime() - new Date(b.round_date).getTime(),
                 cell: (round) => (
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
@@ -200,7 +197,9 @@ export default function WardRoundsPage() {
                 sortable: true,
                 cell: (round) => (
                   <span className="text-sm">
-                    {round.review_type_display || reviewTypeLabels[round.review_type] || round.review_type}
+                    {round.review_type_display ||
+                      reviewTypeLabels[round.review_type] ||
+                      round.review_type}
                   </span>
                 ),
                 hideOnMobile: true,
@@ -230,9 +229,7 @@ export default function WardRoundsPage() {
                 header: 'Consultant',
                 cell: (round) =>
                   round.requires_consultant_review ? (
-                    <Badge variant="outline">
-                      {round.consultant_specialty || 'Required'}
-                    </Badge>
+                    <Badge variant="outline">{round.consultant_specialty || 'Required'}</Badge>
                   ) : (
                     <span className="text-muted-foreground">-</span>
                   ),
@@ -241,7 +238,7 @@ export default function WardRoundsPage() {
             ]}
             mobileCard={(round) => (
               <Card className="p-4">
-                <div className="flex justify-between items-start mb-2">
+                <div className="mb-2 flex items-start justify-between">
                   <div>
                     <p className="font-medium">{round.patient_name || 'Unknown'}</p>
                     <p className="text-sm text-muted-foreground">{round.admission_number}</p>
@@ -250,11 +247,13 @@ export default function WardRoundsPage() {
                     {round.condition_status}
                   </Badge>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  <span>{formatDate(round.round_date)} {formatTime(round.round_time)}</span>
+                  <span>
+                    {formatDate(round.round_date)} {formatTime(round.round_time)}
+                  </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-sm">
                     {round.review_type_display || reviewTypeLabels[round.review_type]}
                   </span>

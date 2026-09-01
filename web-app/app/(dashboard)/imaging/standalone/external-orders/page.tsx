@@ -7,12 +7,7 @@ import { Inbox, Check, X, ExternalLink, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/shared/page-header';
@@ -28,18 +23,14 @@ import { toast } from 'sonner';
 
 const statusColors: Record<ExternalImagingOrderStatus, string> = {
   RECEIVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  ACCEPTED:
-    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  ACCEPTED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
   REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  PROCESSING:
-    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-  COMPLETED:
-    'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300',
+  PROCESSING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+  COMPLETED: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300',
 };
 
 export default function ExternalImagingOrdersPage() {
-  const [rejectDialog, setRejectDialog] =
-    useState<ExternalImagingOrderRequest | null>(null);
+  const [rejectDialog, setRejectDialog] = useState<ExternalImagingOrderRequest | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const { refresh, isRefreshing } = usePageRefresh();
   const queryClient = useQueryClient();
@@ -50,8 +41,7 @@ export default function ExternalImagingOrdersPage() {
   });
 
   const acceptMutation = useMutation({
-    mutationFn: (id: number) =>
-      standaloneImagingApi.acceptExternalOrder(id),
+    mutationFn: (id: number) => standaloneImagingApi.acceptExternalOrder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['external-imaging-orders'] });
       toast.success('External order accepted and imaging order created');
@@ -89,9 +79,7 @@ export default function ExternalImagingOrdersPage() {
       cell: (item: ExternalImagingOrderRequest) => (
         <div className="flex items-center gap-1">
           <ExternalLink className="h-3 w-3 text-muted-foreground" />
-          <span className="truncate max-w-[150px]">
-            {item.sending_facility}
-          </span>
+          <span className="max-w-[150px] truncate">{item.sending_facility}</span>
         </div>
       ),
     },
@@ -123,8 +111,7 @@ export default function ExternalImagingOrdersPage() {
       header: 'Received',
       sortable: true,
       sortType: 'date' as const,
-      cell: (item: ExternalImagingOrderRequest) =>
-        new Date(item.created_at).toLocaleString(),
+      cell: (item: ExternalImagingOrderRequest) => new Date(item.created_at).toLocaleString(),
       hideOnMobile: true,
     },
     {
@@ -143,7 +130,7 @@ export default function ExternalImagingOrdersPage() {
               }}
               disabled={acceptMutation.isPending}
             >
-              <Check className="h-3 w-3 mr-1" /> Accept
+              <Check className="mr-1 h-3 w-3" /> Accept
             </Button>
             <Button
               size="sm"
@@ -154,15 +141,14 @@ export default function ExternalImagingOrdersPage() {
                 setRejectDialog(item);
               }}
             >
-              <X className="h-3 w-3 mr-1" /> Reject
+              <X className="mr-1 h-3 w-3" /> Reject
             </Button>
           </div>
         ) : null,
     },
   ];
 
-  const pendingCount =
-    data?.results.filter((o) => o.status === 'RECEIVED').length || 0;
+  const pendingCount = data?.results.filter((o) => o.status === 'RECEIVED').length || 0;
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
@@ -177,8 +163,7 @@ export default function ExternalImagingOrdersPage() {
             <CardContent className="flex items-center gap-3 py-3">
               <AlertCircle className="h-5 w-5 text-blue-600" />
               <span className="text-sm font-medium">
-                {pendingCount} pending order{pendingCount > 1 ? 's' : ''}{' '}
-                awaiting review
+                {pendingCount} pending order{pendingCount > 1 ? 's' : ''} awaiting review
               </span>
             </CardContent>
           </Card>
@@ -205,10 +190,7 @@ export default function ExternalImagingOrdersPage() {
         </Card>
 
         {/* Reject Dialog */}
-        <Dialog
-          open={!!rejectDialog}
-          onOpenChange={() => setRejectDialog(null)}
-        >
+        <Dialog open={!!rejectDialog} onOpenChange={() => setRejectDialog(null)}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Reject Order</DialogTitle>
@@ -217,8 +199,7 @@ export default function ExternalImagingOrdersPage() {
               <p className="text-sm text-muted-foreground">
                 Rejecting order{' '}
                 <span className="font-mono">
-                  {rejectDialog?.placer_order_number ||
-                    rejectDialog?.message_control_id}
+                  {rejectDialog?.placer_order_number || rejectDialog?.message_control_id}
                 </span>{' '}
                 from {rejectDialog?.sending_facility}
               </p>
@@ -232,10 +213,7 @@ export default function ExternalImagingOrdersPage() {
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setRejectDialog(null)}
-                >
+                <Button variant="outline" onClick={() => setRejectDialog(null)}>
                   Cancel
                 </Button>
                 <Button

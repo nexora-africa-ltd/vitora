@@ -24,11 +24,7 @@ import type { PatientInsuranceCreateInput } from '@/lib/types/insurance';
 
 const MAX_CARD_IMAGE_SIZE_MB = 5;
 const MAX_CARD_IMAGE_SIZE_BYTES = MAX_CARD_IMAGE_SIZE_MB * 1024 * 1024;
-const ALLOWED_CARD_IMAGE_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-]);
+const ALLOWED_CARD_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
@@ -71,7 +67,12 @@ export default function InsuranceEnrollmentDetailPage() {
   const params = useParams<{ id: string }>();
   const enrollmentId = Number(params?.id);
 
-  const { data: enrollment, isLoading, isError, refetch } = usePatientInsurance(Number.isFinite(enrollmentId) ? enrollmentId : undefined);
+  const {
+    data: enrollment,
+    isLoading,
+    isError,
+    refetch,
+  } = usePatientInsurance(Number.isFinite(enrollmentId) ? enrollmentId : undefined);
   const updateEnrollment = useUpdateEnrollment();
   const postHealthcloudProfile = usePostHealthcloudProfile();
   const getHealthcloudHealthId = useGetHealthcloudHealthId();
@@ -194,7 +195,8 @@ export default function InsuranceEnrollmentDetailPage() {
       });
       await refetch();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to post profile to Health CRM.';
+      const message =
+        error instanceof Error ? error.message : 'Failed to post profile to Health CRM.';
       toast({ title: 'Post profile failed', description: message, variant: 'destructive' });
     }
   };
@@ -242,9 +244,7 @@ export default function InsuranceEnrollmentDetailPage() {
               Back to Enrollments
             </Button>
             {!isEditing ? (
-              <Button onClick={() => setIsEditing(true)}>
-                Edit
-              </Button>
+              <Button onClick={() => setIsEditing(true)}>Edit</Button>
             ) : (
               <>
                 <Button variant="outline" onClick={handleCancelEdit}>
@@ -293,94 +293,107 @@ export default function InsuranceEnrollmentDetailPage() {
             <Collapsible open={isHealthIdOpen} onOpenChange={setIsHealthIdOpen}>
               <CollapsibleContent>
                 <CardContent className="space-y-4">
-              {(() => {
-                const identity = extractHealthIdentitySnapshot(enrollment.last_eligibility_payload);
-                const resolvedProfileId = identity.profileRequestId || identity.profileId;
-                const hasHealthId = !!identity.healthId;
+                  {(() => {
+                    const identity = extractHealthIdentitySnapshot(
+                      enrollment.last_eligibility_payload
+                    );
+                    const resolvedProfileId = identity.profileRequestId || identity.profileId;
+                    const hasHealthId = !!identity.healthId;
 
-                return (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Profile Request ID</p>
-                        <p className="font-medium break-all">{identity.profileRequestId || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Profile ID</p>
-                        <p className="font-medium break-all">{identity.profileId || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Service Account Number</p>
-                        <p className="font-medium">{identity.serviceAccountNumber || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Health ID</p>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{identity.healthId || 'Pending'}</p>
-                          <Badge
-                            className={
-                              hasHealthId
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }
-                          >
-                            {hasHealthId ? 'Assigned' : 'Awaiting assignment'}
-                          </Badge>
+                    return (
+                      <>
+                        <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Profile Request ID</p>
+                            <p className="break-all font-medium">
+                              {identity.profileRequestId || 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Profile ID</p>
+                            <p className="break-all font-medium">{identity.profileId || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Service Account Number</p>
+                            <p className="font-medium">{identity.serviceAccountNumber || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Health ID</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{identity.healthId || 'Pending'}</p>
+                              <Badge
+                                className={
+                                  hasHealthId
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }
+                              >
+                                {hasHealthId ? 'Assigned' : 'Awaiting assignment'}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Profile Posted</p>
+                            <p className="font-medium">{formatOptionalDate(identity.postedAt)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Last Health ID Check</p>
+                            <p className="font-medium">{formatOptionalDate(identity.checkedAt)}</p>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Profile Posted</p>
-                        <p className="font-medium">{formatOptionalDate(identity.postedAt)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Last Health ID Check</p>
-                        <p className="font-medium">{formatOptionalDate(identity.checkedAt)}</p>
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label htmlFor="healthcrm-service-name">Service Name</Label>
-                        <Input
-                          id="healthcrm-service-name"
-                          value={serviceName}
-                          onChange={(e) => setServiceName(e.target.value)}
-                          placeholder="SLADE_ADVANTAGE"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="healthcrm-profile-id">Profile ID (optional override)</Label>
-                        <Input
-                          id="healthcrm-profile-id"
-                          value={profileIdInput}
-                          onChange={(e) => setProfileIdInput(e.target.value)}
-                          placeholder={resolvedProfileId || 'Auto-generated from patient identity when blank'}
-                        />
-                      </div>
-                    </div>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <div className="space-y-1">
+                            <Label htmlFor="healthcrm-service-name">Service Name</Label>
+                            <Input
+                              id="healthcrm-service-name"
+                              value={serviceName}
+                              onChange={(e) => setServiceName(e.target.value)}
+                              placeholder="SLADE_ADVANTAGE"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="healthcrm-profile-id">
+                              Profile ID (optional override)
+                            </Label>
+                            <Input
+                              id="healthcrm-profile-id"
+                              value={profileIdInput}
+                              onChange={(e) => setProfileIdInput(e.target.value)}
+                              placeholder={
+                                resolvedProfileId ||
+                                'Auto-generated from patient identity when blank'
+                              }
+                            />
+                          </div>
+                        </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => void handlePostProfile()}
-                        disabled={postHealthcloudProfile.isPending}
-                      >
-                        {postHealthcloudProfile.isPending ? 'Posting...' : 'Post Profile to Health CRM'}
-                      </Button>
-                      <Button
-                        onClick={() => void handlePollHealthId()}
-                        disabled={getHealthcloudHealthId.isPending}
-                      >
-                        {getHealthcloudHealthId.isPending ? 'Polling...' : 'Poll Health ID'}
-                      </Button>
-                    </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => void handlePostProfile()}
+                            disabled={postHealthcloudProfile.isPending}
+                          >
+                            {postHealthcloudProfile.isPending
+                              ? 'Posting...'
+                              : 'Post Profile to Health CRM'}
+                          </Button>
+                          <Button
+                            onClick={() => void handlePollHealthId()}
+                            disabled={getHealthcloudHealthId.isPending}
+                          >
+                            {getHealthcloudHealthId.isPending ? 'Polling...' : 'Poll Health ID'}
+                          </Button>
+                        </div>
 
-                    <p className="text-xs text-muted-foreground">
-                      Leave Profile ID empty to let backend derive a stable patient-based profile ID. Webhook endpoint (optional): <code>/api/insurance/healthcloud/webhooks/health-id/</code>
-                    </p>
-                  </>
-                );
-              })()}
+                        <p className="text-xs text-muted-foreground">
+                          Leave Profile ID empty to let backend derive a stable patient-based
+                          profile ID. Webhook endpoint (optional):{' '}
+                          <code>/api/insurance/healthcloud/webhooks/health-id/</code>
+                        </p>
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </CollapsibleContent>
             </Collapsible>
@@ -390,7 +403,7 @@ export default function InsuranceEnrollmentDetailPage() {
             <CardHeader>
               <CardTitle className="text-base">Enrollment Details</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <CardContent className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
               <div>
                 <p className="text-xs text-muted-foreground">Patient</p>
                 <p className="font-medium">{enrollment.patient_name}</p>
@@ -419,15 +432,18 @@ export default function InsuranceEnrollmentDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Valid From</p>
-                <p className="font-medium">{new Date(enrollment.valid_from).toLocaleDateString()}</p>
+                <p className="font-medium">
+                  {new Date(enrollment.valid_from).toLocaleDateString()}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Valid To</p>
                 <p className="font-medium">{new Date(enrollment.valid_to).toLocaleDateString()}</p>
               </div>
               {isEditing && (
-                <div className="md:col-span-2 rounded border p-3 text-xs text-muted-foreground">
-                  Guardrail: changing core identifiers (member number or plan) resets eligibility state and expires in-flight authorization sessions until re-verified.
+                <div className="rounded border p-3 text-xs text-muted-foreground md:col-span-2">
+                  Guardrail: changing core identifiers (member number or plan) resets eligibility
+                  state and expires in-flight authorization sessions until re-verified.
                 </div>
               )}
             </CardContent>
@@ -437,18 +453,22 @@ export default function InsuranceEnrollmentDetailPage() {
             <CardHeader>
               <CardTitle className="text-base">Card Images</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <p className="text-xs text-muted-foreground mb-2">Front</p>
-                {(frontPreview || (!removeFront && enrollment.card_image_front)) ? (
-                  <a href={frontPreview || enrollment.card_image_front || '#'} target="_blank" rel="noreferrer">
+                <p className="mb-2 text-xs text-muted-foreground">Front</p>
+                {frontPreview || (!removeFront && enrollment.card_image_front) ? (
+                  <a
+                    href={frontPreview || enrollment.card_image_front || '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     <Image
                       src={frontPreview || enrollment.card_image_front || ''}
                       alt="Insurance card front"
                       width={960}
                       height={640}
                       unoptimized
-                      className="h-56 w-full rounded border object-contain bg-muted"
+                      className="h-56 w-full rounded border bg-muted object-contain"
                     />
                   </a>
                 ) : (
@@ -484,16 +504,20 @@ export default function InsuranceEnrollmentDetailPage() {
                 )}
               </div>
               <div>
-                <p className="text-xs text-muted-foreground mb-2">Back</p>
-                {(backPreview || (!removeBack && enrollment.card_image_back)) ? (
-                  <a href={backPreview || enrollment.card_image_back || '#'} target="_blank" rel="noreferrer">
+                <p className="mb-2 text-xs text-muted-foreground">Back</p>
+                {backPreview || (!removeBack && enrollment.card_image_back) ? (
+                  <a
+                    href={backPreview || enrollment.card_image_back || '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     <Image
                       src={backPreview || enrollment.card_image_back || ''}
                       alt="Insurance card back"
                       width={960}
                       height={640}
                       unoptimized
-                      className="h-56 w-full rounded border object-contain bg-muted"
+                      className="h-56 w-full rounded border bg-muted object-contain"
                     />
                   </a>
                 ) : (
@@ -544,7 +568,7 @@ export default function InsuranceEnrollmentDetailPage() {
                   rows={4}
                 />
               ) : enrollment.notes ? (
-                <p className="text-sm whitespace-pre-wrap">{enrollment.notes}</p>
+                <p className="whitespace-pre-wrap text-sm">{enrollment.notes}</p>
               ) : (
                 <p className="text-sm text-muted-foreground">No notes added.</p>
               )}

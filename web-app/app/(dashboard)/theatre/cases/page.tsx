@@ -74,15 +74,26 @@ export default function TheatreCasesPage() {
     }
   }, [page, search, statusFilter, priorityFilter]);
 
-  useEffect(() => { fetchCases(); }, [fetchCases]);
+  useEffect(() => {
+    fetchCases();
+  }, [fetchCases]);
 
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, priorityFilter]);
 
   const totalPages = Math.ceil(totalCount / 20);
 
   return (
-    <PullToRefresh onRefresh={() => { refresh(); return fetchCases(); }} isRefreshing={isRefreshing} className="min-h-full">
+    <PullToRefresh
+      onRefresh={() => {
+        refresh();
+        return fetchCases();
+      }}
+      isRefreshing={isRefreshing}
+      className="min-h-full"
+    >
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Surgery Cases"
@@ -90,7 +101,7 @@ export default function TheatreCasesPage() {
           actions={
             <Button asChild>
               <CreateRouteLink href="/theatre/cases/new">
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Book Surgery</span>
               </CreateRouteLink>
             </Button>
@@ -100,12 +111,12 @@ export default function TheatreCasesPage() {
         {/* Filters */}
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by patient, MRN, or case #"
               className="pl-9"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -113,8 +124,10 @@ export default function TheatreCasesPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {STATUS_OPTIONS.map(o => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              {STATUS_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -123,8 +136,10 @@ export default function TheatreCasesPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {PRIORITY_OPTIONS.map(o => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              {PRIORITY_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -133,8 +148,8 @@ export default function TheatreCasesPage() {
         {/* Table */}
         <ResponsiveTable
           data={cases}
-          keyExtractor={c => c.id}
-          onRowClick={c => router.push(`/theatre/cases/${c.case_number}`)}
+          keyExtractor={(c) => c.id}
+          onRowClick={(c) => router.push(`/theatre/cases/${c.case_number}`)}
           isLoading={loading}
           emptyMessage="No cases found."
           columns={[
@@ -142,14 +157,14 @@ export default function TheatreCasesPage() {
               key: 'case_number',
               header: 'Case #',
               sortable: true,
-              cell: c => <span className="font-medium">{c.case_number}</span>,
+              cell: (c) => <span className="font-medium">{c.case_number}</span>,
             },
             {
               key: 'patient_name',
               header: 'Patient',
               sortable: true,
               sortFn: (a, b) => a.patient_name.localeCompare(b.patient_name),
-              cell: c => (
+              cell: (c) => (
                 <div>
                   <div className="truncate">{c.patient_name}</div>
                   <div className="text-xs text-muted-foreground">{c.patient_mrn}</div>
@@ -160,18 +175,20 @@ export default function TheatreCasesPage() {
               key: 'primary_procedure_name',
               header: 'Procedure',
               sortable: true,
-              cell: c => <span className="truncate">{c.primary_procedure_name}</span>,
+              cell: (c) => <span className="truncate">{c.primary_procedure_name}</span>,
             },
             {
               key: 'scheduled_date',
               header: 'Date',
               sortable: true,
               sortType: 'date' as const,
-              cell: c => (
+              cell: (c) => (
                 <div>
                   <div>{c.scheduled_date}</div>
                   {c.scheduled_start_time && (
-                    <div className="text-xs text-muted-foreground">{c.scheduled_start_time.slice(0, 5)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {c.scheduled_start_time.slice(0, 5)}
+                    </div>
                   )}
                 </div>
               ),
@@ -181,32 +198,37 @@ export default function TheatreCasesPage() {
               key: 'theatre_name',
               header: 'Theatre',
               sortable: true,
-              cell: c => c.theatre_name,
+              cell: (c) => c.theatre_name,
               hideOnMobile: true,
             },
             {
               key: 'status',
               header: 'Status',
               sortable: true,
-              cell: c => <TheatreCaseStatusBadge status={c.status} />,
+              cell: (c) => <TheatreCaseStatusBadge status={c.status} />,
             },
             {
               key: 'priority',
               header: 'Priority',
               sortable: true,
-              cell: c => <TheatreCasePriorityBadge priority={c.priority} />,
+              cell: (c) => <TheatreCasePriorityBadge priority={c.priority} />,
               hideOnMobile: true,
             },
           ]}
-          mobileCard={c => (
+          mobileCard={(c) => (
             <Card className="p-3">
-              <div className="flex justify-between items-start gap-2">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{c.primary_procedure_name}</p>
-                  <p className="text-sm text-muted-foreground truncate">{c.patient_name} &middot; {c.patient_mrn}</p>
-                  <p className="text-xs text-muted-foreground">{c.case_number} &middot; {c.scheduled_date} {c.scheduled_start_time?.slice(0, 5) || ''}</p>
+                  <p className="truncate font-medium">{c.primary_procedure_name}</p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {c.patient_name} &middot; {c.patient_mrn}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {c.case_number} &middot; {c.scheduled_date}{' '}
+                    {c.scheduled_start_time?.slice(0, 5) || ''}
+                  </p>
                 </div>
-                <div className="flex flex-col gap-1 items-end shrink-0">
+                <div className="flex shrink-0 flex-col items-end gap-1">
                   <TheatreCaseStatusBadge status={c.status} />
                   <TheatreCasePriorityBadge priority={c.priority} hideElective />
                 </div>
@@ -222,10 +244,20 @@ export default function TheatreCasesPage() {
               Page {page} of {totalPages} &middot; {totalCount} case{totalCount !== 1 ? 's' : ''}
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 Previous
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 Next
               </Button>
             </div>

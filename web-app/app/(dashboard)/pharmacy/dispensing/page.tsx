@@ -42,10 +42,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { pharmacyApi } from '@/lib/api/pharmacy';
-import {
-  usePrescription,
-  usePendingPrescriptions,
-} from '@/lib/hooks/use-pharmacy';
+import { usePrescription, usePendingPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { DispenseDialog } from '@/components/pharmacy/dispensing/dispense-dialog';
 import { PrescriptionItem, PrescriptionStatus } from '@/lib/types/pharmacy';
 
@@ -70,7 +67,8 @@ export default function DispensingPage() {
   });
   const pharmacyEnabled = bootstrap?.pharmacy_enabled ?? true;
   const canDispenseFromCapabilities = bootstrap?.permissions.can_dispense ?? true;
-  const canCreatePrescriptionFromCapabilities = bootstrap?.permissions.can_create_prescription ?? true;
+  const canCreatePrescriptionFromCapabilities =
+    bootstrap?.permissions.can_create_prescription ?? true;
 
   // If prescription ID is provided, show that prescription
   // Otherwise show the pending prescriptions queue
@@ -80,10 +78,7 @@ export default function DispensingPage() {
     error: prescriptionError,
   } = usePrescription(prescriptionId ? parseInt(prescriptionId) : 0);
 
-  const {
-    data: pendingPrescriptions,
-    isLoading: pendingLoading,
-  } = usePendingPrescriptions();
+  const { data: pendingPrescriptions, isLoading: pendingLoading } = usePendingPrescriptions();
 
   // Dialog state
   const [dispenseDialog, setDispenseDialog] = useState<{
@@ -101,8 +96,12 @@ export default function DispensingPage() {
             helpContent="Prescriptions waiting to be dispensed. Click on a prescription to review and dispense its medications."
             actions={
               <div className="flex gap-2">
-                <Badge variant="outline" className="w-fit">Dispense: {canDispenseFromCapabilities ? 'Enabled' : 'Disabled'}</Badge>
-                <Badge variant="outline" className="w-fit">Source: {bootstrap?.catalog_sources.dispense_item_source ?? 'catalog'}</Badge>
+                <Badge variant="outline" className="w-fit">
+                  Dispense: {canDispenseFromCapabilities ? 'Enabled' : 'Disabled'}
+                </Badge>
+                <Badge variant="outline" className="w-fit">
+                  Source: {bootstrap?.catalog_sources.dispense_item_source ?? 'catalog'}
+                </Badge>
               </div>
             }
           />
@@ -121,9 +120,7 @@ export default function DispensingPage() {
           <Card>
             <CardHeader>
               <CardTitle>Pending Prescriptions</CardTitle>
-              <CardDescription>
-                Click on a prescription to dispense
-              </CardDescription>
+              <CardDescription>Click on a prescription to dispense</CardDescription>
             </CardHeader>
             <CardContent>
               {pendingLoading ? (
@@ -133,8 +130,8 @@ export default function DispensingPage() {
                   ))}
                 </div>
               ) : !pendingPrescriptions?.length ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                <div className="py-8 text-center text-muted-foreground">
+                  <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-500" />
                   <p>No pending prescriptions</p>
                   <p className="text-sm">All prescriptions have been dispensed</p>
                 </div>
@@ -143,14 +140,14 @@ export default function DispensingPage() {
                   {pendingPrescriptions.map((rx) => (
                     <div
                       key={rx.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                      className="flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
                       onClick={() => {
                         if (!pharmacyEnabled) return;
                         router.push(`/pharmacy/dispensing?prescription=${rx.id}`);
                       }}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="p-2 bg-primary/10 rounded-full">
+                        <div className="rounded-full bg-primary/10 p-2">
                           <FileText className="h-5 w-5 text-primary" />
                         </div>
                         <div>
@@ -161,11 +158,14 @@ export default function DispensingPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-4">
-                        <Badge className={`${STATUS_COLORS[rx.effective_status ?? rx.status]} shrink-0 w-fit`}>
+                        <Badge
+                          className={`${STATUS_COLORS[rx.effective_status ?? rx.status]} w-fit shrink-0`}
+                        >
                           {rx.effective_status ?? rx.status}
                         </Badge>
-                        <div className="hidden sm:block text-sm text-muted-foreground">
-                          {rx.prescribed_date && format(new Date(rx.prescribed_date), 'MMM d, yyyy')}
+                        <div className="hidden text-sm text-muted-foreground sm:block">
+                          {rx.prescribed_date &&
+                            format(new Date(rx.prescribed_date), 'MMM d, yyyy')}
                         </div>
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                       </div>
@@ -203,16 +203,21 @@ export default function DispensingPage() {
   if (prescriptionError || !prescription) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <AlertCircle className="mb-4 h-12 w-12 text-destructive" />
         <p className="text-destructive">Failed to load prescription</p>
-        <Button variant="outline" className="mt-4" onClick={() => router.push('/pharmacy/dispensing')}>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => router.push('/pharmacy/dispensing')}
+        >
           Back to Queue
         </Button>
       </div>
     );
   }
 
-  const isExpired = prescription.effective_status === 'EXPIRED' || prescription.status === 'EXPIRED';
+  const isExpired =
+    prescription.effective_status === 'EXPIRED' || prescription.status === 'EXPIRED';
   const canDispense =
     pharmacyEnabled &&
     canDispenseFromCapabilities &&
@@ -226,7 +231,9 @@ export default function DispensingPage() {
           title={`Dispense: ${prescription.prescription_number}`}
           helpContent="Review and dispense medications for this prescription. Each item can be dispensed individually."
           actions={
-            <Badge className={`${STATUS_COLORS[prescription.effective_status ?? prescription.status]} shrink-0 w-fit`}>
+            <Badge
+              className={`${STATUS_COLORS[prescription.effective_status ?? prescription.status]} w-fit shrink-0`}
+            >
               {prescription.effective_status ?? prescription.status}
             </Badge>
           }
@@ -246,19 +253,22 @@ export default function DispensingPage() {
                 . Expired prescriptions cannot be dispensed for patient safety.
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                {canPerformAction('pharmacy.create_prescription') && canCreatePrescriptionFromCapabilities && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full sm:w-auto border-destructive/30 hover:bg-destructive/10"
-                    asChild
-                  >
-                    <Link href={`/pharmacy/prescriptions/new?patient=${prescription.patient}${prescription.encounter ? `&encounter=${prescription.encounter}` : ''}`}>
-                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                      Create New Prescription
-                    </Link>
-                  </Button>
-                )}
+                {canPerformAction('pharmacy.create_prescription') &&
+                  canCreatePrescriptionFromCapabilities && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-destructive/30 hover:bg-destructive/10 sm:w-auto"
+                      asChild
+                    >
+                      <Link
+                        href={`/pharmacy/prescriptions/new?patient=${prescription.patient}${prescription.encounter ? `&encounter=${prescription.encounter}` : ''}`}
+                      >
+                        <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                        Create New Prescription
+                      </Link>
+                    </Button>
+                  )}
                 <span className="text-xs text-muted-foreground">
                   Contact the prescriber to issue a renewal if the medication is still needed.
                 </span>
@@ -268,18 +278,19 @@ export default function DispensingPage() {
         )}
 
         {/* Patient & Prescription Summary Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-sm font-medium truncate">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="truncate text-sm font-medium">
               {prescription.patient_name}
               <span className="text-muted-foreground"> • {prescription.patient_mrn}</span>
             </p>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               Prescribed by {prescription.prescriber_name} on{' '}
-              {prescription.prescribed_date && format(new Date(prescription.prescribed_date), 'MMM d, yyyy')}
+              {prescription.prescribed_date &&
+                format(new Date(prescription.prescribed_date), 'MMM d, yyyy')}
             </p>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground shrink-0">
+          <p className="shrink-0 text-xs text-muted-foreground sm:text-sm">
             Valid until{' '}
             {prescription.valid_until && format(new Date(prescription.valid_until), 'MMM d, yyyy')}
           </p>
@@ -336,7 +347,9 @@ export default function DispensingPage() {
                         <TableCell>{item.frequency}</TableCell>
                         <TableCell>{item.duration}</TableCell>
                         <TableCell className="text-center">{item.quantity_prescribed}</TableCell>
-                        <TableCell className="text-center">{item.quantity_dispensed || 0}</TableCell>
+                        <TableCell className="text-center">
+                          {item.quantity_dispensed || 0}
+                        </TableCell>
                         <TableCell className="text-center">
                           <Badge variant={isFullyDispensed ? 'secondary' : 'outline'}>
                             {remaining}
@@ -349,7 +362,7 @@ export default function DispensingPage() {
                             </Badge>
                           ) : isFullyDispensed ? (
                             <Badge className="bg-green-100 text-green-800">
-                              <CheckCircle className="h-3 w-3 mr-1" />
+                              <CheckCircle className="mr-1 h-3 w-3" />
                               Dispensed
                             </Badge>
                           ) : canDispense ? (
@@ -357,7 +370,7 @@ export default function DispensingPage() {
                               size="sm"
                               onClick={() => setDispenseDialog({ isOpen: true, item })}
                             >
-                              <Pill className="h-4 w-4 mr-1" />
+                              <Pill className="mr-1 h-4 w-4" />
                               Dispense
                             </Button>
                           ) : (

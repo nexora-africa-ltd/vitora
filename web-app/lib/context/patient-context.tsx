@@ -71,7 +71,8 @@ export interface PatientProviderProps {
 }
 
 export function PatientProvider({ patientId, children }: PatientProviderProps) {
-  const hasPatientId = patientId !== null && patientId !== undefined && String(patientId).length > 0;
+  const hasPatientId =
+    patientId !== null && patientId !== undefined && String(patientId).length > 0;
 
   // Access patient journey store
   const {
@@ -113,7 +114,7 @@ export function PatientProvider({ patientId, children }: PatientProviderProps) {
       // Select this patient for UI operations
       selectPatient(patient.id);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- Store actions are stable, only sync on patient changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Store actions are stable, only sync on patient changes
   }, [patient?.id, hasPatientId]);
 
   // Get journey stage for this patient
@@ -139,23 +140,22 @@ export function PatientProvider({ patientId, children }: PatientProviderProps) {
   }, [patient]);
 
   // Build context value (memoized to prevent unnecessary rerenders)
-  const contextValue = useMemo<PatientContextValue>(() => ({
-    patient: patient ?? null,
-    isLoading,
-    error: error as Error | null,
-    isVerified,
-    hasSHA,
-    isSensitive,
-    patientId,
-    refetch,
-    journeyStage,
-  }), [patient, isLoading, error, isVerified, hasSHA, isSensitive, patientId, refetch, journeyStage]);
-
-  return (
-    <PatientContext.Provider value={contextValue}>
-      {children}
-    </PatientContext.Provider>
+  const contextValue = useMemo<PatientContextValue>(
+    () => ({
+      patient: patient ?? null,
+      isLoading,
+      error: error as Error | null,
+      isVerified,
+      hasSHA,
+      isSensitive,
+      patientId,
+      refetch,
+      journeyStage,
+    }),
+    [patient, isLoading, error, isVerified, hasSHA, isSensitive, patientId, refetch, journeyStage]
   );
+
+  return <PatientContext.Provider value={contextValue}>{children}</PatientContext.Provider>;
 }
 
 // =============================================================================

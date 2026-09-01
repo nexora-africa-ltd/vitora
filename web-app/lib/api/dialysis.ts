@@ -113,7 +113,9 @@ function buildParams<T extends object>(params: T): string {
 
 export const dialysisApi = {
   // Vascular Access
-  async listAccesses(params: VascularAccessListParams = {}): Promise<PaginatedResponse<VascularAccess>> {
+  async listAccesses(
+    params: VascularAccessListParams = {}
+  ): Promise<PaginatedResponse<VascularAccess>> {
     const response = await apiClient.get(`/api/dialysis/accesses/${buildParams(params)}`);
     return parseResponse(PaginatedVascularAccessSchema, response.data, {
       context: 'dialysisApi.listAccesses',
@@ -127,16 +129,22 @@ export const dialysisApi = {
 
   async createAccess(data: VascularAccessCreateData): Promise<VascularAccess> {
     const response = await apiClient.post('/api/dialysis/accesses/', data);
-    return parseResponse(VascularAccessSchema, response.data, { context: 'dialysisApi.createAccess' });
+    return parseResponse(VascularAccessSchema, response.data, {
+      context: 'dialysisApi.createAccess',
+    });
   },
 
   async updateAccess(id: number, data: Partial<VascularAccessCreateData>): Promise<VascularAccess> {
     const response = await apiClient.patch(`/api/dialysis/accesses/${id}/`, data);
-    return parseResponse(VascularAccessSchema, response.data, { context: 'dialysisApi.updateAccess' });
+    return parseResponse(VascularAccessSchema, response.data, {
+      context: 'dialysisApi.updateAccess',
+    });
   },
 
   // Orders
-  async listOrders(params: DialysisOrderListParams = {}): Promise<PaginatedResponse<DialysisOrder>> {
+  async listOrders(
+    params: DialysisOrderListParams = {}
+  ): Promise<PaginatedResponse<DialysisOrder>> {
     const response = await apiClient.get(`/api/dialysis/orders/${buildParams(params)}`);
     return parseResponse(PaginatedDialysisOrderSchema, response.data, {
       context: 'dialysisApi.listOrders',
@@ -150,21 +158,29 @@ export const dialysisApi = {
 
   async createOrder(data: DialysisOrderCreateData): Promise<DialysisOrder> {
     const response = await apiClient.post('/api/dialysis/orders/', data);
-    return parseResponse(DialysisOrderSchema, response.data, { context: 'dialysisApi.createOrder' });
+    return parseResponse(DialysisOrderSchema, response.data, {
+      context: 'dialysisApi.createOrder',
+    });
   },
 
   async suspendOrder(id: number): Promise<DialysisOrder> {
     const response = await apiClient.post(`/api/dialysis/orders/${id}/suspend/`);
-    return parseResponse(DialysisOrderSchema, response.data, { context: 'dialysisApi.suspendOrder' });
+    return parseResponse(DialysisOrderSchema, response.data, {
+      context: 'dialysisApi.suspendOrder',
+    });
   },
 
   async resumeOrder(id: number): Promise<DialysisOrder> {
     const response = await apiClient.post(`/api/dialysis/orders/${id}/resume/`);
-    return parseResponse(DialysisOrderSchema, response.data, { context: 'dialysisApi.resumeOrder' });
+    return parseResponse(DialysisOrderSchema, response.data, {
+      context: 'dialysisApi.resumeOrder',
+    });
   },
 
   // Sessions
-  async listSessions(params: DialysisSessionListParams = {}): Promise<PaginatedResponse<DialysisSession>> {
+  async listSessions(
+    params: DialysisSessionListParams = {}
+  ): Promise<PaginatedResponse<DialysisSession>> {
     const response = await apiClient.get(`/api/dialysis/sessions/${buildParams(params)}`);
     return parseResponse(PaginatedDialysisSessionSchema, response.data, {
       context: 'dialysisApi.listSessions',
@@ -173,26 +189,42 @@ export const dialysisApi = {
 
   async getSession(id: number): Promise<DialysisSession> {
     const response = await apiClient.get(`/api/dialysis/sessions/${id}/`);
-    return parseResponse(DialysisSessionSchema, response.data, { context: 'dialysisApi.getSession' });
+    return parseResponse(DialysisSessionSchema, response.data, {
+      context: 'dialysisApi.getSession',
+    });
   },
 
   async createSession(data: DialysisSessionCreateData): Promise<DialysisSession> {
     const response = await apiClient.post('/api/dialysis/sessions/', data);
-    return parseResponse(DialysisSessionSchema, response.data, { context: 'dialysisApi.createSession' });
+    return parseResponse(DialysisSessionSchema, response.data, {
+      context: 'dialysisApi.createSession',
+    });
   },
 
   async startSession(id: number): Promise<DialysisSession> {
     const response = await apiClient.post(`/api/dialysis/sessions/${id}/start/`);
-    return parseResponse(DialysisSessionSchema, response.data, { context: 'dialysisApi.startSession' });
+    return parseResponse(DialysisSessionSchema, response.data, {
+      context: 'dialysisApi.startSession',
+    });
   },
 
-  async completeSession(id: number, postVitals?: Record<string, unknown>): Promise<DialysisSession> {
-    const response = await apiClient.post(`/api/dialysis/sessions/${id}/complete/`, postVitals || {});
-    return parseResponse(DialysisSessionSchema, response.data, { context: 'dialysisApi.completeSession' });
+  async completeSession(
+    id: number,
+    postVitals?: Record<string, unknown>
+  ): Promise<DialysisSession> {
+    const response = await apiClient.post(
+      `/api/dialysis/sessions/${id}/complete/`,
+      postVitals || {}
+    );
+    return parseResponse(DialysisSessionSchema, response.data, {
+      context: 'dialysisApi.completeSession',
+    });
   },
 
   async abortSession(id: number, reason: string): Promise<DialysisSession> {
     const response = await apiClient.post(`/api/dialysis/sessions/${id}/abort/`, { reason });
-    return parseResponse(DialysisSessionSchema, response.data, { context: 'dialysisApi.abortSession' });
+    return parseResponse(DialysisSessionSchema, response.data, {
+      context: 'dialysisApi.abortSession',
+    });
   },
 };

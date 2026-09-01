@@ -4,7 +4,20 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Baby, Calendar, CalendarPlus, ExternalLink, FileText, Heart, Loader2, Shield, Stethoscope, Syringe, TrendingUp } from 'lucide-react';
+import {
+  AlertTriangle,
+  Baby,
+  Calendar,
+  CalendarPlus,
+  ExternalLink,
+  FileText,
+  Heart,
+  Loader2,
+  Shield,
+  Stethoscope,
+  Syringe,
+  TrendingUp,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Badge } from '@/components/ui/badge';
@@ -61,21 +74,20 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
 
   const registrationId = parseInt(id, 10);
   const requestedTab = searchParams.get('tab');
-  const defaultTab = requestedTab === 'pnc'
-    ? 'pnc'
-    : requestedTab === 'delivery'
-      ? 'delivery'
-      : requestedTab === 'partograph'
-        ? 'partograph'
-        : 'anc';
+  const defaultTab =
+    requestedTab === 'pnc'
+      ? 'pnc'
+      : requestedTab === 'delivery'
+        ? 'delivery'
+        : requestedTab === 'partograph'
+          ? 'partograph'
+          : 'anc';
   const linkedClinicVisitId = Number(searchParams.get('clinic_visit_id'));
   const linkedEncounterId = Number(searchParams.get('encounter_id'));
-  const activeClinicVisitId = Number.isFinite(linkedClinicVisitId) && linkedClinicVisitId > 0
-    ? linkedClinicVisitId
-    : null;
-  const activeEncounterId = Number.isFinite(linkedEncounterId) && linkedEncounterId > 0
-    ? linkedEncounterId
-    : null;
+  const activeClinicVisitId =
+    Number.isFinite(linkedClinicVisitId) && linkedClinicVisitId > 0 ? linkedClinicVisitId : null;
+  const activeEncounterId =
+    Number.isFinite(linkedEncounterId) && linkedEncounterId > 0 ? linkedEncounterId : null;
 
   const {
     data: registration,
@@ -180,7 +192,7 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
 
   if (error || !registration) {
     return (
-      <div className="text-center py-12">
+      <div className="py-12 text-center">
         <p className="text-destructive">Failed to load MCH registration.</p>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/mch')}>
           Back to Registrations
@@ -191,9 +203,10 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
 
   const isDelivered = ['DELIVERED', 'POSTNATAL', 'COMPLETED'].includes(registration.status);
 
-  const daysToEDD = registration.edd && !isDelivered
-    ? Math.ceil((new Date(registration.edd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : null;
+  const daysToEDD =
+    registration.edd && !isDelivered
+      ? Math.ceil((new Date(registration.edd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : null;
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
@@ -210,7 +223,7 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
                   onClick={() => setShowScheduleDialog(true)}
                   disabled={scheduleANCMutation.isPending}
                 >
-                  <CalendarPlus className="h-4 w-4 mr-1.5" />
+                  <CalendarPlus className="mr-1.5 h-4 w-4" />
                   <span className="sm:hidden">Schedule</span>
                   <span className="hidden sm:inline">Schedule ANC Visit</span>
                 </Button>
@@ -220,9 +233,9 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
                   disabled={routeToANCMutation.isPending}
                 >
                   {routeToANCMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                   ) : (
-                    <Stethoscope className="h-4 w-4 mr-1.5" />
+                    <Stethoscope className="mr-1.5 h-4 w-4" />
                   )}
                   <span className="sm:hidden">ANC Queue</span>
                   <span className="hidden sm:inline">Send to ANC Queue</span>
@@ -236,9 +249,9 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
                   disabled={routeToPNCMutation.isPending}
                 >
                   {routeToPNCMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                   ) : (
-                    <Heart className="h-4 w-4 mr-1.5" />
+                    <Heart className="mr-1.5 h-4 w-4" />
                   )}
                   <span className="sm:hidden">PNC Queue</span>
                   <span className="hidden sm:inline">Send to PNC Queue</span>
@@ -263,15 +276,15 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
         ) : null}
 
         {/* Summary Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-4 rounded-lg bg-muted/50">
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-lg font-semibold truncate">
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="truncate text-lg font-semibold">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Link
                       href={`/patients/${registration.mother}`}
-                      className="hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors duration-200"
+                      className="transition-colors duration-200 hover:text-sky-600 hover:underline dark:hover:text-sky-400"
                     >
                       {registration.mother_name}
                     </Link>
@@ -279,7 +292,10 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
                   <TooltipContent>View mother&apos;s patient record</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <span className="text-muted-foreground font-normal"> • {registration.mother_mrn}</span>
+              <span className="font-normal text-muted-foreground">
+                {' '}
+                • {registration.mother_mrn}
+              </span>
             </p>
             <p className="text-sm text-muted-foreground">
               Registered {formatDate(registration.registration_date)}
@@ -288,18 +304,18 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
               )}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge className={`${statusColors[registration.status]} shrink-0`}>
               {registration.status.replace(/_/g, ' ')}
             </Badge>
             {registration.is_high_risk && (
-              <Badge variant="destructive" className="gap-1 shrink-0">
+              <Badge variant="destructive" className="shrink-0 gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 High Risk
               </Badge>
             )}
             {registration.is_sensitive && (
-              <Badge variant="outline" className="gap-1 shrink-0 border-orange-500 text-orange-500">
+              <Badge variant="outline" className="shrink-0 gap-1 border-orange-500 text-orange-500">
                 <Shield className="h-3 w-3" />
                 Sensitive
               </Badge>
@@ -337,19 +353,25 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">ANC Visits</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                ANC Visits
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{registration.anc_visit_count}</p>
               <p className="text-xs text-muted-foreground">
-                {registration.anc_visit_count >= 4 ? 'Target met' : `${4 - registration.anc_visit_count} more recommended`}
+                {registration.anc_visit_count >= 4
+                  ? 'Target met'
+                  : `${4 - registration.anc_visit_count} more recommended`}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">PNC Visits</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                PNC Visits
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{registration.pnc_visit_count}</p>
@@ -359,9 +381,9 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
 
         {/* Risk Factors */}
         {registration.risk_factors && (
-          <Card className="border-orange-200 bg-orange">
+          <Card className="bg-orange border-orange-200">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2 text-orange-700">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-orange-700">
                 <AlertTriangle className="h-4 w-4" />
                 Risk Factors
               </CardTitle>
@@ -375,34 +397,34 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
         {/* Baby Info (if delivered) */}
         {registration.baby && (
           <div className="pt-1">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href={`/patients/${registration.baby}`}>
-                  <Card className="border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 dark:hover:bg-sky-900/50 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium flex items-center gap-2 text-sky-700 dark:text-sky-400">
-                        <Baby className="h-4 w-4" />
-                        Baby Information
-                        <ExternalLink className="h-3.5 w-3.5 ml-auto text-sky-400 dark:text-sky-500" />
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="font-medium">{registration.baby_name}</p>
-                      <p className="text-sm text-muted-foreground">{registration.baby_mrn}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>View baby&apos;s patient record</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href={`/patients/${registration.baby}`}>
+                    <Card className="cursor-pointer border-sky-300 bg-sky-50 shadow-sm transition-all duration-200 hover:scale-[1.01] hover:bg-sky-100 hover:shadow-md active:scale-[0.99] dark:border-sky-700 dark:bg-sky-950/40 dark:hover:bg-sky-900/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-sky-400">
+                          <Baby className="h-4 w-4" />
+                          Baby Information
+                          <ExternalLink className="ml-auto h-3.5 w-3.5 text-sky-400 dark:text-sky-500" />
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="font-medium">{registration.baby_name}</p>
+                        <p className="text-sm text-muted-foreground">{registration.baby_mrn}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>View baby&apos;s patient record</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         )}
 
         {/* Tabs */}
         <Tabs defaultValue={defaultTab} className="space-y-4">
-          <TabsList className="flex-wrap h-auto gap-1">
+          <TabsList className="h-auto flex-wrap gap-1">
             <TabsTrigger value="anc" className="gap-2">
               <Calendar className="h-4 w-4" />
               <span className="sm:hidden">ANC</span>
@@ -492,13 +514,13 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
         {registration.notes && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
                 <FileText className="h-4 w-4" />
                 Notes
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{registration.notes}</p>
+              <p className="whitespace-pre-wrap text-sm">{registration.notes}</p>
             </CardContent>
           </Card>
         )}
@@ -517,7 +539,10 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
             onSubmit={(e) => {
               e.preventDefault();
               if (scheduleDate) {
-                scheduleANCMutation.mutate({ date: scheduleDate, notes: scheduleNotes || undefined });
+                scheduleANCMutation.mutate({
+                  date: scheduleDate,
+                  notes: scheduleNotes || undefined,
+                });
               }
             }}
             className="space-y-4"
@@ -553,7 +578,9 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
                 Cancel
               </Button>
               <Button type="submit" disabled={!scheduleDate || scheduleANCMutation.isPending}>
-                {scheduleANCMutation.isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                {scheduleANCMutation.isPending && (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                )}
                 Schedule
               </Button>
             </DialogFooter>

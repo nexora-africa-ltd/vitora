@@ -60,8 +60,12 @@ import type {
 
 export const departmentsApi = {
   list: async (params?: DepartmentListParams): Promise<PaginatedResponse<Department>> => {
-    const response = await apiClient.get<PaginatedResponse<Department>>('/api/departments/', { params });
-    return parseResponse(PaginatedDepartmentSchema, response.data, { context: 'departmentsApi.list' });
+    const response = await apiClient.get<PaginatedResponse<Department>>('/api/departments/', {
+      params,
+    });
+    return parseResponse(PaginatedDepartmentSchema, response.data, {
+      context: 'departmentsApi.list',
+    });
   },
 
   get: async (id: number): Promise<Department> => {
@@ -126,10 +130,16 @@ export const rolesApi = {
    * Sync all roles from the default roles.json fixture.
    * Superusers only.
    */
-  syncDefaults: async (): Promise<{ message: string; roles_updated: number; permissions_synced: number }> => {
-    const response = await apiClient.post<{ message: string; roles_updated: number; permissions_synced: number }>(
-      '/api/roles/sync-defaults/'
-    );
+  syncDefaults: async (): Promise<{
+    message: string;
+    roles_updated: number;
+    permissions_synced: number;
+  }> => {
+    const response = await apiClient.post<{
+      message: string;
+      roles_updated: number;
+      permissions_synced: number;
+    }>('/api/roles/sync-defaults/');
     return parseResponse(
       z.object({
         message: z.string(),
@@ -149,12 +159,16 @@ export const rolesApi = {
 export const permissionsApi = {
   list: async (): Promise<Permission[]> => {
     const response = await apiClient.get<Permission[]>('/api/permissions/');
-    return parseResponse(z.array(PermissionSchema), response.data, { context: 'permissionsApi.list' });
+    return parseResponse(z.array(PermissionSchema), response.data, {
+      context: 'permissionsApi.list',
+    });
   },
 
   getMyPermissions: async (): Promise<UserPermissions> => {
     const response = await apiClient.get<UserPermissions>('/api/me/permissions/');
-    return parseResponse(UserPermissionsSchema, response.data, { context: 'permissionsApi.getMyPermissions' });
+    return parseResponse(UserPermissionsSchema, response.data, {
+      context: 'permissionsApi.getMyPermissions',
+    });
   },
 };
 
@@ -164,7 +178,9 @@ export const permissionsApi = {
 
 export const staffApi = {
   list: async (params?: StaffListParams): Promise<PaginatedResponse<StaffProfile>> => {
-    const response = await apiClient.get<PaginatedResponse<StaffProfile>>('/api/staff/', { params });
+    const response = await apiClient.get<PaginatedResponse<StaffProfile>>('/api/staff/', {
+      params,
+    });
     return parseResponse(PaginatedStaffProfileSchema, response.data, { context: 'staffApi.list' });
   },
 
@@ -216,19 +232,30 @@ export const staffApi = {
     const response = await apiClient.get<UsernameCheckResponse>('/api/staff/check_username/', {
       params: { username },
     });
-    return parseResponse(UsernameCheckResponseSchema, response.data, { context: 'staffApi.checkUsername' });
+    return parseResponse(UsernameCheckResponseSchema, response.data, {
+      context: 'staffApi.checkUsername',
+    });
   },
 
   /**
    * Suggest unique usernames based on name
    */
-  suggestUsername: async (firstName: string, lastName: string, middleName?: string): Promise<UsernameSuggestionResponse> => {
-    const response = await apiClient.post<UsernameSuggestionResponse>('/api/staff/suggest_username/', {
-      first_name: firstName,
-      last_name: lastName,
-      middle_name: middleName || '',
+  suggestUsername: async (
+    firstName: string,
+    lastName: string,
+    middleName?: string
+  ): Promise<UsernameSuggestionResponse> => {
+    const response = await apiClient.post<UsernameSuggestionResponse>(
+      '/api/staff/suggest_username/',
+      {
+        first_name: firstName,
+        last_name: lastName,
+        middle_name: middleName || '',
+      }
+    );
+    return parseResponse(UsernameSuggestionResponseSchema, response.data, {
+      context: 'staffApi.suggestUsername',
     });
-    return parseResponse(UsernameSuggestionResponseSchema, response.data, { context: 'staffApi.suggestUsername' });
   },
 
   /**
@@ -264,18 +291,27 @@ export const staffApi = {
 
 export const orgMembershipsApi = {
   list: async (params?: OrgMembershipListParams): Promise<PaginatedResponse<OrgMembership>> => {
-    const response = await apiClient.get<PaginatedResponse<OrgMembership>>('/api/org-memberships/', { params });
-    return parseResponse(PaginatedOrgMembershipSchema, response.data, { context: 'orgMembershipsApi.list' });
+    const response = await apiClient.get<PaginatedResponse<OrgMembership>>(
+      '/api/org-memberships/',
+      { params }
+    );
+    return parseResponse(PaginatedOrgMembershipSchema, response.data, {
+      context: 'orgMembershipsApi.list',
+    });
   },
 
   create: async (data: OrgMembershipCreateData): Promise<OrgMembership> => {
     const response = await apiClient.post<OrgMembership>('/api/org-memberships/', data);
-    return parseResponse(OrgMembershipSchema, response.data, { context: 'orgMembershipsApi.create' });
+    return parseResponse(OrgMembershipSchema, response.data, {
+      context: 'orgMembershipsApi.create',
+    });
   },
 
   update: async (id: number, data: OrgMembershipUpdateData): Promise<OrgMembership> => {
     const response = await apiClient.patch<OrgMembership>(`/api/org-memberships/${id}/`, data);
-    return parseResponse(OrgMembershipSchema, response.data, { context: 'orgMembershipsApi.update' });
+    return parseResponse(OrgMembershipSchema, response.data, {
+      context: 'orgMembershipsApi.update',
+    });
   },
 
   delete: async (id: number): Promise<void> => {
@@ -289,7 +325,9 @@ export const orgMembershipsApi = {
 
 export const auditLogsApi = {
   list: async (params?: AuditLogListParams): Promise<PaginatedResponse<AuditLogEntry>> => {
-    const response = await apiClient.get<PaginatedResponse<AuditLogEntry>>('/api/auditlogs/', { params });
+    const response = await apiClient.get<PaginatedResponse<AuditLogEntry>>('/api/auditlogs/', {
+      params,
+    });
     return parseResponse(PaginatedAuditLogSchema, response.data, { context: 'auditLogsApi.list' });
   },
 

@@ -14,10 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   // Only available in desktop mode
   if (process.env.VITORA_DESKTOP !== '1') {
-    return NextResponse.json(
-      { error: 'Local DB only available in desktop mode' },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: 'Local DB only available in desktop mode' }, { status: 404 });
   }
 
   try {
@@ -25,10 +22,7 @@ export async function POST(request: NextRequest) {
     const { table, operation, recordId, data } = body;
 
     if (!table || !operation) {
-      return NextResponse.json(
-        { error: 'table and operation are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'table and operation are required' }, { status: 400 });
     }
 
     if (!['CREATE', 'UPDATE', 'DELETE'].includes(operation)) {
@@ -51,18 +45,12 @@ export async function POST(request: NextRequest) {
     const record = writeLocal({ table, operation, recordId, data: data || {} });
 
     if (!record) {
-      return NextResponse.json(
-        { error: 'Write failed — local DB not available' },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: 'Write failed — local DB not available' }, { status: 503 });
     }
 
     return NextResponse.json({ record }, { status: operation === 'CREATE' ? 201 : 200 });
   } catch (error) {
     console.error('[LocalDB API] Write error:', error);
-    return NextResponse.json(
-      { error: 'Write failed', details: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Write failed', details: String(error) }, { status: 500 });
   }
 }

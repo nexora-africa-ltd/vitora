@@ -18,61 +18,58 @@ function markdownToPlainText(md: string): string {
 
   // Convert markdown tables to indented key-value pairs
   // Detect table blocks: header row + separator row + data rows
-  text = text.replace(
-    /^(\|.+\|)\n(\|[-: |]+\|)\n((\|.+\|\n?)+)/gm,
-    (tableBlock) => {
-      const rows = tableBlock.trim().split('\n');
-      if (rows.length < 3) return tableBlock;
-      const headerRow = rows[0] ?? '';
-      const headers = headerRow
-        .split('|')
-        .map((h) => h.trim())
-        .filter(Boolean);
-      // Skip separator row (index 1)
-      const dataRows = rows.slice(2);
-      return dataRows
-        .map((row) => {
-          const cells = row
-            .split('|')
-            .map((c) => c.trim())
-            .filter(Boolean);
-          return headers
-            .map((header, i) => `${header}: ${cells[i] || ''}`)
-            .join(', ');
-        })
-        .join('\n');
-    }
-  );
+  text = text.replace(/^(\|.+\|)\n(\|[-: |]+\|)\n((\|.+\|\n?)+)/gm, (tableBlock) => {
+    const rows = tableBlock.trim().split('\n');
+    if (rows.length < 3) return tableBlock;
+    const headerRow = rows[0] ?? '';
+    const headers = headerRow
+      .split('|')
+      .map((h) => h.trim())
+      .filter(Boolean);
+    // Skip separator row (index 1)
+    const dataRows = rows.slice(2);
+    return dataRows
+      .map((row) => {
+        const cells = row
+          .split('|')
+          .map((c) => c.trim())
+          .filter(Boolean);
+        return headers.map((header, i) => `${header}: ${cells[i] || ''}`).join(', ');
+      })
+      .join('\n');
+  });
 
-  return text
-    // Remove heading markers but keep the text
-    .replace(/^#{1,6}\s+/gm, '')
-    // Bold / italic → just the text
-    .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .replace(/___(.+?)___/g, '$1')
-    .replace(/__(.+?)__/g, '$1')
-    .replace(/_(.+?)_/g, '$1')
-    // Inline code
-    .replace(/`([^`]+)`/g, '$1')
-    // Links [text](url) → text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // Images ![alt](url) → alt
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-    // Unordered list markers → dash
-    .replace(/^[\t ]*[*+-]\s+/gm, '- ')
-    // Ordered list markers → keep the number
-    .replace(/^[\t ]*(\d+)\.\s+/gm, '$1. ')
-    // Horizontal rules
-    .replace(/^[-*_]{3,}\s*$/gm, '')
-    // Block quotes
-    .replace(/^>\s?/gm, '')
-    // Strip leftover HTML tags
-    .replace(/<[^>]+>/g, '')
-    // Collapse 3+ consecutive blank lines into 2
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return (
+    text
+      // Remove heading markers but keep the text
+      .replace(/^#{1,6}\s+/gm, '')
+      // Bold / italic → just the text
+      .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/___(.+?)___/g, '$1')
+      .replace(/__(.+?)__/g, '$1')
+      .replace(/_(.+?)_/g, '$1')
+      // Inline code
+      .replace(/`([^`]+)`/g, '$1')
+      // Links [text](url) → text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Images ![alt](url) → alt
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+      // Unordered list markers → dash
+      .replace(/^[\t ]*[*+-]\s+/gm, '- ')
+      // Ordered list markers → keep the number
+      .replace(/^[\t ]*(\d+)\.\s+/gm, '$1. ')
+      // Horizontal rules
+      .replace(/^[-*_]{3,}\s*$/gm, '')
+      // Block quotes
+      .replace(/^>\s?/gm, '')
+      // Strip leftover HTML tags
+      .replace(/<[^>]+>/g, '')
+      // Collapse 3+ consecutive blank lines into 2
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  );
 }
 
 interface MarkdownPreviewProps {
@@ -167,8 +164,8 @@ export function MarkdownPreview({
   }
 
   return (
-    <div className={cn('relative group', className)}>
-      <div className="rounded-md border bg-muted/30 p-4 tibabot-markdown break-words overflow-hidden min-h-[80px]">
+    <div className={cn('group relative', className)}>
+      <div className="tibabot-markdown min-h-[80px] overflow-hidden break-words rounded-md border bg-muted/30 p-4">
         <Markdown
           remarkPlugins={[remarkGfm]}
           components={{
@@ -183,10 +180,7 @@ export function MarkdownPreview({
               </a>
             ),
             pre: ({ children, ...props }) => (
-              <pre
-                {...props}
-                className="overflow-x-auto rounded bg-black/10 p-2 text-xs my-1"
-              >
+              <pre {...props} className="my-1 overflow-x-auto rounded bg-black/10 p-2 text-xs">
                 {children}
               </pre>
             ),
@@ -213,7 +207,7 @@ export function MarkdownPreview({
         size="sm"
         onClick={handleStartEditing}
         disabled={disabled}
-        className="absolute top-2 right-2 gap-1.5 text-xs opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
+        className="absolute right-2 top-2 gap-1.5 bg-background/80 text-xs opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"
       >
         <Pencil className="h-3.5 w-3.5" />
         Edit

@@ -67,7 +67,10 @@ export function PrescriptionPrintButton({
   const [selectedTheme, setSelectedTheme] = useState<string>('default');
   const [isPrinting, setIsPrinting] = useState(false);
 
-  const handlePrint = async (layout: LayoutType = selectedLayout, theme: string = selectedTheme) => {
+  const handlePrint = async (
+    layout: LayoutType = selectedLayout,
+    theme: string = selectedTheme
+  ) => {
     if (!prescription || !prescription.items || prescription.items.length === 0) {
       console.warn('Cannot print prescription: no items');
       return;
@@ -106,7 +109,7 @@ export function PrescriptionPrintButton({
         disabled={disabled || isPrinting || !prescription?.items?.length}
         className={className}
       >
-        <Printer className="h-4 w-4 mr-2" />
+        <Printer className="mr-2 h-4 w-4" />
         Print
       </Button>
     );
@@ -122,20 +125,20 @@ export function PrescriptionPrintButton({
           disabled={disabled || isPrinting || !prescription?.items?.length}
           className={className}
         >
-          <Printer className="h-4 w-4 mr-2" />
+          <Printer className="mr-2 h-4 w-4" />
           {isPrinting ? 'Printing...' : 'Print'}
-          <Settings2 className="h-3 w-3 ml-2" />
+          <Settings2 className="ml-2 h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuLabel>Print Format</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => handlePrint('a4', 'default')}>
-          <Printer className="h-4 w-4 mr-2" />
+          <Printer className="mr-2 h-4 w-4" />
           Standard A4
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handlePrint('thermal-80mm', 'default')}>
-          <Printer className="h-4 w-4 mr-2" />
+          <Printer className="mr-2 h-4 w-4" />
           Thermal 80mm
         </DropdownMenuItem>
         <DropdownMenuSeparator />

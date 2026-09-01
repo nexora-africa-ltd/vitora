@@ -204,9 +204,9 @@ test.describe('Dispensing - Controlled Drugs', () => {
   test.skip('should show pending verification indicator', async ({ page }) => {
     // After dispensing controlled drug, should show pending verification
     await expect(
-      page.getByText(/pending.verification|awaiting.verification/i).or(
-        page.locator('[data-testid="verification-pending"]')
-      )
+      page
+        .getByText(/pending.verification|awaiting.verification/i)
+        .or(page.locator('[data-testid="verification-pending"]'))
     ).toBeVisible();
   });
 
@@ -239,9 +239,9 @@ test.describe('Dispensing - Direct (OTC/Emergency)', () => {
 
   test('should have direct dispensing option', async ({ page }) => {
     // For OTC drugs or emergency dispensing without prescription
-    const directDispenseButton = page.getByRole('button', { name: /direct.dispense|otc|quick.dispense/i }).or(
-      page.getByTestId('direct-dispense-button')
-    );
+    const directDispenseButton = page
+      .getByRole('button', { name: /direct.dispense|otc|quick.dispense/i })
+      .or(page.getByTestId('direct-dispense-button'));
 
     await expect(directDispenseButton).toBeVisible();
   });
@@ -304,9 +304,9 @@ test.describe('Dispensing - History', () => {
 
   test('should have dispensing history view', async ({ page }) => {
     // Navigate to dispensing history
-    const historyTab = page.getByRole('tab', { name: /history|dispens/i }).or(
-      page.getByRole('link', { name: /dispensing.history/i })
-    );
+    const historyTab = page
+      .getByRole('tab', { name: /history|dispens/i })
+      .or(page.getByRole('link', { name: /dispensing.history/i }));
 
     await expect(historyTab).toBeVisible();
   });
@@ -353,15 +353,24 @@ test.describe('Dispensing - History', () => {
     await page.getByRole('tab', { name: /history|dispens/i }).click();
 
     // Filter button should be available
-    await expect(page.getByRole('button', { name: /filter/i }).or(page.getByText(/filter/i).first())).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /filter/i }).or(page.getByText(/filter/i).first())
+    ).toBeVisible();
   });
 
   test('should filter by date range', async ({ page }) => {
     await page.getByRole('tab', { name: /history|dispens/i }).click();
 
     // Filter controls should be available
-    const hasFilterButton = await page.getByRole('button', { name: /filter/i }).isVisible().catch(() => false);
-    const hasFromField = await page.getByLabel(/from/i).first().isVisible().catch(() => false);
+    const hasFilterButton = await page
+      .getByRole('button', { name: /filter/i })
+      .isVisible()
+      .catch(() => false);
+    const hasFromField = await page
+      .getByLabel(/from/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     expect(hasFilterButton || hasFromField).toBeTruthy();
   });
@@ -389,21 +398,28 @@ test.describe('Dispensing - Returns', () => {
   });
 
   test('should have return action for dispensing', async ({ page }) => {
-    const returnButton = page.getByRole('button', { name: /return/i }).first().or(
-      page.getByTestId('return-button')
-    );
+    const returnButton = page
+      .getByRole('button', { name: /return/i })
+      .first()
+      .or(page.getByTestId('return-button'));
 
     await expect(returnButton).toBeVisible();
   });
 
   test('should open return form', async ({ page }) => {
-    await page.getByRole('button', { name: /return/i }).first().click();
+    await page
+      .getByRole('button', { name: /return/i })
+      .first()
+      .click();
 
     await expect(page.getByTestId('return-form')).toBeVisible();
   });
 
   test('should show drug info in return dialog', async ({ page }) => {
-    await page.getByRole('button', { name: /return/i }).first().click();
+    await page
+      .getByRole('button', { name: /return/i })
+      .first()
+      .click();
 
     const dialog = page.getByTestId('return-form');
     await expect(dialog.getByText(/drug/i).first()).toBeVisible();
@@ -411,33 +427,53 @@ test.describe('Dispensing - Returns', () => {
   });
 
   test('should have quantity to return input', async ({ page }) => {
-    await page.getByRole('button', { name: /return/i }).first().click();
+    await page
+      .getByRole('button', { name: /return/i })
+      .first()
+      .click();
 
     await expect(page.getByLabel(/quantity/i)).toBeVisible();
   });
 
   test('should validate return quantity', async ({ page }) => {
-    await page.getByRole('button', { name: /return/i }).first().click();
+    await page
+      .getByRole('button', { name: /return/i })
+      .first()
+      .click();
 
     const dialog = page.getByTestId('return-form');
     // Try to return more than dispensed
     await dialog.getByLabel(/quantity/i).fill('999');
 
     // Should show error or have max validation
-    const hasError = await dialog.getByText(/exceed|cannot|maximum/i).first().isVisible().catch(() => false);
-    const hasMaxInfo = await dialog.getByText(/maximum/i).first().isVisible().catch(() => false);
+    const hasError = await dialog
+      .getByText(/exceed|cannot|maximum/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    const hasMaxInfo = await dialog
+      .getByText(/maximum/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     expect(hasError || hasMaxInfo).toBeTruthy();
   });
 
   test('should require return reason', async ({ page }) => {
-    await page.getByRole('button', { name: /return/i }).first().click();
+    await page
+      .getByRole('button', { name: /return/i })
+      .first()
+      .click();
 
     await expect(page.getByLabel(/reason/i)).toBeVisible();
   });
 
   test('should process return successfully', async ({ page }) => {
-    await page.getByRole('button', { name: /return/i }).first().click();
+    await page
+      .getByRole('button', { name: /return/i })
+      .first()
+      .click();
 
     // Dialog should be visible
     const dialog = page.getByTestId('return-form');
@@ -446,7 +482,10 @@ test.describe('Dispensing - Returns', () => {
 
   test('should restore stock after return', async ({ page }) => {
     // After return, batch stock should increase
-    await page.getByRole('button', { name: /return/i }).first().click();
+    await page
+      .getByRole('button', { name: /return/i })
+      .first()
+      .click();
     await page.getByLabel(/quantity/i).fill('5');
     await page.getByLabel(/reason/i).fill('Return');
     await page.getByRole('button', { name: /confirm|submit/i }).click();
@@ -457,7 +496,10 @@ test.describe('Dispensing - Returns', () => {
 
   test('should update prescription status after full return', async ({ page }) => {
     // If full quantity returned, prescription should go back to pending
-    await page.getByRole('button', { name: /return/i }).first().click();
+    await page
+      .getByRole('button', { name: /return/i })
+      .first()
+      .click();
     await page.getByLabel(/quantity/i).fill('30'); // Full amount
     await page.getByLabel(/reason/i).fill('Full return');
     await page.getByRole('button', { name: /confirm|submit/i }).click();
@@ -535,37 +577,77 @@ test.describe('Dispensing - Labels', () => {
   });
 
   test('should generate label with patient name', async ({ page }) => {
-    await page.getByRole('button', { name: /print.*label|label/i }).first().click();
+    await page
+      .getByRole('button', { name: /print.*label|label/i })
+      .first()
+      .click();
 
     // Label preview should show patient name from mock data
-    await expect(page.getByRole('dialog').getByText(/jane|patient/i).first()).toBeVisible();
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByText(/jane|patient/i)
+        .first()
+    ).toBeVisible();
   });
 
   test('should generate label with drug name and dosage', async ({ page }) => {
-    await page.getByRole('button', { name: /print.*label|label/i }).first().click();
+    await page
+      .getByRole('button', { name: /print.*label|label/i })
+      .first()
+      .click();
 
     // Label should have drug info from mock data
-    await expect(page.getByRole('dialog').getByText(/paracetamol|medication/i).first()).toBeVisible();
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByText(/paracetamol|medication/i)
+        .first()
+    ).toBeVisible();
   });
 
   test('should generate label with instructions', async ({ page }) => {
-    await page.getByRole('button', { name: /print.*label|label/i }).first().click();
+    await page
+      .getByRole('button', { name: /print.*label|label/i })
+      .first()
+      .click();
 
     // Label should have dosage instructions
-    await expect(page.getByRole('dialog').getByText(/instruction|tablet|daily/i).first()).toBeVisible();
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByText(/instruction|tablet|daily/i)
+        .first()
+    ).toBeVisible();
   });
 
   test('should generate label with dispensing date', async ({ page }) => {
-    await page.getByRole('button', { name: /print.*label|label/i }).first().click();
+    await page
+      .getByRole('button', { name: /print.*label|label/i })
+      .first()
+      .click();
 
     // Dispensing date on label
-    await expect(page.getByRole('dialog').getByText(/dispensed|date|2026|jan/i).first()).toBeVisible();
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByText(/dispensed|date|2026|jan/i)
+        .first()
+    ).toBeVisible();
   });
 
   test('should generate label with expiry warning', async ({ page }) => {
-    await page.getByRole('button', { name: /print.*label|label/i }).first().click();
+    await page
+      .getByRole('button', { name: /print.*label|label/i })
+      .first()
+      .click();
 
     // Expiry information
-    await expect(page.getByRole('dialog').getByText(/exp|expiry|after/i).first()).toBeVisible();
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByText(/exp|expiry|after/i)
+        .first()
+    ).toBeVisible();
   });
 });

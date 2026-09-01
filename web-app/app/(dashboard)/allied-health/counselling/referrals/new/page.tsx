@@ -26,10 +26,7 @@ export default function NewCounsellingReferralPage() {
         helpContent="Create a counselling referral for a patient. Specify the type of counselling, presenting concerns, and risk assessment level."
       />
 
-      <CounsellingReferralForm
-        patientId={patientId}
-        encounterId={encounterId}
-      />
+      <CounsellingReferralForm patientId={patientId} encounterId={encounterId} />
     </div>
   );
 }

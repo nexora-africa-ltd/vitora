@@ -45,7 +45,7 @@ type RulePreviewForm = {
 function generateDraftFromNarrative(
   numeratorLogic: string,
   denominatorLogic: string,
-  exclusionLogic: string,
+  exclusionLogic: string
 ): RuleDraft | null {
   const text = `${numeratorLogic} ${denominatorLogic} ${exclusionLogic}`.toLowerCase();
 
@@ -150,7 +150,11 @@ function generateDraftFromNarrative(
     };
   }
 
-  if (text.includes('defaulter') || text.includes('active enrollment') || text.includes('enrollment')) {
+  if (
+    text.includes('defaulter') ||
+    text.includes('active enrollment') ||
+    text.includes('enrollment')
+  ) {
     return {
       rule: {
         type: 'enrollment_active',
@@ -172,20 +176,7 @@ export default function NewQualityMeasurePage() {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
   const canCreateMeasure = hasPermission('quality.add_qualitymeasure');
-
-  if (!canCreateMeasure) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Quality Measure" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create quality measures.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  const hasQualityMeasureAccess = canCreateMeasure;
 
   const [formData, setFormData] = useState<QualityMeasureCreateData>({
     code: '',
@@ -244,8 +235,7 @@ export default function NewQualityMeasurePage() {
   }, [availableClinics]);
 
   const { mutateAsync: createMeasure, isPending } = useMutation({
-    mutationFn: (data: QualityMeasureCreateData) =>
-      qualityApi.createMeasure(data),
+    mutationFn: (data: QualityMeasureCreateData) => qualityApi.createMeasure(data),
     onSuccess: (result) => {
       toast({ title: 'Quality measure created', description: result.name });
       queryClient.invalidateQueries({ queryKey: ['quality-measures'] });
@@ -271,7 +261,7 @@ export default function NewQualityMeasurePage() {
 
   const updateField = <K extends keyof QualityMeasureCreateData>(
     key: K,
-    value: QualityMeasureCreateData[K],
+    value: QualityMeasureCreateData[K]
   ) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
@@ -392,7 +382,7 @@ export default function NewQualityMeasurePage() {
     const draft = generateDraftFromNarrative(
       formData.numerator_logic,
       formData.denominator_logic,
-      formData.exclusion_logic || '',
+      formData.exclusion_logic || ''
     );
     if (!draft) {
       toast({
@@ -438,7 +428,9 @@ export default function NewQualityMeasurePage() {
       return {
         valid: true,
         errors: [] as string[],
-        warnings: ['No automated evaluation rule is applied. This measure will not auto-calculate.'],
+        warnings: [
+          'No automated evaluation rule is applied. This measure will not auto-calculate.',
+        ],
       };
     }
 
@@ -475,7 +467,9 @@ export default function NewQualityMeasurePage() {
     }
 
     if ((formData.applicable_clinic_types ?? []).length === 0) {
-      warnings.push('Measure applies to all clinic types. Select clinic types if scope should be limited.');
+      warnings.push(
+        'Measure applies to all clinic types. Select clinic types if scope should be limited.'
+      );
     }
 
     return {
@@ -517,6 +511,20 @@ export default function NewQualityMeasurePage() {
     }
   };
 
+  if (!hasQualityMeasureAccess) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Quality Measure" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You do not have permission to create quality measures.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
@@ -528,9 +536,7 @@ export default function NewQualityMeasurePage() {
         {/* Basic Info */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">
-              Basic Information
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">Basic Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -630,7 +636,7 @@ export default function NewQualityMeasurePage() {
                   onValueChange={(v) =>
                     updateField(
                       'reporting_period',
-                      v as QualityMeasureCreateData['reporting_period'],
+                      v as QualityMeasureCreateData['reporting_period']
                     )
                   }
                 >
@@ -651,7 +657,9 @@ export default function NewQualityMeasurePage() {
                 <HelpPopover content="Optional scope filter. If none are selected, this measure applies to all clinic types." />
               </div>
               {availableClinicTypes.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No active clinic types found in this facility.</p>
+                <p className="text-xs text-muted-foreground">
+                  No active clinic types found in this facility.
+                </p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {availableClinicTypes.map((clinicType) => {
@@ -677,9 +685,7 @@ export default function NewQualityMeasurePage() {
         {/* Measure Logic */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">
-              Measure Logic
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">Measure Logic</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -691,9 +697,7 @@ export default function NewQualityMeasurePage() {
                 id="numerator"
                 placeholder="Describe the numerator population..."
                 value={formData.numerator_logic}
-                onChange={(e) =>
-                  updateField('numerator_logic', e.target.value)
-                }
+                onChange={(e) => updateField('numerator_logic', e.target.value)}
                 rows={3}
                 required
               />
@@ -707,9 +711,7 @@ export default function NewQualityMeasurePage() {
                 id="denominator"
                 placeholder="Describe the denominator population..."
                 value={formData.denominator_logic}
-                onChange={(e) =>
-                  updateField('denominator_logic', e.target.value)
-                }
+                onChange={(e) => updateField('denominator_logic', e.target.value)}
                 rows={3}
                 required
               />
@@ -723,9 +725,7 @@ export default function NewQualityMeasurePage() {
                 id="exclusion"
                 placeholder="Describe any exclusion criteria..."
                 value={formData.exclusion_logic ?? ''}
-                onChange={(e) =>
-                  updateField('exclusion_logic', e.target.value)
-                }
+                onChange={(e) => updateField('exclusion_logic', e.target.value)}
                 rows={2}
               />
             </div>
@@ -738,9 +738,10 @@ export default function NewQualityMeasurePage() {
             <CardTitle className="text-base sm:text-lg">Automated Evaluation Rule</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
-                Optional structured logic used by the evaluation engine. Drafts are review-only until you apply them.
+                Optional structured logic used by the evaluation engine. Drafts are review-only
+                until you apply them.
               </p>
               <Button type="button" variant="outline" onClick={handleGenerateDraft}>
                 Generate Draft from Narrative
@@ -748,16 +749,25 @@ export default function NewQualityMeasurePage() {
             </div>
 
             {draftRule ? (
-              <div className="rounded-md border p-3 space-y-2 text-sm">
+              <div className="space-y-2 rounded-md border p-3 text-sm">
                 <p className="font-medium">Draft Rule (Review Required)</p>
-                <p><span className="text-muted-foreground">Type:</span> {draftRule.rule.type}</p>
-                <pre className="text-xs bg-muted p-2 rounded-md overflow-x-auto">{JSON.stringify(draftRule.rule.params, null, 2)}</pre>
-                <p><span className="text-muted-foreground">Confidence:</span> {Math.round(draftRule.confidence * 100)}%</p>
+                <p>
+                  <span className="text-muted-foreground">Type:</span> {draftRule.rule.type}
+                </p>
+                <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs">
+                  {JSON.stringify(draftRule.rule.params, null, 2)}
+                </pre>
+                <p>
+                  <span className="text-muted-foreground">Confidence:</span>{' '}
+                  {Math.round(draftRule.confidence * 100)}%
+                </p>
                 {draftRule.assumptions.length > 0 ? (
                   <div>
                     <p className="text-muted-foreground">Assumptions</p>
                     <ul className="list-disc pl-5">
-                      {draftRule.assumptions.map((item) => <li key={item}>{item}</li>)}
+                      {draftRule.assumptions.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
                     </ul>
                   </div>
                 ) : null}
@@ -765,13 +775,24 @@ export default function NewQualityMeasurePage() {
                   <div>
                     <p className="text-muted-foreground">Warnings</p>
                     <ul className="list-disc pl-5">
-                      {draftRule.warnings.map((item) => <li key={item}>{item}</li>)}
+                      {draftRule.warnings.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
                     </ul>
                   </div>
                 ) : null}
                 <div className="flex gap-2">
-                  <Button type="button" size="sm" onClick={handleApplyDraft}>Apply Draft</Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => setDraftRule(null)}>Discard Draft</Button>
+                  <Button type="button" size="sm" onClick={handleApplyDraft}>
+                    Apply Draft
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDraftRule(null)}
+                  >
+                    Discard Draft
+                  </Button>
                 </div>
               </div>
             ) : null}
@@ -784,7 +805,9 @@ export default function NewQualityMeasurePage() {
                 </div>
                 <Select
                   value={manualRuleType || '__NONE__'}
-                  onValueChange={(v) => setManualRuleType(v === '__NONE__' ? '' : (v as QualityEvaluationRuleType))}
+                  onValueChange={(v) =>
+                    setManualRuleType(v === '__NONE__' ? '' : (v as QualityEvaluationRuleType))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="No automated rule" />
@@ -797,10 +820,16 @@ export default function NewQualityMeasurePage() {
                     <SelectItem value="wait_time">Wait Time</SelectItem>
                     <SelectItem value="enrollment_active">Enrollment Active</SelectItem>
                     <SelectItem value="stock_availability">Stock Availability</SelectItem>
-                    <SelectItem value="skilled_birth_attendance">Skilled Birth Attendance</SelectItem>
+                    <SelectItem value="skilled_birth_attendance">
+                      Skilled Birth Attendance
+                    </SelectItem>
                     <SelectItem value="tb_treatment_success">TB Treatment Success</SelectItem>
-                    <SelectItem value="immunization_completeness">Immunization Completeness</SelectItem>
-                    <SelectItem value="maternal_mortality_ratio">Maternal Mortality Ratio</SelectItem>
+                    <SelectItem value="immunization_completeness">
+                      Immunization Completeness
+                    </SelectItem>
+                    <SelectItem value="maternal_mortality_ratio">
+                      Maternal Mortality Ratio
+                    </SelectItem>
                     <SelectItem value="idsr_timeliness">IDSR Timeliness</SelectItem>
                   </SelectContent>
                 </Select>
@@ -811,12 +840,22 @@ export default function NewQualityMeasurePage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Minimum Visits</Label>
-                  <Input type="number" min="1" value={manualParams.min_visits} onChange={(e) => setManualParams((p) => ({ ...p, min_visits: e.target.value }))} />
+                  <Input
+                    type="number"
+                    min="1"
+                    value={manualParams.min_visits}
+                    onChange={(e) => setManualParams((p) => ({ ...p, min_visits: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Enrollment Status</Label>
-                  <Select value={manualParams.enrollment_status} onValueChange={(v) => setManualParams((p) => ({ ...p, enrollment_status: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={manualParams.enrollment_status}
+                    onValueChange={(v) => setManualParams((p) => ({ ...p, enrollment_status: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ACTIVE">ACTIVE</SelectItem>
                       <SelectItem value="ANY">ANY</SelectItem>
@@ -830,20 +869,38 @@ export default function NewQualityMeasurePage() {
               <div className="grid gap-4 sm:grid-cols-4">
                 <div className="space-y-2">
                   <Label>Test Name</Label>
-                  <Input value={manualParams.test_name} onChange={(e) => setManualParams((p) => ({ ...p, test_name: e.target.value }))} placeholder="HbA1c" />
+                  <Input
+                    value={manualParams.test_name}
+                    onChange={(e) => setManualParams((p) => ({ ...p, test_name: e.target.value }))}
+                    placeholder="HbA1c"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Test Code (LOINC)</Label>
-                  <Input value={manualParams.test_code} onChange={(e) => setManualParams((p) => ({ ...p, test_code: e.target.value }))} placeholder="4548-4" />
+                  <Input
+                    value={manualParams.test_code}
+                    onChange={(e) => setManualParams((p) => ({ ...p, test_code: e.target.value }))}
+                    placeholder="4548-4"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Threshold</Label>
-                  <Input type="number" step="0.01" value={manualParams.threshold} onChange={(e) => setManualParams((p) => ({ ...p, threshold: e.target.value }))} />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={manualParams.threshold}
+                    onChange={(e) => setManualParams((p) => ({ ...p, threshold: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Comparison</Label>
-                  <Select value={manualParams.comparison} onValueChange={(v) => setManualParams((p) => ({ ...p, comparison: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={manualParams.comparison}
+                    onValueChange={(v) => setManualParams((p) => ({ ...p, comparison: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="lt">&lt;</SelectItem>
                       <SelectItem value="lte">&lt;=</SelectItem>
@@ -859,11 +916,23 @@ export default function NewQualityMeasurePage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Systolic Max</Label>
-                  <Input type="number" value={manualParams.systolic_max} onChange={(e) => setManualParams((p) => ({ ...p, systolic_max: e.target.value }))} />
+                  <Input
+                    type="number"
+                    value={manualParams.systolic_max}
+                    onChange={(e) =>
+                      setManualParams((p) => ({ ...p, systolic_max: e.target.value }))
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Diastolic Max</Label>
-                  <Input type="number" value={manualParams.diastolic_max} onChange={(e) => setManualParams((p) => ({ ...p, diastolic_max: e.target.value }))} />
+                  <Input
+                    type="number"
+                    value={manualParams.diastolic_max}
+                    onChange={(e) =>
+                      setManualParams((p) => ({ ...p, diastolic_max: e.target.value }))
+                    }
+                  />
                 </div>
               </div>
             ) : null}
@@ -872,15 +941,27 @@ export default function NewQualityMeasurePage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Max Minutes</Label>
-                  <Input type="number" min="1" value={manualParams.max_minutes} onChange={(e) => setManualParams((p) => ({ ...p, max_minutes: e.target.value }))} />
+                  <Input
+                    type="number"
+                    min="1"
+                    value={manualParams.max_minutes}
+                    onChange={(e) =>
+                      setManualParams((p) => ({ ...p, max_minutes: e.target.value }))
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-1">
                     <Label>Data Source</Label>
                     <HelpPopover content="Choose where wait-time is measured from. Clinic Visit uses registration-to-consultation start. Triage Assessment uses arrival-to-triage start." />
                   </div>
-                  <Select value={manualParams.wait_data_source} onValueChange={(v) => setManualParams((p) => ({ ...p, wait_data_source: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={manualParams.wait_data_source}
+                    onValueChange={(v) => setManualParams((p) => ({ ...p, wait_data_source: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="clinic_visit">Clinic Visit</SelectItem>
                       <SelectItem value="triage_assessment">Triage Assessment</SelectItem>
@@ -891,10 +972,15 @@ export default function NewQualityMeasurePage() {
             ) : null}
 
             {manualRuleType === 'enrollment_active' ? (
-              <div className="space-y-2 max-w-xs">
+              <div className="max-w-xs space-y-2">
                 <Label>Target Status</Label>
-                <Select value={manualParams.target_status} onValueChange={(v) => setManualParams((p) => ({ ...p, target_status: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={manualParams.target_status}
+                  onValueChange={(v) => setManualParams((p) => ({ ...p, target_status: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ACTIVE">ACTIVE</SelectItem>
                     <SelectItem value="DEFAULTED">DEFAULTED</SelectItem>
@@ -907,8 +993,13 @@ export default function NewQualityMeasurePage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Tracer Only</Label>
-                  <Select value={manualParams.tracer_only} onValueChange={(v) => setManualParams((p) => ({ ...p, tracer_only: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={manualParams.tracer_only}
+                    onValueChange={(v) => setManualParams((p) => ({ ...p, tracer_only: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="true">True</SelectItem>
                       <SelectItem value="false">False</SelectItem>
@@ -917,7 +1008,13 @@ export default function NewQualityMeasurePage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Stock-out Threshold</Label>
-                  <Input type="number" value={manualParams.stock_out_threshold} onChange={(e) => setManualParams((p) => ({ ...p, stock_out_threshold: e.target.value }))} />
+                  <Input
+                    type="number"
+                    value={manualParams.stock_out_threshold}
+                    onChange={(e) =>
+                      setManualParams((p) => ({ ...p, stock_out_threshold: e.target.value }))
+                    }
+                  />
                 </div>
               </div>
             ) : null}
@@ -926,16 +1023,35 @@ export default function NewQualityMeasurePage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label>Vaccine Program</Label>
-                  <Input value={manualParams.vaccine_program} onChange={(e) => setManualParams((p) => ({ ...p, vaccine_program: e.target.value }))} />
+                  <Input
+                    value={manualParams.vaccine_program}
+                    onChange={(e) =>
+                      setManualParams((p) => ({ ...p, vaccine_program: e.target.value }))
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Max Patient Age (Years)</Label>
-                  <Input type="number" min="1" value={manualParams.max_patient_age_years} onChange={(e) => setManualParams((p) => ({ ...p, max_patient_age_years: e.target.value }))} />
+                  <Input
+                    type="number"
+                    min="1"
+                    value={manualParams.max_patient_age_years}
+                    onChange={(e) =>
+                      setManualParams((p) => ({ ...p, max_patient_age_years: e.target.value }))
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Strict Due In Period</Label>
-                  <Select value={manualParams.strict_due_in_period} onValueChange={(v) => setManualParams((p) => ({ ...p, strict_due_in_period: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={manualParams.strict_due_in_period}
+                    onValueChange={(v) =>
+                      setManualParams((p) => ({ ...p, strict_due_in_period: v }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="true">True</SelectItem>
                       <SelectItem value="false">False</SelectItem>
@@ -946,9 +1062,16 @@ export default function NewQualityMeasurePage() {
             ) : null}
 
             {manualRuleType === 'maternal_mortality_ratio' ? (
-              <div className="space-y-2 max-w-xs">
+              <div className="max-w-xs space-y-2">
                 <Label>Ratio Multiplier</Label>
-                <Input type="number" min="1" value={manualParams.ratio_multiplier} onChange={(e) => setManualParams((p) => ({ ...p, ratio_multiplier: e.target.value }))} />
+                <Input
+                  type="number"
+                  min="1"
+                  value={manualParams.ratio_multiplier}
+                  onChange={(e) =>
+                    setManualParams((p) => ({ ...p, ratio_multiplier: e.target.value }))
+                  }
+                />
               </div>
             ) : null}
 
@@ -956,12 +1079,27 @@ export default function NewQualityMeasurePage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label>Deadline Days After Week End</Label>
-                  <Input type="number" min="0" value={manualParams.deadline_days_after_week_end} onChange={(e) => setManualParams((p) => ({ ...p, deadline_days_after_week_end: e.target.value }))} />
+                  <Input
+                    type="number"
+                    min="0"
+                    value={manualParams.deadline_days_after_week_end}
+                    onChange={(e) =>
+                      setManualParams((p) => ({
+                        ...p,
+                        deadline_days_after_week_end: e.target.value,
+                      }))
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Include Approved</Label>
-                  <Select value={manualParams.include_approved} onValueChange={(v) => setManualParams((p) => ({ ...p, include_approved: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={manualParams.include_approved}
+                    onValueChange={(v) => setManualParams((p) => ({ ...p, include_approved: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="true">True</SelectItem>
                       <SelectItem value="false">False</SelectItem>
@@ -970,8 +1108,15 @@ export default function NewQualityMeasurePage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Require DHIS2 Timestamp</Label>
-                  <Select value={manualParams.require_dhis2_timestamp} onValueChange={(v) => setManualParams((p) => ({ ...p, require_dhis2_timestamp: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={manualParams.require_dhis2_timestamp}
+                    onValueChange={(v) =>
+                      setManualParams((p) => ({ ...p, require_dhis2_timestamp: v }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="true">True</SelectItem>
                       <SelectItem value="false">False</SelectItem>
@@ -982,28 +1127,44 @@ export default function NewQualityMeasurePage() {
             ) : null}
 
             {manualRuleType === 'skilled_birth_attendance' ? (
-              <p className="text-sm text-muted-foreground">Uses completed facility deliveries with documented attendant by default.</p>
+              <p className="text-sm text-muted-foreground">
+                Uses completed facility deliveries with documented attendant by default.
+              </p>
             ) : null}
 
             {manualRuleType === 'tb_treatment_success' ? (
-              <p className="text-sm text-muted-foreground">Uses TB enrollment outcomes in-period with success status/keywords defaults.</p>
+              <p className="text-sm text-muted-foreground">
+                Uses TB enrollment outcomes in-period with success status/keywords defaults.
+              </p>
             ) : null}
 
-            <div className="flex gap-2 flex-wrap">
-              <Button type="button" onClick={handleApplyManualRule}>Apply Manual Rule</Button>
-              <Button type="button" variant="outline" onClick={() => updateField('evaluation_rule', null)}>Clear Applied Rule</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={handleApplyManualRule}>
+                Apply Manual Rule
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => updateField('evaluation_rule', null)}
+              >
+                Clear Applied Rule
+              </Button>
             </div>
 
             <div className="rounded-md border p-3">
-              <p className="text-sm font-medium mb-1">Applied Rule (Saved with Measure)</p>
+              <p className="mb-1 text-sm font-medium">Applied Rule (Saved with Measure)</p>
               {formData.evaluation_rule ? (
-                <pre className="text-xs bg-muted p-2 rounded-md overflow-x-auto">{JSON.stringify(formData.evaluation_rule, null, 2)}</pre>
+                <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs">
+                  {JSON.stringify(formData.evaluation_rule, null, 2)}
+                </pre>
               ) : (
-                <p className="text-sm text-muted-foreground">No structured evaluation rule applied.</p>
+                <p className="text-sm text-muted-foreground">
+                  No structured evaluation rule applied.
+                </p>
               )}
             </div>
 
-            <div className="rounded-md border p-3 space-y-2">
+            <div className="space-y-2 rounded-md border p-3">
               <p className="text-sm font-medium">Rule Validation</p>
               {validationSummary.errors.length > 0 ? (
                 <ul className="list-disc pl-5 text-sm text-destructive">
@@ -1023,28 +1184,49 @@ export default function NewQualityMeasurePage() {
               ) : null}
             </div>
 
-            <div className="rounded-md border p-3 space-y-3">
+            <div className="space-y-3 rounded-md border p-3">
               <p className="text-sm font-medium">Test Rule (Dry Run)</p>
               <div className="grid gap-3 sm:grid-cols-4">
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Clinic</Label>
-                  <Select value={previewConfig.clinic_id} onValueChange={(v) => setPreviewConfig((p) => ({ ...p, clinic_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select clinic" /></SelectTrigger>
+                  <Select
+                    value={previewConfig.clinic_id}
+                    onValueChange={(v) => setPreviewConfig((p) => ({ ...p, clinic_id: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select clinic" />
+                    </SelectTrigger>
                     <SelectContent>
                       {availableClinics.map((clinic) => (
-                        <SelectItem key={clinic.id} value={String(clinic.id)}>{clinic.name}</SelectItem>
+                        <SelectItem key={clinic.id} value={String(clinic.id)}>
+                          {clinic.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Year</Label>
-                  <Input type="number" value={previewConfig.year} onChange={(e) => setPreviewConfig((p) => ({ ...p, year: e.target.value }))} />
+                  <Input
+                    type="number"
+                    value={previewConfig.year}
+                    onChange={(e) => setPreviewConfig((p) => ({ ...p, year: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Period Type</Label>
-                  <Select value={previewConfig.period_type} onValueChange={(v) => setPreviewConfig((p) => ({ ...p, period_type: v as 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={previewConfig.period_type}
+                    onValueChange={(v) =>
+                      setPreviewConfig((p) => ({
+                        ...p,
+                        period_type: v as 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="MONTHLY">MONTHLY</SelectItem>
                       <SelectItem value="QUARTERLY">QUARTERLY</SelectItem>
@@ -1055,22 +1237,46 @@ export default function NewQualityMeasurePage() {
               </div>
               <div className="max-w-xs space-y-2">
                 <Label>Period</Label>
-                <Input type="number" value={previewConfig.period} onChange={(e) => setPreviewConfig((p) => ({ ...p, period: e.target.value }))} />
+                <Input
+                  type="number"
+                  value={previewConfig.period}
+                  onChange={(e) => setPreviewConfig((p) => ({ ...p, period: e.target.value }))}
+                />
               </div>
               <div className="flex gap-2">
-                <Button type="button" onClick={handlePreviewRule} disabled={isPreviewPending || !validationSummary.valid}>
+                <Button
+                  type="button"
+                  onClick={handlePreviewRule}
+                  disabled={isPreviewPending || !validationSummary.valid}
+                >
                   {isPreviewPending ? 'Testing...' : 'Run Test Rule'}
                 </Button>
-                {!validationSummary.valid ? <p className="text-xs text-muted-foreground self-center">Fix validation errors to run test.</p> : null}
+                {!validationSummary.valid ? (
+                  <p className="self-center text-xs text-muted-foreground">
+                    Fix validation errors to run test.
+                  </p>
+                ) : null}
               </div>
 
               {previewError ? <p className="text-sm text-destructive">{previewError}</p> : null}
               {previewResult ? (
-                <div className="rounded-md bg-muted p-3 text-sm space-y-1">
-                  <p><span className="text-muted-foreground">Numerator:</span> {previewResult.numerator}</p>
-                  <p><span className="text-muted-foreground">Denominator:</span> {previewResult.denominator}</p>
-                  <p><span className="text-muted-foreground">Percentage:</span> {previewResult.percentage}%</p>
-                  <p><span className="text-muted-foreground">Notes:</span> {previewResult.notes || 'N/A'}</p>
+                <div className="space-y-1 rounded-md bg-muted p-3 text-sm">
+                  <p>
+                    <span className="text-muted-foreground">Numerator:</span>{' '}
+                    {previewResult.numerator}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Denominator:</span>{' '}
+                    {previewResult.denominator}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Percentage:</span>{' '}
+                    {previewResult.percentage}%
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Notes:</span>{' '}
+                    {previewResult.notes || 'N/A'}
+                  </p>
                 </div>
               ) : null}
             </div>
@@ -1097,12 +1303,7 @@ export default function NewQualityMeasurePage() {
                   step="0.01"
                   placeholder="e.g., 80.00"
                   value={formData.target_percentage ?? ''}
-                  onChange={(e) =>
-                    updateField(
-                      'target_percentage',
-                      e.target.value || null,
-                    )
-                  }
+                  onChange={(e) => updateField('target_percentage', e.target.value || null)}
                 />
               </div>
               <div className="space-y-2">
@@ -1118,12 +1319,7 @@ export default function NewQualityMeasurePage() {
                   step="0.01"
                   placeholder="e.g., 50.00"
                   value={formData.low_threshold ?? ''}
-                  onChange={(e) =>
-                    updateField(
-                      'low_threshold',
-                      e.target.value || null,
-                    )
-                  }
+                  onChange={(e) => updateField('low_threshold', e.target.value || null)}
                 />
               </div>
             </div>
@@ -1146,9 +1342,7 @@ export default function NewQualityMeasurePage() {
                   id="dhis2"
                   placeholder="e.g., dE4xK23b..."
                   value={formData.dhis2_indicator_id ?? ''}
-                  onChange={(e) =>
-                    updateField('dhis2_indicator_id', e.target.value)
-                  }
+                  onChange={(e) => updateField('dhis2_indicator_id', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -1161,9 +1355,7 @@ export default function NewQualityMeasurePage() {
                   type="url"
                   placeholder="https://..."
                   value={formData.reference_url ?? ''}
-                  onChange={(e) =>
-                    updateField('reference_url', e.target.value)
-                  }
+                  onChange={(e) => updateField('reference_url', e.target.value)}
                 />
               </div>
             </div>
@@ -1172,11 +1364,7 @@ export default function NewQualityMeasurePage() {
 
         {/* Submit */}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-          >
+          <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
           <Button type="submit" disabled={isPending}>

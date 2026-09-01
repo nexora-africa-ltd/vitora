@@ -145,18 +145,18 @@ export default function EncounterEditReferralsPage() {
       {/* Navigation */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               Step 6 of 7 — {referralsCount + alliedHealthCount} referrals/orders
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handlePrev}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
               <Button onClick={handleNext}>
                 Next: Review
-                <ArrowRight className="h-4 w-4 ml-2" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>

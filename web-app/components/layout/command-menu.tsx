@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Search,
-  Users,
-} from 'lucide-react';
+import { Search, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   CommandDialog,
@@ -61,13 +58,10 @@ export function CommandMenu() {
     enabled: open && debouncedSearch.length >= 2,
   });
 
-  const runCommand = useCallback(
-    (command: () => void) => {
-      setOpen(false);
-      command();
-    },
-    []
-  );
+  const runCommand = useCallback((command: () => void) => {
+    setOpen(false);
+    command();
+  }, []);
 
   const patients = patientResults?.results ?? [];
 
@@ -119,9 +113,7 @@ export function CommandMenu() {
         onValueChange={setSearch}
       />
       <CommandList>
-        <CommandEmpty>
-          {isSearching ? 'Searching...' : 'No results found.'}
-        </CommandEmpty>
+        <CommandEmpty>{isSearching ? 'Searching...' : 'No results found.'}</CommandEmpty>
 
         {/* Patient search results */}
         {patients.length > 0 && (
@@ -130,9 +122,7 @@ export function CommandMenu() {
               <CommandItem
                 key={patient.id}
                 value={`patient-${patient.id}-${patient.first_name}-${patient.last_name}-${patient.mrn}`}
-                onSelect={() =>
-                  runCommand(() => router.push(`/patients/${patient.id}`))
-                }
+                onSelect={() => runCommand(() => router.push(`/patients/${patient.id}`))}
               >
                 <Users className="mr-2 h-4 w-4" />
                 <span>
@@ -147,16 +137,12 @@ export function CommandMenu() {
                 value={`search-all-patients-${debouncedSearch}`}
                 onSelect={() =>
                   runCommand(() =>
-                    router.push(
-                      `/patients?search=${encodeURIComponent(debouncedSearch)}`
-                    )
+                    router.push(`/patients?search=${encodeURIComponent(debouncedSearch)}`)
                   )
                 }
               >
                 <Search className="mr-2 h-4 w-4" />
-                <span>
-                  Search all patients for &ldquo;{debouncedSearch}&rdquo;
-                </span>
+                <span>Search all patients for &ldquo;{debouncedSearch}&rdquo;</span>
               </CommandItem>
             )}
           </CommandGroup>
@@ -239,11 +225,9 @@ export function CommandMenuTrigger() {
   return (
     <Button
       variant="ghost"
-      className="hidden md:inline-flex items-center gap-2 text-sm text-muted-foreground w-48 lg:w-56 xl:w-64 justify-start border border-border/40"
+      className="hidden w-48 items-center justify-start gap-2 border border-border/40 text-sm text-muted-foreground md:inline-flex lg:w-56 xl:w-64"
       onClick={() => {
-        document.dispatchEvent(
-          new KeyboardEvent('keydown', { key: 'k', metaKey: true })
-        );
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
       }}
     >
       <Search className="h-4 w-4" />

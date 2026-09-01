@@ -62,12 +62,14 @@ import type { CreateDiagnosisData } from '@/lib/api/encounters';
  * 'suspected' | 'provisional' | 'confirmed' | 'ruled_out'.
  */
 function toApiCertainty(
-  certainty: DiagnosisFormData['certainty'],
+  certainty: DiagnosisFormData['certainty']
 ): CreateDiagnosisData['certainty'] {
   return certainty === 'probable' ? 'provisional' : certainty;
 }
 
-function getEncounterValidationError(formData: EncounterFormData | null | undefined): string | null {
+function getEncounterValidationError(
+  formData: EncounterFormData | null | undefined
+): string | null {
   if (!formData) return 'Unable to retrieve form data';
 
   if (formData.pulse != null && (formData.pulse < 30 || formData.pulse > 200)) {
@@ -90,13 +92,11 @@ interface SummarySectionProps {
 
 function SummarySection({ icon, title, isComplete, children }: SummarySectionProps) {
   return (
-    <div className="border rounded-lg p-3 sm:p-4">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="rounded-lg border p-3 sm:p-4">
+      <div className="mb-2 flex items-center gap-2">
         <span className="text-muted-foreground">{icon}</span>
-        <h3 className="font-medium text-sm sm:text-base">{title}</h3>
-        {isComplete && (
-          <CheckCircle className="h-4 w-4 text-green-500 ml-auto" />
-        )}
+        <h3 className="text-sm font-medium sm:text-base">{title}</h3>
+        {isComplete && <CheckCircle className="ml-auto h-4 w-4 text-green-500" />}
       </div>
       <div className="text-sm text-muted-foreground">{children}</div>
     </div>
@@ -267,7 +267,14 @@ export default function NewEncounterReviewPage() {
       toast({
         title: 'Draft Saved',
         description: 'Encounter has been saved as draft.',
-        action: <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${draft.id}`)}>View</ToastAction>,
+        action: (
+          <ToastAction
+            altText="View encounter"
+            onClick={() => router.push(`/encounters/${draft.id}`)}
+          >
+            View
+          </ToastAction>
+        ),
       });
 
       router.push('/encounters');
@@ -366,8 +373,14 @@ export default function NewEncounterReviewPage() {
               bed: admission.bedId,
               payer_type: admission.payerType,
               admission_date: new Date().toISOString(),
-              admitting_diagnosis: primaryDx?.icd10_display?.split(' - ')[0] || primaryDx?.free_text_diagnosis || 'Pending',
-              admitting_diagnosis_text: primaryDx?.icd10_display?.split(' - ').slice(1).join(' - ') || primaryDx?.free_text_diagnosis || 'Pending assessment',
+              admitting_diagnosis:
+                primaryDx?.icd10_display?.split(' - ')[0] ||
+                primaryDx?.free_text_diagnosis ||
+                'Pending',
+              admitting_diagnosis_text:
+                primaryDx?.icd10_display?.split(' - ').slice(1).join(' - ') ||
+                primaryDx?.free_text_diagnosis ||
+                'Pending assessment',
               admitting_officer: user.id,
               source_encounter: result.id,
               ...(admission.requiresIsolation ? { requires_isolation: true } : {}),
@@ -375,7 +388,14 @@ export default function NewEncounterReviewPage() {
             toast({
               title: 'IPD Encounter & Admission Created',
               description: `Patient admitted to ${admission.wardName || 'ward'}, bed ${admission.bedNumber || admission.bedId}.`,
-              action: <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${result.id}`)}>View</ToastAction>,
+              action: (
+                <ToastAction
+                  altText="View encounter"
+                  onClick={() => router.push(`/encounters/${result.id}`)}
+                >
+                  View
+                </ToastAction>
+              ),
             });
           } catch (admissionError: unknown) {
             const admissionErrorMessage = getApiErrorMessage(admissionError);
@@ -395,7 +415,8 @@ export default function NewEncounterReviewPage() {
           // IPD without admission details — still land on created encounter
           toast({
             title: 'IPD Encounter Created',
-            description: 'Encounter created. Complete admission details from the encounter workflow.',
+            description:
+              'Encounter created. Complete admission details from the encounter workflow.',
           });
           const encId = result.id;
           clearSession();
@@ -405,7 +426,14 @@ export default function NewEncounterReviewPage() {
           toast({
             title: 'Encounter Created',
             description: `${details.encounter_type} encounter created. Vitals can be recorded later.`,
-            action: <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${result.id}`)}>View</ToastAction>,
+            action: (
+              <ToastAction
+                altText="View encounter"
+                onClick={() => router.push(`/encounters/${result.id}`)}
+              >
+                View
+              </ToastAction>
+            ),
           });
         }
         clearSession();
@@ -418,7 +446,14 @@ export default function NewEncounterReviewPage() {
         toast({
           title: 'Encounter Created',
           description: 'Encounter created successfully with vital signs.',
-          action: <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${result.id}`)}>View</ToastAction>,
+          action: (
+            <ToastAction
+              altText="View encounter"
+              onClick={() => router.push(`/encounters/${result.id}`)}
+            >
+              View
+            </ToastAction>
+          ),
         });
         clearSession();
         router.push(`/encounters/${result.id}`);
@@ -494,9 +529,14 @@ export default function NewEncounterReviewPage() {
     toast({
       title: 'Encounter Created',
       description: 'Encounter has been created. You can record vitals from the encounter page.',
-      action: createdEncounterId
-        ? <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${createdEncounterId}?focus=vitals`)}>View</ToastAction>
-        : undefined,
+      action: createdEncounterId ? (
+        <ToastAction
+          altText="View encounter"
+          onClick={() => router.push(`/encounters/${createdEncounterId}?focus=vitals`)}
+        >
+          View
+        </ToastAction>
+      ) : undefined,
     });
     if (createdEncounterId) {
       router.push(`/encounters/${createdEncounterId}?focus=vitals`);
@@ -519,13 +559,15 @@ export default function NewEncounterReviewPage() {
 
   // Apply selected AI suggestions to the encounter store
   const handleApplyAutopopulate = useCallback(
-    (accepted: Array<{
-      id: string;
-      field_name: string;
-      value: unknown;
-      source: string;
-      confidence: number;
-    }>) => {
+    (
+      accepted: Array<{
+        id: string;
+        field_name: string;
+        value: unknown;
+        source: string;
+        confidence: number;
+      }>
+    ) => {
       const store = useNewEncounterStore.getState();
       for (const item of accepted) {
         acceptSuggestion(item.id);
@@ -598,8 +640,8 @@ export default function NewEncounterReviewPage() {
               Open Encounter?
             </DialogTitle>
             <DialogDescription>
-              The encounter has been created successfully. Vital signs have not been recorded
-              yet. Open the encounter now to continue documentation and record vitals.
+              The encounter has been created successfully. Vital signs have not been recorded yet.
+              Open the encounter now to continue documentation and record vitals.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -607,18 +649,14 @@ export default function NewEncounterReviewPage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Vitals Required</AlertTitle>
               <AlertDescription>
-                Vital signs are essential for proper patient assessment and triage
-                prioritization.
+                Vital signs are essential for proper patient assessment and triage prioritization.
               </AlertDescription>
             </Alert>
           </div>
           {/* SHA Consent Step — shown for SHA-eligible patients */}
           {patientData?.id && (
             <div className="py-2">
-              <SHAConsentStep
-                patientId={patientData.id}
-                encounterId={createdEncounterId}
-              />
+              <SHAConsentStep patientId={patientData.id} encounterId={createdEncounterId} />
             </div>
           )}
 
@@ -627,345 +665,353 @@ export default function NewEncounterReviewPage() {
               Skip for Now
             </Button>
             <Button onClick={handleGoToTriage}>
-              <Activity className="h-4 w-4 mr-2" />
+              <Activity className="mr-2 h-4 w-4" />
               Open Encounter
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-        {/* Review Card */}
-        <Card>
-          <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                Review & Create
-              </CardTitle>
-              {isAutopopulateAvailable && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAutopopulate}
-                  disabled={isSuggestionsLoading || !details.chief_complaint?.trim()}
-                  className="gap-1.5 text-xs"
-                >
-                  {isSuggestionsLoading ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
-                  <span className="hidden sm:inline">
-                    {isSuggestionsLoading ? 'Analyzing...' : 'AI Autopopulate'}
-                  </span>
-                  <span className="sm:hidden">
-                    {isSuggestionsLoading ? '...' : 'AI Fill'}
-                  </span>
-                </Button>
-              )}
-            </div>
-            <CardDescription>
-              Review the encounter details before creating.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6 space-y-4">
-            {/* Patient Section */}
-            <SummarySection
-              icon={<User className="h-4 w-4" />}
-              title="Patient"
-              isComplete={!!completion?.patient}
-            >
-              <div className="font-medium text-foreground">
-                {patientData.first_name} {patientData.last_name}
-              </div>
-              <div className="text-xs">{patientData.mrn}</div>
-            </SummarySection>
-
-            {/* Details Section */}
-            <SummarySection
-              icon={<Stethoscope className="h-4 w-4" />}
-              title="Encounter Details"
-              isComplete={!!completion?.details}
-            >
-              <div className="space-y-1">
-                <div>
-                  <span className="font-medium text-foreground">Type:</span>{' '}
-                  {details.encounter_type}
-                  {details.encounter_type === 'IPD' && details.admission_urgency && (
-                    <Badge
-                      variant="secondary"
-                      className={`ml-2 text-xs ${
-                        details.admission_urgency === 'EMERGENCY'
-                          ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
-                          : details.admission_urgency === 'URGENT'
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                            : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                      }`}
-                    >
-                      {details.admission_urgency === 'ROUTINE' ? 'Elective' : details.admission_urgency}
-                    </Badge>
-                  )}
-                </div>
-                <div>
-                  <span className="font-medium text-foreground">Date:</span>{' '}
-                  {details.encounter_date}
-                </div>
-                {details.chief_complaint_category && (
-                  <div>
-                    <span className="font-medium text-foreground">Category:</span>{' '}
-                    {details.chief_complaint_category}
-                  </div>
-                )}
-                <div>
-                  <span className="font-medium text-foreground">Chief Complaint:</span>{' '}
-                  {details.chief_complaint || (
-                    <span className="text-destructive">Not provided</span>
-                  )}
-                </div>
-              </div>
-            </SummarySection>
-
-            {/* History Section */}
-            <SummarySection
-              icon={<FileText className="h-4 w-4" />}
-              title="Medical History"
-              isComplete={!!completion?.history}
-            >
-              {hasHistory ? (
-                <div className="space-y-1">
-                  {history.allergies && (
-                    <div>
-                      <span className="font-medium text-foreground">Allergies:</span>{' '}
-                      {history.allergies}
-                    </div>
-                  )}
-                  {history.chronic_conditions && (
-                    <div>
-                      <span className="font-medium text-foreground">Chronic:</span>{' '}
-                      {history.chronic_conditions}
-                    </div>
-                  )}
-                  {history.current_medications && (
-                    <div>
-                      <span className="font-medium text-foreground">Medications:</span>{' '}
-                      {history.current_medications}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <span className="italic">No history recorded</span>
-              )}
-            </SummarySection>
-
-            {/* Notes Section */}
-            <SummarySection
-              icon={<ClipboardList className="h-4 w-4" />}
-              title="Clinical Notes"
-              isComplete={!!completion?.notes}
-            >
-              {hasNotes ? (
-                <div className="space-y-1">
-                  {notes.history_of_present_illness && (
-                    <div>
-                      <span className="font-medium text-foreground">HPI:</span>{' '}
-                      {notes.history_of_present_illness.slice(0, 100)}
-                      {notes.history_of_present_illness.length > 100 && '...'}
-                    </div>
-                  )}
-                  {notes.assessment && (
-                    <div>
-                      <span className="font-medium text-foreground">Assessment:</span>{' '}
-                      {notes.assessment.slice(0, 100)}
-                      {notes.assessment.length > 100 && '...'}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <span className="italic">No notes recorded</span>
-              )}
-            </SummarySection>
-
-            {/* Diagnoses Section */}
-            <SummarySection
-              icon={<Stethoscope className="h-4 w-4" />}
-              title="Diagnoses"
-              isComplete={!!completion?.diagnosis}
-            >
-              {diagnoses.length > 0 ? (
-                <div className="space-y-1">
-                  {diagnoses.map((dx, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {dx.icd10_code || dx.icd11_code || 'N/A'}
-                      </Badge>
-                      <span>{dx.icd10_display || dx.icd11_display || dx.free_text_diagnosis}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <span className="italic">No diagnoses added</span>
-              )}
-            </SummarySection>
-
-            {/* Admission Section (IPD only) */}
-            {isIPD && (
-              <SummarySection
-                icon={<Activity className="h-4 w-4" />}
-                title="Admission"
-                isComplete={!!completion?.admission}
+      {/* Review Card */}
+      <Card>
+        <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+              Review & Create
+            </CardTitle>
+            {isAutopopulateAvailable && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAutopopulate}
+                disabled={isSuggestionsLoading || !details.chief_complaint?.trim()}
+                className="gap-1.5 text-xs"
               >
-                {admission.wardId ? (
-                  <div className="space-y-1">
-                    <div>
-                      <span className="font-medium text-foreground">Ward:</span>{' '}
-                      {admission.wardName || `Ward #${admission.wardId}`}
-                    </div>
-                    <div>
-                      <span className="font-medium text-foreground">Bed:</span>{' '}
-                      {admission.bedNumber || (admission.bedId ? `Bed #${admission.bedId}` : 'Not selected')}
-                    </div>
-                    <div>
-                      <span className="font-medium text-foreground">Payer:</span>{' '}
-                      {admission.payerType}
-                    </div>
-                    {(admission.requiresIsolation || admission.requiresOxygen || admission.requiresVentilator) && (
-                      <div className="flex gap-1 mt-1">
-                        {admission.requiresIsolation && <Badge variant="outline" className="text-xs">Isolation</Badge>}
-                        {admission.requiresOxygen && <Badge variant="outline" className="text-xs">O₂</Badge>}
-                        {admission.requiresVentilator && <Badge variant="outline" className="text-xs">Ventilator</Badge>}
-                      </div>
-                    )}
-                  </div>
+                {isSuggestionsLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <span className="text-destructive">Ward and bed not selected</span>
+                  <Sparkles className="h-3.5 w-3.5" />
                 )}
-              </SummarySection>
+                <span className="hidden sm:inline">
+                  {isSuggestionsLoading ? 'Analyzing...' : 'AI Autopopulate'}
+                </span>
+                <span className="sm:hidden">{isSuggestionsLoading ? '...' : 'AI Fill'}</span>
+              </Button>
             )}
+          </div>
+          <CardDescription>Review the encounter details before creating.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 px-3 sm:px-6">
+          {/* Patient Section */}
+          <SummarySection
+            icon={<User className="h-4 w-4" />}
+            title="Patient"
+            isComplete={!!completion?.patient}
+          >
+            <div className="font-medium text-foreground">
+              {patientData.first_name} {patientData.last_name}
+            </div>
+            <div className="text-xs">{patientData.mrn}</div>
+          </SummarySection>
 
-            {/* SHA Consent Section (IPD only) — shown inline since triage modal is skipped */}
-            {isIPD && patientData?.id && admission.payerType === 'SHA' && (
-              <div className="border rounded-lg p-3 sm:p-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-medium text-sm sm:text-base">SHA Insurance Consent</h3>
+          {/* Details Section */}
+          <SummarySection
+            icon={<Stethoscope className="h-4 w-4" />}
+            title="Encounter Details"
+            isComplete={!!completion?.details}
+          >
+            <div className="space-y-1">
+              <div>
+                <span className="font-medium text-foreground">Type:</span> {details.encounter_type}
+                {details.encounter_type === 'IPD' && details.admission_urgency && (
+                  <Badge
+                    variant="secondary"
+                    className={`ml-2 text-xs ${
+                      details.admission_urgency === 'EMERGENCY'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                        : details.admission_urgency === 'URGENT'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                          : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                    }`}
+                  >
+                    {details.admission_urgency === 'ROUTINE'
+                      ? 'Elective'
+                      : details.admission_urgency}
+                  </Badge>
+                )}
+              </div>
+              <div>
+                <span className="font-medium text-foreground">Date:</span> {details.encounter_date}
+              </div>
+              {details.chief_complaint_category && (
+                <div>
+                  <span className="font-medium text-foreground">Category:</span>{' '}
+                  {details.chief_complaint_category}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Verify eligibility and obtain consent for SHA claim submission.
-                </p>
-                <SHAConsentStep
-                  patientId={patientData.id}
-                  encounterId={createdEncounterId}
-                />
+              )}
+              <div>
+                <span className="font-medium text-foreground">Chief Complaint:</span>{' '}
+                {details.chief_complaint || <span className="text-destructive">Not provided</span>}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          </SummarySection>
 
-        {/* Validation Warning */}
-        {!canCreate && (
-          <Alert variant="destructive" className="bg-destructive/10">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Cannot Create Encounter</AlertTitle>
-            <AlertDescription>
-              Please complete all required fields: Patient selection and Chief complaint.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {isIPD && activeAdmissionConflictMessage && (
-          <Alert variant="destructive" className="bg-destructive/10">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Active Admission Conflict</AlertTitle>
-            <AlertDescription>{activeAdmissionConflictMessage}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Vitals Info Banner */}
-        {vitalsRecorded ? (
-          <Alert className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-800 dark:text-green-200">
-              Vital Signs Recorded
-            </AlertTitle>
-            <AlertDescription className="text-green-700 dark:text-green-300">
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
-                {vitals.temperature && <span>Temp: {vitals.temperature}°C</span>}
-                {vitals.pulse && <span>HR: {vitals.pulse} bpm</span>}
-                {(vitals.blood_pressure_systolic && vitals.blood_pressure_diastolic) && (
-                  <span>BP: {vitals.blood_pressure_systolic}/{vitals.blood_pressure_diastolic} mmHg</span>
+          {/* History Section */}
+          <SummarySection
+            icon={<FileText className="h-4 w-4" />}
+            title="Medical History"
+            isComplete={!!completion?.history}
+          >
+            {hasHistory ? (
+              <div className="space-y-1">
+                {history.allergies && (
+                  <div>
+                    <span className="font-medium text-foreground">Allergies:</span>{' '}
+                    {history.allergies}
+                  </div>
                 )}
-                {vitals.spo2 && <span>SpO₂: {vitals.spo2}%</span>}
-                {vitals.respiratory_rate && <span>RR: {vitals.respiratory_rate}/min</span>}
-                {vitals.weight && <span>Weight: {vitals.weight} kg</span>}
-                {vitals.height && <span>Height: {vitals.height} cm</span>}
+                {history.chronic_conditions && (
+                  <div>
+                    <span className="font-medium text-foreground">Chronic:</span>{' '}
+                    {history.chronic_conditions}
+                  </div>
+                )}
+                {history.current_medications && (
+                  <div>
+                    <span className="font-medium text-foreground">Medications:</span>{' '}
+                    {history.current_medications}
+                  </div>
+                )}
               </div>
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
-            <Activity className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="text-blue-800 dark:text-blue-200">
-              Vital Signs Recording
-            </AlertTitle>
-            <AlertDescription className="text-blue-700 dark:text-blue-300">
-              After creating the encounter, you&apos;ll be prompted to record vital signs through
-              the Triage module for proper patient prioritization.
-            </AlertDescription>
-          </Alert>
-        )}
+            ) : (
+              <span className="italic">No history recorded</span>
+            )}
+          </SummarySection>
 
-        {/* Navigation & Actions */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-          <Button variant="outline" onClick={handlePrevious}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <ShiftGate>
+          {/* Notes Section */}
+          <SummarySection
+            icon={<ClipboardList className="h-4 w-4" />}
+            title="Clinical Notes"
+            isComplete={!!completion?.notes}
+          >
+            {hasNotes ? (
+              <div className="space-y-1">
+                {notes.history_of_present_illness && (
+                  <div>
+                    <span className="font-medium text-foreground">HPI:</span>{' '}
+                    {notes.history_of_present_illness.slice(0, 100)}
+                    {notes.history_of_present_illness.length > 100 && '...'}
+                  </div>
+                )}
+                {notes.assessment && (
+                  <div>
+                    <span className="font-medium text-foreground">Assessment:</span>{' '}
+                    {notes.assessment.slice(0, 100)}
+                    {notes.assessment.length > 100 && '...'}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span className="italic">No notes recorded</span>
+            )}
+          </SummarySection>
+
+          {/* Diagnoses Section */}
+          <SummarySection
+            icon={<Stethoscope className="h-4 w-4" />}
+            title="Diagnoses"
+            isComplete={!!completion?.diagnosis}
+          >
+            {diagnoses.length > 0 ? (
+              <div className="space-y-1">
+                {diagnoses.map((dx, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {dx.icd10_code || dx.icd11_code || 'N/A'}
+                    </Badge>
+                    <span>{dx.icd10_display || dx.icd11_display || dx.free_text_diagnosis}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="italic">No diagnoses added</span>
+            )}
+          </SummarySection>
+
+          {/* Admission Section (IPD only) */}
+          {isIPD && (
+            <SummarySection
+              icon={<Activity className="h-4 w-4" />}
+              title="Admission"
+              isComplete={!!completion?.admission}
+            >
+              {admission.wardId ? (
+                <div className="space-y-1">
+                  <div>
+                    <span className="font-medium text-foreground">Ward:</span>{' '}
+                    {admission.wardName || `Ward #${admission.wardId}`}
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground">Bed:</span>{' '}
+                    {admission.bedNumber ||
+                      (admission.bedId ? `Bed #${admission.bedId}` : 'Not selected')}
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground">Payer:</span>{' '}
+                    {admission.payerType}
+                  </div>
+                  {(admission.requiresIsolation ||
+                    admission.requiresOxygen ||
+                    admission.requiresVentilator) && (
+                    <div className="mt-1 flex gap-1">
+                      {admission.requiresIsolation && (
+                        <Badge variant="outline" className="text-xs">
+                          Isolation
+                        </Badge>
+                      )}
+                      {admission.requiresOxygen && (
+                        <Badge variant="outline" className="text-xs">
+                          O₂
+                        </Badge>
+                      )}
+                      {admission.requiresVentilator && (
+                        <Badge variant="outline" className="text-xs">
+                          Ventilator
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span className="text-destructive">Ward and bed not selected</span>
+              )}
+            </SummarySection>
+          )}
+
+          {/* SHA Consent Section (IPD only) — shown inline since triage modal is skipped */}
+          {isIPD && patientData?.id && admission.payerType === 'SHA' && (
+            <div className="space-y-2 rounded-lg border p-3 sm:p-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-medium sm:text-base">SHA Insurance Consent</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Verify eligibility and obtain consent for SHA claim submission.
+              </p>
+              <SHAConsentStep patientId={patientData.id} encounterId={createdEncounterId} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Validation Warning */}
+      {!canCreate && (
+        <Alert variant="destructive" className="bg-destructive/10">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Cannot Create Encounter</AlertTitle>
+          <AlertDescription>
+            Please complete all required fields: Patient selection and Chief complaint.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isIPD && activeAdmissionConflictMessage && (
+        <Alert variant="destructive" className="bg-destructive/10">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Active Admission Conflict</AlertTitle>
+          <AlertDescription>{activeAdmissionConflictMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Vitals Info Banner */}
+      {vitalsRecorded ? (
+        <Alert className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertTitle className="text-green-800 dark:text-green-200">
+            Vital Signs Recorded
+          </AlertTitle>
+          <AlertDescription className="text-green-700 dark:text-green-300">
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+              {vitals.temperature && <span>Temp: {vitals.temperature}°C</span>}
+              {vitals.pulse && <span>HR: {vitals.pulse} bpm</span>}
+              {vitals.blood_pressure_systolic && vitals.blood_pressure_diastolic && (
+                <span>
+                  BP: {vitals.blood_pressure_systolic}/{vitals.blood_pressure_diastolic} mmHg
+                </span>
+              )}
+              {vitals.spo2 && <span>SpO₂: {vitals.spo2}%</span>}
+              {vitals.respiratory_rate && <span>RR: {vitals.respiratory_rate}/min</span>}
+              {vitals.weight && <span>Weight: {vitals.weight} kg</span>}
+              {vitals.height && <span>Height: {vitals.height} cm</span>}
+            </div>
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
+          <Activity className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-blue-800 dark:text-blue-200">
+            Vital Signs Recording
+          </AlertTitle>
+          <AlertDescription className="text-blue-700 dark:text-blue-300">
+            After creating the encounter, you&apos;ll be prompted to record vital signs through the
+            Triage module for proper patient prioritization.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Navigation & Actions */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+        <Button variant="outline" onClick={handlePrevious}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <ShiftGate>
             <Button
               variant="outline"
               onClick={handleSaveDraft}
               disabled={createEncounter.isPending || !canCreate}
             >
               {createEncounter.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="mr-2 h-4 w-4" />
               )}
               <span className="sm:hidden">Draft</span>
               <span className="hidden sm:inline">Save Draft</span>
             </Button>
-            </ShiftGate>
-            <ShiftGate>
+          </ShiftGate>
+          <ShiftGate>
             <Button
               onClick={handleCreate}
               disabled={
-                createEncounter.isPending
-                || !canCreate
-                || (isIPD && (loadingActiveAdmissionConflict || hasOrgActiveAdmissionConflict))
+                createEncounter.isPending ||
+                !canCreate ||
+                (isIPD && (loadingActiveAdmissionConflict || hasOrgActiveAdmissionConflict))
               }
             >
               {createEncounter.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <SendHorizontal className="h-4 w-4 mr-2" />
+                <SendHorizontal className="mr-2 h-4 w-4" />
               )}
               <span className="sm:hidden">Create</span>
               <span className="hidden sm:inline">Create Encounter</span>
             </Button>
-            </ShiftGate>
-          </div>
+          </ShiftGate>
         </div>
+      </div>
 
-        {/* AI Autopopulate Dialog */}
-        <SmartSuggestionBatch
-          open={showAutopopulate}
-          onOpenChange={setShowAutopopulate}
-          suggestions={smartSuggestions}
-          onApply={handleApplyAutopopulate}
-          title="AI Autopopulate Suggestions"
-        />
+      {/* AI Autopopulate Dialog */}
+      <SmartSuggestionBatch
+        open={showAutopopulate}
+        onOpenChange={setShowAutopopulate}
+        suggestions={smartSuggestions}
+        onApply={handleApplyAutopopulate}
+        title="AI Autopopulate Suggestions"
+      />
     </div>
   );
 }

@@ -60,7 +60,11 @@ export default function SubscriptionPlansPage() {
     return (
       <div className="space-y-4">
         <PageHeader title="Access Denied" />
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Only Nexora superusers can manage subscription plans.</CardContent></Card>
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Only Nexora superusers can manage subscription plans.
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -74,7 +78,7 @@ export default function SubscriptionPlansPage() {
           actions={
             <Button asChild size="sm">
               <CreateRouteLink href="/admin/subscription-plans/new">
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 New Plan
               </CreateRouteLink>
             </Button>
@@ -82,7 +86,7 @@ export default function SubscriptionPlansPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           <AdminStatCard
             title="Total Plans"
             value={isLoading ? '...' : totalPlans}
@@ -115,7 +119,9 @@ export default function SubscriptionPlansPage() {
         {/* Table */}
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
           </div>
         ) : (
           <ResponsiveTable
@@ -132,9 +138,7 @@ export default function SubscriptionPlansPage() {
                 cell: (plan) => (
                   <div>
                     <p className="font-medium">{plan.name}</p>
-                    <Badge className={`${tierColors[plan.code]} mt-0.5`}>
-                      {plan.code}
-                    </Badge>
+                    <Badge className={`${tierColors[plan.code]} mt-0.5`}>{plan.code}</Badge>
                   </div>
                 ),
               },
@@ -143,18 +147,14 @@ export default function SubscriptionPlansPage() {
                 header: 'Monthly',
                 sortable: true,
                 sortType: 'number',
-                cell: (plan) => (
-                  <span className="text-sm">{formatPrice(plan.monthly_price)}</span>
-                ),
+                cell: (plan) => <span className="text-sm">{formatPrice(plan.monthly_price)}</span>,
               },
               {
                 key: 'annual_price',
                 header: 'Annual',
                 sortable: true,
                 sortType: 'number',
-                cell: (plan) => (
-                  <span className="text-sm">{formatPrice(plan.annual_price)}</span>
-                ),
+                cell: (plan) => <span className="text-sm">{formatPrice(plan.annual_price)}</span>,
                 hideOnMobile: true,
               },
               {
@@ -208,12 +208,13 @@ export default function SubscriptionPlansPage() {
             mobileCard={(plan: SubscriptionPlanListItem) => (
               <div className="flex items-center justify-between p-3">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{plan.name}</p>
+                  <p className="truncate font-medium">{plan.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatPrice(plan.monthly_price)}/mo · {formatLimit(plan.max_facilities)} facilities
+                    {formatPrice(plan.monthly_price)}/mo · {formatLimit(plan.max_facilities)}{' '}
+                    facilities
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   <Badge className={tierColors[plan.code]}>{plan.code}</Badge>
                 </div>
               </div>

@@ -93,10 +93,10 @@ export function DietPlanTable({
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <form onSubmit={handleSearch} className="flex flex-1 gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search diet plans, patients..."
               value={searchTerm}
@@ -133,7 +133,7 @@ export function DietPlanTable({
                 router.push(newUrl);
               }}
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">New Diet Plan</span>
               <span className="sm:hidden">New</span>
             </Button>
@@ -166,7 +166,7 @@ export function DietPlanTable({
         />
       ) : (
         <>
-          <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -186,37 +186,26 @@ export function DietPlanTable({
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleRowClick(plan.id)}
                   >
-                    <TableCell className="font-mono text-sm">
-                      {plan.plan_number}
-                    </TableCell>
+                    <TableCell className="font-mono text-sm">{plan.plan_number}</TableCell>
                     <TableCell>
                       <div>
                         <div className="font-medium">{plan.patient_name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {plan.patient_mrn}
-                        </div>
+                        <div className="text-sm text-muted-foreground">{plan.patient_mrn}</div>
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {plan.name}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+                    <TableCell className="max-w-[200px] truncate">{plan.name}</TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">
                       {format(parseISO(plan.start_date), 'MMM d, yyyy')}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground">
-                      {plan.end_date
-                        ? format(parseISO(plan.end_date), 'MMM d, yyyy')
-                        : 'Ongoing'}
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">
+                      {plan.end_date ? format(parseISO(plan.end_date), 'MMM d, yyyy') : 'Ongoing'}
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={
-                          DIET_PLAN_STATUS_CONFIG[plan.status]?.className
-                        }
+                        className={DIET_PLAN_STATUS_CONFIG[plan.status]?.className}
                       >
-                        {DIET_PLAN_STATUS_CONFIG[plan.status]?.label ||
-                          plan.status}
+                        {DIET_PLAN_STATUS_CONFIG[plan.status]?.label || plan.status}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -235,9 +224,7 @@ export function DietPlanTable({
                 variant="outline"
                 size="sm"
                 disabled={!data.previous}
-                onClick={() =>
-                  setParams((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))
-                }
+                onClick={() => setParams((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))}
               >
                 <ChevronLeft className="h-4 w-4" />
                 Previous
@@ -246,9 +233,7 @@ export function DietPlanTable({
                 variant="outline"
                 size="sm"
                 disabled={!data.next}
-                onClick={() =>
-                  setParams((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))
-                }
+                onClick={() => setParams((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))}
               >
                 Next
                 <ChevronRight className="h-4 w-4" />

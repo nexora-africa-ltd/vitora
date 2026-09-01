@@ -74,17 +74,17 @@ export default function LeveyJenningsPage() {
         {/* Lot Selector & Filters */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Activity className="h-4 w-4" />
               Chart Controls
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row">
               <div className="flex-1">
                 <Label>QC Lot</Label>
                 <select
-                  className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={selectedLotId || ''}
                   onChange={(e) => setSelectedLotId(e.target.value ? Number(e.target.value) : null)}
                 >
@@ -102,7 +102,9 @@ export default function LeveyJenningsPage() {
                   type="number"
                   placeholder="Enter test ID"
                   value={selectedTestId || ''}
-                  onChange={(e) => setSelectedTestId(e.target.value ? Number(e.target.value) : null)}
+                  onChange={(e) =>
+                    setSelectedTestId(e.target.value ? Number(e.target.value) : null)
+                  }
                   className="mt-1"
                 />
               </div>
@@ -130,7 +132,7 @@ export default function LeveyJenningsPage() {
                   size="sm"
                   onClick={() => setDateRange({ from: '', to: '' })}
                 >
-                  <CalendarDays className="h-4 w-4 mr-1" />
+                  <CalendarDays className="mr-1 h-4 w-4" />
                   Reset
                 </Button>
               </div>
@@ -144,7 +146,7 @@ export default function LeveyJenningsPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">
                 Control Chart
-                <span className="text-sm font-normal text-muted-foreground ml-2">
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
                   {ljData.test_name} — Mean: {ljData.mean} ± {ljData.sd} {ljData.unit}
                 </span>
               </CardTitle>
@@ -170,13 +172,48 @@ export default function LeveyJenningsPage() {
                       />
 
                       {/* Reference lines for mean and SD boundaries */}
-                      <ReferenceLine y={mean} stroke="hsl(var(--primary))" strokeWidth={2} label="Mean" />
-                      <ReferenceLine y={mean + sd} stroke="#22c55e" strokeDasharray="5 5" label="+1SD" />
-                      <ReferenceLine y={mean - sd} stroke="#22c55e" strokeDasharray="5 5" label="-1SD" />
-                      <ReferenceLine y={mean + 2 * sd} stroke="#eab308" strokeDasharray="3 3" label="+2SD" />
-                      <ReferenceLine y={mean - 2 * sd} stroke="#eab308" strokeDasharray="3 3" label="-2SD" />
-                      <ReferenceLine y={mean + 3 * sd} stroke="#ef4444" strokeDasharray="2 2" label="+3SD" />
-                      <ReferenceLine y={mean - 3 * sd} stroke="#ef4444" strokeDasharray="2 2" label="-3SD" />
+                      <ReferenceLine
+                        y={mean}
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        label="Mean"
+                      />
+                      <ReferenceLine
+                        y={mean + sd}
+                        stroke="#22c55e"
+                        strokeDasharray="5 5"
+                        label="+1SD"
+                      />
+                      <ReferenceLine
+                        y={mean - sd}
+                        stroke="#22c55e"
+                        strokeDasharray="5 5"
+                        label="-1SD"
+                      />
+                      <ReferenceLine
+                        y={mean + 2 * sd}
+                        stroke="#eab308"
+                        strokeDasharray="3 3"
+                        label="+2SD"
+                      />
+                      <ReferenceLine
+                        y={mean - 2 * sd}
+                        stroke="#eab308"
+                        strokeDasharray="3 3"
+                        label="-2SD"
+                      />
+                      <ReferenceLine
+                        y={mean + 3 * sd}
+                        stroke="#ef4444"
+                        strokeDasharray="2 2"
+                        label="+3SD"
+                      />
+                      <ReferenceLine
+                        y={mean - 3 * sd}
+                        stroke="#ef4444"
+                        strokeDasharray="2 2"
+                        label="-3SD"
+                      />
 
                       <Line
                         type="monotone"
@@ -188,8 +225,8 @@ export default function LeveyJenningsPage() {
                           const color = !payload.accepted
                             ? '#ef4444'
                             : payload.z_score && Math.abs(payload.z_score) > 2
-                            ? '#eab308'
-                            : 'hsl(var(--primary))';
+                              ? '#eab308'
+                              : 'hsl(var(--primary))';
                           return (
                             <circle
                               key={`${cx}-${cy}`}
@@ -207,7 +244,7 @@ export default function LeveyJenningsPage() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                <div className="flex h-[200px] items-center justify-center text-muted-foreground">
                   No QC results recorded for this lot yet.
                 </div>
               )}
@@ -217,7 +254,7 @@ export default function LeveyJenningsPage() {
 
         {(!selectedLotId || !selectedTestId) && (
           <Card>
-            <CardContent className="flex items-center justify-center h-[200px] text-muted-foreground">
+            <CardContent className="flex h-[200px] items-center justify-center text-muted-foreground">
               Select a QC lot and test above to view the Levey-Jennings control chart.
             </CardContent>
           </Card>

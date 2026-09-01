@@ -8,14 +8,7 @@
 
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Clock,
-  User,
-  CheckCircle,
-  ArrowRight,
-  FileText,
-  Stethoscope,
-} from 'lucide-react';
+import { Clock, User, CheckCircle, ArrowRight, FileText, Stethoscope } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -147,34 +140,19 @@ export function ClinicVisitCard({ visit, clinicId, onRefresh }: ClinicVisitCardP
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2">
           {visit.encounter ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={handleViewEncounter}
-            >
-              <FileText className="h-4 w-4 mr-1" />
+            <Button variant="outline" size="sm" className="flex-1" onClick={handleViewEncounter}>
+              <FileText className="mr-1 h-4 w-4" />
               View Encounter
             </Button>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={handleViewPatient}
-            >
-              <User className="h-4 w-4 mr-1" />
+            <Button variant="outline" size="sm" className="flex-1" onClick={handleViewPatient}>
+              <User className="mr-1 h-4 w-4" />
               View Patient
             </Button>
           )}
           {visit.status === 'IN_CONSULTATION' && (
-            <Button
-              size="sm"
-              className="flex-1"
-              onClick={handleComplete}
-              disabled={completing}
-            >
-              <CheckCircle className="h-4 w-4 mr-1" />
+            <Button size="sm" className="flex-1" onClick={handleComplete} disabled={completing}>
+              <CheckCircle className="mr-1 h-4 w-4" />
               Complete
             </Button>
           )}

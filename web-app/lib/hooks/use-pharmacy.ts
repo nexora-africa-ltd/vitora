@@ -176,10 +176,7 @@ export function useUpdateStockBatch() {
 /**
  * Hook for fetching paginated stock alerts.
  */
-export function useStockAlerts(
-  params?: StockAlertListParams,
-  options?: { enabled?: boolean }
-) {
+export function useStockAlerts(params?: StockAlertListParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['stock-alerts', params],
     queryFn: () => pharmacyApi.listAlerts(params),
@@ -249,7 +246,12 @@ export function useResolveAlert() {
 
 // ============ Prescription Hooks — Dual-mode: PowerSync + API fallback ============
 
-type PrescriptionJoinedRow = PrescriptionRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string };
+type PrescriptionJoinedRow = PrescriptionRow & {
+  id: string;
+  patient_first_name?: string;
+  patient_last_name?: string;
+  patient_mrn?: string;
+};
 
 /**
  * Hook for fetching paginated prescriptions.
@@ -271,7 +273,9 @@ export function usePrescriptions(params?: PrescriptionListParams) {
     sqlParams.push(String(params.patient));
   }
   if (params?.search) {
-    conditions.push('(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR rx.prescription_number LIKE ?)');
+    conditions.push(
+      '(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR rx.prescription_number LIKE ?)'
+    );
     const pattern = `%${params.search}%`;
     sqlParams.push(pattern, pattern, pattern, pattern);
   }
@@ -292,7 +296,7 @@ export function usePrescriptions(params?: PrescriptionListParams) {
       count: rows.length < limit ? offset + rows.length : offset + limit + 1,
       next: null,
       previous: null,
-      results: rows.map(r => transformPrescriptionRow(r) as unknown as Prescription),
+      results: rows.map((r) => transformPrescriptionRow(r) as unknown as Prescription),
       capabilities: {
         pharmacy_enabled: true,
         modules: { pharmacy: true, inventory: true, billing: true },
@@ -346,7 +350,7 @@ export function usePatientPrescriptions(patientId: number) {
       WHERE rx.patient_id = ?
       ORDER BY rx.created_at DESC`,
     params: [String(patientId)],
-    transform: (rows) => rows.map(r => transformPrescriptionRow(r) as unknown as Prescription),
+    transform: (rows) => rows.map((r) => transformPrescriptionRow(r) as unknown as Prescription),
     queryKey: ['patients', patientId, 'prescriptions'],
     queryFn: () => pharmacyApi.getPatientPrescriptions(patientId),
     forceApi: true,
@@ -367,7 +371,7 @@ export function useEncounterPrescriptions(encounterId: number) {
       WHERE rx.encounter_id = ?
       ORDER BY rx.created_at DESC`,
     params: [String(encounterId)],
-    transform: (rows) => rows.map(r => transformPrescriptionRow(r) as unknown as Prescription),
+    transform: (rows) => rows.map((r) => transformPrescriptionRow(r) as unknown as Prescription),
     queryKey: ['encounters', encounterId, 'prescriptions'],
     queryFn: () => pharmacyApi.getEncounterPrescriptions(encounterId),
     forceApi: true,
@@ -431,7 +435,9 @@ export function useCreatePrescription() {
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
       queryClient.invalidateQueries({ queryKey: ['patients', variables.patient, 'prescriptions'] });
       if (variables.admission) {
-        queryClient.invalidateQueries({ queryKey: ['admissions', variables.admission, 'prescriptions'] });
+        queryClient.invalidateQueries({
+          queryKey: ['admissions', variables.admission, 'prescriptions'],
+        });
       }
     },
   });
@@ -459,8 +465,13 @@ export function useUpdatePrescription() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string | number; data: { dispensing_type?: 'INTERNAL' | 'EXTERNAL'; is_discharge_medication?: boolean } }) =>
-      pharmacyApi.updatePrescription(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string | number;
+      data: { dispensing_type?: 'INTERNAL' | 'EXTERNAL'; is_discharge_medication?: boolean };
+    }) => pharmacyApi.updatePrescription(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
     },
@@ -568,8 +579,15 @@ export function useReturnStock() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ dispensing_id, quantity, reason }: { dispensing_id: number; quantity: number; reason: string }) =>
-      pharmacyApi.returnDispensing(dispensing_id, quantity, reason),
+    mutationFn: ({
+      dispensing_id,
+      quantity,
+      reason,
+    }: {
+      dispensing_id: number;
+      quantity: number;
+      reason: string;
+    }) => pharmacyApi.returnDispensing(dispensing_id, quantity, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dispensings'] });
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
@@ -598,7 +616,11 @@ export function useVerifyDispensing() {
 /**
  * Hook for fetching stock adjustments.
  */
-export function useStockAdjustments(params?: { page?: number; page_size?: number; stock_batch?: number }) {
+export function useStockAdjustments(params?: {
+  page?: number;
+  page_size?: number;
+  stock_batch?: number;
+}) {
   return useQuery({
     queryKey: ['stock-adjustments', params],
     queryFn: () => pharmacyApi.listAdjustments(params),

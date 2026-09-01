@@ -34,60 +34,74 @@ export default function EncounterEditVitalsPage() {
 
   const { encounter, isLoading } = useEncounterContext();
   const encounterStoreId = encounter?.id ?? 0;
-  const { getVitals, setVitals, getSession, markSectionComplete, setDirty } = useEncounterEditStore();
+  const { getVitals, setVitals, getSession, markSectionComplete, setDirty } =
+    useEncounterEditStore();
   const updateEncounter = useUpdateEncounter();
 
   const session = getSession(encounterStoreId);
   const vitals = getVitals(encounterStoreId);
 
   // Build form data from store for VitalsForm component
-  const formData = useMemo((): EncounterFormData => ({
-    patient: session?.patientId || null,
-    encounter_type: session?.encounter_type || 'OPD',
-    encounter_date: session?.encounter_date || '',
-    chief_complaint: session?.chief_complaint || '',
-    status: session?.status || 'CREATED',
-    // Vitals from store
-    temperature: vitals?.temperature ?? null,
-    pulse: vitals?.pulse ?? null,
-    blood_pressure_systolic: vitals?.blood_pressure_systolic ?? null,
-    blood_pressure_diastolic: vitals?.blood_pressure_diastolic ?? null,
-    respiratory_rate: vitals?.respiratory_rate ?? null,
-    spo2: vitals?.spo2 ?? null,
-    weight: vitals?.weight ?? null,
-    height: vitals?.height ?? null,
-    // Empty for this step
-    allergies: '',
-    chronic_conditions: '',
-    current_medications: '',
-    past_surgeries: '',
-    family_history: '',
-    social_history: '',
-    notes: '',
-    history_of_present_illness: '',
-    physical_examination: '',
-    assessment: '',
-  }), [session, vitals]);
+  const formData = useMemo(
+    (): EncounterFormData => ({
+      patient: session?.patientId || null,
+      encounter_type: session?.encounter_type || 'OPD',
+      encounter_date: session?.encounter_date || '',
+      chief_complaint: session?.chief_complaint || '',
+      status: session?.status || 'CREATED',
+      // Vitals from store
+      temperature: vitals?.temperature ?? null,
+      pulse: vitals?.pulse ?? null,
+      blood_pressure_systolic: vitals?.blood_pressure_systolic ?? null,
+      blood_pressure_diastolic: vitals?.blood_pressure_diastolic ?? null,
+      respiratory_rate: vitals?.respiratory_rate ?? null,
+      spo2: vitals?.spo2 ?? null,
+      weight: vitals?.weight ?? null,
+      height: vitals?.height ?? null,
+      // Empty for this step
+      allergies: '',
+      chronic_conditions: '',
+      current_medications: '',
+      past_surgeries: '',
+      family_history: '',
+      social_history: '',
+      notes: '',
+      history_of_present_illness: '',
+      physical_examination: '',
+      assessment: '',
+    }),
+    [session, vitals]
+  );
 
   // Handle field changes
-  const handleFieldChange = useCallback((field: keyof EncounterFormData, value: number | null) => {
-    const vitalFields = [
-      'temperature', 'pulse', 'blood_pressure_systolic', 'blood_pressure_diastolic',
-      'respiratory_rate', 'spo2', 'weight', 'height'
-    ];
+  const handleFieldChange = useCallback(
+    (field: keyof EncounterFormData, value: number | null) => {
+      const vitalFields = [
+        'temperature',
+        'pulse',
+        'blood_pressure_systolic',
+        'blood_pressure_diastolic',
+        'respiratory_rate',
+        'spo2',
+        'weight',
+        'height',
+      ];
 
-    if (vitalFields.includes(field)) {
-      setVitals(encounterStoreId, { [field]: value });
-    }
-  }, [encounterStoreId, setVitals]);
+      if (vitalFields.includes(field)) {
+        setVitals(encounterStoreId, { [field]: value });
+      }
+    },
+    [encounterStoreId, setVitals]
+  );
 
   // Build auto-save data
   const autoSaveData = useMemo(() => {
     if (!vitals) return null;
 
-    const bp = vitals.blood_pressure_systolic && vitals.blood_pressure_diastolic
-      ? `${vitals.blood_pressure_systolic}/${vitals.blood_pressure_diastolic}`
-      : '';
+    const bp =
+      vitals.blood_pressure_systolic && vitals.blood_pressure_diastolic
+        ? `${vitals.blood_pressure_systolic}/${vitals.blood_pressure_diastolic}`
+        : '';
 
     return {
       temperature: vitals.temperature,
@@ -200,10 +214,8 @@ export default function EncounterEditVitalsPage() {
       {/* Navigation */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-            <p className="text-sm text-muted-foreground">
-              Step 1 of 7 — Vital signs recorded
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">Step 1 of 7 — Vital signs recorded</p>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -211,15 +223,15 @@ export default function EncounterEditVitalsPage() {
                 disabled={updateEncounter.isPending || !isEditable}
               >
                 {updateEncounter.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="mr-2 h-4 w-4" />
                 )}
                 Save
               </Button>
               <Button onClick={handleNext}>
                 Next: History
-                <ArrowRight className="h-4 w-4 ml-2" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>

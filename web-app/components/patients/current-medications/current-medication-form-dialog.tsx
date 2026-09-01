@@ -5,12 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Search, X } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -197,8 +192,8 @@ export function CurrentMedicationFormDialog({
           <div className="space-y-2">
             <Label>Medication Name *</Label>
             {selectedDrug ? (
-              <div className="flex flex-wrap items-center gap-2 p-3 rounded-md border bg-muted/50 min-w-0">
-                <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border bg-muted/50 p-3">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <Badge variant="outline" className="font-mono text-xs">
                     {selectedDrug.code}
                   </Badge>
@@ -206,7 +201,7 @@ export function CurrentMedicationFormDialog({
                     {selectedDrug.form}
                   </Badge>
                 </div>
-                <span className="flex-1 text-sm truncate min-w-0">
+                <span className="min-w-0 flex-1 truncate text-sm">
                   {selectedDrug.generic_name} {selectedDrug.strength}
                 </span>
                 <Button
@@ -214,14 +209,14 @@ export function CurrentMedicationFormDialog({
                   variant="ghost"
                   size="icon"
                   onClick={handleClearDrug}
-                  className="shrink-0 h-7 w-7"
+                  className="h-7 w-7 shrink-0"
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             ) : (
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   {...register('medication_name')}
                   placeholder="Search drug catalog or type name..."
@@ -246,7 +241,7 @@ export function CurrentMedicationFormDialog({
 
                 {/* Drug search results dropdown */}
                 {isSearchOpen && searchQuery.length >= 2 && (
-                  <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-48 overflow-y-auto">
+                  <Card className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto shadow-lg">
                     <CardContent className="p-2">
                       {isDrugSearching ? (
                         <div className="space-y-2">
@@ -263,32 +258,33 @@ export function CurrentMedicationFormDialog({
                             .filter((d) => d.item_type === 'MEDICATION')
                             .slice(0, 8)
                             .map((drug) => (
-                            <li key={drug.id}>
-                              <button
-                                type="button"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  handleDrugSelect(drug);
-                                }}
-                                className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
-                              >
-                                <Badge variant="outline" className="font-mono shrink-0 text-xs">
-                                  {drug.code}
-                                </Badge>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-sm font-medium truncate">
-                                    {drug.generic_name} {drug.strength}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {drug.form}{drug.brand_names?.length ? ` • ${drug.brand_names[0]}` : ''}
-                                  </span>
-                                </div>
-                              </button>
-                            </li>
-                          ))}
+                              <li key={drug.id}>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleDrugSelect(drug);
+                                  }}
+                                  className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-accent"
+                                >
+                                  <Badge variant="outline" className="shrink-0 font-mono text-xs">
+                                    {drug.code}
+                                  </Badge>
+                                  <div className="flex min-w-0 flex-col">
+                                    <span className="truncate text-sm font-medium">
+                                      {drug.generic_name} {drug.strength}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {drug.form}
+                                      {drug.brand_names?.length ? ` • ${drug.brand_names[0]}` : ''}
+                                    </span>
+                                  </div>
+                                </button>
+                              </li>
+                            ))}
                         </ul>
                       ) : (
-                        <p className="text-center text-muted-foreground py-3 text-xs">
+                        <p className="py-3 text-center text-xs text-muted-foreground">
                           No drugs found — type the full name to add manually
                         </p>
                       )}
@@ -342,10 +338,20 @@ export function CurrentMedicationFormDialog({
           </div>
           <div className="space-y-2">
             <Label>Notes</Label>
-            <Textarea {...register('notes')} placeholder="Additional details..." rows={2} className="resize-none" />
+            <Textarea
+              {...register('notes')}
+              placeholder="Additional details..."
+              rows={2}
+              className="resize-none"
+            />
           </div>
           <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">

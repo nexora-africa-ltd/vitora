@@ -20,18 +20,21 @@ interface WaitTimeTrendsChartProps {
 }
 
 // Chart configuration for wait time trends
-const waitTimeConfig = createChartConfig(['avg_wait_minutes', 'median_wait_minutes', 'target_minutes'], {
-  labels: {
-    avg_wait_minutes: 'Avg Wait',
-    median_wait_minutes: 'Median Wait',
-    target_minutes: 'Target',
-  },
-  colors: {
-    avg_wait_minutes: 'hsl(var(--chart-1))',
-    median_wait_minutes: 'hsl(var(--chart-2))',
-    target_minutes: 'hsl(var(--warning))',
-  },
-});
+const waitTimeConfig = createChartConfig(
+  ['avg_wait_minutes', 'median_wait_minutes', 'target_minutes'],
+  {
+    labels: {
+      avg_wait_minutes: 'Avg Wait',
+      median_wait_minutes: 'Median Wait',
+      target_minutes: 'Target',
+    },
+    colors: {
+      avg_wait_minutes: 'hsl(var(--chart-1))',
+      median_wait_minutes: 'hsl(var(--chart-2))',
+      target_minutes: 'hsl(var(--warning))',
+    },
+  }
+);
 
 export function WaitTimeTrendsChart({
   data,
@@ -41,11 +44,12 @@ export function WaitTimeTrendsChart({
 }: WaitTimeTrendsChartProps) {
   // Format dates and add target line
   const chartData = useMemo(
-    () => (data ?? []).map((item) => ({
-      ...item,
-      formattedDate: format(parseISO(item.date), 'MMM d'),
-      target_minutes: showTarget ? targetMinutes : undefined,
-    })),
+    () =>
+      (data ?? []).map((item) => ({
+        ...item,
+        formattedDate: format(parseISO(item.date), 'MMM d'),
+        target_minutes: showTarget ? targetMinutes : undefined,
+      })),
     [data, showTarget, targetMinutes]
   );
 
@@ -58,7 +62,7 @@ export function WaitTimeTrendsChart({
 
   if (!data || data.length === 0) {
     return (
-      <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+      <div className="flex h-[250px] items-center justify-center text-muted-foreground">
         No wait time data available
       </div>
     );
@@ -66,8 +70,8 @@ export function WaitTimeTrendsChart({
 
   // Determine which data keys to show
   const dataKeys = showTarget
-    ? ['avg_wait_minutes', 'target_minutes'] as const
-    : ['avg_wait_minutes'] as const;
+    ? (['avg_wait_minutes', 'target_minutes'] as const)
+    : (['avg_wait_minutes'] as const);
 
   return (
     <div className="space-y-2">

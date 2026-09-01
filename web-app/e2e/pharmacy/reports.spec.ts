@@ -101,7 +101,10 @@ test.describe('Pharmacy Reports - Stock Summary', () => {
   test('should show batch breakdown per drug', async ({ page }) => {
     // Stock summary is the default tab
     // Click to expand batch details
-    await page.getByText(/paracetamol/i).first().click();
+    await page
+      .getByText(/paracetamol/i)
+      .first()
+      .click();
 
     await expect(page.getByText('BATCH-2026-001')).toBeVisible();
     await expect(page.getByText('BATCH-2025-010')).toBeVisible();
@@ -109,14 +112,20 @@ test.describe('Pharmacy Reports - Stock Summary', () => {
 
   test('should show batch expiry dates in summary', async ({ page }) => {
     // Click to expand paracetamol batches
-    await page.getByText(/paracetamol/i).first().click();
+    await page
+      .getByText(/paracetamol/i)
+      .first()
+      .click();
 
     await expect(page.getByText(/2028-06-01/)).toBeVisible();
     await expect(page.getByText(/2026-02-15/)).toBeVisible();
   });
 
   test('should show days to expiry for batches', async ({ page }) => {
-    await page.getByText(/paracetamol/i).first().click();
+    await page
+      .getByText(/paracetamol/i)
+      .first()
+      .click();
 
     await expect(page.getByText(/\d+\s*days/i).first()).toBeVisible();
   });

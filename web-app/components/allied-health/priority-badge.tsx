@@ -40,7 +40,7 @@ export function PriorityBadge({ priority, showIcon = false, className }: Priorit
   const Icon = config.icon;
 
   return (
-    <Badge variant="outline" className={cn(config.className, 'font-medium gap-1', className)}>
+    <Badge variant="outline" className={cn(config.className, 'gap-1 font-medium', className)}>
       {showIcon && <Icon className="h-3 w-3" />}
       {config.label}
     </Badge>

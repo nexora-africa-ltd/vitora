@@ -69,7 +69,7 @@ export type AgeRange = '0_5' | '5_19' | '5_10' | 'all';
 export function getLMSData(
   indicator: GrowthIndicator,
   sex: Sex,
-  ageRange: AgeRange = '0_5',
+  ageRange: AgeRange = '0_5'
 ): LMSDataPoint[] | LMSLengthDataPoint[] {
   // MUAC has no WHO LMS table in our bundle — it uses absolute cutoffs
   // (SAM < 11.5cm, MAM 11.5–12.4cm, Normal ≥ 12.5cm).
@@ -128,7 +128,7 @@ export function getLMSData(
  */
 function interpolateLMS(
   ageDays: number,
-  data: LMSDataPoint[],
+  data: LMSDataPoint[]
 ): { L: number; M: number; S: number } | null {
   if (data.length === 0) return null;
   const first = data[0]!;
@@ -142,8 +142,7 @@ function interpolateLMS(
     const curr = data[i]!;
     const next = data[i + 1]!;
     if (ageDays >= curr.age_days && ageDays <= next.age_days) {
-      const t =
-        (ageDays - curr.age_days) / (next.age_days - curr.age_days);
+      const t = (ageDays - curr.age_days) / (next.age_days - curr.age_days);
       return {
         L: curr.L + t * (next.L - curr.L),
         M: curr.M + t * (next.M - curr.M),
@@ -159,12 +158,7 @@ function interpolateLMS(
  * Formula: Z = ((X/M)^L - 1) / (L * S) when L ≠ 0
  *          Z = ln(X/M) / S when L ≈ 0
  */
-export function calculateZScore(
-  measurement: number,
-  L: number,
-  M: number,
-  S: number,
-): number {
+export function calculateZScore(measurement: number, L: number, M: number, S: number): number {
   if (M === 0 || S === 0) return 0;
 
   let z: number;
@@ -181,12 +175,7 @@ export function calculateZScore(
  * Y = M * (1 + L * S * Z)^(1/L) when L ≠ 0
  * Y = M * e^(S * Z) when L ≈ 0
  */
-export function measurementFromZ(
-  z: number,
-  L: number,
-  M: number,
-  S: number,
-): number {
+export function measurementFromZ(z: number, L: number, M: number, S: number): number {
   if (Math.abs(L) < 0.01) {
     return M * Math.exp(S * z);
   }
@@ -219,11 +208,9 @@ export const PERCENTILE_MAP: Record<string, number> = {
 export function generatePercentileLines(
   indicator: GrowthIndicator,
   sex: Sex,
-  ageRange: AgeRange = '0_5',
+  ageRange: AgeRange = '0_5'
 ): Record<string, { x: number; y: number }[]> {
-  const data = getLMSData(indicator, sex, ageRange) as Array<
-    LMSDataPoint | LMSLengthDataPoint
-  >;
+  const data = getLMSData(indicator, sex, ageRange) as Array<LMSDataPoint | LMSLengthDataPoint>;
   const lines: Record<string, { x: number; y: number }[]> = {};
 
   const zLabels: Record<number, string> = {
@@ -275,11 +262,19 @@ export function getIndicatorMeta(indicator: GrowthIndicator): {
     case 'weight_for_age':
       return { label: 'Weight-for-Age', yAxisLabel: 'Weight (kg)', xAxisLabel: 'Age (months)' };
     case 'height_for_age':
-      return { label: 'Height/Length-for-Age', yAxisLabel: 'Height (cm)', xAxisLabel: 'Age (months)' };
+      return {
+        label: 'Height/Length-for-Age',
+        yAxisLabel: 'Height (cm)',
+        xAxisLabel: 'Age (months)',
+      };
     case 'weight_for_height':
       return { label: 'Weight-for-Height', yAxisLabel: 'Weight (kg)', xAxisLabel: 'Height (cm)' };
     case 'head_circumference_for_age':
-      return { label: 'Head Circumference-for-Age', yAxisLabel: 'HC (cm)', xAxisLabel: 'Age (months)' };
+      return {
+        label: 'Head Circumference-for-Age',
+        yAxisLabel: 'HC (cm)',
+        xAxisLabel: 'Age (months)',
+      };
     case 'bmi_for_age':
       return { label: 'BMI-for-Age', yAxisLabel: 'BMI (kg/m²)', xAxisLabel: 'Age (months)' };
     case 'muac_for_age':

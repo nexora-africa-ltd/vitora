@@ -51,7 +51,9 @@ export default function InvitationAcceptPage() {
     confirm_password: '',
     phone_number: '',
   });
-  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>(
+    'idle'
+  );
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -64,7 +66,9 @@ export default function InvitationAcceptPage() {
       try {
         const info = await invitationPublicApi.lookup(token);
         if (!info.is_usable) {
-          setError(info.is_expired ? 'This invitation has expired.' : 'This invitation is no longer valid.');
+          setError(
+            info.is_expired ? 'This invitation has expired.' : 'This invitation is no longer valid.'
+          );
           setPageState('error');
           return;
         }
@@ -96,25 +100,28 @@ export default function InvitationAcceptPage() {
   }, 500);
 
   // Auto-suggest username when names change
-  const suggestUsername = useCallback(async (firstName: string, lastName: string) => {
-    if (firstName.length >= 2 && lastName.length >= 2 && !formData.username) {
-      try {
-        const result = await staffApi.suggestUsername(firstName, lastName);
-        if (result.suggestions.length > 0 && result.suggestions[0]) {
-          const suggested = result.suggestions[0];
-          setFormData(prev => ({ ...prev, username: suggested }));
-          setUsernameStatus('available');
+  const suggestUsername = useCallback(
+    async (firstName: string, lastName: string) => {
+      if (firstName.length >= 2 && lastName.length >= 2 && !formData.username) {
+        try {
+          const result = await staffApi.suggestUsername(firstName, lastName);
+          if (result.suggestions.length > 0 && result.suggestions[0]) {
+            const suggested = result.suggestions[0];
+            setFormData((prev) => ({ ...prev, username: suggested }));
+            setUsernameStatus('available');
+          }
+        } catch {
+          // Ignore - username suggestion is optional
         }
-      } catch {
-        // Ignore - username suggestion is optional
       }
-    }
-  }, [formData.username]);
+    },
+    [formData.username]
+  );
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (validationErrors[field]) {
-      setValidationErrors(prev => ({ ...prev, [field]: '' }));
+      setValidationErrors((prev) => ({ ...prev, [field]: '' }));
     }
     if (field === 'username' && value.length >= 3) {
       checkUsername(value);
@@ -134,7 +141,8 @@ export default function InvitationAcceptPage() {
     if (usernameStatus === 'taken') errors.username = 'This username is already taken';
     if (!formData.password) errors.password = 'Password is required';
     if (formData.password.length < 8) errors.password = 'Password must be at least 8 characters';
-    if (formData.password !== formData.confirm_password) errors.confirm_password = 'Passwords do not match';
+    if (formData.password !== formData.confirm_password)
+      errors.confirm_password = 'Passwords do not match';
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -162,12 +170,12 @@ export default function InvitationAcceptPage() {
   const isDark = mounted && resolvedTheme === 'dark';
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4 sm:p-8 bg-background">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4 sm:p-8">
       {/* Theme toggle */}
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-10"
+        className="absolute right-4 top-4 z-10"
         onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
       >
         <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -175,20 +183,20 @@ export default function InvitationAcceptPage() {
         <span className="sr-only">Toggle theme</span>
       </Button>
 
-      <Card className="relative w-full max-w-lg border-brand-burgundy-200 dark:border-muted/30 shadow-lg overflow-hidden">
+      <Card className="relative w-full max-w-lg overflow-hidden border-brand-burgundy-200 shadow-lg dark:border-muted/30">
         {mounted && (
           <VitoraLogo
             variant="icon"
             tone={isDark ? 'white' : 'teal'}
             alt=""
-            className="absolute top-1/2 left-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none select-none"
+            className="pointer-events-none absolute left-1/2 top-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 select-none opacity-[0.03]"
             imageClassName="pointer-events-none select-none"
           />
         )}
 
         {/* Loading */}
         {pageState === 'loading' && (
-          <CardContent className="relative z-10 flex flex-col items-center justify-center py-16 gap-4">
+          <CardContent className="relative z-10 flex flex-col items-center justify-center gap-4 py-16">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Loading invitation...</p>
           </CardContent>
@@ -196,11 +204,11 @@ export default function InvitationAcceptPage() {
 
         {/* Error */}
         {pageState === 'error' && (
-          <CardContent className="relative z-10 flex flex-col items-center justify-center py-16 gap-4">
+          <CardContent className="relative z-10 flex flex-col items-center justify-center gap-4 py-16">
             <div className="rounded-full bg-destructive/10 p-3">
               <AlertCircle className="h-8 w-8 text-destructive" />
             </div>
-            <div className="text-center space-y-2">
+            <div className="space-y-2 text-center">
               <p className="font-medium">{error}</p>
               <p className="text-sm text-muted-foreground">
                 Contact your administrator for a new invitation.
@@ -214,40 +222,38 @@ export default function InvitationAcceptPage() {
 
         {/* Success */}
         {pageState === 'success' && (
-          <CardContent className="relative z-10 flex flex-col items-center justify-center py-16 gap-4">
+          <CardContent className="relative z-10 flex flex-col items-center justify-center gap-4 py-16">
             <div className="rounded-full bg-green-500/10 p-3">
               <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <div className="text-center space-y-2">
+            <div className="space-y-2 text-center">
               <p className="text-lg font-semibold">Account Created!</p>
               <p className="text-sm text-muted-foreground">
-                Your username is <span className="font-mono font-medium text-foreground">{createdUsername}</span>
+                Your username is{' '}
+                <span className="font-mono font-medium text-foreground">{createdUsername}</span>
               </p>
               <p className="text-sm text-muted-foreground">
                 You can now sign in with the password you just set.
               </p>
             </div>
-            <Button onClick={() => router.push('/login')}>
-              Sign In
-            </Button>
+            <Button onClick={() => router.push('/login')}>Sign In</Button>
           </CardContent>
         )}
 
         {/* Form */}
         {pageState === 'form' && invitation && (
           <>
-            <CardHeader className="relative z-10 text-center space-y-4">
+            <CardHeader className="relative z-10 space-y-4 text-center">
               <div className="mx-auto">
-                <VitoraLogo
-                  tone={isDark ? 'light' : 'dark'}
-                  alt={APP_NAME}
-                  className="w-36"
-                />
+                <VitoraLogo tone={isDark ? 'light' : 'dark'} alt={APP_NAME} className="w-36" />
               </div>
               <div>
                 <CardTitle className="text-xl font-bold">Set Up Your Account</CardTitle>
                 <CardDescription className="mt-2">
-                  You&apos;ve been invited to join <span className="font-medium text-foreground">{invitation.organization_name}</span>
+                  You&apos;ve been invited to join{' '}
+                  <span className="font-medium text-foreground">
+                    {invitation.organization_name}
+                  </span>
                 </CardDescription>
               </div>
 
@@ -277,7 +283,7 @@ export default function InvitationAcceptPage() {
             <CardContent className="relative z-10">
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
-                  <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4 flex-shrink-0" />
                     <span>{error}</span>
                   </div>
@@ -286,7 +292,9 @@ export default function InvitationAcceptPage() {
                 {/* Name fields */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label htmlFor="first_name" className="text-sm font-medium">First Name</label>
+                    <label htmlFor="first_name" className="text-sm font-medium">
+                      First Name
+                    </label>
                     <Input
                       id="first_name"
                       value={formData.first_name}
@@ -301,7 +309,9 @@ export default function InvitationAcceptPage() {
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <label htmlFor="last_name" className="text-sm font-medium">Last Name</label>
+                    <label htmlFor="last_name" className="text-sm font-medium">
+                      Last Name
+                    </label>
                     <Input
                       id="last_name"
                       value={formData.last_name}
@@ -319,7 +329,9 @@ export default function InvitationAcceptPage() {
 
                 {/* Username */}
                 <div className="space-y-1.5">
-                  <label htmlFor="username" className="text-sm font-medium">Username</label>
+                  <label htmlFor="username" className="text-sm font-medium">
+                    Username
+                  </label>
                   <div className="relative">
                     <Input
                       id="username"
@@ -351,7 +363,8 @@ export default function InvitationAcceptPage() {
                 {/* Phone */}
                 <div className="space-y-1.5">
                   <label htmlFor="phone_number" className="text-sm font-medium">
-                    Phone Number <span className="text-muted-foreground font-normal">(optional)</span>
+                    Phone Number{' '}
+                    <span className="font-normal text-muted-foreground">(optional)</span>
                   </label>
                   <Input
                     id="phone_number"
@@ -365,7 +378,9 @@ export default function InvitationAcceptPage() {
 
                 {/* Password */}
                 <div className="space-y-1.5">
-                  <label htmlFor="password" className="text-sm font-medium">Password</label>
+                  <label htmlFor="password" className="text-sm font-medium">
+                    Password
+                  </label>
                   <div className="relative">
                     <Input
                       id="password"
@@ -395,7 +410,9 @@ export default function InvitationAcceptPage() {
 
                 {/* Confirm password */}
                 <div className="space-y-1.5">
-                  <label htmlFor="confirm_password" className="text-sm font-medium">Confirm Password</label>
+                  <label htmlFor="confirm_password" className="text-sm font-medium">
+                    Confirm Password
+                  </label>
                   <Input
                     id="confirm_password"
                     type="password"
@@ -411,7 +428,11 @@ export default function InvitationAcceptPage() {
                   )}
                 </div>
 
-                <Button type="submit" className="w-full h-11" disabled={isSubmitting || usernameStatus === 'taken'}>
+                <Button
+                  type="submit"
+                  className="h-11 w-full"
+                  disabled={isSubmitting || usernameStatus === 'taken'}
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -422,9 +443,11 @@ export default function InvitationAcceptPage() {
                   )}
                 </Button>
 
-                <p className="text-xs text-center text-muted-foreground">
+                <p className="text-center text-xs text-muted-foreground">
                   Already have an account?{' '}
-                  <a href="/login" className="text-foreground hover:underline">Sign in</a>
+                  <a href="/login" className="text-foreground hover:underline">
+                    Sign in
+                  </a>
                 </p>
               </form>
             </CardContent>

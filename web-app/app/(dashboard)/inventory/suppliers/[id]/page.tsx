@@ -36,7 +36,11 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
   const queryClient = useQueryClient();
   const [isToggling, setIsToggling] = useState(false);
 
-  const { data: supplier, isLoading, error } = useQuery({
+  const {
+    data: supplier,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['inventory-supplier', supplierId],
     queryFn: () => inventoryApi.getSupplier(supplierId),
   });
@@ -46,7 +50,10 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
     onSuccess: (updated) => {
       queryClient.setQueryData(['inventory-supplier', supplierId], updated);
       queryClient.invalidateQueries({ queryKey: ['inventory-suppliers'] });
-      toast({ variant: 'success', title: updated.is_active ? 'Supplier activated' : 'Supplier deactivated' });
+      toast({
+        variant: 'success',
+        title: updated.is_active ? 'Supplier activated' : 'Supplier deactivated',
+      });
       setIsToggling(false);
     },
     onError: () => {
@@ -59,7 +66,10 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-64" />
-        <div className="grid gap-4 md:grid-cols-2"><Skeleton className="h-48" /><Skeleton className="h-48" /></div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
+        </div>
       </div>
     );
   }
@@ -68,7 +78,9 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
     return (
       <div className="space-y-6">
         <Alert variant="destructive">
-          <AlertDescription>{error instanceof Error ? error.message : 'Supplier not found'}</AlertDescription>
+          <AlertDescription>
+            {error instanceof Error ? error.message : 'Supplier not found'}
+          </AlertDescription>
         </Alert>
       </div>
     );
@@ -83,7 +95,10 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               variant="outline"
-              onClick={() => { setIsToggling(true); toggleMutation.mutate(); }}
+              onClick={() => {
+                setIsToggling(true);
+                toggleMutation.mutate();
+              }}
               disabled={isToggling}
             >
               {isToggling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -98,25 +113,28 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
       />
 
       {/* Summary bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-sm font-medium">
             {supplier.code}
             <span className="text-muted-foreground"> · {typeLabels[supplier.supplier_type]}</span>
           </p>
           <p className="text-xs text-muted-foreground">
-            Lead time: {supplier.lead_time_days} days · Payment: {supplier.payment_term_name || supplier.payment_terms || '—'}
+            Lead time: {supplier.lead_time_days} days · Payment:{' '}
+            {supplier.payment_term_name || supplier.payment_terms || '—'}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="flex items-center gap-1 text-sm font-medium">
-            <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+            <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
             {Number(supplier.rating).toFixed(1)}
           </span>
-          <Badge className={`${typeColors[supplier.supplier_type]} shrink-0 w-fit`}>
+          <Badge className={`${typeColors[supplier.supplier_type]} w-fit shrink-0`}>
             {typeLabels[supplier.supplier_type]}
           </Badge>
-          <Badge className={`shrink-0 w-fit ${supplier.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+          <Badge
+            className={`w-fit shrink-0 ${supplier.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}
+          >
             {supplier.is_active ? 'Active' : 'Inactive'}
           </Badge>
         </div>
@@ -125,31 +143,33 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
       <div className="grid gap-4 md:grid-cols-2">
         {/* Contact Information */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Contact Information</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Contact Information</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-start gap-3">
-              <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+              <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Contact Person</p>
                 <p className="text-sm text-muted-foreground">{supplier.contact_person || '—'}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <Mail className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Email</p>
                 <p className="text-sm text-muted-foreground">{supplier.email || '—'}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <Phone className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Phone</p>
                 <p className="text-sm text-muted-foreground">{supplier.phone || '—'}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Address</p>
                 <p className="text-sm text-muted-foreground">{supplier.address || '—'}</p>
@@ -160,7 +180,9 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
 
         {/* Business Details */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Business Details</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Business Details</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -177,8 +199,8 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
               </div>
               <div>
                 <p className="text-sm font-medium">Rating</p>
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
                   {Number(supplier.rating).toFixed(1)} / 5.0
                 </p>
               </div>
@@ -186,7 +208,9 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
             {supplier.notes && (
               <div>
                 <p className="text-sm font-medium">Notes</p>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{supplier.notes}</p>
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                  {supplier.notes}
+                </p>
               </div>
             )}
           </CardContent>

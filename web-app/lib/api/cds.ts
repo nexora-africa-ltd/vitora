@@ -78,8 +78,12 @@ export const cdsApi = {
   },
 
   async evaluateRule(id: number, encounterId: number): Promise<CDSRuleEvaluateResponse> {
-    const response = await apiClient.post(`/api/cds/rules/${id}/evaluate/`, { encounter_id: encounterId });
-    return parseResponse(CDSRuleEvaluateResponseSchema, response.data, { context: 'cdsApi.evaluateRule' });
+    const response = await apiClient.post(`/api/cds/rules/${id}/evaluate/`, {
+      encounter_id: encounterId,
+    });
+    return parseResponse(CDSRuleEvaluateResponseSchema, response.data, {
+      context: 'cdsApi.evaluateRule',
+    });
   },
 
   // ──────────────────────────── Alerts ────────────────────────────
@@ -96,7 +100,9 @@ export const cdsApi = {
 
   async acknowledgeAlert(id: number): Promise<CDSAlertDetail> {
     const response = await apiClient.post(`/api/cds/alerts/${id}/acknowledge/`);
-    return parseResponse(CDSAlertDetailSchema, response.data, { context: 'cdsApi.acknowledgeAlert' });
+    return parseResponse(CDSAlertDetailSchema, response.data, {
+      context: 'cdsApi.acknowledgeAlert',
+    });
   },
 
   async acceptAlert(id: number): Promise<CDSAlertDetail> {
@@ -114,14 +120,23 @@ export const cdsApi = {
     return parseResponse(CDSAlertDetailSchema, response.data, { context: 'cdsApi.dismissAlert' });
   },
 
-  async getPendingAlerts(params?: { patient?: number; encounter?: number }): Promise<PaginatedResponse<CDSAlertListItem>> {
+  async getPendingAlerts(params?: {
+    patient?: number;
+    encounter?: number;
+  }): Promise<PaginatedResponse<CDSAlertListItem>> {
     const response = await apiClient.get('/api/cds/alerts/pending/', { params });
-    return parseResponse(PaginatedCDSAlertSchema, response.data, { context: 'cdsApi.getPendingAlerts' });
+    return parseResponse(PaginatedCDSAlertSchema, response.data, {
+      context: 'cdsApi.getPendingAlerts',
+    });
   },
 
   async evaluateEncounter(encounterId: number): Promise<CDSEncounterEvaluateResponse> {
-    const response = await apiClient.post('/api/cds/alerts/evaluate_encounter/', { encounter_id: encounterId });
-    return parseResponse(CDSEncounterEvaluateResponseSchema, response.data, { context: 'cdsApi.evaluateEncounter' });
+    const response = await apiClient.post('/api/cds/alerts/evaluate_encounter/', {
+      encounter_id: encounterId,
+    });
+    return parseResponse(CDSEncounterEvaluateResponseSchema, response.data, {
+      context: 'cdsApi.evaluateEncounter',
+    });
   },
 
   async getDashboard(): Promise<CDSDashboard> {

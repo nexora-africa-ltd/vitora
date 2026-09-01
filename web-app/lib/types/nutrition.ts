@@ -79,7 +79,11 @@ export const BMI_CLASSIFICATION_CONFIG: Record<
   { label: string; color: string; range: string }
 > = {
   UNDERWEIGHT_SEVERE: { label: 'Severely Underweight', color: 'text-red-600', range: '< 16.0' },
-  UNDERWEIGHT_MODERATE: { label: 'Moderately Underweight', color: 'text-orange-600', range: '16.0-16.9' },
+  UNDERWEIGHT_MODERATE: {
+    label: 'Moderately Underweight',
+    color: 'text-orange-600',
+    range: '16.0-16.9',
+  },
   UNDERWEIGHT_MILD: { label: 'Mildly Underweight', color: 'text-yellow-600', range: '17.0-18.4' },
   NORMAL: { label: 'Normal', color: 'text-green-600', range: '18.5-24.9' },
   OVERWEIGHT: { label: 'Overweight', color: 'text-yellow-600', range: '25.0-29.9' },
@@ -93,19 +97,47 @@ export const MALNUTRITION_STATUS_CONFIG: Record<
   { label: string; variant: 'default' | 'destructive' | 'outline'; description: string }
 > = {
   NORMAL: { label: 'Normal', variant: 'outline', description: 'MUAC >= 12.5 cm' },
-  MAM: { label: 'MAM', variant: 'default', description: 'Moderate Acute Malnutrition (11.5-12.4 cm)' },
-  SAM: { label: 'SAM', variant: 'destructive', description: 'Severe Acute Malnutrition (< 11.5 cm)' },
+  MAM: {
+    label: 'MAM',
+    variant: 'default',
+    description: 'Moderate Acute Malnutrition (11.5-12.4 cm)',
+  },
+  SAM: {
+    label: 'SAM',
+    variant: 'destructive',
+    description: 'Severe Acute Malnutrition (< 11.5 cm)',
+  },
 };
 
 export const DIET_PLAN_STATUS_CONFIG: Record<
   DietPlanStatus,
   { label: string; className: string; description: string }
 > = {
-  DRAFT: { label: 'Draft', className: 'bg-gray-100 text-gray-800', description: 'Plan is being created' },
-  ACTIVE: { label: 'Active', className: 'bg-green-100 text-green-800', description: 'Plan is currently being followed' },
-  ON_HOLD: { label: 'On Hold', className: 'bg-yellow-100 text-yellow-800', description: 'Plan temporarily paused' },
-  DISCONTINUED: { label: 'Discontinued', className: 'bg-red-100 text-red-800', description: 'Plan has been stopped' },
-  COMPLETED: { label: 'Completed', className: 'bg-blue-100 text-blue-800', description: 'Plan successfully completed' },
+  DRAFT: {
+    label: 'Draft',
+    className: 'bg-gray-100 text-gray-800',
+    description: 'Plan is being created',
+  },
+  ACTIVE: {
+    label: 'Active',
+    className: 'bg-green-100 text-green-800',
+    description: 'Plan is currently being followed',
+  },
+  ON_HOLD: {
+    label: 'On Hold',
+    className: 'bg-yellow-100 text-yellow-800',
+    description: 'Plan temporarily paused',
+  },
+  DISCONTINUED: {
+    label: 'Discontinued',
+    className: 'bg-red-100 text-red-800',
+    description: 'Plan has been stopped',
+  },
+  COMPLETED: {
+    label: 'Completed',
+    className: 'bg-blue-100 text-blue-800',
+    description: 'Plan successfully completed',
+  },
 };
 
 export const REFERRAL_REASON_LABELS: Record<NutritionReferralReason, string> = {

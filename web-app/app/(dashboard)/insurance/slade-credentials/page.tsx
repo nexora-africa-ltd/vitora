@@ -102,7 +102,7 @@ export default function SladeCredentialsPage() {
           <CardTitle className="text-base">Update Credentials</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-1">
               <Label>Slade Client ID</Label>
               <Input
@@ -120,7 +120,9 @@ export default function SladeCredentialsPage() {
                 autoComplete="new-password"
                 placeholder={currentCredential ? '••••••••' : 'Client Secret'}
                 value={form.slade_client_secret}
-                onChange={(e) => setForm((prev) => ({ ...prev, slade_client_secret: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, slade_client_secret: e.target.value }))
+                }
               />
             </div>
             <div className="space-y-1">

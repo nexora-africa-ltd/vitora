@@ -68,7 +68,11 @@ export default function ClinicDashboardPage() {
 
   // Fetch clinic data
   const { data: clinic, isLoading: clinicLoading } = useClinic(clinicId);
-  const { data: session, isLoading: sessionLoading, refetch: refetchSession } = useTodaySession(clinicId);
+  const {
+    data: session,
+    isLoading: sessionLoading,
+    refetch: refetchSession,
+  } = useTodaySession(clinicId);
   const { data: queue, isLoading: queueLoading, refetch: refetchQueue } = useClinicQueue(clinicId);
   const { data: stats, refetch: refetchStats } = useQueueStats(clinicId);
   const { data: projectionRows, isLoading: projectionLoading } = useClinicQueueProjection(
@@ -90,8 +94,16 @@ export default function ClinicDashboardPage() {
         .sort((a, b) => {
           // Sort by priority first, then by registered_at
           const priorityOrder: Record<string, number> = {
-            EMERGENCY: 1, URGENT: 2, PRIORITY: 3, STANDARD: 4, NON_URGENT: 5,
-            RED: 1, ORANGE: 2, YELLOW: 3, GREEN: 4, BLUE: 5,
+            EMERGENCY: 1,
+            URGENT: 2,
+            PRIORITY: 3,
+            STANDARD: 4,
+            NON_URGENT: 5,
+            RED: 1,
+            ORANGE: 2,
+            YELLOW: 3,
+            GREEN: 4,
+            BLUE: 5,
           };
           const aPriority = priorityOrder[a.priority] || 5;
           const bPriority = priorityOrder[b.priority] || 5;
@@ -113,7 +125,9 @@ export default function ClinicDashboardPage() {
 
   const projection = projectionRows?.[0];
   const projectionAvgWaitMinutes = projection ? Math.round(projection.avg_wait_seconds / 60) : null;
-  const projectionLongestWaitMinutes = projection ? Math.round(projection.longest_wait_seconds / 60) : null;
+  const projectionLongestWaitMinutes = projection
+    ? Math.round(projection.longest_wait_seconds / 60)
+    : null;
 
   // Handle session actions
   const handleOpenSession = async () => {
@@ -168,12 +182,10 @@ export default function ClinicDashboardPage() {
   if (!clinic) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Clinic not found</h3>
+        <AlertCircle className="mb-4 h-12 w-12 text-muted-foreground" />
+        <h3 className="mb-2 text-lg font-semibold">Clinic not found</h3>
         <Button asChild>
-          <Link href="/clinics">
-            View All Clinics
-          </Link>
+          <Link href="/clinics">View All Clinics</Link>
         </Button>
       </div>
     );
@@ -183,300 +195,315 @@ export default function ClinicDashboardPage() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <PageHeader
-        title={clinic.name}
-        helpContent={`Clinic dashboard for ${clinic.name}. Open sessions, manage the patient queue, and track consultations.`}
-        actions={
-          <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
-            {/* WebSocket Status */}
-            <WebSocketStatus
-              connectionState={connectionState}
-              reconnectAttempts={reconnectAttempts}
-              showLabel
-              size="sm"
-            />
+      <div className="space-y-4 sm:space-y-6">
+        {/* Header */}
+        <PageHeader
+          title={clinic.name}
+          helpContent={`Clinic dashboard for ${clinic.name}. Open sessions, manage the patient queue, and track consultations.`}
+          actions={
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              {/* WebSocket Status */}
+              <WebSocketStatus
+                connectionState={connectionState}
+                reconnectAttempts={reconnectAttempts}
+                showLabel
+                size="sm"
+              />
 
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
-
-            {isSessionOpen ? (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={closingSession}>
-                    <Pause className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Close Session</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Close Today&apos;s Session?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will close the clinic session for today. Patients still in queue will remain
-                      but no new patients can be added. You can reopen the session if needed.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleCloseSession}>Close Session</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            ) : (
-              <Button onClick={handleOpenSession} disabled={openingSession} size="sm">
-                <Play className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Open Session</span>
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
+                <RefreshCw className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
-            )}
 
-            <Button size="sm" onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
-              <Plus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Add Patient</span>
-            </Button>
-
-            <Button variant="ghost" size="icon" asChild>
-              <Link href={`/queue-display/${clinicId}`} target="_blank">
-                <Monitor className="h-4 w-4" />
-              </Link>
-            </Button>
-
-            <Button variant="ghost" size="icon" asChild>
-              <Link href={`/clinics/${clinicId}/settings`}>
-                <Settings className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        }
-      />
-
-      {/* Navigation Tabs */}
-      <ClinicNavigation clinicId={clinicId} />
-
-      {/* Session Status Banner */}
-      {!isSessionOpen && (
-        <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
-          <CardContent className="flex items-center gap-4 py-4">
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
-            <div className="flex-1">
-              <p className="font-medium text-yellow-800 dark:text-yellow-200">
-                Session Not Open
-              </p>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                Open the session to start accepting patients for today&apos;s clinic.
-              </p>
-            </div>
-            <Button onClick={handleOpenSession} disabled={openingSession}>
-              Open Session
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Waiting</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{waitingQueue.length}</div>
-            <p className="text-xs text-muted-foreground">Patients in queue</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Consultation</CardTitle>
-            <Users className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{inConsultation.length}</div>
-            <p className="text-xs text-muted-foreground">Currently being seen</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{completedToday.length}</div>
-            <p className="text-xs text-muted-foreground">Seen today</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Wait Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.avg_wait_time_minutes ? `${Math.round(stats.avg_wait_time_minutes)} min` : '--'}
-            </div>
-            <p className="text-xs text-muted-foreground">Average wait</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Projection Snapshot</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Waiting</p>
-            <p className="text-2xl font-semibold">{projectionLoading ? '—' : projection?.waiting_count ?? waitingQueue.length}</p>
-            <p className="text-xs text-muted-foreground">Projection-backed queue depth</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">In Consultation</p>
-            <p className="text-2xl font-semibold">{projectionLoading ? '—' : projection?.in_consultation_count ?? inConsultation.length}</p>
-            <p className="text-xs text-muted-foreground">Active consultations in read model</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Completed / No-shows</p>
-            <p className="text-2xl font-semibold">
-              {projectionLoading ? '—' : `${projection?.completed_today ?? completedToday.length} / ${projection?.no_show_today ?? 0}`}
-            </p>
-            <p className="text-xs text-muted-foreground">Today&apos;s clinic outcomes</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Wait Window</p>
-            <p className="text-2xl font-semibold">
-              {projectionLoading
-                ? '—'
-                : `${projectionAvgWaitMinutes ?? 0}m avg / ${projectionLongestWaitMinutes ?? 0}m max`}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {projection?.last_updated
-                ? `Updated ${new Date(projection.last_updated).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}`
-                : 'Projection updates with queue activity'}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Queue Tabs */}
-      <Tabs defaultValue="queue" className="space-y-4">
-        <TabsList className="w-full overflow-x-auto justify-start">
-          <TabsTrigger value="queue">
-            Queue
-            {waitingQueue.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {waitingQueue.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="consultation">
-            <span className="sm:hidden">Consult</span>
-            <span className="hidden sm:inline">In Consultation</span>
-            {inConsultation.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {inConsultation.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="completed">
-            <span className="sm:hidden">Done</span>
-            <span className="hidden sm:inline">Completed</span>
-            {completedToday.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {completedToday.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="queue" className="space-y-4">
-          {queueLoading ? (
-            <Skeleton className="h-96" />
-          ) : waitingQueue.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No patients waiting</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  Add a patient to the queue to get started.
-                </p>
-                <Button onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Patient
+              {isSessionOpen ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={closingSession}>
+                      <Pause className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Close Session</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Close Today&apos;s Session?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will close the clinic session for today. Patients still in queue will
+                        remain but no new patients can be added. You can reopen the session if
+                        needed.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleCloseSession}>
+                        Close Session
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <Button onClick={handleOpenSession} disabled={openingSession} size="sm">
+                  <Play className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Open Session</span>
                 </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <ClinicQueueTable
-              visits={waitingQueue}
-              clinicId={clinicId}
-              onRefresh={handleRefresh}
-            />
-          )}
-        </TabsContent>
+              )}
 
-        <TabsContent value="consultation" className="space-y-4">
-          {inConsultation.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No active consultations</h3>
-                <p className="text-muted-foreground text-center">
-                  Call a patient from the queue to start a consultation.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {inConsultation.map((visit) => (
-                <ClinicVisitCard
-                  key={visit.id}
-                  visit={visit}
-                  clinicId={clinicId}
-                  onRefresh={handleRefresh}
-                />
-              ))}
+              <Button size="sm" onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Add Patient</span>
+              </Button>
+
+              <Button variant="ghost" size="icon" asChild>
+                <Link href={`/queue-display/${clinicId}`} target="_blank">
+                  <Monitor className="h-4 w-4" />
+                </Link>
+              </Button>
+
+              <Button variant="ghost" size="icon" asChild>
+                <Link href={`/clinics/${clinicId}/settings`}>
+                  <Settings className="h-4 w-4" />
+                </Link>
+              </Button>
             </div>
-          )}
-        </TabsContent>
+          }
+        />
 
-        <TabsContent value="completed" className="space-y-4">
-          {completedToday.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <CheckCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No completed visits today</h3>
-                <p className="text-muted-foreground text-center">
-                  Completed consultations will appear here.
+        {/* Navigation Tabs */}
+        <ClinicNavigation clinicId={clinicId} />
+
+        {/* Session Status Banner */}
+        {!isSessionOpen && (
+          <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
+            <CardContent className="flex items-center gap-4 py-4">
+              <AlertCircle className="h-5 w-5 text-yellow-600" />
+              <div className="flex-1">
+                <p className="font-medium text-yellow-800 dark:text-yellow-200">Session Not Open</p>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  Open the session to start accepting patients for today&apos;s clinic.
                 </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <ClinicQueueTable
-              visits={completedToday}
-              clinicId={clinicId}
-              onRefresh={handleRefresh}
-              showActions={false}
-            />
-          )}
-        </TabsContent>
-      </Tabs>
+              </div>
+              <Button onClick={handleOpenSession} disabled={openingSession}>
+                Open Session
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Add to Queue Dialog */}
-      <AddToQueueDialog
-        open={addToQueueOpen}
-        onOpenChange={setAddToQueueOpen}
-        clinicId={clinicId}
-        onSuccess={() => {
-          handleRefresh();
-          setAddToQueueOpen(false);
-        }}
-      />
-    </div>
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Waiting</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{waitingQueue.length}</div>
+              <p className="text-xs text-muted-foreground">Patients in queue</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">In Consultation</CardTitle>
+              <Users className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{inConsultation.length}</div>
+              <p className="text-xs text-muted-foreground">Currently being seen</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{completedToday.length}</div>
+              <p className="text-xs text-muted-foreground">Seen today</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg Wait Time</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {stats?.avg_wait_time_minutes
+                  ? `${Math.round(stats.avg_wait_time_minutes)} min`
+                  : '--'}
+              </div>
+              <p className="text-xs text-muted-foreground">Average wait</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg">Projection Snapshot</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Waiting</p>
+              <p className="text-2xl font-semibold">
+                {projectionLoading ? '—' : (projection?.waiting_count ?? waitingQueue.length)}
+              </p>
+              <p className="text-xs text-muted-foreground">Projection-backed queue depth</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                In Consultation
+              </p>
+              <p className="text-2xl font-semibold">
+                {projectionLoading
+                  ? '—'
+                  : (projection?.in_consultation_count ?? inConsultation.length)}
+              </p>
+              <p className="text-xs text-muted-foreground">Active consultations in read model</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Completed / No-shows
+              </p>
+              <p className="text-2xl font-semibold">
+                {projectionLoading
+                  ? '—'
+                  : `${projection?.completed_today ?? completedToday.length} / ${projection?.no_show_today ?? 0}`}
+              </p>
+              <p className="text-xs text-muted-foreground">Today&apos;s clinic outcomes</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Wait Window</p>
+              <p className="text-2xl font-semibold">
+                {projectionLoading
+                  ? '—'
+                  : `${projectionAvgWaitMinutes ?? 0}m avg / ${projectionLongestWaitMinutes ?? 0}m max`}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {projection?.last_updated
+                  ? `Updated ${new Date(projection.last_updated).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}`
+                  : 'Projection updates with queue activity'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Queue Tabs */}
+        <Tabs defaultValue="queue" className="space-y-4">
+          <TabsList className="w-full justify-start overflow-x-auto">
+            <TabsTrigger value="queue">
+              Queue
+              {waitingQueue.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {waitingQueue.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="consultation">
+              <span className="sm:hidden">Consult</span>
+              <span className="hidden sm:inline">In Consultation</span>
+              {inConsultation.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {inConsultation.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="completed">
+              <span className="sm:hidden">Done</span>
+              <span className="hidden sm:inline">Completed</span>
+              {completedToday.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {completedToday.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="queue" className="space-y-4">
+            {queueLoading ? (
+              <Skeleton className="h-96" />
+            ) : waitingQueue.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Clock className="mb-4 h-12 w-12 text-muted-foreground" />
+                  <h3 className="mb-2 text-lg font-semibold">No patients waiting</h3>
+                  <p className="mb-4 text-center text-muted-foreground">
+                    Add a patient to the queue to get started.
+                  </p>
+                  <Button onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Patient
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <ClinicQueueTable
+                visits={waitingQueue}
+                clinicId={clinicId}
+                onRefresh={handleRefresh}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="consultation" className="space-y-4">
+            {inConsultation.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Users className="mb-4 h-12 w-12 text-muted-foreground" />
+                  <h3 className="mb-2 text-lg font-semibold">No active consultations</h3>
+                  <p className="text-center text-muted-foreground">
+                    Call a patient from the queue to start a consultation.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {inConsultation.map((visit) => (
+                  <ClinicVisitCard
+                    key={visit.id}
+                    visit={visit}
+                    clinicId={clinicId}
+                    onRefresh={handleRefresh}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="completed" className="space-y-4">
+            {completedToday.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <CheckCircle className="mb-4 h-12 w-12 text-muted-foreground" />
+                  <h3 className="mb-2 text-lg font-semibold">No completed visits today</h3>
+                  <p className="text-center text-muted-foreground">
+                    Completed consultations will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <ClinicQueueTable
+                visits={completedToday}
+                clinicId={clinicId}
+                onRefresh={handleRefresh}
+                showActions={false}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Add to Queue Dialog */}
+        <AddToQueueDialog
+          open={addToQueueOpen}
+          onOpenChange={setAddToQueueOpen}
+          clinicId={clinicId}
+          onSuccess={() => {
+            handleRefresh();
+            setAddToQueueOpen(false);
+          }}
+        />
+      </div>
     </PullToRefresh>
   );
 }

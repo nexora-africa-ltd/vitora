@@ -60,8 +60,11 @@ export default function NutritionDashboardPage() {
         title="Nutrition Services"
         helpContent="Manage nutrition consultations, dietary assessments, and diet plans. Track BMI, nutritional status, and interventions."
         actions={
-          <Button onClick={() => router.push('/allied-health/nutrition/consultations/new')} disabled={!canCreateRoute('/allied-health/nutrition/consultations/new')}>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button
+            onClick={() => router.push('/allied-health/nutrition/consultations/new')}
+            disabled={!canCreateRoute('/allied-health/nutrition/consultations/new')}
+          >
+            <Plus className="mr-2 h-4 w-4" />
             New Consultation
           </Button>
         }
@@ -76,7 +79,7 @@ export default function NutritionDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {statsLoading ? '...' : (queueStats?.waiting_count || 0)}
+              {statsLoading ? '...' : queueStats?.waiting_count || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               {queueStats?.in_consultation_count || 0} in consultation
@@ -91,11 +94,9 @@ export default function NutritionDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {statsLoading ? '...' : (nutritionStats?.pending_count || 0)}
+              {statsLoading ? '...' : nutritionStats?.pending_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting assessment
-            </p>
+            <p className="text-xs text-muted-foreground">Awaiting assessment</p>
           </CardContent>
         </Card>
 
@@ -106,11 +107,9 @@ export default function NutritionDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {statsLoading ? '...' : (nutritionStats?.in_progress_count || 0)}
+              {statsLoading ? '...' : nutritionStats?.in_progress_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              In progress
-            </p>
+            <p className="text-xs text-muted-foreground">In progress</p>
           </CardContent>
         </Card>
 
@@ -121,7 +120,7 @@ export default function NutritionDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {statsLoading ? '...' : (nutritionStats?.completed_today_count || 0)}
+              {statsLoading ? '...' : nutritionStats?.completed_today_count || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               {queueStats?.total_today || 0} seen today
@@ -176,11 +175,11 @@ export default function NutritionDashboardPage() {
                     {queueData.results.map((visit) => (
                       <div
                         key={visit.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                        className="flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                         onClick={() => router.push(`/clinics/visits/${visit.id}`)}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                             <User className="h-5 w-5 text-muted-foreground" />
                           </div>
                           <div>
@@ -193,7 +192,8 @@ export default function NutritionDashboardPage() {
                         <div className="flex items-center gap-3">
                           <div className="text-right text-sm">
                             <p className="text-muted-foreground">
-                              {visit.registered_at && format(new Date(visit.registered_at), 'HH:mm')}
+                              {visit.registered_at &&
+                                format(new Date(visit.registered_at), 'HH:mm')}
                             </p>
                           </div>
                           <Badge className={statusVariants[visit.status] || 'bg-gray-100'}>

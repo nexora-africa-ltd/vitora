@@ -21,7 +21,13 @@ import { useBillingStore } from '@/lib/stores/billing';
 import { useFacility } from '@/lib/context/facility-context';
 import { useBillingSocket } from '@/lib/hooks/use-websocket';
 import { useCreateRouteAccess } from '@/lib/hooks/use-create-route-access';
-import type { Invoice, Payment, InvoiceStatus, PaymentMethod, PaymentStatus } from '@/lib/types/billing';
+import type {
+  Invoice,
+  Payment,
+  InvoiceStatus,
+  PaymentMethod,
+  PaymentStatus,
+} from '@/lib/types/billing';
 
 export default function TransactionsPage() {
   const router = useRouter();
@@ -64,25 +70,29 @@ export default function TransactionsPage() {
     router.push(`/transactions/receipts/${payment.id}`);
   };
 
-  const handleInvoiceFilter = useCallback((filters: { status?: InvoiceStatus; search?: string }) => {
-    setInvoiceSearch(filters.search ?? '');
-    setInvoiceStatus(filters.status);
-  }, []);
+  const handleInvoiceFilter = useCallback(
+    (filters: { status?: InvoiceStatus; search?: string }) => {
+      setInvoiceSearch(filters.search ?? '');
+      setInvoiceStatus(filters.status);
+    },
+    []
+  );
 
-  const handlePaymentFilter = useCallback((filters: { method?: PaymentMethod; status?: PaymentStatus }) => {
-    setPaymentMethod(filters.method);
-    setPaymentStatus(filters.status);
-  }, []);
+  const handlePaymentFilter = useCallback(
+    (filters: { method?: PaymentMethod; status?: PaymentStatus }) => {
+      setPaymentMethod(filters.method);
+      setPaymentStatus(filters.status);
+    },
+    []
+  );
 
   const handleDateChange = (date: string) => {
     console.log('Date changed:', date);
   };
 
-  const pendingCount =
-    invoicesData?.results?.filter((inv) => inv.status === 'PENDING').length || 0;
+  const pendingCount = invoicesData?.results?.filter((inv) => inv.status === 'PENDING').length || 0;
 
-  const overdueCount =
-    invoicesData?.results?.filter((inv) => inv.status === 'OVERDUE').length || 0;
+  const overdueCount = invoicesData?.results?.filter((inv) => inv.status === 'OVERDUE').length || 0;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -95,7 +105,7 @@ export default function TransactionsPage() {
             disabled={!canCreateRoute('/transactions/invoices/new')}
             size="sm"
           >
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="mr-1 h-4 w-4" />
             New Invoice
           </Button>
         }
@@ -150,7 +160,7 @@ export default function TransactionsPage() {
 
         <TabsContent value="bills" className="space-y-4">
           <Card
-            className="cursor-pointer hover:border-primary/40 transition-colors"
+            className="cursor-pointer transition-colors hover:border-primary/40"
             onClick={() => router.push('/transactions/supplier-bills')}
           >
             <CardHeader>
@@ -161,7 +171,7 @@ export default function TransactionsPage() {
             </CardHeader>
             <CardContent>
               <Button variant="outline" size="sm">
-                <Receipt className="h-4 w-4 mr-1" />
+                <Receipt className="mr-1 h-4 w-4" />
                 Open Supplier Bills
               </Button>
             </CardContent>

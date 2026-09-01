@@ -16,7 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useShiftHandovers, useInpatientWards, useAcknowledgeShiftHandover } from '@/lib/hooks/use-inpatient';
+import {
+  useShiftHandovers,
+  useInpatientWards,
+  useAcknowledgeShiftHandover,
+} from '@/lib/hooks/use-inpatient';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ShiftHandover, ShiftEndingType } from '@/lib/types/inpatient';
 
@@ -71,7 +75,8 @@ function parseHandoverNotes(rawNotes?: string): ParsedHandoverNotes {
     if (line.startsWith('Medications Due:')) {
       currentSection = 'medications';
       const value = line.replace('Medications Due:', '').trim();
-      if (value) sections.medications = sections.medications ? `${sections.medications}\n${value}` : value;
+      if (value)
+        sections.medications = sections.medications ? `${sections.medications}\n${value}` : value;
       continue;
     }
 
@@ -107,11 +112,12 @@ export default function HandoverListPage() {
   const acknowledgeHandover = useAcknowledgeShiftHandover();
 
   // Filter by status (pending = not acknowledged, acknowledged = acknowledged)
-  const filteredHandovers = handovers?.results?.filter((h) => {
-    if (statusFilter === 'pending') return !h.is_acknowledged;
-    if (statusFilter === 'acknowledged') return h.is_acknowledged;
-    return true;
-  }) || [];
+  const filteredHandovers =
+    handovers?.results?.filter((h) => {
+      if (statusFilter === 'pending') return !h.is_acknowledged;
+      if (statusFilter === 'acknowledged') return h.is_acknowledged;
+      return true;
+    }) || [];
 
   const pendingCount = handovers?.results?.filter((h) => !h.is_acknowledged).length || 0;
 
@@ -136,14 +142,14 @@ export default function HandoverListPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto space-y-4 py-6 sm:space-y-6">
       <PageHeader
         title="Shift Handovers"
         helpContent="View and acknowledge shift handover reports between clinical teams."
         actions={
           <Button asChild>
             <CreateRouteLink href="/admissions/handover/new">
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               New Handover
             </CreateRouteLink>
           </Button>
@@ -157,7 +163,8 @@ export default function HandoverListPage() {
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-amber-600" />
               <p className="font-medium text-amber-800 dark:text-amber-200">
-                Pending Handovers: {pendingCount} handover{pendingCount > 1 ? 's' : ''} awaiting acknowledgment
+                Pending Handovers: {pendingCount} handover{pendingCount > 1 ? 's' : ''} awaiting
+                acknowledgment
               </p>
             </div>
           </CardContent>
@@ -165,7 +172,7 @@ export default function HandoverListPage() {
       )}
 
       {/* Filters */}
-      <div className="flex gap-4 flex-wrap">
+      <div className="flex flex-wrap gap-4">
         <div className="w-48">
           <Select value={wardFilter} onValueChange={setWardFilter}>
             <SelectTrigger aria-label="Ward">
@@ -213,9 +220,9 @@ export default function HandoverListPage() {
       {filteredHandovers.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <Clock className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="text-lg font-medium">No handovers found</h3>
-            <p className="text-muted-foreground mt-2">
+            <p className="mt-2 text-muted-foreground">
               {statusFilter === 'pending'
                 ? 'No pending handovers awaiting acknowledgment.'
                 : 'No handovers match your filters.'}
@@ -254,30 +261,27 @@ function HandoverCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               {handover.ward_name || `Ward ${handover.ward}`}
               <Badge variant={handover.is_acknowledged ? 'default' : 'secondary'}>
                 {handover.is_acknowledged ? 'Acknowledged' : 'Pending'}
               </Badge>
             </CardTitle>
             <CardDescription>
-              {handover.shift_ending_display || handover.shift_ending} Shift - {new Date(handover.shift_date).toLocaleDateString()}
+              {handover.shift_ending_display || handover.shift_ending} Shift -{' '}
+              {new Date(handover.shift_date).toLocaleDateString()}
             </CardDescription>
           </div>
           {!handover.is_acknowledged && (
-            <Button
-              size="sm"
-              onClick={onAcknowledge}
-              disabled={isAcknowledging}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
+            <Button size="sm" onClick={onAcknowledge} disabled={isAcknowledging}>
+              <CheckCircle className="mr-2 h-4 w-4" />
               Acknowledge
             </Button>
           )}
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4 md:grid-cols-4 text-sm">
+        <div className="grid gap-4 text-sm md:grid-cols-4">
           <div>
             <p className="text-muted-foreground">Total Patients</p>
             <p className="font-medium">{handover.total_patients}</p>
@@ -295,16 +299,20 @@ function HandoverCard({
             <p className="font-medium">{handover.discharges_pending || 0}</p>
           </div>
         </div>
-        <div className="mt-4 pt-4 border-t flex items-center gap-6 text-sm">
+        <div className="mt-4 flex items-center gap-6 border-t pt-4 text-sm">
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">From:</span>
-            <span className="font-medium">{handover.outgoing_nurse_username || `Clinician ${handover.outgoing_nurse}`}</span>
+            <span className="font-medium">
+              {handover.outgoing_nurse_username || `Clinician ${handover.outgoing_nurse}`}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">To:</span>
-            <span className="font-medium">{handover.incoming_nurse_username || `Clinician ${handover.incoming_nurse}`}</span>
+            <span className="font-medium">
+              {handover.incoming_nurse_username || `Clinician ${handover.incoming_nurse}`}
+            </span>
           </div>
         </div>
         {(notes.summary || notes.critical || notes.pending || notes.medications) && (
@@ -312,25 +320,25 @@ function HandoverCard({
             {notes.summary && (
               <div className="rounded-lg border bg-muted/40 p-3">
                 <p className="mb-1 text-sm font-medium">Summary</p>
-                <p className="text-sm whitespace-pre-wrap break-words">{notes.summary}</p>
+                <p className="whitespace-pre-wrap break-words text-sm">{notes.summary}</p>
               </div>
             )}
             {notes.critical && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
                 <p className="mb-1 text-sm font-medium text-destructive">Critical</p>
-                <p className="text-sm whitespace-pre-wrap break-words">{notes.critical}</p>
+                <p className="whitespace-pre-wrap break-words text-sm">{notes.critical}</p>
               </div>
             )}
             {notes.pending && (
               <div className="rounded-lg border bg-muted/40 p-3">
                 <p className="mb-1 text-sm font-medium">Pending</p>
-                <p className="text-sm whitespace-pre-wrap break-words">{notes.pending}</p>
+                <p className="whitespace-pre-wrap break-words text-sm">{notes.pending}</p>
               </div>
             )}
             {notes.medications && (
               <div className="rounded-lg border bg-muted/40 p-3">
                 <p className="mb-1 text-sm font-medium">Medications</p>
-                <p className="text-sm whitespace-pre-wrap break-words">{notes.medications}</p>
+                <p className="whitespace-pre-wrap break-words text-sm">{notes.medications}</p>
               </div>
             )}
           </div>
@@ -342,7 +350,7 @@ function HandoverCard({
 
 function HandoverListSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6 py-6">
       <div className="flex items-center justify-between">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-10 w-32" />

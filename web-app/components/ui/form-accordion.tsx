@@ -21,12 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/index';
 
@@ -107,7 +102,7 @@ export function FormAccordion({
           type="multiple"
           defaultValue={defaultValue as string[]}
           onValueChange={handleValueChange as (value: string[]) => void}
-          className={cn('-space-y-px w-full', className)}
+          className={cn('w-full -space-y-px', className)}
         >
           {sections.map((section, index) => (
             <FormAccordionSectionItem
@@ -130,7 +125,7 @@ export function FormAccordion({
         collapsible
         defaultValue={defaultValue as string}
         onValueChange={handleValueChange as (value: string) => void}
-        className={cn('-space-y-px w-full', className)}
+        className={cn('w-full -space-y-px', className)}
       >
         {sections.map((section, index) => (
           <FormAccordionSectionItem
@@ -162,24 +157,18 @@ function FormAccordionSectionItem({
   const triggerContent = (
     <div className="flex w-full items-center justify-between py-1">
       <div className="flex items-center gap-2">
-        {section.icon && (
-          <span className="text-muted-foreground shrink-0">{section.icon}</span>
-        )}
+        {section.icon && <span className="shrink-0 text-muted-foreground">{section.icon}</span>}
         <span className="font-medium">
           {section.title}
           {section.abbreviation && (
-            <span className="text-muted-foreground font-normal ml-1">
-              ({section.abbreviation})
-            </span>
+            <span className="ml-1 font-normal text-muted-foreground">({section.abbreviation})</span>
           )}
         </span>
         {/* Completion indicator */}
-        {section.isComplete && (
-          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-        )}
+        {section.isComplete && <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />}
         {/* Error indicator */}
         {section.hasErrors && !section.isComplete && (
-          <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+          <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
         )}
         {/* Badge for counts */}
         {section.badge !== undefined && section.badge !== null && (
@@ -189,11 +178,11 @@ function FormAccordionSectionItem({
         )}
         {/* Plus indicator when section is empty and not complete */}
         {!section.isComplete && !section.badge && !section.hasErrors && (
-          <span className="text-muted-foreground text-sm">+</span>
+          <span className="text-sm text-muted-foreground">+</span>
         )}
       </div>
       {/* Animated plus/minus icon */}
-      <div className="relative size-4 shrink-0 ml-2">
+      <div className="relative ml-2 size-4 shrink-0">
         <PlusIcon className="absolute inset-0 size-4 text-muted-foreground transition-opacity duration-200 group-data-[state=open]:opacity-0" />
         <MinusIcon className="absolute inset-0 size-4 text-muted-foreground opacity-0 transition-opacity duration-200 group-data-[state=open]:opacity-100" />
       </div>
@@ -208,7 +197,7 @@ function FormAccordionSectionItem({
         'overflow-hidden border bg-background px-4',
         isFirst && 'rounded-t-lg',
         isLast && 'rounded-b-lg border-b',
-        disabled && 'opacity-60 cursor-not-allowed'
+        disabled && 'cursor-not-allowed opacity-60'
       )}
     >
       {section.tooltipDescription ? (
@@ -228,9 +217,7 @@ function FormAccordionSectionItem({
           {triggerContent}
         </AccordionTrigger>
       )}
-      <AccordionContent className="pt-2 pb-4">
-        {section.children}
-      </AccordionContent>
+      <AccordionContent className="pb-4 pt-2">{section.children}</AccordionContent>
     </AccordionItem>
   );
 }

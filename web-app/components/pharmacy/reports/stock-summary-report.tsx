@@ -90,13 +90,15 @@ export function StockSummaryReport() {
     try {
       const csvContent = [
         ['Item Name', 'Total Quantity', 'Reorder Level', 'Status', 'Batches'].join(','),
-        ...filteredData.map((item: StockSummaryItem) => [
-          `"${item.drug_name}"`,
-          item.total_quantity,
-          item.reorder_level,
-          item.is_below_reorder ? 'Below Reorder' : 'OK',
-          item.batches.length,
-        ].join(',')),
+        ...filteredData.map((item: StockSummaryItem) =>
+          [
+            `"${item.drug_name}"`,
+            item.total_quantity,
+            item.reorder_level,
+            item.is_below_reorder ? 'Below Reorder' : 'OK',
+            item.batches.length,
+          ].join(',')
+        ),
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -134,7 +136,7 @@ export function StockSummaryReport() {
       <Card>
         <CardContent className="py-12">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
           </div>
         </CardContent>
       </Card>
@@ -146,7 +148,7 @@ export function StockSummaryReport() {
       <Card>
         <CardContent className="py-12">
           <div className="text-center text-destructive">
-            <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+            <AlertTriangle className="mx-auto mb-2 h-8 w-8" />
             <p>Failed to load stock summary report</p>
           </div>
         </CardContent>
@@ -165,11 +167,11 @@ export function StockSummaryReport() {
           </CardTitle>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-1" />
+              <Download className="mr-1 h-4 w-4" />
               Export CSV
             </Button>
             <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-1" />
+              <Printer className="mr-1 h-4 w-4" />
               Print
             </Button>
           </div>
@@ -177,9 +179,9 @@ export function StockSummaryReport() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filters */}
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search items..."
               value={searchQuery}
@@ -190,7 +192,11 @@ export function StockSummaryReport() {
           <div className="flex items-center gap-2">
             <Label htmlFor="category-filter">Category</Label>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger id="category-filter" data-testid="category-filter" className="w-[150px]">
+              <SelectTrigger
+                id="category-filter"
+                data-testid="category-filter"
+                className="w-[150px]"
+              >
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
@@ -215,17 +221,17 @@ export function StockSummaryReport() {
 
         {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="p-4 rounded-lg bg-muted/50">
+          <div className="rounded-lg bg-muted/50 p-4">
             <p className="text-sm text-muted-foreground">Total Items</p>
             <p className="text-2xl font-bold">{filteredData.length}</p>
           </div>
-          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
             <p className="text-sm text-amber-700 dark:text-amber-400">Below Reorder</p>
             <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
               {filteredData.filter((d: StockSummaryItem) => d.is_below_reorder).length}
             </p>
           </div>
-          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4">
             <p className="text-sm text-destructive">OOS</p>
             <p className="text-2xl font-bold text-destructive">
               {filteredData.filter((d: StockSummaryItem) => d.total_quantity === 0).length}
@@ -234,7 +240,7 @@ export function StockSummaryReport() {
         </div>
 
         {/* Desktop Table (hidden on mobile) */}
-        <div className="hidden md:block rounded-md border">
+        <div className="hidden rounded-md border md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -249,7 +255,7 @@ export function StockSummaryReport() {
             <TableBody>
               {paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                     No items found
                   </TableCell>
                 </TableRow>
@@ -274,7 +280,9 @@ export function StockSummaryReport() {
                             toggleDrugExpanded(item.drug_id);
                           }}
                           aria-expanded={!!expandedDrugs[item.drug_id]}
-                          aria-label={expandedDrugs[item.drug_id] ? 'Collapse batches' : 'Expand batches'}
+                          aria-label={
+                            expandedDrugs[item.drug_id] ? 'Collapse batches' : 'Expand batches'
+                          }
                         >
                           {expandedDrugs[item.drug_id] ? (
                             <ChevronDown className="h-4 w-4" />
@@ -290,15 +298,22 @@ export function StockSummaryReport() {
                         {item.total_quantity === 0 ? (
                           <Badge variant="destructive">OOS</Badge>
                         ) : item.is_below_reorder ? (
-                          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">Below Reorder</Badge>
+                          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                            Below Reorder
+                          </Badge>
                         ) : (
-                          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">OK</Badge>
+                          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
+                            OK
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">{item.batches.length}</TableCell>
                     </TableRow>
                     {expandedDrugs[item.drug_id] && (
-                      <TableRow className="bg-muted/30" data-testid={`batch-details-${item.drug_id}`}>
+                      <TableRow
+                        className="bg-muted/30"
+                        data-testid={`batch-details-${item.drug_id}`}
+                      >
                         <TableCell colSpan={6} className="p-0">
                           {item.batches.length > 0 ? (
                             <div className="p-4 pl-12">
@@ -325,10 +340,10 @@ export function StockSummaryReport() {
                                         <span
                                           className={cn(
                                             batch.days_to_expiry <= 30
-                                              ? 'text-red-600 font-medium'
+                                              ? 'font-medium text-red-600'
                                               : batch.days_to_expiry <= 90
-                                              ? 'text-yellow-600'
-                                              : 'text-green-600'
+                                                ? 'text-yellow-600'
+                                                : 'text-green-600'
                                           )}
                                         >
                                           {batch.days_to_expiry} days
@@ -340,7 +355,7 @@ export function StockSummaryReport() {
                               </Table>
                             </div>
                           ) : (
-                            <div className="p-4 pl-12 text-muted-foreground text-sm">
+                            <div className="p-4 pl-12 text-sm text-muted-foreground">
                               No batches available
                             </div>
                           )}
@@ -355,23 +370,21 @@ export function StockSummaryReport() {
         </div>
 
         {/* Mobile Cards (hidden on desktop) */}
-        <div className="md:hidden space-y-3">
+        <div className="space-y-3 md:hidden">
           {paginatedData.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No drugs found
-            </div>
+            <div className="py-12 text-center text-muted-foreground">No drugs found</div>
           ) : (
             paginatedData.map((item: StockSummaryItem) => (
               <div
                 key={item.drug_id}
                 className={cn(
-                  'rounded-lg border p-4 space-y-3',
+                  'space-y-3 rounded-lg border p-4',
                   item.is_below_reorder && 'border-amber-500/50 bg-amber-500/5',
                   item.total_quantity === 0 && 'border-destructive/50 bg-destructive/5'
                 )}
               >
                 <div
-                  className="flex justify-between items-start cursor-pointer"
+                  className="flex cursor-pointer items-start justify-between"
                   onClick={() => toggleDrugExpanded(item.drug_id)}
                 >
                   <div className="flex items-center gap-2">
@@ -395,24 +408,28 @@ export function StockSummaryReport() {
                   {item.total_quantity === 0 ? (
                     <Badge variant="destructive">OOS</Badge>
                   ) : item.is_below_reorder ? (
-                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">Below Reorder</Badge>
+                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                      Below Reorder
+                    </Badge>
                   ) : (
-                    <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">OK</Badge>
+                    <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
+                      OK
+                    </Badge>
                   )}
                 </div>
-                <div className="flex justify-between text-sm pl-8">
+                <div className="flex justify-between pl-8 text-sm">
                   <span className="text-muted-foreground">
                     Qty: {item.total_quantity} / Reorder: {item.reorder_level}
                   </span>
                   <span>{item.batches.length} batch(es)</span>
                 </div>
                 {expandedDrugs[item.drug_id] && item.batches.length > 0 && (
-                  <div className="pl-8 pt-2 space-y-2 border-t">
+                  <div className="space-y-2 border-t pl-8 pt-2">
                     {item.batches.map((batch) => (
                       <div key={batch.batch_number} className="flex justify-between text-sm">
                         <div>
                           <span className="font-mono">{batch.batch_number}</span>
-                          <span className="text-muted-foreground ml-2">
+                          <span className="ml-2 text-muted-foreground">
                             Exp: {batch.expiry_date}
                           </span>
                         </div>
@@ -422,10 +439,10 @@ export function StockSummaryReport() {
                             className={cn(
                               'text-xs',
                               batch.days_to_expiry <= 30
-                                ? 'text-red-600 font-medium'
+                                ? 'font-medium text-red-600'
                                 : batch.days_to_expiry <= 90
-                                ? 'text-yellow-600'
-                                : 'text-green-600'
+                                  ? 'text-yellow-600'
+                                  : 'text-green-600'
                             )}
                           >
                             {batch.days_to_expiry}d
@@ -436,7 +453,7 @@ export function StockSummaryReport() {
                   </div>
                 )}
                 {expandedDrugs[item.drug_id] && item.batches.length === 0 && (
-                  <div className="pl-8 pt-2 text-sm text-muted-foreground border-t">
+                  <div className="border-t pl-8 pt-2 text-sm text-muted-foreground">
                     No batches available
                   </div>
                 )}
@@ -447,9 +464,10 @@ export function StockSummaryReport() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
-            <p className="text-sm text-muted-foreground text-center sm:text-left">
-              Showing {paginatedData.length} of {filteredData.length} items (page {currentPage} of {totalPages})
+          <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-center text-sm text-muted-foreground sm:text-left">
+              Showing {paginatedData.length} of {filteredData.length} items (page {currentPage} of{' '}
+              {totalPages})
             </p>
             <div className="flex items-center justify-center gap-2">
               <Button

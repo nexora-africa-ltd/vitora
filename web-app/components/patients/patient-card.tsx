@@ -21,7 +21,7 @@ const genderColors: Record<string, string> = {
 export function PatientCard({ patient }: PatientCardProps) {
   return (
     <Link href={`/patients/${patient.id}`}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+      <Card className="cursor-pointer transition-shadow hover:shadow-md">
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
             <Avatar className="h-12 w-12">
@@ -31,24 +31,22 @@ export function PatientCard({ patient }: PatientCardProps) {
               </AvatarFallback>
             </Avatar>
 
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold truncate">
+                <h3 className="truncate font-semibold">
                   {patient.first_name} {patient.last_name}
                 </h3>
                 {patient.is_sensitive && (
                   <Badge variant="destructive" className="text-xs">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    <AlertTriangle className="mr-1 h-3 w-3" />
                     Sensitive
                   </Badge>
                 )}
               </div>
 
-              <p className="text-sm text-muted-foreground font-mono">
-                {patient.mrn}
-              </p>
+              <p className="font-mono text-sm text-muted-foreground">{patient.mrn}</p>
 
-              <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
+              <div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <User className="h-3 w-3" />
                   {calculateAge(patient.date_of_birth)} yrs, {genderLabels[patient.gender]}
@@ -62,7 +60,7 @@ export function PatientCard({ patient }: PatientCardProps) {
               </div>
 
               {patient.county_name && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {patient.county_name}
                   {patient.sub_county_name && `, ${patient.sub_county_name}`}
                 </p>

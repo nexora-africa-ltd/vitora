@@ -22,9 +22,12 @@ export default function BloodBankDashboardPage() {
     const requests = requestsData?.results || [];
     return {
       availableUnits: units.filter((u) => u.status === 'AVAILABLE').length,
-      pendingRequests: requests.filter((r) => r.status === 'PENDING' || r.status === 'CROSSMATCH_PENDING').length,
+      pendingRequests: requests.filter(
+        (r) => r.status === 'PENDING' || r.status === 'CROSSMATCH_PENDING'
+      ).length,
       totalDonors: donorsData?.count || 0,
-      emergencyRequests: requests.filter((r) => r.urgency === 'EMERGENCY' && r.status === 'PENDING').length,
+      emergencyRequests: requests.filter((r) => r.urgency === 'EMERGENCY' && r.status === 'PENDING')
+        .length,
     };
   }, [unitsData, requestsData, donorsData]);
 
@@ -32,14 +35,14 @@ export default function BloodBankDashboardPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="container mx-auto space-y-6 py-6">
         <PageHeader
           title="Blood Bank"
           helpContent="Manage blood donations, inventory, cross-matching, and transfusions."
         />
 
         {/* Stats */}
-        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
           <StatsCard
             title="Available Units"
             value={isLoading ? '-' : stats.availableUnits}
@@ -74,15 +77,13 @@ export default function BloodBankDashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Users className="h-4 w-4 text-primary" />
                 Donors
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Register and manage blood donors.
-              </p>
+              <p className="text-sm text-muted-foreground">Register and manage blood donors.</p>
               <Button asChild variant="outline" size="sm" className="w-full">
                 <Link href="/blood-bank/donors">View Donors</Link>
               </Button>
@@ -91,7 +92,7 @@ export default function BloodBankDashboardPage() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Droplets className="h-4 w-4 text-red-500" />
                 Blood Units
               </CardTitle>
@@ -108,7 +109,7 @@ export default function BloodBankDashboardPage() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <ClipboardList className="h-4 w-4 text-amber-500" />
                 Requests
               </CardTitle>

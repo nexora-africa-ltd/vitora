@@ -115,7 +115,7 @@ export function PaymentMethodCarousel({
       aria-label="Payment method options"
     >
       <Carousel
-        className="w-full max-w-xs mx-auto overflow-hidden"
+        className="mx-auto w-full max-w-xs overflow-hidden"
         opts={{ align: 'start', loop: true }}
         setApi={setApi}
       >
@@ -130,10 +130,12 @@ export function PaymentMethodCarousel({
                 <div className="p-1">
                   <Card
                     className={cn(
-                      'transition-all cursor-pointer border-2',
-                      isDisabled && 'cursor-not-allowed opacity-50 bg-muted text-accent-foreground',
+                      'cursor-pointer border-2 transition-all',
+                      isDisabled && 'cursor-not-allowed bg-muted text-accent-foreground opacity-50',
                       !isDisabled && !isSelected && 'hover:border-secondary/50 hover:shadow-md',
-                      isSelected && !isDisabled && 'border-teal-400 bg-secondary/10 ring-2 ring-secondary shadow-lg text-accent-foreground'
+                      isSelected &&
+                        !isDisabled &&
+                        'border-teal-400 bg-secondary/10 text-accent-foreground shadow-lg ring-2 ring-secondary'
                     )}
                     onClick={() => {
                       if (!isDisabled) {
@@ -141,11 +143,11 @@ export function PaymentMethodCarousel({
                       }
                     }}
                   >
-                    <CardContent className="flex flex-col items-center justify-center aspect-square p-6">
+                    <CardContent className="flex aspect-square flex-col items-center justify-center p-6">
                       {/* Icon */}
                       <div
                         className={cn(
-                          'rounded-full p-4 mb-4 transition-colors',
+                          'mb-4 rounded-full p-4 transition-colors',
                           isSelected && !isDisabled ? 'bg-secondary/20' : 'bg-muted'
                         )}
                       >
@@ -153,22 +155,27 @@ export function PaymentMethodCarousel({
                       </div>
 
                       {/* Label */}
-                      <div className={cn(
-                        "font-semibold text-lg text-center transition-colors",
-                        isSelected && !isDisabled && "text-accent-foreground"
-                      )}>
+                      <div
+                        className={cn(
+                          'text-center text-lg font-semibold transition-colors',
+                          isSelected && !isDisabled && 'text-accent-foreground'
+                        )}
+                      >
                         {option.label}
                       </div>
 
                       {/* Description */}
-                      <div className="text-sm text-muted-foreground text-center mt-2">
+                      <div className="mt-2 text-center text-sm text-muted-foreground">
                         {option.description}
                       </div>
 
                       {/* Status area */}
-                      <div className="mt-4 min-h-[28px] flex items-center justify-center">
+                      <div className="mt-4 flex min-h-[28px] items-center justify-center">
                         {isDisabled ? (
-                          <Badge variant="secondary" className="text-xs bg-destructive/10 text-destructive">
+                          <Badge
+                            variant="secondary"
+                            className="bg-destructive/10 text-xs text-destructive"
+                          >
                             Unavailable
                           </Badge>
                         ) : isSelected ? (
@@ -177,7 +184,7 @@ export function PaymentMethodCarousel({
                             <span className="text-sm font-medium">Selected</span>
                           </div>
                         ) : isInFocus ? (
-                          <span className="text-xs text-accent-foreground animate-pulse">
+                          <span className="animate-pulse text-xs text-accent-foreground">
                             Click to select {option.label}
                           </span>
                         ) : null}
@@ -194,7 +201,7 @@ export function PaymentMethodCarousel({
       </Carousel>
 
       {/* Indicator dots - reflects current carousel position */}
-      <div className="flex justify-center gap-2 mt-4">
+      <div className="mt-4 flex justify-center gap-2">
         {PAYMENT_MODE_OPTIONS.map((option, index) => {
           const isSelected = value === option.value;
           return (
@@ -202,11 +209,11 @@ export function PaymentMethodCarousel({
               key={option.value}
               type="button"
               className={cn(
-                'w-2.5 h-2.5 rounded-full transition-all',
+                'h-2.5 w-2.5 rounded-full transition-all',
                 currentSlide === index
                   ? isSelected
-                    ? 'bg-secondary scale-125'
-                    : 'bg-muted-foreground scale-125'
+                    ? 'scale-125 bg-secondary'
+                    : 'scale-125 bg-muted-foreground'
                   : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
               )}
               onClick={() => scrollToSlide(index)}
@@ -217,8 +224,10 @@ export function PaymentMethodCarousel({
       </div>
 
       {/* Keyboard hint */}
-      <p className="text-xs text-muted-foreground text-center mt-3">
-        Use <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">←</kbd> <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">→</kbd> to browse, <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">Enter</kbd> to select
+      <p className="mt-3 text-center text-xs text-muted-foreground">
+        Use <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">←</kbd>{' '}
+        <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">→</kbd> to browse,{' '}
+        <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> to select
       </p>
     </div>
   );

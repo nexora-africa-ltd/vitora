@@ -92,13 +92,13 @@ const mockRefreshToken = createMockJwt(1, 60 * 60 * 24 * 30);
 test.describe('Patient History/Timeline', () => {
   test.beforeEach(async ({ page, context }) => {
     // Debug: Log network requests and console messages
-    page.on('console', msg => {
+    page.on('console', (msg) => {
       if (msg.type() === 'error') {
         // eslint-disable-next-line no-console
         console.log('[browser error]', msg.text());
       }
     });
-    page.on('response', response => {
+    page.on('response', (response) => {
       const url = response.url();
       const status = response.status();
       if (status >= 400 || url.includes('/api/')) {
@@ -119,11 +119,14 @@ test.describe('Patient History/Timeline', () => {
     ]);
 
     // Set localStorage tokens via addInitScript (runs on page load for client-side auth)
-    await page.addInitScript(({ user, accessToken, refreshToken }) => {
-      localStorage.setItem('vitora_access_token', accessToken);
-      localStorage.setItem('vitora_refresh_token', refreshToken);
-      localStorage.setItem('vitora_user', JSON.stringify(user));
-    }, { user: mockUser, accessToken: mockAccessToken, refreshToken: mockRefreshToken });
+    await page.addInitScript(
+      ({ user, accessToken, refreshToken }) => {
+        localStorage.setItem('vitora_access_token', accessToken);
+        localStorage.setItem('vitora_refresh_token', refreshToken);
+        localStorage.setItem('vitora_user', JSON.stringify(user));
+      },
+      { user: mockUser, accessToken: mockAccessToken, refreshToken: mockRefreshToken }
+    );
 
     // Mock token refresh endpoint - CRITICAL: prevents auth redirect loop
     await page.route(/.*\/api\/token\/refresh\/.*/, async (route) => {

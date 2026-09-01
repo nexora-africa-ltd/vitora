@@ -40,7 +40,8 @@ export default function EncounterEditDiagnosisPage() {
   const { getSession, getDiagnoses, setDiagnoses, markSectionComplete } = useEncounterEditStore();
 
   // Use API hooks for diagnosis CRUD (saves immediately to backend)
-  const { data: existingDiagnoses, isLoading: isLoadingDiagnoses } = useEncounterDiagnoses(encounterRouteId);
+  const { data: existingDiagnoses, isLoading: isLoadingDiagnoses } =
+    useEncounterDiagnoses(encounterRouteId);
   const addDiagnosis = useAddDiagnosis(encounterRouteId);
   const deleteDiagnosis = useDeleteDiagnosis(encounterRouteId);
   const updateDiagnosis = useUpdateDiagnosis(encounterRouteId);
@@ -76,137 +77,169 @@ export default function EncounterEditDiagnosisPage() {
   const isEditable = encounter?.status !== 'CLOSED' && encounter?.status !== 'CANCELLED';
 
   // Handle adding a diagnosis (saves to backend immediately)
-  const handleAddDiagnosis = useCallback(async (diagnosis: DiagnosisFormData) => {
-    try {
-      const savedDiagnosis = await addDiagnosis.mutateAsync({
-        icd10_code: diagnosis.icd10_code,
-        icd11_code: diagnosis.icd11_code || '',
-        icd11_display: diagnosis.icd11_display || '',
-        snomed_code: diagnosis.snomed_code || '',
-        snomed_display: diagnosis.snomed_display || '',
-        diagnosis_type: diagnosis.diagnosis_type,
-        free_text_diagnosis: diagnosis.free_text_diagnosis || '',
-        notes: diagnosis.notes || '',
-        is_confirmed: diagnosis.is_confirmed || false,
-        certainty: (diagnosis.certainty?.toLowerCase() || 'suspected') as 'confirmed' | 'provisional' | 'ruled_out' | 'suspected',
-      });
+  const handleAddDiagnosis = useCallback(
+    async (diagnosis: DiagnosisFormData) => {
+      try {
+        const savedDiagnosis = await addDiagnosis.mutateAsync({
+          icd10_code: diagnosis.icd10_code,
+          icd11_code: diagnosis.icd11_code || '',
+          icd11_display: diagnosis.icd11_display || '',
+          snomed_code: diagnosis.snomed_code || '',
+          snomed_display: diagnosis.snomed_display || '',
+          diagnosis_type: diagnosis.diagnosis_type,
+          free_text_diagnosis: diagnosis.free_text_diagnosis || '',
+          notes: diagnosis.notes || '',
+          is_confirmed: diagnosis.is_confirmed || false,
+          certainty: (diagnosis.certainty?.toLowerCase() || 'suspected') as
+            | 'confirmed'
+            | 'provisional'
+            | 'ruled_out'
+            | 'suspected',
+        });
 
-      if (!savedDiagnosis) {
-        // Local write — add input data to local store
+        if (!savedDiagnosis) {
+          // Local write — add input data to local store
+          setDiagnoses(encounterStoreId, [
+            ...diagnoses,
+            {
+              icd10_code: diagnosis.icd10_code,
+              icd10_display: diagnosis.icd10_display || '',
+              icd11_code: diagnosis.icd11_code,
+              icd11_display: diagnosis.icd11_display || '',
+              diagnosis_type: diagnosis.diagnosis_type,
+              free_text_diagnosis: diagnosis.free_text_diagnosis || '',
+              notes: diagnosis.notes || '',
+              is_confirmed: diagnosis.is_confirmed || false,
+              certainty: diagnosis.certainty,
+            },
+          ]);
+          toast({
+            title: 'Diagnosis Added',
+            description: 'Saved locally — will sync when online.',
+          });
+          return;
+        }
+
+        // Update local store
         setDiagnoses(encounterStoreId, [
           ...diagnoses,
           {
-            icd10_code: diagnosis.icd10_code,
-            icd10_display: diagnosis.icd10_display || '',
-            icd11_code: diagnosis.icd11_code,
-            icd11_display: diagnosis.icd11_display || '',
-            diagnosis_type: diagnosis.diagnosis_type,
-            free_text_diagnosis: diagnosis.free_text_diagnosis || '',
-            notes: diagnosis.notes || '',
-            is_confirmed: diagnosis.is_confirmed || false,
-            certainty: diagnosis.certainty,
+            icd10_code: savedDiagnosis.icd10_code,
+            icd10_display: savedDiagnosis.icd10_code_display || savedDiagnosis.icd10_description,
+            icd11_code: savedDiagnosis.icd11_code,
+            icd11_display: savedDiagnosis.icd11_display,
+            diagnosis_type: savedDiagnosis.diagnosis_type,
+            free_text_diagnosis: savedDiagnosis.free_text_diagnosis || '',
+            notes: savedDiagnosis.notes || '',
+            is_confirmed: savedDiagnosis.is_confirmed,
+            certainty: savedDiagnosis.certainty,
           },
         ]);
-        toast({ title: 'Diagnosis Added', description: 'Saved locally — will sync when online.' });
-        return;
+
+        toast({
+          title: 'Diagnosis Added',
+          description: 'Diagnosis has been saved successfully.',
+        });
+      } catch (err) {
+        toast({
+          title: 'Error',
+          description: 'Failed to save diagnosis. Please try again.',
+          variant: 'destructive',
+        });
       }
-
-      // Update local store
-      setDiagnoses(encounterStoreId, [
-        ...diagnoses,
-        {
-          icd10_code: savedDiagnosis.icd10_code,
-          icd10_display: savedDiagnosis.icd10_code_display || savedDiagnosis.icd10_description,
-          icd11_code: savedDiagnosis.icd11_code,
-          icd11_display: savedDiagnosis.icd11_display,
-          diagnosis_type: savedDiagnosis.diagnosis_type,
-          free_text_diagnosis: savedDiagnosis.free_text_diagnosis || '',
-          notes: savedDiagnosis.notes || '',
-          is_confirmed: savedDiagnosis.is_confirmed,
-          certainty: savedDiagnosis.certainty,
-        },
-      ]);
-
-      toast({
-        title: 'Diagnosis Added',
-        description: 'Diagnosis has been saved successfully.',
-      });
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to save diagnosis. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  }, [addDiagnosis, diagnoses, encounterStoreId, setDiagnoses, toast]);
+    },
+    [addDiagnosis, diagnoses, encounterStoreId, setDiagnoses, toast]
+  );
 
   // Handle removing a diagnosis
-  const handleRemoveDiagnosis = useCallback(async (index: number) => {
-    const diagnosisArray = Array.isArray(existingDiagnoses)
-      ? existingDiagnoses
-      : (existingDiagnoses as unknown as { results?: typeof existingDiagnoses })?.results || [];
-    const diagnosisToRemove = diagnosisArray[index];
+  const handleRemoveDiagnosis = useCallback(
+    async (index: number) => {
+      const diagnosisArray = Array.isArray(existingDiagnoses)
+        ? existingDiagnoses
+        : (existingDiagnoses as unknown as { results?: typeof existingDiagnoses })?.results || [];
+      const diagnosisToRemove = diagnosisArray[index];
 
-    if (diagnosisToRemove?.id) {
-      try {
-        await deleteDiagnosis.mutateAsync(diagnosisToRemove.id);
-        setDiagnoses(encounterStoreId, diagnoses.filter((_, i) => i !== index));
-        toast({
-          title: 'Diagnosis Removed',
-          description: 'Diagnosis has been removed successfully.',
-        });
-      } catch (err) {
-        toast({
-          title: 'Error',
-          description: 'Failed to remove diagnosis. Please try again.',
-          variant: 'destructive',
-        });
+      if (diagnosisToRemove?.id) {
+        try {
+          await deleteDiagnosis.mutateAsync(diagnosisToRemove.id);
+          setDiagnoses(
+            encounterStoreId,
+            diagnoses.filter((_, i) => i !== index)
+          );
+          toast({
+            title: 'Diagnosis Removed',
+            description: 'Diagnosis has been removed successfully.',
+          });
+        } catch (err) {
+          toast({
+            title: 'Error',
+            description: 'Failed to remove diagnosis. Please try again.',
+            variant: 'destructive',
+          });
+        }
+      } else {
+        // Local only, just remove from store
+        setDiagnoses(
+          encounterStoreId,
+          diagnoses.filter((_, i) => i !== index)
+        );
       }
-    } else {
-      // Local only, just remove from store
-      setDiagnoses(encounterStoreId, diagnoses.filter((_, i) => i !== index));
-    }
-  }, [existingDiagnoses, deleteDiagnosis, diagnoses, encounterStoreId, setDiagnoses, toast]);
+    },
+    [existingDiagnoses, deleteDiagnosis, diagnoses, encounterStoreId, setDiagnoses, toast]
+  );
 
   // Handle updating a diagnosis
-  const handleUpdateDiagnosis = useCallback(async (index: number, diagnosis: DiagnosisFormData) => {
-    const diagnosisArray = Array.isArray(existingDiagnoses)
-      ? existingDiagnoses
-      : (existingDiagnoses as unknown as { results?: typeof existingDiagnoses })?.results || [];
-    const diagnosisToUpdate = diagnosisArray[index];
+  const handleUpdateDiagnosis = useCallback(
+    async (index: number, diagnosis: DiagnosisFormData) => {
+      const diagnosisArray = Array.isArray(existingDiagnoses)
+        ? existingDiagnoses
+        : (existingDiagnoses as unknown as { results?: typeof existingDiagnoses })?.results || [];
+      const diagnosisToUpdate = diagnosisArray[index];
 
-    if (diagnosisToUpdate?.id) {
-      try {
-        await updateDiagnosis.mutateAsync({
-          diagnosisId: diagnosisToUpdate.id,
-          data: {
-            icd10_code: diagnosis.icd10_code,
-            diagnosis_type: diagnosis.diagnosis_type,
-            free_text_diagnosis: diagnosis.free_text_diagnosis || '',
-            notes: diagnosis.notes || '',
-            is_confirmed: diagnosis.is_confirmed || false,
-            certainty: (diagnosis.certainty?.toLowerCase() || 'suspected') as 'confirmed' | 'provisional' | 'ruled_out' | 'suspected',
-          },
-        });
+      if (diagnosisToUpdate?.id) {
+        try {
+          await updateDiagnosis.mutateAsync({
+            diagnosisId: diagnosisToUpdate.id,
+            data: {
+              icd10_code: diagnosis.icd10_code,
+              diagnosis_type: diagnosis.diagnosis_type,
+              free_text_diagnosis: diagnosis.free_text_diagnosis || '',
+              notes: diagnosis.notes || '',
+              is_confirmed: diagnosis.is_confirmed || false,
+              certainty: (diagnosis.certainty?.toLowerCase() || 'suspected') as
+                | 'confirmed'
+                | 'provisional'
+                | 'ruled_out'
+                | 'suspected',
+            },
+          });
 
-        setDiagnoses(encounterStoreId, diagnoses.map((d, i) => (i === index ? diagnosis : d)));
+          setDiagnoses(
+            encounterStoreId,
+            diagnoses.map((d, i) => (i === index ? diagnosis : d))
+          );
 
-        toast({
-          title: 'Diagnosis Updated',
-          description: 'Diagnosis has been updated successfully.',
-        });
-      } catch (err) {
-        toast({
-          title: 'Error',
-          description: 'Failed to update diagnosis. Please try again.',
-          variant: 'destructive',
-        });
+          toast({
+            title: 'Diagnosis Updated',
+            description: 'Diagnosis has been updated successfully.',
+          });
+        } catch (err) {
+          toast({
+            title: 'Error',
+            description: 'Failed to update diagnosis. Please try again.',
+            variant: 'destructive',
+          });
+        }
+      } else {
+        // Local only
+        setDiagnoses(
+          encounterStoreId,
+          diagnoses.map((d, i) => (i === index ? diagnosis : d))
+        );
       }
-    } else {
-      // Local only
-      setDiagnoses(encounterStoreId, diagnoses.map((d, i) => (i === index ? diagnosis : d)));
-    }
-  }, [existingDiagnoses, updateDiagnosis, diagnoses, encounterStoreId, setDiagnoses, toast]);
+    },
+    [existingDiagnoses, updateDiagnosis, diagnoses, encounterStoreId, setDiagnoses, toast]
+  );
 
   // Navigate to previous step
   const handlePrev = useCallback(() => {
@@ -267,18 +300,18 @@ export default function EncounterEditDiagnosisPage() {
       {/* Navigation */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               Step 4 of 7 — Diagnoses recorded ({diagnoses.length} added)
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handlePrev}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
               <Button onClick={handleNext}>
                 Next: Orders
-                <ArrowRight className="h-4 w-4 ml-2" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
