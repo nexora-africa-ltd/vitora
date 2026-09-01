@@ -291,6 +291,7 @@ jobs:
         with:
           files: .
           config_file: ".markdownlint.json"
+          ignore_path: ".markdownlintignore"
         continue-on-error: true
 
   # Job 6: Build Validation

@@ -2,3 +2,10 @@
 # Markdown lint ignore list for CI docs checks.
 # Usage: markdownlint-cli reads this file automatically.
 AGENTS.md
+**/node_modules/
+**/.next/
+**/.expo/
+**/dist/
+**/coverage/
+.venv/
+vitora-marketing/
