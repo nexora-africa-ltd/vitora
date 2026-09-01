@@ -97,20 +97,6 @@ export default function NewClinicPage() {
   const canCreateClinic = hasPermission('clinics.add_clinic');
   const { mutateAsync: createClinic, isPending } = useCreateClinic();
 
-  if (!canCreateClinic) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="New Clinic" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You do not have permission to create clinics.
-          </p>
-        </Card>
-      </div>
-    );
-  }
-
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -144,16 +130,38 @@ export default function NewClinicPage() {
           description: `${data.name} has been created successfully.`,
         });
         router.push(`/clinics/${clinic.id}`);
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message =
+          typeof error === 'object' &&
+          error !== null &&
+          'response' in error &&
+          typeof (error as { response?: { data?: { detail?: string } } }).response?.data?.detail ===
+            'string'
+            ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+            : undefined;
         toast({
           title: 'Error',
-          description: error?.response?.data?.detail || 'Failed to create clinic.',
+          description: message || 'Failed to create clinic.',
           variant: 'destructive',
         });
       }
     },
     [createClinic, router]
   );
+
+  if (!canCreateClinic) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="New Clinic" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You do not have permission to create clinics.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   // Auto-generate code from name
   const generateCode = (name: string) => {

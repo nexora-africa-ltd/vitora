@@ -279,18 +279,6 @@ export default function CDSRuleDetailPage() {
     enabled: canViewCDSRules && !isNaN(ruleId),
   });
 
-  if (!canViewCDSRules) {
-    return (
-      <div className="space-y-4">
-        <PageHeader title="CDS Rule" />
-        <Card className="p-6 text-center">
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-sm text-muted-foreground mt-1">You do not have permission to view CDS rules.</p>
-        </Card>
-      </div>
-    );
-  }
-
   const activateMutation = useMutation({
     mutationFn: () => cdsApi.activateRule(ruleId),
     onSuccess: () => {
@@ -320,6 +308,18 @@ export default function CDSRuleDetailPage() {
     },
     onError: () => toast.error('Failed to retire rule'),
   });
+
+  if (!canViewCDSRules) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="CDS Rule" />
+        <Card className="p-6 text-center">
+          <p className="text-sm font-medium">Access denied</p>
+          <p className="text-sm text-muted-foreground mt-1">You do not have permission to view CDS rules.</p>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

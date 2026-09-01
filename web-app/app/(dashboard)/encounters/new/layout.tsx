@@ -45,19 +45,6 @@ export default function NewEncounterLayout({
   const canCreateEncounter = hasPermission('encounters.add_encounter');
   const patientIdParam = searchParams.get('patient');
 
-  if (!canCreateEncounter) {
-    return (
-      <div className="p-4 sm:p-6">
-        <Alert>
-          <AlertTitle>Access denied</AlertTitle>
-          <AlertDescription>
-            You do not have permission to create encounters.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
   const {
     initSession,
     hasSession,
@@ -75,6 +62,10 @@ export default function NewEncounterLayout({
 
   // Initialize or recover session
   useEffect(() => {
+    if (!canCreateEncounter) {
+      return;
+    }
+
     const session = getSession();
 
     if (session) {
@@ -92,17 +83,21 @@ export default function NewEncounterLayout({
     }
 
     setIsInitialized(true);
-  }, [getSession, initSession, isInitialized, didNotifyDraftRecovery, toast]);
+  }, [canCreateEncounter, getSession, initSession, isInitialized, didNotifyDraftRecovery, toast]);
 
   // Set prefetched patient if provided in URL
   useEffect(() => {
+    if (!canCreateEncounter) {
+      return;
+    }
+
     if (prefetchedPatient && isInitialized) {
       const session = getSession();
       if (session && !session.patientId) {
         setPatient(prefetchedPatient.id, prefetchedPatient);
       }
     }
-  }, [prefetchedPatient, isInitialized, getSession, setPatient]);
+  }, [canCreateEncounter, prefetchedPatient, isInitialized, getSession, setPatient]);
 
   const isDirty = isDirtyState();
   const session = getSession();
@@ -119,6 +114,19 @@ export default function NewEncounterLayout({
       description: 'Unsaved draft cleared. You can begin a new encounter.',
     });
   };
+
+  if (!canCreateEncounter) {
+    return (
+      <div className="p-4 sm:p-6">
+        <Alert>
+          <AlertTitle>Access denied</AlertTitle>
+          <AlertDescription>
+            You do not have permission to create encounters.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-full">

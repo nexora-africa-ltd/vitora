@@ -60,6 +60,7 @@ jest.mock('@/lib/documents', () => ({
 }));
 
 import { usePaymentPoints } from '@/lib/hooks/billing';
+import type { Service, PaymentPointListParams } from '@/lib/types/billing';
 
 const mockedUsePaymentPoints = usePaymentPoints as unknown as jest.Mock;
 
@@ -171,7 +172,7 @@ const mockReceipt = {
 const mockServices = [
   { id: 1, code: 'CONS-001', name: 'General Consultation', unit_price: '500.00', category: 1, category_name: 'Consultation' },
   { id: 2, code: 'LAB-001', name: 'Complete Blood Count', unit_price: '1000.00', category: 2, category_name: 'Laboratory' },
-];
+] satisfies Service[];
 
 // ============================================================================
 // InvoiceList Component Tests
@@ -533,7 +534,7 @@ describe('PaymentForm', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedUsePaymentPoints.mockImplementation((params?: any) => {
+    mockedUsePaymentPoints.mockImplementation((params?: PaymentPointListParams) => {
       const method = params?.method || 'CASH';
       return {
         data: {
@@ -956,8 +957,8 @@ describe('ServiceSelector', () => {
 
   it('should render service categories', () => {
     render(
-      <ServiceSelector
-        services={mockServices as any}
+        <ServiceSelector
+          services={mockServices}
         categories={[
           { id: 1, name: 'Consultation', code: 'CONS', description: '', display_order: 1, is_active: true, created_at: '', updated_at: '' },
           { id: 2, name: 'Laboratory', code: 'LAB', description: '', display_order: 2, is_active: true, created_at: '', updated_at: '' },
@@ -973,8 +974,8 @@ describe('ServiceSelector', () => {
 
   it('should filter services by category', async () => {
     render(
-      <ServiceSelector
-        services={mockServices as any}
+        <ServiceSelector
+          services={mockServices}
         categories={[
           { id: 1, name: 'Consultation', code: 'CONS', description: '', display_order: 1, is_active: true, created_at: '', updated_at: '' },
           { id: 2, name: 'Laboratory', code: 'LAB', description: '', display_order: 2, is_active: true, created_at: '', updated_at: '' },
@@ -992,8 +993,8 @@ describe('ServiceSelector', () => {
 
   it('should search services by name', async () => {
     render(
-      <ServiceSelector
-        services={mockServices as any}
+        <ServiceSelector
+          services={mockServices}
         categories={[]}
         onSelect={mockOnSelect}
       />,
@@ -1009,8 +1010,8 @@ describe('ServiceSelector', () => {
 
   it('should call onSelect with service details', async () => {
     render(
-      <ServiceSelector
-        services={mockServices as any}
+        <ServiceSelector
+          services={mockServices}
         categories={[]}
         onSelect={mockOnSelect}
       />,

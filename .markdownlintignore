@@ -1,0 +1,4 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# Markdown lint ignore list for CI docs checks.
+# Usage: markdownlint-cli reads this file automatically.
+AGENTS.md

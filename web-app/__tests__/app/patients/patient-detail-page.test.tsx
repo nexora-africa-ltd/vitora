@@ -110,7 +110,7 @@ describe('Patient Detail Page - Context Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPatientsApi.getPatient.mockResolvedValue(mockPatient);
-    mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true } as any);
+    mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
   });
 
   // ===========================================================================
@@ -206,7 +206,7 @@ describe('Patient Detail Page - Context Integration', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, permissions: ['view_patient'] },
         isAuthenticated: true
-      } as any);
+      } as ReturnType<typeof useAuth>);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
@@ -233,7 +233,7 @@ describe('Patient Detail Page - Context Integration', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, permissions: ['view_patient', 'edit_patient'] },
         isAuthenticated: true
-      } as any);
+      } as ReturnType<typeof useAuth>);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
@@ -261,7 +261,7 @@ describe('Patient Detail Page - Context Integration', () => {
       mockUseAuth.mockReturnValue({
         user: mockAdminUser,
         isAuthenticated: true
-      } as any);
+      } as ReturnType<typeof useAuth>);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');
@@ -289,7 +289,7 @@ describe('Patient Detail Page - Context Integration', () => {
       mockUseAuth.mockReturnValue({
         user: { ...mockUser, role: 'DOCTOR', permissions: ['view_patient', 'create_encounter'] },
         isAuthenticated: true
-      } as any);
+      } as ReturnType<typeof useAuth>);
 
       const PatientDetailPage = (await import('@/app/(dashboard)/patients/[id]/page')).default;
       const { PatientProvider } = await import('@/lib/context/patient-context');

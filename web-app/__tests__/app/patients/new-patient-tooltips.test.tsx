@@ -6,12 +6,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NewPatientPage from '@/app/(dashboard)/patients/new/page';
+import type { PatientCreateData } from '@/lib/types/patient';
 
 beforeAll(() => {
   // Radix Tooltip relies on PointerEvent; JSDOM may not implement it.
   // This polyfill allows pointer* events to work in tests.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).PointerEvent = window.MouseEvent;
+  Object.defineProperty(window, 'PointerEvent', {
+    writable: true,
+    value: window.MouseEvent,
+  });
 });
 
 jest.mock('next/navigation', () => ({
@@ -93,7 +96,7 @@ jest.mock('@/lib/hooks/use-sha', () => ({
 
 // Mock PatientForm to avoid filling large form fields.
 jest.mock('@/components/patients/patient-form', () => ({
-  PatientForm: ({ onSubmit }: { onSubmit: (data: any) => void }) => (
+  PatientForm: ({ onSubmit }: { onSubmit: (data: PatientCreateData) => void }) => (
     <button
       type="button"
       onClick={() =>

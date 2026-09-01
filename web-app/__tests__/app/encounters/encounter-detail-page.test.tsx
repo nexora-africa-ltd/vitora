@@ -92,7 +92,7 @@ describe('Encounter Detail Page - Context Integration', () => {
     jest.clearAllMocks();
     mockEncountersApi.get.mockResolvedValue(mockEncounter);
     mockPatientsApi.getPatient.mockResolvedValue(mockPatient);
-    mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true } as any);
+    mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
   });
 
   // ===========================================================================
