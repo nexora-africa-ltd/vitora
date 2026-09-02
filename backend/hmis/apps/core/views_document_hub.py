@@ -13,6 +13,7 @@ Supported inputs/args:
 """
 
 import logging
+from collections import defaultdict
 
 from django.apps import apps
 from django.conf import settings as django_settings
@@ -119,6 +120,8 @@ from .views_security_documents import DOCUMENT_HUB_CONFIG
 
 logger = logging.getLogger(__name__)
 
+_SIGNATURE_NOT_LOADED = object()
+
 
 def _full_name_or_username(user) -> str:
     if not user:
@@ -181,14 +184,42 @@ def _resolve_document_instance(document_type: str, document_id: int):
     return model.objects.filter(pk=document_id).first()
 
 
-def _build_hub_item(document_type: str, document, user, share: DocumentShare | None = None) -> dict:
+def _get_latest_signature_map(
+    document_type: str, document_ids: list[int]
+) -> dict[int, DocumentSignature]:
+    """Return latest signatures keyed by document id for a document type."""
+    if not document_ids:
+        return {}
+
+    signatures: dict[int, DocumentSignature] = {}
+    queryset = (
+        DocumentSignature.objects.filter(
+            document_type=document_type,
+            document_id__in=document_ids,
+        )
+        .order_by("document_id", "-signed_at")
+        .only("document_id", "signed_at")
+    )
+    for signature in queryset:
+        signatures.setdefault(signature.document_id, signature)
+    return signatures
+
+
+def _build_hub_item(
+    document_type: str,
+    document,
+    user,
+    share: DocumentShare | None = None,
+    latest_signature: DocumentSignature | None | object = _SIGNATURE_NOT_LOADED,
+) -> dict:
     from .services.signing_service import SIGNABLE_DOCUMENT_TYPES
 
-    latest_signature = (
-        DocumentSignature.objects.filter(document_type=document_type, document_id=document.pk)
-        .order_by("-signed_at")
-        .first()
-    )
+    if latest_signature is _SIGNATURE_NOT_LOADED:
+        latest_signature = (
+            DocumentSignature.objects.filter(document_type=document_type, document_id=document.pk)
+            .order_by("-signed_at")
+            .first()
+        )
     owner_field = DOCUMENT_HUB_CONFIG[document_type]["owner_field"]
     owner = getattr(document, owner_field, None)
     number_field = DOCUMENT_HUB_CONFIG[document_type]["number_field"]
@@ -303,27 +334,76 @@ class DocumentHubViewSet(viewsets.ViewSet):
             for document_type, cfg in DOCUMENT_HUB_CONFIG.items():
                 model = apps.get_model(cfg["app"], cfg["model"])
                 owner_field = cfg["owner_field"]
-                queryset = model.objects.filter(**{f"{owner_field}_id": request.user.id}).order_by(
-                    "-id"
+                documents = list(
+                    model.objects.filter(**{f"{owner_field}_id": request.user.id}).order_by("-id")[
+                        :200
+                    ]
                 )
-                for document in queryset[:200]:
-                    items.append(_build_hub_item(document_type, document, request.user))
+                if not documents:
+                    continue
+
+                signature_map = _get_latest_signature_map(
+                    document_type,
+                    [document.pk for document in documents],
+                )
+                for document in documents:
+                    items.append(
+                        _build_hub_item(
+                            document_type,
+                            document,
+                            request.user,
+                            latest_signature=signature_map.get(document.pk),
+                        )
+                    )
 
         if tab in ("shared", "signed", "pending"):
-            shares = DocumentShare.objects.filter(
-                shared_with=request.user,
-                revoked_at__isnull=True,
-            ).filter(models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=timezone.now()))
-            for share in shares.select_related("shared_by")[:200]:
+            shares = list(
+                DocumentShare.objects.filter(
+                    shared_with=request.user,
+                    revoked_at__isnull=True,
+                )
+                .filter(models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=timezone.now()))
+                .select_related("shared_by")[:200]
+            )
+            share_ids_by_type: dict[str, set[int]] = defaultdict(set)
+            for share in shares:
                 cfg = DOCUMENT_HUB_CONFIG.get(share.document_type)
-                if not cfg:
+                if cfg is None:
+                    continue
+                share_ids_by_type[share.document_type].add(share.document_id)
+
+            shared_documents_by_type: dict[str, dict[int, object]] = {}
+            shared_signatures_by_type: dict[str, dict[int, DocumentSignature]] = {}
+            for document_type, ids in share_ids_by_type.items():
+                cfg = DOCUMENT_HUB_CONFIG.get(document_type)
+                if cfg is None:
                     continue
                 model = apps.get_model(cfg["app"], cfg["model"])
-                document = model.objects.filter(pk=share.document_id).first()
+                documents = list(model.objects.filter(pk__in=list(ids)))
+                shared_documents_by_type[document_type] = {
+                    document.pk: document for document in documents
+                }
+                shared_signatures_by_type[document_type] = _get_latest_signature_map(
+                    document_type,
+                    [document.pk for document in documents],
+                )
+
+            for share in shares:
+                document = shared_documents_by_type.get(share.document_type, {}).get(
+                    share.document_id
+                )
                 if document is None:
                     continue
                 items.append(
-                    _build_hub_item(share.document_type, document, request.user, share=share)
+                    _build_hub_item(
+                        share.document_type,
+                        document,
+                        request.user,
+                        share=share,
+                        latest_signature=shared_signatures_by_type.get(share.document_type, {}).get(
+                            document.pk
+                        ),
+                    )
                 )
 
         if tab == "signed":

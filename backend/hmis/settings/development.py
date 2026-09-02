@@ -88,6 +88,11 @@ POWERSYNC_URL = os.getenv("POWERSYNC_URL", "")
 POWERSYNC_JWT_KID = os.getenv("POWERSYNC_JWT_KID", "vitora-hmis-1")
 POWERSYNC_JWT_AUDIENCE = os.getenv("POWERSYNC_JWT_AUDIENCE", "powersync")
 
+# Media defaults for local development. Keep Azure blob optional via env override.
+MEDIA_BACKEND = os.getenv("MEDIA_BACKEND", "local").strip().lower()
+MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
+MEDIA_SERVE_FROM_DJANGO = os.getenv("MEDIA_SERVE_FROM_DJANGO", "true").lower() == "true"
+
 # Development-specific apps
 INSTALLED_APPS += ["django_extensions"]  # noqa: F405
 

@@ -15,7 +15,7 @@ from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import status
 
-from hmis.apps.core import dashboard_views
+from hmis.apps.core import dashboard_views_stats as dashboard_views
 
 DASHBOARD_STATS_URL = "/api/core/dashboard/stats/"
 
@@ -378,3 +378,129 @@ class TestDashboardStatsFailurePaths:
             getattr(record, "section", "") == "pharmacy" and "missing dependency" in record.message
             for record in caplog.records
         )
+
+
+@pytest.mark.django_db
+class TestDashboardStatsFieldRegression:
+    """Regressions for schema-drift field names in dashboard stat helpers."""
+
+    def test_laboratory_stats_count_critical_results_via_lab_order_scope(
+        self, sample_lab_result, sample_facility, sample_organization
+    ):
+        sample_lab_result.is_critical_result = True
+        sample_lab_result.save(update_fields=["is_critical_result"])
+
+        stats = dashboard_views._get_laboratory_stats(
+            today=timezone.localdate(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert stats["critical_results"] == 1
+
+    def test_triage_stats_use_current_triage_fields(
+        self,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+        test_user,
+    ):
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.triage.models import TriageAssessment
+
+        now = timezone.now()
+        waiting_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Shortness of breath",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        seen_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Follow-up review",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        TriageAssessment.objects.create(
+            encounter=waiting_encounter,
+            chief_complaint="Shortness of breath",
+            chief_complaint_category="DIFFICULTY_BREATHING",
+            mental_status="A",
+            mobility="AMBULATORY",
+            triage_category="RED",
+            auto_calculated_category="RED",
+            assigned_area="ER_RESUS",
+            arrival_time=now - timezone.timedelta(minutes=25),
+            triage_start_time=now - timezone.timedelta(minutes=20),
+            triaged_by=test_user,
+        )
+        TriageAssessment.objects.create(
+            encounter=seen_encounter,
+            chief_complaint="Follow-up review",
+            chief_complaint_category="OTHER",
+            mental_status="A",
+            mobility="AMBULATORY",
+            triage_category="GREEN",
+            auto_calculated_category="GREEN",
+            assigned_area="OPD",
+            arrival_time=now - timezone.timedelta(minutes=45),
+            triage_start_time=now - timezone.timedelta(minutes=35),
+            seen_by_clinician_time=now - timezone.timedelta(minutes=5),
+            triaged_by=test_user,
+        )
+
+        stats = dashboard_views._get_triage_stats(
+            today=timezone.localdate(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert stats["waiting"] == 1
+        assert stats["emergency_count"] == 1
+        assert stats["avg_wait_time_minutes"] == 30.0
+
+    def test_alert_stats_use_is_resolved_flag(
+        self, sample_drug, sample_facility, sample_organization
+    ):
+        from hmis.apps.pharmacy.models import StockAlert
+
+        StockAlert.objects.create(
+            drug=sample_drug,
+            alert_type="LOW_STOCK",
+            severity="CRITICAL",
+            message="Critical stock alert",
+            is_resolved=False,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        StockAlert.objects.create(
+            drug=sample_drug,
+            alert_type="LOW_STOCK",
+            severity="HIGH",
+            message="High stock alert",
+            is_resolved=False,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        StockAlert.objects.create(
+            drug=sample_drug,
+            alert_type="LOW_STOCK",
+            severity="MEDIUM",
+            message="Resolved stock alert",
+            is_resolved=True,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        stats = dashboard_views._get_alert_stats(
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert stats["critical"] == 1
+        assert stats["high"] == 1
+        assert stats["medium"] == 0
+        assert stats["total_unresolved"] == 2

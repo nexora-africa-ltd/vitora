@@ -981,6 +981,61 @@ class TestPKIAPI:
         assert "sign permission" in str(response.data).lower()
 
 
+@pytest.mark.django_db
+class TestDocumentHubPerformanceRegression:
+    """Regression tests for document hub query behavior."""
+
+    def test_mine_tab_batches_signature_lookup_per_document_type(
+        self,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+        test_user,
+        monkeypatch,
+    ):
+        from hmis.apps.core import views_document_hub
+
+        for _ in range(3):
+            Invoice.objects.create(
+                patient=sample_patient,
+                encounter=sample_encounter,
+                status=Invoice.Status.DRAFT,
+                payment_type=Invoice.PaymentType.CASH,
+                due_date=sample_encounter.created_at.date(),
+                created_by=test_user,
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+
+        original_filter = views_document_hub.DocumentSignature.objects.filter
+        signature_filter_calls = 0
+
+        def _counting_filter(*args, **kwargs):
+            nonlocal signature_filter_calls
+            signature_filter_calls += 1
+            return original_filter(*args, **kwargs)
+
+        monkeypatch.setattr(
+            views_document_hub.DocumentSignature.objects, "filter", _counting_filter
+        )
+
+        signature_map = views_document_hub._get_latest_signature_map(
+            "Invoice",
+            [invoice.pk for invoice in Invoice.objects.all()],
+        )
+
+        for invoice in Invoice.objects.all():
+            views_document_hub._build_hub_item(
+                "Invoice",
+                invoice,
+                test_user,
+                latest_signature=signature_map.get(invoice.pk),
+            )
+
+        assert signature_filter_calls == 1
+
+
 class TestPKIManagementCommands:
     """Tests for PKI management commands."""
 

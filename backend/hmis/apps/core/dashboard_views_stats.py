@@ -246,7 +246,7 @@ def _get_pharmacy_stats(today, facility=None, organization=None) -> dict:
         ).count()
 
         low_stock_items = StockAlert.objects.filter(
-            resolved=False, alert_type="LOW_STOCK", **scope
+            is_resolved=False, alert_type="LOW_STOCK", **scope
         ).count()
 
         # Items expiring in next 90 days
@@ -293,6 +293,15 @@ def _get_laboratory_stats(today, facility=None, organization=None) -> dict:
         from hmis.apps.laboratory.models import LabOrder, LabResult
 
         scope = _build_scope_filter(facility, organization)
+        if facility:
+            result_scope = {"order_item__lab_order__facility": facility}
+        elif organization:
+            result_scope = {"order_item__lab_order__organization": organization}
+        else:
+            raise ValueError(
+                "No tenant scope available — refusing to build an unfiltered query. "
+                "This is a security guard to prevent cross-tenant data leaks."
+            )
 
         pending_tests = LabOrder.objects.filter(
             status__in=["PENDING", "SAMPLE_COLLECTED", "IN_PROGRESS"], **scope
@@ -304,7 +313,9 @@ def _get_laboratory_stats(today, facility=None, organization=None) -> dict:
 
         # Critical results are flagged results from today
         critical_results = LabResult.objects.filter(
-            is_abnormal=True, created_at__date=today, **scope
+            is_critical_result=True,
+            entered_at__date=today,
+            **result_scope,
         ).count()
 
         return {
@@ -336,13 +347,17 @@ def _get_triage_stats(today, facility=None, organization=None) -> dict:
         scope = _build_scope_filter(facility, organization)
         qs = TriageAssessment.objects.filter(**scope)
 
-        waiting = qs.filter(status="WAITING").count()
+        waiting = qs.filter(seen_by_clinician_time__isnull=True).count()
 
-        emergency_count = qs.filter(status="WAITING", category="EMERGENCY").count()
+        emergency_count = qs.filter(
+            seen_by_clinician_time__isnull=True,
+            triage_category="RED",
+        ).count()
 
         # Calculate average wait time for completed assessments today
         completed_today = qs.filter(
-            status="COMPLETED", updated_at__date=today, started_at__isnull=False
+            seen_by_clinician_time__date=today,
+            triage_start_time__isnull=False,
         )
 
         avg_wait_minutes = 0
@@ -350,8 +365,8 @@ def _get_triage_stats(today, facility=None, organization=None) -> dict:
             # Calculate wait time as time from creation to start
             wait_times = []
             for assessment in completed_today[:100]:  # Limit for performance
-                if assessment.started_at and assessment.created_at:
-                    wait_delta = assessment.started_at - assessment.created_at
+                if assessment.triage_start_time and assessment.seen_by_clinician_time:
+                    wait_delta = assessment.seen_by_clinician_time - assessment.triage_start_time
                     wait_times.append(wait_delta.total_seconds() / 60)
 
             if wait_times:
@@ -432,7 +447,7 @@ def _get_alert_stats(facility=None, organization=None) -> dict:
         from hmis.apps.pharmacy.models import StockAlert
 
         scope = _build_scope_filter(facility, organization)
-        alerts = StockAlert.objects.filter(resolved=False, **scope)
+        alerts = StockAlert.objects.filter(is_resolved=False, **scope)
 
         return {
             "critical": alerts.filter(severity="CRITICAL").count(),
