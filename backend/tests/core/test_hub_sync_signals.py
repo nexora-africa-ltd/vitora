@@ -57,6 +57,110 @@ class TestHubSyncRegistry:
         assert "password" not in entry.exclude_fields
 
 
+class TestHubIdentitySyncContracts:
+    """Contract tests ensuring hub payloads remain compatible with cloud validators."""
+
+    def test_staff_profile_sync_payload_fields_stay_cloud_compatible(self, test_staff_profile):
+        """Serialized StaffProfile keys should be allowlisted or hint-only."""
+        from hmis.apps.core.sync_registry import SYNC_REGISTRY
+        from hmis.apps.core.sync_signals import serialize_instance_for_sync
+        from hmis.apps.core.sync_views import HUB_STAFF_PROFILE_ALLOWED_FIELDS, _is_hint_only_field
+
+        entry = SYNC_REGISTRY["core.StaffProfile"]
+        payload = serialize_instance_for_sync(
+            test_staff_profile, exclude_fields=entry.exclude_fields
+        )
+        unexpected = set(payload) - HUB_STAFF_PROFILE_ALLOWED_FIELDS
+        disallowed = sorted(field for field in unexpected if not _is_hint_only_field(field))
+
+        assert disallowed == []
+
+    def test_org_membership_sync_payload_fields_stay_cloud_compatible(
+        self,
+        test_staff_profile,
+        sample_organization,
+        sample_role,
+        sample_department,
+        sample_facility,
+    ):
+        """Serialized OrgMembership keys should be allowlisted or hint-only."""
+        from hmis.apps.core.models import OrgMembership
+        from hmis.apps.core.sync_registry import SYNC_REGISTRY
+        from hmis.apps.core.sync_signals import serialize_instance_for_sync
+        from hmis.apps.core.sync_views import HUB_ORG_MEMBERSHIP_ALLOWED_FIELDS, _is_hint_only_field
+
+        membership = OrgMembership.objects.create(
+            staff_profile=test_staff_profile,
+            organization=sample_organization,
+            role=sample_role,
+            department=sample_department,
+            is_primary=True,
+            status=OrgMembership.MembershipStatus.ACTIVE,
+        )
+        membership.facilities.add(sample_facility)
+
+        entry = SYNC_REGISTRY["core.OrgMembership"]
+        payload = serialize_instance_for_sync(membership, exclude_fields=entry.exclude_fields)
+        unexpected = set(payload) - HUB_ORG_MEMBERSHIP_ALLOWED_FIELDS
+        disallowed = sorted(field for field in unexpected if not _is_hint_only_field(field))
+
+        assert disallowed == []
+
+    def test_unknown_hint_fields_are_ignored_for_hub_identity_payloads(self):
+        """Unknown hint keys should not hard-fail identity sync validation."""
+        from hmis.apps.core.sync_views import (
+            HUB_STAFF_PROFILE_ALLOWED_FIELDS,
+            _validate_hub_identity_fields,
+        )
+
+        payload = {
+            "id": 1,
+            "user_id": 1,
+            "primary_role_id": 1,
+            "primary_department_id": 1,
+            "organization_id": 1,
+            "primary_facility_id": 1,
+            "date_joined": "2026-01-01",
+            "future_relation_code": "ABC-123",
+        }
+
+        result = _validate_hub_identity_fields(
+            table="hub staff profile sync",
+            data=payload,
+            allowed_fields=HUB_STAFF_PROFILE_ALLOWED_FIELDS,
+        )
+
+        assert result["ok"] is True
+        assert "future_relation_code" not in result["cleaned_data"]
+
+    def test_unknown_non_hint_fields_still_reject_hub_identity_payloads(self):
+        """Unknown authoritative fields should continue to be rejected."""
+        from hmis.apps.core.sync_views import (
+            HUB_STAFF_PROFILE_ALLOWED_FIELDS,
+            _validate_hub_identity_fields,
+        )
+
+        payload = {
+            "id": 1,
+            "user_id": 1,
+            "primary_role_id": 1,
+            "primary_department_id": 1,
+            "organization_id": 1,
+            "primary_facility_id": 1,
+            "date_joined": "2026-01-01",
+            "extra": True,
+        }
+
+        result = _validate_hub_identity_fields(
+            table="hub staff profile sync",
+            data=payload,
+            allowed_fields=HUB_STAFF_PROFILE_ALLOWED_FIELDS,
+        )
+
+        assert result["ok"] is False
+        assert "extra" in result["reason"]
+
+
 class TestHubSyncSignals:
     """Tests for automatic SyncQueue creation from model saves/deletes."""
 
@@ -91,6 +195,7 @@ class TestHubSyncSignals:
         assert entry.data["registered_at_facility"] == sample_facility.id
         assert entry.data["sync_meta"]["priority"] == 3
         assert entry.data["sync_meta"]["direction"] == "both"
+        assert entry.data["sync_meta"]["schema_version"] == 1
 
     @override_settings(ENVIRONMENT="test", SYNC_ENABLED=False)
     def test_patient_create_is_not_queued_outside_hub_mode(
@@ -135,7 +240,7 @@ class TestHubSyncSignals:
         assert entries[0].data["last_name"] == "Updated"
         assert entries[1].data == {
             "id": patient_id,
-            "sync_meta": {"priority": 3, "direction": "both"},
+            "sync_meta": {"priority": 3, "direction": "both", "schema_version": 1},
         }
 
     @override_settings(ENVIRONMENT="hub", SYNC_ENABLED=True)

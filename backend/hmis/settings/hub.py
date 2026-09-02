@@ -169,6 +169,14 @@ SYNC_MAX_RETRIES = int(os.getenv("SYNC_MAX_RETRIES", "5"))
 # the chance of tripping upstream rate limiters (Azure Front Door / WAF).
 SYNC_PULL_PAGE_DELAY = float(os.getenv("SYNC_PULL_PAGE_DELAY", "0.5"))
 
+# Pull preflight checks ensure critical reference data exists before materializing
+# dependent rows. If auto-import is enabled and ICD-10 is missing, the hub will
+# attempt a local import before continuing with pull.
+HUB_SYNC_PREFLIGHT_STRICT = os.getenv("HUB_SYNC_PREFLIGHT_STRICT", "true").lower() == "true"
+HUB_SYNC_AUTO_IMPORT_ICD10_ON_PREFLIGHT = (
+    os.getenv("HUB_SYNC_AUTO_IMPORT_ICD10_ON_PREFLIGHT", "true").lower() == "true"
+)
+
 # How often the hub pushes changes to cloud (seconds)
 HUB_CLOUD_SYNC_INTERVAL = int(os.getenv("HUB_CLOUD_SYNC_INTERVAL", "30"))
 

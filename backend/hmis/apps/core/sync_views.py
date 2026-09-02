@@ -52,6 +52,35 @@ logger = logging.getLogger(__name__)
 
 DOWNWARD_FULL_PULL_PAGE_LIMIT = 250
 
+# Full-pull dependency edges: key depends on each listed model and must be
+# emitted after its parents. Keep this list minimal and explicit for models
+# with strict FK validation/full_clean side effects during materialization.
+FULL_PULL_DEPENDENCIES: dict[str, set[str]] = {
+    "core.SubCounty": {"core.County"},
+    "core.Ward": {"core.SubCounty"},
+    "core.Facility": {"core.Organization", "core.County", "core.SubCounty"},
+    "core.Department": {"core.Organization", "core.Facility"},
+    "core.StaffProfile": {"auth.User", "core.Role", "core.Department", "core.Facility"},
+    "core.OrgMembership": {
+        "core.StaffProfile",
+        "core.Organization",
+        "core.Role",
+        "core.Department",
+    },
+    "patients.Patient": {"core.Organization", "core.Facility", "core.County", "core.SubCounty"},
+    "encounters.Encounter": {"patients.Patient", "core.Facility"},
+    "encounters.Diagnosis": {"encounters.Encounter", "encounters.ICD10Code"},
+    "encounters.TreatmentPlan": {"encounters.Encounter"},
+    "encounters.Medication": {"encounters.TreatmentPlan"},
+    "triage.TriageAssessment": {"encounters.Encounter"},
+    "pharmacy.Prescription": {"encounters.Encounter", "patients.Patient", "core.Facility"},
+    "pharmacy.PrescriptionItem": {"pharmacy.Prescription"},
+    "laboratory.LabOrder": {"encounters.Encounter", "patients.Patient", "core.Facility"},
+    "laboratory.LabOrderItem": {"laboratory.LabOrder"},
+    "laboratory.LabResult": {"laboratory.LabOrderItem"},
+    "billing.Invoice": {"patients.Patient", "core.Facility"},
+}
+
 # Tables allowed for sync (prevent arbitrary model writes)
 SYNCABLE_TABLES = {
     "patients_patient",
@@ -91,18 +120,24 @@ HUB_STAFF_PROFILE_ALLOWED_FIELDS = {
     "id",
     "user",
     "user_id",
+    "user_username",
     "username",
     "employee_id",
     "title",
     "middle_name",
     "primary_role",
     "primary_role_id",
+    "primary_role_code",
     "primary_department",
     "primary_department_id",
+    "primary_department_code",
+    "primary_department_facility_mfl_code",
     "organization",
     "organization_id",
+    "organization_slug",
     "primary_facility",
     "primary_facility_id",
+    "primary_facility_mfl_code",
     "facility",
     "facility_id",
     "hwr_id",
@@ -156,13 +191,21 @@ HUB_ORG_MEMBERSHIP_ALLOWED_FIELDS = {
     "id",
     "staff_profile",
     "staff_profile_id",
+    "staff_profile_employee_id",
+    "staff_profile_username",
+    "staff_username",
     "organization",
     "organization_id",
+    "organization_slug",
     "role",
     "role_id",
+    "role_code",
     "department",
     "department_id",
+    "department_code",
+    "department_facility_mfl_code",
     "facility_ids",
+    "facility_mfl_codes",
     "is_primary",
     "status",
     "joined_at",
@@ -176,6 +219,29 @@ HUB_ORG_MEMBERSHIP_ALLOWED_FIELDS = {
 # so they can be retried on a subsequent push cycle (e.g. after a dependency
 # row finally arrives).
 SOFT_FAILURE_DEPENDENCY_MISSING = "DEPENDENCY_MISSING"
+
+# Natural-key relation hints emitted by sync_signals._with_relation_hints().
+# These are non-authoritative fields used for cloud-side FK remapping and
+# should never block hub identity writes when new hints are introduced.
+HINT_FIELD_SUFFIXES = (
+    "_username",
+    "_slug",
+    "_code",
+    "_name",
+    "_mrn",
+    "_cr_number",
+    "_mfl_code",
+    "_mfl_codes",
+    "_employee_id",
+    "_date",
+    "_type",
+    "_number",
+    "_reference",
+    "_status",
+    "_description",
+    "_specialty",
+    "_time",
+)
 
 
 def _record_id_to_int(record_id) -> int | None:
@@ -198,6 +264,43 @@ def _reject_identity(reason: str, *, code: str | None = None) -> dict:
     if code:
         result["code"] = code
     return result
+
+
+def _is_hint_only_field(field_name: str) -> bool:
+    """Return True when *field_name* looks like a non-authoritative relation hint."""
+    if not field_name:
+        return False
+    if field_name.endswith("_id") or field_name.endswith("_ids"):
+        return False
+    return field_name.endswith(HINT_FIELD_SUFFIXES)
+
+
+def _validate_hub_identity_fields(*, table: str, data: dict, allowed_fields: set[str]) -> dict:
+    """Validate hub identity payload fields and tolerate unknown hint-only keys.
+
+    Unknown authoritative fields still reject the payload. Unknown hint-only
+    fields are ignored with a warning to keep hub/cloud payload evolution
+    backward-compatible.
+    """
+    unexpected_fields = set(data) - allowed_fields
+    ignored_hint_fields = {field for field in unexpected_fields if _is_hint_only_field(field)}
+    disallowed_fields = unexpected_fields - ignored_hint_fields
+    if disallowed_fields:
+        return {
+            "ok": False,
+            "reason": f"Field(s) not allowed for {table}: {', '.join(sorted(disallowed_fields))}.",
+            "cleaned_data": data,
+        }
+
+    if ignored_hint_fields:
+        logger.warning(
+            "Ignoring unknown hint field(s) for %s: %s",
+            table,
+            ", ".join(sorted(ignored_hint_fields)),
+        )
+        data = {key: value for key, value in data.items() if key not in ignored_hint_fields}
+
+    return {"ok": True, "reason": "", "cleaned_data": data}
 
 
 def _apply_hub_identity_change(*, table: str, operation: str, record_id, data: dict, installation):
@@ -227,11 +330,14 @@ def _apply_hub_identity_change(*, table: str, operation: str, record_id, data: d
 
 def _upsert_hub_user(*, record_id, data: dict, installation):
     """Create/update a non-privileged cloud user from a licensed hub."""
-    unexpected_fields = set(data) - HUB_USER_ALLOWED_FIELDS
-    if unexpected_fields:
-        return _reject_identity(
-            f"Field(s) not allowed for hub user sync: {', '.join(sorted(unexpected_fields))}."
-        )
+    validation = _validate_hub_identity_fields(
+        table="hub user sync",
+        data=data,
+        allowed_fields=HUB_USER_ALLOWED_FIELDS,
+    )
+    if not validation["ok"]:
+        return _reject_identity(validation["reason"])
+    data = validation["cleaned_data"]
 
     record_pk = _record_id_to_int(record_id or data.get("id"))
     if record_pk is None:
@@ -353,11 +459,14 @@ def _upsert_hub_staff_profile(*, record_id, data: dict, installation):
     if installation.facility is None:
         return _reject_identity("Hub staff profile sync requires an installation facility.")
 
-    unexpected_fields = set(data) - HUB_STAFF_PROFILE_ALLOWED_FIELDS
-    if unexpected_fields:
-        return _reject_identity(
-            f"Field(s) not allowed for hub staff profile sync: {', '.join(sorted(unexpected_fields))}."
-        )
+    validation = _validate_hub_identity_fields(
+        table="hub staff profile sync",
+        data=data,
+        allowed_fields=HUB_STAFF_PROFILE_ALLOWED_FIELDS,
+    )
+    if not validation["ok"]:
+        return _reject_identity(validation["reason"])
+    data = validation["cleaned_data"]
 
     record_pk = _record_id_to_int(record_id or data.get("id"))
     if record_pk is None:
@@ -481,11 +590,14 @@ def _upsert_hub_role(*, record_id, data: dict, installation):
     if installation.facility is None:
         return _reject_identity("Hub role sync requires an installation facility.")
 
-    unexpected_fields = set(data) - HUB_ROLE_ALLOWED_FIELDS
-    if unexpected_fields:
-        return _reject_identity(
-            f"Field(s) not allowed for hub role sync: {', '.join(sorted(unexpected_fields))}."
-        )
+    validation = _validate_hub_identity_fields(
+        table="hub role sync",
+        data=data,
+        allowed_fields=HUB_ROLE_ALLOWED_FIELDS,
+    )
+    if not validation["ok"]:
+        return _reject_identity(validation["reason"])
+    data = validation["cleaned_data"]
 
     record_pk = _record_id_to_int(record_id or data.get("id"))
     if record_pk is None:
@@ -561,11 +673,14 @@ def _upsert_hub_department(*, record_id, data: dict, installation):
     if installation.facility is None:
         return _reject_identity("Hub department sync requires an installation facility.")
 
-    unexpected_fields = set(data) - HUB_DEPARTMENT_ALLOWED_FIELDS
-    if unexpected_fields:
-        return _reject_identity(
-            f"Field(s) not allowed for hub department sync: {', '.join(sorted(unexpected_fields))}."
-        )
+    validation = _validate_hub_identity_fields(
+        table="hub department sync",
+        data=data,
+        allowed_fields=HUB_DEPARTMENT_ALLOWED_FIELDS,
+    )
+    if not validation["ok"]:
+        return _reject_identity(validation["reason"])
+    data = validation["cleaned_data"]
 
     record_pk = _record_id_to_int(record_id or data.get("id"))
     if record_pk is None:
@@ -637,11 +752,14 @@ def _upsert_hub_org_membership(*, record_id, data: dict, installation):
     if installation.facility is None:
         return _reject_identity("Hub membership sync requires an installation facility.")
 
-    unexpected_fields = set(data) - HUB_ORG_MEMBERSHIP_ALLOWED_FIELDS
-    if unexpected_fields:
-        return _reject_identity(
-            f"Field(s) not allowed for hub membership sync: {', '.join(sorted(unexpected_fields))}."
-        )
+    validation = _validate_hub_identity_fields(
+        table="hub membership sync",
+        data=data,
+        allowed_fields=HUB_ORG_MEMBERSHIP_ALLOWED_FIELDS,
+    )
+    if not validation["ok"]:
+        return _reject_identity(validation["reason"])
+    data = validation["cleaned_data"]
 
     record_pk = _record_id_to_int(record_id or data.get("id"))
     if record_pk is None:
@@ -832,10 +950,32 @@ def _ordered_snapshot_tables(tables: set[str]) -> list[str]:
         entry = get_registry_entry(model_label)
         return (entry.priority if entry else 999, model_label)
 
-    return sorted(
-        tables,
-        key=sort_key,
-    )
+    ordered = sorted(tables, key=sort_key)
+    remaining = set(ordered)
+    topo_sorted: list[str] = []
+
+    while remaining:
+        progressed = False
+        for model_label in ordered:
+            if model_label not in remaining:
+                continue
+            dependencies = FULL_PULL_DEPENDENCIES.get(model_label, set())
+            unmet = dependencies & remaining
+            if unmet:
+                continue
+            topo_sorted.append(model_label)
+            remaining.remove(model_label)
+            progressed = True
+
+        if progressed:
+            continue
+
+        # Cycle or unknown dependency chain among selected tables.
+        # Fall back to deterministic priority order for the remaining nodes.
+        topo_sorted.extend(sorted(remaining, key=sort_key))
+        break
+
+    return topo_sorted
 
 
 def _build_downward_snapshot_changes(

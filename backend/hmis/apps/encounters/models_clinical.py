@@ -17,7 +17,7 @@ import re
 import uuid
 from datetime import date, timedelta
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
@@ -200,8 +200,11 @@ class Diagnosis(HistoryMixin, models.Model):
         ).order_by("type_priority", "created_at")
 
     def __str__(self) -> str:
-        if self.icd10_code:
-            code_str = self.icd10_code.code
+        if self.icd10_code_id:
+            try:
+                code_str = self.icd10_code.code
+            except ObjectDoesNotExist:
+                code_str = f"ICD10#{self.icd10_code_id}"
         elif self.icd11_code:
             code_str = self.icd11_code
         elif self.snomed_code:
@@ -216,7 +219,7 @@ class Diagnosis(HistoryMixin, models.Model):
 
         # Either ICD-10 code, ICD-11 code, SNOMED CT code, or free text must be provided
         if (
-            not self.icd10_code
+            not self.icd10_code_id
             and not self.icd11_code
             and not self.snomed_code
             and not self.free_text_diagnosis
@@ -225,6 +228,9 @@ class Diagnosis(HistoryMixin, models.Model):
                 "Either ICD-10 code, ICD-11 code, SNOMED CT code, "
                 "or free-text diagnosis must be provided."
             )
+
+        if self.icd10_code_id and not ICD10Code.objects.filter(pk=self.icd10_code_id).exists():
+            raise ValidationError({"icd10_code": "ICD-10 code reference is not available yet."})
 
         # Check for existing primary diagnosis
         if self.diagnosis_type == "PRIMARY":

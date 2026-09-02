@@ -35,6 +35,8 @@ from hmis.apps.core.sync_registry import (
 
 logger = logging.getLogger(__name__)
 
+SYNC_PAYLOAD_SCHEMA_VERSION = 1
+
 
 def get_model_label(instance) -> str:
     """Return the registry label for a model instance."""
@@ -706,6 +708,7 @@ def add_sync_meta(data: dict, *, direction: SyncDirection, priority: int) -> dic
     data["sync_meta"] = {
         "priority": priority,
         "direction": direction.value,
+        "schema_version": SYNC_PAYLOAD_SCHEMA_VERSION,
     }
     return data
 

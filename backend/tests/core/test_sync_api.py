@@ -318,6 +318,39 @@ class TestSyncPushEndpoint:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
+class TestFullPullOrdering:
+    """Tests for dependency-aware full-pull table ordering."""
+
+    def test_diagnosis_is_ordered_after_icd10_reference_table(self):
+        """Full-pull ordering should place ICD-10 before Diagnosis."""
+        from hmis.apps.core.sync_views import _ordered_snapshot_tables
+
+        ordered = _ordered_snapshot_tables(
+            {
+                "encounters.Diagnosis",
+                "encounters.ICD10Code",
+                "encounters.Encounter",
+            }
+        )
+
+        assert ordered.index("encounters.ICD10Code") < ordered.index("encounters.Diagnosis")
+
+    def test_org_membership_is_ordered_after_staff_profile(self):
+        """Membership rows must be emitted after StaffProfile rows."""
+        from hmis.apps.core.sync_views import _ordered_snapshot_tables
+
+        ordered = _ordered_snapshot_tables(
+            {
+                "core.OrgMembership",
+                "core.StaffProfile",
+                "core.Role",
+                "core.Department",
+            }
+        )
+
+        assert ordered.index("core.StaffProfile") < ordered.index("core.OrgMembership")
+
+
 class TestSyncPullEndpoint:
     """Tests for GET /api/sync/pull/"""
 

@@ -265,7 +265,7 @@ export function DesktopSettingsTab() {
     setManualCheckIning(true);
     try {
       const resolvedInstallationId =
-        installationId || (await licensingApi.getInstallationIdAsync());
+        hubHealth?.hub_id || installationId || (await licensingApi.getInstallationIdAsync());
       await licensingApi.checkIn({
         installation_id: resolvedInstallationId,
         app_version: process.env.NEXT_PUBLIC_APP_VERSION || '0.0.0',
@@ -529,10 +529,16 @@ export function DesktopSettingsTab() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Installation ID</span>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-muted-foreground">Desktop Client ID (tauri)</span>
             <Badge variant="secondary" className="font-mono text-xs">
               {installationId || 'N/A'}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-muted-foreground">Hub Installation ID (licensing)</span>
+            <Badge variant="secondary" className="font-mono text-xs">
+              {hubHealth?.hub_id || 'N/A'}
             </Badge>
           </div>
           <div className="flex items-center justify-between">

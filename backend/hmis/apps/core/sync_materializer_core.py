@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 
 from django.apps import apps
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
@@ -26,6 +27,7 @@ from hmis.apps.core.sync_context import sync_materialization_context
 from hmis.apps.core.sync_registry import SYNC_REGISTRY, SyncDirection, SyncRegistryEntry
 
 SYNC_META_KEY = "sync_meta"
+DEFERRED_MATERIALIZATION_CODE = "DEPENDENCY_MISSING"
 
 
 from hmis.apps.core.sync_materializer_helpers import (
@@ -153,6 +155,7 @@ def apply_entry(
                     _log_patient_create_from_sync_materializer(instance)
     except (
         DjangoValidationError,
+        ObjectDoesNotExist,
         IntegrityError,
         AttributeError,
         TypeError,
@@ -162,7 +165,11 @@ def apply_entry(
         AssertionError,
         ImportError,
     ) as exc:  # noqa: BLE001
-        return {"success": False, "error": str(exc)}
+        result = {"success": False, "error": str(exc)}
+        code = _materialization_error_code(exc)
+        if code:
+            result["code"] = code
+        return result
 
     return {"success": True}
 
@@ -179,6 +186,27 @@ def apply_nullable_fk_fallbacks(
         cleaned = _fallback_invoice_encounter_if_parent_missing(model, cleaned, raw_data)
 
     return cleaned
+
+
+def _materialization_error_code(exc: Exception) -> str | None:
+    """Return a structured sync error code for known deferred materialization failures."""
+    if isinstance(exc, ObjectDoesNotExist):
+        return DEFERRED_MATERIALIZATION_CODE
+
+    message = str(exc).lower()
+    if any(
+        marker in message
+        for marker in (
+            "matching query does not exist",
+            "foreign key constraint failed",
+            "is not a valid choice",
+            "instance with id",
+            "not available yet",
+        )
+    ):
+        return DEFERRED_MATERIALIZATION_CODE
+
+    return None
 
 
 def _fallback_invoice_encounter_if_parent_missing(

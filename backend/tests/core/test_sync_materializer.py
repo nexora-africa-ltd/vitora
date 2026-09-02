@@ -853,6 +853,35 @@ class TestSyncMaterializer:
         assert diagnosis.encounter_id == sample_encounter.pk
         assert diagnosis.icd10_code_id == code.pk
 
+    def test_materialize_diagnosis_missing_icd10_returns_dependency_missing(
+        self, sample_patient, sample_encounter, sample_facility
+    ):
+        """Dangling ICD-10 FK should be reported as a deferred dependency error."""
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        result = materialize_entry(
+            {
+                "table": "encounters.Diagnosis",
+                "operation": "CREATE",
+                "record_id": 57002,
+                "data": {
+                    "id": 57002,
+                    "encounter_id": sample_encounter.pk,
+                    "encounter_patient_mrn": sample_patient.mrn,
+                    "encounter_facility_mfl_code": sample_facility.mfl_code,
+                    "encounter_date": sample_encounter.encounter_date.isoformat(),
+                    "encounter_type": sample_encounter.encounter_type,
+                    "encounter_chief_complaint": sample_encounter.chief_complaint,
+                    "icd10_code_id": 999999,
+                    "diagnosis_type": "PRIMARY",
+                    "certainty": "confirmed",
+                },
+            }
+        )
+
+        assert result["success"] is False
+        assert result.get("code") == "DEPENDENCY_MISSING"
+
     def test_materialize_clinic_visit_remaps_session_encounter_and_staff(
         self, sample_patient, sample_encounter, sample_facility, test_user
     ):

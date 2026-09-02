@@ -23,6 +23,7 @@ from pathlib import Path
 
 import requests
 from django.conf import settings
+from django.core.management import call_command
 from django.utils import timezone
 
 from hmis.apps.core.models import SyncQueue
@@ -63,6 +64,10 @@ class HubCloudSyncWorker:
         )
         self.hub_id: str = getattr(settings, "HUB_ID", "")
         self.facility_id: str = getattr(settings, "HUB_FACILITY_ID", "")
+        self.preflight_strict: bool = bool(getattr(settings, "HUB_SYNC_PREFLIGHT_STRICT", True))
+        self.auto_import_icd10_on_preflight: bool = bool(
+            getattr(settings, "HUB_SYNC_AUTO_IMPORT_ICD10_ON_PREFLIGHT", True)
+        )
 
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
@@ -423,6 +428,15 @@ class HubCloudSyncWorker:
             f", tables={params['tables']}" if scoped else "",
         )
 
+        preflight_ok = self._run_pull_preflight(
+            is_full_pull=is_full_pull,
+            scoped=scoped,
+            tables=tables,
+        )
+        if not preflight_ok:
+            logger.warning("Pull preflight failed; aborting pull cycle before page fetch.")
+            return total_applied
+
         while True:
             try:
                 logger.info(
@@ -537,9 +551,57 @@ class HubCloudSyncWorker:
                 logger.warning("Cloud pull network error: %s", e)
                 return total_applied
 
+    def _run_pull_preflight(
+        self,
+        *,
+        is_full_pull: bool,
+        scoped: bool,
+        tables: list[str] | None,
+    ) -> bool:
+        """Validate/prepare critical reference data before pull materialization."""
+        if getattr(settings, "ENVIRONMENT", "") != "hub":
+            return True
+        del scoped
+        needs_icd10 = (not tables) or ("encounters.Diagnosis" in tables)
+        if not (is_full_pull and needs_icd10):
+            return True
+
+        from hmis.apps.encounters.models import ICD10Code
+
+        if ICD10Code.objects.exists():
+            return True
+
+        logger.warning(
+            "Pull preflight: ICD-10 catalogue is empty on hub; diagnosis rows may fail without references."
+        )
+
+        if self.auto_import_icd10_on_preflight:
+            try:
+                logger.info("Pull preflight: attempting automatic ICD-10 import.")
+                call_command("import_icd10", "data/icd10_kenya_common.csv", verbosity=0)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Pull preflight: automatic ICD-10 import failed: %s", exc)
+
+        if ICD10Code.objects.exists():
+            logger.info("Pull preflight: ICD-10 catalogue available.")
+            return True
+
+        guidance = (
+            "ICD-10 catalogue is missing. Run 'python manage.py initialize_hub --only import_icd10' "
+            "or full 'python manage.py initialize_hub', then retry hub_sync."
+        )
+        if self.preflight_strict:
+            logger.error("Pull preflight failed: %s", guidance)
+            return False
+
+        logger.warning("Pull preflight warning (non-strict): %s", guidance)
+        return True
+
     @staticmethod
     def _is_deferred_materialization_error(result: dict) -> bool:
         """Return True for errors likely caused by parent rows arriving later."""
+        if str(result.get("code") or "").upper() == "DEPENDENCY_MISSING":
+            return True
         error = str(result.get("error") or "").lower()
         return any(
             marker in error

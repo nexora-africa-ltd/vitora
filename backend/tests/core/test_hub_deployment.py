@@ -668,6 +668,48 @@ class TestHubCloudSyncWorker:
         assert worker.is_configured is False
 
     @override_settings(
+        ENVIRONMENT="hub",
+        HUB_SYNC_PREFLIGHT_STRICT=True,
+        HUB_SYNC_AUTO_IMPORT_ICD10_ON_PREFLIGHT=False,
+    )
+    def test_pull_preflight_fails_strict_when_icd10_missing(self, db):
+        """Strict preflight should block full pull when ICD-10 is missing."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+        from hmis.apps.encounters.models import ICD10Code
+
+        ICD10Code.objects.all().delete()
+        worker = HubCloudSyncWorker()
+
+        ok = worker._run_pull_preflight(is_full_pull=True, scoped=False, tables=None)
+
+        assert ok is False
+
+    @override_settings(
+        ENVIRONMENT="hub",
+        HUB_SYNC_PREFLIGHT_STRICT=True,
+        HUB_SYNC_AUTO_IMPORT_ICD10_ON_PREFLIGHT=True,
+    )
+    def test_pull_preflight_attempts_auto_import_when_icd10_missing(self, db):
+        """Preflight should attempt ICD-10 auto-import when enabled."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+        from hmis.apps.encounters.models import ICD10Code
+
+        ICD10Code.objects.all().delete()
+        worker = HubCloudSyncWorker()
+
+        with patch("hmis.apps.core.hub_sync.call_command") as mocked_call:
+            mocked_call.side_effect = lambda *args, **kwargs: ICD10Code.objects.create(
+                code="A00",
+                description="Cholera",
+                category="Certain infectious and parasitic diseases",
+                chapter=1,
+            )
+            ok = worker._run_pull_preflight(is_full_pull=True, scoped=False, tables=None)
+
+        assert ok is True
+        mocked_call.assert_called_once()
+
+    @override_settings(
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
