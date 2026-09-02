@@ -56,6 +56,14 @@ class HubCloudSyncWorker:
         self.batch_size: int = getattr(settings, "SYNC_BATCH_SIZE", 100)
         self.max_retries: int = getattr(settings, "SYNC_MAX_RETRIES", 5)
         self.interval: int = getattr(settings, "HUB_CLOUD_SYNC_INTERVAL", 30)
+        self.http_timeout_seconds: int = max(
+            30,
+            int(getattr(settings, "HUB_CLOUD_HTTP_TIMEOUT_SECONDS", 300)),
+        )
+        self.pull_network_max_retries: int = max(
+            0,
+            int(getattr(settings, "HUB_CLOUD_PULL_NETWORK_MAX_RETRIES", 2)),
+        )
         # Small pause between consecutive pull pages to be friendly to
         # upstream rate limiters (Azure Front Door / WAF). 0 disables.
         self.pull_page_delay: float = float(getattr(settings, "SYNC_PULL_PAGE_DELAY", 0.5))
@@ -420,6 +428,7 @@ class HubCloudSyncWorker:
         total_applied = 0
         deferred_changes = []
         page_number = 1
+        network_retries = 0
 
         logger.info(
             "Starting %s cloud pull (limit=%s%s).",
@@ -445,6 +454,7 @@ class HubCloudSyncWorker:
                     f" (cursor={params['cursor']})" if "cursor" in params else "",
                 )
                 response = self._get(f"{self.server_url}/pull/", params=params.copy())
+                network_retries = 0
 
                 if response.status_code == 429:
                     wait = self._parse_retry_after_seconds(response)
@@ -548,6 +558,20 @@ class HubCloudSyncWorker:
                     time.sleep(self.pull_page_delay)
 
             except requests.RequestException as e:
+                if network_retries < self.pull_network_max_retries:
+                    network_retries += 1
+                    backoff_seconds = min(5 * network_retries, 30)
+                    logger.warning(
+                        "Cloud pull network error (attempt %d/%d): %s. Retrying page %d in %ds.",
+                        network_retries,
+                        self.pull_network_max_retries,
+                        e,
+                        page_number,
+                        backoff_seconds,
+                    )
+                    time.sleep(backoff_seconds)
+                    continue
+
                 logger.warning("Cloud pull network error: %s", e)
                 return total_applied
 
@@ -707,17 +731,13 @@ class HubCloudSyncWorker:
         """Make authenticated POST request to cloud."""
         headers = self._get_auth_headers()
         headers["Content-Type"] = "application/json"
-        # 120s read timeout: full-pull pages over heavy snapshot tables
-        # (e.g. billing.Invoice with FK-heavy serialization) can comfortably
-        # exceed 30s. Anything below this and the hub kills perfectly healthy
-        # cloud responses mid-flight.
-        timeout = kwargs.pop("timeout", 120)
+        timeout = kwargs.pop("timeout", self.http_timeout_seconds)
         return requests.post(url, headers=headers, timeout=timeout, **kwargs)
 
     def _get(self, url: str, **kwargs) -> requests.Response:
         """Make authenticated GET request to cloud."""
         headers = self._get_auth_headers()
-        timeout = kwargs.pop("timeout", 120)
+        timeout = kwargs.pop("timeout", self.http_timeout_seconds)
         return requests.get(url, headers=headers, timeout=timeout, **kwargs)
 
 

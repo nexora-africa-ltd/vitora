@@ -924,6 +924,80 @@ class TestHubCloudSyncWorker:
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",
         HUB_ID="hub-test",
         HUB_FACILITY_ID="1",
+        HUB_CLOUD_HTTP_TIMEOUT_SECONDS=345,
+    )
+    def test_worker_uses_configured_http_timeout_for_cloud_requests(self, db):
+        """Cloud sync requests should use the configured worker timeout."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+
+        ok_response = MagicMock()
+        ok_response.status_code = 200
+        ok_response.json.return_value = {"accepted": 0}
+
+        with (
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=ok_response) as mock_get,
+            patch("hmis.apps.core.hub_sync.requests.post", return_value=ok_response) as mock_post,
+        ):
+            worker._get("https://cloud.example.com/api/sync/pull/")
+            worker._post("https://cloud.example.com/api/sync/push/", json={"changes": []})
+
+        assert mock_get.call_args.kwargs["timeout"] == 345
+        assert mock_post.call_args.kwargs["timeout"] == 345
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+        HUB_CLOUD_PULL_NETWORK_MAX_RETRIES=2,
+    )
+    def test_pull_retries_transient_network_errors_before_succeeding(self, db):
+        """Pull should retry transient network errors and continue applying changes."""
+        import requests as req_lib
+
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+
+        ok_response = MagicMock()
+        ok_response.status_code = 200
+        ok_response.json.return_value = {
+            "changes": [
+                {
+                    "table": "patients.Patient",
+                    "operation": "CREATE",
+                    "record_id": "99",
+                    "data": {"first_name": "CloudPatient"},
+                }
+            ],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch(
+                "hmis.apps.core.hub_sync.requests.get",
+                side_effect=[
+                    req_lib.ReadTimeout("read timeout"),
+                    req_lib.ReadTimeout("read timeout"),
+                    ok_response,
+                ],
+            ) as mock_get,
+            patch("hmis.apps.core.hub_sync.materialize_entry", return_value={"success": True}),
+            patch("hmis.apps.core.hub_sync.time.sleep") as mock_sleep,
+        ):
+            pulled = worker._pull_changes(force_full=True)
+
+        assert pulled == 1
+        assert mock_get.call_count == 3
+        assert [call.args[0] for call in mock_sleep.call_args_list[:2]] == [5, 10]
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
     )
     def test_pull_changes_from_cloud(self, db):
         """_pull_changes should fetch and store changes locally."""

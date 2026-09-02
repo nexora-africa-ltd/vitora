@@ -180,6 +180,11 @@ HUB_SYNC_AUTO_IMPORT_ICD10_ON_PREFLIGHT = (
 # How often the hub pushes changes to cloud (seconds)
 HUB_CLOUD_SYNC_INTERVAL = int(os.getenv("HUB_CLOUD_SYNC_INTERVAL", "30"))
 
+# Hub-to-cloud HTTP timeout and transient network retry policy. These values
+# deliberately favor large full-pull snapshots over short request deadlines.
+HUB_CLOUD_HTTP_TIMEOUT_SECONDS = 300
+HUB_CLOUD_PULL_NETWORK_MAX_RETRIES = 2
+
 # Hub-created users start their PK at this offset so they never collide with
 # cloud-assigned PKs (which start at 1 and grow sequentially).  The value
 # 100_000 gives the cloud room for ~100k users before any chance of overlap —
