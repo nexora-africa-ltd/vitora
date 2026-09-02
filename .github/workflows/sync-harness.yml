@@ -1,0 +1,75 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+# What this file is for:
+# - Run a focused sync hardening harness in CI to catch cloud↔hub FK/remap regressions early.
+#
+# How to use it:
+# - Trigger manually via Actions > Sync Hardening Harness, or let nightly schedule run.
+#
+# Supported inputs/args:
+# - workflow_dispatch only (no custom inputs yet).
+
+name: Sync Hardening Harness
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Nightly 01:30 UTC
+    - cron: '30 1 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  sync-harness:
+    name: Backend Sync Harness
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            backend/.venv
+          key: ${{ runner.os }}-sync-harness-poetry-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-sync-harness-poetry-
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction --no-ansi
+
+      - name: Run sync hardening harness tests
+        working-directory: ./backend
+        run: |
+          poetry run pytest -q \
+            tests/core/test_sync_materializer.py \
+            tests/core/test_cloud_downward_sync.py \
+            tests/core/test_sync_api.py::TestFullPullOrdering
+
+      - name: Upload sync harness summary
+        if: always()
+        run: |
+          echo "Sync hardening harness completed at $(date -u +%Y-%m-%dT%H:%M:%SZ)" > sync-harness-summary.txt
+
+      - name: Publish harness artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-harness-summary
+          path: sync-harness-summary.txt
