@@ -504,6 +504,35 @@ class TestSyncPullEndpoint:
         assert entry["record_id"] == sample_patient.id
         assert entry["data"]["first_name"] == sample_patient.first_name
 
+    def test_full_downward_pull_falls_back_when_user_count_query_fails(
+        self, authenticated_client, sync_pull_url, monkeypatch, test_user
+    ):
+        """Downward pull should stream auth.User rows when COUNT query fails."""
+        from django.contrib.auth import get_user_model
+        from django.db import DatabaseError
+        from django.db.models.query import QuerySet
+
+        User = get_user_model()
+        original_count = QuerySet.count
+
+        def _patched_count(self):
+            if self.model is User:
+                raise DatabaseError("Disk quota exceeded")
+            return original_count(self)
+
+        monkeypatch.setattr(QuerySet, "count", _patched_count)
+
+        response = authenticated_client.get(
+            sync_pull_url,
+            {"full": "true", "direction": "down", "tables": "auth.User", "limit": "50"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert any(
+            entry["table"] == "auth.User" and entry["record_id"] == test_user.pk
+            for entry in response.data["entries"]
+        )
+
     def test_full_downward_pull_cursor_returns_next_snapshot_page(
         self,
         authenticated_client,

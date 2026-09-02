@@ -1094,38 +1094,49 @@ def _build_downward_snapshot_changes(
         # without fetching their rows from the database. This is critical for
         # cursor-based resumption — without it, a request at cursor=10000
         # would refetch and deserialize 10000 rows just to discard them.
+        table_count = None
         try:
             table_count = qs.count()
         except DatabaseError:
-            logger.exception(
-                "Failed to count %s for downward snapshot; skipping model.",
+            # Some tenant-scoped tables (notably auth.User with many reverse
+            # relation predicates) can trigger expensive COUNT plans that spill
+            # to Postgres temp files. Falling back to streaming traversal keeps
+            # the pull functional under tight DB temp-disk quotas.
+            logger.warning(
+                "Failed to count %s for downward snapshot; falling back to streaming pagination.",
                 model_label,
             )
-            continue
 
         logger.info(
             "Full-pull snapshot table %s count=%s skipped=%s cursor=%s.",
             model_label,
-            table_count,
+            table_count if table_count is not None else "streaming",
             skipped,
             cursor,
         )
 
-        if skipped + table_count <= cursor:
-            # Entire table lies before the cursor; advance and move on.
-            skipped += table_count
-            continue
+        use_streaming_fallback = table_count is None
+        if use_streaming_fallback:
+            offset_in_table = max(0, cursor - skipped)
+            qs_to_emit = qs
+        else:
+            if skipped + table_count <= cursor:
+                # Entire table lies before the cursor; advance and move on.
+                skipped += table_count
+                continue
 
-        # Slice past any prefix of this table that the cursor has already
-        # consumed. After this, every row we touch should be emitted.
-        offset_in_table = max(0, cursor - skipped)
-        skipped = max(skipped, cursor)
-        qs_to_emit = qs[offset_in_table:] if offset_in_table else qs
+            # Slice past any prefix of this table that the cursor has already
+            # consumed. After this, every row we touch should be emitted.
+            offset_in_table = max(0, cursor - skipped)
+            skipped = max(skipped, cursor)
+            qs_to_emit = qs[offset_in_table:] if offset_in_table else qs
 
         # Iterate defensively: a single corrupt row (bad JSONField, invalid
         # DateField, missing FK target) raised here would otherwise crash the
         # entire /api/sync/pull/ endpoint with a 500.
-        iterator = iter(qs_to_emit)
+        iterator = qs_to_emit.iterator() if use_streaming_fallback else iter(qs_to_emit)
+
+        streamed_rows = 0
         while True:
             try:
                 instance = next(iterator)
@@ -1137,6 +1148,10 @@ def _build_downward_snapshot_changes(
                     model_label,
                 )
                 break
+
+            streamed_rows += 1
+            if use_streaming_fallback and streamed_rows <= offset_in_table:
+                continue
 
             try:
                 data = serialize_instance_for_sync(instance, exclude_fields=entry.exclude_fields)
@@ -1172,6 +1187,9 @@ def _build_downward_snapshot_changes(
                     len(items),
                 )
                 return items[:limit], True
+
+        if use_streaming_fallback and skipped < cursor:
+            skipped += min(streamed_rows, cursor - skipped)
 
         logger.info(
             "Full-pull snapshot table %s processed in %.2fs (items=%s).",
