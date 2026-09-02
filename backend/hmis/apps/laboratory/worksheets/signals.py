@@ -6,6 +6,7 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import LaboratoryEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import LabelPrintJob, Worksheet
 
@@ -13,6 +14,9 @@ from .models import LabelPrintJob, Worksheet
 @receiver(post_save, sender=Worksheet)
 def publish_worksheet_event(sender, instance, created, **kwargs):
     """Publish event when a worksheet is generated."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             LaboratoryEvents.WORKSHEET_GENERATED,
@@ -31,6 +35,9 @@ def publish_worksheet_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=LabelPrintJob)
 def publish_label_job_event(sender, instance, created, **kwargs):
     """Publish event when labels are generated."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             LaboratoryEvents.LABEL_JOB_CREATED,

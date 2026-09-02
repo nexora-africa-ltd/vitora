@@ -11,6 +11,7 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import ImmunizationEvents, MCHEvents, publish_event
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.mch.models import (
     ANCVisit,
     Delivery,
@@ -53,6 +54,9 @@ def auto_generate_immunization_schedule(sender, instance, created, **kwargs):
     - Patient is ≤5 years old
     - Active Vaccine records exist in the database
     """
+    if is_sync_materialization_active():
+        return
+
     if not created or not instance.date_of_birth:
         return
 
@@ -116,6 +120,9 @@ def auto_create_anc_enrollment(sender, instance, created, **kwargs):
     Note: This does NOT auto-queue the mother for today's ANC session.
     Users can explicitly send to queue or schedule a future visit from the UI.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created or instance.anc_enrollment:
         return
 
@@ -191,6 +198,9 @@ def auto_transition_mch_to_delivered(sender, instance, created, **kwargs):
 
     Only transitions if the registration is currently ACTIVE.
     """
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "COMPLETED":
         return
 
@@ -234,6 +244,9 @@ def auto_create_anc_appointment(sender, instance, **kwargs):
     Creates a FOLLOW_UP appointment for the mother so antenatal visits
     appear on the facility-wide scheduling calendar.
     """
+    if is_sync_materialization_active():
+        return
+
     if not instance.next_visit_date:
         return
 
@@ -330,6 +343,9 @@ def auto_create_anc_appointment(sender, instance, **kwargs):
 @receiver(post_save, sender=Delivery)
 def create_baby_patient_on_delivery(sender, instance, created, **kwargs):
     """Create baby patient record when a delivery is completed."""
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "COMPLETED" or instance.baby_patient:
         return
 
@@ -410,6 +426,9 @@ def create_baby_patient_on_delivery(sender, instance, created, **kwargs):
 @receiver(post_save, sender=LabourPartographObservation)
 def broadcast_labour_partograph_observation(sender, instance, created, **kwargs):
     """Broadcast new partograph observations to realtime subscribers."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -457,6 +476,9 @@ def auto_enroll_confirmed_positive_to_ccc(sender, instance, **kwargs):
     When HEI status changes to CONFIRMED_POSITIVE, automatically create
     a CCC clinic enrollment for the infant.
     """
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "CONFIRMED_POSITIVE":
         return
 
@@ -535,6 +557,9 @@ def auto_create_anc_visit_invoice(sender, instance, created, **kwargs):
 
     Respects Linda Jamii exemption - no invoice created for beneficiaries.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -567,6 +592,9 @@ def auto_create_pnc_visit_invoice(sender, instance, created, **kwargs):
 
     Respects Linda Jamii exemption - no invoice created for beneficiaries.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -600,6 +628,9 @@ def auto_create_delivery_invoice(sender, instance, created, **kwargs):
     Respects Linda Jamii exemption - no invoice created for beneficiaries.
     Only creates invoice when delivery status is COMPLETED.
     """
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "COMPLETED":
         return
 
@@ -652,6 +683,9 @@ def auto_create_immunization_appointment(sender, instance, created, **kwargs):
     and a scheduled_date, creates a VACCINATION appointment so it appears
     on the facility-wide scheduling calendar.
     """
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "SCHEDULED" or not instance.scheduled_date:
         return
 

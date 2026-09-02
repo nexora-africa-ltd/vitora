@@ -11,6 +11,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import LaboratoryEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import EQASubmission, QCResult, QCRuleViolation
 
@@ -20,6 +21,9 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender=QCResult)
 def publish_qc_result_event(sender, instance, created, **kwargs):
     """Publish event when a QC result is entered."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             LaboratoryEvents.QC_RESULT_ENTERED,
@@ -38,6 +42,9 @@ def publish_qc_result_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=QCRuleViolation)
 def publish_qc_violation_event(sender, instance, created, **kwargs):
     """Publish event when a QC rule violation is recorded."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             LaboratoryEvents.QC_RULE_VIOLATED,
@@ -55,6 +62,9 @@ def publish_qc_violation_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=EQASubmission)
 def publish_eqa_unacceptable_event(sender, instance, created, **kwargs):
     """Publish event when an EQA submission is scored as unacceptable."""
+    if is_sync_materialization_active():
+        return
+
     if not created and instance.performance == EQASubmission.Performance.UNACCEPTABLE:
         publish_event(
             LaboratoryEvents.EQA_SUBMISSION_UNACCEPTABLE,

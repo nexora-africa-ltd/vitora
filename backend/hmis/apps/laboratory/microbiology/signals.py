@@ -6,6 +6,7 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import LaboratoryEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import AntibioticSensitivity, CultureResult
 
@@ -13,6 +14,9 @@ from .models import AntibioticSensitivity, CultureResult
 @receiver(post_save, sender=CultureResult)
 def publish_culture_result_event(sender, instance, created, **kwargs):
     """Publish domain events for culture result lifecycle."""
+    if is_sync_materialization_active():
+        return
+
     event_type = LaboratoryEvents.CULTURE_CREATED if created else LaboratoryEvents.CULTURE_UPDATED
 
     publish_event(
@@ -32,6 +36,9 @@ def publish_culture_result_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=AntibioticSensitivity)
 def publish_sensitivity_event(sender, instance, created, **kwargs):
     """Publish domain events for antibiotic sensitivity records."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             LaboratoryEvents.SENSITIVITY_CREATED,

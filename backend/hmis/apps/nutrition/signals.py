@@ -13,6 +13,7 @@ from decimal import Decimal
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.nutrition.models import NutritionConsultation
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,9 @@ def create_invoice_item_for_completed_consultation(sender, instance, created, **
     linking the nutrition service to the patient's invoice.
     """
     # Only process completed consultations that haven't been billed
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "COMPLETED" or instance.invoice:
         return
 
@@ -105,6 +109,9 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
 
     This integrates with the clinic queue system to manage patient flow.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 

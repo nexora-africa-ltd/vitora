@@ -15,6 +15,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import InventoryEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import (
     ETIMSInvoice,
@@ -40,6 +41,9 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender=Supplier)
 def publish_supplier_event(sender, instance, created, **kwargs):
     """Publish event when a supplier is created."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             InventoryEvents.SUPPLIER_CREATED,
@@ -57,6 +61,9 @@ def publish_supplier_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=PurchaseOrder)
 def publish_purchase_order_event(sender, instance, created, **kwargs):
     """Publish events for PO state transitions."""
+    if is_sync_materialization_active():
+        return
+
     payload = {
         "po_number": instance.po_number,
         "status": instance.status,
@@ -79,6 +86,9 @@ def publish_purchase_order_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=GoodsReceiptNote)
 def publish_grn_event(sender, instance, created, **kwargs):
     """Publish events for GRN state transitions."""
+    if is_sync_materialization_active():
+        return
+
     payload = {
         "grn_number": instance.grn_number,
         "status": instance.status,
@@ -97,6 +107,9 @@ def publish_grn_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=StockTransfer)
 def publish_stock_transfer_event(sender, instance, created, **kwargs):
     """Publish events for stock transfer state transitions."""
+    if is_sync_materialization_active():
+        return
+
     payload = {
         "transfer_number": instance.transfer_number,
         "status": instance.status,
@@ -127,6 +140,9 @@ def publish_stock_transfer_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=WardStockTransaction)
 def publish_ward_stock_event(sender, instance, created, **kwargs):
     """Publish events for ward stock transactions (consume / replenish)."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -159,6 +175,9 @@ def publish_ward_stock_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=StockCount)
 def publish_stock_count_event(sender, instance, created, **kwargs):
     """Publish events for stock count lifecycle."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         return
     payload = {
@@ -183,6 +202,9 @@ def publish_stock_count_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=ETIMSInvoice)
 def publish_etims_invoice_event(sender, instance, created, **kwargs):
     """Publish events for eTIMS invoice status transitions."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         return
     payload = {
@@ -213,6 +235,9 @@ def publish_etims_invoice_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=ReorderSuggestion)
 def publish_reorder_suggestion_event(sender, instance, created, **kwargs):
     """Publish events for reorder suggestion lifecycle."""
+    if is_sync_materialization_active():
+        return
+
     payload = {
         "drug_id": instance.drug_id,
         "urgency": instance.urgency,

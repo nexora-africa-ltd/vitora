@@ -35,6 +35,9 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender=AIInvestigationSuggestResult)
 def publish_investigation_suggest_event(sender, instance, created, **kwargs):
     """Publish domain event when investigation suggestion result is created."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     try:
@@ -267,6 +270,9 @@ def _attempt_auto_match_prescription_item(instance):
 @receiver(post_save, sender="laboratory.LabOrderItem")
 def auto_match_lab_order_item(sender, instance, created, **kwargs):
     """When a LabOrderItem is created, try to auto-match to advisory suggestions."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():
@@ -277,6 +283,9 @@ def auto_match_lab_order_item(sender, instance, created, **kwargs):
 @receiver(post_save, sender="imaging.ImagingOrderItem")
 def auto_match_imaging_order_item(sender, instance, created, **kwargs):
     """When an ImagingOrderItem is created, try to auto-match to advisory suggestions."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():
@@ -287,6 +296,9 @@ def auto_match_imaging_order_item(sender, instance, created, **kwargs):
 @receiver(post_save, sender="pharmacy.PrescriptionItem")
 def auto_match_prescription_item(sender, instance, created, **kwargs):
     """When a PrescriptionItem is created, try to auto-match to advisory suggestions."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():

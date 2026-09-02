@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 @receiver(pre_save, sender="core.StaffProfile")
 def cache_previous_primary_role(sender, instance, **kwargs):
     """Cache previous primary_role before save so group sync can remove stale role group."""
+    if is_sync_materialization_active():
+        return
+
     if not instance.pk:
         instance._previous_primary_role_id = None
         return
@@ -33,6 +36,9 @@ def cache_previous_primary_role(sender, instance, **kwargs):
 @receiver(post_save, sender="core.StaffProfile")
 def sync_user_group_with_primary_role(sender, instance, created, **kwargs):
     """Keep Django user.groups aligned with StaffProfile.primary_role's django_group."""
+    if is_sync_materialization_active():
+        return
+
     if not instance.user_id or not instance.primary_role_id:
         return
 
@@ -66,6 +72,9 @@ def sync_user_group_with_primary_role(sender, instance, created, **kwargs):
 @receiver(post_save, sender="core.Notification")
 def send_push_on_notification_create(sender, instance, created, **kwargs):
     """Send a browser push notification for high/critical in-app notifications."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if instance.priority not in ("high", "critical"):
@@ -101,6 +110,9 @@ def send_push_on_notification_create(sender, instance, created, **kwargs):
 @receiver(post_save, sender="core.Notification")
 def broadcast_notification_via_websocket(sender, instance, created, **kwargs):
     """Broadcast new notification to user's WebSocket channel for instant delivery."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -147,6 +159,9 @@ def broadcast_notification_via_websocket(sender, instance, created, **kwargs):
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
     """Log successful user login."""
+    if is_sync_materialization_active():
+        return
+
     from .models import AuditLog
     from .permissions import get_client_ip
 
@@ -172,6 +187,9 @@ def log_user_login(sender, request, user, **kwargs):
 @receiver(user_logged_out)
 def log_user_logout(sender, request, user, **kwargs):
     """Log user logout."""
+    if is_sync_materialization_active():
+        return
+
     from .models import AuditLog
     from .permissions import get_client_ip
 
@@ -198,6 +216,9 @@ def log_user_logout(sender, request, user, **kwargs):
 @receiver(user_login_failed)
 def log_user_login_failed(sender, credentials, request, **kwargs):
     """Log failed login attempt."""
+    if is_sync_materialization_active():
+        return
+
     from .models import AuditLog
     from .permissions import get_client_ip
 
@@ -223,6 +244,9 @@ def enforce_unique_email(sender, instance, **kwargs):
     This complements the DB-level partial unique index added in migration
     0034 and ensures uniqueness even when --no-migrations is used (tests).
     """
+    if is_sync_materialization_active():
+        return
+
     if not instance.email:
         return
 
@@ -246,6 +270,9 @@ def enforce_unique_email(sender, instance, **kwargs):
 @receiver(post_save, sender="patients.Patient")
 def patient_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when a patient is created."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():
@@ -281,6 +308,9 @@ def patient_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="encounters.Encounter")
 def encounter_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when an encounter is created."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():
@@ -364,6 +394,9 @@ def triage_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="laboratory.LabOrder")
 def lab_order_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when lab order is created."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():
@@ -390,6 +423,9 @@ def lab_order_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="pharmacy.Prescription")
 def prescription_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when prescription is created."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():
@@ -416,6 +452,9 @@ def prescription_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="billing.Payment")
 def payment_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when payment is received."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():
@@ -441,6 +480,9 @@ def payment_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="billing.Invoice")
 def invoice_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when invoice is created."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():
@@ -470,6 +512,9 @@ def invoice_activity_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender="pharmacy.StockAlert")
 def stock_alert_activity_signal(sender, instance, created, **kwargs):
     """Create activity feed entry when stock alert is created."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         from .models import ActivityFeed
 
@@ -504,12 +549,23 @@ def auto_assign_department_head(sender, instance, **kwargs):
     - Adds the department to the staff's secondary_departments (if not their primary).
     - Adds the SUPERVISOR role to the staff's secondary_roles (if not their primary).
     """
+    if is_sync_materialization_active():
+        return
+
     if not instance.head_id:
         return
 
     from .models import Role
 
-    staff = instance.head
+    try:
+        staff = instance.head
+    except sender.head.field.remote_field.model.DoesNotExist:
+        logger.warning(
+            "Skipping department head auto-assignment for Department %s because head_id=%s is missing.",
+            instance.pk,
+            instance.head_id,
+        )
+        return
 
     # Add department as secondary (skip if it's already the primary)
     if staff.primary_department_id != instance.pk:
@@ -536,6 +592,9 @@ def auto_assign_department_head(sender, instance, **kwargs):
 @receiver(pre_save, sender="core.StaffProfile")
 def track_supervisor_change(sender, instance, **kwargs):
     """Stash the old supervisor_id so post_save can detect changes."""
+    if is_sync_materialization_active():
+        return
+
     if instance.pk:
         try:
             old = sender.objects.only("supervisor_id").get(pk=instance.pk)
@@ -549,6 +608,9 @@ def track_supervisor_change(sender, instance, **kwargs):
 @receiver(post_save, sender="core.StaffProfile")
 def auto_supervisor_role(sender, instance, created, **kwargs):
     """When a staff member is assigned as someone's supervisor, grant them the SUPERVISOR role."""
+    if is_sync_materialization_active():
+        return
+
     old_supervisor_id = getattr(instance, "_old_supervisor_id", None)
 
     if created or instance.supervisor_id == old_supervisor_id:
@@ -559,7 +621,15 @@ def auto_supervisor_role(sender, instance, created, **kwargs):
 
     from .models import Role
 
-    supervisor_profile = instance.supervisor
+    try:
+        supervisor_profile = instance.supervisor
+    except sender.supervisor.field.remote_field.model.DoesNotExist:
+        logger.warning(
+            "Skipping supervisor role auto-assignment for StaffProfile %s because supervisor_id=%s is missing.",
+            instance.pk,
+            instance.supervisor_id,
+        )
+        return
     supervisor_role = Role.objects.filter(code="SUPERVISOR", is_active=True).first()
     if supervisor_role and supervisor_profile.primary_role_id != supervisor_role.pk:
         supervisor_profile.secondary_roles.add(supervisor_role)
@@ -573,6 +643,9 @@ def auto_supervisor_role(sender, instance, created, **kwargs):
 @receiver(pre_save, sender="core.Organization")
 def stash_org_active_flag(sender, instance, **kwargs):
     """Stash the old is_active value so post_save can detect activation changes."""
+    if is_sync_materialization_active():
+        return
+
     if instance.pk:
         try:
             old = sender.objects.only("is_active").get(pk=instance.pk)
@@ -586,6 +659,9 @@ def stash_org_active_flag(sender, instance, **kwargs):
 @receiver(post_save, sender="core.Organization")
 def publish_org_activation_event(sender, instance, created, **kwargs):
     """Publish ACTIVATED / DEACTIVATED event when Organization.is_active changes."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         return  # signup event is published explicitly in auth_views
 
@@ -641,5 +717,8 @@ def publish_org_activation_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender="core.SubscriptionPlan")
 def sync_plan_to_organizations(sender, instance, **kwargs):
     """When a SubscriptionPlan is saved, sync limits to all linked Organizations."""
+    if is_sync_materialization_active():
+        return
+
     for org in instance.organizations.all():
         org.sync_from_plan(save=True)

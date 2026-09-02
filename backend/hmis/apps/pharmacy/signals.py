@@ -152,6 +152,9 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
     3. Link invoice item to the prescription's encounter invoice
     4. Skip if prescription has no encounter (walk-in pharmacy)
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -265,6 +268,9 @@ def broadcast_prescription_on_create(sender, instance, created, **kwargs):
     Broadcast WebSocket event and publish domain event when a prescription is created.
     Also notifies pharmacy staff (via notification) about new prescriptions.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -302,6 +308,9 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
     2. If dispensing is direct (OTC): Create new invoice item
     3. Only process new dispensing records (not updates)
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -415,6 +424,9 @@ def broadcast_dispensing_on_create(sender, instance, created, **kwargs):
     """
     Broadcast WebSocket event and publish domain event when dispensing is completed.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -448,6 +460,9 @@ def broadcast_stock_level_change(sender, instance, **kwargs):
     Emits stock_critical when quantity reaches 0, or stock_low_warning
     when quantity drops below the drug's reorder level.
     """
+    if is_sync_materialization_active():
+        return
+
     facility_id = getattr(instance, "facility_id", None)
     if not facility_id:
         return
@@ -617,6 +632,9 @@ def sync_ward_stock_on_batch_receive(sender, instance, created, **kwargs):
     This bridges the gap between pharmacy stock (batch-level) and ward stock
     (aggregate level tracking).
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 

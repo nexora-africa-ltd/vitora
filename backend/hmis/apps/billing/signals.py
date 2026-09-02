@@ -65,6 +65,9 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
     2. Reuse existing draft invoice for the same patient from today
     3. Link the invoice to the encounter
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -407,6 +410,9 @@ def broadcast_invoice_change(sender, instance, created, **kwargs):
     """
     Broadcast WebSocket event and publish domain event when an invoice changes.
     """
+    if is_sync_materialization_active():
+        return
+
     event_type = BillingEvents.INVOICE_CREATED if created else BillingEvents.INVOICE_UPDATED
     publish_event(
         event_type=event_type,
@@ -441,6 +447,9 @@ def broadcast_payment_change(sender, instance, created, **kwargs):
     """
     Broadcast WebSocket event and publish domain event when a payment is recorded.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -471,6 +480,9 @@ def broadcast_payment_change(sender, instance, created, **kwargs):
 @receiver(post_save, sender=SHAClaim)
 def auto_finalize_invoice_on_sha_claim_approval(sender, instance, created, **kwargs):
     """Auto-finalize linked draft invoice when SHA claim reaches approval stage."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         return
 
@@ -522,6 +534,9 @@ def auto_finalize_invoice_on_sha_claim_approval(sender, instance, created, **kwa
 @receiver(post_save, sender="billing.ConsentToken")
 def publish_consent_event(sender, instance, created, **kwargs):
     """Publish domain event when consent token status changes."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         event_type = BillingEvents.CONSENT_OTP_SENT
     elif instance.status == "VALIDATED":
@@ -551,6 +566,9 @@ def publish_consent_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender="billing.PreauthRequest")
 def publish_preauth_event(sender, instance, created, **kwargs):
     """Publish domain event when preauth status changes."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         event_type = BillingEvents.PREAUTH_SUBMITTED
     elif instance.decision == "APPROVED":
@@ -661,6 +679,9 @@ def _notify_preauth_decision(instance):
 @receiver(post_save, sender=SupplierBill)
 def publish_supplier_bill_event(sender, instance, created, **kwargs):
     """Publish domain event when a supplier bill is created or updated."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         event_type = BillingEvents.SUPPLIER_BILL_CREATED
     else:
@@ -685,6 +706,9 @@ def publish_supplier_bill_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=SupplierPayment)
 def publish_supplier_payment_event(sender, instance, created, **kwargs):
     """Publish domain event when a supplier payment is recorded."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -717,6 +741,9 @@ def trigger_sha_automation_on_encounter(sender, instance, created, **kwargs):
     - Auto-start DHA visit (if consent available)
     - Auto-suggest interventions (deferred to allow clinical data entry)
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 

@@ -42,6 +42,9 @@ def _laboratory_signal_handled_exceptions() -> tuple[type[Exception], ...]:
 @receiver(post_save, sender=LabOrder)
 def sync_linked_blood_unit_to_testing(sender, instance, **kwargs):
     """Ensure a linked blood unit is marked TESTING for donor-unit lab workflows."""
+    if is_sync_materialization_active():
+        return
+
     if is_sync_materialization_active() or not instance.blood_bank_unit_id:
         return
 
@@ -110,6 +113,9 @@ def create_lab_queue_on_item_add(sender, instance, created, **kwargs):
     This handles the case where items are added after the order is created,
     and the signal needs the specimen type from the test catalog.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -151,6 +157,9 @@ def sync_lab_queue_priority(sender, instance, created, **kwargs):
     """
     Sync priority changes from LabOrder to LabQueue.
     """
+    if is_sync_materialization_active():
+        return
+
     if created:
         return
 
@@ -172,6 +181,9 @@ def create_specimen_for_queue(sender, instance, created, **kwargs):
     """
     Auto-create a Specimen when a LabQueue entry is created.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created or instance.specimen_id:
         return
 
@@ -217,6 +229,9 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
     - First result: Order -> IN_PROGRESS, Queue -> PROCESSING
     - All results entered: Order -> COMPLETED, Queue -> REVIEW
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -294,6 +309,9 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
     The WebSocket notification provides instant feedback to clinicians,
     while PowerSync will handle data synchronization.
     """
+    if is_sync_materialization_active():
+        return
+
     if created:
         return  # Only handle updates, not creation
 
@@ -398,6 +416,9 @@ def handle_lab_order_billing(sender, instance, **kwargs):
     to the patient's draft invoice. Skipped when bill_patient is False
     (default for external lab orders).
     """
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "ORDERED":
         return
 
@@ -479,6 +500,9 @@ def auto_trigger_egfr_on_creatinine(sender, instance, created, **kwargs):
     - The result must have a numeric value
     - The lab order must be linked to a patient with DOB and gender
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 

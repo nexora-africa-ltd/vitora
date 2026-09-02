@@ -12,6 +12,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import LaboratoryEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import AnalyzerMessage, InstrumentChannel
 
@@ -21,6 +22,9 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender=AnalyzerMessage)
 def publish_analyzer_message_event(sender, instance, created, **kwargs):
     """Publish domain event when an analyzer message is created or status changes."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         event_type = LaboratoryEvents.ANALYZER_MESSAGE_RECEIVED
         publish_event(
@@ -72,6 +76,9 @@ def publish_analyzer_message_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=InstrumentChannel)
 def publish_channel_status_event(sender, instance, created, **kwargs):
     """Publish domain event when channel connection status changes."""
+    if is_sync_materialization_active():
+        return
+
     if not created and instance.connection_status in [
         InstrumentChannel.ConnectionStatus.ERROR,
         InstrumentChannel.ConnectionStatus.DISCONNECTED,

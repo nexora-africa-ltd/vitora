@@ -5,12 +5,16 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import DialysisOrder, DialysisSession
 
 
 @receiver(post_save, sender=DialysisSession)
 def publish_dialysis_session_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     event_type = "dialysis.session.created" if created else "dialysis.session.updated"
     publish_event(
         event_type,
@@ -26,6 +30,9 @@ def publish_dialysis_session_event(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=DialysisOrder)
 def publish_dialysis_order_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     event_type = "dialysis.order.created" if created else "dialysis.order.updated"
     publish_event(
         event_type,

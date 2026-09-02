@@ -1,12 +1,16 @@
 """Tests for hub-mode automatic SyncQueue creation."""
 
 from datetime import date
+from unittest.mock import patch
 
 import pytest  # type: ignore
 from django.test import override_settings
 
 from hmis.apps.core.models import SyncQueue
+from hmis.apps.core.sync_context import sync_materialization_context
+from hmis.apps.encounters.signals import publish_encounter_event
 from hmis.apps.patients.models import Patient
+from hmis.apps.quality.signals import _get_clinic_id_from_encounter, trigger_evaluation_on_encounter
 
 pytestmark = pytest.mark.django_db
 
@@ -199,3 +203,37 @@ class TestHubSyncSignals:
         # logo is empty → None in the payload, not a FieldFile
         assert entry.data["logo"] is None
         assert entry.operation == "UPDATE"
+
+
+class TestSyncSignalResilience:
+    """Signal handlers should not crash sync materialization on missing FK dependencies."""
+
+    def test_quality_helper_handles_missing_clinic_visit_relation(self, sample_encounter):
+        """Encounter without a linked ClinicVisit should not raise DoesNotExist."""
+        assert _get_clinic_id_from_encounter(sample_encounter) is None
+
+    def test_quality_encounter_signal_skips_during_sync_materialization(self, sample_encounter):
+        """Quality encounter side effects must be disabled for pulled cloud writes."""
+        with patch("hmis.apps.quality.signals._schedule_evaluation") as schedule:
+            with sync_materialization_context():
+                trigger_evaluation_on_encounter(
+                    sender=type(sample_encounter), instance=sample_encounter
+                )
+
+        schedule.assert_not_called()
+
+    def test_encounter_event_signal_skips_during_sync_materialization(self, sample_encounter):
+        """Encounter side effects must be disabled for pulled cloud writes."""
+        with patch("hmis.apps.encounters.signals.publish_event") as publish:
+            with patch(
+                "hmis.apps.encounters.signals.VitalFlagSuggestionService.detect_from_encounter"
+            ) as detect:
+                with sync_materialization_context():
+                    publish_encounter_event(
+                        sender=type(sample_encounter),
+                        instance=sample_encounter,
+                        created=False,
+                    )
+
+        publish.assert_not_called()
+        detect.assert_not_called()

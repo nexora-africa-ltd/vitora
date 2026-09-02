@@ -5,12 +5,16 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import BloodIssue, BloodRequest, BloodUnit
 
 
 @receiver(post_save, sender=BloodUnit)
 def publish_blood_unit_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     event_type = "blood_bank.unit.created" if created else "blood_bank.unit.updated"
     publish_event(
         event_type,
@@ -26,6 +30,9 @@ def publish_blood_unit_event(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=BloodRequest)
 def publish_blood_request_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     event_type = "blood_bank.request.created" if created else "blood_bank.request.updated"
     publish_event(
         event_type,
@@ -42,6 +49,9 @@ def publish_blood_request_event(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=BloodIssue)
 def publish_blood_issue_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             "blood_bank.issue.created",

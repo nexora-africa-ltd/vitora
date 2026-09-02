@@ -46,6 +46,9 @@ def _inpatient_signal_handled_exceptions() -> tuple[type[Exception], ...]:
 @receiver(post_save, sender=Admission)
 def close_source_opd_encounter_on_admission(sender, instance, created, **kwargs):
     """Close the source OPD encounter once a real admission handoff exists."""
+    if is_sync_materialization_active():
+        return
+
     if not created or not instance.opd_encounter_id:
         return
 
@@ -95,6 +98,9 @@ def notify_ward_constraints_updated(sender, instance, created, **kwargs):
     update their UI to reflect new constraint rules.
     """
     # Skip on creation - constraints are just defaults at that point
+    if is_sync_materialization_active():
+        return
+
     if created:
         return
 
@@ -150,6 +156,9 @@ def notify_compatibility_violation(sender, instance, created, **kwargs):
     - Queue email notification task
     """
     # Only process new admissions with violations
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 

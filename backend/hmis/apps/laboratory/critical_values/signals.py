@@ -6,6 +6,7 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import LaboratoryEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import CriticalValueNotification
 
@@ -13,6 +14,9 @@ from .models import CriticalValueNotification
 @receiver(post_save, sender=CriticalValueNotification)
 def publish_critical_notification_event(sender, instance, created, **kwargs):
     """Publish event when a critical value notification is created or updated."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             LaboratoryEvents.CRITICAL_NOTIFICATION_CREATED,

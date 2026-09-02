@@ -13,6 +13,7 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.counselling.models import CounsellingReferral, CounsellingSession
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,9 @@ def route_to_counselling_clinic_on_acceptance(sender, instance, created, **kwarg
     when a counselling referral is accepted.
     """
     # Only process when status changes to ACCEPTED
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "ACCEPTED" or not instance.accepted_at:
         return
 
@@ -167,6 +171,9 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
     This signal creates notifications for counselling staff
     when urgent referrals are created.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -200,6 +207,9 @@ def create_billing_item_on_session_completion(sender, instance, created, **kwarg
     linked to the patient's invoice.
     """
     # Only process completed sessions that haven't been billed
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "COMPLETED" or instance.is_billed:
         return
 
@@ -281,6 +291,9 @@ def create_clinic_visit_for_session(sender, instance, created, **kwargs):
 
     This enables queue management for individual sessions.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -348,6 +361,9 @@ def alert_high_risk_session(sender, instance, **kwargs):
 
     This signal monitors risk levels and triggers appropriate responses.
     """
+    if is_sync_materialization_active():
+        return
+
     if instance.risk_level not in ["HIGH", "IMMINENT"]:
         return
 

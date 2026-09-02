@@ -6,6 +6,7 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import LaboratoryEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import ExternalOrderRequest, WalkInPatient
 
@@ -13,6 +14,9 @@ from .models import ExternalOrderRequest, WalkInPatient
 @receiver(post_save, sender=WalkInPatient)
 def publish_walkin_patient_event(sender, instance, created, **kwargs):
     """Publish event when walk-in patient is created or updated."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             event_type=LaboratoryEvents.WALKIN_PATIENT_REGISTERED,
@@ -30,6 +34,9 @@ def publish_walkin_patient_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=ExternalOrderRequest)
 def publish_external_order_event(sender, instance, created, **kwargs):
     """Publish event when external order is received or status changes."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             event_type=LaboratoryEvents.EXTERNAL_ORDER_RECEIVED,

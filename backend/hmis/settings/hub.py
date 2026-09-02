@@ -159,8 +159,8 @@ else:
 # Sync Configuration
 # ---------------------------------------------------------------------------
 
-# Hub syncs to the cloud server
-SYNC_ENABLED = True
+# Hub syncs to the cloud server (can be temporarily disabled during bootstrap)
+SYNC_ENABLED = os.getenv("SYNC_ENABLED", "true").lower() == "true"
 SYNC_SERVER_URL = os.getenv("SYNC_SERVER_URL", "https://api.vitora.digital/api/sync")
 SYNC_BATCH_SIZE = int(os.getenv("SYNC_BATCH_SIZE", "500"))
 SYNC_MAX_RETRIES = int(os.getenv("SYNC_MAX_RETRIES", "5"))

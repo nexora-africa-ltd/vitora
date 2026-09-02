@@ -6,12 +6,16 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import ImagingEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import ExternalImagingOrderRequest, WalkInImagingPatient
 
 
 @receiver(post_save, sender=WalkInImagingPatient)
 def publish_walkin_imaging_patient_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             event_type=ImagingEvents.WALKIN_PATIENT_REGISTERED,
@@ -28,6 +32,9 @@ def publish_walkin_imaging_patient_event(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=ExternalImagingOrderRequest)
 def publish_external_imaging_order_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             event_type=ImagingEvents.EXTERNAL_ORDER_RECEIVED,

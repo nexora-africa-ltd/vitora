@@ -15,11 +15,13 @@ from __future__ import annotations
 
 import logging
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import QualityEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,9 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender="quality.QualityMeasureResult")
 def publish_quality_result_event(sender, instance, created, **kwargs):
     """Publish domain event when a quality measure result is calculated."""
+    if is_sync_materialization_active():
+        return
+
     event_type = QualityEvents.RESULT_CALCULATED if created else QualityEvents.RESULT_UPDATED
     publish_event(
         event_type=event_type,
@@ -60,6 +65,9 @@ def publish_quality_result_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender="encounters.Encounter")
 def trigger_evaluation_on_encounter(sender, instance, **kwargs):
     """Re-evaluate quality measures when an encounter is saved."""
+    if is_sync_materialization_active():
+        return
+
     # Only trigger if encounter has a clinic visit link
     clinic_id = _get_clinic_id_from_encounter(instance)
     if clinic_id:
@@ -69,6 +77,9 @@ def trigger_evaluation_on_encounter(sender, instance, **kwargs):
 @receiver(post_save, sender="laboratory.LabResult")
 def trigger_evaluation_on_lab_result(sender, instance, **kwargs):
     """Re-evaluate quality measures when a lab result is verified."""
+    if is_sync_materialization_active():
+        return
+
     # Only trigger for verified results to avoid premature evaluation
     if instance.verification_status != "VERIFIED":
         return
@@ -81,6 +92,9 @@ def trigger_evaluation_on_lab_result(sender, instance, **kwargs):
 @receiver(post_save, sender="clinics.ClinicVisit")
 def trigger_evaluation_on_visit_complete(sender, instance, **kwargs):
     """Re-evaluate quality measures when a visit is completed."""
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "COMPLETED":
         return
 
@@ -96,9 +110,16 @@ def trigger_evaluation_on_visit_complete(sender, instance, **kwargs):
 
 def _get_clinic_id_from_encounter(encounter) -> int | None:
     """Resolve clinic_id from an encounter via its clinic_visit."""
-    visit = getattr(encounter, "clinic_visit", None)
+    try:
+        visit = getattr(encounter, "clinic_visit", None)
+    except ObjectDoesNotExist:
+        return None
+
     if visit:
-        session = getattr(visit, "session", None)
+        try:
+            session = getattr(visit, "session", None)
+        except ObjectDoesNotExist:
+            return None
         if session:
             return session.clinic_id
     return None
@@ -122,6 +143,7 @@ def _get_clinic_id_from_lab_result(lab_result) -> int | None:
         if enrollment:
             return enrollment.clinic_id
     except (
+        ObjectDoesNotExist,
         AttributeError,
         TypeError,
         ValueError,

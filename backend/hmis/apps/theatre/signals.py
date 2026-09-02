@@ -12,6 +12,7 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import TheatreEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.scheduling.models import Resource, Schedule
 from hmis.apps.theatre.models import (
     CaseEquipmentRequirement,
@@ -133,6 +134,9 @@ def _sync_theatre_schedules(instance: OperatingTheatre) -> None:
 
 @receiver(post_save, sender=OperatingTheatre)
 def auto_create_theatre_resource(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     if getattr(instance, "_skip_resource_sync", False):
         return
     try:
@@ -153,6 +157,9 @@ def auto_create_theatre_resource(sender, instance, created, **kwargs):
 @receiver(post_save, sender=SurgeryCase)
 def publish_surgery_case_event(sender, instance, created, **kwargs):
     """Publish domain event when a surgery case is created or its status changes."""
+    if is_sync_materialization_active():
+        return
+
     update_fields = kwargs.get("update_fields")
 
     if created:
@@ -197,6 +204,9 @@ def publish_surgery_case_event(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=TheatreConsumable)
 def sync_theatre_consumable_billing(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     if not instance.surgery_case_id:
         return
     try:
@@ -218,6 +228,9 @@ def sync_theatre_consumable_billing(sender, instance, created, **kwargs):
 @receiver(post_save, sender=SurgicalTeamMember)
 def publish_team_assigned_event(sender, instance, created, **kwargs):
     """Publish domain event when a team member is assigned."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     publish_event(
@@ -235,6 +248,9 @@ def publish_team_assigned_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=WHOSafetyChecklist)
 def publish_checklist_event(sender, instance, created, **kwargs):
     """Publish domain event when a WHO checklist phase is completed."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         return  # Initial creation is just the blank checklist
 
@@ -261,6 +277,9 @@ def publish_checklist_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=PACURecord)
 def publish_pacu_event(sender, instance, created, **kwargs):
     """Publish domain event when patient arrives or is discharged from PACU."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             event_type=TheatreEvents.PACU_ARRIVED,
@@ -276,6 +295,9 @@ def publish_pacu_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=IntraOpVitalReading)
 def publish_intraop_vital_event(sender, instance, created, **kwargs):
     """Publish domain event when an intra-op vital reading is recorded."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     case = instance.anesthesia_record.surgery_case
@@ -301,6 +323,9 @@ def publish_intraop_vital_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=CaseEquipmentRequirement)
 def publish_equipment_assigned_event(sender, instance, created, **kwargs):
     """Publish domain event when equipment is assigned to a surgery case."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     publish_event(
@@ -322,6 +347,9 @@ def publish_equipment_assigned_event(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=CaseEquipmentRequirement)
 def publish_equipment_released_event(sender, instance, **kwargs):
     """Publish domain event when equipment is released from a surgery case."""
+    if is_sync_materialization_active():
+        return
+
     publish_event(
         event_type=TheatreEvents.EQUIPMENT_RELEASED,
         aggregate_type="SurgeryCase",

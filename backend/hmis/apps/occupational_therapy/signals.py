@@ -13,6 +13,7 @@ from decimal import Decimal
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.occupational_therapy.models import OccupationalTherapyOrder, OTSession
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,9 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
     linking the OT service to the patient's invoice.
     """
     # Only process completed sessions that haven't been billed
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "COMPLETED" or instance.is_billed:
         return
 
@@ -114,6 +118,9 @@ def route_to_ot_clinic_on_approval(sender, instance, created, **kwargs):
     when an order transitions to APPROVED status.
     """
     # Only process approved orders without an existing clinic visit
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "APPROVED" or instance.clinic_visit:
         return
 

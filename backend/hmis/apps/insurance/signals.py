@@ -9,6 +9,7 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import InsuranceEvents, publish_event
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.insurance.models import (
     InsuranceClaim,
     InsurancePreauth,
@@ -31,6 +32,9 @@ def _safe_publish(event_type: str, payload: dict) -> None:
 # ---------------------------------------------------------------------------
 @receiver(post_save, sender=InsuranceProvider)
 def publish_provider_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     event_type = InsuranceEvents.PROVIDER_CREATED if created else InsuranceEvents.PROVIDER_UPDATED
     _safe_publish(
         event_type,
@@ -48,6 +52,9 @@ def publish_provider_event(sender, instance, created, **kwargs):
 # ---------------------------------------------------------------------------
 @receiver(post_save, sender=PatientInsurance)
 def publish_enrollment_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     if created:
         _safe_publish(
             InsuranceEvents.ENROLLMENT_CREATED,
@@ -88,6 +95,9 @@ _CLAIM_STATUS_EVENT_MAP = {
 
 @receiver(post_save, sender=InsuranceClaim)
 def publish_claim_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     if created:
         _safe_publish(
             InsuranceEvents.CLAIM_CREATED,
@@ -166,6 +176,9 @@ _PREAUTH_STATUS_EVENT_MAP = {
 
 @receiver(post_save, sender=InsurancePreauth)
 def publish_preauth_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     if created:
         _safe_publish(
             InsuranceEvents.PREAUTH_CREATED,
@@ -196,6 +209,9 @@ def publish_preauth_event(sender, instance, created, **kwargs):
 # ---------------------------------------------------------------------------
 @receiver(post_save, sender=InsuranceRemittance)
 def publish_remittance_event(sender, instance, created, **kwargs):
+    if is_sync_materialization_active():
+        return
+
     if created:
         _safe_publish(
             InsuranceEvents.REMITTANCE_RECEIVED,

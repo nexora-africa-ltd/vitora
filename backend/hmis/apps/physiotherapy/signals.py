@@ -13,6 +13,7 @@ from decimal import Decimal
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.physiotherapy.models import PhysiotherapyOrder, PhysiotherapySession
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,9 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
     linking the physiotherapy service to the patient's invoice.
     """
     # Only process completed sessions that haven't been billed
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "COMPLETED" or instance.is_billed:
         return
 
@@ -117,6 +121,9 @@ def handle_order_status_change(sender, instance, created, **kwargs):
     When an order is approved, the patient can be routed to the
     physiotherapy clinic queue.
     """
+    if is_sync_materialization_active():
+        return
+
     if created:
         return  # Skip on creation
 
@@ -175,6 +182,9 @@ def update_order_payment_status(sender, instance, created, **kwargs):
 
     This checks if the linked invoice is paid and updates the order accordingly.
     """
+    if is_sync_materialization_active():
+        return
+
     if created or not instance.invoice:
         return
 

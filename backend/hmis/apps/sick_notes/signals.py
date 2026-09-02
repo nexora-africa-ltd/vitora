@@ -10,18 +10,25 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import SickNoteEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.sick_notes.models import SickNote
 
 
 @receiver(post_init, sender=SickNote)
 def track_status_before(sender, instance, **kwargs):
     """Capture the status before any changes."""
+    if is_sync_materialization_active():
+        return
+
     instance._status_before = instance.status
 
 
 @receiver(post_save, sender=SickNote)
 def publish_sick_note_event(sender, instance, created, **kwargs):
     """Publish domain events on sick note creation and status changes."""
+    if is_sync_materialization_active():
+        return
+
     payload = {
         "note_number": instance.note_number,
         "patient_id": instance.patient_id,

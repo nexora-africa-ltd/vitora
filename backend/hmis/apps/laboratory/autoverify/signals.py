@@ -6,6 +6,7 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import LaboratoryEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import AutoVerifyLog, DeltaCheckResult
 
@@ -13,6 +14,9 @@ from .models import AutoVerifyLog, DeltaCheckResult
 @receiver(post_save, sender=DeltaCheckResult)
 def publish_delta_check_event(sender, instance, created, **kwargs):
     """Publish event when a delta check fails."""
+    if is_sync_materialization_active():
+        return
+
     if created and instance.outcome == DeltaCheckResult.Outcome.FAIL:
         publish_event(
             LaboratoryEvents.DELTA_CHECK_FAILED,
@@ -32,6 +36,9 @@ def publish_delta_check_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=AutoVerifyLog)
 def publish_auto_verify_event(sender, instance, created, **kwargs):
     """Publish event when a result is auto-verified or blocked."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 

@@ -12,6 +12,7 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.social_work.models import SocialWorkCase, SocialWorkReferral
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,9 @@ def route_to_sw_clinic_on_acceptance(sender, instance, created, **kwargs):
     when a social work referral is accepted.
     """
     # Only process when status changes to ACCEPTED
+    if is_sync_materialization_active():
+        return
+
     if instance.status != "ACCEPTED" or not instance.accepted_at:
         return
 
@@ -147,6 +151,9 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
     This signal creates notifications for social work staff
     when urgent referrals are created.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -204,6 +211,9 @@ def mark_patient_sensitive_for_gbv(sender, instance, created, **kwargs):
 
     This provides an additional safety net beyond the model's save() method.
     """
+    if is_sync_materialization_active():
+        return
+
     if not instance.is_sensitive:
         return
 
@@ -235,6 +245,9 @@ def notify_case_review_due(sender, instance, **kwargs):
     Note: This would typically be run by a Celery task on a schedule,
     but is included here as a placeholder for the pattern.
     """
+    if is_sync_materialization_active():
+        return
+
     from datetime import date, timedelta
 
     if not instance.next_review_date:

@@ -759,6 +759,7 @@ LICENSE_TOKEN=$LicenseToken
 HUB_SECRETS_FILE=$HubSecretsFile
 ALLOWED_HOSTS=*
 HUB_VERSION=$Version
+SYNC_ENABLED=true
 HUB_CLOUD_AUTH_ENABLED=$HubCloudAuthEnabled
 HUB_CLOUD_AUTH_URL=$HubCloudAuthUrl
 HUB_AUTO_UPDATE_DAY=$AutoUpdateDay
@@ -879,6 +880,9 @@ $env:HUB_FACILITY_ID = $FacilityId
 $env:HUB_ORGANIZATION_ID = $OrgId
 $env:DJANGO_SECRET_KEY = $secretKey
 $env:ENCRYPTION_KEY = $EncryptionKey
+# Disable sync signal queueing during bootstrap/migrations to avoid
+# transitional-schema failures while migrations are still being applied.
+$env:SYNC_ENABLED = "false"
 
 # --- Database Setup ---
 Write-Step 6 "Initializing database..."
@@ -941,7 +945,8 @@ if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
         & $python manage.py migrate --no-input --verbosity 2 2>&1 |
             ForEach-Object { Write-Host "  $_" }
         if ($LASTEXITCODE -ne 0) {
-            Write-Warn "migrate failed (exit $LASTEXITCODE)"
+            Write-Err "migrate failed (exit $LASTEXITCODE). Aborting install to prevent partial bootstrap."
+            exit 1
         }
     }
 } else {
@@ -950,7 +955,8 @@ if ($null -eq $appsToMigrate -or $appsToMigrate.Count -eq 0) {
     & $python manage.py migrate --no-input --verbosity 2 2>&1 |
         ForEach-Object { Write-Host "  $_" }
     if ($LASTEXITCODE -ne 0) {
-        Write-Warn "migrate failed (exit $LASTEXITCODE)"
+        Write-Err "migrate failed (exit $LASTEXITCODE). Aborting install to prevent partial bootstrap."
+        exit 1
     }
 }
 
@@ -969,14 +975,16 @@ if (Test-Path "$InstallDir\data\kenya_locations.csv") {
 Write-Info "Initializing reference data (this may take a few minutes)..."
 & $python manage.py initialize_hub
 if ($LASTEXITCODE -ne 0) {
-    Write-Warn "initialize_hub completed with errors (exit $LASTEXITCODE). Some reference data may be missing."
+    Write-Err "initialize_hub failed (exit $LASTEXITCODE). Aborting install to prevent partial bootstrap."
+    exit 1
 }
 
 # Seed org/facility from activation data
 Write-Info "Seeding organization and facility from activation data..."
 & $python manage.py seed_from_activation --response-file="$activationFile" --skip-locations
 if ($LASTEXITCODE -ne 0) {
-    Write-Warn "seed_from_activation failed (exit $LASTEXITCODE)"
+    Write-Err "seed_from_activation failed (exit $LASTEXITCODE). Aborting install."
+    exit 1
 }
 Remove-Item -Path $activationFile -Force -ErrorAction SilentlyContinue
 
@@ -984,7 +992,8 @@ Remove-Item -Path $activationFile -Force -ErrorAction SilentlyContinue
 # if this fails the admin page will be unstyled.
 & $python manage.py collectstatic --no-input --clear
 if ($LASTEXITCODE -ne 0) {
-    Write-Warn "collectstatic failed (exit $LASTEXITCODE). Django admin will be unstyled until this is resolved."
+    Write-Err "collectstatic failed (exit $LASTEXITCODE). Aborting install."
+    exit 1
 }
 $ErrorActionPreference = $prevEAP
 Pop-Location

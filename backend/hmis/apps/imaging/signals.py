@@ -16,6 +16,7 @@ from django.dispatch import receiver
 
 from hmis.apps.billing.models import Invoice, InvoiceItem
 from hmis.apps.core.events import ImagingEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import ImagingOrderItem
 
@@ -33,6 +34,9 @@ def create_invoice_item_for_imaging(sender, instance, created, **kwargs):
     3. Link invoice item to the imaging order's encounter invoice
     4. Skip if encounter has no draft invoice (invoice already finalized)
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -127,6 +131,9 @@ def create_invoice_item_for_imaging(sender, instance, created, **kwargs):
 @receiver(post_save, sender="imaging.ImagingOrder")
 def notify_imaging_results_ready(sender, instance, created, **kwargs):
     """Notify ordering clinician when imaging results are reported."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         return
 
@@ -174,6 +181,9 @@ def notify_imaging_results_ready(sender, instance, created, **kwargs):
 @receiver(post_save, sender="imaging.DICOMStudy")
 def publish_study_received_event(sender, instance, created, **kwargs):
     """Publish event when a new DICOM study lands (upload or C-STORE)."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     try:
@@ -208,6 +218,9 @@ def publish_study_received_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender="imaging.ImagingEquipment")
 def publish_equipment_registered_event(sender, instance, created, **kwargs):
     """Publish event when new imaging equipment is registered."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     try:

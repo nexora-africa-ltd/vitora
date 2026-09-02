@@ -6,6 +6,7 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import LaboratoryEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import ReflexExecution
 
@@ -13,6 +14,9 @@ from .models import ReflexExecution
 @receiver(post_save, sender=ReflexExecution)
 def publish_reflex_event(sender, instance, created, **kwargs):
     """Publish event when a reflex rule fires."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 

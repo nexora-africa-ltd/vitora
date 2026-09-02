@@ -16,11 +16,15 @@ from hmis.apps.comments.models import ClinicalComment
 from hmis.apps.comments.websockets import broadcast_comment_event
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import CommentEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 
 @receiver(post_save, sender=ClinicalComment)
 def publish_comment_event(sender, instance, created, **kwargs):
     """Publish domain event on comment create/update."""
+    if is_sync_materialization_active():
+        return
+
     if instance.is_deleted:
         event_type = CommentEvents.COMMENT_DELETED
     elif created:
@@ -50,6 +54,9 @@ def publish_comment_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=ClinicalComment)
 def broadcast_comment_to_websocket(sender, instance, created, **kwargs):
     """Broadcast comment events to connected WebSocket clients."""
+    if is_sync_materialization_active():
+        return
+
     if not instance.content_type_id:
         return
 
@@ -81,6 +88,9 @@ def broadcast_comment_to_websocket(sender, instance, created, **kwargs):
 @receiver(post_save, sender=ClinicalComment)
 def notify_parent_author_on_reply(sender, instance, created, **kwargs):
     """Create Notification for parent comment's author when a reply is posted."""
+    if is_sync_materialization_active():
+        return
+
     if not created or instance.is_deleted:
         return
     if not instance.parent_id:

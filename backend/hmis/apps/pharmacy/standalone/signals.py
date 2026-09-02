@@ -6,6 +6,7 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import PharmacyEvents
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .models import ExternalPrescriptionRequest, WalkInCustomer
 
@@ -13,6 +14,9 @@ from .models import ExternalPrescriptionRequest, WalkInCustomer
 @receiver(post_save, sender=WalkInCustomer)
 def publish_walkin_customer_event(sender, instance, created, **kwargs):
     """Publish event when walk-in pharmacy customer is registered."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             event_type=PharmacyEvents.WALKIN_CUSTOMER_REGISTERED,
@@ -30,6 +34,9 @@ def publish_walkin_customer_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=ExternalPrescriptionRequest)
 def publish_external_prescription_event(sender, instance, created, **kwargs):
     """Publish event when external prescription is received or accepted."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             event_type=PharmacyEvents.EXTERNAL_PRESCRIPTION_RECEIVED,

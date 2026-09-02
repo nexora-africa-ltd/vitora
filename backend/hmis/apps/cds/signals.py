@@ -10,6 +10,8 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from hmis.apps.core.sync_context import is_sync_materialization_active
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +25,9 @@ def evaluate_cds_on_encounter_save(
     Only generates new alerts for triggered rules that don't already
     have a pending alert for the same patient + rule combination.
     """
+    if is_sync_materialization_active():
+        return
+
     from .engine import build_encounter_context, evaluate_rules
     from .models import CDSAlert, CDSAlertStatus, CDSRule, CDSRuleStatus
 

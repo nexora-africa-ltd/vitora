@@ -54,6 +54,9 @@ def clinic_visit_post_save(sender, instance, created, **kwargs):
     """
     Broadcast WebSocket events when ClinicVisit is created or updated.
     """
+    if is_sync_materialization_active():
+        return
+
     if getattr(instance, "_skip_broadcast", False):
         return
 
@@ -99,6 +102,9 @@ def clinic_visit_pre_save(sender, instance, **kwargs):
     """
     Track status changes to broadcast appropriate events.
     """
+    if is_sync_materialization_active():
+        return
+
     if getattr(instance, "_skip_broadcast", False):
         return
 
@@ -119,6 +125,9 @@ def clinic_visit_status_change(sender, instance, created, **kwargs):
     """
     Broadcast events when visit status changes.
     """
+    if is_sync_materialization_active():
+        return
+
     if getattr(instance, "_skip_broadcast", False):
         return
 
@@ -175,6 +184,9 @@ def clinic_visit_status_change(sender, instance, created, **kwargs):
 @receiver(pre_save, sender=ClinicSession)
 def clinic_session_pre_save(sender, instance, **kwargs):
     """Track status changes on ClinicSession for domain events."""
+    if is_sync_materialization_active():
+        return
+
     if not instance.pk:
         instance._old_session_status = None
         return
@@ -188,6 +200,9 @@ def clinic_session_pre_save(sender, instance, **kwargs):
 @receiver(post_save, sender=ClinicSession)
 def clinic_session_publish_event(sender, instance, created, **kwargs):
     """Publish domain events when ClinicSession opens or closes."""
+    if is_sync_materialization_active():
+        return
+
     old_status = getattr(instance, "_old_session_status", None)
 
     if old_status == instance.status:
@@ -236,6 +251,9 @@ def sync_clinic_resource_on_update(sender, instance, created, **kwargs):
     a Clinic is updated. Resource *creation* is handled by
     scheduling.signals.auto_create_clinic_resource.
     """
+    if is_sync_materialization_active():
+        return
+
     if created or not instance.scheduling_resource_id:
         return
     if is_sync_materialization_active():
@@ -314,6 +332,9 @@ def _sync_clinic_schedule_to_scheduling(clinic_schedule):
 @receiver(post_save, sender=ClinicSchedule)
 def sync_clinic_schedule_on_save(sender, instance, **kwargs):
     """Sync ClinicSchedule to scheduling.Schedule on create/update."""
+    if is_sync_materialization_active():
+        return
+
     if getattr(instance, "_skip_schedule_sync", False):
         return
     if is_sync_materialization_active():
@@ -327,6 +348,9 @@ def sync_clinic_schedule_on_save(sender, instance, **kwargs):
 @receiver(post_delete, sender=ClinicSchedule)
 def sync_clinic_schedule_on_delete(sender, instance, **kwargs):
     """Deactivate the corresponding scheduling.Schedule when a ClinicSchedule is deleted."""
+    if is_sync_materialization_active():
+        return
+
     if getattr(instance, "_skip_schedule_sync", False):
         return
 

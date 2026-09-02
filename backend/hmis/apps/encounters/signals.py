@@ -14,6 +14,7 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import ClinicalEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 
 from .services import VitalFlagSuggestionService
 
@@ -46,6 +47,9 @@ def auto_release_er_bed_on_close(sender, instance, **kwargs):
     This ensures bed board stays accurate without manual nurse action when
     the clinician closes/cancels the encounter.
     """
+    if is_sync_materialization_active():
+        return
+
     if not instance.pk:
         # New encounter being created — nothing to release
         return
@@ -161,6 +165,9 @@ def _broadcast_bed_auto_release(bed, encounter) -> None:
 @receiver(post_save, sender="encounters.Encounter")
 def publish_encounter_event(sender, instance, created, **kwargs):
     """Publish domain event when an encounter is created or updated."""
+    if is_sync_materialization_active():
+        return
+
     event_type = ClinicalEvents.ENCOUNTER_CREATED if created else ClinicalEvents.ENCOUNTER_UPDATED
     publish_event(
         event_type=event_type,
@@ -182,7 +189,7 @@ def publish_encounter_event(sender, instance, created, **kwargs):
     # Generate/refresh vitals-derived clinician review suggestions
     try:
         VitalFlagSuggestionService.detect_from_encounter(instance)
-    except (TypeError, ValueError):
+    except (ObjectDoesNotExist, TypeError, ValueError):
         logger.warning("Skipping vital-flag suggestion refresh for encounter %s", instance.id)
 
     # Sync SHA claim diagnosis when encounter is closed
@@ -313,6 +320,9 @@ def sync_sha_claim_diagnosis(sender, instance, **kwargs):
 
     Also triggered on encounter close (via encounter status change signal above).
     """
+    if is_sync_materialization_active():
+        return
+
     try:
         diagnosis = instance
         encounter = diagnosis.encounter
@@ -372,6 +382,9 @@ def sync_sha_claim_diagnosis(sender, instance, **kwargs):
 @receiver(pre_save, sender="encounters.VitalFlagSuggestion")
 def cache_previous_vital_flag_status(sender, instance, **kwargs):
     """Cache previous status to publish status-change events on post_save."""
+    if is_sync_materialization_active():
+        return
+
     previous = None
     if instance.pk:
         previous = sender.objects.filter(pk=instance.pk).values_list("status", flat=True).first()
@@ -381,6 +394,9 @@ def cache_previous_vital_flag_status(sender, instance, **kwargs):
 @receiver(post_save, sender="encounters.VitalFlagSuggestion")
 def publish_vital_flag_suggestion_events(sender, instance, created, **kwargs):
     """Publish domain events for vitals suggestion lifecycle changes."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         publish_event(
             event_type=ClinicalEvents.VITAL_FLAG_DETECTED,

@@ -18,6 +18,7 @@ from django.db.models.signals import post_init, post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import ReferralEvents, publish_event
+from hmis.apps.core.sync_context import is_sync_materialization_active
 from hmis.apps.referrals.models import ClinicalReferral
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,9 @@ def _referral_signal_handled_exceptions() -> tuple[type[Exception], ...]:
 @receiver(post_init, sender=ClinicalReferral)
 def _track_status(sender, instance, **kwargs):
     """Capture the database status at load time so save() can compare."""
+    if is_sync_materialization_active():
+        return
+
     instance._status_before = instance.status
 
 
@@ -74,6 +78,9 @@ def _event_payload(referral: ClinicalReferral) -> dict:
 @receiver(post_save, sender=ClinicalReferral)
 def mark_source_encounter_referred(sender, instance, created, **kwargs):
     """Mark the originating OPD encounter as referred when a referral is created."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -133,6 +140,9 @@ _NEGATIVE_TERMINAL_STATES = {"CANCELLED", "DECLINED", "EXPIRED"}
 @receiver(post_save, sender=ClinicalReferral)
 def _publish_status_change_event(sender, instance, created, **kwargs):
     """Emit a domain event when status changes (skip on creation — handled above)."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         # Reset tracking after creation
         instance._status_before = instance.status
@@ -186,6 +196,9 @@ def handle_referral_accepted(sender, instance, created, **kwargs):
         - Skipped — the patient is being sent to another facility, no internal
           downstream record is appropriate.
     """
+    if is_sync_materialization_active():
+        return
+
     if created:
         return  # Skip on initial creation
 

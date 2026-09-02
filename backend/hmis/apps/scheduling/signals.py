@@ -48,6 +48,9 @@ def publish_appointment_event(sender, instance, created, **kwargs):
     """
     Publish domain event when an appointment is created or changes status.
     """
+    if is_sync_materialization_active():
+        return
+
     if created:
         event_type = SchedulingEvents.APPOINTMENT_CREATED
     else:
@@ -105,6 +108,9 @@ def publish_schedule_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=AssignmentDecision)
 def publish_assignment_decision_event(sender, instance, created, **kwargs):
     """Publish domain event when the assignment engine records a decision."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
 
@@ -127,6 +133,9 @@ def publish_assignment_decision_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=AssignmentOverride)
 def publish_override_event(sender, instance, created, **kwargs):
     """Publish domain event when an override is created, approved, or rejected."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         event_type = SchedulingEvents.OVERRIDE_CREATED
     elif instance.approval_status == "APPROVED":
@@ -154,6 +163,9 @@ def publish_override_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=AssignmentRule)
 def publish_rule_toggle_event(sender, instance, created, **kwargs):
     """Publish domain event when a rule is activated or deactivated."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         return  # Skip initial creation
 
@@ -250,6 +262,9 @@ _SWAP_STATUS_EVENT_MAP = {
 @receiver(post_save, sender=ShiftSwapRequest)
 def publish_swap_event(sender, instance, created, **kwargs):
     """Publish domain event when a shift swap request is created or changes status."""
+    if is_sync_materialization_active():
+        return
+
     if created:
         event_type = SchedulingEvents.SWAP_REQUESTED
     else:
@@ -433,6 +448,9 @@ def auto_create_clinic_resource(sender, instance, created, **kwargs):
     Respects ``_skip_resource_sync`` for test fixtures / management commands
     that need to suppress auto-creation.
     """
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():
@@ -464,6 +482,9 @@ def auto_create_clinic_resource(sender, instance, created, **kwargs):
 @receiver(post_save, sender="inpatient.Ward")
 def auto_create_ward_resource(sender, instance, created, **kwargs):
     """Auto-create a PLACE resource when a Ward is created."""
+    if is_sync_materialization_active():
+        return
+
     if not created:
         return
     if is_sync_materialization_active():
