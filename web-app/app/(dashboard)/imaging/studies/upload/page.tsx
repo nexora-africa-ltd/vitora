@@ -160,6 +160,7 @@ export default function DICOMUploadPage() {
       let uploadedBase = 0;
       let firstStudyUid: string | null = null;
       let interruptedError: Error | null = null;
+      let firstUploadErrorMessage: string | null = null;
       let canceled = false;
 
       const controller = new AbortController();
@@ -209,6 +210,9 @@ export default function DICOMUploadPage() {
           );
         } catch (error) {
           const fileError = getUploadErrorMessage(error as Error);
+          if (!firstUploadErrorMessage) {
+            firstUploadErrorMessage = fileError;
+          }
           setServerProcessing(false);
 
           setFiles((prev) =>
@@ -242,7 +246,7 @@ export default function DICOMUploadPage() {
       }
 
       if (aggregateInstancesCreated === 0 && aggregateDuplicatesSkipped === 0) {
-        throw new Error('No valid DICOM files were uploaded.');
+        throw new Error(firstUploadErrorMessage ?? 'No valid DICOM files were uploaded.');
       }
 
       return {

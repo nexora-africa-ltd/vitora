@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { StockBatch, AdjustmentType } from '@/lib/types/pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
+import { apiClient } from '@/lib/api/client';
 import { Loader2 } from 'lucide-react';
 
 const adjustmentSchema = z.object({
@@ -98,23 +99,16 @@ export function StockAdjustmentDialog({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/pharmacy/adjustments/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          stock_batch: batch.id,
-          ...data,
-        }),
+      const response = await apiClient.post('/api/pharmacy/adjustments/', {
+        stock_batch: batch.id,
+        ...data,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create adjustment');
-      }
+      const adjustment = response.data;
 
-      const adjustment = await response.json();
+      if (!adjustment) {
+        throw new Error('Failed to create adjustment');
+      }
 
       toast({
         title: 'Adjustment Created',
@@ -128,9 +122,22 @@ export function StockAdjustmentDialog({
         onSuccess();
       }
     } catch (error) {
+      let message = 'Failed to create adjustment';
+      if (error instanceof Error) {
+        message = error.message;
+      }
+
+      const responseError = (error as { response?: { data?: { message?: string; detail?: string } } })
+        .response?.data;
+      if (responseError?.message) {
+        message = responseError.message;
+      } else if (responseError?.detail) {
+        message = responseError.detail;
+      }
+
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create adjustment',
+        description: message,
         variant: 'destructive',
       });
     } finally {

@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { DICOMViewerTool } from '@/lib/types/imaging';
+import { tokenStorage } from '@/lib/auth/storage';
 
 // =============================================================================
 // MODULE REFERENCES (populated after dynamic import)
@@ -24,6 +25,17 @@ let cornerstoneInitialized = false;
 
 // Tool names (will be populated after init)
 let TOOL_NAMES: Record<string, string> = {};
+
+function attachDICOMAuth(xhr: XMLHttpRequest): void {
+  // Web mode: send httpOnly auth cookies.
+  xhr.withCredentials = true;
+
+  // Desktop mode: attach Bearer token from local storage.
+  const accessToken = tokenStorage.getAccessToken();
+  if (accessToken) {
+    xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function resetViewportSafely(viewport: any): void {
@@ -90,9 +102,7 @@ export async function initCornerstone(): Promise<void> {
         convertFloatPixelDataToInt: false,
       },
       // Configure request headers for authentication (httpOnly cookies)
-      beforeSend: (xhr: XMLHttpRequest) => {
-        xhr.withCredentials = true; // Include httpOnly auth cookies
-      },
+      beforeSend: attachDICOMAuth,
     };
 
     // Initialize DICOM image loader with dicom-parser
@@ -105,9 +115,7 @@ export async function initCornerstone(): Promise<void> {
     // Also configure wadouri loader headers if available (alternative location)
     if (dicomImageLoader.wadouri?.configure) {
       dicomImageLoader.wadouri.configure({
-        beforeSend: (xhr: XMLHttpRequest) => {
-          xhr.withCredentials = true; // Include httpOnly auth cookies
-        },
+        beforeSend: attachDICOMAuth,
       });
     }
 
