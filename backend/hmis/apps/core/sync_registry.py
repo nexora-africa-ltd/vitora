@@ -104,6 +104,8 @@ SYNC_REGISTRY: dict[str, SyncRegistryEntry] = {
     "scheduling.Shift": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
     "scheduling.SchedulingSettings": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=3),
     "scheduling.StaffConstraint": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
+    "inpatient.Ward": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
+    "inpatient.Bed": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=5),
     "inpatient.Admission": SyncRegistryEntry(direction=SyncDirection.BOTH, priority=4),
     "immunizations.ImmunizationRecord": SyncRegistryEntry(
         direction=SyncDirection.BOTH,

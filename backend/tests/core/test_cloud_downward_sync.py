@@ -280,6 +280,74 @@ class TestCloudDownwardSyncSignal:
             for change in changes
         )
 
+    def test_auth_user_snapshot_scope_includes_diagnosis_user_without_staff_profile(
+        self,
+        sample_facility,
+        sample_organization,
+        sample_patient,
+        sample_encounter,
+        django_user_model,
+    ):
+        """Full pulls should include users referenced by scoped diagnosis rows."""
+        from hmis.apps.core.sync_views import _scope_snapshot_queryset
+        from hmis.apps.encounters.models import Diagnosis
+
+        clinician = django_user_model.objects.create_user(
+            username="diag-cloud-user",
+            email="diag-cloud-user@example.com",
+            password="testpass123",
+        )
+        Diagnosis.objects.create(
+            encounter=sample_encounter,
+            diagnosis_type="PRIMARY",
+            free_text_diagnosis="Viral syndrome",
+            certainty="confirmed",
+            diagnosed_by=clinician,
+        )
+
+        scoped = _scope_snapshot_queryset(
+            "auth.User",
+            django_user_model.objects.all(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert scoped.filter(pk=clinician.pk).exists()
+
+    def test_auth_user_snapshot_scope_includes_lab_order_user_without_staff_profile(
+        self,
+        sample_facility,
+        sample_organization,
+        sample_patient,
+        sample_encounter,
+        django_user_model,
+    ):
+        """Full pulls should include users referenced by scoped lab orders."""
+        from hmis.apps.core.sync_views import _scope_snapshot_queryset
+        from hmis.apps.laboratory.models import LabOrder
+
+        lab_user = django_user_model.objects.create_user(
+            username="lab-cloud-user",
+            email="lab-cloud-user@example.com",
+            password="testpass123",
+        )
+        LabOrder.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        scoped = _scope_snapshot_queryset(
+            "auth.User",
+            django_user_model.objects.all(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert scoped.filter(pk=lab_user.pk).exists()
+
     def test_full_downward_snapshot_skips_model_when_count_query_fails(
         self, monkeypatch, sample_facility
     ):
@@ -309,6 +377,32 @@ class TestCloudDownwardSyncSignal:
 
         assert changes == []
         assert has_more is False
+
+    def test_full_downward_snapshot_includes_global_drug_catalog(self, sample_facility):
+        """Global pharmacy catalog rows should be included in full downward snapshots."""
+        from hmis.apps.pharmacy.models import Drug
+
+        drug = Drug.objects.create(
+            code="SYNC-DRUG-001",
+            generic_name="Paracetamol",
+            form="TABLET",
+            strength="500mg",
+            unit="tablet",
+            categories=["ANALGESIC"],
+        )
+
+        changes, has_more = _build_downward_snapshot_changes(
+            tables={"pharmacy.Drug"},
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            limit=10,
+        )
+
+        assert has_more is False
+        assert any(
+            change["table"] == "pharmacy.Drug" and change["record_id"] == drug.pk
+            for change in changes
+        )
 
     @override_settings(SYNC_ENABLED=True, ENVIRONMENT="production")
     def test_tibabot_facility_key_save_creates_downward_entry(self, sample_facility):

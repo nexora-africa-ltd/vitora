@@ -350,6 +350,23 @@ class TestFullPullOrdering:
 
         assert ordered.index("core.StaffProfile") < ordered.index("core.OrgMembership")
 
+    def test_inpatient_bed_is_ordered_before_admission(self):
+        """Admissions should be emitted after ward/bed dependencies."""
+        from hmis.apps.core.sync_views import _ordered_snapshot_tables
+
+        ordered = _ordered_snapshot_tables(
+            {
+                "inpatient.Admission",
+                "inpatient.Bed",
+                "inpatient.Ward",
+                "patients.Patient",
+                "encounters.Encounter",
+            }
+        )
+
+        assert ordered.index("inpatient.Ward") < ordered.index("inpatient.Bed")
+        assert ordered.index("inpatient.Bed") < ordered.index("inpatient.Admission")
+
 
 class TestSyncPullEndpoint:
     """Tests for GET /api/sync/pull/"""

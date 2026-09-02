@@ -715,6 +715,46 @@ class TestSyncMaterializer:
         invoice.refresh_from_db()
         assert invoice.encounter_id is None
 
+    def test_materialize_invoice_nullable_encounter_fallback_accepts_field_name_payload(
+        self, sample_patient, sample_facility, test_user
+    ):
+        """Invoice fallback should work whether payload uses encounter or encounter_id."""
+        from hmis.apps.billing.models import Invoice
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        invoice = Invoice.objects.create(
+            invoice_number="INV-CLOUD-FB-002",
+            patient=sample_patient,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            created_by=test_user,
+            invoice_date=date(2026, 6, 22),
+            due_date=date(2026, 6, 22),
+            total_amount="100.00",
+            balance_due="100.00",
+        )
+
+        result = materialize_entry(
+            {
+                "table": "billing.Invoice",
+                "operation": "UPDATE",
+                "record_id": invoice.pk,
+                "data": {
+                    "id": invoice.pk,
+                    "encounter": 987654,
+                    "encounter_patient_mrn": sample_patient.mrn,
+                    "encounter_facility_mfl_code": sample_facility.mfl_code,
+                    "encounter_encounter_date": "2026-06-20",
+                    "encounter_encounter_type": "OPD",
+                    "encounter_chief_complaint": "Cloud encounter not yet present",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        invoice.refresh_from_db()
+        assert invoice.encounter_id is None
+
     def test_materialize_payment_remaps_invoice_user_and_payment_point(
         self, sample_patient, sample_facility, test_user
     ):
@@ -850,6 +890,51 @@ class TestSyncMaterializer:
 
         assert result == {"success": True}
         diagnosis = Diagnosis.objects.get(pk=57001)
+        assert diagnosis.encounter_id == sample_encounter.pk
+        assert diagnosis.icd10_code_id == code.pk
+
+    def test_materialize_diagnosis_remaps_encounter_when_complaint_hint_is_truncated(
+        self, sample_patient, sample_encounter, sample_facility
+    ):
+        """Encounter remapping should tolerate truncated chief complaint hints."""
+        from hmis.apps.core.sync_materializer import materialize_entry
+        from hmis.apps.encounters.models import Diagnosis, ICD10Code
+
+        sample_encounter.chief_complaint = (
+            "Persistent severe frontal headache with photophobia and intermittent nausea for 3 days"
+        )
+        sample_encounter.save(update_fields=["chief_complaint"])
+
+        code = ICD10Code.objects.create(
+            code="R51",
+            description="Headache",
+            category="Symptoms, signs and abnormal clinical findings",
+            chapter=18,
+        )
+
+        result = materialize_entry(
+            {
+                "table": "encounters.Diagnosis",
+                "operation": "CREATE",
+                "record_id": 57003,
+                "data": {
+                    "id": 57003,
+                    "encounter_id": sample_encounter.pk + 1000,
+                    "encounter_patient_mrn": sample_patient.mrn,
+                    "encounter_facility_mfl_code": sample_facility.mfl_code,
+                    "encounter_date": sample_encounter.encounter_date.isoformat(),
+                    "encounter_type": sample_encounter.encounter_type,
+                    "encounter_chief_complaint": sample_encounter.chief_complaint[:40],
+                    "icd10_code_id": code.pk + 1000,
+                    "icd10_code_code": code.code,
+                    "diagnosis_type": "PRIMARY",
+                    "certainty": "confirmed",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        diagnosis = Diagnosis.objects.get(pk=57003)
         assert diagnosis.encounter_id == sample_encounter.pk
         assert diagnosis.icd10_code_id == code.pk
 

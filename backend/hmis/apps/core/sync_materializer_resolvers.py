@@ -222,7 +222,12 @@ def resolve_facility_id_from_sync_data(raw_data: dict[str, Any], hint_key: str) 
 
 
 def resolve_encounter_id_from_sync_data(raw_data: dict[str, Any], prefix: str) -> int | None:
-    """Resolve a local Encounter by conservative patient/facility/date/type/complaint hints."""
+    """Resolve a local Encounter by patient/facility/date/type and optional complaint hints.
+
+    Some payloads carry a truncated ``*_chief_complaint`` hint (for compact sync
+    payload size), so strict equality against the full complaint can fail even
+    when the correct encounter exists locally.
+    """
     patient_id = resolve_patient_id_from_sync_data(
         {
             f"{prefix}_mrn": raw_data.get(f"{prefix}_patient_mrn"),
@@ -239,19 +244,34 @@ def resolve_encounter_id_from_sync_data(raw_data: dict[str, Any], prefix: str) -
     ).strip()
     chief_complaint = str(raw_data.get(f"{prefix}_chief_complaint") or "").strip()
 
-    if not (patient_id and facility_id and encounter_date and encounter_type and chief_complaint):
+    if not (patient_id and facility_id and encounter_date and encounter_type):
         return None
 
     from hmis.apps.encounters.models import Encounter
 
-    encounter = Encounter.objects.filter(
+    base_qs = Encounter.objects.filter(
         patient_id=patient_id,
         facility_id=facility_id,
         encounter_date=encounter_date,
         encounter_type=encounter_type,
-        chief_complaint=chief_complaint,
-    ).first()
-    return encounter.pk if encounter else None
+    )
+
+    if chief_complaint:
+        exact = base_qs.filter(chief_complaint=chief_complaint).first()
+        if exact:
+            return exact.pk
+
+        # Fallback for truncated hint payloads.
+        startswith = base_qs.filter(chief_complaint__startswith=chief_complaint).first()
+        if startswith:
+            return startswith.pk
+
+    # As a final fallback, return the only candidate when the base signature is unique.
+    if base_qs.count() == 1:
+        only = base_qs.first()
+        return only.pk if only else None
+
+    return None
 
 
 def resolve_clinic_id_from_sync_data(raw_data: dict[str, Any], prefix: str) -> int | None:

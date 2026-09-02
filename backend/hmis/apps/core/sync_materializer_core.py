@@ -184,6 +184,16 @@ def apply_nullable_fk_fallbacks(
 
     if model._meta.label == "billing.Invoice":
         cleaned = _fallback_invoice_encounter_if_parent_missing(model, cleaned, raw_data)
+        cleaned = _fallback_invoice_clinic_visit_if_parent_missing(model, cleaned, raw_data)
+
+    if model._meta.label == "encounters.Encounter":
+        cleaned = _fallback_encounter_clinic_visit_if_parent_missing(model, cleaned, raw_data)
+
+    if model._meta.label == "clinics.ClinicVisit":
+        cleaned = _fallback_clinic_visit_encounter_if_parent_missing(model, cleaned, raw_data)
+
+    if model._meta.label == "imaging.ImagingOrder":
+        cleaned = _fallback_imaging_order_encounter_if_parent_missing(model, cleaned, raw_data)
 
     return cleaned
 
@@ -249,6 +259,165 @@ def _fallback_invoice_encounter_if_parent_missing(
         return cleaned_data
 
     raw_encounter_id = raw_data.get("encounter_id")
+    if raw_encounter_id in (None, ""):
+        raw_encounter_id = raw_data.get("encounter")
+    if raw_encounter_id in (None, ""):
+        return cleaned_data
+
+    cleaned_data["encounter_id"] = None
+    return cleaned_data
+
+
+def _fallback_invoice_clinic_visit_if_parent_missing(
+    model,
+    cleaned_data: dict[str, Any],
+    raw_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Null ``Invoice.clinic_visit`` when clinic-visit hints indicate missing parent."""
+    clinic_visit_field = model._meta.get_field("clinic_visit")
+    if not getattr(clinic_visit_field, "null", False):
+        return cleaned_data
+
+    clinic_visit_id = cleaned_data.get("clinic_visit_id")
+    if clinic_visit_id in (None, ""):
+        return cleaned_data
+
+    from hmis.apps.clinics.models import ClinicVisit
+
+    if ClinicVisit.objects.filter(pk=clinic_visit_id).exists():
+        return cleaned_data
+
+    hint_keys = (
+        "clinic_visit_clinic_code",
+        "clinic_visit_session_date",
+        "clinic_visit_queue_number",
+        "clinic_visit_patient_mrn",
+    )
+    has_hints = any(str(raw_data.get(key) or "").strip() for key in hint_keys)
+    if not has_hints:
+        return cleaned_data
+
+    raw_clinic_visit_id = raw_data.get("clinic_visit_id")
+    if raw_clinic_visit_id in (None, ""):
+        raw_clinic_visit_id = raw_data.get("clinic_visit")
+    if raw_clinic_visit_id in (None, ""):
+        return cleaned_data
+
+    cleaned_data["clinic_visit_id"] = None
+    return cleaned_data
+
+
+def _fallback_encounter_clinic_visit_if_parent_missing(
+    model,
+    cleaned_data: dict[str, Any],
+    raw_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Null ``Encounter.clinic_visit`` when the clinic visit is not yet materialized."""
+    clinic_visit_field = model._meta.get_field("clinic_visit")
+    if not getattr(clinic_visit_field, "null", False):
+        return cleaned_data
+
+    clinic_visit_id = cleaned_data.get("clinic_visit_id")
+    if clinic_visit_id in (None, ""):
+        return cleaned_data
+
+    from hmis.apps.clinics.models import ClinicVisit
+
+    if ClinicVisit.objects.filter(pk=clinic_visit_id).exists():
+        return cleaned_data
+
+    hint_keys = (
+        "clinic_visit_clinic_code",
+        "clinic_visit_session_date",
+        "clinic_visit_queue_number",
+    )
+    has_hints = any(str(raw_data.get(key) or "").strip() for key in hint_keys)
+    if not has_hints:
+        return cleaned_data
+
+    raw_clinic_visit_id = raw_data.get("clinic_visit_id")
+    if raw_clinic_visit_id in (None, ""):
+        raw_clinic_visit_id = raw_data.get("clinic_visit")
+    if raw_clinic_visit_id in (None, ""):
+        return cleaned_data
+
+    cleaned_data["clinic_visit_id"] = None
+    return cleaned_data
+
+
+def _fallback_clinic_visit_encounter_if_parent_missing(
+    model,
+    cleaned_data: dict[str, Any],
+    raw_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Null ``ClinicVisit.encounter`` when encounter hints indicate missing parent."""
+    encounter_field = model._meta.get_field("encounter")
+    if not getattr(encounter_field, "null", False):
+        return cleaned_data
+
+    encounter_id = cleaned_data.get("encounter_id")
+    if encounter_id in (None, ""):
+        return cleaned_data
+
+    from hmis.apps.encounters.models import Encounter
+
+    if Encounter.objects.filter(pk=encounter_id).exists():
+        return cleaned_data
+
+    hint_keys = (
+        "encounter_patient_mrn",
+        "encounter_encounter_date",
+        "encounter_encounter_type",
+        "encounter_facility_mfl_code",
+        "encounter_chief_complaint",
+    )
+    has_hints = any(str(raw_data.get(key) or "").strip() for key in hint_keys)
+    if not has_hints:
+        return cleaned_data
+
+    raw_encounter_id = raw_data.get("encounter_id")
+    if raw_encounter_id in (None, ""):
+        raw_encounter_id = raw_data.get("encounter")
+    if raw_encounter_id in (None, ""):
+        return cleaned_data
+
+    cleaned_data["encounter_id"] = None
+    return cleaned_data
+
+
+def _fallback_imaging_order_encounter_if_parent_missing(
+    model,
+    cleaned_data: dict[str, Any],
+    raw_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Null ``ImagingOrder.encounter`` when encounter hints indicate missing parent."""
+    encounter_field = model._meta.get_field("encounter")
+    if not getattr(encounter_field, "null", False):
+        return cleaned_data
+
+    encounter_id = cleaned_data.get("encounter_id")
+    if encounter_id in (None, ""):
+        return cleaned_data
+
+    from hmis.apps.encounters.models import Encounter
+
+    if Encounter.objects.filter(pk=encounter_id).exists():
+        return cleaned_data
+
+    hint_keys = (
+        "encounter_patient_mrn",
+        "encounter_encounter_date",
+        "encounter_encounter_type",
+        "encounter_facility_mfl_code",
+        "encounter_chief_complaint",
+    )
+    has_hints = any(str(raw_data.get(key) or "").strip() for key in hint_keys)
+    if not has_hints:
+        return cleaned_data
+
+    raw_encounter_id = raw_data.get("encounter_id")
+    if raw_encounter_id in (None, ""):
+        raw_encounter_id = raw_data.get("encounter")
     if raw_encounter_id in (None, ""):
         return cleaned_data
 

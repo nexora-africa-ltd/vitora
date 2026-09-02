@@ -68,17 +68,47 @@ FULL_PULL_DEPENDENCIES: dict[str, set[str]] = {
         "core.Department",
     },
     "patients.Patient": {"core.Organization", "core.Facility", "core.County", "core.SubCounty"},
-    "encounters.Encounter": {"patients.Patient", "core.Facility"},
-    "encounters.Diagnosis": {"encounters.Encounter", "encounters.ICD10Code"},
+    "encounters.Encounter": {"patients.Patient", "core.Facility", "auth.User"},
+    "encounters.Diagnosis": {"encounters.Encounter", "encounters.ICD10Code", "auth.User"},
     "encounters.TreatmentPlan": {"encounters.Encounter"},
     "encounters.Medication": {"encounters.TreatmentPlan"},
     "triage.TriageAssessment": {"encounters.Encounter"},
     "pharmacy.Prescription": {"encounters.Encounter", "patients.Patient", "core.Facility"},
     "pharmacy.PrescriptionItem": {"pharmacy.Prescription"},
-    "laboratory.LabOrder": {"encounters.Encounter", "patients.Patient", "core.Facility"},
+    "laboratory.LabOrder": {
+        "encounters.Encounter",
+        "patients.Patient",
+        "core.Facility",
+        "auth.User",
+    },
     "laboratory.LabOrderItem": {"laboratory.LabOrder"},
     "laboratory.LabResult": {"laboratory.LabOrderItem"},
-    "billing.Invoice": {"patients.Patient", "core.Facility"},
+    "billing.Invoice": {
+        "patients.Patient",
+        "core.Facility",
+        "encounters.Encounter",
+        "clinics.ClinicVisit",
+        "auth.User",
+    },
+    "billing.InvoiceItem": {
+        "billing.Invoice",
+        "pharmacy.Drug",
+        "laboratory.LabOrder",
+        "imaging.ImagingOrder",
+    },
+    "billing.Payment": {"billing.Invoice", "billing.PaymentPoint", "auth.User"},
+    "clinics.ClinicVisit": {"clinics.ClinicSession", "patients.Patient", "auth.User"},
+    "imaging.ImagingOrder": {"encounters.Encounter", "patients.Patient", "auth.User"},
+    "imaging.RadiologyReport": {"imaging.ImagingOrder", "auth.User"},
+    "inpatient.Ward": {"core.Facility"},
+    "inpatient.Bed": {"inpatient.Ward"},
+    "inpatient.Admission": {
+        "inpatient.Ward",
+        "inpatient.Bed",
+        "encounters.Encounter",
+        "patients.Patient",
+        "auth.User",
+    },
 }
 
 # Tables allowed for sync (prevent arbitrary model writes)
@@ -900,9 +930,38 @@ def _scope_snapshot_queryset(model_label: str, qs, *, facility, organization):
     if model_label == "core.Facility":
         return qs.filter(organization=organization) if organization else qs.none()
     if model_label == "auth.User":
-        if organization:
-            return qs.filter(staff_profile__organization=organization)
-        return qs.none()
+        if not organization:
+            return qs.none()
+
+        scoped_filters = models.Q(staff_profile__organization=organization)
+        if facility:
+            # Include users referenced by facility-scoped clinical rows even when
+            # they do not have a staff profile (legacy/imported users).
+            scoped_filters |= models.Q(diagnoses_made__encounter__facility=facility)
+            scoped_filters |= models.Q(lab_orders__facility=facility)
+            scoped_filters |= models.Q(created_encounters__facility=facility)
+            scoped_filters |= models.Q(imaging_orders__encounter__facility=facility)
+            scoped_filters |= models.Q(
+                radiology_reports__imaging_order__encounter__facility=facility
+            )
+            scoped_filters |= models.Q(entered_results__order_item__lab_order__facility=facility)
+            scoped_filters |= models.Q(invoices_created__facility=facility)
+            scoped_filters |= models.Q(payments_received__invoice__facility=facility)
+            scoped_filters |= models.Q(admissions_processed__facility=facility)
+            scoped_filters |= models.Q(assigned_clinic_visits__facility=facility)
+            scoped_filters |= models.Q(registered_clinic_visits__facility=facility)
+
+        return qs.filter(scoped_filters).distinct()
+
+    if model_label in {
+        "encounters.ICD10Code",
+        "pharmacy.Drug",
+        "billing.ServiceCategory",
+        "billing.Service",
+        "clinical_templates.ClinicalTemplate",
+    }:
+        # Global/reference datasets are intentionally shared across tenants.
+        return qs
     if model_label == "patients.EmergencyContact":
         if organization:
             return qs.filter(patient__organization=organization)
@@ -926,6 +985,7 @@ def _scope_snapshot_queryset(model_label: str, qs, *, facility, organization):
         "laboratory.LabResult": "order_item__lab_order__facility",
         "billing.InvoiceItem": "invoice__facility",
         "billing.Payment": "invoice__facility",
+        "inpatient.Bed": "ward__facility",
         "imaging.ImagingOrder": "encounter__facility",
         "imaging.RadiologyReport": "imaging_order__encounter__facility",
     }
