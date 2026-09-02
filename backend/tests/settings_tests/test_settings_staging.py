@@ -127,3 +127,28 @@ class TestStagingSettings:
 
             importlib.reload(staging)
             assert staging.DATABASES["default"]["CONN_MAX_AGE"] == 45
+
+    def test_staging_azure_blob_media_storage_backend(self):
+        """Staging should switch default storage backend when MEDIA_BACKEND=azure_blob."""
+        with mock.patch.dict(
+            os.environ,
+            {
+                "MEDIA_BACKEND": "azure_blob",
+                "AZURE_STORAGE_CONNECTION_STRING": "UseDevelopmentStorage=true",
+                "AZURE_MEDIA_CONTAINER": "vitora-media",
+                "MEDIA_BLOB_BASE_URL": "https://storage.example.com/vitora-media",
+            },
+            clear=False,
+        ):
+            import importlib
+
+            from hmis.settings import base, staging
+
+            importlib.reload(base)
+            importlib.reload(staging)
+
+            assert (
+                staging.STORAGES["default"]["BACKEND"]
+                == "storages.backends.azure_storage.AzureStorage"
+            )
+            assert staging.MEDIA_URL == "https://storage.example.com/vitora-media/"

@@ -197,19 +197,31 @@ class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
         study_uid = instance.study_instance_uid
         study_id = instance.pk
 
+        thumb_paths = set(
+            filter(
+                None,
+                [
+                    instance.thumbnail_path,
+                    *instance.series_set.exclude(thumbnail_path="").values_list(
+                        "thumbnail_path", flat=True
+                    ),
+                    *DICOMInstance.objects.filter(series__study=instance)
+                    .exclude(thumbnail_path="")
+                    .values_list("thumbnail_path", flat=True),
+                ],
+            )
+        )
+
         # Delete PACS files first
         pacs = PACSStorageService(base_path=str(settings.MEDIA_ROOT))
         pacs.delete_study(study_uid)
 
-        # Delete thumbnails
-        thumb_dir = os.path.join(str(settings.MEDIA_ROOT), "thumbnails")
-        if os.path.isdir(thumb_dir):
-            for fname in os.listdir(thumb_dir):
-                # Thumbnails are named by SOP Instance UID
-                try:
-                    os.unlink(os.path.join(thumb_dir, fname))
-                except OSError:
-                    pass  # Best-effort cleanup
+        # Delete thumbnails associated with this study.
+        for thumb_path in thumb_paths:
+            try:
+                pacs.delete_instance(thumb_path)
+            except OSError:
+                pass  # Best-effort cleanup
 
         instance.delete()
 
@@ -275,8 +287,7 @@ class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
         included = 0
         with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_STORED) as zf:
             for inst in instances:
-                abs_path = pacs.get_absolute_path(inst.file_path)
-                if not os.path.exists(abs_path):
+                if not pacs.file_exists(inst.file_path):
                     logger.warning("DICOM file missing during download: %s", inst.file_path)
                     continue
                 arc = (
@@ -284,7 +295,7 @@ class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
                     f"{inst.series.series_instance_uid}/"
                     f"{inst.sop_instance_uid}.dcm"
                 )
-                zf.write(abs_path, arcname=arc)
+                zf.writestr(arc, pacs.read_bytes(inst.file_path))
                 included += 1
 
         if included == 0:
@@ -727,11 +738,17 @@ class DICOMUploadView(APIView):
                         or not dicom_series.thumbnail_path
                         or not dicom_study.thumbnail_path
                     ):
-                        abs_stored = pacs.get_absolute_path(stored_path)
-                        thumb_path = DICOMParsingService.generate_thumbnail(
-                            abs_stored,
-                            str(settings.MEDIA_ROOT),
-                        )
+                        with pacs.materialize_temp_file(stored_path, suffix=".dcm") as local_path:
+                            thumb_bytes, thumb_sop_uid = (
+                                DICOMParsingService.generate_thumbnail_bytes(local_path)
+                            )
+                        thumb_path = None
+                        if thumb_bytes:
+                            thumb_uid = thumb_sop_uid or m_sop_uid
+                            thumb_path = os.path.join("thumbnails", f"{thumb_uid}.jpg").replace(
+                                "\\", "/"
+                            )
+                            pacs.save_bytes(thumb_path, thumb_bytes, content_type="image/jpeg")
                         if thumb_path:
                             if not dicom_instance.thumbnail_path:
                                 dicom_instance.thumbnail_path = thumb_path
@@ -883,12 +900,10 @@ class DICOMRetrieveView(APIView):
             )
 
         pacs = PACSStorageService(base_path=str(settings.MEDIA_ROOT))
-        file_path = pacs.get_absolute_path(instance.file_path)
-
-        if not os.path.exists(file_path):
+        if not pacs.file_exists(instance.file_path):
             logger.error("DICOM file missing from PACS: %s", instance.file_path)
             return Response(
-                {"error": "DICOM file not found on disk."},
+                {"error": "DICOM file not found in storage."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -907,8 +922,7 @@ class DICOMRetrieveView(APIView):
 
         filename = f"{sop_instance_uid}.dcm"
         response = FileResponse(
-            open(file_path, "rb"),
-            content_type="application/dicom",
+            pacs.open_file(instance.file_path), content_type="application/dicom"
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
@@ -1021,12 +1035,10 @@ class DICOMFrameRenderView(APIView):
             )
 
         pacs = PACSStorageService(base_path=str(settings.MEDIA_ROOT))
-        file_path = pacs.get_absolute_path(instance.file_path)
-
-        if not os.path.exists(file_path):
+        if not pacs.file_exists(instance.file_path):
             logger.error("DICOM file missing from PACS: %s", instance.file_path)
             return Response(
-                {"error": "DICOM file not found on disk."},
+                {"error": "DICOM file not found in storage."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -1037,7 +1049,8 @@ class DICOMFrameRenderView(APIView):
         window_width = request.query_params.get("window_width")
 
         try:
-            ds = pydicom.dcmread(file_path)
+            with pacs.materialize_temp_file(instance.file_path, suffix=".dcm") as local_path:
+                ds = pydicom.dcmread(local_path)
             if not hasattr(ds, "PixelData"):
                 return Response(
                     {"error": "DICOM instance has no pixel data."},

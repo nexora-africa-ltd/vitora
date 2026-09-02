@@ -59,6 +59,8 @@ else:
 # =============================================================================
 MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = dict(globals().get("STORAGES", {}))
+STORAGES["staticfiles"] = {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}
 
 # =============================================================================
 # Security - Production-like (Azure Container Apps enforces HTTPS ingress)

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from hmis.apps.imaging.models import DICOMInstance, DICOMStudy
@@ -60,8 +57,7 @@ class Command(BaseCommand):
                 skipped_no_instance += 1
                 continue
 
-            abs_path = pacs.get_absolute_path(instance.file_path)
-            if not os.path.exists(abs_path):
+            if not pacs.file_exists(instance.file_path):
                 skipped_missing_file += 1
                 self.stdout.write(
                     self.style.WARNING(
@@ -70,13 +66,18 @@ class Command(BaseCommand):
                 )
                 continue
 
-            thumb_path = DICOMParsingService.generate_thumbnail(
-                abs_path,
-                str(settings.MEDIA_ROOT),
-            )
-            if not thumb_path:
+            with pacs.materialize_temp_file(instance.file_path, suffix=".dcm") as local_path:
+                thumb_bytes, thumb_sop_uid = DICOMParsingService.generate_thumbnail_bytes(
+                    local_path
+                )
+
+            if not thumb_bytes:
                 failed_generation += 1
                 continue
+
+            thumb_uid = thumb_sop_uid or instance.sop_instance_uid
+            thumb_path = f"thumbnails/{thumb_uid}.jpg"
+            pacs.save_bytes(thumb_path, thumb_bytes, content_type="image/jpeg")
 
             if dry_run:
                 self.stdout.write(f"{study.study_instance_uid}: would set {thumb_path}")

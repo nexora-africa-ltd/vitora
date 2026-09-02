@@ -78,6 +78,7 @@ declare -A SECRETS=(
   ["loinc-username"]="${LOINC_USERNAME:-}"
   ["loinc-password"]="${LOINC_PASSWORD:-}"
   ["pricing-nonce-secret"]="${PRICING_NONCE_SECRET:-}"
+  ["azure-storage-connection-string"]="${AZURE_STORAGE_CONNECTION_STRING:-}"
 )
 
 SECRET_ARGS=()
@@ -122,8 +123,15 @@ az containerapp update \
     "DB_CONN_MAX_AGE=${DB_CONN_MAX_AGE:-300}" \
     "ENCRYPTION_KEY=secretref:encryption-key" \
     "PII_HMAC_KEY=secretref:pii-hmac-key" \
+    "AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string" \
     "DEBUG=false" \
     "PORT=8000" \
+    "MEDIA_BACKEND=${MEDIA_BACKEND:-azure_blob}" \
+    "MEDIA_ROOT=${MEDIA_ROOT:-media}" \
+    "MEDIA_URL=${MEDIA_URL:-https://vitorareleasessa.blob.core.windows.net/vitora-media/}" \
+    "MEDIA_SERVE_FROM_DJANGO=${MEDIA_SERVE_FROM_DJANGO:-false}" \
+    "AZURE_MEDIA_CONTAINER=${AZURE_MEDIA_CONTAINER:-vitora-media}" \
+    "MEDIA_BLOB_BASE_URL=${MEDIA_BLOB_BASE_URL:-https://vitorareleasessa.blob.core.windows.net/vitora-media}" \
     "DEMO_MODE=${DEMO_MODE:-true}" \
     "ACTIVE_SHIFT_ENFORCEMENT=${ACTIVE_SHIFT_ENFORCEMENT:-false}" \
     "ONBOARDING_ENFORCEMENT=${ONBOARDING_ENFORCEMENT:-false}" \

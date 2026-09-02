@@ -10,6 +10,7 @@ rows, and auto-resolve imaging equipment from DICOM tags.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 from typing import Any
 
@@ -120,12 +121,14 @@ def persist_dicom_instance(
     # Ensure thumbnail fields are populated on first ingest contact.
     # Reuse one generated thumbnail path for all missing entities.
     if not instance.thumbnail_path or not series.thumbnail_path or not study.thumbnail_path:
-        abs_stored = pacs.get_absolute_path(stored_path)
-        thumb_path = DICOMParsingService.generate_thumbnail(
-            abs_stored,
-            str(settings.MEDIA_ROOT),
-        )
-        if thumb_path:
+        with pacs.materialize_temp_file(stored_path, suffix=".dcm") as local_path:
+            thumb_bytes, thumb_sop_uid = DICOMParsingService.generate_thumbnail_bytes(local_path)
+
+        if thumb_bytes:
+            thumb_uid = thumb_sop_uid or m_sop_uid
+            thumb_path = os.path.join("thumbnails", f"{thumb_uid}.jpg").replace("\\", "/")
+            pacs.save_bytes(thumb_path, thumb_bytes, content_type="image/jpeg")
+
             if not instance.thumbnail_path:
                 instance.thumbnail_path = thumb_path
                 instance.save(update_fields=["thumbnail_path"])

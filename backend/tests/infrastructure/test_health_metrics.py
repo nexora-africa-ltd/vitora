@@ -58,9 +58,40 @@ class TestHealthCheckExpandedPayload:
         assert "migrations" in payload["checks"]
         assert "websocket" in payload["checks"]
         assert "kms" in payload["checks"]
+        assert "media_storage" in payload["checks"]
         assert "tibabot" in payload["checks"]
         assert "tibabot_status" in payload
         assert isinstance(payload["checks"]["database"]["name"], str)
+
+    def test_health_reports_media_storage_healthy_for_blob_backend(self, api_client, mocker):
+        mocker.patch("hmis.urls.settings.MEDIA_BACKEND", "azure_blob")
+
+        fake_storage = mocker.MagicMock()
+        fake_storage.save.return_value = "health/probe/test.txt"
+        fake_storage.open.return_value.__enter__.return_value.read.return_value = (
+            b"vitora-media-probe:123"
+        )
+
+        mocker.patch("django.core.files.storage.default_storage", fake_storage)
+        mocker.patch("uuid.uuid4", return_value=mocker.Mock(hex="abc"))
+        mocker.patch("time.time", return_value=123)
+
+        response = api_client.get("/api/health/")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["checks"]["media_storage"]["status"] == "healthy"
+        fake_storage.save.assert_called_once()
+        fake_storage.delete.assert_called_once_with("health/probe/test.txt")
+
+    def test_health_reports_media_storage_skipped_for_non_blob_backend(self, api_client, mocker):
+        mocker.patch("hmis.urls.settings.MEDIA_BACKEND", "local")
+
+        response = api_client.get("/api/health/")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["checks"]["media_storage"]["status"] == "skipped"
 
     def test_health_reports_unhealthy_when_database_check_fails(self, api_client, mocker):
         mocker.patch(

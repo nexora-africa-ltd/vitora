@@ -58,6 +58,8 @@ else:
 # Insert after SecurityMiddleware
 MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = dict(globals().get("STORAGES", {}))
+STORAGES["staticfiles"] = {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}
 
 # Hub↔Cloud sync: enable so cloud queues downward changes for hub pull
 SYNC_ENABLED = True

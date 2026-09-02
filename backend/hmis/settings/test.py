@@ -93,6 +93,10 @@ AT_API_KEY = ""
 SYNC_ENABLED = False
 SYNC_SERVER_URL = "http://test-server.example.com"
 
+# Media storage in tests should stay local filesystem-based.
+MEDIA_BACKEND = "local"
+MEDIA_SERVE_FROM_DJANGO = True
+
 # Valid Fernet key for tests (NOT for production use)
 ENCRYPTION_KEY = "d6ZDi90GkEDpDprOfhaMGg1xLI62TAhOkGcnKjFLn8E="
 FIELD_ENCRYPTION_KEY = "dGVzdC1maWVsZC1lbmNyeXB0aW9uLWtleS0xMjM0NQ=="

@@ -688,11 +688,17 @@ export const imagingApi = {
       return thumbnailPath;
     }
 
-    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
     const normalizedPath = thumbnailPath
       .replace(/\\/g, '/')
       .replace(/^\/+/, '')
       .replace(/^media\//, '');
+
+    const mediaBaseUrl = process.env.NEXT_PUBLIC_MEDIA_BASE_URL?.replace(/\/+$/, '');
+    if (mediaBaseUrl) {
+      return `${mediaBaseUrl}/${normalizedPath}`;
+    }
+
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
 
     // thumbnail_path should be MEDIA_ROOT-relative. Normalize defensively so
     // values like `/media/...` and `media/...` still resolve correctly.

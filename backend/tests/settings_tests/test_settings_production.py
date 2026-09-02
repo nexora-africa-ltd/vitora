@@ -225,3 +225,40 @@ class TestProductionSettings:
         from hmis.settings import production
 
         assert production.DATABASES["default"]["CONN_MAX_AGE"] == 600
+
+    def test_production_azure_blob_media_storage_backend(self):
+        """Production should switch default storage backend when MEDIA_BACKEND=azure_blob."""
+        original_media_backend = os.environ.get("MEDIA_BACKEND")
+        original_conn = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+        original_container = os.environ.get("AZURE_MEDIA_CONTAINER")
+
+        try:
+            os.environ["MEDIA_BACKEND"] = "azure_blob"
+            os.environ["AZURE_STORAGE_CONNECTION_STRING"] = "UseDevelopmentStorage=true"
+            os.environ["AZURE_MEDIA_CONTAINER"] = "vitora-media"
+
+            import importlib
+
+            from hmis.settings import production
+
+            importlib.reload(production)
+
+            assert (
+                production.STORAGES["default"]["BACKEND"]
+                == "storages.backends.azure_storage.AzureStorage"
+            )
+        finally:
+            if original_media_backend is not None:
+                os.environ["MEDIA_BACKEND"] = original_media_backend
+            else:
+                os.environ.pop("MEDIA_BACKEND", None)
+
+            if original_conn is not None:
+                os.environ["AZURE_STORAGE_CONNECTION_STRING"] = original_conn
+            else:
+                os.environ.pop("AZURE_STORAGE_CONNECTION_STRING", None)
+
+            if original_container is not None:
+                os.environ["AZURE_MEDIA_CONTAINER"] = original_container
+            else:
+                os.environ.pop("AZURE_MEDIA_CONTAINER", None)

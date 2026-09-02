@@ -9,6 +9,7 @@ import os
 import platform
 import sys
 import time
+import uuid
 from copy import deepcopy
 from datetime import UTC, datetime
 from urllib.parse import urlparse
@@ -308,6 +309,58 @@ def _check_kms_health() -> dict[str, object]:
     return details
 
 
+def _check_media_storage_health() -> dict[str, object]:
+    """Check blob media storage by doing a write/read/delete probe."""
+    started = time.monotonic()
+    backend = str(getattr(settings, "MEDIA_BACKEND", "local") or "local")
+    details: dict[str, object] = {
+        "status": "unknown",
+        "backend": backend,
+        "storage_class": None,
+    }
+
+    if backend != "azure_blob":
+        details["status"] = "skipped"
+        details["detail"] = "Media backend is not azure_blob"
+        details["latency_ms"] = round((time.monotonic() - started) * 1000, 2)
+        return details
+
+    try:
+        from django.core.files.base import ContentFile
+        from django.core.files.storage import default_storage
+
+        details["storage_class"] = (
+            f"{default_storage.__class__.__module__}.{default_storage.__class__.__name__}"
+        )
+
+        probe_name = f"health/probe/{uuid.uuid4().hex}.txt"
+        probe_value = f"vitora-media-probe:{int(time.time())}".encode()
+
+        saved_name = default_storage.save(probe_name, ContentFile(probe_value))
+        with default_storage.open(saved_name, "rb") as handle:
+            round_trip = handle.read()
+        default_storage.delete(saved_name)
+
+        if round_trip == probe_value:
+            details["status"] = "healthy"
+        else:
+            details["status"] = "degraded"
+            details["detail"] = "Media storage round-trip value mismatch"
+
+    except ImproperlyConfigured as exc:
+        details["status"] = "unavailable"
+        details["error"] = _truncate_error(exc)
+    except _health_check_handled_exceptions() as exc:
+        details["status"] = "unhealthy"
+        details["error"] = _truncate_error(exc)
+    except Exception as exc:  # noqa: BLE001 - storage health checks must not break API health endpoint
+        details["status"] = "unhealthy"
+        details["error"] = _truncate_error(exc)
+
+    details["latency_ms"] = round((time.monotonic() - started) * 1000, 2)
+    return details
+
+
 def _check_tibabot_health() -> dict[str, object]:
     """Check TibaBot feature flag, configuration, and remote service availability."""
     cached_details = _get_cached_tibabot_health()
@@ -371,6 +424,7 @@ def _compute_overall_health(checks: dict[str, dict[str, object]]) -> str:
         checks.get("cache", {}).get("status"),
         checks.get("websocket", {}).get("status"),
         checks.get("kms", {}).get("status"),
+        checks.get("media_storage", {}).get("status"),
         checks.get("tibabot", {}).get("status"),
     ]
 
@@ -487,6 +541,7 @@ def health_check(request):
         "migrations": _check_migration_health(),
         "websocket": _check_websocket_health(),
         "kms": _check_kms_health(),
+        "media_storage": _check_media_storage_health(),
         "tibabot": _check_tibabot_health(),
     }
     overall_status = _compute_overall_health(checks)
@@ -1280,6 +1335,6 @@ urlpatterns = [
     path(".well-known/jwks.json", include("hmis.apps.ai.jwks_urls")),
 ]
 
-# Serve media files in development
-if settings.DEBUG:
+# Serve media files in development or when explicitly enabled.
+if settings.DEBUG or getattr(settings, "MEDIA_SERVE_FROM_DJANGO", False):
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

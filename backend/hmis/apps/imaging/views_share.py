@@ -255,16 +255,17 @@ class StudyShareInstanceView(ImagingSchemaMixin, APIView):
             )
 
         pacs = PACSStorageService(base_path=str(settings.MEDIA_ROOT))
-        file_path = pacs.get_absolute_path(instance.file_path)
-        if not os.path.exists(file_path):
+        if not pacs.file_exists(instance.file_path):
             return Response(
-                {"error": "DICOM file missing on disk."},
+                {"error": "DICOM file missing from storage."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         link.record_access(ip_address=get_client_ip(request))
 
-        response = FileResponse(open(file_path, "rb"), content_type="application/dicom")
+        response = FileResponse(
+            pacs.open_file(instance.file_path), content_type="application/dicom"
+        )
         response["Content-Disposition"] = f'attachment; filename="{sop_instance_uid}.dcm"'
         return response
 
@@ -300,15 +301,14 @@ class StudyShareDownloadView(ImagingSchemaMixin, APIView):
         included = 0
         with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_STORED) as zf:
             for inst in instances:
-                abs_path = pacs.get_absolute_path(inst.file_path)
-                if not os.path.exists(abs_path):
+                if not pacs.file_exists(inst.file_path):
                     continue
                 arc = (
                     f"{study.study_instance_uid}/"
                     f"{inst.series.series_instance_uid}/"
                     f"{inst.sop_instance_uid}.dcm"
                 )
-                zf.write(abs_path, arcname=arc)
+                zf.writestr(arc, pacs.read_bytes(inst.file_path))
                 included += 1
         if included == 0:
             return Response(
@@ -386,11 +386,9 @@ class StudyShareFrameView(ImagingSchemaMixin, APIView):
             )
 
         pacs = PACSStorageService(base_path=str(settings.MEDIA_ROOT))
-        file_path = pacs.get_absolute_path(instance.file_path)
-
-        if not os.path.exists(file_path):
+        if not pacs.file_exists(instance.file_path):
             return Response(
-                {"error": "DICOM file not found on disk."},
+                {"error": "DICOM file not found in storage."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -400,7 +398,8 @@ class StudyShareFrameView(ImagingSchemaMixin, APIView):
         window_width = request.query_params.get("window_width")
 
         try:
-            ds = pydicom.dcmread(file_path)
+            with pacs.materialize_temp_file(instance.file_path, suffix=".dcm") as local_path:
+                ds = pydicom.dcmread(local_path)
             if not hasattr(ds, "PixelData"):
                 return Response(
                     {"error": "DICOM instance has no pixel data."},

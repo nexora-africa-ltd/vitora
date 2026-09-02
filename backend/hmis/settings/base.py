@@ -195,8 +195,51 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Media files
-MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_BACKEND = os.getenv("MEDIA_BACKEND", "local").strip().lower()
+MEDIA_ROOT = BASE_DIR / os.getenv("MEDIA_ROOT", "media").strip()
+MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
+MEDIA_SERVE_FROM_DJANGO = os.getenv("MEDIA_SERVE_FROM_DJANGO", "false").lower() == "true"
+
+# Blob storage media backend (used by imaging PACS files and thumbnails)
+AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
+AZURE_MEDIA_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_MEDIA_STORAGE_ACCOUNT_NAME", "")
+AZURE_MEDIA_STORAGE_ACCOUNT_KEY = os.getenv("AZURE_MEDIA_STORAGE_ACCOUNT_KEY", "")
+AZURE_MEDIA_CONTAINER = os.getenv("AZURE_MEDIA_CONTAINER", "vitora-media")
+AZURE_CONNECTION_STRING = AZURE_STORAGE_CONNECTION_STRING
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": str(MEDIA_ROOT),
+            "base_url": MEDIA_URL,
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+if MEDIA_BACKEND == "azure_blob":
+    media_base_url = os.getenv("MEDIA_BLOB_BASE_URL", "").strip()
+    if media_base_url:
+        MEDIA_URL = f"{media_base_url.rstrip('/')}/"
+    elif AZURE_MEDIA_STORAGE_ACCOUNT_NAME and AZURE_MEDIA_CONTAINER:
+        MEDIA_URL = (
+            f"https://{AZURE_MEDIA_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/"
+            f"{AZURE_MEDIA_CONTAINER}/"
+        )
+
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+        "OPTIONS": {
+            "connection_string": AZURE_STORAGE_CONNECTION_STRING,
+            "account_name": AZURE_MEDIA_STORAGE_ACCOUNT_NAME,
+            "account_key": AZURE_MEDIA_STORAGE_ACCOUNT_KEY,
+            "azure_container": AZURE_MEDIA_CONTAINER,
+            "overwrite_files": False,
+        },
+    }
 
 # Upload size limits (security hardening)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB

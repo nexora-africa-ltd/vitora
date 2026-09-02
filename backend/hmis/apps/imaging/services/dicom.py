@@ -8,6 +8,7 @@ validate files, generate thumbnails, and group files by study.
 This is a stateless service class using class methods — no instantiation needed.
 """
 
+import io
 import logging
 import os
 from collections import defaultdict
@@ -317,6 +318,66 @@ class DICOMParsingService:
         ):
             logger.exception("Failed to generate thumbnail for %s", dicom_file_path)
             return None
+
+    @classmethod
+    def generate_thumbnail_bytes(
+        cls,
+        dicom_file_path: str,
+        max_size: int = 256,
+    ) -> tuple[bytes | None, str | None]:
+        """Generate JPEG thumbnail bytes and SOP Instance UID from a DICOM file."""
+        try:
+            ds = pydicom.dcmread(dicom_file_path)
+            if not hasattr(ds, "PixelData"):
+                logger.warning("No pixel data in %s, cannot generate thumbnail", dicom_file_path)
+                return None, None
+
+            pixel_array = ds.pixel_array.astype(float)
+
+            # Handle multi-frame — use first frame for thumbnail
+            if pixel_array.ndim == 3:
+                if hasattr(ds, "NumberOfFrames") and int(ds.NumberOfFrames) > 1:
+                    pixel_array = pixel_array[0]
+                elif pixel_array.shape[2] in (3, 4):
+                    pass
+                else:
+                    pixel_array = pixel_array[0]
+
+            modality = str(getattr(ds, "Modality", ""))
+            if modality == "CT":
+                pixel_array = cls._apply_ct_windowing(ds, pixel_array)
+
+            if pixel_array.ndim == 2 or pixel_array.ndim == 3:
+                p_min = pixel_array.min()
+                p_max = pixel_array.max()
+                if p_max > p_min:
+                    pixel_array = ((pixel_array - p_min) / (p_max - p_min) * 255).astype(np.uint8)
+                else:
+                    pixel_array = np.zeros_like(pixel_array, dtype=np.uint8)
+
+            img = Image.fromarray(pixel_array)
+            if img.mode not in ("L", "RGB"):
+                img = img.convert("L")
+
+            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=80)
+            sop_uid = str(getattr(ds, "SOPInstanceUID", "")) or None
+            return buffer.getvalue(), sop_uid
+
+        except (
+            InvalidDicomError,
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            OSError,
+            AssertionError,
+            ImportError,
+        ):
+            logger.exception("Failed to generate thumbnail bytes for %s", dicom_file_path)
+            return None, None
 
     @classmethod
     def map_modality(cls, dicom_modality: str) -> str:
