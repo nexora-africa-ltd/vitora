@@ -401,6 +401,10 @@ $HubId = $InstallationId
 $OrgId = $activationResponse.organization.id
 $FacilityId = $activationResponse.facility.id
 $SyncUrl = if ($activationResponse.sync_url) { $activationResponse.sync_url } else { "$CloudUrl/api/sync" }
+$CloudApiBaseUrl = $SyncUrl -replace '/api/sync/?$',''
+if (-not $CloudApiBaseUrl) {
+    $CloudApiBaseUrl = $CloudUrl
+}
 $OrgName = $activationResponse.organization.name
 $FacilityName = $activationResponse.facility.name
 $EncryptionKey = if ($activationResponse.encryption_key) { $activationResponse.encryption_key } else { "" }
@@ -432,6 +436,7 @@ Write-Host "  Organization:  $OrgName (ID: $OrgId)"
 Write-Host "  Facility:      $FacilityName (ID: $FacilityId)"
 Write-Host "  Hub ID:        $HubId"
 Write-Host "  Sync URL:      $SyncUrl"
+Write-Host "  Cloud API URL: $CloudApiBaseUrl"
 Write-Host ""
 
 # Save activation response for seeding
@@ -755,6 +760,7 @@ HUB_DB_PATH=$DataDir\hub.sqlite3
 HUB_DATA_DIR=$DataDir
 HUB_LOG_FILE=$LogDir\hub.log
 SYNC_SERVER_URL=$SyncUrl
+CLOUD_API_BASE_URL=$CloudApiBaseUrl
 LICENSE_TOKEN=$LicenseToken
 HUB_SECRETS_FILE=$HubSecretsFile
 ALLOWED_HOSTS=*

@@ -547,6 +547,109 @@ class TestSeedFromActivationCommand:
 class TestCheckIn:
     """Tests for POST /api/licensing/check-in/."""
 
+    @override_settings(CLOUD_API_BASE_URL="https://cloud.example.com")
+    def test_hub_runtime_proxies_check_in_to_cloud(self, api_client, active_installation):
+        """Hub runtime should proxy manual check-in to cloud licensing endpoint."""
+        from unittest.mock import MagicMock, patch
+
+        mock_response = MagicMock()
+        mock_response.status_code = status.HTTP_200_OK
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            "license_token": "proxied-license-token",
+            "installation_id": str(active_installation.installation_id),
+            "tier": "PROFESSIONAL",
+        }
+
+        with (
+            patch.dict("os.environ", {"DJANGO_ENV": "hub"}),
+            patch(
+                "hmis.apps.licensing.views.requests.post", return_value=mock_response
+            ) as mock_post,
+        ):
+            response = api_client.post(
+                "/api/licensing/check-in/",
+                {
+                    "installation_id": str(active_installation.installation_id),
+                    "app_version": "0.2.0",
+                },
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["license_token"] == "proxied-license-token"
+        assert mock_post.call_args.args[0] == "https://cloud.example.com/api/licensing/check-in/"
+
+    @override_settings(CLOUD_API_BASE_URL="", SYNC_SERVER_URL="https://cloud.example.com/api/sync/")
+    def test_hub_runtime_proxy_normalizes_sync_url(self, api_client, active_installation):
+        """Hub proxy should strip trailing /api/sync when deriving cloud licensing URL."""
+        from unittest.mock import MagicMock, patch
+
+        mock_response = MagicMock()
+        mock_response.status_code = status.HTTP_200_OK
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            "license_token": "proxied-license-token",
+            "installation_id": str(active_installation.installation_id),
+        }
+
+        with (
+            patch.dict("os.environ", {"DJANGO_ENV": "hub"}),
+            patch(
+                "hmis.apps.licensing.views.requests.post", return_value=mock_response
+            ) as mock_post,
+        ):
+            response = api_client.post(
+                "/api/licensing/check-in/",
+                {"installation_id": str(active_installation.installation_id)},
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert mock_post.call_args.args[0] == "https://cloud.example.com/api/licensing/check-in/"
+
+    @override_settings(CLOUD_API_BASE_URL="", SYNC_SERVER_URL="")
+    def test_hub_runtime_proxy_returns_503_without_cloud_endpoint(
+        self, api_client, active_installation
+    ):
+        """Hub proxy should return 503 when cloud endpoint settings are absent."""
+        from unittest.mock import patch
+
+        with patch.dict("os.environ", {"DJANGO_ENV": "hub"}):
+            response = api_client.post(
+                "/api/licensing/check-in/",
+                {"installation_id": str(active_installation.installation_id)},
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.data["code"] == "cloud_check_in_not_configured"
+
+    @override_settings(CLOUD_API_BASE_URL="https://cloud.example.com")
+    def test_hub_runtime_proxy_returns_502_when_cloud_json_is_invalid(
+        self, api_client, active_installation
+    ):
+        """Hub proxy should return 502 when cloud replies with non-JSON body."""
+        from unittest.mock import MagicMock, patch
+
+        mock_response = MagicMock()
+        mock_response.status_code = status.HTTP_200_OK
+        mock_response.ok = True
+        mock_response.json.side_effect = ValueError("Not JSON")
+
+        with (
+            patch.dict("os.environ", {"DJANGO_ENV": "hub"}),
+            patch("hmis.apps.licensing.views.requests.post", return_value=mock_response),
+        ):
+            response = api_client.post(
+                "/api/licensing/check-in/",
+                {"installation_id": str(active_installation.installation_id)},
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        assert response.data["code"] == "cloud_check_in_bad_response"
+
     def test_successful_check_in(self, api_client, active_installation):
         """Active installation should receive a refreshed token."""
         response = api_client.post(
@@ -561,6 +664,11 @@ class TestCheckIn:
         assert response.status_code == status.HTTP_200_OK
         assert "license_token" in response.data
         assert response.data["tier"] == "PROFESSIONAL"
+        assert response.data["app_version"] == "0.2.0"
+        assert "os_info" in response.data
+        assert "hostname" in response.data
+        assert "hardware_fingerprint" in response.data
+        assert "binary_manifest_id" in response.data
 
         # Token should be updated
         active_installation.refresh_from_db()
@@ -612,6 +720,49 @@ class TestCheckIn:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    @override_settings(CLOUD_API_BASE_URL="https://cloud.example.com")
+    def test_hub_runtime_proxy_includes_telemetry_fields_when_cloud_omits_them(
+        self, api_client, active_installation
+    ):
+        """Proxy response should still surface telemetry fields for desktop UI."""
+        from unittest.mock import MagicMock, patch
+
+        mock_response = MagicMock()
+        mock_response.status_code = status.HTTP_200_OK
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            "license_token": "proxied-license-token",
+            "installation_id": str(active_installation.installation_id),
+            "tier": "PROFESSIONAL",
+            "features": {},
+            "expires_at": 123,
+            "check_in_by": 456,
+        }
+
+        with (
+            patch.dict("os.environ", {"DJANGO_ENV": "hub"}),
+            patch("hmis.apps.licensing.views.requests.post", return_value=mock_response),
+            patch("hmis.apps.licensing.views.platform.node", return_value="hub-node-01"),
+            patch("hmis.apps.licensing.hardware.get_hardware_fingerprint", return_value="fp-123"),
+            patch(
+                "hmis.apps.licensing.hardware.compute_binary_hashes", return_value={"bin": "sha"}
+            ),
+        ):
+            response = api_client.post(
+                "/api/licensing/check-in/",
+                {
+                    "installation_id": str(active_installation.installation_id),
+                    "app_version": "0.3.0",
+                },
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["app_version"] == "0.3.0"
+        assert response.data["hostname"] == "hub-node-01"
+        assert response.data["hardware_fingerprint"] == "fp-123"
+        assert response.data["binary_manifest_id"] == ""
 
 
 # ---------------------------------------------------------------------------

@@ -43,6 +43,7 @@ import {
 import { apiClient } from '@/lib/api/client';
 import { licensingApi } from '@/lib/api/licensing';
 import { useToast } from '@/lib/hooks/use-toast';
+import type { ActivationResponse } from '@/lib/types/licensing';
 
 const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; description: string }> = [
   {
@@ -128,6 +129,8 @@ export function DesktopSettingsTab() {
   const [syncingNow, setSyncingNow] = useState(false);
   const [manualCheckIning, setManualCheckIning] = useState(false);
   const [lastLicenseCheckInAt, setLastLicenseCheckInAt] = useState<number | null>(null);
+  const [lastManualCheckInResult, setLastManualCheckInResult] =
+    useState<ActivationResponse | null>(null);
   const [hubHealth, setHubHealth] = useState<HubHealth | null>(null);
   const [hubHealthError, setHubHealthError] = useState<string>('');
   const { toast } = useToast();
@@ -266,10 +269,20 @@ export function DesktopSettingsTab() {
     try {
       const resolvedInstallationId =
         hubHealth?.hub_id || installationId || (await licensingApi.getInstallationIdAsync());
-      await licensingApi.checkIn({
+      const osInfo =
+        typeof window !== 'undefined'
+          ? `${window.navigator.platform} | ${window.navigator.userAgent}`
+          : '';
+      const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+      const response = await licensingApi.checkIn({
         installation_id: resolvedInstallationId,
         app_version: process.env.NEXT_PUBLIC_APP_VERSION || '0.0.0',
+        version: process.env.NEXT_PUBLIC_APP_VERSION || '0.0.0',
+        os_info: osInfo,
+        hostname,
       });
+      setLastManualCheckInResult(response);
 
       const now = Date.now();
       if (typeof window !== 'undefined') {
@@ -577,6 +590,25 @@ export function DesktopSettingsTab() {
                 Check In Now
               </Button>
             </div>
+
+            {lastManualCheckInResult && (
+              <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                <InfoRow
+                  label="App Version"
+                  value={lastManualCheckInResult.app_version || 'N/A'}
+                />
+                <InfoRow label="OS Info" value={lastManualCheckInResult.os_info || 'N/A'} />
+                <InfoRow label="Hostname" value={lastManualCheckInResult.hostname || 'N/A'} />
+                <InfoRow
+                  label="Hardware Fingerprint"
+                  value={lastManualCheckInResult.hardware_fingerprint || 'N/A'}
+                />
+                <InfoRow
+                  label="Binary Manifest ID"
+                  value={lastManualCheckInResult.binary_manifest_id || 'N/A'}
+                />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -430,8 +430,8 @@ class TestEnhancedCheckIn:
         assert response.status_code == http_status.HTTP_401_UNAUTHORIZED
         assert response.data["code"] == "revoked"
 
-    def test_check_in_no_manifest_skips_integrity(self, api_client, active_installation):
-        """If no manifest exists for the version, integrity check is skipped."""
+    def test_check_in_no_manifest_auto_creates_manifest(self, api_client, active_installation):
+        """If no manifest exists, first check-in should seed a ReleaseManifest."""
         response = api_client.post(
             "/api/licensing/check-in/",
             {
@@ -442,9 +442,30 @@ class TestEnhancedCheckIn:
             format="json",
         )
         assert response.status_code == http_status.HTTP_200_OK
-        # No tamper flag (can't verify)
         active_installation.refresh_from_db()
         assert active_installation.tamper_flagged_at is None
+        assert active_installation.binary_manifest_id == "9.9.9-auto"
+        manifest = ReleaseManifest.objects.get(version="9.9.9")
+        assert manifest.manifest_id == "9.9.9-auto"
+        assert manifest.file_hashes == {"some/file.so": "hash"}
+
+    def test_check_in_no_manifest_and_no_hashes_skips_integrity(
+        self, api_client, active_installation
+    ):
+        """If no manifest exists and no hashes are provided, integrity remains skipped."""
+        response = api_client.post(
+            "/api/licensing/check-in/",
+            {
+                "installation_id": "hub-test-12345",
+                "version": "9.9.8",
+            },
+            format="json",
+        )
+        assert response.status_code == http_status.HTTP_200_OK
+        active_installation.refresh_from_db()
+        assert active_installation.tamper_flagged_at is None
+        assert active_installation.binary_manifest_id == ""
+        assert not ReleaseManifest.objects.filter(version="9.9.8").exists()
 
 
 # ---------------------------------------------------------------------------

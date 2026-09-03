@@ -11,12 +11,17 @@ Endpoints:
 - POST /api/licensing/installations/{id}/revoke/ — Admin: revoke an installation
 """
 
+import logging
+import os
+import platform
 import secrets
 import uuid
 from pathlib import Path
 
 import jwt
+import requests
 from django.conf import settings
+from django.db import IntegrityError
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import permissions, serializers, status, viewsets
@@ -49,6 +54,7 @@ from .tokens import (
 )
 
 HUB_EULA_VERSION = "2026-07-31"
+logger = logging.getLogger(__name__)
 
 LicenseGenericResponseSerializer = inline_serializer(
     name="LicenseGenericResponse",
@@ -57,6 +63,11 @@ LicenseGenericResponseSerializer = inline_serializer(
         "license": serializers.CharField(required=False),
         "license_token": serializers.CharField(required=False),
         "installation_id": serializers.CharField(required=False),
+        "app_version": serializers.CharField(required=False),
+        "os_info": serializers.CharField(required=False),
+        "hostname": serializers.CharField(required=False),
+        "hardware_fingerprint": serializers.CharField(required=False),
+        "binary_manifest_id": serializers.CharField(required=False),
         "features": serializers.JSONField(required=False),
         "actions": serializers.ListField(required=False),
     },
@@ -128,6 +139,53 @@ def _load_hub_eula_text() -> str:
         return eula_path.read_text(encoding="utf-8")
     except OSError:
         return ""
+
+
+def _license_check_in_proxy_base_url() -> str:
+    """Resolve cloud API base URL for hub-side check-in proxying."""
+    cloud_base_url = (getattr(settings, "CLOUD_API_BASE_URL", "") or "").strip().rstrip("/")
+    if cloud_base_url:
+        return cloud_base_url
+
+    sync_server_url = (getattr(settings, "SYNC_SERVER_URL", "") or "").strip().rstrip("/")
+    if sync_server_url.lower().endswith("/api/sync"):
+        return sync_server_url[: -len("/api/sync")]
+    return sync_server_url
+
+
+def _should_proxy_check_in_to_cloud() -> bool:
+    """Return whether this runtime should proxy check-in requests to cloud."""
+    return os.getenv("DJANGO_ENV", "").strip().lower() == "hub"
+
+
+def _enrich_hub_check_in_payload(data: dict) -> dict:
+    """Best-effort hub-side telemetry enrichment for manual check-ins."""
+    enriched = dict(data)
+    if not enriched.get("version"):
+        enriched["version"] = enriched.get("app_version", "")
+    if not enriched.get("app_version"):
+        enriched["app_version"] = enriched.get("version", "")
+    if not enriched.get("hostname"):
+        enriched["hostname"] = platform.node()
+    if not enriched.get("os_info"):
+        enriched["os_info"] = f"{platform.system()} {platform.release()}".strip()
+
+    if not enriched.get("hardware_fingerprint") or not enriched.get("binary_hashes"):
+        try:
+            from hmis.apps.licensing.hardware import compute_binary_hashes, get_hardware_fingerprint
+
+            if not enriched.get("hardware_fingerprint"):
+                enriched["hardware_fingerprint"] = get_hardware_fingerprint()
+            if not enriched.get("binary_hashes"):
+                enriched["binary_hashes"] = compute_binary_hashes(
+                    str(getattr(settings, "BASE_DIR", ""))
+                )
+        except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError):
+            logger.info(
+                "Hub licensing telemetry enrichment skipped due to unavailable hardware helpers"
+            )
+
+    return enriched
 
 
 @extend_schema(
@@ -254,6 +312,60 @@ def check_in(request: Request) -> Response:
     data = serializer.validated_data
     installation_id = data["installation_id"]
 
+    if _should_proxy_check_in_to_cloud():
+        outbound_data = _enrich_hub_check_in_payload(data)
+        proxy_base_url = _license_check_in_proxy_base_url()
+        if not proxy_base_url:
+            return Response(
+                {
+                    "error": "Cloud licensing endpoint is not configured on this hub.",
+                    "code": "cloud_check_in_not_configured",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        proxy_url = f"{proxy_base_url}/api/licensing/check-in/"
+        try:
+            cloud_response = requests.post(proxy_url, json=outbound_data, timeout=15)
+        except requests.RequestException as exc:
+            logger.warning("Hub licensing check-in proxy network error to %s: %s", proxy_url, exc)
+            return Response(
+                {
+                    "error": "Could not reach cloud licensing endpoint.",
+                    "code": "cloud_check_in_unreachable",
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        try:
+            response_payload = cloud_response.json()
+        except ValueError:
+            response_payload = {
+                "error": "Cloud licensing endpoint returned invalid JSON.",
+                "code": "cloud_check_in_bad_response",
+            }
+            if cloud_response.ok:
+                return Response(response_payload, status=status.HTTP_502_BAD_GATEWAY)
+
+        if isinstance(response_payload, dict):
+            response_payload.setdefault(
+                "app_version", outbound_data.get("version") or outbound_data.get("app_version", "")
+            )
+            response_payload.setdefault("os_info", outbound_data.get("os_info", ""))
+            response_payload.setdefault("hostname", outbound_data.get("hostname", ""))
+            response_payload.setdefault(
+                "hardware_fingerprint", outbound_data.get("hardware_fingerprint", "")
+            )
+            response_payload.setdefault("binary_manifest_id", "")
+
+        logger.info(
+            "Hub licensing check-in proxied to %s status=%s installation_id=%s",
+            proxy_url,
+            cloud_response.status_code,
+            installation_id,
+        )
+        return Response(response_payload, status=cloud_response.status_code)
+
     try:
         installation = Installation.objects.select_related(
             "organization", "organization__subscription_plan"
@@ -351,6 +463,10 @@ def check_in(request: Request) -> Response:
         "features": payload.get("features", {}),
         "expires_at": decoded.get("exp"),
         "check_in_by": decoded.get("check_in_by"),
+        "app_version": installation.app_version,
+        "os_info": installation.os_info,
+        "hostname": installation.hostname,
+        "hardware_fingerprint": installation.hardware_fingerprint,
         "binary_manifest_id": installation.binary_manifest_id,
         "actions": [],
     }
@@ -379,8 +495,25 @@ def _verify_integrity(installation, binary_hashes: dict, app_version: str) -> di
     try:
         manifest = ReleaseManifest.objects.get(version=app_version)
     except ReleaseManifest.DoesNotExist:
-        # No manifest for this version — can't verify (expected during dev)
-        return None
+        # Bootstrap manifest from first trusted check-in payload for this version.
+        if not app_version or not binary_hashes:
+            return None
+        try:
+            manifest = ReleaseManifest.objects.create(
+                version=app_version,
+                manifest_id=f"{app_version}-auto",
+                file_hashes=binary_hashes,
+                published_at=timezone.now(),
+                signed_by=f"auto-check-in:{installation.installation_id}",
+            )
+        except IntegrityError:
+            manifest = ReleaseManifest.objects.get(version=app_version)
+        logger.info(
+            "Auto-created release manifest %s for version %s from installation %s",
+            manifest.manifest_id,
+            app_version,
+            installation.installation_id,
+        )
 
     result = manifest.verify_hashes(binary_hashes)
 

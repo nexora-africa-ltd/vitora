@@ -26,6 +26,11 @@ export interface ActivationResponse {
   features: Record<string, boolean>;
   expires_at: number;
   check_in_by: number;
+  app_version?: string;
+  os_info?: string;
+  hostname?: string;
+  hardware_fingerprint?: string;
+  binary_manifest_id?: string;
 }
 
 export interface ActivationRequest {
@@ -48,6 +53,10 @@ export interface CheckInRequest {
   installation_id: string;
   app_version?: string;
   os_info?: string;
+  version?: string;
+  hostname?: string;
+  hardware_fingerprint?: string;
+  binary_hashes?: Record<string, string>;
 }
 
 export interface InstallationListItem {

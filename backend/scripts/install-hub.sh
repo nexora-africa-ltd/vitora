@@ -356,6 +356,10 @@ LICENSE_TOKEN=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE'
 HUB_ORGANIZATION_ID=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d['organization']['id'])")
 HUB_FACILITY_ID=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d['facility']['id'])")
 SYNC_URL=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d.get('sync_url', '${CLOUD_URL}/api/sync'))")
+CLOUD_API_BASE_URL=${SYNC_URL%/api/sync}
+if [[ -z "$CLOUD_API_BASE_URL" || "$CLOUD_API_BASE_URL" == "$SYNC_URL" ]]; then
+    CLOUD_API_BASE_URL=${CLOUD_URL}
+fi
 ORG_NAME=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d['organization']['name'])")
 FACILITY_NAME=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d['facility']['name'])")
 ENCRYPTION_KEY=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d.get('encryption_key', ''))")
@@ -626,6 +630,7 @@ HUB_DB_PATH=${DB_DIR}/hub.sqlite3
 HUB_DATA_DIR=${DB_DIR}
 HUB_LOG_FILE=${LOG_DIR}/hub.log
 SYNC_SERVER_URL=${SYNC_URL}
+CLOUD_API_BASE_URL=${CLOUD_API_BASE_URL}
 LICENSE_TOKEN=${LICENSE_TOKEN}
 ALLOWED_HOSTS=*
 HUB_VERSION=${VERSION}

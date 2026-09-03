@@ -106,6 +106,7 @@ class Command(BaseCommand):
 
         updates = {
             "SYNC_SERVER_URL": sync_url,
+            "CLOUD_API_BASE_URL": base_url,
             "LICENSE_TOKEN": license_token,
         }
 
@@ -126,7 +127,9 @@ class Command(BaseCommand):
             os.chmod(env_path, 0o600)
 
         self.stdout.write(
-            self.style.SUCCESS(f"Updated {env_path} with SYNC_SERVER_URL and LICENSE_TOKEN.")
+            self.style.SUCCESS(
+                f"Updated {env_path} with SYNC_SERVER_URL, CLOUD_API_BASE_URL, and LICENSE_TOKEN."
+            )
         )
         self.stdout.write(
             self.style.SUCCESS(

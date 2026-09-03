@@ -20,6 +20,11 @@ export const ActivationResponseSchema = z.object({
   features: z.record(z.string(), z.boolean()),
   expires_at: z.number(),
   check_in_by: z.number(),
+  app_version: z.string().optional(),
+  os_info: z.string().optional(),
+  hostname: z.string().optional(),
+  hardware_fingerprint: z.string().optional(),
+  binary_manifest_id: z.string().optional(),
 });
 
 export const HubEulaResponseSchema = z.object({

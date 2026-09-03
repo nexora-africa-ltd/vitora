@@ -19,6 +19,22 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 - Placeholder section for upcoming release notes.
 
+## [1.0.14] - 2026-09-03
+
+### Hub
+
+- Added hub-side proxy behavior for `POST /api/licensing/check-in/` so manual desktop check-in can relay to cloud licensing in hub runtime.
+- Added hub check-in telemetry enrichment and response surfacing for `app_version`, `os_info`, `hostname`, `hardware_fingerprint`, and `binary_manifest_id`.
+- Added auto-seeding of `ReleaseManifest` from first check-in payload (`version` + `binary_hashes`) when a manifest does not yet exist.
+- Updated hub install/migration env wiring to persist `CLOUD_API_BASE_URL` alongside `SYNC_SERVER_URL` and `LICENSE_TOKEN`.
+
+## [Desktop 1.0.9] - 2026-09-03
+
+### Desktop
+
+- Surfaced manual license check-in telemetry fields in Desktop Settings (app version, OS info, hostname, hardware fingerprint, binary manifest ID).
+- Bumped desktop app version metadata to `1.0.9` across `desktop-app/package.json`, `desktop-app/src-tauri/Cargo.toml`, `desktop-app/src-tauri/tauri.conf.json`, and lockfiles.
+
 ## [1.0.6] - 2026-09-01
 
 ### Desktop

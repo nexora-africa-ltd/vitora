@@ -140,6 +140,11 @@ class ActivationResponseSerializer(serializers.Serializer):
     check_in_by = serializers.IntegerField(
         help_text="Unix timestamp by which the next check-in is required."
     )
+    app_version = serializers.CharField(required=False, allow_blank=True)
+    os_info = serializers.CharField(required=False, allow_blank=True)
+    hostname = serializers.CharField(required=False, allow_blank=True)
+    hardware_fingerprint = serializers.CharField(required=False, allow_blank=True)
+    binary_manifest_id = serializers.CharField(required=False, allow_blank=True)
 
 
 class InstallationListSerializer(serializers.ModelSerializer):
