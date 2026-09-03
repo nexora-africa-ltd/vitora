@@ -504,3 +504,109 @@ class TestDashboardStatsFieldRegression:
         assert stats["high"] == 1
         assert stats["medium"] == 0
         assert stats["total_unresolved"] == 2
+
+    def test_billing_stats_scope_payments_via_invoice_relation(
+        self, monkeypatch, sample_facility, sample_organization
+    ):
+        from hmis.apps.billing.models import Payment
+
+        class _AggQuery:
+            def aggregate(self, **_kwargs):
+                return {"total": 0}
+
+        captured_kwargs = {}
+
+        def _capture_filter(*_args, **kwargs):
+            captured_kwargs.update(kwargs)
+            return _AggQuery()
+
+        monkeypatch.setattr(Payment.objects, "filter", _capture_filter)
+
+        stats = dashboard_views._get_billing_stats(
+            today=timezone.localdate(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert "invoice__facility" in captured_kwargs
+        assert "facility" not in captured_kwargs
+        assert stats["revenue_today"] == 0
+
+    def test_imaging_stats_scope_via_encounter_relation(
+        self, monkeypatch, sample_facility, sample_organization
+    ):
+        from hmis.apps.imaging.models import ImagingOrder
+
+        class _CountQuery:
+            def count(self):
+                return 0
+
+        calls = []
+
+        def _capture_filter(*_args, **kwargs):
+            calls.append(kwargs)
+            return _CountQuery()
+
+        monkeypatch.setattr(ImagingOrder.objects, "filter", _capture_filter)
+
+        stats = dashboard_views._get_imaging_stats(
+            today=timezone.localdate(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert calls
+        assert all("encounter__facility" in kwargs for kwargs in calls)
+        assert all("facility" not in kwargs for kwargs in calls)
+        assert stats == {"pending_orders": 0, "completed_today": 0, "urgent_orders": 0}
+
+    def test_allied_health_uses_status_changed_at_for_physio_sessions(
+        self, monkeypatch, sample_facility, sample_organization
+    ):
+        from hmis.apps.physiotherapy.models import PhysiotherapyOrder
+
+        class _CountQuery:
+            def count(self):
+                return 0
+
+        calls = []
+
+        def _capture_filter(*_args, **kwargs):
+            calls.append(kwargs)
+            return _CountQuery()
+
+        monkeypatch.setattr(PhysiotherapyOrder.objects, "filter", _capture_filter)
+
+        stats = dashboard_views._get_allied_health_stats(
+            today=timezone.localdate(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert any("status_changed_at__date" in kwargs for kwargs in calls)
+        assert all("updated_at__date" not in kwargs for kwargs in calls)
+        assert stats["sessions_today"] >= 0
+
+    def test_allied_health_logging_extra_avoids_reserved_module_key(
+        self, monkeypatch, caplog, sample_facility, sample_organization
+    ):
+        from hmis.apps.physiotherapy.models import PhysiotherapyOrder
+
+        def _raise_timeout(*_args, **_kwargs):
+            raise TimeoutError("physio aggregate timed out")
+
+        monkeypatch.setattr(PhysiotherapyOrder.objects, "filter", _raise_timeout)
+        caplog.set_level(logging.ERROR)
+
+        stats = dashboard_views._get_allied_health_stats(
+            today=timezone.localdate(),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        assert stats["pending_referrals"] >= 0
+        assert any(
+            getattr(record, "source_module", "") == "physiotherapy"
+            and "aggregation failed" in record.message
+            for record in caplog.records
+        )

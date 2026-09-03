@@ -128,7 +128,12 @@ def dashboard_stats(request):
     return Response(stats)
 
 
-def _build_scope_filter(facility, organization, facility_field="facility"):
+def _build_scope_filter(
+    facility,
+    organization,
+    facility_field="facility",
+    organization_field="organization",
+):
     """Build a queryset filter dict for tenant scoping.
 
     Raises ValueError if no scope is available to prevent unfiltered queries.
@@ -136,7 +141,7 @@ def _build_scope_filter(facility, organization, facility_field="facility"):
     if facility:
         return {facility_field: facility}
     if organization:
-        return {"organization": organization}
+        return {organization_field: organization}
     raise ValueError(
         "No tenant scope available — refusing to build an unfiltered query. "
         "This is a security guard to prevent cross-tenant data leaks."
@@ -398,16 +403,26 @@ def _get_billing_stats(today, facility=None, organization=None) -> dict:
     try:
         from hmis.apps.billing.models import Invoice, Payment, SHAClaim
 
-        scope = _build_scope_filter(facility, organization)
+        payment_scope = _build_scope_filter(
+            facility,
+            organization,
+            facility_field="invoice__facility",
+            organization_field="invoice__organization",
+        )
+        invoice_scope = _build_scope_filter(facility, organization)
+        sha_scope = _build_scope_filter(facility, organization)
 
         # Revenue today (from completed payments)
         revenue_today = Payment.objects.filter(
-            payment_date__date=today, status=Payment.Status.COMPLETED, **scope
+            payment_date__date=today,
+            status=Payment.Status.COMPLETED,
+            **payment_scope,
         ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
         # Pending payments (unpaid invoices)
         pending_payments = Invoice.objects.filter(
-            status__in=[Invoice.Status.PENDING, Invoice.Status.PARTIAL], **scope
+            status__in=[Invoice.Status.PENDING, Invoice.Status.PARTIAL],
+            **invoice_scope,
         ).aggregate(total=Sum("balance_due"))["total"] or Decimal("0")
 
         # SHA claims pending
@@ -417,7 +432,7 @@ def _get_billing_stats(today, facility=None, organization=None) -> dict:
                 SHAClaim.ClaimStatus.SUBMITTED,
                 SHAClaim.ClaimStatus.UNDER_REVIEW,
             ],
-            **scope,
+            **sha_scope,
         ).count()
 
         return {
@@ -557,7 +572,12 @@ def _get_imaging_stats(today, facility=None, organization=None) -> dict:
     try:
         from hmis.apps.imaging.models import ImagingOrder
 
-        scope = _build_scope_filter(facility, organization)
+        scope = _build_scope_filter(
+            facility,
+            organization,
+            facility_field="encounter__facility",
+            organization_field="encounter__organization",
+        )
 
         pending_orders = ImagingOrder.objects.filter(
             status__in=["ORDERED", "SCHEDULED", "IN_PROGRESS"], **scope
@@ -774,19 +794,23 @@ def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
                 status="PENDING", **scope
             ).count()
             sessions_today += PhysiotherapyOrder.objects.filter(
-                status="IN_PROGRESS", updated_at__date=today, **scope
+                status="IN_PROGRESS", status_changed_at__date=today, **scope
             ).count()
         except ImportError as exc:
             logger.info(
                 "Optional allied health stats dependency unavailable",
-                extra={"section": "allied_health", "module": "physiotherapy", "error": str(exc)},
+                extra={
+                    "section": "allied_health",
+                    "source_module": "physiotherapy",
+                    "error": str(exc),
+                },
             )
         except _dashboard_section_exceptions() as exc:
             logger.exception(
                 "Optional allied health stats aggregation failed",
                 extra={
                     "section": "allied_health",
-                    "module": "physiotherapy",
+                    "source_module": "physiotherapy",
                     "error_class": exc.__class__.__name__,
                 },
             )
@@ -803,14 +827,18 @@ def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
         except ImportError as exc:
             logger.info(
                 "Optional allied health stats dependency unavailable",
-                extra={"section": "allied_health", "module": "nutrition", "error": str(exc)},
+                extra={
+                    "section": "allied_health",
+                    "source_module": "nutrition",
+                    "error": str(exc),
+                },
             )
         except _dashboard_section_exceptions() as exc:
             logger.exception(
                 "Optional allied health stats aggregation failed",
                 extra={
                     "section": "allied_health",
-                    "module": "nutrition",
+                    "source_module": "nutrition",
                     "error_class": exc.__class__.__name__,
                 },
             )
@@ -824,7 +852,7 @@ def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
                 "Optional allied health stats dependency unavailable",
                 extra={
                     "section": "allied_health",
-                    "module": "occupational_therapy",
+                    "source_module": "occupational_therapy",
                     "error": str(exc),
                 },
             )
@@ -833,7 +861,7 @@ def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
                 "Optional allied health stats aggregation failed",
                 extra={
                     "section": "allied_health",
-                    "module": "occupational_therapy",
+                    "source_module": "occupational_therapy",
                     "error_class": exc.__class__.__name__,
                 },
             )
@@ -845,14 +873,18 @@ def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
         except ImportError as exc:
             logger.info(
                 "Optional allied health stats dependency unavailable",
-                extra={"section": "allied_health", "module": "social_work", "error": str(exc)},
+                extra={
+                    "section": "allied_health",
+                    "source_module": "social_work",
+                    "error": str(exc),
+                },
             )
         except _dashboard_section_exceptions() as exc:
             logger.exception(
                 "Optional allied health stats aggregation failed",
                 extra={
                     "section": "allied_health",
-                    "module": "social_work",
+                    "source_module": "social_work",
                     "error_class": exc.__class__.__name__,
                 },
             )
