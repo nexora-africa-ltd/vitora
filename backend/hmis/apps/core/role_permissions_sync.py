@@ -79,18 +79,6 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "RadiologyReport": ("imaging", "radiologyreport"),
     "ImagingReport": ("imaging", "radiologyreport"),
     "DICOMStudy": ("imaging", "dicomstudy"),
-    "DICOMSeries": ("imaging", "dicomseries"),
-    "Dicomseries": ("imaging", "dicomseries"),
-    "DICOMInstance": ("imaging", "dicominstance"),
-    "Dicominstance": ("imaging", "dicominstance"),
-    "ImagingEquipment": ("imaging", "imagingequipment"),
-    "Imagingequipment": ("imaging", "imagingequipment"),
-    "ImagingIntegrationSettings": ("imaging", "imagingintegrationsettings"),
-    "Imagingintegrationsettings": ("imaging", "imagingintegrationsettings"),
-    "ReportAmendment": ("imaging", "reportamendment"),
-    "Reportamendment": ("imaging", "reportamendment"),
-    "StudyShareLink": ("imaging", "studysharelink"),
-    "Studysharelink": ("imaging", "studysharelink"),
     # imaging — standalone
     "WalkInImagingPatient": ("imaging", "walkinimagingpatient"),
     "ExternalImagingOrderRequest": ("imaging", "externalimagingorderrequest"),
@@ -276,6 +264,19 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "Aisurgicalpreopassessresult": ("ai", "aisurgicalpreopassessresult"),
     "ChatSession": ("ai", "chatsession"),
     "ChatMessage": ("ai", "chatmessage"),
+    # imaging extensions
+    "DICOMSeries": ("imaging", "dicomseries"),
+    "Dicomseries": ("imaging", "dicomseries"),
+    "DICOMInstance": ("imaging", "dicominstance"),
+    "Dicominstance": ("imaging", "dicominstance"),
+    "ImagingEquipment": ("imaging", "imagingequipment"),
+    "Imagingequipment": ("imaging", "imagingequipment"),
+    "ImagingIntegrationSettings": ("imaging", "imagingintegrationsettings"),
+    "Imagingintegrationsettings": ("imaging", "imagingintegrationsettings"),
+    "ReportAmendment": ("imaging", "reportamendment"),
+    "Reportamendment": ("imaging", "reportamendment"),
+    "StudyShareLink": ("imaging", "studysharelink"),
+    "Studysharelink": ("imaging", "studysharelink"),
     # quality
     "QuarterlyReport": ("quality", "quarterlyreport"),
     "AnnualReport": ("quality", "annualreport"),
@@ -408,18 +409,19 @@ _UNKNOWN_MODEL_WARNED: set[str] = set()
 
 
 def _resolve_model_target(model_name: str) -> tuple[str, str] | None:
-    """Resolve a matrix model key to an ``(app_label, model)`` pair.
+    """Resolve a matrix model key to (app_label, model) with dynamic fallback.
 
-    1) Use the static ``MODEL_MAPPING`` when available.
-    2) Fallback to a ContentType lookup by lower-cased model name so
-       legacy/case-drift keys can still resolve on hubs.
+    If a key is not present in MODEL_MAPPING, try a ContentType lookup using the
+    lower-cased model token so legacy matrix keys like `Aiadvisoryorderlink` can
+    still resolve without noisy warnings.
     """
     mapped = MODEL_MAPPING.get(model_name)
     if mapped is not None:
         return mapped
 
+    cached = _DYNAMIC_MODEL_MAPPING_CACHE.get(model_name)
     if model_name in _DYNAMIC_MODEL_MAPPING_CACHE:
-        return _DYNAMIC_MODEL_MAPPING_CACHE[model_name]
+        return cached
 
     normalized = (model_name or "").strip().lower()
     if not normalized:
