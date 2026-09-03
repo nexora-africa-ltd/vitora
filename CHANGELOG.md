@@ -19,6 +19,12 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 - Placeholder section for upcoming release notes.
 
+## [1.0.15] - 2026-09-03
+
+### Hub
+
+- Improved manual desktop license check-in failure UX by surfacing cloud API error messages and error `code` values in the settings toast so operators can diagnose rejected check-ins without opening server logs.
+
 ## [1.0.14] - 2026-09-03
 
 ### Hub

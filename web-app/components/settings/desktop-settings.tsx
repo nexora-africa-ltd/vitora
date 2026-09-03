@@ -89,6 +89,35 @@ interface HubSyncNowResult {
   failed_after: number;
 }
 
+function extractApiErrorDetail(error: unknown): { message: string; code?: string } {
+  if (error && typeof error === 'object') {
+    const responseData = (error as { response?: { data?: unknown } }).response?.data;
+    if (responseData && typeof responseData === 'object') {
+      const data = responseData as Record<string, unknown>;
+      const message =
+        (typeof data.detail === 'string' && data.detail) ||
+        (typeof data.error === 'string' && data.error) ||
+        '';
+      const code = typeof data.code === 'string' ? data.code : undefined;
+      if (message || code) {
+        return {
+          message: message || 'Request rejected by server.',
+          code,
+        };
+      }
+    }
+
+    const fallbackMessage = (error as { message?: unknown }).message;
+    if (typeof fallbackMessage === 'string' && fallbackMessage.trim()) {
+      return { message: fallbackMessage };
+    }
+  }
+
+  return {
+    message: 'Could not complete a manual check-in. Confirm internet access and try again.',
+  };
+}
+
 function formatDateTime(value?: string | null) {
   if (!value) return 'Never';
   return new Intl.DateTimeFormat(undefined, {
@@ -294,10 +323,13 @@ export function DesktopSettingsTab() {
         title: 'License check-in complete',
         description: 'Desktop license token has been refreshed successfully.',
       });
-    } catch {
+    } catch (error) {
+      const failure = extractApiErrorDetail(error);
       toast({
         title: 'License check-in failed',
-        description: 'Could not complete a manual check-in. Confirm internet access and try again.',
+        description: failure.code
+          ? `${failure.message} (code: ${failure.code})`
+          : failure.message,
         variant: 'destructive',
       });
     } finally {
