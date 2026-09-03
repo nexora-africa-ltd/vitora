@@ -80,3 +80,15 @@ export const LISOnboardingSeedResultSchema = z.object({
   created_instruments: z.number(),
   created_channels: z.number(),
 });
+
+export const LISOnboardingImportErrorSchema = z.object({
+  row: z.number(),
+  error: z.string(),
+});
+
+export const LISOnboardingImportResultSchema = z.object({
+  created: z.number(),
+  updated: z.number(),
+  errors: z.array(LISOnboardingImportErrorSchema),
+  error_count: z.number(),
+});

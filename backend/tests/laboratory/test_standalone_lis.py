@@ -823,3 +823,55 @@ class TestStandaloneOnboardingSeeding:
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+class TestStandaloneOnboardingCSV:
+    """Tests for LIS onboarding CSV templates and import workflow."""
+
+    def test_download_test_catalog_template(self, authenticated_client, sample_facility):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        response = authenticated_client.get(
+            "/api/lab/standalone/onboarding/templates/test-catalog/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert "code,name,short_name" in response.content.decode("utf-8")
+
+    def test_import_test_catalog_csv(self, authenticated_client, sample_facility):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        csv_content = (
+            "code,name,short_name,category,specimen_type,turnaround_hours,cost,result_type,is_active\n"
+            "GLU,Glucose,GLU,CHEMISTRY,SERUM,8,300,NUMERIC,true\n"
+        )
+        upload = SimpleUploadedFile("test-catalog.csv", csv_content.encode("utf-8"), "text/csv")
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/import/test-catalog/",
+            {"file": upload},
+            format="multipart",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] >= 1
+        assert response.data["error_count"] == 0
+
+    def test_import_test_catalog_csv_missing_columns(self, authenticated_client, sample_facility):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        csv_content = "code,name\nGLU,Glucose\n"
+        upload = SimpleUploadedFile("invalid.csv", csv_content.encode("utf-8"), "text/csv")
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/import/test-catalog/",
+            {"file": upload},
+            format="multipart",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "missing_columns" in response.data

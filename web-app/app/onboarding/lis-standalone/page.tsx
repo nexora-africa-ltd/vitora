@@ -4,7 +4,7 @@
 // Inputs: reads authenticated facility context and calls LIS onboarding status/seed APIs.
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
@@ -33,6 +33,8 @@ export default function LISStandaloneOnboardingPage() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<LISOnboardingSeedResult | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
@@ -77,6 +79,45 @@ export default function LISStandaloneOnboardingPage() {
       setError(err instanceof Error ? err.message : 'Could not complete LIS onboarding.');
     } finally {
       setIsCompleting(false);
+    }
+  };
+
+  const handleDownloadTemplate = async (
+    templateName: 'test-catalog' | 'specimen-workflow' | 'analyzer-channel' | 'reference-ranges'
+  ) => {
+    try {
+      const csv = await standaloneLisApi.downloadTemplate(templateName);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${templateName}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not download template.');
+    }
+  };
+
+  const handleImportTestCatalog = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    setImportResult(null);
+    setError(null);
+    try {
+      const result = await standaloneLisApi.importTestCatalog(file);
+      setImportResult(
+        `Imported test catalog: ${result.created} created, ${result.updated} updated, ${result.error_count} row errors.`
+      );
+      await fetchStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not import test catalog CSV.');
+    } finally {
+      setIsImporting(false);
+      event.target.value = '';
     }
   };
 
@@ -182,6 +223,41 @@ export default function LISStandaloneOnboardingPage() {
                 Seed Reference Lab
               </Button>
             </div>
+          </div>
+
+          <div className="rounded-md border border-border p-3">
+            <p className="mb-2 text-sm font-medium">CSV templates and import</p>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Download onboarding templates and import test catalog data from CSV.
+            </p>
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button variant="outline" onClick={() => handleDownloadTemplate('test-catalog')}>
+                Template: Test Catalog
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleDownloadTemplate('specimen-workflow')}
+              >
+                Template: Workflow
+              </Button>
+              <Button variant="outline" onClick={() => handleDownloadTemplate('analyzer-channel')}>
+                Template: Analyzer
+              </Button>
+              <Button variant="outline" onClick={() => handleDownloadTemplate('reference-ranges')}>
+                Template: Reference Ranges
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleImportTestCatalog}
+                disabled={isImporting}
+                className="text-sm"
+              />
+              {isImporting ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+            </div>
+            {importResult ? <p className="mt-2 text-xs text-muted-foreground">{importResult}</p> : null}
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">

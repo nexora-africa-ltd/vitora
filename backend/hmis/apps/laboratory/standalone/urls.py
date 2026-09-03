@@ -8,8 +8,10 @@ from .views import (
     ExternalOrderRequestViewSet,
     StandaloneOrderViewSet,
     WalkInPatientViewSet,
+    standalone_onboarding_import_test_catalog,
     standalone_onboarding_seed_defaults,
     standalone_onboarding_status,
+    standalone_onboarding_template_download,
 )
 
 router = DefaultRouter()
@@ -26,6 +28,16 @@ urlpatterns = [
         "onboarding/seed-defaults/",
         standalone_onboarding_seed_defaults,
         name="standalone-lis-onboarding-seed-defaults",
+    ),
+    path(
+        "onboarding/templates/<str:template_name>/",
+        standalone_onboarding_template_download,
+        name="standalone-lis-onboarding-template-download",
+    ),
+    path(
+        "onboarding/import/test-catalog/",
+        standalone_onboarding_import_test_catalog,
+        name="standalone-lis-onboarding-import-test-catalog",
     ),
     path(
         "orders/create/",

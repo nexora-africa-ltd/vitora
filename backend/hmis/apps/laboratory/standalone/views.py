@@ -1,7 +1,9 @@
 # Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
 """Views for standalone LIS operations."""
 
+import csv
 import logging
+from io import StringIO
 
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -36,25 +38,34 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 
-@extend_schema(exclude=True)
-@api_view(["GET", "POST"])
-@drf_permission_classes([IsAuthenticated, LaboratoryModuleRequired, LISStandaloneRequired])
-def standalone_onboarding_status(request):
-    """Get/complete LIS standalone onboarding checklist for the active facility."""
+def _get_standalone_facility(request):
+    """Resolve and validate standalone LIS facility context for onboarding endpoints."""
     profile = getattr(request.user, "staff_profile", None)
     facility = getattr(profile, "primary_facility", None)
 
     if not facility:
-        return Response(
+        return None, Response(
             {"detail": "No facility is linked to your staff profile."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if facility.operating_mode != facility.OperatingMode.STANDALONE_LAB:
-        return Response(
-            {"detail": "LIS standalone onboarding is only available in standalone lab mode."},
+        return None, Response(
+            {"detail": "This endpoint is only available in standalone lab mode."},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+    return facility, None
+
+
+@extend_schema(exclude=True)
+@api_view(["GET", "POST"])
+@drf_permission_classes([IsAuthenticated, LaboratoryModuleRequired, LISStandaloneRequired])
+def standalone_onboarding_status(request):
+    """Get/complete LIS standalone onboarding checklist for the active facility."""
+    facility, error_response = _get_standalone_facility(request)
+    if error_response:
+        return error_response
 
     steps = facility.get_lis_onboarding_checklist()
 
@@ -123,20 +134,9 @@ def standalone_onboarding_status(request):
 @drf_permission_classes([IsAuthenticated, LaboratoryModuleRequired, LISStandaloneRequired])
 def standalone_onboarding_seed_defaults(request):
     """Seed default LIS onboarding data for a selected lab archetype."""
-    profile = getattr(request.user, "staff_profile", None)
-    facility = getattr(profile, "primary_facility", None)
-
-    if not facility:
-        return Response(
-            {"detail": "No facility is linked to your staff profile."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    if facility.operating_mode != facility.OperatingMode.STANDALONE_LAB:
-        return Response(
-            {"detail": "Default seeding is only available in standalone lab mode."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    facility, error_response = _get_standalone_facility(request)
+    if error_response:
+        return error_response
 
     archetype = str(request.data.get("archetype", "small")).strip().lower()
     if archetype not in {"small", "medium", "reference"}:
@@ -240,6 +240,177 @@ def standalone_onboarding_seed_defaults(request):
             "created_tests": created_tests,
             "created_instruments": created_instruments,
             "created_channels": created_channels,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@extend_schema(exclude=True)
+@api_view(["GET"])
+@drf_permission_classes([IsAuthenticated, LaboratoryModuleRequired, LISStandaloneRequired])
+def standalone_onboarding_template_download(request, template_name: str):
+    """Return CSV template content for LIS onboarding imports."""
+    facility, error_response = _get_standalone_facility(request)
+    if error_response:
+        return error_response
+
+    _ = facility
+    templates = {
+        "test-catalog": (
+            "code,name,short_name,category,specimen_type,turnaround_hours,cost,result_type,is_active\n"
+            "CBC,Complete Blood Count,CBC,HEMATOLOGY,BLOOD,6,500,NUMERIC,true\n"
+        ),
+        "specimen-workflow": (
+            "workflow_key,enabled,value\n"
+            "require_specimen_receipt,true,true\n"
+            "auto_print_labels_on_collect,true,true\n"
+            "tat_warning_threshold_percent,true,75\n"
+        ),
+        "analyzer-channel": (
+            "instrument_code,instrument_name,manufacturer,protocol,host,port,encoding,channel_name,is_active\n"
+            "AUTO-01,Main Analyzer,Generic,TCP,127.0.0.1,5000,ascii,Primary Channel,true\n"
+        ),
+        "reference-ranges": (
+            "test_code,gender,age_band,normal_range,critical_low,critical_high,unit\n"
+            "CBC,F,adult,4.0-10.0,2.0,25.0,x10^9/L\n"
+        ),
+    }
+
+    content = templates.get(template_name)
+    if not content:
+        return Response(
+            {
+                "detail": (
+                    "Unknown template. Use one of: test-catalog, specimen-workflow, "
+                    "analyzer-channel, reference-ranges."
+                )
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    response = Response(content, content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{template_name}.csv"'
+    return response
+
+
+@extend_schema(exclude=True)
+@api_view(["POST"])
+@drf_permission_classes([IsAuthenticated, LaboratoryModuleRequired, LISStandaloneRequired])
+def standalone_onboarding_import_test_catalog(request):
+    """Import TestCatalog entries from CSV for LIS onboarding."""
+    facility, error_response = _get_standalone_facility(request)
+    if error_response:
+        return error_response
+
+    upload = request.FILES.get("file")
+    if upload is None:
+        return Response({"detail": "CSV file is required under 'file'."}, status=400)
+
+    try:
+        decoded = upload.read().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return Response({"detail": "CSV file must be UTF-8 encoded."}, status=400)
+
+    reader = csv.DictReader(StringIO(decoded))
+    required_columns = {
+        "code",
+        "name",
+        "short_name",
+        "category",
+        "specimen_type",
+        "turnaround_hours",
+        "cost",
+        "result_type",
+    }
+    missing = sorted(required_columns - set(reader.fieldnames or []))
+    if missing:
+        return Response(
+            {"detail": "Missing required CSV columns.", "missing_columns": missing},
+            status=400,
+        )
+
+    allowed_categories = {choice[0] for choice in TestCatalog.TEST_CATEGORIES}
+    allowed_specimen_types = {choice[0] for choice in TestCatalog.SPECIMEN_TYPES}
+    allowed_result_types = {choice[0] for choice in TestCatalog.RESULT_TYPES}
+
+    created = 0
+    updated = 0
+    errors = []
+
+    for index, row in enumerate(reader, start=2):
+        code = str(row.get("code", "")).strip().upper()
+        name = str(row.get("name", "")).strip()
+        short_name = str(row.get("short_name", "")).strip()
+        category = str(row.get("category", "")).strip().upper()
+        specimen_type = str(row.get("specimen_type", "")).strip().upper()
+        result_type = str(row.get("result_type", "")).strip().upper()
+        is_active = str(row.get("is_active", "true")).strip().lower() not in {
+            "false",
+            "0",
+            "no",
+        }
+
+        try:
+            turnaround_hours = int(str(row.get("turnaround_hours", "24")).strip())
+            cost = float(str(row.get("cost", "0")).strip())
+        except ValueError:
+            errors.append(
+                {
+                    "row": index,
+                    "error": "turnaround_hours and cost must be numeric values.",
+                }
+            )
+            continue
+
+        row_errors = []
+        if not code:
+            row_errors.append("code is required")
+        if not name:
+            row_errors.append("name is required")
+        if not short_name:
+            row_errors.append("short_name is required")
+        if category not in allowed_categories:
+            row_errors.append(f"category must be one of: {', '.join(sorted(allowed_categories))}")
+        if specimen_type not in allowed_specimen_types:
+            row_errors.append(
+                f"specimen_type must be one of: {', '.join(sorted(allowed_specimen_types))}"
+            )
+        if result_type not in allowed_result_types:
+            row_errors.append(
+                f"result_type must be one of: {', '.join(sorted(allowed_result_types))}"
+            )
+
+        if row_errors:
+            errors.append({"row": index, "error": "; ".join(row_errors)})
+            continue
+
+        _, was_created = TestCatalog.objects.update_or_create(
+            facility=facility,
+            organization=facility.organization,
+            code=code,
+            defaults={
+                "name": name,
+                "short_name": short_name,
+                "category": category,
+                "specimen_type": specimen_type,
+                "turnaround_hours": turnaround_hours,
+                "cost": cost,
+                "result_type": result_type,
+                "is_active": is_active,
+            },
+        )
+
+        if was_created:
+            created += 1
+        else:
+            updated += 1
+
+    return Response(
+        {
+            "created": created,
+            "updated": updated,
+            "errors": errors,
+            "error_count": len(errors),
         },
         status=status.HTTP_200_OK,
     )

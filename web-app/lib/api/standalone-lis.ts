@@ -12,6 +12,7 @@ import {
   ExternalOrderListSchema,
   LISOnboardingStatusSchema,
   LISOnboardingSeedResultSchema,
+  LISOnboardingImportResultSchema,
 } from '@/lib/schemas/standalone-lis.schema';
 import { LabOrderSchema } from '@/lib/schemas/laboratory.schema';
 import type {
@@ -21,6 +22,7 @@ import type {
   ExternalOrderRequest,
   LISOnboardingStatus,
   LISOnboardingSeedResult,
+  LISOnboardingImportResult,
 } from '@/lib/types/standalone-lis';
 import type { LabOrder } from '@/lib/types/laboratory';
 
@@ -62,6 +64,24 @@ export const standaloneLisApi = {
     const response = await apiClient.post(`${BASE}/onboarding/seed-defaults/`, { archetype });
     return parseResponse(LISOnboardingSeedResultSchema, response.data, {
       context: 'standaloneLisApi.seedOnboardingDefaults',
+    });
+  },
+
+  async downloadTemplate(templateName: 'test-catalog' | 'specimen-workflow' | 'analyzer-channel' | 'reference-ranges'): Promise<string> {
+    const response = await apiClient.get(`${BASE}/onboarding/templates/${templateName}/`, {
+      responseType: 'text',
+    });
+    return String(response.data ?? '');
+  },
+
+  async importTestCatalog(file: File): Promise<LISOnboardingImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post(`${BASE}/onboarding/import/test-catalog/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return parseResponse(LISOnboardingImportResultSchema, response.data, {
+      context: 'standaloneLisApi.importTestCatalog',
     });
   },
 

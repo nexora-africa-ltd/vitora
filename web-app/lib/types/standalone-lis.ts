@@ -103,3 +103,15 @@ export interface LISOnboardingSeedResult {
   created_instruments: number;
   created_channels: number;
 }
+
+export interface LISOnboardingImportError {
+  row: number;
+  error: string;
+}
+
+export interface LISOnboardingImportResult {
+  created: number;
+  updated: number;
+  errors: LISOnboardingImportError[];
+  error_count: number;
+}
