@@ -30,6 +30,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "eula_version",
                 "installation_id",
                 "name",
+                "os",
                 "os_info",
             }
         ),
@@ -38,12 +39,17 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ActivationResponseSerializer,
         frozenset(
             {
+                "app_version",
+                "binary_manifest_id",
                 "check_in_by",
                 "expires_at",
                 "features",
+                "hardware_fingerprint",
+                "hostname",
                 "installation_id",
                 "license_token",
                 "org_name",
+                "os_info",
                 "tier",
             }
         ),

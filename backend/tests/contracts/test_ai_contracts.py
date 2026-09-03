@@ -323,6 +323,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         AIStatusResponseSerializer,
         frozenset(
             {
+                "chat_access",
                 "demo_mode",
                 "enabled",
                 "rag_initialized",

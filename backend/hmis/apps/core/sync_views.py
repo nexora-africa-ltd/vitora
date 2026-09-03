@@ -1139,7 +1139,16 @@ def _build_downward_snapshot_changes(
         # Iterate defensively: a single corrupt row (bad JSONField, invalid
         # DateField, missing FK target) raised here would otherwise crash the
         # entire /api/sync/pull/ endpoint with a 500.
-        iterator = qs_to_emit.iterator() if use_streaming_fallback else iter(qs_to_emit)
+        if use_streaming_fallback:
+            if not hasattr(qs_to_emit, "iterator"):
+                logger.warning(
+                    "Skipping %s downward snapshot stream fallback; queryset has no iterator().",
+                    model_label,
+                )
+                continue
+            iterator = qs_to_emit.iterator()
+        else:
+            iterator = iter(qs_to_emit)
 
         streamed_rows = 0
         while True:

@@ -82,8 +82,8 @@ POWERSYNC_JWT_KID = os.getenv("POWERSYNC_JWT_KID", "vitora-hmis-1")
 POWERSYNC_JWT_AUDIENCE = os.getenv("POWERSYNC_JWT_AUDIENCE", "powersync")
 
 # Security settings for production
-# Note: Render handles SSL termination, so we may need to disable redirect
-SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "true").lower() == "true"
+# Always enforce HTTPS redirect in production.
+SECURE_SSL_REDIRECT = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # Trust Render's proxy
 
 # MFA enforcement — always on in production (DHA compliance)
@@ -219,3 +219,19 @@ WEBAUTHN_ORIGIN = os.getenv("WEBAUTHN_ORIGIN", "")
 # =============================================================================
 FRONTEND_URL = os.getenv("FRONTEND_URL", "")
 DOCUMENT_VERIFICATION_URL = os.getenv("DOCUMENT_VERIFICATION_URL", "")
+
+# Re-evaluate media storage backend from environment at production import time.
+# Tests reload only this module (not base.py), so we must derive storage config
+# here as well to honor MEDIA_BACKEND changes.
+_media_backend = os.getenv("MEDIA_BACKEND", "local").strip().lower()
+if _media_backend == "azure_blob":
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+        "OPTIONS": {
+            "connection_string": os.getenv("AZURE_STORAGE_CONNECTION_STRING", ""),
+            "account_name": os.getenv("AZURE_MEDIA_STORAGE_ACCOUNT_NAME", ""),
+            "account_key": os.getenv("AZURE_MEDIA_STORAGE_ACCOUNT_KEY", ""),
+            "azure_container": os.getenv("AZURE_MEDIA_CONTAINER", "vitora-media"),
+            "overwrite_files": False,
+        },
+    }

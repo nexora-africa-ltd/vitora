@@ -95,7 +95,20 @@ function Build-HubServiceEnvironment {
     return @(
         "DJANGO_ENV=hub",
         "DJANGO_SETTINGS_MODULE=$(Get-HubEnvValue 'DJANGO_SETTINGS_MODULE' 'hmis.settings.hub')",
-        "HUB_SECRETS_FILE=$(Get-HubEnvValue 'HUB_SECRETS_FILE' (Join-Path $InstallDir 'secrets\hub-secrets.dpapi.json'))"
+        "HUB_SECRETS_FILE=$(Get-HubEnvValue 'HUB_SECRETS_FILE' (Join-Path $InstallDir 'secrets\hub-secrets.dpapi.json'))",
+        "TIBABOT_ENABLED=$(Get-HubEnvValue 'TIBABOT_ENABLED' 'true')",
+        "TIBABOT_API_URL=$(Get-HubEnvValue 'TIBABOT_API_URL')",
+        "TIBABOT_API_KEY=$(Get-HubEnvValue 'TIBABOT_API_KEY')",
+        "TIBABOT_TIMEOUT=$(Get-HubEnvValue 'TIBABOT_TIMEOUT' '30')",
+        "TIBABOT_JWT_PRIVATE_KEY=$(Get-HubEnvValue 'TIBABOT_JWT_PRIVATE_KEY')",
+        "TIBABOT_JWT_SECRET=$(Get-HubEnvValue 'TIBABOT_JWT_SECRET')",
+        "TIBABOT_JWT_ISSUER=$(Get-HubEnvValue 'TIBABOT_JWT_ISSUER' 'vitora-hmis')",
+        "TIBABOT_JWT_AUDIENCE=$(Get-HubEnvValue 'TIBABOT_JWT_AUDIENCE' 'tibabot')",
+        "TIBABOT_JWT_EXPIRY_SECONDS=$(Get-HubEnvValue 'TIBABOT_JWT_EXPIRY_SECONDS' '300')",
+        "TIBABOT_JWKS_URL=$(Get-HubEnvValue 'TIBABOT_JWKS_URL')",
+        "TIBABOT_ADMIN_KEY=$(Get-HubEnvValue 'TIBABOT_ADMIN_KEY')",
+        "HUB_CLOUD_AUTH_ENABLED=$(Get-HubEnvValue 'HUB_CLOUD_AUTH_ENABLED' 'true')",
+        "HUB_CLOUD_AUTH_URL=$(Get-HubEnvValue 'HUB_CLOUD_AUTH_URL')"
     ) -join "`n"
 }
 
