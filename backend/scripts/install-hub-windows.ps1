@@ -739,7 +739,7 @@ if (Test-Path "$InstallDir\requirements-hub.txt") {
 
 # --- Generate Secret Key ---
 $secretKey = & $python -c "import secrets; print(secrets.token_urlsafe(50))"
-if (-not $PiiHmacKey) {
+if ((-not $PiiHmacKey) -or ($PiiHmacKey -eq "dev-hmac-key-not-for-production")) {
     Write-Warn "Activation response did not include pii_hmac_key; generating a local fallback. Cross-system PII exact-match lookup may differ."
     $PiiHmacKey = & $python -c "import secrets; print(secrets.token_urlsafe(32))"
 }

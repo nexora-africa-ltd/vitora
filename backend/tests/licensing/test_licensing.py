@@ -328,6 +328,25 @@ class TestActivation:
         assert "departments" in response.data["bootstrap"]
         assert "roles" in response.data["bootstrap"]
 
+    @override_settings(PII_HMAC_KEY="dev-hmac-key-not-for-production")
+    def test_activation_does_not_expose_dev_default_pii_hmac_key(
+        self, api_client, pending_installation
+    ):
+        """Activation should never propagate development placeholder HMAC keys."""
+        response = api_client.post(
+            "/api/licensing/activate/",
+            {
+                "installation_id": str(uuid.uuid4()),
+                "activation_code": "TEST-ACTIVATION-CODE",
+                "eula_accepted": True,
+                "eula_version": HUB_EULA_VERSION,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["pii_hmac_key"] == ""
+
     @override_settings(
         SYNC_SERVER_URL="http://localhost:9088/api/sync",
         CLOUD_API_BASE_URL="https://vitora-api.example.test",

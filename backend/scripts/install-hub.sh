@@ -366,7 +366,7 @@ ENCRYPTION_KEY=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE
 PII_HMAC_KEY=$(python3 -c "import json; d=json.load(open('$ACTIVATION_RESPONSE')); print(d.get('pii_hmac_key', ''))")
 HUB_ID="$INSTALLATION_ID"
 
-if [[ -z "$PII_HMAC_KEY" ]]; then
+if [[ -z "$PII_HMAC_KEY" || "$PII_HMAC_KEY" == "dev-hmac-key-not-for-production" ]]; then
     warn "Activation response did not include pii_hmac_key; generating a local fallback. Cross-system PII exact-match lookup may differ."
     PII_HMAC_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
 fi

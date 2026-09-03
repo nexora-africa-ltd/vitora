@@ -12,6 +12,19 @@ from django.conf import settings
 from django.core.management.base import CommandError
 
 
+def _safe_pii_hmac_key() -> str:
+    """Return a production-safe PII HMAC key for activation payloads.
+
+    Development defaults (e.g. ``dev-hmac-key-not-for-production``) must never
+    be propagated to installed hubs. Returning an empty string signals the
+    installer to generate a strong local fallback key.
+    """
+    key = (getattr(settings, "PII_HMAC_KEY", "") or "").strip()
+    if not key or key == "dev-hmac-key-not-for-production":
+        return ""
+    return key
+
+
 def _sync_url_from_base(base_url: str) -> str:
     """Build the sync endpoint URL from a public API base URL."""
     return f"{base_url.rstrip('/')}/api/sync"
@@ -96,7 +109,7 @@ def build_activation_bootstrap_payload(
         "check_in_by": decoded.get("check_in_by"),
         "sync_url": _activation_sync_url(request),
         "encryption_key": getattr(settings, "ENCRYPTION_KEY", ""),
-        "pii_hmac_key": getattr(settings, "PII_HMAC_KEY", ""),
+        "pii_hmac_key": _safe_pii_hmac_key(),
         # WebAuthn config so installers can seed sensible defaults. Leaving
         # these blank lets the installer fall back to localhost-scoped values
         # (which is the only WebAuthn config that works over HTTP).
