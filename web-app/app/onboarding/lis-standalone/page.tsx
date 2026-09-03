@@ -9,12 +9,15 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 import { standaloneLisApi } from '@/lib/api/standalone-lis';
+import { facilitiesApi } from '@/lib/api/facilities';
+import { invitationsApi } from '@/lib/api/onboarding';
 import { useAuth } from '@/lib/auth/context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/shared/page-header';
 import type { LISOnboardingSeedResult, LISOnboardingStatus } from '@/lib/types/standalone-lis';
+import type { FacilityDetail } from '@/lib/types/facility';
 
 const STEP_ROUTES: Record<string, string> = {
   lab_identity: '/core/facilities/current',
@@ -39,6 +42,10 @@ export default function LISStandaloneOnboardingPage() {
     'test-catalog' | 'specimen-workflow' | 'analyzer-channel' | 'reference-ranges'
   >('test-catalog');
   const [error, setError] = useState<string | null>(null);
+  const [facilityDetail, setFacilityDetail] = useState<FacilityDetail | null>(null);
+  const [isSavingIdentity, setIsSavingIdentity] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     setIsLoading(true);
@@ -46,6 +53,14 @@ export default function LISStandaloneOnboardingPage() {
     try {
       const data = await standaloneLisApi.getOnboardingStatus();
       setStatus(data);
+
+      const myFacilities = await facilitiesApi.myFacilities();
+      const primaryFacility = myFacilities.at(0);
+      if (primaryFacility) {
+        const detail = await facilitiesApi.get(primaryFacility.id);
+        setFacilityDetail(detail);
+      }
+
       if (data.complete) {
         router.push('/laboratory');
       }
@@ -82,6 +97,44 @@ export default function LISStandaloneOnboardingPage() {
       setError(err instanceof Error ? err.message : 'Could not complete LIS onboarding.');
     } finally {
       setIsCompleting(false);
+    }
+  };
+
+  const handleSaveIdentity = async () => {
+    if (!facilityDetail) return;
+    setIsSavingIdentity(true);
+    setError(null);
+    try {
+      const updated = await facilitiesApi.update(facilityDetail.id, {
+        dha_license_number: facilityDetail.dha_license_number,
+        dha_license_status: facilityDetail.dha_license_status,
+        dha_license_expiry: facilityDetail.dha_license_expiry,
+      });
+      setFacilityDetail(updated);
+      await fetchStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save lab identity and licensing details.');
+    } finally {
+      setIsSavingIdentity(false);
+    }
+  };
+
+  const handleInvite = async () => {
+    if (!facilityDetail || !inviteEmail.trim() || !facilityDetail.organization) return;
+    setIsInviting(true);
+    setError(null);
+    try {
+      await invitationsApi.create({
+        email: inviteEmail.trim(),
+        organization: facilityDetail.organization,
+        facility: facilityDetail.id,
+      });
+      setInviteEmail('');
+      await fetchStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send invitation.');
+    } finally {
+      setIsInviting(false);
     }
   };
 
@@ -171,6 +224,17 @@ export default function LISStandaloneOnboardingPage() {
         helpContent="Complete required setup steps before using standalone LIS operational workflows."
       />
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base sm:text-lg">Final WS2 Completion Checklist</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>- Guided setup for identity, catalog, workflow, analyzer channels, pricing, and team access</p>
+          <p>- CSV templates/imports for all operational onboarding datasets</p>
+          <p>- Operational-ready target: complete required setup using defaults/sample CSVs in under 30 minutes</p>
+        </CardContent>
+      </Card>
+
       {error && (
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive">
@@ -225,6 +289,49 @@ export default function LISStandaloneOnboardingPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="rounded-md border border-border p-3">
+            <p className="mb-2 text-sm font-medium">Step 1: Facility/Lab identity and licensing</p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <input
+                type="text"
+                value={facilityDetail?.dha_license_number ?? ''}
+                onChange={(event) =>
+                  setFacilityDetail((prev) =>
+                    prev ? { ...prev, dha_license_number: event.target.value } : prev
+                  )
+                }
+                placeholder="DHA license number"
+                className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+              />
+              <input
+                type="text"
+                value={facilityDetail?.dha_license_status ?? ''}
+                onChange={(event) =>
+                  setFacilityDetail((prev) =>
+                    prev ? { ...prev, dha_license_status: event.target.value } : prev
+                  )
+                }
+                placeholder="License status"
+                className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+              />
+              <input
+                type="date"
+                value={(facilityDetail?.dha_license_expiry ?? '').slice(0, 10)}
+                onChange={(event) =>
+                  setFacilityDetail((prev) =>
+                    prev ? { ...prev, dha_license_expiry: event.target.value } : prev
+                  )
+                }
+                className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+              />
+            </div>
+            <div className="mt-2 flex justify-end">
+              <Button variant="outline" onClick={handleSaveIdentity} disabled={isSavingIdentity}>
+                {isSavingIdentity ? 'Saving...' : 'Save Identity'}
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-md border border-border p-3">
@@ -296,6 +403,25 @@ export default function LISStandaloneOnboardingPage() {
               {isImporting ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
             </div>
             {importResult ? <p className="mt-2 text-xs text-muted-foreground">{importResult}</p> : null}
+          </div>
+
+          <div className="rounded-md border border-border p-3">
+            <p className="mb-2 text-sm font-medium">Step 6: Team invitations and permissions</p>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Invite at least one teammate for operational handoff and role assignment.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                placeholder="staff@facility.example"
+                className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
+              />
+              <Button onClick={handleInvite} disabled={isInviting || !inviteEmail.trim()}>
+                {isInviting ? 'Sending...' : 'Send Invitation'}
+              </Button>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">

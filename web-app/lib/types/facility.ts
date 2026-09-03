@@ -119,6 +119,9 @@ export interface FacilityUpdateData {
   sha_contracted?: boolean;
   sha_contract_expiry?: string | null;
   sha_facility_code?: string;
+  dha_license_number?: string;
+  dha_license_status?: string;
+  dha_license_expiry?: string;
   dhis2_org_unit?: string;
   workstation_id?: string;
   biometrics_enforced?: boolean;

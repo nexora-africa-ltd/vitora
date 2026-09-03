@@ -596,7 +596,19 @@ class Facility(TimeStampedModel):
         from hmis.apps.laboratory.analyzers.models import InstrumentChannel
         from hmis.apps.laboratory.models import LabWorkflowSettings, TestCatalog
 
-        has_lab_identity = bool(self.name and self.mfl_code and self.dha_license_number)
+        license_status = str(self.dha_license_status or "").strip().upper()
+        license_expiry_ok = bool(
+            self.dha_license_expiry and self.dha_license_expiry >= timezone.now().date()
+        )
+        license_status_ok = license_status in {"ACTIVE", "VALID", "CURRENT", "LICENSED"}
+        has_lab_identity = bool(
+            self.name
+            and self.mfl_code
+            and self.dha_license_number
+            and self.dha_license_expiry
+            and license_expiry_ok
+            and license_status_ok
+        )
         has_test_catalog = TestCatalog.objects.filter(
             facility=self,
             organization=self.organization,
