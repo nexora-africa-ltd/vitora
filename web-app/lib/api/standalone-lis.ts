@@ -13,6 +13,9 @@ import {
   LISOnboardingStatusSchema,
   LISOnboardingSeedResultSchema,
   LISOnboardingImportResultSchema,
+  LISOnboardingWorkflowImportResultSchema,
+  LISOnboardingAnalyzerImportResultSchema,
+  LISOnboardingReferenceRangeImportResultSchema,
 } from '@/lib/schemas/standalone-lis.schema';
 import { LabOrderSchema } from '@/lib/schemas/laboratory.schema';
 import type {
@@ -23,6 +26,9 @@ import type {
   LISOnboardingStatus,
   LISOnboardingSeedResult,
   LISOnboardingImportResult,
+  LISOnboardingWorkflowImportResult,
+  LISOnboardingAnalyzerImportResult,
+  LISOnboardingReferenceRangeImportResult,
 } from '@/lib/types/standalone-lis';
 import type { LabOrder } from '@/lib/types/laboratory';
 
@@ -82,6 +88,43 @@ export const standaloneLisApi = {
     });
     return parseResponse(LISOnboardingImportResultSchema, response.data, {
       context: 'standaloneLisApi.importTestCatalog',
+    });
+  },
+
+  async importSpecimenWorkflow(file: File): Promise<LISOnboardingWorkflowImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post(`${BASE}/onboarding/import/specimen-workflow/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return parseResponse(LISOnboardingWorkflowImportResultSchema, response.data, {
+      context: 'standaloneLisApi.importSpecimenWorkflow',
+    });
+  },
+
+  async importAnalyzerChannel(file: File): Promise<LISOnboardingAnalyzerImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post(`${BASE}/onboarding/import/analyzer-channel/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return parseResponse(LISOnboardingAnalyzerImportResultSchema, response.data, {
+      context: 'standaloneLisApi.importAnalyzerChannel',
+    });
+  },
+
+  async importReferenceRanges(file: File): Promise<LISOnboardingReferenceRangeImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post(
+      `${BASE}/onboarding/import/reference-ranges/`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    );
+    return parseResponse(LISOnboardingReferenceRangeImportResultSchema, response.data, {
+      context: 'standaloneLisApi.importReferenceRanges',
     });
   },
 

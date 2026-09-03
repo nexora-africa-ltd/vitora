@@ -35,6 +35,9 @@ export default function LISStandaloneOnboardingPage() {
   const [seedResult, setSeedResult] = useState<LISOnboardingSeedResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+  const [importType, setImportType] = useState<
+    'test-catalog' | 'specimen-workflow' | 'analyzer-channel' | 'reference-ranges'
+  >('test-catalog');
   const [error, setError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
@@ -108,10 +111,27 @@ export default function LISStandaloneOnboardingPage() {
     setImportResult(null);
     setError(null);
     try {
-      const result = await standaloneLisApi.importTestCatalog(file);
-      setImportResult(
-        `Imported test catalog: ${result.created} created, ${result.updated} updated, ${result.error_count} row errors.`
-      );
+      if (importType === 'test-catalog') {
+        const result = await standaloneLisApi.importTestCatalog(file);
+        setImportResult(
+          `Imported test catalog: ${result.created} created, ${result.updated} updated, ${result.error_count} row errors.`
+        );
+      } else if (importType === 'specimen-workflow') {
+        const result = await standaloneLisApi.importSpecimenWorkflow(file);
+        setImportResult(
+          `Imported workflow settings: ${result.updated} fields updated, ${result.error_count} row errors.`
+        );
+      } else if (importType === 'analyzer-channel') {
+        const result = await standaloneLisApi.importAnalyzerChannel(file);
+        setImportResult(
+          `Imported analyzer channels: ${result.created_instruments} instruments, ${result.created_channels} channels created, ${result.updated_channels} channels updated, ${result.error_count} row errors.`
+        );
+      } else {
+        const result = await standaloneLisApi.importReferenceRanges(file);
+        setImportResult(
+          `Imported reference ranges: ${result.updated} rows updated, ${result.error_count} row errors.`
+        );
+      }
       await fetchStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not import test catalog CSV.');
@@ -248,6 +268,24 @@ export default function LISStandaloneOnboardingPage() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
+              <select
+                value={importType}
+                onChange={(event) =>
+                  setImportType(
+                    event.target.value as
+                      | 'test-catalog'
+                      | 'specimen-workflow'
+                      | 'analyzer-channel'
+                      | 'reference-ranges'
+                  )
+                }
+                className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+              >
+                <option value="test-catalog">Import: Test Catalog</option>
+                <option value="specimen-workflow">Import: Workflow Settings</option>
+                <option value="analyzer-channel">Import: Analyzer Channels</option>
+                <option value="reference-ranges">Import: Reference Ranges</option>
+              </select>
               <input
                 type="file"
                 accept=".csv,text/csv"

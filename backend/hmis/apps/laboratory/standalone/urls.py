@@ -8,6 +8,9 @@ from .views import (
     ExternalOrderRequestViewSet,
     StandaloneOrderViewSet,
     WalkInPatientViewSet,
+    standalone_onboarding_import_analyzer_channel,
+    standalone_onboarding_import_reference_ranges,
+    standalone_onboarding_import_specimen_workflow,
     standalone_onboarding_import_test_catalog,
     standalone_onboarding_seed_defaults,
     standalone_onboarding_status,
@@ -38,6 +41,21 @@ urlpatterns = [
         "onboarding/import/test-catalog/",
         standalone_onboarding_import_test_catalog,
         name="standalone-lis-onboarding-import-test-catalog",
+    ),
+    path(
+        "onboarding/import/specimen-workflow/",
+        standalone_onboarding_import_specimen_workflow,
+        name="standalone-lis-onboarding-import-specimen-workflow",
+    ),
+    path(
+        "onboarding/import/analyzer-channel/",
+        standalone_onboarding_import_analyzer_channel,
+        name="standalone-lis-onboarding-import-analyzer-channel",
+    ),
+    path(
+        "onboarding/import/reference-ranges/",
+        standalone_onboarding_import_reference_ranges,
+        name="standalone-lis-onboarding-import-reference-ranges",
     ),
     path(
         "orders/create/",

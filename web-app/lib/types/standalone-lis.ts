@@ -115,3 +115,23 @@ export interface LISOnboardingImportResult {
   errors: LISOnboardingImportError[];
   error_count: number;
 }
+
+export interface LISOnboardingWorkflowImportResult {
+  updated: number;
+  errors: LISOnboardingImportError[];
+  error_count: number;
+}
+
+export interface LISOnboardingAnalyzerImportResult {
+  created_instruments: number;
+  created_channels: number;
+  updated_channels: number;
+  errors: LISOnboardingImportError[];
+  error_count: number;
+}
+
+export interface LISOnboardingReferenceRangeImportResult {
+  updated: number;
+  errors: LISOnboardingImportError[];
+  error_count: number;
+}

@@ -875,3 +875,80 @@ class TestStandaloneOnboardingCSV:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "missing_columns" in response.data
+
+    def test_import_specimen_workflow_csv(self, authenticated_client, sample_facility):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        csv_content = (
+            "workflow_key,enabled,value\n"
+            "require_specimen_receipt,true,true\n"
+            "tat_warning_threshold_percent,true,80\n"
+        )
+        upload = SimpleUploadedFile("workflow.csv", csv_content.encode("utf-8"), "text/csv")
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/import/specimen-workflow/",
+            {"file": upload},
+            format="multipart",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["updated"] >= 1
+
+    def test_import_analyzer_channel_csv(self, authenticated_client, sample_facility):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        csv_content = (
+            "instrument_code,instrument_name,manufacturer,protocol,host,port,encoding,channel_name,is_active\n"
+            "ANZ-01,Analyzer 1,Generic,TCP,127.0.0.1,5001,ascii,Primary,true\n"
+        )
+        upload = SimpleUploadedFile("analyzer.csv", csv_content.encode("utf-8"), "text/csv")
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/import/analyzer-channel/",
+            {"file": upload},
+            format="multipart",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created_channels"] >= 1
+
+    def test_import_reference_ranges_csv(
+        self, authenticated_client, sample_facility, sample_organization
+    ):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        from hmis.apps.laboratory.models import TestCatalog
+
+        scoped_test = TestCatalog.objects.create(
+            code="CBC-RANGE",
+            name="CBC Range",
+            short_name="CBCR",
+            category="HEMATOLOGY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=100,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        csv_content = (
+            "test_code,gender,age_band,normal_range,critical_low,critical_high,unit\n"
+            f"{scoped_test.code},F,adult,4.0-9.0,2.0,20.0,mmol/L\n"
+        )
+        upload = SimpleUploadedFile("ranges.csv", csv_content.encode("utf-8"), "text/csv")
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/import/reference-ranges/",
+            {"file": upload},
+            format="multipart",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["updated"] >= 1

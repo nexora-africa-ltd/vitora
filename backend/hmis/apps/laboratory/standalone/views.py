@@ -416,6 +416,299 @@ def standalone_onboarding_import_test_catalog(request):
     )
 
 
+@extend_schema(exclude=True)
+@api_view(["POST"])
+@drf_permission_classes([IsAuthenticated, LaboratoryModuleRequired, LISStandaloneRequired])
+def standalone_onboarding_import_specimen_workflow(request):
+    """Import LabWorkflowSettings key/value pairs from CSV."""
+    facility, error_response = _get_standalone_facility(request)
+    if error_response:
+        return error_response
+
+    upload = request.FILES.get("file")
+    if upload is None:
+        return Response({"detail": "CSV file is required under 'file'."}, status=400)
+
+    try:
+        decoded = upload.read().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return Response({"detail": "CSV file must be UTF-8 encoded."}, status=400)
+
+    reader = csv.DictReader(StringIO(decoded))
+    required_columns = {"workflow_key", "enabled", "value"}
+    missing = sorted(required_columns - set(reader.fieldnames or []))
+    if missing:
+        return Response(
+            {"detail": "Missing required CSV columns.", "missing_columns": missing},
+            status=400,
+        )
+
+    workflow, _ = LabWorkflowSettings.objects.get_or_create(
+        facility=facility,
+        organization=facility.organization,
+    )
+
+    bool_fields = {
+        "auto_release_normal_results",
+        "require_double_verification_critical",
+        "auto_print_on_verify",
+        "auto_print_labels_on_collect",
+        "notify_clinician_on_critical",
+        "notify_clinician_on_complete",
+        "require_specimen_receipt",
+        "specimen_rejection_requires_supervisor",
+        "allow_duplicate_orders",
+        "require_clinical_notes",
+    }
+    int_fields = {"tat_warning_threshold_percent"}
+
+    updated_fields = set()
+    errors = []
+
+    for index, row in enumerate(reader, start=2):
+        key = str(row.get("workflow_key", "")).strip()
+        enabled = str(row.get("enabled", "true")).strip().lower()
+        value = str(row.get("value", "")).strip()
+
+        if enabled in {"false", "0", "no"}:
+            continue
+
+        if key in bool_fields:
+            normalized = value.lower()
+            if normalized in {"true", "1", "yes"}:
+                setattr(workflow, key, True)
+                updated_fields.add(key)
+            elif normalized in {"false", "0", "no"}:
+                setattr(workflow, key, False)
+                updated_fields.add(key)
+            else:
+                errors.append({"row": index, "error": f"Invalid boolean value for {key}."})
+        elif key in int_fields:
+            try:
+                setattr(workflow, key, int(value))
+                updated_fields.add(key)
+            except ValueError:
+                errors.append({"row": index, "error": f"Invalid integer value for {key}."})
+        else:
+            errors.append({"row": index, "error": f"Unknown workflow_key '{key}'."})
+
+    if updated_fields:
+        workflow.save(update_fields=sorted(updated_fields))
+
+    return Response(
+        {
+            "updated": len(updated_fields),
+            "errors": errors,
+            "error_count": len(errors),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@extend_schema(exclude=True)
+@api_view(["POST"])
+@drf_permission_classes([IsAuthenticated, LaboratoryModuleRequired, LISStandaloneRequired])
+def standalone_onboarding_import_analyzer_channel(request):
+    """Import instrument + channel configuration rows from CSV."""
+    facility, error_response = _get_standalone_facility(request)
+    if error_response:
+        return error_response
+
+    upload = request.FILES.get("file")
+    if upload is None:
+        return Response({"detail": "CSV file is required under 'file'."}, status=400)
+
+    try:
+        decoded = upload.read().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return Response({"detail": "CSV file must be UTF-8 encoded."}, status=400)
+
+    reader = csv.DictReader(StringIO(decoded))
+    required_columns = {
+        "instrument_code",
+        "instrument_name",
+        "manufacturer",
+        "protocol",
+        "host",
+        "port",
+        "encoding",
+        "channel_name",
+        "is_active",
+    }
+    missing = sorted(required_columns - set(reader.fieldnames or []))
+    if missing:
+        return Response(
+            {"detail": "Missing required CSV columns.", "missing_columns": missing},
+            status=400,
+        )
+
+    valid_protocols = {choice[0] for choice in InstrumentChannel.Protocol.choices}
+    created_instruments = 0
+    created_channels = 0
+    updated_channels = 0
+    errors = []
+
+    for index, row in enumerate(reader, start=2):
+        instrument_code = str(row.get("instrument_code", "")).strip().upper()
+        instrument_name = str(row.get("instrument_name", "")).strip()
+        manufacturer = str(row.get("manufacturer", "")).strip()
+        protocol = str(row.get("protocol", "")).strip().upper()
+        host = str(row.get("host", "")).strip()
+        channel_name = str(row.get("channel_name", "")).strip()
+        encoding = str(row.get("encoding", "ascii")).strip() or "ascii"
+        is_active = str(row.get("is_active", "true")).strip().lower() not in {
+            "false",
+            "0",
+            "no",
+        }
+
+        try:
+            port = int(str(row.get("port", "")).strip())
+        except ValueError:
+            errors.append({"row": index, "error": "port must be an integer."})
+            continue
+
+        if not instrument_code or not instrument_name or not channel_name or not host:
+            errors.append(
+                {
+                    "row": index,
+                    "error": "instrument_code, instrument_name, channel_name, and host are required.",
+                }
+            )
+            continue
+
+        if protocol not in valid_protocols:
+            errors.append(
+                {
+                    "row": index,
+                    "error": f"protocol must be one of: {', '.join(sorted(valid_protocols))}",
+                }
+            )
+            continue
+
+        instrument, was_created = Instrument.objects.get_or_create(
+            facility=facility,
+            organization=facility.organization,
+            code=instrument_code,
+            defaults={
+                "name": instrument_name,
+                "manufacturer": manufacturer,
+                "interface_type": Instrument.InterfaceType.MANUAL,
+                "is_active": True,
+            },
+        )
+        if was_created:
+            created_instruments += 1
+
+        _, channel_created = InstrumentChannel.objects.update_or_create(
+            facility=facility,
+            organization=facility.organization,
+            instrument=instrument,
+            name=channel_name,
+            defaults={
+                "protocol": protocol,
+                "direction": InstrumentChannel.Direction.BIDIRECTIONAL,
+                "host": host,
+                "port": port,
+                "encoding": encoding,
+                "is_active": is_active,
+            },
+        )
+        if channel_created:
+            created_channels += 1
+        else:
+            updated_channels += 1
+
+    return Response(
+        {
+            "created_instruments": created_instruments,
+            "created_channels": created_channels,
+            "updated_channels": updated_channels,
+            "errors": errors,
+            "error_count": len(errors),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@extend_schema(exclude=True)
+@api_view(["POST"])
+@drf_permission_classes([IsAuthenticated, LaboratoryModuleRequired, LISStandaloneRequired])
+def standalone_onboarding_import_reference_ranges(request):
+    """Import reference ranges for tests from CSV."""
+    facility, error_response = _get_standalone_facility(request)
+    if error_response:
+        return error_response
+
+    upload = request.FILES.get("file")
+    if upload is None:
+        return Response({"detail": "CSV file is required under 'file'."}, status=400)
+
+    try:
+        decoded = upload.read().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return Response({"detail": "CSV file must be UTF-8 encoded."}, status=400)
+
+    reader = csv.DictReader(StringIO(decoded))
+    required_columns = {"test_code", "gender", "age_band", "normal_range", "unit"}
+    missing = sorted(required_columns - set(reader.fieldnames or []))
+    if missing:
+        return Response(
+            {"detail": "Missing required CSV columns.", "missing_columns": missing},
+            status=400,
+        )
+
+    updated = 0
+    errors = []
+
+    for index, row in enumerate(reader, start=2):
+        code = str(row.get("test_code", "")).strip().upper()
+        gender = str(row.get("gender", "")).strip().upper()
+        age_band = str(row.get("age_band", "")).strip().lower()
+        normal_range = str(row.get("normal_range", "")).strip()
+        unit = str(row.get("unit", "")).strip()
+
+        if not code or not normal_range:
+            errors.append({"row": index, "error": "test_code and normal_range are required."})
+            continue
+
+        test = TestCatalog.objects.filter(
+            facility=facility,
+            organization=facility.organization,
+            code=code,
+        ).first()
+        if not test:
+            errors.append({"row": index, "error": f"Test '{code}' not found."})
+            continue
+
+        fields_to_update = []
+        if age_band == "child":
+            test.normal_range_child = normal_range
+            fields_to_update.append("normal_range_child")
+        elif gender == "F":
+            test.normal_range_female = normal_range
+            fields_to_update.append("normal_range_female")
+        else:
+            test.normal_range_male = normal_range
+            fields_to_update.append("normal_range_male")
+
+        if unit:
+            test.result_unit = unit
+            fields_to_update.append("result_unit")
+
+        test.save(update_fields=fields_to_update + ["updated_at"])
+        updated += 1
+
+    return Response(
+        {
+            "updated": updated,
+            "errors": errors,
+            "error_count": len(errors),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 class WalkInPatientViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     CRUD for walk-in patient registrations.

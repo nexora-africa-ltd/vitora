@@ -92,3 +92,23 @@ export const LISOnboardingImportResultSchema = z.object({
   errors: z.array(LISOnboardingImportErrorSchema),
   error_count: z.number(),
 });
+
+export const LISOnboardingWorkflowImportResultSchema = z.object({
+  updated: z.number(),
+  errors: z.array(LISOnboardingImportErrorSchema),
+  error_count: z.number(),
+});
+
+export const LISOnboardingAnalyzerImportResultSchema = z.object({
+  created_instruments: z.number(),
+  created_channels: z.number(),
+  updated_channels: z.number(),
+  errors: z.array(LISOnboardingImportErrorSchema),
+  error_count: z.number(),
+});
+
+export const LISOnboardingReferenceRangeImportResultSchema = z.object({
+  updated: z.number(),
+  errors: z.array(LISOnboardingImportErrorSchema),
+  error_count: z.number(),
+});
