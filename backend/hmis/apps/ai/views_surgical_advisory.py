@@ -411,6 +411,8 @@ _AI_CHAT_ALLOWED_ROLES = {
     "LAB_TECH",
     "LAB_SCIENTIST",
     "ADMIN",
+    "ORG-ADMIN",
+    "OWNER",
     "NURSE",
 }
 

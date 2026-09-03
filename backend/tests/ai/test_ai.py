@@ -312,6 +312,8 @@ class TestAIStatusEndpoint:
         assert response.data["service_available"] is False
         assert response.data["rag_initialized"] is False
         assert response.data["demo_mode"] is False
+        assert response.data["chat_access"]["allowed"] is False
+        assert response.data["chat_access"]["reason_code"] == "ai_disabled"
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_returns_enabled_with_service_check(self, authenticated_client):
@@ -328,6 +330,31 @@ class TestAIStatusEndpoint:
             assert response.status_code == status.HTTP_200_OK
             assert response.data["enabled"] is True
             assert response.data["service_available"] is False
+            assert "chat_access" in response.data
+            assert "reason_code" in response.data["chat_access"]
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_status_reports_role_denied_reason(self, authenticated_client):
+        """Status endpoint should expose a concrete chat denial reason."""
+        with patch(
+            "hmis.apps.ai.views_core.build_user_context", return_value={"role": "RECEPTIONIST"}
+        ):
+            response = authenticated_client.get("/api/ai/status/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["chat_access"]["allowed"] is False
+        assert response.data["chat_access"]["reason_code"] == "role_not_allowed"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_status_does_not_mark_org_admin_as_role_denied(self, authenticated_client):
+        """Status endpoint should not deny ORG-ADMIN due to role gating."""
+        with (
+            patch("hmis.apps.ai.views_core.build_user_context", return_value={"role": "ORG-ADMIN"}),
+        ):
+            response = authenticated_client.get("/api/ai/status/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["chat_access"]["reason_code"] != "role_not_allowed"
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_returns_service_available_when_reachable(self, authenticated_client):

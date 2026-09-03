@@ -19,6 +19,22 @@ All notable changes to Vitora HMIS releases are documented in this file.
 
 - Placeholder section for upcoming release notes.
 
+## [1.0.17] - 2026-09-03
+
+### Hub
+
+- Fixed push subscription VAPID key endpoint behavior to return `200` with `configured=false` when push is not configured, preventing repeated 503 health noise while still exposing actionable UI status.
+- Fixed scheduling on-duty endpoint access so admin role codes (`ADMIN`, `ORG-ADMIN`, `OWNER`) can view `/api/scheduling/shifts/on-duty/` even without direct `scheduling.manage_schedules` assignment.
+- Fixed AI chat role gating mismatch by allowing `ORG-ADMIN`/`OWNER` in backend chat/status role checks, aligning API behavior with frontend permissions.
+- Added regression coverage for VAPID response contract, on-duty ORG-ADMIN access, and ORG-ADMIN AI chat/status role handling.
+
+## [Desktop 1.0.10] - 2026-09-03
+
+### Desktop
+
+- Updated push subscription client handling for the new VAPID endpoint contract (`configured`, `message`, optional `vapid_public_key`) so desktop/web UI reports disabled push configuration clearly instead of surfacing generic service errors.
+- Bumped desktop app version metadata to `1.0.10` across `desktop-app/package.json`, `desktop-app/src-tauri/Cargo.toml`, `desktop-app/src-tauri/tauri.conf.json`, `desktop-app/package-lock.json`, and `desktop-app/src-tauri/Cargo.lock`.
+
 ## [1.0.15] - 2026-09-03
 
 ### Hub

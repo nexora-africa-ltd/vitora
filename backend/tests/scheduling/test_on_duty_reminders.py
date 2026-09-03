@@ -269,6 +269,41 @@ class TestOnDutyEndpoint:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_org_admin_role_can_access_without_manage_schedules_permission(
+        self,
+        api_client,
+        test_user,
+        test_staff_profile,
+        sample_facility,
+    ):
+        """ORG-ADMIN role should bypass on-duty manage_schedules permission check."""
+        from django.contrib.auth.models import Permission
+
+        from hmis.apps.core.models import Role
+
+        perm = Permission.objects.filter(
+            codename="manage_schedules", content_type__app_label="scheduling"
+        ).first()
+        if perm:
+            test_user.user_permissions.remove(perm)
+
+        org_admin_role, _ = Role.objects.get_or_create(
+            code="ORG-ADMIN",
+            defaults={"name": "Organization Admin", "hierarchy_level": 90, "is_active": True},
+        )
+        test_staff_profile.primary_role = org_admin_role
+        test_staff_profile.save(update_fields=["primary_role"])
+
+        if hasattr(test_user, "_perm_cache"):
+            del test_user._perm_cache
+        if hasattr(test_user, "_user_perm_cache"):
+            del test_user._user_perm_cache
+
+        api_client.force_authenticate(user=test_user)
+        response = api_client.get("/api/scheduling/shifts/on-duty/")
+
+        assert response.status_code == status.HTTP_200_OK
+
     def test_unauthenticated_returns_401(self, api_client):
         """Unauthenticated requests should return 401."""
         response = api_client.get("/api/scheduling/shifts/on-duty/")

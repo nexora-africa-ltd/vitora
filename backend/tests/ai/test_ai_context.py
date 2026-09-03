@@ -251,6 +251,39 @@ class TestClinicalChatEndpoint:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @override_settings(TIBABOT_ENABLED=True)
+    def test_allows_org_admin_role(
+        self, api_client, test_user, sample_organization, sample_facility
+    ):
+        """Should allow ORG-ADMIN users to access AI chat."""
+        from hmis.apps.core.models import Role
+
+        profile = ensure_staff_profile(test_user, sample_organization, sample_facility)
+        org_admin_role, _ = Role.objects.get_or_create(
+            code="ORG-ADMIN",
+            defaults={"name": "Organization Admin", "hierarchy_level": 90, "is_active": True},
+        )
+        profile.primary_role = org_admin_role
+        profile.save(update_fields=["primary_role"])
+
+        api_client.force_authenticate(user=test_user)
+
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_chat.return_value = {
+                "session_id": "sess-org-admin",
+                "message": {"role": "assistant", "content": "ok"},
+            }
+            mock_get_client.return_value = mock_client
+
+            response = api_client.post(
+                "/api/ai/clinical/chat/",
+                {"message": "Can I use chat as org admin?"},
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+
+    @override_settings(TIBABOT_ENABLED=True)
     def test_validates_message_required(self, authenticated_client):
         """Should reject requests without a message."""
         response = authenticated_client.post(

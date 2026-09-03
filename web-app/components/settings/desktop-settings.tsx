@@ -41,9 +41,11 @@ import {
   clearCredentials,
 } from '@/lib/desktop';
 import { apiClient } from '@/lib/api/client';
+import { aiApi } from '@/lib/api/ai';
 import { licensingApi } from '@/lib/api/licensing';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ActivationResponse } from '@/lib/types/licensing';
+import type { AIStatus } from '@/lib/types/ai';
 
 const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; description: string }> = [
   {
@@ -169,6 +171,8 @@ export function DesktopSettingsTab() {
     useState<ActivationResponse | null>(null);
   const [hubHealth, setHubHealth] = useState<HubHealth | null>(null);
   const [hubHealthError, setHubHealthError] = useState<string>('');
+  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null);
+  const [aiStatusError, setAiStatusError] = useState<string>('');
   const { toast } = useToast();
 
   // Form state
@@ -229,11 +233,23 @@ export function DesktopSettingsTab() {
     }
   }, [isHubMode]);
 
+  const loadAiStatus = useCallback(async () => {
+    setAiStatusError('');
+    try {
+      const status = await aiApi.getStatus();
+      setAiStatus(status);
+    } catch {
+      setAiStatus(null);
+      setAiStatusError('AI diagnostics unavailable.');
+    }
+  }, []);
+
   useEffect(() => {
     if (!loading && isHubMode) {
       loadHubHealth();
+      loadAiStatus();
     }
-  }, [loading, isHubMode, loadHubHealth]);
+  }, [loading, isHubMode, loadHubHealth, loadAiStatus]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -436,7 +452,10 @@ export function DesktopSettingsTab() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={loadHubHealth}
+                  onClick={() => {
+                    loadHubHealth();
+                    loadAiStatus();
+                  }}
                   disabled={healthLoading || syncingNow}
                 >
                   {healthLoading ? (
@@ -532,6 +551,20 @@ export function DesktopSettingsTab() {
                     </p>
                   </div>
                 )}
+
+                <div className="rounded-md border px-3 py-2 text-sm">
+                  <p className="text-xs text-muted-foreground">AI Chat Access</p>
+                  <p className="font-medium">
+                    {aiStatus?.chat_access?.allowed
+                      ? 'Allowed'
+                      : aiStatus?.chat_access?.reason || aiStatusError || 'Unavailable'}
+                  </p>
+                  {aiStatus?.chat_access?.reason_code && (
+                    <p className="text-xs text-muted-foreground">
+                      code: {aiStatus.chat_access.reason_code}
+                    </p>
+                  )}
+                </div>
               </>
             ) : (
               !hubHealthError && (

@@ -30,6 +30,17 @@ export const AIStatusSchema = z.object({
   service_available: z.boolean(),
   rag_initialized: z.boolean().optional(),
   demo_mode: z.boolean().optional(),
+  chat_access: z
+    .object({
+      allowed: z.boolean(),
+      reason_code: z.string(),
+      reason: z.string(),
+      role_code: z.string().nullable().optional(),
+      role_allowed: z.boolean().optional(),
+      plan_allows_ai: z.boolean().optional(),
+      token_quota_ok: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 // =============================================================================

@@ -20,7 +20,9 @@ export interface PushSubscriptionResponse {
 }
 
 export interface VapidKeyResponse {
-  vapid_public_key: string;
+  configured: boolean;
+  vapid_public_key?: string;
+  message?: string;
 }
 
 const PushSubscriptionResponseSchema = z.object({
@@ -32,7 +34,9 @@ const PushSubscriptionResponseSchema = z.object({
 });
 
 const VapidKeyResponseSchema = z.object({
-  vapid_public_key: z.string(),
+  configured: z.boolean().default(false),
+  vapid_public_key: z.string().optional(),
+  message: z.string().optional(),
 });
 
 const PushSubscriptionListSchema = z.object({

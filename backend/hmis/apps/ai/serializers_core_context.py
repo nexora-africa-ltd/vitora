@@ -67,6 +67,7 @@ class AIStatusResponseSerializer(serializers.Serializer):
     service_available = serializers.BooleanField()
     rag_initialized = serializers.BooleanField(required=False, default=False)
     demo_mode = serializers.BooleanField(required=False, default=False)
+    chat_access = serializers.JSONField(required=False)
 
 
 # =============================================================================

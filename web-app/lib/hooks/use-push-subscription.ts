@@ -123,8 +123,12 @@ export function usePushSubscription() {
   useEffect(() => {
     if (isVapidError) {
       setStatusMessage(getErrorMessage(vapidError));
+      return;
     }
-  }, [isVapidError, vapidError]);
+    if (vapidData && !vapidData.configured) {
+      setStatusMessage(vapidData.message || 'Push is not configured on the server right now.');
+    }
+  }, [isVapidError, vapidError, vapidData]);
 
   // Check current subscription state
   useEffect(() => {
@@ -196,7 +200,7 @@ export function usePushSubscription() {
     };
   }, [isSupported, swDisabledByConfig]);
 
-  const isVapidReady = !!vapidData?.vapid_public_key;
+  const isVapidReady = vapidData?.configured === true && !!vapidData?.vapid_public_key;
 
   // Subscribe mutation
   const subscribeMutation = useMutation({

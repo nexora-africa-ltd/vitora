@@ -567,6 +567,8 @@ export const ACTION_PERMISSIONS = {
     'LAB_TECH',
     'LAB_SCIENTIST',
     'ADMIN',
+    'ORG-ADMIN',
+    'OWNER',
     'NURSE',
   ],
   'ai.view_insights': ['DOCTOR', 'CLINICAL_OFFICER', 'ADMIN'],

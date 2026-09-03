@@ -270,10 +270,12 @@ class PushSubscriptionViewSet(viewsets.ModelViewSet):
         key = django_settings.VAPID_PUBLIC_KEY
         if not key:
             return Response(
-                {"error": "Push notifications are not configured"},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                {
+                    "configured": False,
+                    "message": "Push notifications are not configured",
+                }
             )
-        return Response({"vapid_public_key": key})
+        return Response({"configured": True, "vapid_public_key": key})
 
 
 # ============================================================================

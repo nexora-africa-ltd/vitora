@@ -38,6 +38,16 @@ export interface AIStatus {
   rag_initialized?: boolean;
   /** Whether TibaBot is running in demo mode (no LLM) */
   demo_mode?: boolean;
+  /** Detailed access diagnostics for AI chat gate checks */
+  chat_access?: {
+    allowed: boolean;
+    reason_code: string;
+    reason: string;
+    role_code?: string | null;
+    role_allowed?: boolean;
+    plan_allows_ai?: boolean;
+    token_quota_ok?: boolean;
+  };
 }
 
 // =============================================================================

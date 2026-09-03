@@ -156,13 +156,15 @@ class TestPushSubscriptionAPI:
         settings.VAPID_PUBLIC_KEY = "test-vapid-public-key"
         response = authenticated_client.get("/api/push-subscriptions/vapid-key/")
         assert response.status_code == status.HTTP_200_OK
+        assert response.data["configured"] is True
         assert response.data["vapid_public_key"] == "test-vapid-public-key"
 
     def test_vapid_key_not_configured(self, authenticated_client, settings):
-        """Should return 503 when VAPID key is not configured."""
+        """Should return configured=false when VAPID key is not configured."""
         settings.VAPID_PUBLIC_KEY = ""
         response = authenticated_client.get("/api/push-subscriptions/vapid-key/")
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["configured"] is False
 
 
 # ============================================================================

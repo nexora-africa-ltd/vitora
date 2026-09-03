@@ -30,6 +30,19 @@ from hmis.apps.scheduling.serializers import ShiftListSerializer, ShiftSerialize
 logger = logging.getLogger(__name__)
 
 
+def _has_on_duty_access(request) -> bool:
+    """Allow on-duty overview for schedule managers and admin role codes."""
+    user = request.user
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.has_perm("scheduling.manage_schedules"):
+        return True
+
+    role = getattr(getattr(user, "staff_profile", None), "primary_role", None)
+    role_code = getattr(role, "code", "")
+    return role_code in {"ADMIN", "ORG-ADMIN", "OWNER"}
+
+
 class ShiftAnalyticsExportMixin:
     @action(detail=False, methods=["get"], url_path="cross-facility-conflicts")
     def cross_facility_conflicts(self, request):
@@ -395,10 +408,7 @@ class ShiftAnalyticsExportMixin:
 
         Requires ``scheduling.manage_schedules`` permission.
         """
-        if (
-            not request.user.has_perm("scheduling.manage_schedules")
-            and not request.user.is_superuser
-        ):
+        if not _has_on_duty_access(request):
             return Response(
                 {"error": "Permission denied"},
                 status=status.HTTP_403_FORBIDDEN,

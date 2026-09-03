@@ -120,6 +120,18 @@ from .serializers import (  # Advisory link serializers
 
 logger = logging.getLogger(__name__)
 
+_AI_CHAT_ALLOWED_ROLES = {
+    "DOCTOR",
+    "CLINICAL_OFFICER",
+    "PHARMACIST",
+    "LAB_TECH",
+    "LAB_SCIENTIST",
+    "ADMIN",
+    "ORG-ADMIN",
+    "OWNER",
+    "NURSE",
+}
+
 
 def _ai_view_handled_exceptions() -> tuple[type[Exception], ...]:
     return (
@@ -411,6 +423,8 @@ _AI_CHAT_ALLOWED_ROLES = {
     "LAB_TECH",
     "LAB_SCIENTIST",
     "ADMIN",
+    "ORG-ADMIN",
+    "OWNER",
     "NURSE",
 }
 
@@ -664,6 +678,46 @@ class AIStatusView(AISchemaMixin, APIView):
 
     permission_classes = [permissions.IsAuthenticated, ReadRequiresModelPermission]
 
+    def _chat_access_diagnostics(self, request: Request, ai_enabled: bool) -> dict[str, object]:
+        role_code = (
+            "ADMIN" if request.user.is_superuser else build_user_context(request).get("role")
+        )
+        role_allowed = isinstance(role_code, str) and role_code in _AI_CHAT_ALLOWED_ROLES
+
+        org = None
+        if not request.user.is_superuser:
+            profile = getattr(request.user, "staff_profile", None)
+            org = getattr(profile, "organization", None) if profile is not None else None
+
+        plan_allows_ai = True if org is None else bool(org.has_feature("ai_assistant"))
+        token_quota_ok = True if org is None else bool(org.can_use_ai_tokens(tokens_needed=1))
+
+        if not ai_enabled:
+            reason_code = "ai_disabled"
+            reason = "AI features are disabled for this environment."
+        elif not role_allowed:
+            reason_code = "role_not_allowed"
+            reason = "Your role is not allowed to use AI chat."
+        elif not plan_allows_ai:
+            reason_code = "plan_feature_missing"
+            reason = "Your organization plan does not include AI Assistant."
+        elif not token_quota_ok:
+            reason_code = "token_quota_exhausted"
+            reason = "Your organization AI token quota is exhausted."
+        else:
+            reason_code = "allowed"
+            reason = "AI chat is allowed for the current user context."
+
+        return {
+            "allowed": reason_code == "allowed",
+            "reason_code": reason_code,
+            "reason": reason,
+            "role_code": role_code,
+            "role_allowed": role_allowed,
+            "plan_allows_ai": plan_allows_ai,
+            "token_quota_ok": token_quota_ok,
+        }
+
     def get(self, request: Request) -> Response:
         enabled = is_ai_enabled()
         service_available = False
@@ -692,6 +746,7 @@ class AIStatusView(AISchemaMixin, APIView):
             "service_available": service_available,
             "rag_initialized": rag_initialized,
             "demo_mode": demo_mode,
+            "chat_access": self._chat_access_diagnostics(request, enabled),
         }
         serializer = AIStatusResponseSerializer(data)
         return Response(serializer.data)
