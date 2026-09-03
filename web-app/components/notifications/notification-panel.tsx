@@ -49,6 +49,7 @@ import {
   useMarkNotificationRead,
   useMarkAllRead,
 } from '@/lib/hooks/use-notifications';
+import { useAuth } from '@/lib/auth/context';
 import { useNotificationSocket } from '@/lib/hooks/use-websocket';
 import type { Notification, NotificationPriority } from '@/lib/types/notification';
 import { PushNotificationToggle } from './push-notification-toggle';
@@ -267,6 +268,8 @@ export function NotificationPanel() {
   const router = useRouter();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const canQuery = isAuthenticated && !authLoading;
 
   // Real-time WebSocket — invalidates queries on new notifications
   useNotificationSocket();
@@ -274,9 +277,9 @@ export function NotificationPanel() {
   // Queries - enable when either popover or expanded view is open
   const { data: notificationsData, isLoading: isLoadingNotifications } = useNotifications(
     undefined,
-    { enabled: isPopoverOpen || isExpanded, refetchInterval: false }
+    { enabled: canQuery && (isPopoverOpen || isExpanded), refetchInterval: false }
   );
-  const { data: unreadCountData } = useUnreadCount();
+  const { data: unreadCountData } = useUnreadCount({ enabled: canQuery });
 
   // Mutations
   const markReadMutation = useMarkNotificationRead();

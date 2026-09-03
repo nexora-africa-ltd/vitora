@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useDashboardStats } from '@/lib/hooks/use-dashboard-stats';
 import { useUnreadCount } from '@/lib/hooks/use-notifications';
+import { useAuth } from '@/lib/auth/context';
 
 /**
  * Badge counts keyed by sidebar item href.
@@ -17,8 +18,10 @@ export type SidebarBadges = Record<string, number>;
  * `useUnreadCount` (30-sec polling) hooks — no extra API calls.
  */
 export function useSidebarBadges(): SidebarBadges {
-  const { data: stats } = useDashboardStats();
-  const { data: unreadCount } = useUnreadCount();
+  const { isAuthenticated, isLoading } = useAuth();
+  const canQuery = isAuthenticated && !isLoading;
+  const { data: stats } = useDashboardStats({ enabled: canQuery });
+  const { data: unreadCount } = useUnreadCount({ enabled: canQuery });
 
   return useMemo(() => {
     const badges: SidebarBadges = {};

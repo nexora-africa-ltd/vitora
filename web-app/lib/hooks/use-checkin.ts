@@ -78,12 +78,14 @@ export function useTodayCheckins(params?: {
   status?: string;
   page?: number;
   page_size?: number;
-}) {
+},
+options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: params ? checkinKeys.todayFiltered(params) : checkinKeys.today(),
     queryFn: () => checkinApi.getTodayCheckins(params),
     staleTime: 30000, // 30 seconds - check-ins change frequently
     refetchInterval: 30000, // Auto-refresh every 30 seconds
+    enabled: options?.enabled ?? true,
   });
 }
 

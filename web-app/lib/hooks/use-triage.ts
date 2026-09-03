@@ -933,7 +933,7 @@ export function useExportTriageReport() {
 /**
  * Fetch waiting queue (patients awaiting triage)
  */
-export function useWaitingQueue(filters: WaitingQueueFilters = {}) {
+export function useWaitingQueue(filters: WaitingQueueFilters = {}, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: triageKeys.waitingQueueFiltered(filters),
     queryFn: async () => {
@@ -949,6 +949,7 @@ export function useWaitingQueue(filters: WaitingQueueFilters = {}) {
     },
     refetchInterval: 15000, // Auto-refresh every 15 seconds
     refetchIntervalInBackground: false, // Don't poll when tab is in background
+    enabled: options?.enabled ?? true,
   });
 }
 

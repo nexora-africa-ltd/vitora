@@ -62,6 +62,7 @@ const DEPLOYMENT_MODES: Array<{ value: DeploymentMode; label: string; descriptio
 
 interface HubHealth {
   status: 'healthy' | 'degraded' | 'unhealthy' | string;
+  degraded_reasons?: string[];
   hub_id: string;
   facility_id: string;
   organization_id: string;
@@ -138,6 +139,12 @@ function healthBadgeVariant(statusValue?: string) {
   if (statusValue === 'healthy' || statusValue === 'ok') return 'default';
   if (statusValue === 'degraded') return 'secondary';
   return 'destructive';
+}
+
+function formatDegradedReason(reason: string): string {
+  return reason
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -514,6 +521,17 @@ export function DesktopSettingsTab() {
                   <InfoRow label="Organization ID" value={hubHealth.organization_id || 'N/A'} />
                   <InfoRow label="Uptime" value={formatUptime(hubHealth.uptime_seconds)} />
                 </div>
+
+                {hubHealth.status === 'degraded' && (hubHealth.degraded_reasons?.length ?? 0) > 0 && (
+                  <div className="rounded-md border border-amber-300/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+                    <p className="font-medium">Degraded reasons</p>
+                    <p className="text-xs">
+                      {hubHealth.degraded_reasons
+                        ?.map((reason) => formatDegradedReason(reason))
+                        .join(' • ')}
+                    </p>
+                  </div>
+                )}
               </>
             ) : (
               !hubHealthError && (

@@ -85,6 +85,7 @@ class TestHubHealthEndpoint:
         assert "facility_id" in data
         assert "uptime_seconds" in data
         assert "server_time" in data
+        assert "degraded_reasons" in data
         assert "database" in data
         assert "sync" in data
         assert "rbac" in data
@@ -149,6 +150,7 @@ class TestHubHealthEndpoint:
 
         assert data["status"] == "degraded"
         assert data["sync"]["failed"] == 15
+        assert "sync_failed_queue_high" in data["degraded_reasons"]
 
     def test_health_shows_last_synced_time(
         self, api_client, db, sample_facility, sample_organization

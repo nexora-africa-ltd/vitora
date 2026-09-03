@@ -49,6 +49,7 @@ import {
   useMarkNotificationRead,
   useMarkAllRead,
 } from '@/lib/hooks/use-notifications';
+import { useAuth } from '@/lib/auth/context';
 import { PushNotificationToggle } from './push-notification-toggle';
 import type { Notification, NotificationPriority } from '@/lib/types/notification';
 
@@ -204,11 +205,16 @@ function NotificationItem({
 export function FloatingNotificationCenter() {
   const router = useRouter();
   const [priorityFilter, setPriorityFilter] = useState<NotificationPriority | ''>('');
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const canQuery = isAuthenticated && !authLoading;
 
-  const { data: notifications, isLoading } = useNotifications({
-    priority: priorityFilter || undefined,
-  });
-  const { data: unreadCount } = useUnreadCount();
+  const { data: notifications, isLoading } = useNotifications(
+    {
+      priority: priorityFilter || undefined,
+    },
+    { enabled: canQuery }
+  );
+  const { data: unreadCount } = useUnreadCount({ enabled: canQuery });
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllRead();
 

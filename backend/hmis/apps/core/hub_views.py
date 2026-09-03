@@ -82,6 +82,7 @@ def hub_health(request):  # noqa: ARG001
     """
     health = {
         "status": "healthy",
+        "degraded_reasons": [],
         "hub_id": getattr(settings, "HUB_ID", ""),
         "facility_id": getattr(settings, "HUB_FACILITY_ID", ""),
         "organization_id": getattr(settings, "HUB_ORGANIZATION_ID", ""),
@@ -106,6 +107,7 @@ def hub_health(request):  # noqa: ARG001
     ) as e:
         health["database"] = {"status": "error", "message": str(e)[:100]}
         health["status"] = "unhealthy"
+        health["degraded_reasons"].append("database_unavailable")
 
     # Sync queue status
     try:
@@ -130,9 +132,11 @@ def hub_health(request):  # noqa: ARG001
 
         if health["rbac"].get("last_status") == "failed":
             health["status"] = "degraded"
+            health["degraded_reasons"].append("rbac_sync_failed")
 
         if failed_count > 10:
             health["status"] = "degraded"
+            health["degraded_reasons"].append("sync_failed_queue_high")
 
     except (
         AttributeError,
@@ -145,6 +149,7 @@ def hub_health(request):  # noqa: ARG001
     ) as e:
         health["sync"] = {"status": "error", "message": str(e)[:100]}
         health["status"] = "degraded"
+        health["degraded_reasons"].append("sync_health_error")
 
     return Response(health)
 

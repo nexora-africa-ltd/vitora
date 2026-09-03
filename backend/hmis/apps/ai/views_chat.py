@@ -504,7 +504,15 @@ class CanUseAIChat(BasePermission):
 
     def has_permission(self, request: Request, view: APIView) -> bool:
         role_code = _resolve_request_role_code(request)
-        return role_code in _AI_CHAT_ALLOWED_ROLES
+        allowed = role_code in _AI_CHAT_ALLOWED_ROLES
+        if not allowed:
+            logger.warning(
+                "AI chat denied for user=%s role=%s path=%s",
+                getattr(getattr(request, "user", None), "id", None),
+                role_code,
+                request.path,
+            )
+        return allowed
 
 
 class ClinicalChatView(AIFeatureGatedMixin, APIView):
@@ -533,7 +541,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
     }
     """
 
-    permission_classes = [permissions.IsAuthenticated, CanUseAIChat, ReadRequiresModelPermission]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
 
     def post(self, request: Request) -> Response:
         serializer = ClinicalChatRequestSerializer(data=request.data)
@@ -934,7 +942,7 @@ class ClinicalAssistView(AIFeatureGatedMixin, APIView):
     before forwarding to TibaBot.
     """
 
-    permission_classes = [permissions.IsAuthenticated, CanUseAIChat, ReadRequiresModelPermission]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
 
     def post(self, request: Request) -> Response:
         serializer = ClinicalAssistRequestSerializer(data=request.data)
@@ -1037,7 +1045,7 @@ class ClinicalChatSessionListView(AIFeatureGatedMixin, APIView):
     }
     """
 
-    permission_classes = [permissions.IsAuthenticated, CanUseAIChat, ReadRequiresModelPermission]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
 
     def get(self, request: Request) -> Response:
         resolve_request_tenant(request)
@@ -1075,7 +1083,7 @@ class ClinicalChatSessionDetailView(AIFeatureGatedMixin, APIView):
     Returns 204 No Content.
     """
 
-    permission_classes = [permissions.IsAuthenticated, CanUseAIChat, ReadRequiresModelPermission]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
 
     def get(self, request: Request, session_id: str) -> Response:
         session = self._get_session(request.user, session_id)

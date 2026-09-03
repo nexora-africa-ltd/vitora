@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils/cn';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useTodayCheckins } from '@/lib/hooks/use-checkin';
 import { useWaitingQueue } from '@/lib/hooks/use-triage';
+import { useAuth } from '@/lib/auth/context';
 
 /**
  * Base tabs used to build the mobile workflow footer.
@@ -50,8 +51,13 @@ type BottomTab = {
 export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
   const pathname = usePathname();
   const { canAccessModule, canPerformAction } = usePermissions();
-  const { data: todayCheckins } = useTodayCheckins({ page_size: 1 });
-  const { data: waitingTriageQueue } = useWaitingQueue({ status: 'WAITING_TRIAGE' });
+  const { isAuthenticated, isLoading } = useAuth();
+  const canQuery = isAuthenticated && !isLoading;
+  const { data: todayCheckins } = useTodayCheckins({ page_size: 1 }, { enabled: canQuery });
+  const { data: waitingTriageQueue } = useWaitingQueue(
+    { status: 'WAITING_TRIAGE' },
+    { enabled: canQuery }
+  );
 
   const badgeCounts = useMemo(
     () => ({
