@@ -11,7 +11,10 @@ Supported inputs/args:
 - Python imports and Django ORM/runtime inputs; no standalone CLI arguments.
 """
 
+from hmis.apps.patients import views_patient as _views_patient
 from hmis.apps.patients.views_patient import *  # noqa: F403
 
 # Backward-compatible patch point used by HIE integration tests.
 from hmis.apps.patients.views_related_records import *  # noqa: F403
+
+_fire_cr_sync = _views_patient._fire_cr_sync
