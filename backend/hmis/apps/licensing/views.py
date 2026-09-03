@@ -170,20 +170,23 @@ def _enrich_hub_check_in_payload(data: dict) -> dict:
     if not enriched.get("os_info"):
         enriched["os_info"] = f"{platform.system()} {platform.release()}".strip()
 
-    if not enriched.get("hardware_fingerprint") or not enriched.get("binary_hashes"):
+    if not enriched.get("hardware_fingerprint"):
         try:
-            from hmis.apps.licensing.hardware import compute_binary_hashes, get_hardware_fingerprint
+            from hmis.apps.licensing.hardware import get_hardware_fingerprint
 
             if not enriched.get("hardware_fingerprint"):
                 enriched["hardware_fingerprint"] = get_hardware_fingerprint()
-            if not enriched.get("binary_hashes"):
-                enriched["binary_hashes"] = compute_binary_hashes(
-                    str(getattr(settings, "BASE_DIR", ""))
-                )
         except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError):
             logger.info(
                 "Hub licensing telemetry enrichment skipped due to unavailable hardware helpers"
             )
+
+    # Keep proxy payload within cloud serializer limits.
+    enriched["app_version"] = str(enriched.get("app_version", ""))[:50]
+    enriched["version"] = str(enriched.get("version", ""))[:50]
+    enriched["os_info"] = str(enriched.get("os_info", ""))[:200]
+    enriched["hostname"] = str(enriched.get("hostname", ""))[:255]
+    enriched["hardware_fingerprint"] = str(enriched.get("hardware_fingerprint", ""))[:128]
 
     return enriched
 
@@ -364,6 +367,12 @@ def check_in(request: Request) -> Response:
             cloud_response.status_code,
             installation_id,
         )
+        if cloud_response.status_code == status.HTTP_400_BAD_REQUEST:
+            logger.warning(
+                "Cloud check-in rejected payload for installation %s: %s",
+                installation_id,
+                str(response_payload)[:500],
+            )
         return Response(response_payload, status=cloud_response.status_code)
 
     try:

@@ -271,7 +271,7 @@ export function DesktopSettingsTab() {
         hubHealth?.hub_id || installationId || (await licensingApi.getInstallationIdAsync());
       const osInfo =
         typeof window !== 'undefined'
-          ? `${window.navigator.platform} | ${window.navigator.userAgent}`
+          ? `${window.navigator.platform} | ${window.navigator.userAgent}`.slice(0, 190)
           : '';
       const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
 
