@@ -226,6 +226,7 @@ class TestOperatingModeSerializer:
         )
         data = FacilityListSerializer(f).data
         assert data["operating_mode"] == "STANDALONE_LAB"
+        assert data["deployment_profile"] == "lis_standalone"
 
     @pytest.mark.django_db
     def test_detail_serializer_includes_operating_mode(self, facility_kwargs):
@@ -239,6 +240,7 @@ class TestOperatingModeSerializer:
         )
         data = FacilityDetailSerializer(f).data
         assert data["operating_mode"] == "STANDALONE_DIAGNOSTIC"
+        assert data["deployment_profile"] == "full_hmis"
 
 
 class TestOperatingModeAPI:

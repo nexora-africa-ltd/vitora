@@ -1439,17 +1439,12 @@ def setup_initialize(request):
             mfl_code=data["facility_mfl_code"],
             level=data["facility_level"],
             ownership=data.get("facility_ownership", Facility.OwnershipType.PRIVATE),
+            operating_mode=data.get("facility_operating_mode", Facility.OperatingMode.FULL_HMIS),
             county=data["facility_county"],
             sub_county=data["facility_sub_county"],
             is_headquarters=True,
             is_active=True,
         )
-
-        # Apply default modules based on KEPH level
-        defaults = Facility.default_modules_for_level(data["facility_level"])
-        for key, value in defaults.items():
-            setattr(facility, key, value)
-        facility.save()
 
         # 3. Create admin user
         user = User.objects.create_user(

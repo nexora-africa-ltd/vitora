@@ -914,6 +914,11 @@ class SetupWizardSerializer(serializers.Serializer):
         choices=Facility.OwnershipType.choices,
         default=Facility.OwnershipType.PRIVATE,
     )
+    facility_operating_mode = serializers.ChoiceField(
+        choices=Facility.OperatingMode.choices,
+        required=False,
+        default=Facility.OperatingMode.FULL_HMIS,
+    )
     facility_county = serializers.PrimaryKeyRelatedField(
         queryset=County.objects.all(),
     )

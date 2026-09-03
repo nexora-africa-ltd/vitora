@@ -59,6 +59,7 @@ export const FacilityListItemSchema = z.object({
       'STANDALONE_DIAGNOSTIC',
     ])
     .optional(),
+  deployment_profile: z.enum(['full_hmis', 'lis_standalone']).optional(),
   is_active: z.boolean(),
 });
 

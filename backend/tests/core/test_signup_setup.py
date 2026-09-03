@@ -228,6 +228,21 @@ class TestOrgSignup:
         response = anon_client.post("/api/core/auth/signup/", signup_data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_signup_supports_standalone_lab_mode(self, anon_client, signup_data):
+        signup_data["facility_operating_mode"] = Facility.OperatingMode.STANDALONE_LAB
+
+        response = anon_client.post("/api/core/auth/signup/", signup_data, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
+
+        facility = Facility.objects.get(mfl_code="12345")
+        assert facility.operating_mode == Facility.OperatingMode.STANDALONE_LAB
+        assert facility.has_laboratory is True
+        assert facility.has_lis_standalone is True
+        assert facility.has_inventory is True
+        assert facility.has_billing is True
+        assert facility.has_outpatient is False
+        assert facility.has_inpatient is False
+
 
 # ============================================================================
 # Email Verification Tests
@@ -421,3 +436,19 @@ class TestSetupInitialize:
         serializer = SetupWizardSerializer(data=setup_data)
         assert not serializer.is_valid()
         assert "facility_mfl_code" in serializer.errors
+
+    @override_settings(SETUP_WIZARD_ENABLED=True)
+    def test_initialize_supports_standalone_lab_mode(self, anon_client, setup_data):
+        setup_data["facility_operating_mode"] = Facility.OperatingMode.STANDALONE_LAB
+
+        response = anon_client.post("/api/core/setup/initialize/", setup_data, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
+
+        facility = Facility.objects.get(mfl_code="MFL-12345")
+        assert facility.operating_mode == Facility.OperatingMode.STANDALONE_LAB
+        assert facility.has_laboratory is True
+        assert facility.has_lis_standalone is True
+        assert facility.has_inventory is True
+        assert facility.has_billing is True
+        assert facility.has_outpatient is False
+        assert facility.has_inpatient is False

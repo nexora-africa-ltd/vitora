@@ -10,6 +10,8 @@ export type FacilityOperatingMode =
   | 'STANDALONE_IMAGING'
   | 'STANDALONE_DIAGNOSTIC';
 
+export type FacilityDeploymentProfile = 'full_hmis' | 'lis_standalone';
+
 export interface FacilityListItem {
   id: number;
   organization: number | null;
@@ -27,6 +29,7 @@ export interface FacilityListItem {
   branch_code: string;
   sha_contracted: boolean;
   operating_mode?: FacilityOperatingMode;
+  deployment_profile?: FacilityDeploymentProfile;
   is_active: boolean;
 }
 

@@ -400,6 +400,7 @@ class FacilityListSerializer(serializers.ModelSerializer):
     organization_name = serializers.CharField(
         source="organization.name", read_only=True, default=None
     )
+    deployment_profile = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for FacilityListSerializer."""
@@ -422,9 +423,16 @@ class FacilityListSerializer(serializers.ModelSerializer):
             "branch_code",
             "sha_contracted",
             "operating_mode",
+            "deployment_profile",
             "is_active",
         ]
         read_only_fields = ["id"]
+
+    def get_deployment_profile(self, obj) -> str:
+        """Return deployment profile used by frontend standalone guards."""
+        if obj.operating_mode == Facility.OperatingMode.STANDALONE_LAB:
+            return "lis_standalone"
+        return "full_hmis"
 
 
 class FacilityDetailSerializer(serializers.ModelSerializer):
@@ -449,6 +457,7 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
     modules = serializers.DictField(read_only=True)
     enabled_module_names = serializers.ListField(child=serializers.CharField(), read_only=True)
     effective_logo_url = serializers.SerializerMethodField()
+    deployment_profile = serializers.SerializerMethodField()
 
     # Biometrics fields
     workstation_id = serializers.CharField(required=False, allow_blank=True, default="")
@@ -560,6 +569,7 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "has_analytics",
             # Operating mode
             "operating_mode",
+            "deployment_profile",
             # Status & timestamps
             "is_active",
             "created_at",
@@ -607,6 +617,12 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(effective.url)
             return effective.url
         return None
+
+    def get_deployment_profile(self, obj) -> str:
+        """Return deployment profile used by frontend standalone guards."""
+        if obj.operating_mode == Facility.OperatingMode.STANDALONE_LAB:
+            return "lis_standalone"
+        return "full_hmis"
 
     def validate(self, attrs: dict) -> dict:
         """Subscription tier gating for module flags and operating_mode."""
