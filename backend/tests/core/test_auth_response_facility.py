@@ -4,6 +4,7 @@ Tests for Phase 4: Auth Response Enhancement.
 Verifies that token obtain, MFA verify, and /api/staff/me/ responses include:
 - role_category alongside role
 - facility object with id, mfl_code, name, level, modules, sha_contracted
+- facility deployment profile enum (full_hmis | lis_standalone)
 """
 
 import pytest  # type: ignore
@@ -171,6 +172,27 @@ class TestTokenObtainFacility:
         assert facility["modules"]["outpatient"] is True
         assert facility["modules"]["inpatient"] is True
         assert facility["modules"]["imaging"] is False
+        assert facility["operating_mode"] == str(auth_facility.operating_mode)
+        assert facility["deployment_profile"] == "full_hmis"
+
+    def test_login_maps_lis_standalone_deployment_profile(
+        self, api_client, user_with_facility, auth_facility
+    ):
+        """Login response maps STANDALONE_LAB to deployment_profile=lis_standalone."""
+        from hmis.apps.core.models import Facility
+
+        auth_facility.operating_mode = Facility.OperatingMode.STANDALONE_LAB
+        auth_facility.save(update_fields=["operating_mode"])
+
+        url = reverse("token_obtain_pair")
+        response = api_client.post(
+            url, {"username": "nurse_facility", "password": "secure123!"}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        facility = response.data["user"]["facility"]
+        assert facility["operating_mode"] == Facility.OperatingMode.STANDALONE_LAB
+        assert facility["deployment_profile"] == "lis_standalone"
 
     def test_login_without_facility_returns_null(self, api_client, user_without_facility):
         """Login response should return facility=null when no facility assigned."""
@@ -228,6 +250,25 @@ class TestStaffMeFacility:
         assert facility["mfl_code"] == "AUTH001"
         assert facility["modules"]["pharmacy"] is True
         assert facility["modules"]["theatre"] is False
+        assert facility["operating_mode"] == str(auth_facility.operating_mode)
+        assert facility["deployment_profile"] == "full_hmis"
+
+    def test_me_maps_lis_standalone_deployment_profile(
+        self, api_client, user_with_facility, auth_facility
+    ):
+        """GET /api/staff/me/ maps STANDALONE_LAB to lis_standalone profile."""
+        from hmis.apps.core.models import Facility
+
+        auth_facility.operating_mode = Facility.OperatingMode.STANDALONE_LAB
+        auth_facility.save(update_fields=["operating_mode"])
+
+        api_client.force_authenticate(user=user_with_facility)
+        response = api_client.get("/api/staff/me/")
+
+        assert response.status_code == status.HTTP_200_OK
+        facility = response.data["user_info"]["facility"]
+        assert facility["operating_mode"] == Facility.OperatingMode.STANDALONE_LAB
+        assert facility["deployment_profile"] == "lis_standalone"
 
     def test_me_without_facility_returns_null(self, api_client, user_without_facility):
         """GET /api/staff/me/ should return facility=null when not assigned."""

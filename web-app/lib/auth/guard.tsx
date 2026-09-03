@@ -254,6 +254,25 @@ const ROUTE_ACCESS_MAP: [string, RouteAccessRequirement][] = [
   ['/patients', { moduleKey: 'patients' }],
 ];
 
+const LIS_STANDALONE_ROUTE_ACCESS_MAP: [string, RouteAccessRequirement][] = [
+  ['/patients/new', { moduleKey: 'patients', actionKey: 'patients.create' }],
+  ['/laboratory/orders/new', { moduleKey: 'laboratory', actionKey: 'lis.create_standalone_order' }],
+  ['/transactions/invoices/new', { moduleKey: 'billing', actionKey: 'billing.create_invoice' }],
+  [
+    '/inventory/purchase-orders/new',
+    { moduleKey: 'inventory', actionKey: 'inventory.manage_procurement' },
+  ],
+  ['/inventory/goods-receipt/new', { moduleKey: 'inventory', actionKey: 'inventory.manage_procurement' }],
+  ['/', { moduleKey: 'dashboard' }],
+  ['/dashboard', { moduleKey: 'dashboard' }],
+  ['/patients', { moduleKey: 'patients' }],
+  ['/laboratory', { moduleKey: 'laboratory', facilityModule: 'laboratory' }],
+  ['/transactions', { moduleKey: 'billing' }],
+  ['/inventory', { moduleKey: 'inventory', facilityModule: 'inventory' }],
+  ['/notifications', {}],
+  ['/settings', {}],
+];
+
 /**
  * Resolve a pathname to its required ModuleKey, if any.
  */
@@ -268,6 +287,15 @@ export function getModuleForRoute(pathname: string): ModuleKey | null {
 
 function getRouteAccessRequirement(pathname: string): RouteAccessRequirement | null {
   for (const [prefix, requirement] of ROUTE_ACCESS_MAP) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return requirement;
+    }
+  }
+  return null;
+}
+
+function getStandaloneRouteAccessRequirement(pathname: string): RouteAccessRequirement | null {
+  for (const [prefix, requirement] of LIS_STANDALONE_ROUTE_ACCESS_MAP) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
       return requirement;
     }
@@ -291,9 +319,28 @@ interface RouteGuardProps {
 export function RouteGuard({ children, fallback }: RouteGuardProps) {
   const pathname = usePathname();
   const { canAccessModule, canPerformAction, hasPermission, isAuthenticated } = usePermissions();
-  const { hasModule } = useFacility();
+  const { hasModule, facilityDetail, facility } = useFacility();
 
   if (!isAuthenticated) return <>{children}</>;
+
+  const isLISStandaloneProfile =
+    facilityDetail?.operating_mode === 'STANDALONE_LAB' ||
+    facility?.deployment_profile === 'lis_standalone';
+  if (isLISStandaloneProfile) {
+    const standaloneRequirement = getStandaloneRouteAccessRequirement(pathname);
+    if (!standaloneRequirement) {
+      return fallback ?? <AccessDenied />;
+    }
+    if (standaloneRequirement.moduleKey && !canAccessModule(standaloneRequirement.moduleKey)) {
+      return fallback ?? <AccessDenied />;
+    }
+    if (standaloneRequirement.facilityModule && !hasModule(standaloneRequirement.facilityModule)) {
+      return fallback ?? <AccessDenied />;
+    }
+    if (standaloneRequirement.actionKey && !canPerformAction(standaloneRequirement.actionKey)) {
+      return fallback ?? <AccessDenied />;
+    }
+  }
 
   const requirement = getRouteAccessRequirement(pathname);
   if (requirement?.moduleKey && !canAccessModule(requirement.moduleKey)) {

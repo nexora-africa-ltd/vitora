@@ -72,6 +72,8 @@ from .permissions import (
 from .role_permissions_sync import sync_role_group_permissions
 from .serializers import (
     AuditLogSerializer,
+    AuthTokenRequestSerializer,
+    AuthTokenResponseSerializer,
     CertificateAuthoritySerializer,
     CodeSystemSerializer,
     CountySerializer,
@@ -159,12 +161,18 @@ def _build_user_info(user) -> dict:
             # Build facility payload
             if profile.primary_facility:
                 fac = profile.primary_facility
+                operating_mode = str(getattr(fac, "operating_mode", "") or "")
+                deployment_profile = (
+                    "lis_standalone" if operating_mode == "STANDALONE_LAB" else "full_hmis"
+                )
                 facility_data = {
                     "id": fac.id,
                     "mfl_code": fac.mfl_code,
                     "name": fac.name,
                     "level": fac.level,
                     "modules": fac.modules,
+                    "operating_mode": operating_mode,
+                    "deployment_profile": deployment_profile,
                     "sha_contracted": fac.sha_contracted,
                 }
 
@@ -564,6 +572,10 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "login"
 
+    @extend_schema(
+        request=AuthTokenRequestSerializer,
+        responses={200: AuthTokenResponseSerializer},
+    )
     def post(self, request, *args, **kwargs):
         """Handle token obtain request with audit logging and MFA."""
         response = super().post(request, *args, **kwargs)

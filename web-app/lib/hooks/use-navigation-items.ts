@@ -27,7 +27,7 @@ export interface NavigationResult {
 
 export function useNavigationItems(): NavigationResult {
   const { canAccessModule, canPerformAction, isSuperuser } = usePermissions();
-  const { hasModule, facilityDetail } = useFacility();
+  const { hasModule, facilityDetail, facility } = useFacility();
   const { navigationMode, isClinicalNavigationEligible } = useNavigationMode();
   const { hasFeature } = useSubscription();
   const { isSustainedOffline } = useNetworkStatus();
@@ -52,6 +52,38 @@ export function useNavigationItems(): NavigationResult {
   }, [clinicsData]);
 
   return useMemo(() => {
+    const isLISStandaloneProfile =
+      facilityDetail?.operating_mode === 'STANDALONE_LAB' ||
+      facility?.deployment_profile === 'lis_standalone';
+
+    const lisStandaloneAllowedModuleKeys = new Set<string>([
+      'dashboard',
+      'patients',
+      'laboratory',
+      'billing',
+      'inventory',
+    ]);
+    const lisStandaloneRouteRules: Array<{
+      prefix: string;
+      moduleKey?: string;
+      facilityModule?: string;
+      actionKey?: string;
+    }> = [
+      { prefix: '/patients/new', actionKey: 'patients.create' },
+      { prefix: '/laboratory/orders/new', actionKey: 'lis.create_standalone_order' },
+      { prefix: '/transactions/invoices/new', actionKey: 'billing.create_invoice' },
+      { prefix: '/inventory/purchase-orders/new', actionKey: 'inventory.manage_procurement' },
+      { prefix: '/inventory/goods-receipt/new', actionKey: 'inventory.manage_procurement' },
+      { prefix: '/', moduleKey: 'dashboard' },
+      { prefix: '/dashboard', moduleKey: 'dashboard' },
+      { prefix: '/patients', moduleKey: 'patients' },
+      { prefix: '/laboratory', moduleKey: 'laboratory', facilityModule: 'laboratory' },
+      { prefix: '/transactions', moduleKey: 'billing' },
+      { prefix: '/inventory', moduleKey: 'inventory', facilityModule: 'inventory' },
+      { prefix: '/notifications' },
+      { prefix: '/settings' },
+    ];
+
     const visibilityCtx: NavItemVisibilityContext = {
       facilityLevel: facilityDetail?.level,
       facilityOwnership: facilityDetail?.ownership,
@@ -70,6 +102,38 @@ export function useNavigationItems(): NavigationResult {
     }): boolean => {
       if (item.featureFlag === 'interfacility_transfers' && !interfacilityTransfersEnabled) {
         return false;
+      }
+      if (isLISStandaloneProfile) {
+        const href = 'href' in item && typeof item.href === 'string' ? item.href : '';
+        if (item.moduleKey && !lisStandaloneAllowedModuleKeys.has(item.moduleKey)) {
+          return false;
+        }
+        if (href) {
+          const matchedStandaloneRule = lisStandaloneRouteRules.find(
+            (rule) => href === rule.prefix || href.startsWith(`${rule.prefix}/`)
+          );
+          if (!matchedStandaloneRule) {
+            return false;
+          }
+          if (
+            matchedStandaloneRule.moduleKey &&
+            !canAccessModule(matchedStandaloneRule.moduleKey as never)
+          ) {
+            return false;
+          }
+          if (
+            matchedStandaloneRule.facilityModule &&
+            !hasModule(matchedStandaloneRule.facilityModule as never)
+          ) {
+            return false;
+          }
+          if (
+            matchedStandaloneRule.actionKey &&
+            !canPerformAction(matchedStandaloneRule.actionKey as never)
+          ) {
+            return false;
+          }
+        }
       }
       if (item.moduleKey && !canAccessModule(item.moduleKey as never)) return false;
       if (item.facilityModule && !hasModule(item.facilityModule as never)) return false;
@@ -124,5 +188,6 @@ export function useNavigationItems(): NavigationResult {
     isClinicalNavigationEligible,
     isSustainedOffline,
     interfacilityTransfersEnabled,
+    facility,
   ]);
 }

@@ -715,6 +715,103 @@ class UserPermissionsSerializer(serializers.Serializer):
     permissions = serializers.ListField(child=serializers.CharField())
 
 
+AUTH_DEPLOYMENT_PROFILE_CHOICES = (
+    ("full_hmis", "Full HMIS"),
+    ("lis_standalone", "LIS Standalone"),
+)
+
+
+class AuthMembershipFacilitySerializer(serializers.Serializer):
+    """Facility tuple emitted in user memberships within auth payloads."""
+
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    mfl_code = serializers.CharField()
+
+
+class AuthMembershipSerializer(serializers.Serializer):
+    """Organization membership shape emitted in auth user payloads."""
+
+    id = serializers.IntegerField()
+    organization_id = serializers.IntegerField()
+    organization_name = serializers.CharField()
+    role_code = serializers.CharField()
+    role_name = serializers.CharField()
+    is_primary = serializers.BooleanField()
+    facilities = AuthMembershipFacilitySerializer(many=True)
+
+
+class AuthFacilitySerializer(serializers.Serializer):
+    """Primary facility shape included in auth user payloads."""
+
+    id = serializers.IntegerField()
+    mfl_code = serializers.CharField()
+    name = serializers.CharField()
+    level = serializers.CharField()
+    modules = serializers.DictField(child=serializers.BooleanField())
+    operating_mode = serializers.ChoiceField(choices=Facility.OperatingMode.choices)
+    deployment_profile = serializers.ChoiceField(choices=AUTH_DEPLOYMENT_PROFILE_CHOICES)
+    sha_contracted = serializers.BooleanField()
+
+
+class AuthUserInfoSerializer(serializers.Serializer):
+    """Canonical user payload used by login, MFA verify, and /api/staff/me/."""
+
+    id = serializers.IntegerField()
+    username = serializers.CharField()
+    email = serializers.EmailField(allow_blank=True)
+    first_name = serializers.CharField(allow_blank=True)
+    last_name = serializers.CharField(allow_blank=True)
+    is_staff = serializers.BooleanField()
+    is_superuser = serializers.BooleanField()
+    role = serializers.CharField(allow_null=True)
+    role_display = serializers.CharField(allow_null=True)
+    role_category = serializers.CharField(allow_null=True)
+    phone_number = serializers.CharField(allow_null=True)
+    license_number = serializers.CharField(allow_null=True)
+    licensing_body = serializers.CharField(allow_null=True)
+    national_id = serializers.CharField(allow_null=True)
+    permissions = serializers.ListField(child=serializers.CharField())
+    facility = AuthFacilitySerializer(allow_null=True)
+    onboarding_complete = serializers.BooleanField()
+    memberships = AuthMembershipSerializer(many=True)
+    subscription_tier = serializers.CharField(allow_null=True)
+    plan_features = serializers.DictField(child=serializers.BooleanField())
+    ai_tokens_available = serializers.BooleanField()
+
+
+class AuthTokenRequestSerializer(serializers.Serializer):
+    """Request payload for JWT token obtain endpoint."""
+
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+
+class AuthTokenResponseSerializer(serializers.Serializer):
+    """Response payload for JWT token obtain endpoint."""
+
+    access = serializers.CharField(required=False)
+    refresh = serializers.CharField(required=False)
+    mfa_required = serializers.BooleanField(required=False)
+    mfa_token = serializers.CharField(required=False)
+    available_methods = serializers.ListField(child=serializers.CharField(), required=False)
+    mfa_setup_required = serializers.BooleanField(required=False)
+    mfa_grace_expired = serializers.BooleanField(required=False)
+    mfa_grace_deadline = serializers.DateTimeField(required=False)
+    must_change_password = serializers.BooleanField(required=False)
+    password_reset_token = serializers.CharField(required=False)
+    user = AuthUserInfoSerializer(required=False)
+
+
+class StaffProfileMeResponseSerializer(StaffProfileSerializer):
+    """GET /api/staff/me/ response shape with canonical user_info payload."""
+
+    user_info = AuthUserInfoSerializer(read_only=True)
+
+    class Meta(StaffProfileSerializer.Meta):
+        fields = [*StaffProfileSerializer.Meta.fields, "user_info"]
+
+
 class UsernameCheckResponseSerializer(serializers.Serializer):
     """Response serializer for username availability checks."""
 

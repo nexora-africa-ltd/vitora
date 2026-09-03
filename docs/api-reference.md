@@ -53,6 +53,27 @@ POST   /api/token/refresh/          # Refresh: {refresh} → {access}
 POST   /api/token/verify/           # Verify: {token} → 200 OK or 401
 ```
 
+### Auth User Facility Contract (`/api/token/`, `/api/staff/me/`)
+
+`user.facility` (or `user_info.facility`) now includes explicit deployment profile metadata:
+
+```json
+{
+  "operating_mode": "FULL_HMIS",
+  "deployment_profile": "full_hmis"
+}
+```
+
+`deployment_profile` is an enum with these values:
+
+- `full_hmis` - default full-suite HMIS deployment
+- `lis_standalone` - standalone laboratory deployment profile
+
+Mapping rule used by backend:
+
+- `operating_mode=STANDALONE_LAB` -> `deployment_profile=lis_standalone`
+- any other operating mode -> `deployment_profile=full_hmis`
+
 ### Cookie-based (Web Frontend)
 
 ```

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { AuthGuard, RouteGuard } from '@/lib/auth/guard';
 import { SyncProvider } from '@/lib/context/sync-context';
 import { AIChatProvider } from '@/lib/context/ai-chat-context';
@@ -22,6 +23,7 @@ import { PushNotificationPrompt } from '@/components/notifications/push-notifica
 import { cn } from '@/lib/utils/cn';
 import { usePageContextForAI } from '@/lib/hooks/use-page-context-for-ai';
 import { useSwipeSidebar } from '@/lib/hooks/use-swipe-sidebar';
+import { useFacility } from '@/lib/context/facility-context';
 
 /** Invisible component that syncs the current route into AI chat context. */
 function AIPageContextSync() {
@@ -32,6 +34,9 @@ function AIPageContextSync() {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const { facilityDetail, facility } = useFacility();
 
   const openMobileSidebar = useCallback(() => setMobileSidebarOpen(true), []);
   const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
@@ -58,6 +63,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       document.documentElement.style.overflow = prevHtmlOverflow;
     };
   }, [mobileSidebarOpen]);
+
+  useEffect(() => {
+    const isLISStandaloneProfile =
+      facilityDetail?.operating_mode === 'STANDALONE_LAB' ||
+      facility?.deployment_profile === 'lis_standalone';
+    if (!isLISStandaloneProfile) return;
+    if (pathname === '/dashboard' || pathname === '/') {
+      router.replace('/laboratory');
+    }
+  }, [facilityDetail, facility, pathname, router]);
 
   return (
     <AuthGuard>

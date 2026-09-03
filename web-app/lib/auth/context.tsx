@@ -47,6 +47,13 @@ export interface UserFacility {
   name: string;
   level: string;
   modules: FacilityModules;
+  operating_mode?:
+    | 'FULL_HMIS'
+    | 'STANDALONE_LAB'
+    | 'STANDALONE_PHARMACY'
+    | 'STANDALONE_IMAGING'
+    | 'STANDALONE_DIAGNOSTIC';
+  deployment_profile?: 'full_hmis' | 'lis_standalone';
   sha_contracted: boolean;
 }
 

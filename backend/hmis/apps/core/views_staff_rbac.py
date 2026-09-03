@@ -101,6 +101,7 @@ from .serializers import (
     RevokeCertificateRequestSerializer,
     RoleSerializer,
     SignDocumentRequestSerializer,
+    StaffProfileMeResponseSerializer,
     StaffProfileSerializer,
     StaffProfileUpdateSerializer,
     SubCountySerializer,
@@ -682,6 +683,9 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         read_serializer = StaffProfileSerializer(staff_profile)
         return Response(read_serializer.data)
 
+    @extend_schema(
+        responses={200: StaffProfileMeResponseSerializer},
+    )
     @action(detail=False, methods=["get", "patch"])
     def me(self, request):
         """
