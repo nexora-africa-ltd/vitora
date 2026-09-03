@@ -1094,18 +1094,24 @@ def _build_downward_snapshot_changes(
         # without fetching their rows from the database. This is critical for
         # cursor-based resumption — without it, a request at cursor=10000
         # would refetch and deserialize 10000 rows just to discard them.
+        # auth.User downward snapshots can require large DISTINCT + join plans.
+        # Counting first is frequently more expensive than streaming rows and can
+        # trigger upstream timeouts before pagination even starts.
+        use_streaming_fallback = model_label == "auth.User"
         table_count = None
-        try:
-            table_count = qs.count()
-        except DatabaseError:
-            # Some tenant-scoped tables (notably auth.User with many reverse
-            # relation predicates) can trigger expensive COUNT plans that spill
-            # to Postgres temp files. Falling back to streaming traversal keeps
-            # the pull functional under tight DB temp-disk quotas.
-            logger.warning(
-                "Failed to count %s for downward snapshot; falling back to streaming pagination.",
-                model_label,
-            )
+        if not use_streaming_fallback:
+            try:
+                table_count = qs.count()
+            except DatabaseError:
+                # Some tenant-scoped tables can trigger expensive COUNT plans
+                # that spill to Postgres temp files. Falling back to streaming
+                # traversal keeps pulls functional under tight DB temp-disk
+                # quotas.
+                use_streaming_fallback = True
+                logger.warning(
+                    "Failed to count %s for downward snapshot; falling back to streaming pagination.",
+                    model_label,
+                )
 
         logger.info(
             "Full-pull snapshot table %s count=%s skipped=%s cursor=%s.",
@@ -1115,7 +1121,6 @@ def _build_downward_snapshot_changes(
             cursor,
         )
 
-        use_streaming_fallback = table_count is None
         if use_streaming_fallback:
             offset_in_table = max(0, cursor - skipped)
             qs_to_emit = qs

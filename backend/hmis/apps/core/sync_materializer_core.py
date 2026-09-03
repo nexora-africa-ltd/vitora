@@ -153,6 +153,7 @@ def apply_entry(
                 apply_materialized_m2m(model, instance, data)
                 if created_instance and model._meta.label == "patients.Patient":
                     _log_patient_create_from_sync_materializer(instance)
+                _sync_materialized_rbac_side_effects(instance)
     except (
         DjangoValidationError,
         ObjectDoesNotExist,
@@ -217,6 +218,30 @@ def _materialization_error_code(exc: Exception) -> str | None:
         return DEFERRED_MATERIALIZATION_CODE
 
     return None
+
+
+def _sync_materialized_rbac_side_effects(instance) -> None:
+    """Apply RBAC side-effects skipped by signal guards during materialization."""
+    label = instance._meta.label
+
+    if label == "core.Role":
+        from hmis.apps.core.role_permissions_sync import sync_role_group_permissions
+
+        sync_role_group_permissions(instance)
+        return
+
+    if label == "core.StaffProfile":
+        from hmis.apps.core.role_permissions_sync import sync_staff_profile_role_groups
+
+        sync_staff_profile_role_groups(instance)
+        return
+
+    if label == "core.OrgMembership":
+        from hmis.apps.core.role_permissions_sync import sync_staff_profile_role_groups
+
+        staff_profile = getattr(instance, "staff_profile", None)
+        if staff_profile is not None:
+            sync_staff_profile_role_groups(staff_profile)
 
 
 def _fallback_invoice_encounter_if_parent_missing(

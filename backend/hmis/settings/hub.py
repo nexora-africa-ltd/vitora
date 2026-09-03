@@ -185,6 +185,10 @@ HUB_CLOUD_SYNC_INTERVAL = int(os.getenv("HUB_CLOUD_SYNC_INTERVAL", "30"))
 HUB_CLOUD_HTTP_TIMEOUT_SECONDS = 300
 HUB_CLOUD_PULL_NETWORK_MAX_RETRIES = 2
 
+# RBAC drift self-heal runs on startup/sync cycles at most once per interval.
+HUB_RBAC_SELF_HEAL_ENABLED = os.getenv("HUB_RBAC_SELF_HEAL_ENABLED", "true").lower() == "true"
+HUB_RBAC_SELF_HEAL_INTERVAL_SECONDS = int(os.getenv("HUB_RBAC_SELF_HEAL_INTERVAL_SECONDS", "86400"))
+
 # Hub-created users start their PK at this offset so they never collide with
 # cloud-assigned PKs (which start at 1 and grow sequentially).  The value
 # 100_000 gives the cloud room for ~100k users before any chance of overlap —

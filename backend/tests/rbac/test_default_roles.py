@@ -1008,3 +1008,21 @@ class TestExpandedPermissionMatrices:
         # Should NOT create clinical records
         assert org_admin.permissions_matrix["PatientInsurance"]["create"] is False
         assert org_admin.permissions_matrix["InsuranceClaim"]["create"] is False
+
+
+@pytest.mark.django_db
+class TestRolePermissionModelResolution:
+    """Regression coverage for model-key resolution in role permission sync."""
+
+    def test_legacy_pascalized_keys_are_mapped(self):
+        from hmis.apps.core.role_permissions_sync import _resolve_model_target
+
+        assert _resolve_model_target("Logentry") == ("admin", "logentry")
+        assert _resolve_model_target("Dicominstance") == ("imaging", "dicominstance")
+        assert _resolve_model_target("Aiadvisoryorderlink") == ("ai", "aiadvisoryorderlink")
+
+    def test_unmapped_key_falls_back_to_content_type_lookup(self):
+        from hmis.apps.core.role_permissions_sync import _resolve_model_target
+
+        # Not explicitly listed in MODEL_MAPPING, but present in contenttypes.
+        assert _resolve_model_target("User") == ("auth", "user")

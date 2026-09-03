@@ -9,9 +9,11 @@ Also used by the sync_role_permissions management command for bulk operations.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
 
 if TYPE_CHECKING:
     from hmis.apps.core.models import Role
@@ -20,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 # Mapping from permissions_matrix model names to Django (app_label, model_name)
 MODEL_MAPPING: dict[str, tuple[str, str]] = {
+    # django admin
+    "LogEntry": ("admin", "logentry"),
+    "Logentry": ("admin", "logentry"),
     # core
     "StaffProfile": ("core", "staffprofile"),
     "Role": ("core", "role"),
@@ -74,6 +79,18 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "RadiologyReport": ("imaging", "radiologyreport"),
     "ImagingReport": ("imaging", "radiologyreport"),
     "DICOMStudy": ("imaging", "dicomstudy"),
+    "DICOMSeries": ("imaging", "dicomseries"),
+    "Dicomseries": ("imaging", "dicomseries"),
+    "DICOMInstance": ("imaging", "dicominstance"),
+    "Dicominstance": ("imaging", "dicominstance"),
+    "ImagingEquipment": ("imaging", "imagingequipment"),
+    "Imagingequipment": ("imaging", "imagingequipment"),
+    "ImagingIntegrationSettings": ("imaging", "imagingintegrationsettings"),
+    "Imagingintegrationsettings": ("imaging", "imagingintegrationsettings"),
+    "ReportAmendment": ("imaging", "reportamendment"),
+    "Reportamendment": ("imaging", "reportamendment"),
+    "StudyShareLink": ("imaging", "studysharelink"),
+    "Studysharelink": ("imaging", "studysharelink"),
     # imaging — standalone
     "WalkInImagingPatient": ("imaging", "walkinimagingpatient"),
     "ExternalImagingOrderRequest": ("imaging", "externalimagingorderrequest"),
@@ -237,12 +254,26 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "DemandForecast": ("inventory", "demandforecast"),
     "ReorderSuggestion": ("inventory", "reordersuggestion"),
     # ai
+    "TibaBotFacilityKey": ("ai", "tibabotfacilitykey"),
+    "Tibabotfacilitykey": ("ai", "tibabotfacilitykey"),
     "AICareplanResult": ("ai", "aicareplanresult"),
     "AICarePlanResult": ("ai", "aicareplanresult"),
     "AICDSResult": ("ai", "aicdsresult"),
     "AIDischargeResult": ("ai", "aidischargeresult"),
     "AIICURiskResult": ("ai", "aiicuriskresult"),
     "AILabInterpretResult": ("ai", "ailabinterpretresult"),
+    "AIAdvisoryOrderLink": ("ai", "aiadvisoryorderlink"),
+    "Aiadvisoryorderlink": ("ai", "aiadvisoryorderlink"),
+    "AIEGFRResult": ("ai", "aiegfrresult"),
+    "Aiegfrresult": ("ai", "aiegfrresult"),
+    "AIInvestigationSuggestResult": ("ai", "aiinvestigationsuggestresult"),
+    "Aiinvestigationsuggestresult": ("ai", "aiinvestigationsuggestresult"),
+    "AISurgicalChecklistSessionResult": ("ai", "aisurgicalchecklistsessionresult"),
+    "Aisurgicalchecklistsessionresult": ("ai", "aisurgicalchecklistsessionresult"),
+    "AISurgicalPostOpCarePlanResult": ("ai", "aisurgicalpostopcareplanresult"),
+    "Aisurgicalpostopcareplanresult": ("ai", "aisurgicalpostopcareplanresult"),
+    "AISurgicalPreOpAssessResult": ("ai", "aisurgicalpreopassessresult"),
+    "Aisurgicalpreopassessresult": ("ai", "aisurgicalpreopassessresult"),
     "ChatSession": ("ai", "chatsession"),
     "ChatMessage": ("ai", "chatmessage"),
     # quality
@@ -372,6 +403,58 @@ MODEL_SUFFIXED_ACTIONS: set[str] = {
 }
 
 
+_DYNAMIC_MODEL_MAPPING_CACHE: dict[str, tuple[str, str] | None] = {}
+_UNKNOWN_MODEL_WARNED: set[str] = set()
+
+
+def _resolve_model_target(model_name: str) -> tuple[str, str] | None:
+    """Resolve a matrix model key to an ``(app_label, model)`` pair.
+
+    1) Use the static ``MODEL_MAPPING`` when available.
+    2) Fallback to a ContentType lookup by lower-cased model name so
+       legacy/case-drift keys can still resolve on hubs.
+    """
+    mapped = MODEL_MAPPING.get(model_name)
+    if mapped is not None:
+        return mapped
+
+    if model_name in _DYNAMIC_MODEL_MAPPING_CACHE:
+        return _DYNAMIC_MODEL_MAPPING_CACHE[model_name]
+
+    normalized = (model_name or "").strip().lower()
+    if not normalized:
+        _DYNAMIC_MODEL_MAPPING_CACHE[model_name] = None
+        return None
+
+    matches = list(
+        ContentType.objects.filter(model=normalized).values_list("app_label", "model").distinct()
+    )
+    if len(matches) == 1:
+        resolved = matches[0]
+        _DYNAMIC_MODEL_MAPPING_CACHE[model_name] = resolved
+        logger.info(
+            "sync_role_group_permissions: resolved unknown model %s to %s.%s via ContentType",
+            model_name,
+            resolved[0],
+            resolved[1],
+        )
+        return resolved
+
+    _DYNAMIC_MODEL_MAPPING_CACHE[model_name] = None
+    if model_name not in _UNKNOWN_MODEL_WARNED:
+        if len(matches) > 1:
+            logger.warning(
+                "sync_role_group_permissions: ambiguous model %s (matches=%s)",
+                model_name,
+                ",".join(f"{app}.{mdl}" for app, mdl in matches),
+            )
+        else:
+            logger.warning("sync_role_group_permissions: unknown model %s", model_name)
+        _UNKNOWN_MODEL_WARNED.add(model_name)
+
+    return None
+
+
 def _build_reverse_model_mapping() -> dict[tuple[str, str], str]:
     """Reverse of MODEL_MAPPING: (app_label, model) -> canonical matrix key.
 
@@ -439,14 +522,25 @@ def sync_role_group_permissions(role: Role) -> int:
         group.permissions.clear()
         return 0
 
+    permissions_to_add = collect_permissions_for_role(role)
+
+    group.permissions.set(permissions_to_add)
+    return len(permissions_to_add)
+
+
+def collect_permissions_for_role(role: Role) -> list[Permission]:
+    """Resolve the Django Permission objects implied by a role matrix."""
+    if not role.permissions_matrix:
+        return []
+
     permissions_to_add: list[Permission] = []
 
     for model_name, actions in role.permissions_matrix.items():
-        if model_name not in MODEL_MAPPING:
-            logger.warning("sync_role_group_permissions: unknown model %s", model_name)
+        resolved_target = _resolve_model_target(model_name)
+        if resolved_target is None:
             continue
 
-        app_label, model = MODEL_MAPPING[model_name]
+        app_label, model = resolved_target
 
         for action, granted in actions.items():
             if not granted:
@@ -484,8 +578,12 @@ def sync_role_group_permissions(role: Role) -> int:
                     model,
                 )
 
-    group.permissions.set(permissions_to_add)
-    return len(permissions_to_add)
+    return permissions_to_add
+
+
+def expected_role_permission_ids(role: Role) -> set[int]:
+    """Return expected permission IDs for the role's current matrix."""
+    return {perm.id for perm in collect_permissions_for_role(role)}
 
 
 def ensure_role_django_group(role: Role) -> Group:
@@ -504,3 +602,98 @@ def ensure_role_django_group(role: Role) -> Group:
     role.django_group = group
     role.save(update_fields=["django_group", "updated_at"])
     return group
+
+
+def _unique_roles(roles: Iterable[Role]) -> list[Role]:
+    """Return roles de-duplicated by PK while preserving order."""
+    unique: list[Role] = []
+    seen_ids: set[int] = set()
+    for role in roles:
+        role_id = getattr(role, "pk", None)
+        if not role_id or role_id in seen_ids:
+            continue
+        seen_ids.add(role_id)
+        unique.append(role)
+    return unique
+
+
+def sync_staff_profile_role_groups(profile) -> bool:
+    """Sync a user's Django groups from StaffProfile and active OrgMembership roles.
+
+    Returns True when group membership was updated.
+    """
+    from hmis.apps.core.models import Role
+
+    if not getattr(profile, "user_id", None):
+        return False
+
+    user = profile.user
+    role_group_ids = set(
+        Role.objects.exclude(django_group__isnull=True).values_list("django_group_id", flat=True)
+    )
+    current_group_ids = set(user.groups.values_list("id", flat=True))
+
+    target_roles: list[Role] = []
+    if getattr(profile, "primary_role_id", None):
+        target_roles.append(profile.primary_role)
+    target_roles.extend(list(profile.secondary_roles.all()))
+
+    active_memberships = profile.memberships.filter(status="ACTIVE").select_related("role")
+    target_roles.extend(
+        membership.role for membership in active_memberships if getattr(membership, "role_id", None)
+    )
+
+    target_group_ids: set[int] = set()
+    for role in _unique_roles(target_roles):
+        target_group_ids.add(ensure_role_django_group(role).id)
+
+    next_group_ids = (current_group_ids - role_group_ids) | target_group_ids
+    if next_group_ids == current_group_ids:
+        return False
+
+    user.groups.set(next_group_ids)
+    return True
+
+
+def reconcile_hub_rbac_state() -> dict[str, int]:
+    """Reconcile role/group and user/group RBAC drift on hubs.
+
+    Returns counters for observability and health reporting.
+    """
+    from hmis.apps.core.models import Role, StaffProfile
+
+    roles_checked = 0
+    role_groups_corrected = 0
+    profiles_checked = 0
+    profile_groups_corrected = 0
+
+    roles = Role.objects.select_related("django_group").all().order_by("id")
+    for role in roles:
+        roles_checked += 1
+        expected_ids = expected_role_permission_ids(role)
+
+        if role.django_group_id:
+            actual_ids = set(role.django_group.permissions.values_list("id", flat=True))
+        else:
+            actual_ids = set()
+
+        if actual_ids != expected_ids:
+            sync_role_group_permissions(role)
+            role_groups_corrected += 1
+
+    profiles = (
+        StaffProfile.objects.select_related("user", "primary_role")
+        .prefetch_related("secondary_roles", "memberships__role")
+        .all()
+    )
+    for profile in profiles:
+        profiles_checked += 1
+        if sync_staff_profile_role_groups(profile):
+            profile_groups_corrected += 1
+
+    return {
+        "roles_checked": roles_checked,
+        "role_groups_corrected": role_groups_corrected,
+        "profiles_checked": profiles_checked,
+        "profile_groups_corrected": profile_groups_corrected,
+    }

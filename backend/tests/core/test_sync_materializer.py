@@ -346,6 +346,81 @@ class TestSyncMaterializer:
         sample_role.refresh_from_db()
         assert sample_role.name == "Cloud Doctor"
 
+    def test_materialize_role_triggers_group_permission_sync(self, sample_role, monkeypatch):
+        """Role materialization should immediately sync its linked Django group."""
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        calls: list[int] = []
+
+        def _fake_sync(role):
+            calls.append(role.pk)
+            return 0
+
+        monkeypatch.setattr(
+            "hmis.apps.core.role_permissions_sync.sync_role_group_permissions",
+            _fake_sync,
+        )
+
+        result = materialize_entry(
+            {
+                "table": "core.Role",
+                "operation": "UPDATE",
+                "record_id": sample_role.pk,
+                "data": {
+                    "id": sample_role.pk,
+                    "code": sample_role.code,
+                    "name": "Cloud Doctor Updated",
+                    "category": sample_role.category,
+                    "scope": sample_role.scope,
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        assert calls == [sample_role.pk]
+
+    def test_materialize_staff_profile_triggers_user_group_sync(
+        self,
+        test_staff_profile,
+        monkeypatch,
+    ):
+        """StaffProfile materialization should immediately align user role groups."""
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        calls: list[int] = []
+
+        def _fake_sync(profile):
+            calls.append(profile.pk)
+            return True
+
+        monkeypatch.setattr(
+            "hmis.apps.core.role_permissions_sync.sync_staff_profile_role_groups",
+            _fake_sync,
+        )
+
+        result = materialize_entry(
+            {
+                "table": "core.StaffProfile",
+                "operation": "UPDATE",
+                "record_id": test_staff_profile.pk,
+                "data": {
+                    "id": test_staff_profile.pk,
+                    "user": test_staff_profile.user_id,
+                    "employee_id": test_staff_profile.employee_id,
+                    "organization": test_staff_profile.organization_id,
+                    "primary_facility": test_staff_profile.primary_facility_id,
+                    "primary_department": test_staff_profile.primary_department_id,
+                    "primary_role": test_staff_profile.primary_role_id,
+                    "employment_status": "ACTIVE",
+                    "employment_type": "PERMANENT",
+                    "date_joined": "2026-01-01",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        assert calls == [test_staff_profile.pk]
+
     def test_materialize_org_membership_remaps_identity_dependencies_by_natural_keys(
         self,
         test_staff_profile,
@@ -388,6 +463,50 @@ class TestSyncMaterializer:
         assert membership.role_id == sample_role.pk
         assert membership.department_id == sample_department.pk
         assert list(membership.facilities.values_list("pk", flat=True)) == [sample_facility.pk]
+
+    def test_materialize_org_membership_triggers_user_group_sync(
+        self,
+        test_staff_profile,
+        sample_organization,
+        sample_facility,
+        sample_department,
+        sample_role,
+        monkeypatch,
+    ):
+        """OrgMembership materialization should re-sync the staff user's role groups."""
+        from hmis.apps.core.sync_materializer import materialize_entry
+
+        calls: list[int] = []
+
+        def _fake_sync(profile):
+            calls.append(profile.pk)
+            return True
+
+        monkeypatch.setattr(
+            "hmis.apps.core.role_permissions_sync.sync_staff_profile_role_groups",
+            _fake_sync,
+        )
+
+        result = materialize_entry(
+            {
+                "table": "core.OrgMembership",
+                "operation": "CREATE",
+                "record_id": 99003,
+                "data": {
+                    "id": 99003,
+                    "staff_profile_id": test_staff_profile.pk,
+                    "organization_id": sample_organization.pk,
+                    "role_id": sample_role.pk,
+                    "department_id": sample_department.pk,
+                    "facility_ids": [sample_facility.pk],
+                    "is_primary": True,
+                    "status": "ACTIVE",
+                },
+            }
+        )
+
+        assert result == {"success": True}
+        assert calls == [test_staff_profile.pk]
 
     def test_materialize_resource_reconciles_by_facility_and_code(self, sample_facility):
         """Cloud resources should update same-code local resources when PKs differ."""

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Nexora Consulting Ltd. All rights reserved.
+
 <!--
 What this file is for:
 - Hub operator runbook for reinstall/recovery, sync recovery, and common permission issues.

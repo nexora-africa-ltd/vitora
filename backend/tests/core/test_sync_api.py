@@ -533,6 +533,37 @@ class TestSyncPullEndpoint:
             for entry in response.data["entries"]
         )
 
+    def test_full_downward_pull_auth_user_skips_count_query(
+        self, authenticated_client, sync_pull_url, monkeypatch, test_user
+    ):
+        """auth.User downward snapshot should stream rows without pre-counting."""
+        from django.contrib.auth import get_user_model
+        from django.db.models.query import QuerySet
+
+        User = get_user_model()
+        original_count = QuerySet.count
+        user_count_called = False
+
+        def _patched_count(self):
+            nonlocal user_count_called
+            if self.model is User:
+                user_count_called = True
+            return original_count(self)
+
+        monkeypatch.setattr(QuerySet, "count", _patched_count)
+
+        response = authenticated_client.get(
+            sync_pull_url,
+            {"full": "true", "direction": "down", "tables": "auth.User", "limit": "50"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert user_count_called is False
+        assert any(
+            entry["table"] == "auth.User" and entry["record_id"] == test_user.pk
+            for entry in response.data["entries"]
+        )
+
     def test_full_downward_pull_cursor_returns_next_snapshot_page(
         self,
         authenticated_client,

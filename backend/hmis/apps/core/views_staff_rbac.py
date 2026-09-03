@@ -321,6 +321,64 @@ class RoleViewSet(viewsets.ModelViewSet):
             ]
         return [permission() for permission in permission_classes]
 
+    @staticmethod
+    def _is_hub_environment() -> bool:
+        return getattr(django_settings, "ENVIRONMENT", "") == "hub"
+
+    def _hub_role_write_guard_response(self, role):
+        """Block local edits to cloud-owned/system roles on hubs."""
+        if not self._is_hub_environment():
+            return None
+        if role.organization_id is None:
+            return Response(
+                {
+                    "detail": "System roles are cloud-owned and read-only on hubs.",
+                    "code": "cloud_owned_role_read_only",
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        request_org = getattr(self.request, "organization", None)
+        if request_org is not None and role.organization_id != request_org.id:
+            return Response(
+                {
+                    "detail": "Role belongs to a different organization.",
+                    "code": "cross_org_role_write_forbidden",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return None
+
+    def create(self, request, *args, **kwargs):
+        if self._is_hub_environment():
+            code = str(request.data.get("code") or "").strip()
+            if code and Role.objects.filter(code=code, organization__isnull=True).exists():
+                return Response(
+                    {
+                        "detail": "System roles are cloud-owned and read-only on hubs.",
+                        "code": "cloud_owned_role_read_only",
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        guard_response = self._hub_role_write_guard_response(self.get_object())
+        if guard_response is not None:
+            return guard_response
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        guard_response = self._hub_role_write_guard_response(self.get_object())
+        if guard_response is not None:
+            return guard_response
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        guard_response = self._hub_role_write_guard_response(self.get_object())
+        if guard_response is not None:
+            return guard_response
+        return super().destroy(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         """Create role, sync group permissions, and record the admin audit trail."""
         role = serializer.save()

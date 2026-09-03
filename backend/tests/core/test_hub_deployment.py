@@ -87,6 +87,7 @@ class TestHubHealthEndpoint:
         assert "server_time" in data
         assert "database" in data
         assert "sync" in data
+        assert "rbac" in data
         assert "version" in data
 
     def test_health_database_ok(self, api_client, db):
@@ -169,6 +170,53 @@ class TestHubHealthEndpoint:
         data = response.json()
 
         assert data["sync"]["last_synced_at"] is not None
+
+
+class TestHubRoleOwnershipGuard:
+    """Hub RoleViewSet should block writes to cloud-owned system roles."""
+
+    @override_settings(ENVIRONMENT="hub")
+    def test_update_system_role_is_blocked_on_hub(self, api_client, test_user, sample_role):
+        """System roles (organization=NULL) are read-only on hubs."""
+        test_user.is_staff = True
+        test_user.is_superuser = True
+        test_user.save(update_fields=["is_staff", "is_superuser"])
+        api_client.force_authenticate(user=test_user)
+
+        response = api_client.patch(
+            f"/api/roles/{sample_role.id}/",
+            {"name": "Updated on Hub"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.data["code"] == "cloud_owned_role_read_only"
+
+    @override_settings(ENVIRONMENT="hub")
+    def test_create_with_system_role_code_is_blocked_on_hub(
+        self, api_client, test_user, sample_role
+    ):
+        """Hub role creation should reject collisions with cloud-owned role codes."""
+        test_user.is_staff = True
+        test_user.is_superuser = True
+        test_user.save(update_fields=["is_staff", "is_superuser"])
+        api_client.force_authenticate(user=test_user)
+
+        response = api_client.post(
+            "/api/roles/",
+            {
+                "name": "Local Duplicate",
+                "code": sample_role.code,
+                "category": sample_role.category,
+                "scope": sample_role.scope,
+                "hierarchy_level": sample_role.hierarchy_level,
+                "is_active": True,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.data["code"] == "cloud_owned_role_read_only"
 
 
 # ===========================================================================
@@ -1035,6 +1083,78 @@ class TestHubCloudSyncWorker:
         entry = SyncQueue.objects.get(model_name="patients.Patient", record_id=99)
         assert entry.status == "SYNCED"
         assert entry.data["first_name"] == "CloudPatient"
+
+    @override_settings(
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+    )
+    def test_full_pull_runs_rbac_reconciliation_after_completion(self, db):
+        """Completed full pulls should trigger RBAC reconciliation once."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "changes": [],
+            "server_timestamp": timezone.now().isoformat(),
+            "has_more": False,
+        }
+
+        with (
+            patch.dict("os.environ", {"LICENSE_TOKEN": "license-token-xyz"}),
+            patch("hmis.apps.core.hub_sync.requests.get", return_value=mock_response),
+            patch.object(worker, "_run_rbac_reconciliation", return_value=True) as reconcile,
+        ):
+            pulled = worker._pull_changes(force_full=True)
+
+        assert pulled == 0
+        reconcile.assert_called_once_with(trigger="post_full_pull")
+
+    @override_settings(
+        ENVIRONMENT="hub",
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+        HUB_RBAC_SELF_HEAL_ENABLED=True,
+        HUB_RBAC_SELF_HEAL_INTERVAL_SECONDS=3600,
+    )
+    def test_startup_rbac_self_heal_respects_rate_limit(self, db):
+        """Startup RBAC self-heal should skip when the interval has not elapsed."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        worker._last_rbac_self_heal_at = timezone.now()
+
+        with patch.object(worker, "_run_rbac_reconciliation", return_value=True) as reconcile:
+            worker._maybe_run_startup_rbac_self_heal()
+
+        reconcile.assert_not_called()
+
+    @override_settings(
+        ENVIRONMENT="hub",
+        SYNC_SERVER_URL="https://cloud.example.com/api/sync",
+        HUB_ID="hub-test",
+        HUB_FACILITY_ID="1",
+        HUB_RBAC_SELF_HEAL_ENABLED=True,
+        HUB_RBAC_SELF_HEAL_INTERVAL_SECONDS=60,
+    )
+    def test_startup_rbac_self_heal_runs_when_interval_elapsed(self, db):
+        """Startup RBAC self-heal should run and persist timestamp when due."""
+        from hmis.apps.core.hub_sync import HubCloudSyncWorker
+
+        worker = HubCloudSyncWorker()
+        worker._last_rbac_self_heal_at = timezone.now() - timedelta(hours=2)
+
+        with (
+            patch.object(worker, "_run_rbac_reconciliation", return_value=True) as reconcile,
+            patch.object(worker, "_save_state") as save_state,
+        ):
+            worker._maybe_run_startup_rbac_self_heal()
+
+        reconcile.assert_called_once_with(trigger="startup_self_heal")
+        save_state.assert_called_once()
 
     @override_settings(
         SYNC_SERVER_URL="https://cloud.example.com/api/sync",

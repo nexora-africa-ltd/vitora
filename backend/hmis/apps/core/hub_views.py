@@ -20,7 +20,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 
-from hmis.apps.core.hub_sync import HubCloudSyncWorker
+from hmis.apps.core.hub_sync import HubCloudSyncWorker, get_rbac_sync_health_snapshot
 from hmis.apps.core.models import SyncQueue
 
 # Track when the hub process started
@@ -126,6 +126,10 @@ def hub_health(request):  # noqa: ARG001
 
         worker = HubCloudSyncWorker()
         health["license"] = {"present": worker.has_license_token}
+        health["rbac"] = get_rbac_sync_health_snapshot()
+
+        if health["rbac"].get("last_status") == "failed":
+            health["status"] = "degraded"
 
         if failed_count > 10:
             health["status"] = "degraded"

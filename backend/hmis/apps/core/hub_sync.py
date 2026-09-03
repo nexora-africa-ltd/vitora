@@ -34,6 +34,23 @@ logger = logging.getLogger(__name__)
 # File where last pull timestamp is persisted across restarts
 SYNC_STATE_FILENAME = ".hub_sync_state.json"
 
+_RBAC_SYNC_HEALTH: dict[str, object] = {
+    "last_status": "never",
+    "last_trigger": None,
+    "last_started_at": None,
+    "last_completed_at": None,
+    "roles_checked": 0,
+    "role_groups_corrected": 0,
+    "profiles_checked": 0,
+    "profile_groups_corrected": 0,
+    "failures": 0,
+}
+
+
+def get_rbac_sync_health_snapshot() -> dict[str, object]:
+    """Return the latest RBAC reconciliation health snapshot."""
+    return dict(_RBAC_SYNC_HEALTH)
+
 
 class HubCloudSyncWorker:
     """
@@ -76,11 +93,19 @@ class HubCloudSyncWorker:
         self.auto_import_icd10_on_preflight: bool = bool(
             getattr(settings, "HUB_SYNC_AUTO_IMPORT_ICD10_ON_PREFLIGHT", True)
         )
+        self.rbac_self_heal_enabled: bool = bool(
+            getattr(settings, "HUB_RBAC_SELF_HEAL_ENABLED", True)
+        )
+        self.rbac_self_heal_interval_seconds: int = max(
+            300,
+            int(getattr(settings, "HUB_RBAC_SELF_HEAL_INTERVAL_SECONDS", 86400)),
+        )
 
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_pull_timestamp: datetime | None = None
         self._full_pull_cursor: int | None = None  # Resumable full-pull cursor
+        self._last_rbac_self_heal_at: datetime | None = None
 
         # Restore persisted sync state
         self._state_file = self._resolve_state_file()
@@ -106,6 +131,9 @@ class HubCloudSyncWorker:
                 if cursor is not None:
                     self._full_pull_cursor = int(cursor)
                     logger.info("Restored full_pull_cursor: %d", self._full_pull_cursor)
+                rbac_heal_at = state.get("last_rbac_self_heal_at")
+                if rbac_heal_at:
+                    self._last_rbac_self_heal_at = datetime.fromisoformat(rbac_heal_at)
             except (json.JSONDecodeError, ValueError, OSError) as exc:
                 logger.warning("Could not load sync state: %s", exc)
 
@@ -116,6 +144,9 @@ class HubCloudSyncWorker:
                 self._last_pull_timestamp.isoformat() if self._last_pull_timestamp else None
             ),
             "full_pull_cursor": self._full_pull_cursor,
+            "last_rbac_self_heal_at": (
+                self._last_rbac_self_heal_at.isoformat() if self._last_rbac_self_heal_at else None
+            ),
         }
         try:
             self._state_file.write_text(json.dumps(state))
@@ -192,6 +223,7 @@ class HubCloudSyncWorker:
                 "LICENSE_TOKEN/HUB_LICENSE_TOKEN_PATH."
             )
             return 0, 0
+        self._maybe_run_startup_rbac_self_heal()
         pushed = 0 if skip_push else self._push_pending()
         if skip_push:
             logger.info("Hub sync push phase skipped by request.")
@@ -541,6 +573,8 @@ class HubCloudSyncWorker:
                             self._last_pull_timestamp = datetime.fromisoformat(server_ts)
                         self._full_pull_cursor = None
                         self._save_state()
+                        if is_full_pull:
+                            self._run_rbac_reconciliation(trigger="post_full_pull")
                     return total_applied
 
                 # Persist cursor so an interrupted full pull can resume.
@@ -702,6 +736,52 @@ class HubCloudSyncWorker:
             record_id=record_id,
             **defaults,
         )
+
+    def _maybe_run_startup_rbac_self_heal(self) -> None:
+        """Run periodic RBAC drift self-heal on hub nodes."""
+        if not self.rbac_self_heal_enabled:
+            return
+        if getattr(settings, "ENVIRONMENT", "") != "hub":
+            return
+
+        now = timezone.now()
+        if self._last_rbac_self_heal_at is not None:
+            elapsed = (now - self._last_rbac_self_heal_at).total_seconds()
+            if elapsed < self.rbac_self_heal_interval_seconds:
+                return
+
+        if self._run_rbac_reconciliation(trigger="startup_self_heal"):
+            self._last_rbac_self_heal_at = now
+            self._save_state()
+
+    def _run_rbac_reconciliation(self, *, trigger: str) -> bool:
+        """Reconcile role/group and user/group RBAC state and update health metrics."""
+        _RBAC_SYNC_HEALTH["last_trigger"] = trigger
+        _RBAC_SYNC_HEALTH["last_started_at"] = timezone.now().isoformat()
+
+        try:
+            from hmis.apps.core.role_permissions_sync import reconcile_hub_rbac_state
+
+            summary = reconcile_hub_rbac_state()
+            _RBAC_SYNC_HEALTH.update(summary)
+            _RBAC_SYNC_HEALTH["last_status"] = "ok"
+            _RBAC_SYNC_HEALTH["last_completed_at"] = timezone.now().isoformat()
+            logger.info(
+                "RBAC reconciliation (%s) complete: roles_checked=%s corrected_roles=%s "
+                "profiles_checked=%s corrected_profiles=%s",
+                trigger,
+                summary.get("roles_checked", 0),
+                summary.get("role_groups_corrected", 0),
+                summary.get("profiles_checked", 0),
+                summary.get("profile_groups_corrected", 0),
+            )
+            return True
+        except Exception:  # noqa: BLE001 - best-effort RBAC healing must not break sync cycles
+            _RBAC_SYNC_HEALTH["last_status"] = "failed"
+            _RBAC_SYNC_HEALTH["last_completed_at"] = timezone.now().isoformat()
+            _RBAC_SYNC_HEALTH["failures"] = int(_RBAC_SYNC_HEALTH.get("failures", 0)) + 1
+            logger.exception("RBAC reconciliation (%s) failed", trigger)
+            return False
 
     def _mark_failed(self, entry_ids: list, error: str):
         """Mark entries as FAILED and increment retry count."""
