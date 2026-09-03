@@ -134,6 +134,7 @@ ADMIN_SESSION_TIMEOUT_SECONDS = int(os.getenv("ADMIN_SESSION_TIMEOUT_SECONDS", "
 # Onboarding — Disabled for staging by default so audit logging isn't blocked
 # =============================================================================
 ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() == "true"
+LIS_STANDALONE_ONBOARDING_ENFORCEMENT = False
 
 # =============================================================================
 # Active Shift — Disabled for staging demos

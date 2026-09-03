@@ -83,3 +83,23 @@ export interface ExternalOrderTest {
 }
 
 export type ExternalOrderStatus = 'RECEIVED' | 'ACCEPTED' | 'REJECTED' | 'PROCESSING' | 'COMPLETED';
+
+export interface LISOnboardingStep {
+  key: string;
+  label: string;
+  done: boolean;
+  required: boolean;
+}
+
+export interface LISOnboardingStatus {
+  complete: boolean;
+  steps: LISOnboardingStep[];
+  completed_at: string | null;
+}
+
+export interface LISOnboardingSeedResult {
+  archetype: 'small' | 'medium' | 'reference';
+  created_tests: number;
+  created_instruments: number;
+  created_channels: number;
+}

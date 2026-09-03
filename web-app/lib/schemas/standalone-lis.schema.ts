@@ -60,3 +60,23 @@ export const ExternalOrderListSchema = z.object({
   previous: z.string().nullable(),
   results: z.array(ExternalOrderRequestSchema),
 });
+
+export const LISOnboardingStepSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  done: z.boolean(),
+  required: z.boolean(),
+});
+
+export const LISOnboardingStatusSchema = z.object({
+  complete: z.boolean(),
+  steps: z.array(LISOnboardingStepSchema),
+  completed_at: z.string().nullable(),
+});
+
+export const LISOnboardingSeedResultSchema = z.object({
+  archetype: z.enum(['small', 'medium', 'reference']),
+  created_tests: z.number(),
+  created_instruments: z.number(),
+  created_channels: z.number(),
+});

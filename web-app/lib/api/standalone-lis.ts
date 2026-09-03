@@ -10,6 +10,8 @@ import {
   WalkInPatientListSchema,
   ExternalOrderRequestSchema,
   ExternalOrderListSchema,
+  LISOnboardingStatusSchema,
+  LISOnboardingSeedResultSchema,
 } from '@/lib/schemas/standalone-lis.schema';
 import { LabOrderSchema } from '@/lib/schemas/laboratory.schema';
 import type {
@@ -17,6 +19,8 @@ import type {
   WalkInPatientCreateData,
   StandaloneOrderCreateData,
   ExternalOrderRequest,
+  LISOnboardingStatus,
+  LISOnboardingSeedResult,
 } from '@/lib/types/standalone-lis';
 import type { LabOrder } from '@/lib/types/laboratory';
 
@@ -38,6 +42,29 @@ const AcceptExternalOrderResponseSchema = z
   .passthrough();
 
 export const standaloneLisApi = {
+  async getOnboardingStatus(): Promise<LISOnboardingStatus> {
+    const response = await apiClient.get(`${BASE}/onboarding/status/`);
+    return parseResponse(LISOnboardingStatusSchema, response.data, {
+      context: 'standaloneLisApi.getOnboardingStatus',
+    });
+  },
+
+  async completeOnboarding(): Promise<LISOnboardingStatus> {
+    const response = await apiClient.post(`${BASE}/onboarding/status/`, {});
+    return parseResponse(LISOnboardingStatusSchema, response.data, {
+      context: 'standaloneLisApi.completeOnboarding',
+    });
+  },
+
+  async seedOnboardingDefaults(
+    archetype: 'small' | 'medium' | 'reference'
+  ): Promise<LISOnboardingSeedResult> {
+    const response = await apiClient.post(`${BASE}/onboarding/seed-defaults/`, { archetype });
+    return parseResponse(LISOnboardingSeedResultSchema, response.data, {
+      context: 'standaloneLisApi.seedOnboardingDefaults',
+    });
+  },
+
   // Walk-in Patients
   async listWalkInPatients(params?: { search?: string; page?: number }) {
     const response = await apiClient.get(`${BASE}/walkin-patients/`, { params });

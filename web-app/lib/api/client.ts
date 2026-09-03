@@ -177,6 +177,15 @@ apiClient.interceptors.response.use(
         }
         return Promise.reject(error);
       }
+      if (data && data.code === 'lis_onboarding_required') {
+        if (
+          typeof window !== 'undefined' &&
+          !window.location.pathname.startsWith('/onboarding/lis-standalone')
+        ) {
+          window.location.href = '/onboarding/lis-standalone';
+        }
+        return Promise.reject(error);
+      }
       if (data && data.code === 'license_expired') {
         // Emit a custom event so the LicenseProvider can update degraded state
         if (typeof window !== 'undefined') {

@@ -28,6 +28,9 @@ ADMIN_SESSION_TIMEOUT_SECONDS = 0
 # Onboarding enforcement — disabled in tests by default
 ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() == "true"
 
+# LIS standalone onboarding enforcement — disabled in tests by default
+LIS_STANDALONE_ONBOARDING_ENFORCEMENT = False
+
 # Active-shift enforcement — disabled in tests by default
 ACTIVE_SHIFT_ENFORCEMENT = os.getenv("ACTIVE_SHIFT_ENFORCEMENT", "false").lower() == "true"
 

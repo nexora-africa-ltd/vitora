@@ -113,6 +113,9 @@ ADMIN_MFA_REQUIRED = os.getenv("ADMIN_MFA_REQUIRED", "false").lower() == "true"
 # Onboarding enforcement — disabled in development for convenience
 ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() == "true"
 
+# LIS standalone onboarding enforcement — disabled in development for convenience
+LIS_STANDALONE_ONBOARDING_ENFORCEMENT = False
+
 # ---------------------------------------------------------------------------
 # Cookie auth — cross-site fix for development
 # The frontend (localhost:3009) and backend (127.0.0.1:9088) are different

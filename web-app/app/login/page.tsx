@@ -14,6 +14,7 @@ import { APP_NAME } from '@/lib/utils/constants';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { DhaLogo } from '@/components/ui/dha-logo';
 import { setupApi } from '@/lib/api/onboarding';
+import { standaloneLisApi } from '@/lib/api/standalone-lis';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import {
   isDesktop,
@@ -236,6 +237,20 @@ export default function LoginPage() {
       // Check if org onboarding is incomplete for admin users
       try {
         const storedUser = JSON.parse(localStorage.getItem('vitora_user') || '{}');
+        const deploymentProfile = storedUser?.facility?.deployment_profile;
+
+        if (deploymentProfile === 'lis_standalone') {
+          try {
+            const lisStatus = await standaloneLisApi.getOnboardingStatus();
+            if (!lisStatus.complete) {
+              router.push('/onboarding/lis-standalone');
+              return;
+            }
+          } catch {
+            // If status check fails, proceed to dashboard
+          }
+        }
+
         if (storedUser.onboarding_complete === false) {
           const adminRoles = ['ADMIN', 'ORG-ADMIN', 'OWNER'];
           if (adminRoles.includes(storedUser.role || '')) {

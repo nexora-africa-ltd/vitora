@@ -533,6 +533,15 @@ class Facility(TimeStampedModel):
         help_text="Whether the facility is currently operational.",
     )
 
+    lis_onboarding_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "When LIS standalone onboarding was completed for this facility. "
+            "NULL means setup is still incomplete."
+        ),
+    )
+
     operating_mode = models.CharField(
         max_length=30,
         choices=OperatingMode.choices,
@@ -575,6 +584,83 @@ class Facility(TimeStampedModel):
             f"Level {self.level}{self.level_subtype}",
             1,
         )
+
+    @property
+    def lis_onboarding_complete(self) -> bool:
+        """Whether this facility has completed LIS standalone onboarding."""
+        return self.lis_onboarding_completed_at is not None
+
+    def get_lis_onboarding_checklist(self) -> list[dict]:
+        """Return LIS standalone onboarding checklist with completion status."""
+        from hmis.apps.core.models_security import OrgMembership
+        from hmis.apps.laboratory.analyzers.models import InstrumentChannel
+        from hmis.apps.laboratory.models import LabWorkflowSettings, TestCatalog
+
+        has_lab_identity = bool(self.name and self.mfl_code and self.dha_license_number)
+        has_test_catalog = TestCatalog.objects.filter(
+            facility=self,
+            organization=self.organization,
+            is_active=True,
+        ).exists()
+        has_workflow_setup = LabWorkflowSettings.objects.filter(
+            facility=self,
+            organization=self.organization,
+        ).exists()
+        has_instrument_channel = InstrumentChannel.objects.filter(
+            facility=self,
+            organization=self.organization,
+            is_active=True,
+        ).exists()
+        has_pricing_basics = TestCatalog.objects.filter(
+            facility=self,
+            organization=self.organization,
+            is_active=True,
+            cost__gt=0,
+        ).exists()
+        has_team_invitation = OrgMembership.objects.filter(
+            organization=self.organization,
+            facilities=self,
+            status=OrgMembership.MembershipStatus.ACTIVE,
+        ).exists()
+
+        return [
+            {
+                "key": "lab_identity",
+                "label": "Facility and laboratory identity",
+                "done": has_lab_identity,
+                "required": True,
+            },
+            {
+                "key": "test_catalog",
+                "label": "Test catalog setup",
+                "done": has_test_catalog,
+                "required": True,
+            },
+            {
+                "key": "specimen_workflow",
+                "label": "Specimen and workflow setup",
+                "done": has_workflow_setup,
+                "required": True,
+            },
+            {
+                "key": "instrument_channels",
+                "label": "Instrument and channel setup",
+                "done": has_instrument_channel,
+                "required": True,
+            },
+            {
+                "key": "pricing_basics",
+                "label": "Price list and payer basics",
+                "done": has_pricing_basics,
+                "required": True,
+            },
+            {
+                "key": "team_access",
+                "label": "Team invitations and permissions",
+                "done": has_team_invitation,
+                "required": False,
+            },
+        ]
 
     def save(self, *args, **kwargs):
         """Auto-apply default modules based on KEPH level on creation."""

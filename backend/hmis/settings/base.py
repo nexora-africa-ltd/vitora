@@ -114,6 +114,7 @@ MIDDLEWARE = [
     "hmis.apps.core.middleware.AdminAccessMiddleware",  # Restrict /admin/ to Nexora superusers
     "hmis.apps.core.middleware.MFAGraceEnforcementMiddleware",  # Block API after MFA grace period
     "hmis.apps.core.middleware.OnboardingEnforcementMiddleware",  # Block API after onboarding grace period
+    "hmis.apps.core.middleware.LISStandaloneOnboardingEnforcementMiddleware",  # Block LIS standalone go-live actions until onboarding complete
     "hmis.apps.core.middleware.SubscriptionExpiryMiddleware",  # Block writes when subscription expired
     "hmis.apps.core.middleware.SubscriptionFeatureGateMiddleware",  # Gate modules by subscription features
     "hmis.apps.core.middleware.MediaSecurityMiddleware",  # Force Content-Disposition: attachment on /media/
@@ -326,6 +327,11 @@ ONBOARDING_ENFORCEMENT = True
 
 # Grace period (days) after org creation before onboarding is enforced.
 ONBOARDING_GRACE_PERIOD_DAYS = 7
+
+# LIS standalone onboarding enforcement.
+# When True, standalone LIS write actions are blocked until the facility
+# completes required LIS onboarding steps.
+LIS_STANDALONE_ONBOARDING_ENFORCEMENT = True
 
 # Active-shift enforcement for clinical write actions.
 # When True, clinical endpoints (encounters, prescriptions, lab orders, etc.)

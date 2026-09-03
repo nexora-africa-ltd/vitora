@@ -10,9 +10,12 @@ Covers:
 - Billing decoupling (standalone orders don't auto-bill)
 """
 
+import json
 from datetime import date
 
 import pytest  # type: ignore
+from django.test import override_settings
+from django.utils import timezone
 from rest_framework import status
 
 # =============================================================================
@@ -689,3 +692,134 @@ class TestStandaloneDomainEvents:
         mock_publish.assert_called()
         call_kwargs = mock_publish.call_args.kwargs
         assert "external_order" in call_kwargs["event_type"]
+
+
+class TestStandaloneOnboardingStatusAPI:
+    """Tests for LIS standalone onboarding status endpoint."""
+
+    def test_get_status_returns_checklist(self, authenticated_client, sample_facility):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        response = authenticated_client.get("/api/lab/standalone/onboarding/status/")
+        assert response.status_code == status.HTTP_200_OK
+        assert "steps" in response.data
+        assert isinstance(response.data["steps"], list)
+        assert response.data["complete"] is False
+
+    def test_post_status_rejects_incomplete_required_steps(
+        self, authenticated_client, sample_facility
+    ):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/status/", {}, format="json"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["code"] == "lis_onboarding_incomplete"
+
+    def test_post_status_marks_complete_when_required_steps_done(
+        self, authenticated_client, sample_facility, mocker
+    ):
+        from hmis.apps.core.models import Facility
+
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        mocker.patch.object(
+            Facility,
+            "get_lis_onboarding_checklist",
+            return_value=[
+                {"key": "lab_identity", "label": "Identity", "done": True, "required": True},
+                {"key": "test_catalog", "label": "Catalog", "done": True, "required": True},
+            ],
+        )
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/status/", {}, format="json"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        sample_facility.refresh_from_db()
+        assert sample_facility.lis_onboarding_completed_at is not None
+        assert response.data["complete"] is True
+
+
+class TestStandaloneOnboardingMiddleware:
+    """Tests for standalone LIS onboarding enforcement middleware."""
+
+    @override_settings(LIS_STANDALONE_ONBOARDING_ENFORCEMENT=True)
+    def test_blocks_standalone_write_actions_before_onboarding_complete(
+        self, api_client, test_user, sample_facility
+    ):
+        assert api_client.login(username=test_user.username, password="testpassword123")
+
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.lis_onboarding_completed_at = None
+        sample_facility.save()
+
+        payload = {
+            "first_name": "Blocked",
+            "last_name": "User",
+        }
+        response = api_client.post(
+            "/api/lab/standalone/walkin-patients/",
+            payload,
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        payload_json = json.loads(response.content.decode("utf-8"))
+        assert payload_json["code"] == "lis_onboarding_required"
+
+    @override_settings(LIS_STANDALONE_ONBOARDING_ENFORCEMENT=True)
+    def test_allows_standalone_write_actions_after_onboarding_complete(
+        self, api_client, test_user, sample_facility
+    ):
+        assert api_client.login(username=test_user.username, password="testpassword123")
+
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.lis_onboarding_completed_at = timezone.now()
+        sample_facility.save()
+
+        payload = {
+            "first_name": "Allowed",
+            "last_name": "User",
+        }
+        response = api_client.post(
+            "/api/lab/standalone/walkin-patients/",
+            payload,
+            format="json",
+        )
+        # Session login does not satisfy DRF JWT auth; this assertion verifies
+        # middleware did not block with lis_onboarding_required.
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+class TestStandaloneOnboardingSeeding:
+    """Tests for LIS standalone onboarding default seeding endpoint."""
+
+    def test_seed_defaults_creates_archetype_data(self, authenticated_client, sample_facility):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/seed-defaults/",
+            {"archetype": "small"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["archetype"] == "small"
+        assert response.data["created_tests"] >= 1
+        assert response.data["created_instruments"] >= 0
+        assert response.data["created_channels"] >= 0
+
+    def test_seed_defaults_rejects_invalid_archetype(self, authenticated_client, sample_facility):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/seed-defaults/",
+            {"archetype": "invalid"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST

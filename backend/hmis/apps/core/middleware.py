@@ -416,6 +416,84 @@ class OnboardingEnforcementMiddleware:
 
 
 # ---------------------------------------------------------------------------
+class LISStandaloneOnboardingEnforcementMiddleware:
+    """Block standalone LIS go-live write actions until onboarding is complete."""
+
+    EXEMPT_PREFIXES = (
+        "/api/token/",
+        "/api/auth/",
+        "/api/core/auth/",
+        "/api/mfa/",
+        "/api/staff/me/",
+        "/api/lab/standalone/onboarding/",
+        "/admin/",
+    )
+
+    WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        import json
+
+        from django.conf import settings as django_settings
+        from django.http import HttpResponse
+
+        if not getattr(django_settings, "LIS_STANDALONE_ONBOARDING_ENFORCEMENT", False):
+            return self.get_response(request)
+
+        if not request.path.startswith("/api/lab/standalone/"):
+            return self.get_response(request)
+
+        if request.method not in self.WRITE_METHODS:
+            return self.get_response(request)
+
+        if any(request.path.startswith(p) for p in self.EXEMPT_PREFIXES):
+            return self.get_response(request)
+
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "is_authenticated", False):
+            return self.get_response(request)
+
+        if user.is_superuser:
+            return self.get_response(request)
+
+        profile = getattr(user, "staff_profile", None)
+        facility = None
+        if profile and getattr(profile, "primary_facility_id", None):
+            from hmis.apps.core.models import Facility
+
+            facility = (
+                Facility.objects.only("id", "operating_mode", "lis_onboarding_completed_at")
+                .filter(id=profile.primary_facility_id)
+                .first()
+            )
+        if not facility:
+            return self.get_response(request)
+
+        if facility.operating_mode != facility.OperatingMode.STANDALONE_LAB:
+            return self.get_response(request)
+
+        if facility.lis_onboarding_complete:
+            return self.get_response(request)
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    "detail": (
+                        "LIS standalone setup is incomplete. "
+                        "Please complete LIS onboarding before continuing."
+                    ),
+                    "code": "lis_onboarding_required",
+                }
+            ),
+            content_type="application/json",
+            status=403,
+        )
+
+
+# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 # Subscription Expiry Middleware
 # ---------------------------------------------------------------------------
