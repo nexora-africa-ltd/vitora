@@ -52,6 +52,7 @@ from hmis.apps.core.views import (
     AuditedTokenObtainPairView,
     AuditLogViewSet,
     CodeSystemViewSet,
+    CountryViewSet,
     CountyViewSet,
     DepartmentViewSet,
     DHIS2ConfigViewSet,
@@ -884,6 +885,7 @@ router.register(r"subscription-plans", SubscriptionPlanViewSet, basename="subscr
 
 # Location routes under /api/locations/
 location_router = routers.DefaultRouter()
+location_router.register(r"countries", CountryViewSet, basename="country")
 location_router.register(r"counties", CountyViewSet, basename="county")
 location_router.register(r"sub-counties", SubCountyViewSet, basename="subcounty")
 location_router.register(r"wards", WardViewSet, basename="ward")

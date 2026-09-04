@@ -49,6 +49,10 @@ class Organization(TimeStampedModel):
         BASIC = "BASIC", "Basic"
         PROFESSIONAL = "PROFESSIONAL", "Professional"
         ENTERPRISE = "ENTERPRISE", "Enterprise"
+        LIS_STANDALONE = "LIS_STANDALONE", "Standalone Laboratory"
+        PHARMACY_STANDALONE = "PHARMACY_STANDALONE", "Standalone Pharmacy"
+        IMAGING_STANDALONE = "IMAGING_STANDALONE", "Standalone Imaging"
+        DIAGNOSTIC_STANDALONE = "DIAGNOSTIC_STANDALONE", "Standalone Diagnostic Centre"
 
     # ------------------------------------------------------------------
     # Identity
@@ -117,7 +121,7 @@ class Organization(TimeStampedModel):
         help_text="Linked subscription plan (source of truth for limits/features).",
     )
     subscription_tier = models.CharField(
-        max_length=20,
+        max_length=32,
         choices=SubscriptionTier.choices,
         default=SubscriptionTier.FREE,
         editable=False,

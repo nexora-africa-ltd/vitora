@@ -1,4 +1,12 @@
-export type SubscriptionTier = 'FREE' | 'BASIC' | 'PROFESSIONAL' | 'ENTERPRISE';
+export type SubscriptionTier =
+  | 'FREE'
+  | 'BASIC'
+  | 'PROFESSIONAL'
+  | 'ENTERPRISE'
+  | 'LIS_STANDALONE'
+  | 'PHARMACY_STANDALONE'
+  | 'IMAGING_STANDALONE'
+  | 'DIAGNOSTIC_STANDALONE';
 
 export interface OrganizationListItem {
   id: number;

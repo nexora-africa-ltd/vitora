@@ -805,6 +805,9 @@ class OrgSignupSerializer(serializers.Serializer):
     org_name = serializers.CharField(max_length=200)
 
     # Admin user
+    admin_username = serializers.CharField(
+        max_length=150, required=False, allow_blank=True, default=""
+    )
     admin_email = serializers.EmailField()
     admin_first_name = serializers.CharField(max_length=150)
     admin_last_name = serializers.CharField(max_length=150)
@@ -823,12 +826,43 @@ class OrgSignupSerializer(serializers.Serializer):
 
     # Initial facility (required — used for MFL verification)
     facility_name = serializers.CharField(max_length=200)
-    facility_mfl_code = serializers.CharField(max_length=20)
+    facility_country = serializers.CharField(required=False, default="KE", max_length=2)
+    facility_mfl_code = serializers.CharField(
+        max_length=20, required=False, allow_blank=True, default=""
+    )
+    facility_registry_code = serializers.CharField(
+        max_length=50,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    facility_region_state = serializers.CharField(
+        max_length=120,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    facility_district = serializers.CharField(
+        max_length=120,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    facility_locality = serializers.CharField(
+        max_length=120,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
     facility_county = serializers.PrimaryKeyRelatedField(
         queryset=County.objects.all(),
+        required=False,
+        allow_null=True,
     )
     facility_sub_county = serializers.PrimaryKeyRelatedField(
         queryset=SubCounty.objects.all(),
+        required=False,
+        allow_null=True,
     )
     facility_level = serializers.ChoiceField(
         choices=Facility.FacilityLevel.choices,
@@ -862,22 +896,85 @@ class OrgSignupSerializer(serializers.Serializer):
             raise serializers.ValidationError("A user with this email already exists.")
         return normalized
 
+    def validate_admin_username(self, value):
+        """Ensure username is unique when provided explicitly."""
+        from django.contrib.auth import get_user_model
+
+        username = str(value or "").strip().lower()
+        if not username:
+            return ""
+        User = get_user_model()
+        if User.objects.filter(username__iexact=username).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return username
+
     def validate_facility_mfl_code(self, value):
         """Ensure MFL code isn't already registered."""
+        if not value:
+            return value
         if Facility.objects.filter(mfl_code=value).exists():
             raise serializers.ValidationError("A facility with this MFL code already exists.")
         return value
 
+    def validate_facility_country(self, value):
+        return (value or "KE").upper().strip()
+
     def validate(self, data):
         if data["admin_password"] != data["confirm_password"]:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        admin_username = str(data.get("admin_username") or "").strip().lower()
+        if not admin_username:
+            admin_username = str(data["admin_email"]).split("@")[0].lower()
+        data["admin_username"] = admin_username
+        country_code = data.get("facility_country", "KE")
         # Validate county → sub-county cascade
         county = data.get("facility_county")
         sub_county = data.get("facility_sub_county")
-        if county and sub_county and sub_county.county_id != county.pk:
-            raise serializers.ValidationError(
-                {"facility_sub_county": "Sub-county does not belong to the selected county."}
-            )
+        mfl_code = str(data.get("facility_mfl_code", "")).strip()
+        registry_code = str(data.get("facility_registry_code", "")).strip()
+
+        if country_code == "KE":
+            if not mfl_code:
+                raise serializers.ValidationError(
+                    {"facility_mfl_code": "MFL code is required for Kenya facilities."}
+                )
+            if county is None:
+                raise serializers.ValidationError(
+                    {"facility_county": "County is required for Kenya facilities."}
+                )
+            if sub_county is None:
+                raise serializers.ValidationError(
+                    {"facility_sub_county": "Sub-county is required for Kenya facilities."}
+                )
+            if county and sub_county and sub_county.county_id != county.pk:
+                raise serializers.ValidationError(
+                    {"facility_sub_county": "Sub-county does not belong to the selected county."}
+                )
+        else:
+            if not registry_code:
+                raise serializers.ValidationError(
+                    {
+                        "facility_registry_code": (
+                            "Facility registry code is required for non-Kenya facilities."
+                        )
+                    }
+                )
+            if Facility.objects.filter(
+                country_code=country_code,
+                facility_registry_code__iexact=registry_code,
+            ).exists():
+                raise serializers.ValidationError(
+                    {
+                        "facility_registry_code": (
+                            "A facility with this registry code already exists for the selected country."
+                        )
+                    }
+                )
+            data["facility_county"] = None
+            data["facility_sub_county"] = None
+
+        data["facility_mfl_code"] = mfl_code
+        data["facility_registry_code"] = registry_code
         return data
 
 
@@ -908,8 +1005,39 @@ class SetupWizardSerializer(serializers.Serializer):
 
     # Facility
     facility_name = serializers.CharField(max_length=200)
-    facility_mfl_code = serializers.CharField(max_length=20)
-    facility_level = serializers.ChoiceField(choices=Facility.FacilityLevel.choices)
+    facility_country = serializers.CharField(required=False, default="KE", max_length=2)
+    facility_mfl_code = serializers.CharField(
+        max_length=20, required=False, allow_blank=True, default=""
+    )
+    facility_registry_code = serializers.CharField(
+        max_length=50,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    facility_region_state = serializers.CharField(
+        max_length=120,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    facility_district = serializers.CharField(
+        max_length=120,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    facility_locality = serializers.CharField(
+        max_length=120,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    facility_level = serializers.ChoiceField(
+        choices=Facility.FacilityLevel.choices,
+        required=False,
+        default=Facility.FacilityLevel.LEVEL_3,
+    )
     facility_ownership = serializers.ChoiceField(
         choices=Facility.OwnershipType.choices,
         default=Facility.OwnershipType.PRIVATE,
@@ -921,9 +1049,13 @@ class SetupWizardSerializer(serializers.Serializer):
     )
     facility_county = serializers.PrimaryKeyRelatedField(
         queryset=County.objects.all(),
+        required=False,
+        allow_null=True,
     )
     facility_sub_county = serializers.PrimaryKeyRelatedField(
         queryset=SubCounty.objects.all(),
+        required=False,
+        allow_null=True,
     )
 
     # Admin Account
@@ -936,9 +1068,14 @@ class SetupWizardSerializer(serializers.Serializer):
 
     def validate_facility_mfl_code(self, value):
         """Check MFL code uniqueness."""
+        if not value:
+            return value
         if Facility.objects.filter(mfl_code=value).exists():
             raise serializers.ValidationError("A facility with this MFL code already exists.")
         return value
+
+    def validate_facility_country(self, value):
+        return (value or "KE").upper().strip()
 
     def validate_admin_username(self, value):
         """Check username uniqueness."""
@@ -961,6 +1098,55 @@ class SetupWizardSerializer(serializers.Serializer):
     def validate(self, data):
         if data["admin_password"] != data["confirm_password"]:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+
+        country_code = data.get("facility_country", "KE")
+        county = data.get("facility_county")
+        sub_county = data.get("facility_sub_county")
+        mfl_code = str(data.get("facility_mfl_code", "")).strip()
+        registry_code = str(data.get("facility_registry_code", "")).strip()
+
+        if country_code == "KE":
+            if not mfl_code:
+                raise serializers.ValidationError(
+                    {"facility_mfl_code": "MFL code is required for Kenya facilities."}
+                )
+            if county is None:
+                raise serializers.ValidationError(
+                    {"facility_county": "County is required for Kenya facilities."}
+                )
+            if sub_county is None:
+                raise serializers.ValidationError(
+                    {"facility_sub_county": "Sub-county is required for Kenya facilities."}
+                )
+            if county and sub_county and sub_county.county_id != county.pk:
+                raise serializers.ValidationError(
+                    {"facility_sub_county": "Sub-county does not belong to the selected county."}
+                )
+        else:
+            if not registry_code:
+                raise serializers.ValidationError(
+                    {
+                        "facility_registry_code": (
+                            "Facility registry code is required for non-Kenya facilities."
+                        )
+                    }
+                )
+            if Facility.objects.filter(
+                country_code=country_code,
+                facility_registry_code__iexact=registry_code,
+            ).exists():
+                raise serializers.ValidationError(
+                    {
+                        "facility_registry_code": (
+                            "A facility with this registry code already exists for the selected country."
+                        )
+                    }
+                )
+            data["facility_county"] = None
+            data["facility_sub_county"] = None
+
+        data["facility_mfl_code"] = mfl_code
+        data["facility_registry_code"] = registry_code
         return data
 
 

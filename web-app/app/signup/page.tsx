@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { PasswordStrengthIndicator } from '@/components/shared/password-strength-indicator';
@@ -84,6 +85,11 @@ interface LocationOption {
   name: string;
 }
 
+interface CountryOption {
+  code: string;
+  name: string;
+}
+
 type PageState = 'form' | 'success';
 
 export default function SignupPage() {
@@ -100,19 +106,26 @@ export default function SignupPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Location data
+  const [countries, setCountries] = useState<CountryOption[]>([]);
   const [counties, setCounties] = useState<LocationOption[]>([]);
   const [subCounties, setSubCounties] = useState<LocationOption[]>([]);
   const [loadingSubCounties, setLoadingSubCounties] = useState(false);
 
   const [formData, setFormData] = useState({
     org_name: '',
+    admin_username: '',
     admin_email: '',
     admin_first_name: '',
     admin_last_name: '',
     admin_password: '',
     confirm_password: '',
     facility_name: '',
+    facility_country: 'KE',
     facility_mfl_code: '',
+    facility_registry_code: '',
+    facility_region_state: '',
+    facility_district: '',
+    facility_locality: '',
     facility_county: '',
     facility_sub_county: '',
     facility_level: '3',
@@ -121,17 +134,43 @@ export default function SignupPage() {
   });
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
+  const isKenyaSelected = formData.facility_country === 'KE';
+  const isStandaloneMode = formData.facility_operating_mode !== 'FULL_HMIS';
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const isDark = mounted && resolvedTheme === 'dark';
 
+  useEffect(() => {
+    async function loadCountries() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/locations/countries/`, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCountries(Array.isArray(data) ? data : data.results || []);
+        }
+      } catch {
+        setCountries([]);
+      }
+    }
+
+    loadCountries();
+  }, []);
+
   // Load counties on mount
   useEffect(() => {
+    if (!isKenyaSelected) {
+      setCounties([]);
+      return;
+    }
+
     async function loadCounties() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/locations/counties/`, {
+        const res = await fetch(`${API_BASE_URL}/api/locations/counties/?country=KE`, {
           headers: { 'Content-Type': 'application/json' },
         });
         if (res.ok) {
@@ -143,7 +182,7 @@ export default function SignupPage() {
       }
     }
     loadCounties();
-  }, []);
+  }, [isKenyaSelected]);
 
   // Load sub-counties when county changes
   const loadSubCounties = useCallback(async (countyId: string) => {
@@ -181,18 +220,48 @@ export default function SignupPage() {
     loadSubCounties(value);
   };
 
+  const handleCountryChange = (value: string) => {
+    handleChange('facility_country', value);
+    handleChange('facility_county', '');
+    handleChange('facility_sub_county', '');
+    setSubCounties([]);
+  };
+
+  const buildStandaloneMflCode = () => {
+    const modeToken = formData.facility_operating_mode.replace('STANDALONE_', '').slice(0, 3);
+    const randomToken = Math.random().toString(36).slice(2, 9).toUpperCase();
+    return `ST-${modeToken}-${randomToken}`;
+  };
+
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     // Organization
     if (!formData.org_name.trim()) errors.org_name = 'Organization name is required';
     // Facility
     if (!formData.facility_name.trim()) errors.facility_name = 'Facility name is required';
-    if (!formData.facility_mfl_code.trim()) errors.facility_mfl_code = 'MFL code is required';
-    if (!formData.facility_county) errors.facility_county = 'County is required';
-    if (!formData.facility_sub_county) errors.facility_sub_county = 'Sub-county is required';
+    if (isKenyaSelected && !isStandaloneMode && !formData.facility_mfl_code.trim()) {
+      errors.facility_mfl_code = 'MFL code is required';
+    }
+    if (isKenyaSelected) {
+      if (!formData.facility_county) errors.facility_county = 'County is required';
+      if (!formData.facility_sub_county) errors.facility_sub_county = 'Sub-county is required';
+    } else {
+      if (!formData.facility_registry_code.trim()) {
+        errors.facility_registry_code = 'Facility registry code is required';
+      }
+      if (!formData.facility_region_state.trim()) {
+        errors.facility_region_state = 'State/region is required';
+      }
+      if (!formData.facility_locality.trim()) {
+        errors.facility_locality = 'City/locality is required';
+      }
+    }
     // Admin
     if (!formData.admin_first_name.trim()) errors.admin_first_name = 'First name is required';
     if (!formData.admin_last_name.trim()) errors.admin_last_name = 'Last name is required';
+    if (!formData.admin_username.trim()) errors.admin_username = 'Username is required';
+    else if (/\s/.test(formData.admin_username))
+      errors.admin_username = 'Username cannot contain spaces';
     if (!formData.admin_email.trim()) errors.admin_email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email))
       errors.admin_email = 'Invalid email';
@@ -223,10 +292,15 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
+      const facilityMflCode = isStandaloneMode
+        ? formData.facility_mfl_code.trim() || buildStandaloneMflCode()
+        : formData.facility_mfl_code.trim();
+
       const result = await orgSignupApi.signup({
         ...formData,
-        facility_county: Number(formData.facility_county),
-        facility_sub_county: Number(formData.facility_sub_county),
+        facility_mfl_code: facilityMflCode,
+        facility_county: isKenyaSelected ? Number(formData.facility_county) : undefined,
+        facility_sub_county: isKenyaSelected ? Number(formData.facility_sub_county) : undefined,
         facility_operating_mode: formData.facility_operating_mode as
           | 'FULL_HMIS'
           | 'STANDALONE_LAB'
@@ -351,7 +425,7 @@ export default function SignupPage() {
                     <HelpPopover content="A facility is a physical healthcare location (hospital, clinic, dispensary). Every organization needs at least one. The MFL code is assigned by Kenya's Master Health Facility List — find yours at kmhfl.health.go.ke." />
                   </legend>
 
-                  {/* Facility name + MFL code */}
+                  {/* Facility name + country */}
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <label htmlFor="facility_name" className="text-sm font-medium">
@@ -370,140 +444,26 @@ export default function SignupPage() {
                       )}
                     </div>
                     <div className="space-y-1.5">
-                      <label
-                        htmlFor="facility_mfl_code"
-                        className="flex items-center gap-1 text-sm font-medium"
-                      >
-                        MFL Code <span className="text-destructive">*</span>
-                        <HelpPopover content="The 5-digit Master Facility List code assigned by the Ministry of Health. Find it at kmhfl.health.go.ke." />
+                      <label htmlFor="facility_country" className="text-sm font-medium">
+                        Country <span className="text-destructive">*</span>
                       </label>
-                      <Input
-                        id="facility_mfl_code"
-                        value={formData.facility_mfl_code}
-                        onChange={(e) => handleChange('facility_mfl_code', e.target.value)}
-                        placeholder="e.g., 13080"
+                      <SearchableSelect
+                        value={formData.facility_country}
+                        onValueChange={handleCountryChange}
+                        options={countries.map((country) => ({
+                          value: country.code,
+                          label: country.name,
+                          sublabel: country.code,
+                        }))}
+                        placeholder="Select country"
+                        searchPlaceholder="Search countries..."
+                        emptyMessage="No countries found."
+                        className={`h-10 ${validationErrors.facility_country ? 'border-destructive' : ''}`}
                         disabled={isSubmitting}
-                        className={`h-10 ${validationErrors.facility_mfl_code ? 'border-destructive' : ''}`}
                       />
-                      {validationErrors.facility_mfl_code && (
-                        <p className="text-xs text-destructive">
-                          {validationErrors.facility_mfl_code}
-                        </p>
+                      {validationErrors.facility_country && (
+                        <p className="text-xs text-destructive">{validationErrors.facility_country}</p>
                       )}
-                    </div>
-                  </div>
-
-                  {/* County + Sub-County */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <label htmlFor="facility_county" className="text-sm font-medium">
-                        County <span className="text-destructive">*</span>
-                      </label>
-                      <Select
-                        value={formData.facility_county}
-                        onValueChange={handleCountyChange}
-                        disabled={isSubmitting}
-                      >
-                        <SelectTrigger
-                          id="facility_county"
-                          className={`h-10 ${validationErrors.facility_county ? 'border-destructive' : ''}`}
-                        >
-                          <SelectValue placeholder="Select county" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {counties.map((c) => (
-                            <SelectItem key={c.id} value={String(c.id)}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {validationErrors.facility_county && (
-                        <p className="text-xs text-destructive">
-                          {validationErrors.facility_county}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-1.5">
-                      <label htmlFor="facility_sub_county" className="text-sm font-medium">
-                        Sub-County <span className="text-destructive">*</span>
-                      </label>
-                      <Select
-                        value={formData.facility_sub_county}
-                        onValueChange={(v) => handleChange('facility_sub_county', v)}
-                        disabled={isSubmitting || !formData.facility_county || loadingSubCounties}
-                      >
-                        <SelectTrigger
-                          id="facility_sub_county"
-                          className={`h-10 ${validationErrors.facility_sub_county ? 'border-destructive' : ''}`}
-                        >
-                          <SelectValue
-                            placeholder={loadingSubCounties ? 'Loading...' : 'Select sub-county'}
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {subCounties.map((sc) => (
-                            <SelectItem key={sc.id} value={String(sc.id)}>
-                              {sc.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {validationErrors.facility_sub_county && (
-                        <p className="text-xs text-destructive">
-                          {validationErrors.facility_sub_county}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Level + Ownership */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <label
-                        htmlFor="facility_level"
-                        className="flex items-center gap-1 text-sm font-medium"
-                      >
-                        KEPH Level
-                        <HelpPopover content="Kenya Essential Package for Health level. Ranges from Level 1 (community units) to Level 6 (national referral hospitals)." />
-                      </label>
-                      <Select
-                        value={formData.facility_level}
-                        onValueChange={(v) => handleChange('facility_level', v)}
-                        disabled={isSubmitting}
-                      >
-                        <SelectTrigger id="facility_level" className="h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FACILITY_LEVELS.map((l) => (
-                            <SelectItem key={l.value} value={l.value}>
-                              {l.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label htmlFor="facility_ownership" className="text-sm font-medium">
-                        Ownership
-                      </label>
-                      <Select
-                        value={formData.facility_ownership}
-                        onValueChange={(v) => handleChange('facility_ownership', v)}
-                        disabled={isSubmitting}
-                      >
-                        <SelectTrigger id="facility_ownership" className="h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {OWNERSHIP_TYPES.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
 
@@ -539,6 +499,219 @@ export default function SignupPage() {
                       }
                     </p>
                   </div>
+
+                  {!isKenyaSelected && (
+                    <>
+                      <div className="space-y-1.5">
+                        <label htmlFor="facility_registry_code" className="text-sm font-medium">
+                          Facility Registry Code <span className="text-destructive">*</span>
+                        </label>
+                        <Input
+                          id="facility_registry_code"
+                          value={formData.facility_registry_code}
+                          onChange={(e) => handleChange('facility_registry_code', e.target.value)}
+                          placeholder="e.g., UG-HF-001"
+                          disabled={isSubmitting}
+                          className={`h-10 ${validationErrors.facility_registry_code ? 'border-destructive' : ''}`}
+                        />
+                        {validationErrors.facility_registry_code && (
+                          <p className="text-xs text-destructive">
+                            {validationErrors.facility_registry_code}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label htmlFor="facility_region_state" className="text-sm font-medium">
+                            State/Region <span className="text-destructive">*</span>
+                          </label>
+                          <Input
+                            id="facility_region_state"
+                            value={formData.facility_region_state}
+                            onChange={(e) => handleChange('facility_region_state', e.target.value)}
+                            placeholder="e.g., Central Region"
+                            disabled={isSubmitting}
+                            className={`h-10 ${validationErrors.facility_region_state ? 'border-destructive' : ''}`}
+                          />
+                          {validationErrors.facility_region_state && (
+                            <p className="text-xs text-destructive">
+                              {validationErrors.facility_region_state}
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-1.5">
+                          <label htmlFor="facility_district" className="text-sm font-medium">
+                            District
+                          </label>
+                          <Input
+                            id="facility_district"
+                            value={formData.facility_district}
+                            onChange={(e) => handleChange('facility_district', e.target.value)}
+                            placeholder="e.g., Wakiso"
+                            disabled={isSubmitting}
+                            className="h-10"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label htmlFor="facility_locality" className="text-sm font-medium">
+                          City/Locality <span className="text-destructive">*</span>
+                        </label>
+                        <Input
+                          id="facility_locality"
+                          value={formData.facility_locality}
+                          onChange={(e) => handleChange('facility_locality', e.target.value)}
+                          placeholder="e.g., Kampala"
+                          disabled={isSubmitting}
+                          className={`h-10 ${validationErrors.facility_locality ? 'border-destructive' : ''}`}
+                        />
+                        {validationErrors.facility_locality && (
+                          <p className="text-xs text-destructive">{validationErrors.facility_locality}</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* MFL code (Full HMIS only) */}
+                  {isKenyaSelected && !isStandaloneMode && (
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="facility_mfl_code"
+                        className="flex items-center gap-1 text-sm font-medium"
+                      >
+                        MFL Code <span className="text-destructive">*</span>
+                        <HelpPopover content="The 5-digit Master Facility List code assigned by the Ministry of Health. Find it at kmhfl.health.go.ke." />
+                      </label>
+                      <Input
+                        id="facility_mfl_code"
+                        value={formData.facility_mfl_code}
+                        onChange={(e) => handleChange('facility_mfl_code', e.target.value)}
+                        placeholder="e.g., 13080"
+                        disabled={isSubmitting}
+                        className={`h-10 ${validationErrors.facility_mfl_code ? 'border-destructive' : ''}`}
+                      />
+                      {validationErrors.facility_mfl_code && (
+                        <p className="text-xs text-destructive">{validationErrors.facility_mfl_code}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* County + Sub-County (Kenya only) */}
+                  {isKenyaSelected && (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label htmlFor="facility_county" className="text-sm font-medium">
+                          County <span className="text-destructive">*</span>
+                        </label>
+                        <Select
+                          value={formData.facility_county}
+                          onValueChange={handleCountyChange}
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger
+                            id="facility_county"
+                            className={`h-10 ${validationErrors.facility_county ? 'border-destructive' : ''}`}
+                          >
+                            <SelectValue placeholder="Select county" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {counties.map((c) => (
+                              <SelectItem key={c.id} value={String(c.id)}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {validationErrors.facility_county && (
+                          <p className="text-xs text-destructive">{validationErrors.facility_county}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <label htmlFor="facility_sub_county" className="text-sm font-medium">
+                          Sub-County <span className="text-destructive">*</span>
+                        </label>
+                        <Select
+                          value={formData.facility_sub_county}
+                          onValueChange={(v) => handleChange('facility_sub_county', v)}
+                          disabled={isSubmitting || !formData.facility_county || loadingSubCounties}
+                        >
+                          <SelectTrigger
+                            id="facility_sub_county"
+                            className={`h-10 ${validationErrors.facility_sub_county ? 'border-destructive' : ''}`}
+                          >
+                            <SelectValue
+                              placeholder={loadingSubCounties ? 'Loading...' : 'Select sub-county'}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {subCounties.map((sc) => (
+                              <SelectItem key={sc.id} value={String(sc.id)}>
+                                {sc.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {validationErrors.facility_sub_county && (
+                          <p className="text-xs text-destructive">{validationErrors.facility_sub_county}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Level + Ownership (full HMIS only) */}
+                  {!isStandaloneMode && (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="facility_level"
+                          className="flex items-center gap-1 text-sm font-medium"
+                        >
+                          KEPH Level
+                          <HelpPopover content="Kenya Essential Package for Health level. Ranges from Level 1 (community units) to Level 6 (national referral hospitals)." />
+                        </label>
+                        <Select
+                          value={formData.facility_level}
+                          onValueChange={(v) => handleChange('facility_level', v)}
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger id="facility_level" className="h-10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FACILITY_LEVELS.map((l) => (
+                              <SelectItem key={l.value} value={l.value}>
+                                {l.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label htmlFor="facility_ownership" className="text-sm font-medium">
+                          Ownership
+                        </label>
+                        <Select
+                          value={formData.facility_ownership}
+                          onValueChange={(v) => handleChange('facility_ownership', v)}
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger id="facility_ownership" className="h-10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {OWNERSHIP_TYPES.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>
+                                {o.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+
                 </fieldset>
 
                 {/* ── Admin Account Section ─────────────────────────────── */}
@@ -587,6 +760,25 @@ export default function SignupPage() {
                         </p>
                       )}
                     </div>
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="admin_username" className="text-sm font-medium">
+                      Username <span className="text-destructive">*</span>
+                    </label>
+                    <Input
+                      id="admin_username"
+                      value={formData.admin_username}
+                      onChange={(e) => handleChange('admin_username', e.target.value)}
+                      placeholder="e.g., jane.wanjiku"
+                      disabled={isSubmitting}
+                      className={`h-10 ${validationErrors.admin_username ? 'border-destructive' : ''}`}
+                      autoComplete="username"
+                    />
+                    {validationErrors.admin_username && (
+                      <p className="text-xs text-destructive">{validationErrors.admin_username}</p>
+                    )}
                   </div>
 
                   {/* Email */}

@@ -163,6 +163,19 @@ export default function OnboardingPage() {
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
 
+  const resolveDeploymentProfile = () => {
+    if (user?.facility?.deployment_profile) {
+      return user.facility.deployment_profile;
+    }
+
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('vitora_user') || '{}');
+      return storedUser?.facility?.deployment_profile as string | undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
   // Wizard state
   const [currentStep, setCurrentStep] = useState<WizardStep>('facility');
   const [isLoading, setIsLoading] = useState(true);
@@ -278,9 +291,13 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      if (resolveDeploymentProfile() === 'lis_standalone') {
+        router.replace('/onboarding/lis-standalone');
+        return;
+      }
       fetchStatus();
     }
-  }, [isAuthenticated, fetchStatus]);
+  }, [isAuthenticated, fetchStatus, router, user]);
 
   // Step navigation
   const stepIndex = WIZARD_STEPS.findIndex((s) => s.key === currentStep);

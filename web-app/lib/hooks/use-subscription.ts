@@ -16,17 +16,29 @@
 import { useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/context';
 
-export type SubscriptionTier = 'FREE' | 'BASIC' | 'PROFESSIONAL' | 'ENTERPRISE';
+export type SubscriptionTier =
+  | 'FREE'
+  | 'BASIC'
+  | 'PROFESSIONAL'
+  | 'ENTERPRISE'
+  | 'LIS_STANDALONE'
+  | 'PHARMACY_STANDALONE'
+  | 'IMAGING_STANDALONE'
+  | 'DIAGNOSTIC_STANDALONE';
 
 const TIER_HIERARCHY: Record<SubscriptionTier, number> = {
   FREE: 0,
   BASIC: 1,
   PROFESSIONAL: 2,
   ENTERPRISE: 3,
+  LIS_STANDALONE: 1,
+  PHARMACY_STANDALONE: 1,
+  IMAGING_STANDALONE: 1,
+  DIAGNOSTIC_STANDALONE: 1,
 };
 
 export interface SubscriptionInfo {
-  /** Current subscription tier (FREE, BASIC, PROFESSIONAL, ENTERPRISE) */
+  /** Current subscription tier code from backend */
   tier: SubscriptionTier;
   /** Plan feature flags from the backend (null = not yet loaded) */
   planFeatures: Record<string, boolean> | null;

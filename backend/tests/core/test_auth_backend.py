@@ -119,6 +119,8 @@ class TestEmailOrUsernameBackend:
             format="json",
         )
         assert response.status_code in (200, 202)
+        if response.status_code == 200:
+            assert "user" in response.data
 
     def test_jwt_login_wrong_credentials(self, api_client, test_user):
         """Should reject invalid credentials via /api/token/."""

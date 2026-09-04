@@ -19,6 +19,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from hmis.apps.core.models import (
+    Country,
     County,
     EmailVerificationToken,
     Facility,
@@ -64,6 +65,7 @@ def signup_data(sample_county, sample_sub_county):
         "admin_password": "StrongPass123!",
         "confirm_password": "StrongPass123!",
         "facility_name": "Afya Main Branch",
+        "facility_country": "KE",
         "facility_mfl_code": "12345",
         "facility_county": sample_county.id,
         "facility_sub_county": sample_sub_county.id,
@@ -78,6 +80,7 @@ def setup_data(sample_county, sample_sub_county):
         "org_contact_email": "info@sunrise.co.ke",
         "org_contact_phone": "+254712345678",
         "facility_name": "Sunrise Main Branch",
+        "facility_country": "KE",
         "facility_mfl_code": "MFL-12345",
         "facility_level": "3",
         "facility_ownership": "PRIVATE",
@@ -215,6 +218,35 @@ class TestOrgSignup:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "facility_mfl_code" in response.data
 
+    def test_signup_non_kenya_requires_registry_code(self, anon_client, signup_data):
+        signup_data["facility_country"] = "UG"
+        signup_data["facility_county"] = None
+        signup_data["facility_sub_county"] = None
+        signup_data["facility_mfl_code"] = ""
+
+        response = anon_client.post("/api/core/auth/signup/", signup_data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "facility_registry_code" in response.data
+
+    def test_signup_non_kenya_uses_registry_code(self, anon_client, signup_data):
+        signup_data["facility_country"] = "UG"
+        signup_data["facility_registry_code"] = "UG-HF-001"
+        signup_data["facility_region_state"] = "Central Region"
+        signup_data["facility_locality"] = "Kampala"
+        signup_data["facility_county"] = None
+        signup_data["facility_sub_county"] = None
+        signup_data["facility_mfl_code"] = ""
+
+        response = anon_client.post("/api/core/auth/signup/", signup_data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        facility = Facility.objects.get(name="Afya Main Branch")
+        assert facility.country_code == "UG"
+        assert facility.facility_registry_code == "UG-HF-001"
+        assert facility.county is None
+        assert facility.sub_county is None
+
     def test_signup_mismatched_county_sub_county_rejected(self, anon_client, signup_data, db):
         other_county = County.objects.create(code=98, name="Other County")
         signup_data["facility_county"] = other_county.id
@@ -242,6 +274,15 @@ class TestOrgSignup:
         assert facility.has_billing is True
         assert facility.has_outpatient is False
         assert facility.has_inpatient is False
+
+    def test_signup_uses_requested_admin_username(self, anon_client, signup_data):
+        signup_data["admin_username"] = "afya_admin"
+
+        response = anon_client.post("/api/core/auth/signup/", signup_data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["username"] == "afya_admin"
+        assert User.objects.filter(username="afya_admin").exists()
 
 
 # ============================================================================
@@ -360,6 +401,29 @@ class TestSetupCheck:
 
 
 @pytest.mark.django_db
+class TestLocationCountries:
+    """Tests for country-aware location endpoints used by signup/setup."""
+
+    def test_countries_endpoint_lists_supported_countries(self, anon_client, sample_county):
+        Country.objects.create(code="UG", name="Uganda")
+        response = anon_client.get("/api/locations/countries/")
+        assert response.status_code == status.HTTP_200_OK
+        codes = {row["code"] for row in response.data}
+        assert "KE" in codes
+        assert "UG" in codes
+
+    def test_counties_endpoint_filters_by_country(self, anon_client, sample_county):
+        # Existing county fixture is Kenya-scoped via model default.
+        response = anon_client.get("/api/locations/counties/?country=UG")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == []
+
+        response_ke = anon_client.get("/api/locations/counties/?country=KE")
+        assert response_ke.status_code == status.HTTP_200_OK
+        assert any(item["id"] == sample_county.id for item in response_ke.data)
+
+
+@pytest.mark.django_db
 class TestSetupInitialize:
     """Tests for setup wizard initialization."""
 
@@ -452,3 +516,33 @@ class TestSetupInitialize:
         assert facility.has_billing is True
         assert facility.has_outpatient is False
         assert facility.has_inpatient is False
+
+    @override_settings(SETUP_WIZARD_ENABLED=True)
+    def test_initialize_non_kenya_requires_registry_code(self, anon_client, setup_data):
+        setup_data["facility_country"] = "UG"
+        setup_data["facility_county"] = None
+        setup_data["facility_sub_county"] = None
+        setup_data["facility_mfl_code"] = ""
+
+        response = anon_client.post("/api/core/setup/initialize/", setup_data, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "facility_registry_code" in response.data
+
+    @override_settings(SETUP_WIZARD_ENABLED=True)
+    def test_initialize_non_kenya_success(self, anon_client, setup_data):
+        setup_data["facility_country"] = "UG"
+        setup_data["facility_registry_code"] = "UG-HF-777"
+        setup_data["facility_region_state"] = "Central Region"
+        setup_data["facility_locality"] = "Kampala"
+        setup_data["facility_county"] = None
+        setup_data["facility_sub_county"] = None
+        setup_data["facility_mfl_code"] = ""
+
+        response = anon_client.post("/api/core/setup/initialize/", setup_data, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
+
+        facility = Facility.objects.get(name="Sunrise Main Branch")
+        assert facility.country_code == "UG"
+        assert facility.facility_registry_code == "UG-HF-777"
+        assert facility.county is None
+        assert facility.sub_county is None

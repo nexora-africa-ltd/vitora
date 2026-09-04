@@ -19,6 +19,40 @@ from hmis.apps.core.mixins import FacilityScopedModel, SyncOriginMixin
 from hmis.apps.core.pii import encrypted_pii_property
 
 
+class Country(models.Model):
+    """ISO-3166 country reference model."""
+
+    code = models.CharField(
+        max_length=2,
+        unique=True,
+        help_text="ISO 3166-1 alpha-2 code (e.g., KE, UG, TZ).",
+    )
+    name = models.CharField(
+        max_length=120,
+        unique=True,
+        help_text="Display country name.",
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def save(self, *args, **kwargs):
+        self.code = (self.code or "").upper().strip()
+        self.name = (self.name or "").strip()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.code})"
+
+
+def get_default_country_pk() -> int:
+    """Return the primary key for Kenya, creating it if needed."""
+
+    country, _ = Country.objects.get_or_create(code="KE", defaults={"name": "Kenya"})
+    return country.pk
+
+
 class County(models.Model):
     """
     Kenya County model (47 counties).
@@ -26,13 +60,16 @@ class County(models.Model):
     Represents the first level of Kenya's administrative hierarchy.
     """
 
-    code = models.PositiveSmallIntegerField(
-        unique=True,
-        help_text="County code (1-47)",
+    country = models.ForeignKey(
+        Country,
+        on_delete=models.PROTECT,
+        related_name="counties",
+        default=get_default_country_pk,
+        help_text="Parent country (Kenya for the existing county hierarchy).",
     )
+    code = models.PositiveSmallIntegerField(help_text="County code (1-47 for Kenya)")
     name = models.CharField(
         max_length=100,
-        unique=True,
         help_text="County name",
     )
 
@@ -42,6 +79,10 @@ class County(models.Model):
         verbose_name = "County"
         verbose_name_plural = "Counties"
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(fields=["country", "code"], name="uniq_county_country_code"),
+            models.UniqueConstraint(fields=["country", "name"], name="uniq_county_country_name"),
+        ]
 
     def __str__(self) -> str:
         """Return county name."""

@@ -38,6 +38,7 @@ from .models import (
     CertificateAuthority,
     CertificateRevocation,
     CodeSystem,
+    Country,
     County,
     Department,
     DHAOutboundCall,
@@ -305,6 +306,16 @@ class CountyAdmin(admin.ModelAdmin):
     list_display = ["code", "name"]
     search_fields = ["name", "code"]
     ordering = ["code"]
+
+
+@admin.register(Country)
+class CountryAdmin(admin.ModelAdmin):
+    """Admin configuration for Country model."""
+
+    list_display = ["code", "name", "is_active"]
+    list_filter = ["is_active"]
+    search_fields = ["name", "code"]
+    ordering = ["name"]
 
 
 @admin.register(SubCounty)

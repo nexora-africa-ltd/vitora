@@ -2,9 +2,10 @@
 """
 Management command to seed subscription plans matching the marketing pricing page.
 
-Creates the four canonical tiers (FREE, BASIC, PROFESSIONAL, ENTERPRISE)
-with pricing, limits, and feature flags that align with the public pricing
-at vitora.nexora.africa/pricing.
+Creates the canonical general tiers (FREE, BASIC, PROFESSIONAL, ENTERPRISE)
+plus standalone tiers (LIS_STANDALONE, PHARMACY_STANDALONE,
+IMAGING_STANDALONE, DIAGNOSTIC_STANDALONE) with pricing, limits, and
+feature flags that align with product packaging.
 
 Usage::
 
@@ -194,13 +195,228 @@ PLANS = [
             "sms_notifications": True,
         },
     },
+    {
+        "code": "LIS_STANDALONE",
+        "name": "Standalone Laboratory",
+        "description": (
+            "For laboratories running LIS without full HMIS workflows. "
+            "Includes lab operations, billing, inventory, and offline support."
+        ),
+        "monthly_price": "14999.00",
+        "annual_price": "149990.00",
+        "max_facilities": 1,
+        "max_users": 15,
+        "max_patients": None,
+        "monthly_ai_tokens": 20000,
+        "trial_period_days": 0,
+        "sort_order": 4,
+        "features": {
+            "outpatient": False,
+            "inpatient": False,
+            "emergency": False,
+            "pharmacy": False,
+            "laboratory": True,
+            "imaging": False,
+            "theatre": False,
+            "dialysis": False,
+            "icu": False,
+            "hdu": False,
+            "nbu": False,
+            "maternity": False,
+            "mortuary": False,
+            "blood_bank": False,
+            "inventory": True,
+            "billing": True,
+            "scheduling": False,
+            "triage": False,
+            "surveillance": False,
+            "immunizations": False,
+            "allied_health": False,
+            "quality": False,
+            "private_insurance": False,
+            "moh_reporting": False,
+            "lis_standalone": True,
+            "pharmacy_standalone": False,
+            "imaging_standalone": False,
+            "ai_assistant": False,
+            "sha_claims": False,
+            "dhis2_reporting": False,
+            "analytics": False,
+            "api_access": False,
+            "custom_reports": False,
+            "offline_sync": True,
+            "sms_notifications": False,
+        },
+    },
+    {
+        "code": "PHARMACY_STANDALONE",
+        "name": "Standalone Pharmacy",
+        "description": (
+            "For standalone pharmacy and retail dispensing operations. "
+            "Includes dispensing workflows, billing, inventory, and offline support."
+        ),
+        "monthly_price": "12999.00",
+        "annual_price": "129990.00",
+        "max_facilities": 1,
+        "max_users": 15,
+        "max_patients": None,
+        "monthly_ai_tokens": 20000,
+        "trial_period_days": 0,
+        "sort_order": 5,
+        "features": {
+            "outpatient": False,
+            "inpatient": False,
+            "emergency": False,
+            "pharmacy": True,
+            "laboratory": False,
+            "imaging": False,
+            "theatre": False,
+            "dialysis": False,
+            "icu": False,
+            "hdu": False,
+            "nbu": False,
+            "maternity": False,
+            "mortuary": False,
+            "blood_bank": False,
+            "inventory": True,
+            "billing": True,
+            "scheduling": False,
+            "triage": False,
+            "surveillance": False,
+            "immunizations": False,
+            "allied_health": False,
+            "quality": False,
+            "private_insurance": False,
+            "moh_reporting": False,
+            "lis_standalone": False,
+            "pharmacy_standalone": True,
+            "imaging_standalone": False,
+            "ai_assistant": False,
+            "sha_claims": False,
+            "dhis2_reporting": False,
+            "analytics": False,
+            "api_access": False,
+            "custom_reports": False,
+            "offline_sync": True,
+            "sms_notifications": False,
+        },
+    },
+    {
+        "code": "IMAGING_STANDALONE",
+        "name": "Standalone Imaging",
+        "description": (
+            "For imaging centers running RIS/PACS workflows without full HMIS. "
+            "Includes imaging operations, billing, inventory, and offline support."
+        ),
+        "monthly_price": "16999.00",
+        "annual_price": "169990.00",
+        "max_facilities": 1,
+        "max_users": 20,
+        "max_patients": None,
+        "monthly_ai_tokens": 20000,
+        "trial_period_days": 0,
+        "sort_order": 6,
+        "features": {
+            "outpatient": False,
+            "inpatient": False,
+            "emergency": False,
+            "pharmacy": False,
+            "laboratory": False,
+            "imaging": True,
+            "theatre": False,
+            "dialysis": False,
+            "icu": False,
+            "hdu": False,
+            "nbu": False,
+            "maternity": False,
+            "mortuary": False,
+            "blood_bank": False,
+            "inventory": True,
+            "billing": True,
+            "scheduling": False,
+            "triage": False,
+            "surveillance": False,
+            "immunizations": False,
+            "allied_health": False,
+            "quality": False,
+            "private_insurance": False,
+            "moh_reporting": False,
+            "lis_standalone": False,
+            "pharmacy_standalone": False,
+            "imaging_standalone": True,
+            "ai_assistant": False,
+            "sha_claims": False,
+            "dhis2_reporting": False,
+            "analytics": False,
+            "api_access": False,
+            "custom_reports": False,
+            "offline_sync": True,
+            "sms_notifications": False,
+        },
+    },
+    {
+        "code": "DIAGNOSTIC_STANDALONE",
+        "name": "Standalone Diagnostic Centre",
+        "description": (
+            "For diagnostic centers running both laboratory and imaging as a "
+            "single standalone offering. Includes billing, inventory, and offline support."
+        ),
+        "monthly_price": "23999.00",
+        "annual_price": "239990.00",
+        "max_facilities": 2,
+        "max_users": 30,
+        "max_patients": None,
+        "monthly_ai_tokens": 30000,
+        "trial_period_days": 0,
+        "sort_order": 7,
+        "features": {
+            "outpatient": False,
+            "inpatient": False,
+            "emergency": False,
+            "pharmacy": False,
+            "laboratory": True,
+            "imaging": True,
+            "theatre": False,
+            "dialysis": False,
+            "icu": False,
+            "hdu": False,
+            "nbu": False,
+            "maternity": False,
+            "mortuary": False,
+            "blood_bank": False,
+            "inventory": True,
+            "billing": True,
+            "scheduling": False,
+            "triage": False,
+            "surveillance": False,
+            "immunizations": False,
+            "allied_health": False,
+            "quality": False,
+            "private_insurance": False,
+            "moh_reporting": False,
+            "lis_standalone": True,
+            "pharmacy_standalone": False,
+            "imaging_standalone": True,
+            "ai_assistant": False,
+            "sha_claims": False,
+            "dhis2_reporting": False,
+            "analytics": False,
+            "api_access": False,
+            "custom_reports": False,
+            "offline_sync": True,
+            "sms_notifications": False,
+        },
+    },
 ]
 
 
 class Command(BaseCommand):
     """Seed subscription plans matching the marketing pricing page."""
 
-    help = "Seed the four canonical subscription plans (FREE, BASIC, PROFESSIONAL, ENTERPRISE)"
+    help = (
+        "Seed canonical subscription plans: general tiers and standalone tiers "
+        "(LIS/Pharmacy/Imaging/Diagnostic)."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(

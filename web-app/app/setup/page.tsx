@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import { APP_NAME, API_BASE_URL } from '@/lib/utils/constants';
@@ -49,8 +50,41 @@ const OWNERSHIP_TYPES = [
   { value: 'PRIVATE', label: 'Private Practice' },
 ];
 
+const OPERATING_MODES: { value: string; label: string; description: string }[] = [
+  {
+    value: 'FULL_HMIS',
+    label: 'Full HMIS (hospital / clinic)',
+    description: 'Complete clinical workflow: OPD, inpatient, pharmacy, lab, imaging, billing.',
+  },
+  {
+    value: 'STANDALONE_LAB',
+    label: 'Standalone Lab',
+    description: 'Laboratory only - walk-ins, external orders, results. No clinical workflow.',
+  },
+  {
+    value: 'STANDALONE_PHARMACY',
+    label: 'Standalone Pharmacy',
+    description: 'Retail/walk-in pharmacy. External prescription intake, OTC sales, billing.',
+  },
+  {
+    value: 'STANDALONE_IMAGING',
+    label: 'Standalone Imaging / Radiology Centre',
+    description: 'Diagnostic imaging only - walk-ins, external referrals, reporting.',
+  },
+  {
+    value: 'STANDALONE_DIAGNOSTIC',
+    label: 'Standalone Diagnostic Centre (Lab + Imaging)',
+    description: 'Combined lab and imaging diagnostics, no clinical inpatient workflow.',
+  },
+];
+
 interface LocationOption {
   id: number;
+  name: string;
+}
+
+interface CountryOption {
+  code: string;
   name: string;
 }
 
@@ -81,6 +115,7 @@ export default function SetupWizardPage() {
   const [success, setSuccess] = useState<{ org_name: string; username: string } | null>(null);
 
   // Location data
+  const [countries, setCountries] = useState<CountryOption[]>([]);
   const [counties, setCounties] = useState<LocationOption[]>([]);
   const [subCounties, setSubCounties] = useState<LocationOption[]>([]);
   const [loadingSubCounties, setLoadingSubCounties] = useState(false);
@@ -93,11 +128,17 @@ export default function SetupWizardPage() {
     org_contact_phone: '',
     // Facility
     facility_name: '',
+    facility_country: 'KE',
     facility_mfl_code: '',
+    facility_registry_code: '',
+    facility_region_state: '',
+    facility_district: '',
+    facility_locality: '',
     facility_level: '',
     facility_ownership: 'PRIVATE',
     facility_county: '',
     facility_sub_county: '',
+    facility_operating_mode: 'FULL_HMIS',
     // Admin
     admin_username: '',
     admin_email: '',
@@ -108,6 +149,8 @@ export default function SetupWizardPage() {
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const isKenyaSelected = formData.facility_country === 'KE';
+  const isStandaloneMode = formData.facility_operating_mode !== 'FULL_HMIS';
 
   useEffect(() => {
     setMounted(true);
@@ -136,12 +179,33 @@ export default function SetupWizardPage() {
     check();
   }, [router]);
 
-  // Load counties (public endpoint not available, use raw fetch)
   useEffect(() => {
     if (!setupAllowed) return;
+    async function loadCountries() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/locations/countries/`, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCountries(Array.isArray(data) ? data : data.results || []);
+        }
+      } catch {
+        setCountries([]);
+      }
+    }
+    loadCountries();
+  }, [setupAllowed]);
+
+  // Load counties (public endpoint not available, use raw fetch)
+  useEffect(() => {
+    if (!setupAllowed || !isKenyaSelected) {
+      setCounties([]);
+      return;
+    }
     async function loadCounties() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/locations/counties/`, {
+        const res = await fetch(`${API_BASE_URL}/api/locations/counties/?country=KE`, {
           headers: { 'Content-Type': 'application/json' },
         });
         if (res.ok) {
@@ -153,7 +217,7 @@ export default function SetupWizardPage() {
       }
     }
     loadCounties();
-  }, [setupAllowed]);
+  }, [setupAllowed, isKenyaSelected]);
 
   // Load sub-counties when county changes
   const loadSubCounties = useCallback(async (countyId: string) => {
@@ -191,6 +255,19 @@ export default function SetupWizardPage() {
     loadSubCounties(value);
   };
 
+  const handleCountryChange = (value: string) => {
+    handleChange('facility_country', value);
+    handleChange('facility_county', '');
+    handleChange('facility_sub_county', '');
+    setSubCounties([]);
+  };
+
+  const buildStandaloneMflCode = () => {
+    const modeToken = formData.facility_operating_mode.replace('STANDALONE_', '').slice(0, 3);
+    const randomToken = Math.random().toString(36).slice(2, 9).toUpperCase();
+    return `ST-${modeToken}-${randomToken}`;
+  };
+
   // ─── Validation per step ──────────────────────────────────────────────────
 
   const validateOrg = (): boolean => {
@@ -203,10 +280,24 @@ export default function SetupWizardPage() {
   const validateFacility = (): boolean => {
     const errors: Record<string, string> = {};
     if (!formData.facility_name.trim()) errors.facility_name = 'Facility name is required';
-    if (!formData.facility_mfl_code.trim()) errors.facility_mfl_code = 'MFL code is required';
-    if (!formData.facility_level) errors.facility_level = 'Facility level is required';
-    if (!formData.facility_county) errors.facility_county = 'County is required';
-    if (!formData.facility_sub_county) errors.facility_sub_county = 'Sub-county is required';
+    if (isKenyaSelected) {
+      if (!formData.facility_county) errors.facility_county = 'County is required';
+      if (!formData.facility_sub_county) errors.facility_sub_county = 'Sub-county is required';
+    } else {
+      if (!formData.facility_registry_code.trim()) {
+        errors.facility_registry_code = 'Facility registry code is required';
+      }
+      if (!formData.facility_region_state.trim()) {
+        errors.facility_region_state = 'State/region is required';
+      }
+      if (!formData.facility_locality.trim()) {
+        errors.facility_locality = 'City/locality is required';
+      }
+    }
+    if (isKenyaSelected && !isStandaloneMode) {
+      if (!formData.facility_mfl_code.trim()) errors.facility_mfl_code = 'MFL code is required';
+      if (!formData.facility_level) errors.facility_level = 'Facility level is required';
+    }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -247,21 +338,37 @@ export default function SetupWizardPage() {
 
     setIsSubmitting(true);
     try {
+      const facilityMflCode = isStandaloneMode
+        ? formData.facility_mfl_code.trim() || buildStandaloneMflCode()
+        : formData.facility_mfl_code.trim();
+
       const payload = {
         org_name: formData.org_name,
         org_contact_email: formData.org_contact_email || undefined,
         org_contact_phone: formData.org_contact_phone || undefined,
         facility_name: formData.facility_name,
-        facility_mfl_code: formData.facility_mfl_code,
-        facility_level: formData.facility_level as '1' | '2' | '3' | '4' | '5' | '6',
+        facility_mfl_code: facilityMflCode,
+        facility_registry_code: formData.facility_registry_code || undefined,
+        facility_region_state: formData.facility_region_state || undefined,
+        facility_district: formData.facility_district || undefined,
+        facility_locality: formData.facility_locality || undefined,
+        facility_level: (isKenyaSelected
+          ? formData.facility_level
+          : undefined) as '1' | '2' | '3' | '4' | '5' | '6' | undefined,
         facility_ownership: (formData.facility_ownership || undefined) as
           | 'GOK'
           | 'FBO'
           | 'NGO'
           | 'PRIVATE'
           | undefined,
-        facility_county: Number(formData.facility_county),
-        facility_sub_county: Number(formData.facility_sub_county),
+        facility_operating_mode: formData.facility_operating_mode as
+          | 'FULL_HMIS'
+          | 'STANDALONE_LAB'
+          | 'STANDALONE_PHARMACY'
+          | 'STANDALONE_IMAGING'
+          | 'STANDALONE_DIAGNOSTIC',
+        facility_county: isKenyaSelected ? Number(formData.facility_county) : undefined,
+        facility_sub_county: isKenyaSelected ? Number(formData.facility_sub_county) : undefined,
         admin_username: formData.admin_username,
         admin_email: formData.admin_email,
         admin_first_name: formData.admin_first_name,
@@ -495,113 +602,224 @@ export default function SetupWizardPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="facility_mfl_code" className="text-sm font-medium">
-                    MFL Code <span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    id="facility_mfl_code"
-                    value={formData.facility_mfl_code}
-                    onChange={(e) => handleChange('facility_mfl_code', e.target.value)}
-                    placeholder="e.g., 12345"
-                    className={`h-10 ${validationErrors.facility_mfl_code ? 'border-destructive' : ''}`}
-                  />
-                  {fieldError('facility_mfl_code')}
+                  <label className="text-sm font-medium">Operating Mode</label>
+                  <Select
+                    value={formData.facility_operating_mode}
+                    onValueChange={(v) => handleChange('facility_operating_mode', v)}
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OPERATING_MODES.map((mode) => (
+                        <SelectItem key={mode.value} value={mode.value}>
+                          {mode.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {
+                      OPERATING_MODES.find((mode) => mode.value === formData.facility_operating_mode)
+                        ?.description
+                    }
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">
-                      KEPH Level <span className="text-destructive">*</span>
+                      Country <span className="text-destructive">*</span>
                     </label>
-                    <Select
-                      value={formData.facility_level}
-                      onValueChange={(v) => handleChange('facility_level', v)}
-                    >
-                      <SelectTrigger
-                        className={`h-10 ${validationErrors.facility_level ? 'border-destructive' : ''}`}
-                      >
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FACILITY_LEVELS.map((l) => (
-                          <SelectItem key={l.value} value={l.value}>
-                            {l.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {fieldError('facility_level')}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Ownership</label>
-                    <Select
-                      value={formData.facility_ownership}
-                      onValueChange={(v) => handleChange('facility_ownership', v)}
-                    >
-                      <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {OWNERSHIP_TYPES.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={formData.facility_country}
+                      onValueChange={handleCountryChange}
+                      options={countries.map((country) => ({
+                        value: country.code,
+                        label: country.name,
+                        sublabel: country.code,
+                      }))}
+                      placeholder="Select country"
+                      searchPlaceholder="Search countries..."
+                      emptyMessage="No countries found."
+                      className={`h-10 ${validationErrors.facility_country ? 'border-destructive' : ''}`}
+                    />
+                    {fieldError('facility_country')}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">
-                      County <span className="text-destructive">*</span>
-                    </label>
-                    <Select value={formData.facility_county} onValueChange={handleCountyChange}>
-                      <SelectTrigger
-                        className={`h-10 ${validationErrors.facility_county ? 'border-destructive' : ''}`}
-                      >
-                        <SelectValue placeholder="Select county" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {counties.map((c) => (
-                          <SelectItem key={c.id} value={String(c.id)}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {fieldError('facility_county')}
-                  </div>
+                {isKenyaSelected ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">
+                        County <span className="text-destructive">*</span>
+                      </label>
+                      <Select value={formData.facility_county} onValueChange={handleCountyChange}>
+                        <SelectTrigger
+                          className={`h-10 ${validationErrors.facility_county ? 'border-destructive' : ''}`}
+                        >
+                          <SelectValue placeholder="Select county" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {counties.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {fieldError('facility_county')}
+                    </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">
-                      Sub-County <span className="text-destructive">*</span>
-                    </label>
-                    <Select
-                      value={formData.facility_sub_county}
-                      onValueChange={(v) => handleChange('facility_sub_county', v)}
-                      disabled={!formData.facility_county || loadingSubCounties}
-                    >
-                      <SelectTrigger
-                        className={`h-10 ${validationErrors.facility_sub_county ? 'border-destructive' : ''}`}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">
+                        Sub-County <span className="text-destructive">*</span>
+                      </label>
+                      <Select
+                        value={formData.facility_sub_county}
+                        onValueChange={(v) => handleChange('facility_sub_county', v)}
+                        disabled={!formData.facility_county || loadingSubCounties}
                       >
-                        <SelectValue
-                          placeholder={loadingSubCounties ? 'Loading...' : 'Select sub-county'}
+                        <SelectTrigger
+                          className={`h-10 ${validationErrors.facility_sub_county ? 'border-destructive' : ''}`}
+                        >
+                          <SelectValue
+                            placeholder={loadingSubCounties ? 'Loading...' : 'Select sub-county'}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subCounties.map((sc) => (
+                            <SelectItem key={sc.id} value={String(sc.id)}>
+                              {sc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {fieldError('facility_sub_county')}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      <label htmlFor="facility_registry_code" className="text-sm font-medium">
+                        Facility Registry Code <span className="text-destructive">*</span>
+                      </label>
+                      <Input
+                        id="facility_registry_code"
+                        value={formData.facility_registry_code}
+                        onChange={(e) => handleChange('facility_registry_code', e.target.value)}
+                        placeholder="e.g., UG-HF-001"
+                        className={`h-10 ${validationErrors.facility_registry_code ? 'border-destructive' : ''}`}
+                      />
+                      {fieldError('facility_registry_code')}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label htmlFor="facility_region_state" className="text-sm font-medium">
+                          State/Region <span className="text-destructive">*</span>
+                        </label>
+                        <Input
+                          id="facility_region_state"
+                          value={formData.facility_region_state}
+                          onChange={(e) => handleChange('facility_region_state', e.target.value)}
+                          placeholder="e.g., Central Region"
+                          className={`h-10 ${validationErrors.facility_region_state ? 'border-destructive' : ''}`}
                         />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subCounties.map((sc) => (
-                          <SelectItem key={sc.id} value={String(sc.id)}>
-                            {sc.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {fieldError('facility_sub_county')}
-                  </div>
-                </div>
+                        {fieldError('facility_region_state')}
+                      </div>
+                      <div className="space-y-1.5">
+                        <label htmlFor="facility_district" className="text-sm font-medium">
+                          District
+                        </label>
+                        <Input
+                          id="facility_district"
+                          value={formData.facility_district}
+                          onChange={(e) => handleChange('facility_district', e.target.value)}
+                          placeholder="e.g., Wakiso"
+                          className="h-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label htmlFor="facility_locality" className="text-sm font-medium">
+                        City/Locality <span className="text-destructive">*</span>
+                      </label>
+                      <Input
+                        id="facility_locality"
+                        value={formData.facility_locality}
+                        onChange={(e) => handleChange('facility_locality', e.target.value)}
+                        placeholder="e.g., Kampala"
+                        className={`h-10 ${validationErrors.facility_locality ? 'border-destructive' : ''}`}
+                      />
+                      {fieldError('facility_locality')}
+                    </div>
+                  </>
+                )}
+
+                {isKenyaSelected && !isStandaloneMode && (
+                  <>
+                    <div className="space-y-1.5">
+                      <label htmlFor="facility_mfl_code" className="text-sm font-medium">
+                        MFL Code <span className="text-destructive">*</span>
+                      </label>
+                      <Input
+                        id="facility_mfl_code"
+                        value={formData.facility_mfl_code}
+                        onChange={(e) => handleChange('facility_mfl_code', e.target.value)}
+                        placeholder="e.g., 12345"
+                        className={`h-10 ${validationErrors.facility_mfl_code ? 'border-destructive' : ''}`}
+                      />
+                      {fieldError('facility_mfl_code')}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium">
+                          KEPH Level <span className="text-destructive">*</span>
+                        </label>
+                        <Select
+                          value={formData.facility_level}
+                          onValueChange={(v) => handleChange('facility_level', v)}
+                        >
+                          <SelectTrigger
+                            className={`h-10 ${validationErrors.facility_level ? 'border-destructive' : ''}`}
+                          >
+                            <SelectValue placeholder="Select level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FACILITY_LEVELS.map((l) => (
+                              <SelectItem key={l.value} value={l.value}>
+                                {l.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {fieldError('facility_level')}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium">Ownership</label>
+                        <Select
+                          value={formData.facility_ownership}
+                          onValueChange={(v) => handleChange('facility_ownership', v)}
+                        >
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {OWNERSHIP_TYPES.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>
+                                {o.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </>
+                )}
               </>
             )}
 

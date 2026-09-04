@@ -16,6 +16,8 @@ Supported inputs/args:
 Serializers for core app.
 """
 
+import uuid
+
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
@@ -411,6 +413,8 @@ class FacilityListSerializer(serializers.ModelSerializer):
             "organization",
             "organization_name",
             "mfl_code",
+            "facility_registry_code",
+            "country_code",
             "name",
             "level",
             "level_subtype",
@@ -419,6 +423,9 @@ class FacilityListSerializer(serializers.ModelSerializer):
             "county_name",
             "sub_county",
             "sub_county_name",
+            "region_state",
+            "district",
+            "locality",
             "is_headquarters",
             "branch_code",
             "sha_contracted",
@@ -483,6 +490,8 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "organization",
             "organization_name",
             "mfl_code",
+            "facility_registry_code",
+            "country_code",
             "name",
             "level",
             "level_subtype",
@@ -498,6 +507,9 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "sub_county_name",
             "ward",
             "ward_name",
+            "region_state",
+            "district",
+            "locality",
             # SHA
             "sha_contracted",
             "sha_contract_expiry",
@@ -676,6 +688,8 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
         fields = [
             "organization",
             "mfl_code",
+            "facility_registry_code",
+            "country_code",
             "name",
             "level",
             "level_subtype",
@@ -686,6 +700,9 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "county",
             "sub_county",
             "ward",
+            "region_state",
+            "district",
+            "locality",
             # SHA
             "sha_contracted",
             "sha_contract_expiry",
@@ -741,6 +758,39 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
         county = attrs.get("county")
         sub_county = attrs.get("sub_county")
         ward = attrs.get("ward")
+        country_code = str(attrs.get("country_code", "KE") or "KE").upper()
+        attrs["country_code"] = country_code
+
+        if country_code != "KE":
+            attrs["county"] = None
+            attrs["sub_county"] = None
+            attrs["ward"] = None
+            if not str(attrs.get("facility_registry_code", "") or "").strip():
+                raise serializers.ValidationError(
+                    {
+                        "facility_registry_code": (
+                            "Facility registry code is required for non-Kenya facilities."
+                        )
+                    }
+                )
+            if not str(attrs.get("mfl_code", "") or "").strip():
+                attrs["mfl_code"] = f"INT-{country_code}-{uuid.uuid4().hex[:10].upper()}"[:20]
+            county = None
+            sub_county = None
+            ward = None
+        else:
+            if not county:
+                raise serializers.ValidationError(
+                    {"county": "County is required for Kenya facilities."}
+                )
+            if not sub_county:
+                raise serializers.ValidationError(
+                    {"sub_county": "Sub-county is required for Kenya facilities."}
+                )
+            if not str(attrs.get("mfl_code", "") or "").strip():
+                raise serializers.ValidationError(
+                    {"mfl_code": "MFL code is required for Kenya facilities."}
+                )
 
         if county and sub_county and sub_county.county_id != county.id:
             raise serializers.ValidationError(

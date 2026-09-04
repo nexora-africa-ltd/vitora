@@ -192,6 +192,8 @@ def standalone_onboarding_seed_defaults(request):
         ],
     }
 
+    is_non_kenya_facility = str(getattr(facility, "country_code", "KE")).upper() != "KE"
+
     created_tests = 0
     created_instruments = 0
     created_channels = 0
@@ -202,6 +204,7 @@ def standalone_onboarding_seed_defaults(request):
     )
 
     for code, name, category, specimen, cost in catalogue_by_archetype[archetype]:
+        seeded_cost = 0 if is_non_kenya_facility else cost
         _, created = TestCatalog.objects.get_or_create(
             facility=facility,
             organization=facility.organization,
@@ -211,7 +214,7 @@ def standalone_onboarding_seed_defaults(request):
                 "short_name": code,
                 "category": category,
                 "specimen_type": specimen,
-                "cost": cost,
+                "cost": seeded_cost,
                 "result_type": "NUMERIC",
                 "is_active": True,
             },
@@ -277,7 +280,7 @@ def standalone_onboarding_template_download(request, template_name: str):
     templates = {
         "test-catalog": (
             "code,name,short_name,category,specimen_type,turnaround_hours,cost,result_type,is_active\n"
-            "CBC,Complete Blood Count,CBC,HEMATOLOGY,BLOOD,6,500,NUMERIC,true\n"
+            "CBC,Complete Blood Count,CBC,HEMATOLOGY,BLOOD,6,0,NUMERIC,true\n"
         ),
         "specimen-workflow": (
             "workflow_key,enabled,value\n"

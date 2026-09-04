@@ -1,4 +1,12 @@
-export type TierCode = 'FREE' | 'BASIC' | 'PROFESSIONAL' | 'ENTERPRISE';
+export type TierCode =
+  | 'FREE'
+  | 'BASIC'
+  | 'PROFESSIONAL'
+  | 'ENTERPRISE'
+  | 'LIS_STANDALONE'
+  | 'PHARMACY_STANDALONE'
+  | 'IMAGING_STANDALONE'
+  | 'DIAGNOSTIC_STANDALONE';
 
 /**
  * Canonical feature keys and human-readable labels.
@@ -23,10 +31,21 @@ export const FEATURE_LABELS: Record<string, string> = {
   inventory: 'Inventory / Supply Chain',
   billing: 'Billing & Invoicing',
   scheduling: 'Staff Rostering & Scheduling',
+  triage: 'Triage / Acuity Scoring',
+  surveillance: 'Disease Surveillance / IDSR',
+  immunizations: 'Immunizations / Vaccination',
+  allied_health: 'Allied Health (Physio, Nutrition, etc.)',
+  quality: 'Quality Improvement & Clinical Audit',
+  private_insurance: 'Private Insurance Claims',
+  moh_reporting: 'MOH 705/711/717 Aggregate Reporting',
+  lis_standalone: 'Standalone Laboratory (LIS)',
+  pharmacy_standalone: 'Standalone Pharmacy / Retail',
+  imaging_standalone: 'Standalone Imaging / RIS',
   // Platform features
   ai_assistant: 'AI Assistant (TibaBot)',
   sha_claims: 'SHA Claims Integration',
   dhis2_reporting: 'DHIS2 / KHIS Reporting',
+  analytics: 'Analytics & BI Dashboards',
   api_access: 'API Access',
   custom_reports: 'Custom Reports',
   offline_sync: 'Offline Sync',

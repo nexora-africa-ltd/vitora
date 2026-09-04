@@ -1,6 +1,15 @@
 import { z } from 'zod';
 
-export const SubscriptionTierSchema = z.enum(['FREE', 'BASIC', 'PROFESSIONAL', 'ENTERPRISE']);
+export const SubscriptionTierSchema = z.enum([
+  'FREE',
+  'BASIC',
+  'PROFESSIONAL',
+  'ENTERPRISE',
+  'LIS_STANDALONE',
+  'PHARMACY_STANDALONE',
+  'IMAGING_STANDALONE',
+  'DIAGNOSTIC_STANDALONE',
+]);
 
 export const OrganizationListItemSchema = z.object({
   id: z.number(),

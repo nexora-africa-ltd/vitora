@@ -247,6 +247,28 @@ class TestPricingQuoteAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["resolved_plan"] == "CUSTOM"
 
+    def test_resolve_plan_returns_lis_standalone(self, api_client, seeded_pricing_catalog):
+        payload = {
+            "billing_cycle": "monthly",
+            "base_sku": "base_platform",
+            "selected_skus": ["std_lis"],
+            "quantities": {"facilities": 1, "users": 10},
+        }
+        response = api_client.post("/api/pricing/resolve-plan/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resolved_plan"] == "LIS_STANDALONE"
+
+    def test_resolve_plan_returns_diagnostic_standalone(self, api_client, seeded_pricing_catalog):
+        payload = {
+            "billing_cycle": "monthly",
+            "base_sku": "base_platform",
+            "selected_skus": ["std_lis", "std_imaging"],
+            "quantities": {"facilities": 1, "users": 10},
+        }
+        response = api_client.post("/api/pricing/resolve-plan/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resolved_plan"] == "DIAGNOSTIC_STANDALONE"
+
     def test_quote_snapshot_create_and_retrieve(self, api_client, seeded_pricing_catalog):
         payload = {
             "billing_cycle": "monthly",
@@ -268,5 +290,9 @@ class TestPricingQuoteAPI:
             "BASIC",
             "PROFESSIONAL",
             "ENTERPRISE",
+            "LIS_STANDALONE",
+            "PHARMACY_STANDALONE",
+            "IMAGING_STANDALONE",
+            "DIAGNOSTIC_STANDALONE",
             "CUSTOM",
         }

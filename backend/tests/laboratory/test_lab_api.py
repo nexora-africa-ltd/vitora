@@ -187,6 +187,29 @@ class TestTestCatalogAPI:
         created = TestCatalog.objects.get(pk=response.data["id"])
         assert created.code == "HBA1C"
 
+    def test_seed_defaults_creates_facility_scoped_records(self, auth_client, sample_facility):
+        response = auth_client.post("/api/lab/tests/seed-defaults/", format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] >= 1
+        assert TestCatalog.objects.filter(facility=sample_facility, code="CBC").exists()
+
+    def test_seed_defaults_for_non_kenya_facility_sets_zero_cost(
+        self, auth_client, sample_facility, sample_organization
+    ):
+        sample_facility.country_code = "UG"
+        sample_facility.save(update_fields=["country_code"])
+
+        response = auth_client.post("/api/lab/tests/seed-defaults/", format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        cbc = TestCatalog.objects.get(
+            facility=sample_facility,
+            organization=sample_organization,
+            code="CBC",
+        )
+        assert cbc.cost == Decimal("0.00")
+
 
 @pytest.mark.django_db
 class TestLabOrderAPI:

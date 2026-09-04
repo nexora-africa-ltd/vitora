@@ -12,6 +12,7 @@ Provides:
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import date, timedelta
 
 from django.conf import settings
@@ -1053,6 +1054,10 @@ def org_signup(request):
     serializer = OrgSignupSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
+    country_code = str(data.get("facility_country", "KE") or "KE").upper()
+    mfl_code = str(data.get("facility_mfl_code", "") or "").strip()
+    if not mfl_code:
+        mfl_code = f"INT-{country_code}-{uuid.uuid4().hex[:10].upper()}"
 
     from django.utils.text import slugify
 
@@ -1079,7 +1084,12 @@ def org_signup(request):
         facility = Facility.objects.create(
             organization=org,
             name=data["facility_name"],
-            mfl_code=data["facility_mfl_code"],
+            mfl_code=mfl_code,
+            facility_registry_code=data.get("facility_registry_code", ""),
+            country_code=country_code,
+            region_state=data.get("facility_region_state", ""),
+            district=data.get("facility_district", ""),
+            locality=data.get("facility_locality", ""),
             level=data.get("facility_level", Facility.FacilityLevel.LEVEL_3),
             ownership=data.get("facility_ownership", Facility.OwnershipType.PRIVATE),
             operating_mode=data.get("facility_operating_mode", Facility.OperatingMode.FULL_HMIS),
@@ -1090,8 +1100,15 @@ def org_signup(request):
 
         # 3. Create admin user
         # is_staff=False: org admins use web-app admin, not Django /admin/
+        base_username = str(data.get("admin_username") or data["admin_email"].split("@")[0]).lower()
+        username = base_username
+        suffix = 1
+        while User.objects.filter(username__iexact=username).exists():
+            username = f"{base_username}{suffix}"
+            suffix += 1
+
         user = User.objects.create_user(
-            username=data["admin_email"].split("@")[0],
+            username=username,
             email=data["admin_email"],
             password=data["admin_password"],
             first_name=data["admin_first_name"],
@@ -1136,7 +1153,7 @@ def org_signup(request):
         admin_name=admin_name,
         admin_email=data["admin_email"],
         facility_name=data["facility_name"],
-        facility_mfl_code=data["facility_mfl_code"],
+        facility_mfl_code=mfl_code,
         operating_mode=str(facility.operating_mode),
     )
 
@@ -1151,7 +1168,9 @@ def org_signup(request):
             "org_name": data["org_name"],
             "admin_email": data["admin_email"],
             "facility_name": data["facility_name"],
-            "facility_mfl_code": data["facility_mfl_code"],
+            "facility_mfl_code": mfl_code,
+            "facility_registry_code": data.get("facility_registry_code", ""),
+            "facility_country": country_code,
         },
     )
 
@@ -1168,7 +1187,9 @@ def org_signup(request):
             "admin_name": admin_name,
             "slug": org.slug,
             "facility_name": data["facility_name"],
-            "facility_mfl_code": data["facility_mfl_code"],
+            "facility_mfl_code": mfl_code,
+            "facility_registry_code": data.get("facility_registry_code", ""),
+            "facility_country": country_code,
         },
         user_id=user.id,
         organization_id=org.id,
@@ -1183,7 +1204,7 @@ def org_signup(request):
             "org_name": data["org_name"],
             "admin_email": data["admin_email"],
             "facility_name": data["facility_name"],
-            "facility_mfl_code": data["facility_mfl_code"],
+            "facility_mfl_code": mfl_code,
             "username": user.username,
         },
         status=status.HTTP_201_CREATED,
@@ -1417,6 +1438,10 @@ def setup_initialize(request):
     serializer = SetupWizardSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
+    country_code = str(data.get("facility_country", "KE") or "KE").upper()
+    mfl_code = str(data.get("facility_mfl_code", "") or "").strip()
+    if not mfl_code:
+        mfl_code = f"INT-{country_code}-{uuid.uuid4().hex[:10].upper()}"
 
     from django.utils.text import slugify
 
@@ -1436,7 +1461,12 @@ def setup_initialize(request):
         facility = Facility.objects.create(
             organization=org,
             name=data["facility_name"],
-            mfl_code=data["facility_mfl_code"],
+            mfl_code=mfl_code,
+            facility_registry_code=data.get("facility_registry_code", ""),
+            country_code=country_code,
+            region_state=data.get("facility_region_state", ""),
+            district=data.get("facility_district", ""),
+            locality=data.get("facility_locality", ""),
             level=data["facility_level"],
             ownership=data.get("facility_ownership", Facility.OwnershipType.PRIVATE),
             operating_mode=data.get("facility_operating_mode", Facility.OperatingMode.FULL_HMIS),
@@ -1481,7 +1511,9 @@ def setup_initialize(request):
         details={
             "org_name": data["org_name"],
             "facility_name": data["facility_name"],
-            "mfl_code": data["facility_mfl_code"],
+            "mfl_code": mfl_code,
+            "facility_registry_code": data.get("facility_registry_code", ""),
+            "facility_country": country_code,
         },
     )
 

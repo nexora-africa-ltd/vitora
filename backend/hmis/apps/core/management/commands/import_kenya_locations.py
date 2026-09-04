@@ -10,7 +10,7 @@ import csv
 
 from django.core.management.base import BaseCommand
 
-from hmis.apps.core.models import County, SubCounty, Ward
+from hmis.apps.core.models import Country, County, SubCounty, Ward
 
 
 class Command(BaseCommand):
@@ -49,6 +49,7 @@ class Command(BaseCommand):
         wards_created = 0
 
         # Cache for efficiency
+        kenya, _ = Country.objects.get_or_create(code="KE", defaults={"name": "Kenya"})
         county_cache = {}
         sub_county_cache = {}
 
@@ -68,6 +69,7 @@ class Command(BaseCommand):
                     county_key = county_code
                     if county_key not in county_cache:
                         county, created = County.objects.get_or_create(
+                            country=kenya,
                             code=county_code,
                             defaults={"name": county_name},
                         )

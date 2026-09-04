@@ -23,8 +23,8 @@ class SubscriptionPlan(TimeStampedModel):
     """
     Defines a subscription tier with pricing, limits, and feature flags.
 
-    Each Organization references a tier code (FREE / BASIC / PROFESSIONAL / ENTERPRISE)
-    and this model stores the configurable details for that tier.
+    Each Organization references a tier code (general HMIS tiers and standalone
+    tiers), and this model stores the configurable details for that tier.
     """
 
     class TierCode(models.TextChoices):
@@ -34,13 +34,17 @@ class SubscriptionPlan(TimeStampedModel):
         BASIC = "BASIC", "Basic"
         PROFESSIONAL = "PROFESSIONAL", "Professional"
         ENTERPRISE = "ENTERPRISE", "Enterprise"
+        LIS_STANDALONE = "LIS_STANDALONE", "Standalone Laboratory"
+        PHARMACY_STANDALONE = "PHARMACY_STANDALONE", "Standalone Pharmacy"
+        IMAGING_STANDALONE = "IMAGING_STANDALONE", "Standalone Imaging"
+        DIAGNOSTIC_STANDALONE = "DIAGNOSTIC_STANDALONE", "Standalone Diagnostic Centre"
 
     # ------------------------------------------------------------------
     # Identity
     # ------------------------------------------------------------------
 
     code = models.CharField(
-        max_length=20,
+        max_length=32,
         choices=TierCode.choices,
         unique=True,
         help_text="Unique tier code (matches Organization.subscription_tier).",
@@ -316,13 +320,17 @@ class PricingQuoteSnapshot(TimeStampedModel):
         BASIC = "BASIC", "Basic"
         PROFESSIONAL = "PROFESSIONAL", "Professional"
         ENTERPRISE = "ENTERPRISE", "Enterprise"
+        LIS_STANDALONE = "LIS_STANDALONE", "Standalone Laboratory"
+        PHARMACY_STANDALONE = "PHARMACY_STANDALONE", "Standalone Pharmacy"
+        IMAGING_STANDALONE = "IMAGING_STANDALONE", "Standalone Imaging"
+        DIAGNOSTIC_STANDALONE = "DIAGNOSTIC_STANDALONE", "Standalone Diagnostic Centre"
         CUSTOM = "CUSTOM", "Custom"
 
     quote_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
     source = models.CharField(max_length=64, default="marketing_pricing_cart")
     catalog_version = models.CharField(max_length=64, blank=True, default="")
     resolved_plan = models.CharField(
-        max_length=20,
+        max_length=32,
         choices=ResolvedPlan.choices,
         default=ResolvedPlan.CUSTOM,
     )

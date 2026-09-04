@@ -37,6 +37,20 @@ import { joinRequestsApi } from '@/lib/api/join-requests';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { OrganizationListItem } from '@/lib/types/organization';
 
+function formatTierLabel(tier: string): string {
+  const labels: Record<string, string> = {
+    FREE: 'Free',
+    BASIC: 'Clinic',
+    PROFESSIONAL: 'Hospital',
+    ENTERPRISE: 'Enterprise',
+    LIS_STANDALONE: 'Standalone Laboratory',
+    PHARMACY_STANDALONE: 'Standalone Pharmacy',
+    IMAGING_STANDALONE: 'Standalone Imaging',
+    DIAGNOSTIC_STANDALONE: 'Standalone Diagnostic Centre',
+  };
+  return labels[tier] ?? tier;
+}
+
 export default function JoinOrganizationPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -197,7 +211,9 @@ export default function JoinOrganizationPage() {
                       <Building2 className="h-5 w-5 shrink-0 text-muted-foreground" />
                       <div className="min-w-0">
                         <p className="truncate font-medium">{org.name}</p>
-                        <p className="text-xs text-muted-foreground">{org.subscription_tier}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatTierLabel(org.subscription_tier)}
+                        </p>
                       </div>
                     </div>
                     {hasPendingRequest ? (

@@ -81,6 +81,13 @@ ENTERPRISE_ADDON_SKUS = {
     "mod_moh_reporting",
 }
 
+STANDALONE_PLAN_SKU_SETS: dict[str, set[str]] = {
+    "LIS_STANDALONE": {"std_lis"},
+    "PHARMACY_STANDALONE": {"std_pharmacy"},
+    "IMAGING_STANDALONE": {"std_imaging"},
+    "DIAGNOSTIC_STANDALONE": {"std_lis", "std_imaging"},
+}
+
 
 def _to_money(value: Decimal | int | float) -> Decimal:
     return Decimal(value).quantize(Decimal("0.01"))
@@ -227,6 +234,25 @@ def _validate_signed_nonce_request(request) -> Response | None:
 
 def _resolve_plan_code(selected_codes: set[str]) -> str:
     """Resolve cart into canonical plan code buckets."""
+    standalone_codes = {"std_lis", "std_pharmacy", "std_imaging"}
+    selected_standalones = selected_codes & standalone_codes
+
+    if selected_standalones:
+        if (
+            selected_codes.issubset(
+                {"base_platform"} | STANDALONE_PLAN_SKU_SETS["DIAGNOSTIC_STANDALONE"]
+            )
+            and selected_standalones == STANDALONE_PLAN_SKU_SETS["DIAGNOSTIC_STANDALONE"]
+        ):
+            return "DIAGNOSTIC_STANDALONE"
+        for plan_code, required_skus in STANDALONE_PLAN_SKU_SETS.items():
+            if plan_code == "DIAGNOSTIC_STANDALONE":
+                continue
+            allowed_skus = {"base_platform"} | required_skus
+            if selected_standalones == required_skus and selected_codes.issubset(allowed_skus):
+                return plan_code
+        return "CUSTOM"
+
     if "base_platform" not in selected_codes:
         return "CUSTOM"
 
@@ -546,7 +572,7 @@ class PricingQuoteSlashAliasView(PricingQuoteView):
 
 
 class PricingResolvePlanView(PricingSchemaMixin, APIView):
-    """Resolve a cart payload to BASIC/PROFESSIONAL/ENTERPRISE/CUSTOM."""
+    """Resolve a cart payload to canonical plan buckets for pricing flows."""
 
     permission_classes = [AllowAny]
     authentication_classes = []

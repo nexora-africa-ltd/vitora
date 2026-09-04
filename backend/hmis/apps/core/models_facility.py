@@ -122,6 +122,17 @@ class Facility(TimeStampedModel):
         help_text="Kenya Master Facility List (MFL) code – the unique identifier "
         "assigned to every registered health facility by the MoH.",
     )
+    facility_registry_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Generic national registry code for non-Kenya facilities.",
+    )
+    country_code = models.CharField(
+        max_length=2,
+        default="KE",
+        help_text="ISO 3166-1 alpha-2 code for the facility country.",
+    )
     name = models.CharField(
         max_length=200,
         help_text="Official facility name as registered on the MFL.",
@@ -168,14 +179,36 @@ class Facility(TimeStampedModel):
     county = models.ForeignKey(
         "County",
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name="facilities",
         help_text="County where the facility is located.",
     )
     sub_county = models.ForeignKey(
         "SubCounty",
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name="facilities",
         help_text="Sub-county where the facility is located.",
+    )
+    region_state = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="State/province/region for non-Kenya locations.",
+    )
+    district = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="District/county equivalent for non-Kenya locations.",
+    )
+    locality = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="City/town/locality for non-Kenya locations.",
     )
     ward = models.ForeignKey(
         "Ward",
@@ -676,6 +709,7 @@ class Facility(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         """Auto-apply default modules based on KEPH level on creation."""
+        self.country_code = (self.country_code or "KE").upper().strip()
         subtype = str(getattr(self, "level_subtype", "") or "").strip().upper()
         if subtype not in {"", "A", "B", "C"}:
             subtype = ""

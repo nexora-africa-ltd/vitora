@@ -222,7 +222,16 @@ class TestOrganizationModel:
 
     def test_subscription_tiers(self):
         """All subscription tier choices should be valid."""
-        valid = {"FREE", "BASIC", "PROFESSIONAL", "ENTERPRISE"}
+        valid = {
+            "FREE",
+            "BASIC",
+            "PROFESSIONAL",
+            "ENTERPRISE",
+            "LIS_STANDALONE",
+            "PHARMACY_STANDALONE",
+            "IMAGING_STANDALONE",
+            "DIAGNOSTIC_STANDALONE",
+        }
         choices = {c[0] for c in Organization.SubscriptionTier.choices}
         assert choices == valid
 

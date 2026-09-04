@@ -25,6 +25,7 @@ from .models import (
     CertificateAuthority,
     CertificateRevocation,
     CodeSystem,
+    Country,
     County,
     Department,
     DHIS2Config,
@@ -187,6 +188,15 @@ class CountySerializer(serializers.ModelSerializer):
         """Meta options for CountySerializer."""
 
         model = County
+        fields = ["id", "code", "name"]
+        read_only_fields = fields
+
+
+class CountrySerializer(serializers.ModelSerializer):
+    """Serializer for Country model."""
+
+    class Meta:
+        model = Country
         fields = ["id", "code", "name"]
         read_only_fields = fields
 

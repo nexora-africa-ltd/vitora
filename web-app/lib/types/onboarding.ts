@@ -133,15 +133,21 @@ export interface InvitationListParams {
 
 export interface OrgSignupData {
   org_name: string;
+  admin_username?: string;
   admin_email: string;
   admin_first_name: string;
   admin_last_name: string;
   admin_password: string;
   confirm_password: string;
   facility_name: string;
-  facility_mfl_code: string;
-  facility_county: number;
-  facility_sub_county: number;
+  facility_country?: string;
+  facility_mfl_code?: string;
+  facility_registry_code?: string;
+  facility_region_state?: string;
+  facility_district?: string;
+  facility_locality?: string;
+  facility_county?: number;
+  facility_sub_county?: number;
   facility_level?: string;
   facility_ownership?: string;
   facility_operating_mode?:
@@ -195,11 +201,22 @@ export interface SetupInitializeData {
   org_contact_email?: string;
   org_contact_phone?: string;
   facility_name: string;
-  facility_mfl_code: string;
-  facility_level: FacilityLevel;
+  facility_country?: string;
+  facility_mfl_code?: string;
+  facility_registry_code?: string;
+  facility_region_state?: string;
+  facility_district?: string;
+  facility_locality?: string;
+  facility_level?: FacilityLevel;
   facility_ownership?: OwnershipType;
-  facility_county: number;
-  facility_sub_county: number;
+  facility_operating_mode?:
+    | 'FULL_HMIS'
+    | 'STANDALONE_LAB'
+    | 'STANDALONE_PHARMACY'
+    | 'STANDALONE_IMAGING'
+    | 'STANDALONE_DIAGNOSTIC';
+  facility_county?: number;
+  facility_sub_county?: number;
   admin_username: string;
   admin_email: string;
   admin_first_name: string;

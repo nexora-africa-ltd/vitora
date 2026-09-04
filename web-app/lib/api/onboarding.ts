@@ -214,6 +214,10 @@ export const orgSignupApi = {
         throw new Error(
           Array.isArray(error.admin_email) ? error.admin_email[0] : error.admin_email
         );
+      if (error.admin_username)
+        throw new Error(
+          Array.isArray(error.admin_username) ? error.admin_username[0] : error.admin_username
+        );
       if (error.confirm_password)
         throw new Error(
           Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password

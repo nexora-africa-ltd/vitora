@@ -35,6 +35,22 @@ const tierColors: Record<TierCode, string> = {
   BASIC: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
   PROFESSIONAL: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
   ENTERPRISE: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  LIS_STANDALONE: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300',
+  PHARMACY_STANDALONE:
+    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+  IMAGING_STANDALONE: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300',
+  DIAGNOSTIC_STANDALONE: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300',
+};
+
+const tierLabels: Record<TierCode, string> = {
+  FREE: 'Free',
+  BASIC: 'Clinic',
+  PROFESSIONAL: 'Hospital',
+  ENTERPRISE: 'Enterprise',
+  LIS_STANDALONE: 'Standalone Laboratory',
+  PHARMACY_STANDALONE: 'Standalone Pharmacy',
+  IMAGING_STANDALONE: 'Standalone Imaging',
+  DIAGNOSTIC_STANDALONE: 'Standalone Diagnostic Centre',
 };
 
 function formatPrice(price: string): string {
@@ -158,7 +174,7 @@ export default function SubscriptionPlanDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className={tierColors[plan.code]}>{plan.code}</Badge>
+          <Badge className={tierColors[plan.code]}>{tierLabels[plan.code]}</Badge>
           <Badge variant={plan.is_active ? 'default' : 'secondary'}>
             {plan.is_active ? 'Active' : 'Inactive'}
           </Badge>

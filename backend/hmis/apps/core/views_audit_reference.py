@@ -42,6 +42,7 @@ from .models import (
     AuditLog,
     CertificateAuthority,
     CodeSystem,
+    Country,
     County,
     Department,
     DHIS2Config,
@@ -76,6 +77,7 @@ from .serializers import (
     AuthTokenResponseSerializer,
     CertificateAuthoritySerializer,
     CodeSystemSerializer,
+    CountrySerializer,
     CountySerializer,
     DepartmentSerializer,
     DHIS2ConfigCreateSerializer,
@@ -515,6 +517,24 @@ class CountyViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet)
     ordering = ["name"]
     pagination_class = None  # Return all counties without pagination
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        country_code = (self.request.query_params.get("country") or "KE").strip().upper()
+        return queryset.filter(country__code=country_code)
+
+
+class CountryViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
+    """ViewSet for listing supported countries."""
+
+    queryset = Country.objects.filter(is_active=True)
+    serializer_class = CountrySerializer
+    permission_classes = [AllowAny]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "code"]
+    ordering_fields = ["name", "code"]
+    ordering = ["name"]
+    pagination_class = None
+
 
 class SubCountyViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
     """ViewSet for listing and retrieving sub-counties."""
@@ -531,6 +551,9 @@ class SubCountyViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewS
     def get_queryset(self):
         """Filter sub-counties by county if provided."""
         queryset = super().get_queryset()
+        country_code = self.request.query_params.get("country")
+        if country_code:
+            queryset = queryset.filter(county__country__code=country_code.strip().upper())
         county_id = self.request.query_params.get("county")
         if county_id:
             queryset = queryset.filter(county_id=county_id)
@@ -588,9 +611,18 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
             from hmis.apps.core.mfa.utils import get_client_ip, is_mfa_enabled, is_mfa_required
 
             User = get_user_model()
-            username = request.data.get("username")
+            login_identifier = str(request.data.get("username") or "").strip()
             try:
-                user = User.objects.get(username=username)
+                user = (
+                    User.objects.filter(
+                        models.Q(username__iexact=login_identifier)
+                        | models.Q(email__iexact=login_identifier)
+                    )
+                    .select_related("staff_profile")
+                    .first()
+                )
+                if user is None:
+                    raise User.DoesNotExist
 
                 # ── Organization activation gate ─────────────────────────
                 # Block login when the user's organization exists but has
@@ -601,7 +633,7 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                     if not org.is_active:
                         user_login_failed.send(
                             sender=self.__class__,
-                            credentials={"username": username},
+                            credentials={"username": login_identifier},
                             request=request,
                         )
                         msg = (

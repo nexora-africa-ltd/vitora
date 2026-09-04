@@ -26,7 +26,16 @@ import { toast } from 'sonner';
 import type { SubscriptionPlanCreateData, TierCode } from '@/lib/types/subscription';
 import { FEATURE_LABELS } from '@/lib/types/subscription';
 
-const TIER_CODES: TierCode[] = ['FREE', 'BASIC', 'PROFESSIONAL', 'ENTERPRISE'];
+const TIER_CODES: TierCode[] = [
+  'FREE',
+  'BASIC',
+  'PROFESSIONAL',
+  'ENTERPRISE',
+  'LIS_STANDALONE',
+  'PHARMACY_STANDALONE',
+  'IMAGING_STANDALONE',
+  'DIAGNOSTIC_STANDALONE',
+];
 
 const DEFAULT_FEATURES: Record<string, boolean> = {
   outpatient: false,
@@ -38,15 +47,28 @@ const DEFAULT_FEATURES: Record<string, boolean> = {
   theatre: false,
   dialysis: false,
   icu: false,
+  hdu: false,
+  nbu: false,
   maternity: false,
   mortuary: false,
   blood_bank: false,
   inventory: false,
   billing: false,
   scheduling: false,
+  triage: false,
+  surveillance: false,
+  immunizations: false,
+  allied_health: false,
+  quality: false,
+  private_insurance: false,
+  moh_reporting: false,
+  lis_standalone: false,
+  pharmacy_standalone: false,
+  imaging_standalone: false,
   ai_assistant: false,
   sha_claims: false,
   dhis2_reporting: false,
+  analytics: false,
   api_access: false,
   custom_reports: false,
   offline_sync: false,

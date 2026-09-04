@@ -1114,6 +1114,29 @@ class TestStandaloneOnboardingSeeding:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_seed_defaults_sets_zero_cost_for_non_kenya_facility(
+        self, authenticated_client, sample_facility, sample_organization
+    ):
+        from hmis.apps.laboratory.models import TestCatalog
+
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.country_code = "TZ"
+        sample_facility.save(update_fields=["operating_mode", "country_code"])
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/seed-defaults/",
+            {"archetype": "small"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        cbc = TestCatalog.objects.get(
+            facility=sample_facility,
+            organization=sample_organization,
+            code="CBC",
+        )
+        assert float(cbc.cost) == 0.0
+
 
 class TestStandaloneOnboardingCSV:
     """Tests for LIS onboarding CSV templates and import workflow."""

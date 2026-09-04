@@ -255,6 +255,19 @@ class TestCatalogViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
         """
         from decimal import Decimal
 
+        profile = getattr(request.user, "staff_profile", None)
+        facility = getattr(profile, "primary_facility", None)
+        organization = getattr(facility, "organization", None)
+        is_non_kenya_facility = bool(
+            facility and str(getattr(facility, "country_code", "KE")).upper() != "KE"
+        )
+
+        if not facility:
+            return Response(
+                {"detail": "No facility context resolved for seeding defaults."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         essential_tests = [
             {
                 "code": "CBC",
@@ -462,8 +475,14 @@ class TestCatalogViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
 
         created_count = 0
         for test_data in essential_tests:
+            defaults = dict(test_data)
+            if is_non_kenya_facility:
+                defaults["cost"] = Decimal("0.00")
             _, created = TestCatalog.objects.get_or_create(
-                code=test_data["code"], defaults=test_data
+                code=test_data["code"],
+                facility=facility,
+                organization=organization,
+                defaults=defaults,
             )
             if created:
                 created_count += 1

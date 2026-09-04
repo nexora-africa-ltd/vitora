@@ -27,6 +27,22 @@ const tierColors: Record<SubscriptionTier, string> = {
   BASIC: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
   PROFESSIONAL: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
   ENTERPRISE: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  LIS_STANDALONE: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300',
+  PHARMACY_STANDALONE:
+    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+  IMAGING_STANDALONE: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300',
+  DIAGNOSTIC_STANDALONE: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300',
+};
+
+const tierLabels: Record<SubscriptionTier, string> = {
+  FREE: 'Free',
+  BASIC: 'Clinic',
+  PROFESSIONAL: 'Hospital',
+  ENTERPRISE: 'Enterprise',
+  LIS_STANDALONE: 'Standalone Laboratory',
+  PHARMACY_STANDALONE: 'Standalone Pharmacy',
+  IMAGING_STANDALONE: 'Standalone Imaging',
+  DIAGNOSTIC_STANDALONE: 'Standalone Diagnostic Centre',
 };
 
 export default function OrganizationsPage() {
@@ -127,9 +143,7 @@ export default function OrganizationsPage() {
                 cell: (org) => (
                   <div>
                     <Badge className={tierColors[org.subscription_tier]}>
-                      {org.plan_name ??
-                        org.subscription_tier.charAt(0) +
-                          org.subscription_tier.slice(1).toLowerCase()}
+                      {org.plan_name ?? tierLabels[org.subscription_tier]}
                     </Badge>
                   </div>
                 ),
@@ -181,9 +195,7 @@ export default function OrganizationsPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <Badge className={tierColors[org.subscription_tier]}>
-                    {org.plan_name ??
-                      org.subscription_tier.charAt(0) +
-                        org.subscription_tier.slice(1).toLowerCase()}
+                    {org.plan_name ?? tierLabels[org.subscription_tier]}
                   </Badge>
                 </div>
               </div>

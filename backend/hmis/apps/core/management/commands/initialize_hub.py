@@ -40,7 +40,11 @@ class SeedStep:
 # ICD codes; quality measures reference LOINC).
 SEED_STEPS: tuple[SeedStep, ...] = (
     # --- Core platform ---
-    SeedStep("seed_subscription_plans", "Subscription plans (FREE/BASIC/PRO/ENT)", required=True),
+    SeedStep(
+        "seed_subscription_plans",
+        "Subscription plans (general + standalone tiers)",
+        required=True,
+    ),
     SeedStep("load_default_roles", "Default RBAC roles & permissions", required=True),
     SeedStep("sync_role_permissions", "Sync role matrix to Django Group permissions"),
     SeedStep("setup_allied_health_permissions", "Allied health permission groups"),
