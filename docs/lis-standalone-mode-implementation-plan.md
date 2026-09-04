@@ -161,17 +161,27 @@ Deliver a production-ready **LIS Standalone Mode** inside the existing Vitora pl
 ## WS5: LIS-Only Billing and Commercial Workflows
 
 ### Tasks
-- Ensure lab order -> invoice item creation works without full encounter dependency.
-- Add payer and package rules focused on diagnostics.
-- Add remittance/payment reconciliation views for lab context.
-- Add printable receipts/invoices suitable for standalone labs.
+- [x] Ensure lab order -> invoice item creation works without full encounter dependency.
+- [x] Add payer and package rules focused on diagnostics.
+- [x] Add remittance/payment reconciliation views for lab context.
+- [x] Add printable receipts/invoices suitable for standalone labs.
+
+### Implemented Scope (Sep 2026)
+- Standalone `LabOrder` billing now supports `encounter=None` by resolving/creating a billable HMIS patient from walk-in context.
+- Billing fallback for unmatched lab services now uses `TestCatalog.cost` to avoid dropping charge lines when service catalog sync lags.
+- Standalone commercial APIs added under `/api/lab/standalone/billing/`:
+  - `GET /reconciliation/` (released vs invoiced vs collected totals)
+  - `GET /invoices/` and `GET /invoices/{id}/pdf/`
+  - `GET /payments/` and `GET /payments/{id}/receipt-pdf/`
+  - `GET /remittance-lines/` (lab-claim remittance reconciliation rows)
+- Standalone external-orders UI now includes a Commercial tab with reconciliation KPIs, invoice/payment/remittance tables, and print actions.
 
 ### Deliverables
-- LIS billing flow doc and UI updates.
+- [x] LIS billing flow doc and UI updates.
 
 ### Acceptance Criteria
-- Walk-in and referred patients both bill correctly in standalone mode.
-- Financial reports reconcile released tests vs collected payments.
+- [x] Walk-in and referred patients both bill correctly in standalone mode.
+- [x] Financial reports reconcile released tests vs collected payments.
 
 ---
 

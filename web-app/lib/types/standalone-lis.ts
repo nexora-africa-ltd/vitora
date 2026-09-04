@@ -73,6 +73,31 @@ export interface StandaloneBillingInvoice {
   balance_due: string;
 }
 
+export interface StandaloneBillingPayment {
+  id: number;
+  payment_reference: string;
+  invoice_id: number;
+  invoice_number: string;
+  status: string;
+  method: string;
+  amount: string;
+  payment_date: string;
+  receipt_number: string;
+}
+
+export interface StandaloneRemittanceLine {
+  id: number;
+  bank_reference: string;
+  remittance_date: string;
+  remittance_status: string;
+  dha_claim_id: string;
+  claim_id: number | null;
+  claim_number: string;
+  paid_amount: string;
+  payment_status: string;
+  is_reconciled: boolean;
+}
+
 export interface StandaloneOrderItem {
   test_code: string;
   special_instructions?: string;

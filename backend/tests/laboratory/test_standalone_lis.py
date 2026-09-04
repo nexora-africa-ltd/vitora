@@ -899,6 +899,41 @@ class TestBillingDecoupling:
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/pdf"
 
+    def test_standalone_payments_endpoint(
+        self, authenticated_client, sample_test_catalog, test_user
+    ):
+        from hmis.apps.billing.models import Invoice, Payment
+
+        data = {
+            "walkin_name": "Paid Patient",
+            "walkin_dob": "1994-04-04",
+            "walkin_gender": "M",
+            "items": [{"test_code": "CBC"}],
+        }
+        create = authenticated_client.post(
+            "/api/lab/standalone/orders/create/", data, format="json"
+        )
+        assert create.status_code == status.HTTP_201_CREATED
+
+        invoice = Invoice.objects.filter(items__lab_order_id=create.data["id"]).first()
+        assert invoice is not None
+        payment = Payment.objects.create(
+            invoice=invoice,
+            method=Payment.Method.CASH,
+            amount=invoice.total_amount,
+            received_by=test_user,
+        )
+        payment.process()
+
+        response = authenticated_client.get("/api/lab/standalone/billing/payments/")
+        assert response.status_code == status.HTTP_200_OK
+        assert any(row["payment_reference"] == payment.payment_reference for row in response.data)
+
+    def test_standalone_remittance_lines_endpoint_returns_ok(self, authenticated_client):
+        response = authenticated_client.get("/api/lab/standalone/billing/remittance-lines/")
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+
 
 # =============================================================================
 # Domain Event Tests

@@ -17,7 +17,7 @@ from rest_framework.decorators import permission_classes as drf_permission_class
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.billing.models import Invoice, Payment, Receipt
+from hmis.apps.billing.models import Invoice, Payment, Receipt, SHARemittanceLine
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog, ExternalCodeMapping
 from hmis.apps.core.permissions import (
@@ -972,6 +972,71 @@ class StandaloneBillingViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
                 "balance_due": str(invoice.balance_due),
             }
             for invoice in qs
+        ]
+        return Response(payload)
+
+    @action(detail=False, methods=["get"], url_path="payments")
+    def payments(self, request):
+        tenant = self.get_tenant_save_kwargs()
+        facility = tenant.get("facility")
+        qs = (
+            Payment.objects.filter(
+                invoice__facility=facility,
+                invoice__items__lab_order__is_walkin=True,
+            )
+            .select_related("invoice")
+            .order_by("-payment_date")
+            .distinct()[:200]
+        )
+        receipt_numbers = {
+            r["payment_id"]: r["receipt_number"]
+            for r in Receipt.objects.filter(payment__in=qs)
+            .values("payment_id", "receipt_number")
+            .iterator()
+        }
+        payload = [
+            {
+                "id": payment.id,
+                "payment_reference": payment.payment_reference,
+                "invoice_id": payment.invoice_id,
+                "invoice_number": payment.invoice.invoice_number,
+                "status": payment.status,
+                "method": payment.method,
+                "amount": str(payment.amount),
+                "payment_date": payment.payment_date.isoformat(),
+                "receipt_number": receipt_numbers.get(payment.id, ""),
+            }
+            for payment in qs
+        ]
+        return Response(payload)
+
+    @action(detail=False, methods=["get"], url_path="remittance-lines")
+    def remittance_lines(self, request):
+        tenant = self.get_tenant_save_kwargs()
+        facility = tenant.get("facility")
+        qs = (
+            SHARemittanceLine.objects.filter(
+                claim__invoice__facility=facility,
+                claim__invoice__items__lab_order__is_walkin=True,
+            )
+            .select_related("remittance", "claim")
+            .order_by("-remittance__payment_date", "-id")
+            .distinct()[:200]
+        )
+        payload = [
+            {
+                "id": line.id,
+                "bank_reference": line.remittance.bank_reference,
+                "remittance_date": line.remittance.payment_date.isoformat(),
+                "remittance_status": line.remittance.status,
+                "dha_claim_id": line.dha_claim_id,
+                "claim_id": line.claim_id,
+                "claim_number": getattr(line.claim, "claim_number", ""),
+                "paid_amount": str(line.paid_amount),
+                "payment_status": line.payment_status,
+                "is_reconciled": line.is_reconciled,
+            }
+            for line in qs
         ]
         return Response(payload)
 

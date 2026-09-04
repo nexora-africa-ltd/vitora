@@ -245,3 +245,32 @@ export const StandaloneBillingInvoiceSchema = z.object({
 });
 
 export const StandaloneBillingInvoiceListSchema = z.array(StandaloneBillingInvoiceSchema);
+
+export const StandaloneBillingPaymentSchema = z.object({
+  id: z.number(),
+  payment_reference: z.string(),
+  invoice_id: z.number(),
+  invoice_number: z.string(),
+  status: z.string(),
+  method: z.string(),
+  amount: z.string(),
+  payment_date: z.string(),
+  receipt_number: z.string(),
+});
+
+export const StandaloneBillingPaymentListSchema = z.array(StandaloneBillingPaymentSchema);
+
+export const StandaloneRemittanceLineSchema = z.object({
+  id: z.number(),
+  bank_reference: z.string(),
+  remittance_date: z.string(),
+  remittance_status: z.string(),
+  dha_claim_id: z.string(),
+  claim_id: z.number().nullable(),
+  claim_number: z.string(),
+  paid_amount: z.string(),
+  payment_status: z.string(),
+  is_reconciled: z.boolean(),
+});
+
+export const StandaloneRemittanceLineListSchema = z.array(StandaloneRemittanceLineSchema);

@@ -287,3 +287,54 @@ Returns `application/pdf`.
 - External order status: `RECEIVED | ACCEPTED | REJECTED | PROCESSING | COMPLETED`
 - Delivery channel: `WEBHOOK | PDF_PACKAGE | HL7_FHIR`
 - Delivery status: `PENDING | DELIVERED | FAILED`
+
+## 6) WS5 Billing and Commercial Contracts
+
+### Reconciliation summary
+
+- `GET /api/lab/standalone/billing/reconciliation/`
+
+Response:
+
+```json
+{
+  "released_orders": 12,
+  "released_amount": "12500.00",
+  "invoices": 10,
+  "invoiced_amount": "10250.00",
+  "payments": 8,
+  "collected_amount": "8200.00",
+  "outstanding_amount": "2050.00"
+}
+```
+
+### Standalone lab invoices
+
+- `GET /api/lab/standalone/billing/invoices/`
+- `GET /api/lab/standalone/billing/invoices/{id}/pdf/` (returns `application/pdf`)
+
+### Standalone lab payments
+
+- `GET /api/lab/standalone/billing/payments/`
+- `GET /api/lab/standalone/billing/payments/{id}/receipt-pdf/` (returns `application/pdf`)
+
+### Standalone remittance lines
+
+- `GET /api/lab/standalone/billing/remittance-lines/`
+
+Response row shape:
+
+```json
+{
+  "id": 1,
+  "bank_reference": "REM-2026-09-001",
+  "remittance_date": "2026-09-04",
+  "remittance_status": "reconciled",
+  "dha_claim_id": "DHA-CLM-001",
+  "claim_id": 77,
+  "claim_number": "SHA-202609-00077",
+  "paid_amount": "1500.00",
+  "payment_status": "PAID",
+  "is_reconciled": true
+}
+```

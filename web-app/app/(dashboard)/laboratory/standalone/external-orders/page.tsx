@@ -34,9 +34,11 @@ import type {
   InboundIngestionEvent,
   MessageMappingConfig,
   MessageMappingValidationResult,
+  StandaloneBillingPayment,
   ResultDeliveryLog,
   CrosswalkEntry,
   StandaloneBillingInvoice,
+  StandaloneRemittanceLine,
 } from '@/lib/types/standalone-lis';
 import { toast } from 'sonner';
 
@@ -105,6 +107,16 @@ export default function ExternalOrdersPage() {
   const { data: billingInvoices, isLoading: isBillingInvoicesLoading } = useQuery({
     queryKey: ['lis-billing-invoices'],
     queryFn: () => standaloneLisApi.listBillingInvoices(),
+  });
+
+  const { data: billingPayments, isLoading: isBillingPaymentsLoading } = useQuery({
+    queryKey: ['lis-billing-payments'],
+    queryFn: () => standaloneLisApi.listBillingPayments(),
+  });
+
+  const { data: remittanceLines, isLoading: isRemittanceLinesLoading } = useQuery({
+    queryKey: ['lis-remittance-lines'],
+    queryFn: () => standaloneLisApi.listRemittanceLines(),
   });
 
   const acceptMutation = useMutation({
@@ -488,6 +500,94 @@ export default function ExternalOrdersPage() {
     },
   ];
 
+  const billingPaymentColumns = [
+    {
+      key: 'payment_reference',
+      header: 'Payment Ref',
+      sortable: true,
+      cell: (item: StandaloneBillingPayment) => (
+        <span className="font-mono text-xs">{item.payment_reference}</span>
+      ),
+    },
+    {
+      key: 'invoice_number',
+      header: 'Invoice',
+      sortable: true,
+      cell: (item: StandaloneBillingPayment) => item.invoice_number,
+    },
+    {
+      key: 'method',
+      header: 'Method',
+      sortable: true,
+      cell: (item: StandaloneBillingPayment) => item.method,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      cell: (item: StandaloneBillingPayment) => item.status,
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      sortable: true,
+      cell: (item: StandaloneBillingPayment) => item.amount,
+    },
+    {
+      key: 'actions',
+      header: '',
+      cell: (item: StandaloneBillingPayment) => (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={async () => {
+            const blob = await standaloneLisApi.downloadPaymentReceiptPdf(item.id);
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+          }}
+        >
+          <Download className="mr-1 h-3 w-3" /> Receipt
+        </Button>
+      ),
+    },
+  ];
+
+  const remittanceLineColumns = [
+    {
+      key: 'bank_reference',
+      header: 'Bank Ref',
+      sortable: true,
+      cell: (item: StandaloneRemittanceLine) => (
+        <span className="font-mono text-xs">{item.bank_reference}</span>
+      ),
+    },
+    {
+      key: 'claim_number',
+      header: 'Claim',
+      sortable: true,
+      cell: (item: StandaloneRemittanceLine) => item.claim_number || item.dha_claim_id,
+    },
+    {
+      key: 'paid_amount',
+      header: 'Paid',
+      sortable: true,
+      cell: (item: StandaloneRemittanceLine) => item.paid_amount,
+    },
+    {
+      key: 'payment_status',
+      header: 'Payment Status',
+      sortable: true,
+      cell: (item: StandaloneRemittanceLine) => item.payment_status || '-',
+    },
+    {
+      key: 'is_reconciled',
+      header: 'Reconciled',
+      sortable: true,
+      cell: (item: StandaloneRemittanceLine) => (item.is_reconciled ? 'Yes' : 'No'),
+    },
+  ];
+
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
@@ -807,6 +907,40 @@ export default function ExternalOrdersPage() {
                   defaultSortDirection="desc"
                   isLoading={isBillingInvoicesLoading}
                   emptyMessage="No standalone lab invoices yet."
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Collected Payments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveTable
+                  data={billingPayments || []}
+                  keyExtractor={(item) => item.id}
+                  columns={billingPaymentColumns}
+                  defaultSortColumn="payment_date"
+                  defaultSortDirection="desc"
+                  isLoading={isBillingPaymentsLoading}
+                  emptyMessage="No standalone lab payments yet."
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">SHA Remittance Reconciliation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveTable
+                  data={remittanceLines || []}
+                  keyExtractor={(item) => item.id}
+                  columns={remittanceLineColumns}
+                  defaultSortColumn="remittance_date"
+                  defaultSortDirection="desc"
+                  isLoading={isRemittanceLinesLoading}
+                  emptyMessage="No remittance lines reconciled for standalone lab claims yet."
                 />
               </CardContent>
             </Card>

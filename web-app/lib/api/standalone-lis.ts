@@ -25,7 +25,9 @@ import {
   MessageMappingConfigSchema,
   MessageMappingValidationResultSchema,
   StandaloneBillingInvoiceListSchema,
+  StandaloneBillingPaymentListSchema,
   StandaloneBillingReconciliationSchema,
+  StandaloneRemittanceLineListSchema,
 } from '@/lib/schemas/standalone-lis.schema';
 import { LabOrderSchema } from '@/lib/schemas/laboratory.schema';
 import type {
@@ -46,7 +48,9 @@ import type {
   MessageMappingConfig,
   MessageMappingValidationResult,
   StandaloneBillingInvoice,
+  StandaloneBillingPayment,
   StandaloneBillingReconciliation,
+  StandaloneRemittanceLine,
 } from '@/lib/types/standalone-lis';
 import type { LabOrder } from '@/lib/types/laboratory';
 
@@ -280,6 +284,20 @@ export const standaloneLisApi = {
       responseType: 'blob',
     });
     return response.data as Blob;
+  },
+
+  async listBillingPayments(): Promise<StandaloneBillingPayment[]> {
+    const response = await apiClient.get(`${BASE}/billing/payments/`);
+    return parseResponse(StandaloneBillingPaymentListSchema, response.data, {
+      context: 'standaloneLisApi.listBillingPayments',
+    });
+  },
+
+  async listRemittanceLines(): Promise<StandaloneRemittanceLine[]> {
+    const response = await apiClient.get(`${BASE}/billing/remittance-lines/`);
+    return parseResponse(StandaloneRemittanceLineListSchema, response.data, {
+      context: 'standaloneLisApi.listRemittanceLines',
+    });
   },
 
   async rejectExternalOrder(id: number, reason: string) {
