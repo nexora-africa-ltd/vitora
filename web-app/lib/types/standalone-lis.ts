@@ -37,6 +37,7 @@ export interface WalkInPatientCreateData {
 export interface StandaloneOrderCreateData {
   walkin_patient_id?: number;
   patient_id?: number;
+  walkin_mrn?: string;
   walkin_name?: string;
   walkin_phone?: string;
   walkin_national_id?: string;
@@ -225,6 +226,14 @@ export interface LISOnboardingStep {
   label: string;
   done: boolean;
   required: boolean;
+  description: string;
+  completion_rule: string;
+  missing_items: string[];
+  next_action: {
+    label: string;
+    route: string;
+  };
+  estimated_minutes: number;
 }
 
 export interface LISOnboardingStatus {

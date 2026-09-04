@@ -57,7 +57,6 @@ export function useNavigationItems(): NavigationResult {
       facility?.deployment_profile === 'lis_standalone';
 
     const lisStandaloneAllowedModuleKeys = new Set<string>([
-      'dashboard',
       'patients',
       'laboratory',
       'billing',
@@ -74,8 +73,6 @@ export function useNavigationItems(): NavigationResult {
       { prefix: '/transactions/invoices/new', actionKey: 'billing.create_invoice' },
       { prefix: '/inventory/purchase-orders/new', actionKey: 'inventory.manage_procurement' },
       { prefix: '/inventory/goods-receipt/new', actionKey: 'inventory.manage_procurement' },
-      { prefix: '/', moduleKey: 'dashboard' },
-      { prefix: '/dashboard', moduleKey: 'dashboard' },
       { prefix: '/patients', moduleKey: 'patients' },
       { prefix: '/laboratory', moduleKey: 'laboratory', facilityModule: 'laboratory' },
       { prefix: '/transactions', moduleKey: 'billing' },
@@ -105,10 +102,16 @@ export function useNavigationItems(): NavigationResult {
       }
       if (isLISStandaloneProfile) {
         const href = 'href' in item && typeof item.href === 'string' ? item.href : '';
+        if (href === '/patients/lookup' || href.startsWith('/patients/lookup/')) {
+          return false;
+        }
         if (item.moduleKey && !lisStandaloneAllowedModuleKeys.has(item.moduleKey)) {
           return false;
         }
         if (href) {
+          if (href === '/dashboard' || href.startsWith('/dashboard/')) {
+            return false;
+          }
           const matchedStandaloneRule = lisStandaloneRouteRules.find(
             (rule) => href === rule.prefix || href.startsWith(`${rule.prefix}/`)
           );

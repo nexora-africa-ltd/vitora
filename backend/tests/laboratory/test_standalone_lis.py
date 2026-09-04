@@ -996,6 +996,45 @@ class TestStandaloneOnboardingStatusAPI:
         assert "steps" in response.data
         assert isinstance(response.data["steps"], list)
         assert response.data["complete"] is False
+        identity_step = next(
+            step for step in response.data["steps"] if step["key"] == "lab_identity"
+        )
+        analyzer_step = next(
+            step for step in response.data["steps"] if step["key"] == "instrument_channels"
+        )
+        assert identity_step["missing_items"]
+        assert identity_step["next_action"]["route"] == "/onboarding/lis-standalone"
+        assert identity_step["estimated_minutes"] > 0
+        assert analyzer_step["required"] is False
+
+    def test_updates_standalone_facility_details_without_facility_admin_role(
+        self, authenticated_client, sample_facility
+    ):
+        """Standalone onboarding can update only its facility identity fields."""
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.dha_license_number = "DHA-REGISTRY-UNCHANGED"
+        sample_facility.save()
+
+        response = authenticated_client.patch(
+            "/api/lab/standalone/onboarding/facility-details/",
+            {
+                "name": "Demo Diagnostic Laboratory",
+                "laboratory_license_number": "KMLTTB-2026-001",
+                "laboratory_license_issuer": "KMLTTB",
+                "laboratory_license_issue_date": "2026-01-15",
+                "laboratory_license_expiry": "2027-01-14",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["name"] == "Demo Diagnostic Laboratory"
+        assert response.data["laboratory_license_number"] == "KMLTTB-2026-001"
+        assert response.data["laboratory_license_issuer"] == "KMLTTB"
+        sample_facility.refresh_from_db()
+        assert sample_facility.name == "Demo Diagnostic Laboratory"
+        assert sample_facility.laboratory_license_number == "KMLTTB-2026-001"
+        assert sample_facility.dha_license_number == "DHA-REGISTRY-UNCHANGED"
 
     def test_post_status_rejects_incomplete_required_steps(
         self, authenticated_client, sample_facility
@@ -1161,6 +1200,103 @@ class TestStandaloneOnboardingSeeding:
             code="CBC",
         )
         assert float(cbc.cost) == 0.0
+
+    def test_seed_defaults_rejects_inactive_primary_facility(
+        self, authenticated_client, sample_facility
+    ):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.is_active = False
+        sample_facility.save(update_fields=["operating_mode", "is_active"])
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/seed-defaults/",
+            {"archetype": "small"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "active facility" in response.data["detail"].lower()
+
+    def test_seed_defaults_reactivates_existing_inactive_defaults(
+        self, authenticated_client, sample_facility, sample_organization
+    ):
+        from hmis.apps.laboratory.models import TestCatalog
+
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save(update_fields=["operating_mode"])
+
+        TestCatalog.objects.create(
+            facility=sample_facility,
+            organization=sample_organization,
+            code="CBC",
+            name="Complete Blood Count",
+            short_name="CBC",
+            category="HEMATOLOGY",
+            specimen_type="BLOOD",
+            cost=500,
+            result_type="NUMERIC",
+            is_active=False,
+        )
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/seed-defaults/",
+            {"archetype": "small"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        cbc = TestCatalog.objects.get(
+            facility=sample_facility,
+            organization=sample_organization,
+            code="CBC",
+        )
+        assert cbc.is_active is True
+
+    def test_seed_defaults_honors_active_tenant_facility_header(
+        self,
+        authenticated_client,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+        test_user,
+    ):
+        from hmis.apps.core.models import Facility
+        from hmis.apps.laboratory.models import TestCatalog
+
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save(update_fields=["operating_mode"])
+
+        secondary_facility = Facility.objects.create(
+            organization=sample_organization,
+            mfl_code="MFL-ALT-LIS-001",
+            name="Secondary Standalone Lab",
+            level=sample_facility.level,
+            ownership=sample_facility.ownership,
+            county=sample_county,
+            sub_county=sample_sub_county,
+            operating_mode=Facility.OperatingMode.STANDALONE_LAB,
+        )
+        test_user.staff_profile.secondary_facilities.add(secondary_facility)
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/seed-defaults/",
+            {"archetype": "small"},
+            format="json",
+            HTTP_X_FACILITY_ID=str(secondary_facility.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert TestCatalog.objects.filter(
+            facility=secondary_facility,
+            organization=sample_organization,
+            code="CBC",
+        ).exists()
+        assert not TestCatalog.objects.filter(
+            facility=sample_facility,
+            organization=sample_organization,
+            code="CBC",
+        ).exists()
 
 
 class TestStandaloneOnboardingCSV:

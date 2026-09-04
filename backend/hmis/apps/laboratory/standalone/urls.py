@@ -14,6 +14,7 @@ from .views import (
     StandaloneBillingViewSet,
     StandaloneOrderViewSet,
     WalkInPatientViewSet,
+    standalone_onboarding_facility_details,
     standalone_onboarding_import_analyzer_channel,
     standalone_onboarding_import_reference_ranges,
     standalone_onboarding_import_specimen_workflow,
@@ -37,6 +38,11 @@ urlpatterns = [
         "onboarding/status/",
         standalone_onboarding_status,
         name="standalone-lis-onboarding-status",
+    ),
+    path(
+        "onboarding/facility-details/",
+        standalone_onboarding_facility_details,
+        name="standalone-lis-onboarding-facility-details",
     ),
     path(
         "onboarding/seed-defaults/",

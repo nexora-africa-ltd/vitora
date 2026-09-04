@@ -141,6 +141,27 @@ class TestCRLookupTask:
         assert result["action"] == "registered"
         assert result["cr_number"] == "CR000000001-2"
         mock_service.register_client.assert_called_once()
+        assert mock_service.register_client.call_args.kwargs["gender"] == "F"
+
+    @patch("hmis.apps.billing.services.client_registry.ClientRegistryService")
+    def test_register_client_validation_error_does_not_retry(
+        self,
+        MockCRService,
+        patient_with_national_id,
+    ):
+        """Validation errors from CR registration should not crash patient workflow."""
+        from hmis.apps.billing.services.client_registry import ClientRegistrationError
+
+        mock_service = MockCRService.return_value
+        mock_service.fetch_client.return_value = None
+        mock_service.register_client.side_effect = ClientRegistrationError(
+            "Gender must be 'M', 'F', or 'O'"
+        )
+
+        result = lookup_and_register_patient_in_cr(patient_with_national_id.id)
+
+        assert result["action"] == "error"
+        assert "Gender must be 'M', 'F', or 'O'" in result["detail"]
 
     @patch("hmis.apps.billing.services.client_registry.ClientRegistryService")
     @override_settings(HIE_AUTO_CR_REGISTER=False)
@@ -170,6 +191,30 @@ class TestCRLookupTask:
         # fetch_client should not be called with national_id=None
         # but register should still be attempted
         assert result["action"] in ("registered", "error")
+
+    @patch("hmis.apps.billing.services.client_registry.ClientRegistryService")
+    def test_skip_cr_sync_for_standalone_facility(
+        self,
+        MockCRService,
+        patient_with_national_id,
+        sample_facility,
+    ):
+        """Standalone operating modes must never auto-create CR records."""
+        from hmis.apps.core.models import Facility
+
+        sample_facility.operating_mode = Facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save(update_fields=["operating_mode"])
+
+        patient_with_national_id.registered_at_facility = sample_facility
+        patient_with_national_id.save(update_fields=["registered_at_facility"])
+
+        result = lookup_and_register_patient_in_cr(patient_with_national_id.id)
+
+        assert result["action"] == "skipped"
+        assert "Standalone facility mode" in result["detail"]
+        mock_service = MockCRService.return_value
+        mock_service.fetch_client.assert_not_called()
+        mock_service.register_client.assert_not_called()
 
 
 # ============================================================================
@@ -415,3 +460,12 @@ class TestPatientCreationHook:
         # If CR already set, sync should not fire
         if response.status_code == 201:
             mock_fire.assert_not_called()
+
+    @patch("hmis.apps.patients.tasks.lookup_and_register_patient_in_cr.delay")
+    def test_fire_cr_sync_swallows_task_queue_errors(self, mock_delay):
+        """Queueing failures must not bubble into patient creation flow."""
+        mock_delay.side_effect = RuntimeError("celery unavailable")
+
+        from hmis.apps.patients.views import _fire_cr_sync
+
+        _fire_cr_sync(123)

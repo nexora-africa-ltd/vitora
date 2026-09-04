@@ -311,6 +311,28 @@ class Facility(TimeStampedModel):
         default="",
         help_text="License expiry date string from DHA.",
     )
+    laboratory_license_number = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Laboratory licence number issued by the laboratory regulator.",
+    )
+    laboratory_license_issuer = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Laboratory regulator or authority that issued the licence.",
+    )
+    laboratory_license_issue_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Laboratory licence issue date.",
+    )
+    laboratory_license_expiry = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Laboratory licence expiry date.",
+    )
     dha_operational_status = models.CharField(
         max_length=50,
         blank=True,
@@ -631,16 +653,16 @@ class Facility(TimeStampedModel):
 
     def get_lis_onboarding_checklist(self) -> list[dict]:
         """Return LIS standalone onboarding checklist with completion status."""
-        from hmis.apps.core.models_security import OrgMembership
+        from hmis.apps.core.models_security import StaffInvitation
         from hmis.apps.laboratory.analyzers.models import InstrumentChannel
         from hmis.apps.laboratory.models import LabWorkflowSettings, TestCatalog
 
         has_lab_identity = bool(
             self.name
-            and self.mfl_code
-            and self.dha_license_number
-            and self.dha_license_issue_date
-            and self.dha_license_expiry
+            and self.laboratory_license_number
+            and self.laboratory_license_issuer
+            and self.laboratory_license_issue_date
+            and self.laboratory_license_expiry
         )
         has_test_catalog = TestCatalog.objects.filter(
             facility=self,
@@ -662,10 +684,13 @@ class Facility(TimeStampedModel):
             is_active=True,
             cost__gt=0,
         ).exists()
-        has_team_invitation = OrgMembership.objects.filter(
+        has_team_invitation = StaffInvitation.objects.filter(
             organization=self.organization,
-            facilities=self,
-            status=OrgMembership.MembershipStatus.ACTIVE,
+            facility=self,
+            status__in=[
+                StaffInvitation.InvitationStatus.PENDING,
+                StaffInvitation.InvitationStatus.ACCEPTED,
+            ],
         ).exists()
 
         return [
@@ -674,36 +699,79 @@ class Facility(TimeStampedModel):
                 "label": "Facility and laboratory identity",
                 "done": has_lab_identity,
                 "required": True,
+                "description": "Confirm the facility details and laboratory licence used on reports.",
+                "completion_rule": "A facility name, MFL code, licence number, issue date, and expiry date are recorded.",
+                "missing_items": [
+                    label
+                    for value, label in [
+                        (self.name, "Facility name"),
+                        (self.laboratory_license_number, "Laboratory licence number"),
+                        (self.laboratory_license_issuer, "Licence issuer"),
+                        (self.laboratory_license_issue_date, "Licence issue date"),
+                        (self.laboratory_license_expiry, "Licence expiry date"),
+                    ]
+                    if not value
+                ],
+                "next_action": {
+                    "label": "Edit laboratory details",
+                    "route": "/onboarding/lis-standalone",
+                },
+                "estimated_minutes": 3,
             },
             {
                 "key": "test_catalog",
                 "label": "Test catalog setup",
                 "done": has_test_catalog,
                 "required": True,
+                "description": "Add the tests your laboratory performs, including specimen type and cash price.",
+                "completion_rule": "At least one active laboratory test is available.",
+                "missing_items": [] if has_test_catalog else ["At least one active test"],
+                "next_action": {"label": "Set up test catalog", "route": "/laboratory/tests"},
+                "estimated_minutes": 8,
             },
             {
                 "key": "specimen_workflow",
                 "label": "Specimen and workflow setup",
                 "done": has_workflow_setup,
                 "required": True,
+                "description": "Set how specimens are collected, received, processed, and released.",
+                "completion_rule": "Laboratory workflow settings have been saved for this facility.",
+                "missing_items": [] if has_workflow_setup else ["Laboratory workflow settings"],
+                "next_action": {"label": "Configure workflow", "route": "/laboratory/settings"},
+                "estimated_minutes": 5,
             },
             {
                 "key": "instrument_channels",
-                "label": "Instrument and channel setup",
+                "label": "Instrument and channel setup (optional)",
                 "done": has_instrument_channel,
-                "required": True,
+                "required": False,
+                "description": "Connect an analyzer when available. Manual result entry remains available without an instrument.",
+                "completion_rule": "At least one active analyzer channel is connected.",
+                "missing_items": [] if has_instrument_channel else ["No analyzer connected"],
+                "next_action": {"label": "Connect an analyzer", "route": "/laboratory/analyzers"},
+                "estimated_minutes": 10,
             },
             {
                 "key": "pricing_basics",
                 "label": "Price list and payer basics",
                 "done": has_pricing_basics,
                 "required": True,
+                "description": "Set a cash price for tests so standalone orders can be billed correctly.",
+                "completion_rule": "At least one active test has a price greater than zero.",
+                "missing_items": [] if has_pricing_basics else ["A priced active test"],
+                "next_action": {"label": "Set test prices", "route": "/laboratory/tests"},
+                "estimated_minutes": 4,
             },
             {
                 "key": "team_access",
-                "label": "Team invitations and permissions",
+                "label": "Invite a laboratory teammate (optional)",
                 "done": has_team_invitation,
                 "required": False,
+                "description": "Invite a colleague for a safe operational handover and role assignment.",
+                "completion_rule": "At least one invitation has been sent or accepted for this facility.",
+                "missing_items": [] if has_team_invitation else ["A laboratory team invitation"],
+                "next_action": {"label": "Invite teammate", "route": "/admin/staff"},
+                "estimated_minutes": 2,
             },
         ]
 

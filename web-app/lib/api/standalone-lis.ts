@@ -30,6 +30,7 @@ import {
   StandaloneRemittanceLineListSchema,
 } from '@/lib/schemas/standalone-lis.schema';
 import { LabOrderSchema } from '@/lib/schemas/laboratory.schema';
+import { FacilityDetailSchema } from '@/lib/schemas/facility.schema';
 import type {
   WalkInPatient,
   WalkInPatientCreateData,
@@ -53,6 +54,7 @@ import type {
   StandaloneRemittanceLine,
 } from '@/lib/types/standalone-lis';
 import type { LabOrder } from '@/lib/types/laboratory';
+import type { FacilityDetail } from '@/lib/types/facility';
 
 const BASE = '/api/lab/standalone';
 
@@ -86,6 +88,19 @@ export const standaloneLisApi = {
     });
   },
 
+  async updateOnboardingFacilityDetails(data: {
+    name?: string;
+    laboratory_license_number?: string;
+    laboratory_license_issuer?: string;
+    laboratory_license_issue_date?: string | null;
+    laboratory_license_expiry?: string | null;
+  }): Promise<FacilityDetail> {
+    const response = await apiClient.patch(`${BASE}/onboarding/facility-details/`, data);
+    return parseResponse(FacilityDetailSchema, response.data, {
+      context: 'standaloneLisApi.updateOnboardingFacilityDetails',
+    });
+  },
+
   async seedOnboardingDefaults(
     archetype: 'small' | 'medium' | 'reference'
   ): Promise<LISOnboardingSeedResult> {
@@ -95,7 +110,9 @@ export const standaloneLisApi = {
     });
   },
 
-  async downloadTemplate(templateName: 'test-catalog' | 'specimen-workflow' | 'analyzer-channel' | 'reference-ranges'): Promise<string> {
+  async downloadTemplate(
+    templateName: 'test-catalog' | 'specimen-workflow' | 'analyzer-channel' | 'reference-ranges'
+  ): Promise<string> {
     const response = await apiClient.get(`${BASE}/onboarding/templates/${templateName}/`, {
       responseType: 'text',
     });
@@ -116,9 +133,13 @@ export const standaloneLisApi = {
   async importSpecimenWorkflow(file: File): Promise<LISOnboardingWorkflowImportResult> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await apiClient.post(`${BASE}/onboarding/import/specimen-workflow/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await apiClient.post(
+      `${BASE}/onboarding/import/specimen-workflow/`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    );
     return parseResponse(LISOnboardingWorkflowImportResultSchema, response.data, {
       context: 'standaloneLisApi.importSpecimenWorkflow',
     });
@@ -138,13 +159,9 @@ export const standaloneLisApi = {
   async importReferenceRanges(file: File): Promise<LISOnboardingReferenceRangeImportResult> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await apiClient.post(
-      `${BASE}/onboarding/import/reference-ranges/`,
-      formData,
-      {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }
-    );
+    const response = await apiClient.post(`${BASE}/onboarding/import/reference-ranges/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return parseResponse(LISOnboardingReferenceRangeImportResultSchema, response.data, {
       context: 'standaloneLisApi.importReferenceRanges',
     });
@@ -309,8 +326,18 @@ export const standaloneLisApi = {
 
   async ingestInboundOrder(
     data:
-      | { source_system: string; channel?: 'API' | 'HL7'; message_format: 'HL7'; hl7_message: string }
-      | { source_system: string; channel?: 'API' | 'HL7'; message_format: 'JSON'; payload: unknown },
+      | {
+          source_system: string;
+          channel?: 'API' | 'HL7';
+          message_format: 'HL7';
+          hl7_message: string;
+        }
+      | {
+          source_system: string;
+          channel?: 'API' | 'HL7';
+          message_format: 'JSON';
+          payload: unknown;
+        },
     idempotencyKey?: string
   ): Promise<InboundIngestResponse> {
     const response = await apiClient.post(`${BASE}/interop/inbound-orders/`, data, {
@@ -376,9 +403,12 @@ export const standaloneLisApi = {
   },
 
   async downloadDeliveryPdf(deliveryLogId: number): Promise<Blob> {
-    const response = await apiClient.get(`${BASE}/interop/delivery-logs/${deliveryLogId}/download-pdf/`, {
-      responseType: 'blob',
-    });
+    const response = await apiClient.get(
+      `${BASE}/interop/delivery-logs/${deliveryLogId}/download-pdf/`,
+      {
+        responseType: 'blob',
+      }
+    );
     return response.data as Blob;
   },
 

@@ -11,20 +11,21 @@ from django.db.models import Q, Sum
 from django.http import HttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.decorators import permission_classes as drf_permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.billing.models import Invoice, Payment, Receipt, SHARemittanceLine
-from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog, ExternalCodeMapping
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
     RequiresActiveShiftPermission,
     get_client_ip,
 )
+from hmis.apps.core.serializers_org_facility import FacilityDetailSerializer
 from hmis.apps.laboratory.analyzers.models import InstrumentChannel
 from hmis.apps.laboratory.models import Instrument, LabOrder, LabWorkflowSettings, TestCatalog
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISStandaloneRequired
@@ -57,6 +58,20 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 
+class StandaloneFacilityDetailsSerializer(serializers.Serializer):
+    """Limit standalone onboarding to the facility identity fields it owns."""
+
+    name = serializers.CharField(max_length=255, required=False)
+    laboratory_license_number = serializers.CharField(
+        max_length=100, required=False, allow_blank=True
+    )
+    laboratory_license_issuer = serializers.CharField(
+        max_length=100, required=False, allow_blank=True
+    )
+    laboratory_license_issue_date = serializers.DateField(required=False, allow_null=True)
+    laboratory_license_expiry = serializers.DateField(required=False, allow_null=True)
+
+
 def _build_csv_reader(decoded: str) -> csv.DictReader:
     """Build a DictReader that tolerates common CSV delimiters.
 
@@ -74,12 +89,24 @@ def _build_csv_reader(decoded: str) -> csv.DictReader:
 
 def _get_standalone_facility(request):
     """Resolve and validate standalone LIS facility context for onboarding endpoints."""
+    resolve_request_tenant(request)
     profile = getattr(request.user, "staff_profile", None)
-    facility = getattr(profile, "primary_facility", None)
+    facility = getattr(request, "facility", None)
+
+    if not facility:
+        primary_facility = getattr(profile, "primary_facility", None)
+        if primary_facility and primary_facility.is_active:
+            facility = primary_facility
 
     if not facility:
         return None, Response(
-            {"detail": "No facility is linked to your staff profile."},
+            {"detail": "No active facility is linked to your staff profile."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not facility.is_active:
+        return None, Response(
+            {"detail": "The selected facility is inactive. Activate it before LIS onboarding."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -181,6 +208,37 @@ def standalone_onboarding_status(request):
 
 
 @extend_schema(exclude=True)
+@api_view(["PATCH"])
+@drf_permission_classes([IsAuthenticated, LaboratoryModuleRequired, LISStandaloneRequired])
+def standalone_onboarding_facility_details(request):
+    """Update standalone lab identity without granting broad facility administration."""
+    facility, error_response = _get_standalone_facility(request)
+    if error_response:
+        return error_response
+
+    serializer = StandaloneFacilityDetailsSerializer(data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    changed_fields = list(serializer.validated_data)
+    for field, value in serializer.validated_data.items():
+        setattr(facility, field, value)
+    if changed_fields:
+        facility.save(update_fields=[*changed_fields, "updated_at"])
+        AuditLog.log(
+            action="lis_onboarding_facility_details_updated",
+            user=request.user,
+            resource_type="Facility",
+            resource_id=facility.id,
+            facility=facility,
+            organization=facility.organization,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"fields": changed_fields, "source": "lis_standalone_onboarding"},
+            request=request,
+        )
+    return Response(FacilityDetailSerializer(facility).data)
+
+
+@extend_schema(exclude=True)
 @api_view(["POST"])
 @drf_permission_classes([IsAuthenticated, LaboratoryModuleRequired, LISStandaloneRequired])
 def standalone_onboarding_seed_defaults(request):
@@ -227,6 +285,7 @@ def standalone_onboarding_seed_defaults(request):
     is_non_kenya_facility = str(getattr(facility, "country_code", "KE")).upper() != "KE"
 
     created_tests = 0
+    reactivated_tests = 0
     created_instruments = 0
     created_channels = 0
 
@@ -237,7 +296,7 @@ def standalone_onboarding_seed_defaults(request):
 
     for code, name, category, specimen, cost in catalogue_by_archetype[archetype]:
         seeded_cost = 0 if is_non_kenya_facility else cost
-        _, created = TestCatalog.objects.get_or_create(
+        test, created = TestCatalog.objects.get_or_create(
             facility=facility,
             organization=facility.organization,
             code=code,
@@ -253,6 +312,10 @@ def standalone_onboarding_seed_defaults(request):
         )
         if created:
             created_tests += 1
+        elif not test.is_active:
+            test.is_active = True
+            test.save(update_fields=["is_active", "updated_at"])
+            reactivated_tests += 1
 
     instrument_code = f"AUTO-{archetype.upper()}-01"
     instrument, inst_created = Instrument.objects.get_or_create(
@@ -292,6 +355,7 @@ def standalone_onboarding_seed_defaults(request):
         {
             "archetype": archetype,
             "created_tests": created_tests,
+            "reactivated_tests": reactivated_tests,
             "created_instruments": created_instruments,
             "created_channels": created_channels,
         },

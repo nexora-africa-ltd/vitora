@@ -13,7 +13,7 @@
  */
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -292,6 +292,13 @@ interface PatientFormProps {
    */
   prePopulatedShaEligibility?: DirectEligibilityCheckResponse | null;
   isEditing?: boolean;
+  isCompactMode?: boolean;
+  isKenyaContext?: boolean;
+  locationFallback?: {
+    county?: number;
+    sub_county?: number;
+    ward?: number | null;
+  };
 }
 
 const SHA_IDENTIFICATION_TYPE_MAP: Record<string, IdentificationType> = {
@@ -384,6 +391,9 @@ export function PatientForm({
   prePopulatedShaPerson,
   prePopulatedShaEligibility,
   isEditing = false,
+  isCompactMode = false,
+  isKenyaContext = true,
+  locationFallback,
 }: PatientFormProps) {
   const { toast } = useToast();
 
@@ -498,6 +508,15 @@ export function PatientForm({
   const watchedLastName = form.watch('last_name');
   const watchedDob = form.watch('date_of_birth');
   const watchedGender = form.watch('gender');
+  const phonePlaceholder = isKenyaContext ? '+254...' : '+<country code>...';
+
+  const identificationTypeOptions = useMemo(
+    () =>
+      IDENTIFICATION_TYPE_OPTIONS.filter(
+        (option) => isKenyaContext || option.value !== 'kra_pin'
+      ),
+    [isKenyaContext]
+  );
 
   // Debounced identification number for auto-search
   const debouncedIdNumber = useDebounce(identificationNumber, 800);
@@ -509,6 +528,24 @@ export function PatientForm({
   const { data: counties, isLoading: isLoadingCounties } = useCounties();
   const { data: subCounties, isLoading: isLoadingSubCounties } = useSubCounties(selectedCounty);
   const { data: wards, isLoading: isLoadingWards } = useWards(selectedSubCounty);
+
+  useEffect(() => {
+    if (isKenyaContext) {
+      return;
+    }
+
+    if (locationFallback?.county && !form.getValues('county')) {
+      form.setValue('county', locationFallback.county);
+    }
+
+    if (locationFallback?.sub_county && !form.getValues('sub_county')) {
+      form.setValue('sub_county', locationFallback.sub_county);
+    }
+
+    if (locationFallback?.ward && !form.getValues('ward')) {
+      form.setValue('ward', locationFallback.ward);
+    }
+  }, [form, isKenyaContext, locationFallback]);
 
   // Normalize names from upstream registries (SHA / CR). When only two name
   // parts are provided, treat them as first + last (drop any stray middle).
@@ -1737,261 +1774,266 @@ export function PatientForm({
               )}
             </div>
 
-            {/* CR Status Banner */}
-            {crClient && (
-              <Alert className="border-success bg-success/10">
-                <CheckCircle2 className="h-4 w-4 text-success" />
-                <AlertTitle className="text-success">Client Registry Record Found</AlertTitle>
-                <AlertDescription className="flex items-center justify-between">
-                  <span>
-                    <strong>
-                      {crClient.first_name} {crClient.last_name}
-                    </strong>
-                    {crClient.client_number && ` • CR: ${crClient.client_number}`}
-                  </span>
-                  <Button type="button" variant="ghost" size="sm" onClick={resetVerificationState}>
-                    Clear
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {crSearched && !crClient && (
-              <Alert className="border-warning bg-warning/10">
-                <Info className="h-4 w-4 text-warning-foreground" />
-                <AlertTitle className="text-warning-foreground">No Existing Record</AlertTitle>
-                <AlertDescription>
-                  A new Client Registry record will be created upon registration.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Local Duplicate Patient Alert */}
-            {duplicateCheckResult?.has_duplicate && !duplicateAcknowledged && (
-              <DuplicatePatientAlert
-                matches={duplicateCheckResult.matches}
-                matchType={duplicateCheckResult.match_type}
-                onSelectPatient={(mrn) => {
-                  // Navigate to check-in page for the existing patient using MRN (SSOT)
-                  window.location.href = `/patients/checkin?select=${encodeURIComponent(mrn)}`;
-                }}
-                onContinueAsNew={() => {
-                  setDuplicateAcknowledged(true);
-                }}
-                showContinueOption={duplicateCheckResult.match_type !== 'exact_id'}
-              />
-            )}
-
-            {/* SHA Eligibility Status Banner */}
-            {isCheckingEligibility && (
-              <Alert className="border-primary/30 bg-primary/5">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <AlertTitle className="text-primary">Checking SHA Coverage...</AlertTitle>
-                <AlertDescription className="text-primary/80">
-                  Verifying patient eligibility with Social Health Authority.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {shaEligibility.checked &&
-              !isCheckingEligibility &&
-              shaEligibility.isEligible &&
-              shaEligibility.details && (
-                <Alert className="border-success/30 bg-success/5">
-                  <BadgeCheck className="h-4 w-4 text-success" />
-                  <AlertTitle className="text-success">
-                    <div className="flex items-center gap-2">
-                      <span>Active SHA Coverage</span>
-                      {/* Mobile: emoji only, Desktop: badge with text */}
-                      <span className="text-lg sm:hidden" title="Eligible">
-                        👍
+            {!isCompactMode && (
+              <>
+                {/* CR Status Banner */}
+                {crClient && (
+                  <Alert className="border-success bg-success/10">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                    <AlertTitle className="text-success">Client Registry Record Found</AlertTitle>
+                    <AlertDescription className="flex items-center justify-between">
+                      <span>
+                        <strong>
+                          {crClient.first_name} {crClient.last_name}
+                        </strong>
+                        {crClient.client_number && ` • CR: ${crClient.client_number}`}
                       </span>
-                      <Badge
-                        variant="outline"
-                        className="hidden w-fit border-success/50 bg-success/10 text-success sm:inline-flex"
-                      >
-                        Eligible
-                      </Badge>
-                    </div>
-                  </AlertTitle>
-                  <AlertDescription className="flex items-center justify-between gap-2">
-                    <span className="text-success/90">
-                      {shaEligibility.details.full_name && (
-                        <strong>{shaEligibility.details.full_name}</strong>
-                      )}
-                      {shaEligibility.details.sha_number && (
-                        <span> • SHA#: {shaEligibility.details.sha_number}</span>
-                      )}
-                      {shaEligibility.details.copay_percentage !== undefined &&
-                        shaEligibility.details.copay_percentage > 0 && (
-                          <span> • Co-pay: {shaEligibility.details.copay_percentage}%</span>
-                        )}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-fit shrink-0 border-success/50 text-success hover:bg-success/10"
-                      onClick={() => setShowShaDetailsDialog(true)}
-                      title="View SHA Details"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-            {(householdNumber || isLoadingHouseholdMembers) && (
-              <Alert className="border-primary/20 bg-primary/5">
-                <Users className="h-4 w-4 text-primary" />
-                <AlertTitle className="text-primary">Linked Household Members</AlertTitle>
-                <AlertDescription className="space-y-2">
-                  {householdNumber && (
-                    <p>
-                      Household Number:{' '}
-                      <span className="font-mono font-medium">{householdNumber}</span>
-                    </p>
-                  )}
-                  {isLoadingHouseholdMembers ? (
-                    <p className="text-sm text-muted-foreground">
-                      Looking up locally registered household members...
-                    </p>
-                  ) : householdMembers.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Found {householdMembers.length} linked patient
-                        {householdMembers.length === 1 ? '' : 's'} in this organization.
-                      </p>
-                      <div className="space-y-2">
-                        {householdMembers.map((member) => (
-                          <div
-                            key={member.id}
-                            className="flex flex-col gap-2 rounded-lg border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <div className="min-w-0">
-                              <p className="break-words font-medium">{member.full_name}</p>
-                              <p className="break-words text-xs text-muted-foreground">
-                                {member.mrn} • DOB: {member.date_of_birth}
-                                {member.cr_number ? ` • CR: ${member.cr_number}` : ''}
-                                {member.sha_number ? ` • SHA: ${member.sha_number}` : ''}
-                              </p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                window.location.href = `/patients/checkin?select=${encodeURIComponent(member.mrn)}`;
-                              }}
-                            >
-                              Open Existing Record
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No locally registered household members found yet. This household number will
-                      still be stored for future family registration and dependant verification.
-                    </p>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Ineligible: Has SHA number but coverage not active (RED) */}
-            {shaEligibility.checked &&
-              !isCheckingEligibility &&
-              !shaEligibility.isEligible &&
-              shaEligibility.details?.sha_number && (
-                <Alert className="border-destructive/30 bg-destructive/5">
-                  <XCircle className="h-4 w-4 text-destructive" />
-                  <AlertTitle className="text-destructive">
-                    <div className="flex items-center gap-2">
-                      <span>SHA Coverage Inactive</span>
-                      {/* Mobile: emoji only, Desktop: badge with text */}
-                      <span className="text-lg sm:hidden" title="Not Eligible">
-                        👎
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className="hidden w-fit border-destructive/50 bg-destructive/10 text-destructive sm:inline-flex"
-                      >
-                        Not Eligible
-                      </Badge>
-                    </div>
-                  </AlertTitle>
-                  <AlertDescription className="text-destructive/80">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        {shaEligibility.reason || 'Patient SHA coverage is not active.'}
-                        {shaEligibility.details?.possible_solution && (
-                          <span className="mt-1 block text-sm">
-                            <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
-                          </span>
-                        )}
-                      </div>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        className="w-fit shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10"
-                        onClick={() => setShowShaDetailsDialog(true)}
-                        title="View Details"
+                        onClick={resetVerificationState}
                       >
-                        <Eye className="h-4 w-4" />
+                        Clear
                       </Button>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-            {/* Unregistered: No SHA record found (AMBER) */}
-            {shaEligibility.checked &&
-              !isCheckingEligibility &&
-              !shaEligibility.isEligible &&
-              !shaEligibility.details?.sha_number && (
-                <Alert className="border-warning/30 bg-warning/5">
-                  <XCircle className="h-4 w-4 text-warning-foreground" />
-                  <AlertTitle className="text-warning-foreground">
-                    <div className="flex items-center gap-2">
-                      <span>Not Registered with SHA</span>
-                      <Badge
-                        variant="outline"
-                        className="hidden w-fit border-warning/50 bg-warning/10 text-warning-foreground sm:inline-flex"
-                      >
-                        Unregistered
-                      </Badge>
-                    </div>
-                  </AlertTitle>
-                  <AlertDescription className="text-warning-foreground/80">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        {shaEligibility.reason ||
-                          'Patient is not registered with Social Health Authority.'}
-                        {shaEligibility.details?.possible_solution && (
-                          <span className="mt-1 block text-sm">
-                            <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
+                {crSearched && !crClient && (
+                  <Alert className="border-warning bg-warning/10">
+                    <Info className="h-4 w-4 text-warning-foreground" />
+                    <AlertTitle className="text-warning-foreground">No Existing Record</AlertTitle>
+                    <AlertDescription>
+                      A new Client Registry record will be created upon registration.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Local Duplicate Patient Alert */}
+                {duplicateCheckResult?.has_duplicate && !duplicateAcknowledged && (
+                  <DuplicatePatientAlert
+                    matches={duplicateCheckResult.matches}
+                    matchType={duplicateCheckResult.match_type}
+                    onSelectPatient={(mrn) => {
+                      window.location.href = `/patients/checkin?select=${encodeURIComponent(mrn)}`;
+                    }}
+                    onContinueAsNew={() => {
+                      setDuplicateAcknowledged(true);
+                    }}
+                    showContinueOption={duplicateCheckResult.match_type !== 'exact_id'}
+                  />
+                )}
+
+                {/* SHA Eligibility Status Banner */}
+                {isCheckingEligibility && (
+                  <Alert className="border-primary/30 bg-primary/5">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <AlertTitle className="text-primary">Checking SHA Coverage...</AlertTitle>
+                    <AlertDescription className="text-primary/80">
+                      Verifying patient eligibility with Social Health Authority.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {shaEligibility.checked &&
+                  !isCheckingEligibility &&
+                  shaEligibility.isEligible &&
+                  shaEligibility.details && (
+                    <Alert className="border-success/30 bg-success/5">
+                      <BadgeCheck className="h-4 w-4 text-success" />
+                      <AlertTitle className="text-success">
+                        <div className="flex items-center gap-2">
+                          <span>Active SHA Coverage</span>
+                          <span className="text-lg sm:hidden" title="Eligible">
+                            👍
                           </span>
-                        )}
-                      </div>
-                      {shaEligibility.details && (
+                          <Badge
+                            variant="outline"
+                            className="hidden w-fit border-success/50 bg-success/10 text-success sm:inline-flex"
+                          >
+                            Eligible
+                          </Badge>
+                        </div>
+                      </AlertTitle>
+                      <AlertDescription className="flex items-center justify-between gap-2">
+                        <span className="text-success/90">
+                          {shaEligibility.details.full_name && (
+                            <strong>{shaEligibility.details.full_name}</strong>
+                          )}
+                          {shaEligibility.details.sha_number && (
+                            <span> • SHA#: {shaEligibility.details.sha_number}</span>
+                          )}
+                          {shaEligibility.details.copay_percentage !== undefined &&
+                            shaEligibility.details.copay_percentage > 0 && (
+                              <span> • Co-pay: {shaEligibility.details.copay_percentage}%</span>
+                            )}
+                        </span>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="w-fit shrink-0 border-warning/50 text-warning-foreground hover:bg-warning/10"
+                          className="w-fit shrink-0 border-success/50 text-success hover:bg-success/10"
                           onClick={() => setShowShaDetailsDialog(true)}
-                          title="View Details"
+                          title="View SHA Details"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                {(householdNumber || isLoadingHouseholdMembers) && (
+                  <Alert className="border-primary/20 bg-primary/5">
+                    <Users className="h-4 w-4 text-primary" />
+                    <AlertTitle className="text-primary">Linked Household Members</AlertTitle>
+                    <AlertDescription className="space-y-2">
+                      {householdNumber && (
+                        <p>
+                          Household Number:{' '}
+                          <span className="font-mono font-medium">{householdNumber}</span>
+                        </p>
                       )}
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
+                      {isLoadingHouseholdMembers ? (
+                        <p className="text-sm text-muted-foreground">
+                          Looking up locally registered household members...
+                        </p>
+                      ) : householdMembers.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            Found {householdMembers.length} linked patient
+                            {householdMembers.length === 1 ? '' : 's'} in this organization.
+                          </p>
+                          <div className="space-y-2">
+                            {householdMembers.map((member) => (
+                              <div
+                                key={member.id}
+                                className="flex flex-col gap-2 rounded-lg border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                              >
+                                <div className="min-w-0">
+                                  <p className="break-words font-medium">{member.full_name}</p>
+                                  <p className="break-words text-xs text-muted-foreground">
+                                    {member.mrn} • DOB: {member.date_of_birth}
+                                    {member.cr_number ? ` • CR: ${member.cr_number}` : ''}
+                                    {member.sha_number ? ` • SHA: ${member.sha_number}` : ''}
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    window.location.href = `/patients/checkin?select=${encodeURIComponent(member.mrn)}`;
+                                  }}
+                                >
+                                  Open Existing Record
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No locally registered household members found yet. This household number
+                          will still be stored for future family registration and dependant
+                          verification.
+                        </p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {shaEligibility.checked &&
+                  !isCheckingEligibility &&
+                  !shaEligibility.isEligible &&
+                  shaEligibility.details?.sha_number && (
+                    <Alert className="border-destructive/30 bg-destructive/5">
+                      <XCircle className="h-4 w-4 text-destructive" />
+                      <AlertTitle className="text-destructive">
+                        <div className="flex items-center gap-2">
+                          <span>SHA Coverage Inactive</span>
+                          <span className="text-lg sm:hidden" title="Not Eligible">
+                            👎
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="hidden w-fit border-destructive/50 bg-destructive/10 text-destructive sm:inline-flex"
+                          >
+                            Not Eligible
+                          </Badge>
+                        </div>
+                      </AlertTitle>
+                      <AlertDescription className="text-destructive/80">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            {shaEligibility.reason || 'Patient SHA coverage is not active.'}
+                            {shaEligibility.details?.possible_solution && (
+                              <span className="mt-1 block text-sm">
+                                <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-fit shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10"
+                            onClick={() => setShowShaDetailsDialog(true)}
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                {shaEligibility.checked &&
+                  !isCheckingEligibility &&
+                  !shaEligibility.isEligible &&
+                  !shaEligibility.details?.sha_number && (
+                    <Alert className="border-warning/30 bg-warning/5">
+                      <XCircle className="h-4 w-4 text-warning-foreground" />
+                      <AlertTitle className="text-warning-foreground">
+                        <div className="flex items-center gap-2">
+                          <span>Not Registered with SHA</span>
+                          <Badge
+                            variant="outline"
+                            className="hidden w-fit border-warning/50 bg-warning/10 text-warning-foreground sm:inline-flex"
+                          >
+                            Unregistered
+                          </Badge>
+                        </div>
+                      </AlertTitle>
+                      <AlertDescription className="text-warning-foreground/80">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            {shaEligibility.reason ||
+                              'Patient is not registered with Social Health Authority.'}
+                            {shaEligibility.details?.possible_solution && (
+                              <span className="mt-1 block text-sm">
+                                <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
+                              </span>
+                            )}
+                          </div>
+                          {shaEligibility.details && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-fit shrink-0 border-warning/50 text-warning-foreground hover:bg-warning/10"
+                              onClick={() => setShowShaDetailsDialog(true)}
+                              title="View Details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+              </>
+            )}
 
             <div className="space-y-2">
               <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
@@ -2015,7 +2057,7 @@ export function PatientForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {IDENTIFICATION_TYPE_OPTIONS.map((option) => (
+                          {identificationTypeOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -2031,56 +2073,74 @@ export function PatientForm({
                   name="identification_number"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Identification Number *</FormLabel>
+                      <FormLabel>
+                        {isCompactMode ? 'Identification Number' : 'Identification Number *'}
+                      </FormLabel>
                       <FormControl>
-                        <div className="relative">
+                        {isCompactMode ? (
                           <Input
                             {...field}
                             value={field.value || ''}
                             placeholder="Enter ID number"
                             disabled={formLocked || isFormLoading}
-                            className="h-10 pr-10"
+                            className="h-10"
                             onChange={(e) => {
                               field.onChange(e.target.value);
                               clearVerificationResults();
                             }}
                           />
-                          <button
-                            type="button"
-                            onClick={handleManualCRSearch}
-                            disabled={
-                              formLocked ||
-                              isFormLoading ||
-                              isSearchingCR ||
-                              (field.value || '').length < 5
-                            }
-                            className={cn(
-                              'absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 transition-colors',
-                              'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
-                              (field.value || '').length >= 5 &&
-                                !isSearchingCR &&
-                                !formLocked &&
-                                !isFormLoading
-                                ? 'cursor-pointer text-teal-600 hover:bg-teal-600/10'
-                                : 'cursor-not-allowed text-muted-foreground/40'
-                            )}
-                            title={
-                              (field.value || '').length < 5
-                                ? 'Enter at least 5 characters to search'
-                                : 'Search CR/SHA'
-                            }
-                          >
-                            {isSearchingCR ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Search className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
+                        ) : (
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              value={field.value || ''}
+                              placeholder="Enter ID number"
+                              disabled={formLocked || isFormLoading}
+                              className="h-10 pr-10"
+                              onChange={(e) => {
+                                field.onChange(e.target.value);
+                                clearVerificationResults();
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleManualCRSearch}
+                              disabled={
+                                formLocked ||
+                                isFormLoading ||
+                                isSearchingCR ||
+                                (field.value || '').length < 5
+                              }
+                              className={cn(
+                                'absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 transition-colors',
+                                'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+                                (field.value || '').length >= 5 &&
+                                  !isSearchingCR &&
+                                  !formLocked &&
+                                  !isFormLoading
+                                  ? 'cursor-pointer text-teal-600 hover:bg-teal-600/10'
+                                  : 'cursor-not-allowed text-muted-foreground/40'
+                              )}
+                              title={
+                                (field.value || '').length < 5
+                                  ? 'Enter at least 5 characters to search'
+                                  : 'Search CR/SHA'
+                              }
+                            >
+                              {isSearchingCR ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Search className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </FormControl>
-                      <FormDescription className="min-h-[20px]">
-                        Click search icon to look up registries
-                      </FormDescription>
+                      {!isCompactMode && (
+                        <FormDescription className="min-h-[20px]">
+                          Click search icon to look up registries
+                        </FormDescription>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -2088,7 +2148,8 @@ export function PatientForm({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {!isCompactMode && (
+              <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {/* CR Number (Read-only) */}
               <FormField
                 control={form.control}
@@ -2241,7 +2302,8 @@ export function PatientForm({
                   );
                 }}
               />
-            </div>
+              </div>
+            )}
           </div>
 
           <Separator />
@@ -2253,43 +2315,45 @@ export function PatientForm({
             <h3 className="text-lg font-medium">Personal Information</h3>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem className="sm:col-span-1">
-                    <FormLabel>Title</FormLabel>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          disabled={formLocked || isFormLoading}
-                          className={cn(
-                            'w-full justify-between font-normal',
-                            !field.value && 'text-muted-foreground'
-                          )}
-                        >
-                          {field.value
-                            ? TITLE_OPTIONS.find((t) => t.value === field.value)?.label
-                            : 'Select'}
-                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        {TITLE_OPTIONS.map((option) => (
-                          <DropdownMenuItem
-                            key={option.value}
-                            onSelect={() => field.onChange(option.value || 'none')}
+              {!isCompactMode && (
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-1">
+                      <FormLabel>Title</FormLabel>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            disabled={formLocked || isFormLoading}
+                            className={cn(
+                              'w-full justify-between font-normal',
+                              !field.value && 'text-muted-foreground'
+                            )}
                           >
-                            {option.label}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </FormItem>
-                )}
-              />
+                            {field.value
+                              ? TITLE_OPTIONS.find((t) => t.value === field.value)?.label
+                              : 'Select'}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          {TITLE_OPTIONS.map((option) => (
+                            <DropdownMenuItem
+                              key={option.value}
+                              onSelect={() => field.onChange(option.value || 'none')}
+                            >
+                              {option.label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
@@ -2401,111 +2465,117 @@ export function PatientForm({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="place_of_birth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Place of Birth</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="County or City"
-                        {...field}
-                        disabled={formLocked || isFormLoading}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              {!isCompactMode && (
+                <FormField
+                  control={form.control}
+                  name="place_of_birth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Place of Birth</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="County or City"
+                          {...field}
+                          disabled={formLocked || isFormLoading}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
 
-              <FormField
-                control={form.control}
-                name="nationality"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nationality</FormLabel>
-                    <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={nationalityOpen}
-                            className={cn(
-                              'w-full justify-between',
-                              !field.value && 'text-muted-foreground'
-                            )}
-                            disabled={formLocked || isFormLoading}
-                          >
-                            {field.value || 'Select nationality'}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[250px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Search nationality..." />
-                          <CommandList>
-                            <CommandEmpty>No nationality found.</CommandEmpty>
-                            <CommandGroup className="max-h-[300px] overflow-y-auto">
-                              {NATIONALITIES.map((nationality) => (
-                                <CommandItem
-                                  key={nationality}
-                                  value={nationality}
-                                  onSelect={() => {
-                                    field.onChange(nationality);
-                                    setNationalityOpen(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      'mr-2 h-4 w-4',
-                                      field.value === nationality ? 'opacity-100' : 'opacity-0'
-                                    )}
-                                  />
-                                  {nationality}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {!isCompactMode && (
+                <FormField
+                  control={form.control}
+                  name="nationality"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nationality</FormLabel>
+                      <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={nationalityOpen}
+                              className={cn(
+                                'w-full justify-between',
+                                !field.value && 'text-muted-foreground'
+                              )}
+                              disabled={formLocked || isFormLoading}
+                            >
+                              {field.value || 'Select nationality'}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[250px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search nationality..." />
+                            <CommandList>
+                              <CommandEmpty>No nationality found.</CommandEmpty>
+                              <CommandGroup className="max-h-[300px] overflow-y-auto">
+                                {NATIONALITIES.map((nationality) => (
+                                  <CommandItem
+                                    key={nationality}
+                                    value={nationality}
+                                    onSelect={() => {
+                                      field.onChange(nationality);
+                                      setNationalityOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        'mr-2 h-4 w-4',
+                                        field.value === nationality ? 'opacity-100' : 'opacity-0'
+                                      )}
+                                    />
+                                    {nationality}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-              <FormField
-                control={form.control}
-                name="is_person_with_disability"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md p-4 sm:mt-6">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={formLocked || isFormLoading}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="flex items-center gap-2">
-                        PLWD
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <HelpCircle className="h-4 w-4 cursor-help text-muted-foreground" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Check if patient has a registered disability</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </FormLabel>
-                    </div>
-                  </FormItem>
-                )}
-              />
+              {!isCompactMode && (
+                <FormField
+                  control={form.control}
+                  name="is_person_with_disability"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md p-4 sm:mt-6">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={formLocked || isFormLoading}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="flex items-center gap-2">
+                          PLWD
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="h-4 w-4 cursor-help text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Check if patient has a registered disability</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
           </div>
 
@@ -2526,63 +2596,69 @@ export function PatientForm({
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="+254..."
+                        placeholder={phonePlaceholder}
                         {...field}
                         disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
-                    <FormDescription>Kenya format</FormDescription>
+                    <FormDescription>
+                      {isKenyaContext ? 'Kenya format' : 'Include country code'}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email (Optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="email@example.com"
-                        {...field}
-                        disabled={formLocked || isFormLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {!isCompactMode && (
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="email@example.com"
+                          {...field}
+                          disabled={formLocked || isFormLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Physical Address (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="P.O BOX, Street, Nearest Landmark, School, etc."
-                        {...field}
-                        disabled={formLocked || isFormLoading}
-                        rows={2}
-                        className="min-h-[60px] resize-y"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              {!isCompactMode && (
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Physical Address (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="P.O BOX, Street, Nearest Landmark, School, etc."
+                          {...field}
+                          disabled={formLocked || isFormLoading}
+                          rows={2}
+                          className="min-h-[60px] resize-y"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
           </div>
 
-          <Separator />
+          {isKenyaContext && <Separator />}
 
           {/* ================================================================== */}
           {/* SECTION 4: Location */}
           {/* ================================================================== */}
-          <div className="space-y-4">
+          {isKenyaContext && <div className="space-y-4">
             <h3 className="text-lg font-medium">Location</h3>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -2644,55 +2720,60 @@ export function PatientForm({
                 )}
               />
 
+              {!isCompactMode && (
+                <FormField
+                  control={form.control}
+                  name="ward"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ward (Optional)</FormLabel>
+                      <FormControl>
+                        <LocationCombobox
+                          options={
+                            wards?.map((w) => ({ value: w.id.toString(), label: w.name })) || []
+                          }
+                          value={field.value?.toString()}
+                          onSelect={(value) => field.onChange(Number(value))}
+                          placeholder={!selectedSubCounty ? 'Select sub-county first' : 'Select ward'}
+                          searchPlaceholder="Search wards..."
+                          emptyMessage="No ward found."
+                          disabled={!selectedSubCounty || formLocked || isFormLoading}
+                          isLoading={isLoadingWards}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            {!isCompactMode && (
               <FormField
                 control={form.control}
-                name="ward"
+                name="village"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Ward (Optional)</FormLabel>
+                    <FormLabel>Village/Estate (Optional)</FormLabel>
                     <FormControl>
-                      <LocationCombobox
-                        options={
-                          wards?.map((w) => ({ value: w.id.toString(), label: w.name })) || []
-                        }
-                        value={field.value?.toString()}
-                        onSelect={(value) => field.onChange(Number(value))}
-                        placeholder={!selectedSubCounty ? 'Select sub-county first' : 'Select ward'}
-                        searchPlaceholder="Search wards..."
-                        emptyMessage="No ward found."
-                        disabled={!selectedSubCounty || formLocked || isFormLoading}
-                        isLoading={isLoadingWards}
+                      <Input
+                        placeholder="Enter village or estate"
+                        {...field}
+                        disabled={formLocked || isFormLoading}
                       />
                     </FormControl>
                   </FormItem>
                 )}
               />
-            </div>
+            )}
+          </div>}
 
-            <FormField
-              control={form.control}
-              name="village"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Village/Estate (Optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter village or estate"
-                      {...field}
-                      disabled={formLocked || isFormLoading}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <Separator />
+          {!isCompactMode && <Separator />}
 
           {/* ================================================================== */}
           {/* SECTION 5: Insurance Details (conditional) */}
           {/* ================================================================== */}
-          {(paymentMode === 'insurance_private' || paymentMode === 'insurance_corporate') && (
+          {!isCompactMode &&
+            (paymentMode === 'insurance_private' || paymentMode === 'insurance_corporate') && (
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Insurance Details</h3>
               <div className="grid gap-4 rounded-lg border bg-muted/30 p-4 md:grid-cols-2">
@@ -2731,14 +2812,14 @@ export function PatientForm({
                 />
               </div>
             </div>
-          )}
+            )}
 
-          <Separator />
+          {!isCompactMode && <Separator />}
 
           {/* ================================================================== */}
           {/* SECTION 6: Emergency Contact */}
           {/* ================================================================== */}
-          <div className="space-y-4">
+          {!isCompactMode && <div className="space-y-4">
             <h3 className="text-lg font-medium">Emergency Contact</h3>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -2767,7 +2848,7 @@ export function PatientForm({
                     <FormLabel>Contact Phone</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="+254..."
+                        placeholder={phonePlaceholder}
                         {...field}
                         disabled={formLocked || isFormLoading}
                       />
@@ -2840,45 +2921,46 @@ export function PatientForm({
                 )}
               />
             </div>
-          </div>
+          </div>}
 
-          <Separator />
+          {!isCompactMode && <Separator />}
 
           {/* ================================================================== */}
           {/* SECTION 7: Referral Source */}
           {/* ================================================================== */}
-          <FormField
-            control={form.control}
-            name="referral_source"
-            render={({ field }) => (
-              <FormItem className="space-y-3">
-                <FormLabel>Referral Source</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={formLocked || isFormLoading}
-                    className="flex flex-wrap gap-4"
-                  >
-                    {REFERRAL_SOURCE_OPTIONS.map((option) => (
-                      <div key={option.value} className="flex items-center space-x-2">
-                        <RadioGroupItem value={option.value} id={`referral-${option.value}`} />
-                        <Label
-                          htmlFor={`referral-${option.value}`}
-                          className="cursor-pointer font-normal"
-                        >
-                          {option.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </FormControl>
-              </FormItem>
-            )}
-          />
+          {!isCompactMode && (
+            <FormField
+              control={form.control}
+              name="referral_source"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Referral Source</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={formLocked || isFormLoading}
+                      className="flex flex-wrap gap-4"
+                    >
+                      {REFERRAL_SOURCE_OPTIONS.map((option) => (
+                        <div key={option.value} className="flex items-center space-x-2">
+                          <RadioGroupItem value={option.value} id={`referral-${option.value}`} />
+                          <Label
+                            htmlFor={`referral-${option.value}`}
+                            className="cursor-pointer font-normal"
+                          >
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          )}
 
-          {/* Referred From Facility - shown when 'other_facility' selected */}
-          {referralSource === 'other_facility' && (
+          {!isCompactMode && referralSource === 'other_facility' && (
             <FormField
               control={form.control}
               name="referred_from_facility"
@@ -2908,14 +2990,16 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Data Protection</h3>
 
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>Kenya Data Protection Act 2019</AlertTitle>
-              <AlertDescription>
-                Patient consent will be requested upon form submission. Data will be encrypted and
-                stored securely in compliance with the law.
-              </AlertDescription>
-            </Alert>
+            {isKenyaContext && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Kenya Data Protection Act 2019</AlertTitle>
+                <AlertDescription>
+                  Patient consent will be requested upon form submission. Data will be encrypted and
+                  stored securely in compliance with the law.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <FormField

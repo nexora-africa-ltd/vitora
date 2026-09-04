@@ -14,6 +14,7 @@ export type FacilityDeploymentProfile = 'full_hmis' | 'lis_standalone';
 
 export interface FacilityListItem {
   id: number;
+  country_code?: string;
   organization: number | null;
   organization_name?: string | null;
   mfl_code: string;
@@ -89,6 +90,10 @@ export interface FacilityDetail extends FacilityListItem {
   dha_license_number: string;
   dha_license_issue_date: string;
   dha_license_expiry: string;
+  laboratory_license_number: string;
+  laboratory_license_issuer: string;
+  laboratory_license_issue_date: string | null;
+  laboratory_license_expiry: string | null;
   dha_operational_status: string;
   dha_sha_contract_status: string;
   dha_sha_contract_start: string;
@@ -124,6 +129,10 @@ export interface FacilityUpdateData {
   dha_license_issue_date?: string;
   dha_license_status?: string;
   dha_license_expiry?: string;
+  laboratory_license_number?: string;
+  laboratory_license_issuer?: string;
+  laboratory_license_issue_date?: string | null;
+  laboratory_license_expiry?: string | null;
   dhis2_org_unit?: string;
   workstation_id?: string;
   biometrics_enforced?: boolean;

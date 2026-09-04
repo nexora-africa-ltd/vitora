@@ -32,6 +32,7 @@ export default function NewStandaloneOrderPage() {
   const router = useRouter();
   const [picker, setPicker] = useState<PickedPatient>({ mode: 'inline' });
   const [formData, setFormData] = useState({
+    walkin_mrn: '',
     walkin_name: '',
     walkin_phone: '',
     walkin_national_id: '',
@@ -86,6 +87,7 @@ export default function NewStandaloneOrderPage() {
         toast.error('Patient name is required');
         return;
       }
+      data.walkin_mrn = formData.walkin_mrn || undefined;
       data.walkin_name = formData.walkin_name;
       data.walkin_phone = formData.walkin_phone;
       data.walkin_national_id = formData.walkin_national_id;
@@ -117,6 +119,21 @@ export default function NewStandaloneOrderPage() {
             />
             {picker.mode === 'inline' && (
               <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="walkin_mrn">MRN</Label>
+                    <Input
+                      id="walkin_mrn"
+                      value={formData.walkin_mrn}
+                      onChange={(e) => setFormData({ ...formData, walkin_mrn: e.target.value })}
+                      placeholder="Enter MRN (optional)"
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      If left blank, one will be auto-generated when a patient profile is created.
+                    </p>
+                  </div>
+                  <div />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="walkin_name">Full Name *</Label>

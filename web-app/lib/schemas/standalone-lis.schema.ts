@@ -175,6 +175,14 @@ export const LISOnboardingStepSchema = z.object({
   label: z.string(),
   done: z.boolean(),
   required: z.boolean(),
+  description: z.string(),
+  completion_rule: z.string(),
+  missing_items: z.array(z.string()),
+  next_action: z.object({
+    label: z.string(),
+    route: z.string(),
+  }),
+  estimated_minutes: z.number(),
 });
 
 export const LISOnboardingStatusSchema = z.object({

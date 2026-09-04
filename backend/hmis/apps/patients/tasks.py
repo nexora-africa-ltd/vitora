@@ -20,8 +20,6 @@ logger = logging.getLogger(__name__)
     bind=True,
     max_retries=3,
     default_retry_delay=60,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
 )
 def lookup_and_register_patient_in_cr(self, patient_id: int) -> dict:
     """
@@ -49,12 +47,23 @@ def lookup_and_register_patient_in_cr(self, patient_id: int) -> dict:
         logger.info("Patient %s already has CR number %s", patient.mrn, patient.cr_number)
         return {"action": "skipped", "cr_number": patient.cr_number}
 
+    # Standalone facilities do not auto-sync/create Client Registry records
+    facility = getattr(patient, "registered_at_facility", None)
+    facility_mode = str(getattr(facility, "operating_mode", "") or "")
+    if facility_mode.startswith("STANDALONE_"):
+        return {"action": "skipped", "detail": "Standalone facility mode"}
+
     # Check settings
     if not getattr(settings, "HIE_AUTO_CR_LOOKUP", True):
         return {"action": "skipped", "detail": "HIE_AUTO_CR_LOOKUP disabled"}
 
     try:
-        from hmis.apps.billing.services.client_registry import ClientRegistryService
+        from hmis.apps.billing.services.client_registry import (
+            ClientRegistrationError,
+            ClientRegistryError,
+            ClientRegistryService,
+            DuplicateClientError,
+        )
 
         cr_service = ClientRegistryService()
 
@@ -81,7 +90,7 @@ def lookup_and_register_patient_in_cr(self, patient_id: int) -> dict:
             first_name=patient.first_name,
             last_name=patient.last_name,
             date_of_birth=str(patient.date_of_birth),
-            gender={"M": "Male", "F": "Female", "O": "Other"}.get(patient.gender, "Other"),
+            gender=(patient.gender or "O").upper(),
             national_id=national_id or "",
             phone_number=getattr(patient, "phone_number", "") or "",
         )
@@ -100,6 +109,34 @@ def lookup_and_register_patient_in_cr(self, patient_id: int) -> dict:
 
         return {"action": "error", "detail": "Registration returned no CR number"}
 
+    except ClientRegistrationError as exc:
+        logger.warning(
+            "CR registration validation failed for patient %s: %s",
+            patient_id,
+            exc,
+        )
+        return {"action": "error", "detail": str(exc)}
+    except DuplicateClientError as exc:
+        existing_number = getattr(exc, "existing_client_number", None)
+        if existing_number:
+            Patient.objects.filter(pk=patient_id).update(
+                cr_number=existing_number,
+                cr_synced_at=timezone.now(),
+            )
+            return {"action": "matched", "cr_number": existing_number}
+        logger.warning(
+            "CR duplicate detected for patient %s but no existing number was returned",
+            patient_id,
+        )
+        return {"action": "error", "detail": "Duplicate client detected"}
+    except ClientRegistryError as exc:
+        logger.warning(
+            "CR service error for patient %s: %s",
+            patient_id,
+            exc,
+            exc_info=True,
+        )
+        raise self.retry(exc=exc)
     except (
         AttributeError,
         TypeError,

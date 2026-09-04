@@ -497,3 +497,20 @@ class TestMyFacilitiesFromMembership:
 
         facility_ids = {f["id"] for f in response.data}
         assert facility_b1.pk not in facility_ids
+
+    def test_my_facilities_includes_primary_facility_without_memberships(
+        self,
+        staff_user,
+        staff_profile,
+        facility_a1,
+    ):
+        """Primary facility should still be listed when memberships are absent."""
+        OrgMembership.objects.filter(staff_profile=staff_profile).delete()
+
+        client = APIClient()
+        client.force_authenticate(user=staff_user)
+        response = client.get("/api/core/facilities/my-facilities/")
+
+        assert response.status_code == status.HTTP_200_OK
+        facility_ids = {f["id"] for f in response.data}
+        assert facility_a1.pk in facility_ids

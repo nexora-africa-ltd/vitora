@@ -28,7 +28,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.audit import AuditedMutationMixin
-from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import (
+    NestedTenantScopeMixin,
+    TenantScopedViewMixin,
+    resolve_request_tenant,
+)
 from hmis.apps.core.pagination import StandardPagination
 from hmis.apps.core.permissions import ReadRequiresModelPermission, RequiresActiveShiftPermission
 from hmis.apps.licensing.permissions import requires_feature
@@ -255,16 +259,18 @@ class TestCatalogViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.M
         """
         from decimal import Decimal
 
-        profile = getattr(request.user, "staff_profile", None)
-        facility = getattr(profile, "primary_facility", None)
-        organization = getattr(facility, "organization", None)
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None) or getattr(
+            facility, "organization", None
+        )
         is_non_kenya_facility = bool(
             facility and str(getattr(facility, "country_code", "KE")).upper() != "KE"
         )
 
         if not facility:
             return Response(
-                {"detail": "No facility context resolved for seeding defaults."},
+                {"detail": "No active facility context resolved for seeding defaults."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -908,9 +914,18 @@ class LabOrderViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.Mode
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            test = TestCatalog.objects.get(code=test_code)
-        except TestCatalog.DoesNotExist:
+        tests_qs = TestCatalog.objects.filter(code__iexact=test_code)
+        if order.facility_id:
+            scoped_qs = tests_qs.filter(facility=order.facility)
+            tests_qs = scoped_qs if scoped_qs.exists() else tests_qs.filter(facility__isnull=True)
+        elif order.organization_id:
+            scoped_qs = tests_qs.filter(organization=order.organization)
+            tests_qs = (
+                scoped_qs if scoped_qs.exists() else tests_qs.filter(organization__isnull=True)
+            )
+
+        test = tests_qs.first()
+        if test is None:
             return Response(
                 {"error": f"Test with code '{test_code}' not found"},
                 status=status.HTTP_404_NOT_FOUND,

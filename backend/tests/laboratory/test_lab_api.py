@@ -292,6 +292,49 @@ class TestTestCatalogAPI:
         )
         assert cbc.cost == Decimal("0.00")
 
+    def test_seed_defaults_honors_active_tenant_facility_header(
+        self,
+        auth_client,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
+    ):
+        from hmis.apps.core.models import Facility
+
+        secondary_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Laboratory Branch B",
+            mfl_code="LAB-BRANCH-003",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+
+        profile = authenticated_user.staff_profile
+        profile.secondary_facilities.add(secondary_facility)
+
+        response = auth_client.post(
+            "/api/lab/tests/seed-defaults/",
+            format="json",
+            HTTP_X_FACILITY_ID=str(secondary_facility.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert TestCatalog.objects.filter(facility=secondary_facility, code="CBC").exists()
+        assert not TestCatalog.objects.filter(facility=sample_facility, code="CBC").exists()
+
+    def test_seed_defaults_rejects_inactive_primary_facility(self, auth_client, sample_facility):
+        sample_facility.is_active = False
+        sample_facility.save(update_fields=["is_active"])
+
+        response = auth_client.post("/api/lab/tests/seed-defaults/", format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "active facility" in response.data["detail"].lower()
+
 
 @pytest.mark.django_db
 class TestLabOrderAPI:
@@ -499,6 +542,54 @@ class TestLabOrderAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["order_number"]
         assert len(response.data["order_number"]) == 17
+
+    def test_create_lab_order_resolves_test_code_with_facility_scope(
+        self,
+        auth_client,
+        sample_encounter,
+        sample_test_catalog,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+    ):
+        """Duplicate test codes across facilities should resolve within current facility."""
+        from hmis.apps.core.models import Facility
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Facility Lab",
+            mfl_code="LAB-ORDER-SCOPE-001",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        TestCatalog.objects.create(
+            code="CBC",
+            name="Other Facility CBC",
+            short_name="CBC-OTHER",
+            category="HEMATOLOGY",
+            specimen_type="BLOOD",
+            result_type="PANEL",
+            cost=Decimal("650.00"),
+            facility=other_facility,
+            organization=sample_organization,
+        )
+
+        order_data = {
+            "patient": sample_encounter.patient.id,
+            "encounter": sample_encounter.id,
+            "items": [{"test_code": "CBC"}],
+        }
+
+        response = auth_client.post("/api/lab/orders/", order_data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        created_order = LabOrder.objects.get(order_number=response.data["order_number"])
+        order_item = created_order.items.first()
+        assert order_item is not None
+        assert order_item.test.facility_id == sample_facility.id
 
     def test_list_lab_orders(self, auth_client, sample_encounter, sample_test_catalog):
         """Should list lab orders."""
@@ -974,6 +1065,8 @@ class TestLabOrderItemManagement:
             specimen_type="BLOOD",
             result_type="NUMERIC",
             cost=Decimal("200.00"),
+            facility=sample_facility,
+            organization=sample_organization,
         )
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -1008,6 +1101,8 @@ class TestLabOrderItemManagement:
             specimen_type="BLOOD",
             result_type="NUMERIC",
             cost=Decimal("200.00"),
+            facility=sample_facility,
+            organization=sample_organization,
         )
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -1030,6 +1125,68 @@ class TestLabOrderItemManagement:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "already in this order" in response.data["error"]
 
+    def test_add_item_to_order_scopes_test_lookup_to_order_facility(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+    ):
+        """Adding by code should resolve the test within the order's facility."""
+        from hmis.apps.core.models import Facility
+
+        local_test = TestCatalog.objects.create(
+            code="SCOPED_TEST",
+            name="Scoped Test Local",
+            short_name="STL",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("200.00"),
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Scoped Facility",
+            mfl_code="LAB-ITEM-SCOPE-001",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        TestCatalog.objects.create(
+            code="SCOPED_TEST",
+            name="Scoped Test Other",
+            short_name="STO",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            cost=Decimal("350.00"),
+            facility=other_facility,
+            organization=sample_organization,
+        )
+        order = LabOrder.objects.create(
+            patient=sample_encounter.patient,
+            encounter=sample_encounter,
+            ordered_by=authenticated_user,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = auth_client.post(
+            f"/api/lab/orders/{order.order_number}/items/",
+            {"test_code": local_test.code},
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        created_item = order.items.first()
+        assert created_item is not None
+        assert created_item.test_id == local_test.id
+
     def test_delete_item_from_draft_order(
         self,
         auth_client,
@@ -1047,6 +1204,8 @@ class TestLabOrderItemManagement:
             specimen_type="BLOOD",
             result_type="NUMERIC",
             cost=Decimal("200.00"),
+            facility=sample_facility,
+            organization=sample_organization,
         )
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -1084,6 +1243,8 @@ class TestLabOrderItemManagement:
             specimen_type="BLOOD",
             result_type="NUMERIC",
             cost=Decimal("200.00"),
+            facility=sample_facility,
+            organization=sample_organization,
         )
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,

@@ -104,6 +104,7 @@ class StandaloneOrderCreateSerializer(serializers.Serializer):
     )
 
     # Inline walk-in details (used if neither walkin_patient_id nor patient_id provided)
+    walkin_mrn = serializers.CharField(required=False, allow_blank=True, default="")
     walkin_name = serializers.CharField(required=False, help_text="Walk-in patient full name")
     walkin_phone = serializers.CharField(required=False, default="")
     walkin_national_id = serializers.CharField(required=False, default="")
@@ -200,22 +201,40 @@ class StandaloneOrderCreateSerializer(serializers.Serializer):
                     {"walkin_patient_id": "Walk-in patient not found."}
                 ) from e
         else:
+            walkin_mrn = (validated_data.get("walkin_mrn") or "").strip()
+            if walkin_mrn:
+                from hmis.apps.patients.models import Patient
+
+                tenant_kwargs = self.context.get("tenant_kwargs", {})
+                patient_qs = Patient.objects.filter(mrn=walkin_mrn)
+                org = tenant_kwargs.get("organization")
+                if org is not None:
+                    patient_qs = patient_qs.filter(organization=org)
+                matched_patient = patient_qs.first()
+                if matched_patient is not None:
+                    patient = matched_patient
+                    billing_patient = matched_patient
+                    walkin_patient_name = matched_patient.full_name
+                    walkin_patient_id_val = matched_patient.mrn
+                    walkin_patient_phone = matched_patient.phone_number or ""
+
             # Inline walk-in
-            walkin_patient_name = validated_data.get("walkin_name", "")
-            walkin_patient_phone = validated_data.get("walkin_phone", "")
-            walkin_patient_id_val = validated_data.get("walkin_national_id", "")
-            walkin_patient_dob = validated_data.get("walkin_dob")
-            walkin_patient_gender = validated_data.get("walkin_gender", "")
-            walkin = WalkInPatient.objects.create(
-                first_name=walkin_patient_name.split(" ")[0],
-                last_name=" ".join(walkin_patient_name.split(" ")[1:]).strip(),
-                date_of_birth=walkin_patient_dob,
-                gender=walkin_patient_gender,
-                phone_number=walkin_patient_phone,
-                national_id=walkin_patient_id_val,
-                registered_by=user,
-                **self.context.get("tenant_kwargs", {}),
-            )
+            if patient is None:
+                walkin_patient_name = validated_data.get("walkin_name", "")
+                walkin_patient_phone = validated_data.get("walkin_phone", "")
+                walkin_patient_id_val = validated_data.get("walkin_national_id", "")
+                walkin_patient_dob = validated_data.get("walkin_dob")
+                walkin_patient_gender = validated_data.get("walkin_gender", "")
+                walkin = WalkInPatient.objects.create(
+                    first_name=walkin_patient_name.split(" ")[0],
+                    last_name=" ".join(walkin_patient_name.split(" ")[1:]).strip(),
+                    date_of_birth=walkin_patient_dob,
+                    gender=walkin_patient_gender,
+                    phone_number=walkin_patient_phone,
+                    national_id=walkin_patient_id_val,
+                    registered_by=user,
+                    **self.context.get("tenant_kwargs", {}),
+                )
 
         if enable_billing and billing_patient is None and walkin is not None:
             billing_patient = ensure_walkin_has_billing_patient(walkin, user)
@@ -254,12 +273,26 @@ class StandaloneOrderCreateSerializer(serializers.Serializer):
         # Create order items
         for item_data in items_data:
             test_code = item_data["test_code"]
-            try:
-                test = TestCatalog.objects.get(code=test_code)
-            except TestCatalog.DoesNotExist as e:
+            tenant_kwargs = self.context.get("tenant_kwargs", {})
+            facility = tenant_kwargs.get("facility")
+            organization = tenant_kwargs.get("organization")
+            tests_qs = TestCatalog.objects.filter(code__iexact=test_code)
+            if facility is not None:
+                scoped_qs = tests_qs.filter(facility=facility)
+                tests_qs = (
+                    scoped_qs if scoped_qs.exists() else tests_qs.filter(facility__isnull=True)
+                )
+            elif organization is not None:
+                scoped_qs = tests_qs.filter(organization=organization)
+                tests_qs = (
+                    scoped_qs if scoped_qs.exists() else tests_qs.filter(organization__isnull=True)
+                )
+
+            test = tests_qs.first()
+            if test is None:
                 raise serializers.ValidationError(
                     {"items": f"Test with code '{test_code}' not found in catalog."}
-                ) from e
+                )
 
             LabOrderItem.objects.create(
                 lab_order=order,

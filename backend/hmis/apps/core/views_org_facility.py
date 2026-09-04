@@ -1067,12 +1067,18 @@ class FacilityViewSet(viewsets.ModelViewSet):
                 return Response([])
             from hmis.apps.core.models import OrgMembership
 
-            # Collect facility IDs from all ACTIVE memberships
+            # Collect facility IDs from all ACTIVE memberships plus direct
+            # StaffProfile assignments (primary + secondary).
             facility_ids = set()
             for membership in profile.memberships.filter(
                 status=OrgMembership.MembershipStatus.ACTIVE
             ):
                 facility_ids.update(membership.facilities.values_list("pk", flat=True))
+
+            if profile.primary_facility_id:
+                facility_ids.add(profile.primary_facility_id)
+            facility_ids.update(profile.secondary_facilities.values_list("pk", flat=True))
+
             facilities = Facility.objects.filter(
                 pk__in=facility_ids, is_active=True
             ).select_related("county", "sub_county", "ward", "organization")

@@ -48,15 +48,7 @@ def _fire_cr_sync(patient_id: int) -> None:
         from hmis.apps.patients.tasks import lookup_and_register_patient_in_cr
 
         lookup_and_register_patient_in_cr.delay(patient_id)
-    except (
-        AttributeError,
-        TypeError,
-        ValueError,
-        RuntimeError,
-        OSError,
-        AssertionError,
-        ImportError,
-    ):
+    except Exception:  # noqa: BLE001 - async side-effect must never break patient creation
         # Don't break patient creation if Celery/Redis unavailable
         import logging
 
@@ -302,7 +294,12 @@ class PatientViewSet(
             )
 
             # Async CR lookup/register (fires after transaction commits)
-            if not patient.cr_number:
+            facility_mode = (
+                getattr(active_facility, "operating_mode", "") if active_facility else ""
+            )
+            is_standalone_mode = str(facility_mode).startswith("STANDALONE_")
+
+            if not patient.cr_number and not is_standalone_mode:
                 from django.db import transaction as txn
 
                 txn.on_commit(lambda pid=patient.id: _fire_cr_sync(pid))

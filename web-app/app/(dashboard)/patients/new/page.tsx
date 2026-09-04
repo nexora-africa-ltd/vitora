@@ -31,6 +31,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { getOrCreateIdempotencyKey, clearIdempotencyKey } from '@/lib/utils/idempotency';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useFacility } from '@/lib/context/facility-context';
 import type { PatientCreateData, Patient } from '@/lib/types/patient';
 import type {
   ClientRegistryClient,
@@ -98,6 +99,20 @@ function isDuplicateRegistrationError(error: unknown): boolean {
 export default function NewPatientPage() {
   const router = useRouter();
   const { hasPermission } = usePermissions();
+  const { facility, facilityDetail } = useFacility();
+  const isLISStandaloneProfile =
+    facilityDetail?.operating_mode === 'STANDALONE_LAB' ||
+    facility?.deployment_profile === 'lis_standalone';
+  const resolvedOperatingMode = facilityDetail?.operating_mode || facility?.operating_mode;
+  const facilityModules = facilityDetail?.modules || facility?.modules;
+  const isStandaloneMode =
+    (typeof resolvedOperatingMode === 'string' && resolvedOperatingMode.startsWith('STANDALONE_')) ||
+    Boolean(
+      facilityModules?.lis_standalone ||
+        facilityModules?.pharmacy_standalone ||
+        facilityModules?.imaging_standalone
+    );
+  const isKenyaFacility = (facilityDetail?.country_code || 'KE').toUpperCase() === 'KE';
   const canCreatePatient = hasPermission('patients.add_patient');
   const hasPatientCreateAccess = canCreatePatient;
   const { toast } = useToast();
@@ -357,8 +372,8 @@ export default function NewPatientPage() {
         }
       }
 
-      // If no CR record exists, register in Client Registry
-      if (!crClient && !data.cr_number && data.identification_number) {
+      // If no CR record exists, register in Client Registry (skip for standalone modes)
+      if (!isStandaloneMode && !crClient && !data.cr_number && data.identification_number) {
         try {
           const crResponse = await registerInCR.mutateAsync({
             patient_id: patient.id,
@@ -450,127 +465,133 @@ export default function NewPatientPage() {
       {/* Header */}
       <PageHeader
         title="Register New Patient"
-        helpContent="Enter patient information to create a new record. Verify patient in Kenya Digital Health services before registration for faster processing."
+        helpContent={
+          isLISStandaloneProfile
+            ? 'Register a patient quickly for laboratory workflows. Required fields are prioritized for faster intake.'
+            : 'Enter patient information to create a new record. Verify patient in Kenya Digital Health services before registration for faster processing.'
+        }
       />
 
       {/* Kenya Digital Health Verification */}
-      <Card className="border-muted">
-        <CardContent className="py-3 sm:py-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            {/* Left side - info */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted sm:h-10 sm:w-10">
-                <KenyaCoatOfArms size={20} className="sm:hidden" />
-                <KenyaCoatOfArms size={24} className="hidden sm:block" />
+      {!isLISStandaloneProfile && (
+        <Card className="border-muted">
+          <CardContent className="py-3 sm:py-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              {/* Left side - info */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted sm:h-10 sm:w-10">
+                  <KenyaCoatOfArms size={20} className="sm:hidden" />
+                  <KenyaCoatOfArms size={24} className="hidden sm:block" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium sm:text-base">
+                    <span className="sm:hidden">Digital Health</span>
+                    <span className="hidden sm:inline">Kenya Digital Health Services</span>
+                  </p>
+                  <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
+                    Verify patient information before registration
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium sm:text-base">
-                  <span className="sm:hidden">Digital Health</span>
-                  <span className="hidden sm:inline">Kenya Digital Health Services</span>
-                </p>
-                <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-                  Verify patient information before registration
-                </p>
+
+              {/* Right side - action buttons */}
+              <div className="flex items-center gap-2">
+                <SHAVerificationModal
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 flex-1 text-xs sm:flex-none sm:text-sm"
+                    >
+                      <Search className="h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Verify Patient</span>
+                      <span className="ml-1 sm:hidden">Verify</span>
+                    </Button>
+                  }
+                  onClientFound={handleCRClientFound}
+                  onEligibilityVerified={handleEligibilityVerified}
+                  onAddPersonToForm={handleAddShaPersonToForm}
+                />
               </div>
             </div>
 
-            {/* Right side - action buttons */}
-            <div className="flex items-center gap-2">
-              <SHAVerificationModal
-                trigger={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 flex-1 text-xs sm:flex-none sm:text-sm"
-                  >
-                    <Search className="h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Verify Patient</span>
-                    <span className="ml-1 sm:hidden">Verify</span>
-                  </Button>
-                }
-                onClientFound={handleCRClientFound}
-                onEligibilityVerified={handleEligibilityVerified}
-                onAddPersonToForm={handleAddShaPersonToForm}
-              />
-            </div>
-          </div>
-
-          {/* Verification results - only show if we have data */}
-          {(eligibility || crClient) && (
-            <div className="mt-3 space-y-2 border-t pt-3 sm:mt-4 sm:space-y-3 sm:pt-4">
-              {eligibility && (
-                <div
-                  className={`rounded-md p-2 sm:p-3 ${
-                    eligibility.is_eligible
-                      ? 'border border-success/30 bg-success/10'
-                      : 'border border-warning/30 bg-warning/10'
-                  }`}
-                >
+            {/* Verification results - only show if we have data */}
+            {(eligibility || crClient) && (
+              <div className="mt-3 space-y-2 border-t pt-3 sm:mt-4 sm:space-y-3 sm:pt-4">
+                {eligibility && (
                   <div
-                    className={`flex items-start gap-1.5 text-[11px] sm:gap-2 sm:text-sm ${
-                      eligibility.is_eligible ? 'text-success' : 'text-warning-foreground'
+                    className={`rounded-md p-2 sm:p-3 ${
+                      eligibility.is_eligible
+                        ? 'border border-success/30 bg-success/10'
+                        : 'border border-warning/30 bg-warning/10'
                     }`}
                   >
-                    {eligibility.is_eligible ? (
-                      <>
-                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold sm:text-sm">SHA Eligible</p>
-                          <p className="mt-0.5 text-[10px] opacity-90 sm:text-xs">
-                            {eligibility.copay_percentage === 0
-                              ? 'Full coverage'
-                              : `${eligibility.copay_percentage}% copay`}
+                    <div
+                      className={`flex items-start gap-1.5 text-[11px] sm:gap-2 sm:text-sm ${
+                        eligibility.is_eligible ? 'text-success' : 'text-warning-foreground'
+                      }`}
+                    >
+                      {eligibility.is_eligible ? (
+                        <>
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold sm:text-sm">SHA Eligible</p>
+                            <p className="mt-0.5 text-[10px] opacity-90 sm:text-xs">
+                              {eligibility.copay_percentage === 0
+                                ? 'Full coverage'
+                                : `${eligibility.copay_percentage}% copay`}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <SHALogo size="sm" className="mt-0.5 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold sm:text-sm">Not SHA Eligible</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Additional details for ineligible patients */}
+                    {!eligibility.is_eligible && (
+                      <div className="ml-5 mt-1.5 space-y-0.5 text-[10px] sm:ml-6 sm:mt-2 sm:space-y-1 sm:text-xs">
+                        {eligibility.sha_number && (
+                          <p className="break-all text-muted-foreground">
+                            <span className="font-medium">SHA:</span> {eligibility.sha_number}
                           </p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <SHALogo size="sm" className="mt-0.5 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold sm:text-sm">Not SHA Eligible</p>
-                        </div>
-                      </>
+                        )}
+                        {eligibility.reason && (
+                          <p className="text-warning-foreground">{eligibility.reason}</p>
+                        )}
+                        {eligibility.possible_solution && (
+                          <p className="text-blue-600 dark:text-blue-400">
+                            💡 {eligibility.possible_solution}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
+                )}
 
-                  {/* Additional details for ineligible patients */}
-                  {!eligibility.is_eligible && (
-                    <div className="ml-5 mt-1.5 space-y-0.5 text-[10px] sm:ml-6 sm:mt-2 sm:space-y-1 sm:text-xs">
-                      {eligibility.sha_number && (
-                        <p className="break-all text-muted-foreground">
-                          <span className="font-medium">SHA:</span> {eligibility.sha_number}
+                {crClient && (
+                  <div className="rounded-md bg-primary/10 p-2 text-[11px] text-primary sm:text-sm">
+                    <div className="flex items-start gap-1.5 sm:gap-2">
+                      <User className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold sm:text-sm">CR Verified</p>
+                        <p className="truncate text-[10px] opacity-90 sm:text-xs">
+                          {crClient.first_name} {crClient.last_name} • {crClient.client_number}
                         </p>
-                      )}
-                      {eligibility.reason && (
-                        <p className="text-warning-foreground">{eligibility.reason}</p>
-                      )}
-                      {eligibility.possible_solution && (
-                        <p className="text-blue-600 dark:text-blue-400">
-                          💡 {eligibility.possible_solution}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {crClient && (
-                <div className="rounded-md bg-primary/10 p-2 text-[11px] text-primary sm:text-sm">
-                  <div className="flex items-start gap-1.5 sm:gap-2">
-                    <User className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold sm:text-sm">CR Verified</p>
-                      <p className="truncate text-[10px] opacity-90 sm:text-xs">
-                        {crClient.first_name} {crClient.last_name} • {crClient.client_number}
-                      </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Form Card */}
       <Card>
@@ -595,6 +616,17 @@ export default function NewPatientPage() {
             prePopulatedClient={crClient}
             prePopulatedShaPerson={selectedShaPerson}
             prePopulatedShaEligibility={eligibility}
+            isCompactMode={isLISStandaloneProfile}
+            isKenyaContext={isKenyaFacility}
+            locationFallback={
+              !isKenyaFacility
+                ? {
+                    county: facilityDetail?.county,
+                    sub_county: facilityDetail?.sub_county,
+                    ward: facilityDetail?.ward,
+                  }
+                : undefined
+            }
           />
         </CardContent>
       </Card>

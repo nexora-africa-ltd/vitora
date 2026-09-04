@@ -506,12 +506,25 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
 
         for item_data in items_data:
             test_code = item_data["test_code"]
-            try:
-                test = TestCatalog.objects.get(code=test_code)
-            except TestCatalog.DoesNotExist as e:
+            facility = validated_data.get("facility")
+            organization = validated_data.get("organization")
+            tests_qs = TestCatalog.objects.filter(code__iexact=test_code)
+            if facility is not None:
+                scoped_qs = tests_qs.filter(facility=facility)
+                tests_qs = (
+                    scoped_qs if scoped_qs.exists() else tests_qs.filter(facility__isnull=True)
+                )
+            elif organization is not None:
+                scoped_qs = tests_qs.filter(organization=organization)
+                tests_qs = (
+                    scoped_qs if scoped_qs.exists() else tests_qs.filter(organization__isnull=True)
+                )
+
+            test = tests_qs.first()
+            if test is None:
                 raise serializers.ValidationError(
                     {"items": f"Test with code '{test_code}' not found in catalog."}
-                ) from e
+                )
 
             special_instructions = item_data.get("special_instructions", "")
             parent_item = LabOrderItem.objects.create(

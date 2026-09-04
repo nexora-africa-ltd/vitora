@@ -36,6 +36,7 @@ export const FacilityModulesSchema = z.object({
 
 export const FacilityListItemSchema = z.object({
   id: z.number(),
+  country_code: z.string().default('KE'),
   organization: z.number().nullable(),
   organization_name: z.string().nullable().optional(),
   mfl_code: z.string(),
@@ -115,6 +116,10 @@ export const FacilityDetailSchema = FacilityListItemSchema.extend({
   dha_license_number: z.string().default(''),
   dha_license_issue_date: z.string().default(''),
   dha_license_expiry: z.string().default(''),
+  laboratory_license_number: z.string().default(''),
+  laboratory_license_issuer: z.string().default(''),
+  laboratory_license_issue_date: z.string().nullable().default(null),
+  laboratory_license_expiry: z.string().nullable().default(null),
   dha_operational_status: z.string().default(''),
   dha_sha_contract_status: z.string().default(''),
   dha_sha_contract_start: z.string().default(''),

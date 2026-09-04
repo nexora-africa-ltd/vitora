@@ -41,8 +41,11 @@ export default function NewLabOrderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const encounterRequired = false;
-  const { hasModule } = useFacility();
+  const { hasModule, facility, facilityDetail } = useFacility();
   const bloodBankModuleEnabled = hasModule('blood_bank');
+  const isStandaloneMode =
+    (facilityDetail?.operating_mode || facility?.operating_mode || '').startsWith('STANDALONE_') ||
+    facility?.deployment_profile === 'lis_standalone';
 
   const encounterId = searchParams.get('encounter');
   const patientId = searchParams.get('patient');
@@ -135,13 +138,16 @@ export default function NewLabOrderPage() {
   }, [resolvedPatientId, selectedPatientId]);
 
   useEffect(() => {
+    if (isStandaloneMode) {
+      return;
+    }
     if (resolvedEncounterId && selectedEncounterId == null) {
       setSelectedEncounterId(resolvedEncounterId);
     }
-  }, [resolvedEncounterId, selectedEncounterId]);
+  }, [isStandaloneMode, resolvedEncounterId, selectedEncounterId]);
 
   const activePatientId = selectedPatientId ?? resolvedPatientId;
-  const activeEncounterId = selectedEncounterId ?? resolvedEncounterId;
+  const activeEncounterId = isStandaloneMode ? null : selectedEncounterId ?? resolvedEncounterId;
 
   const effectiveSubjectPatientId = isBloodUnitTest ? donorPatientId : activePatientId;
   const effectiveBillingPatientId = isBloodUnitTest ? activePatientId : null;
@@ -157,16 +163,17 @@ export default function NewLabOrderPage() {
       'new-lab-order',
     ],
     queryFn: () => patientsApi.getEncounters((effectiveBillingPatientId || activePatientId)!),
-    enabled: !!(effectiveBillingPatientId || activePatientId),
+    enabled: !!(effectiveBillingPatientId || activePatientId) && !isStandaloneMode,
   });
 
   useEffect(() => {
+    if (isStandaloneMode) return;
     if (!activeEncounterId || patientEncounters.length === 0) return;
     const exists = patientEncounters.some((item) => item.id === activeEncounterId);
     if (!exists && selectedEncounterId != null) {
       setSelectedEncounterId(null);
     }
-  }, [activeEncounterId, patientEncounters, selectedEncounterId]);
+  }, [isStandaloneMode, activeEncounterId, patientEncounters, selectedEncounterId]);
 
   const selectedPatientRecord = selectedPatient ?? patientFromApi ?? null;
   const selectedSubjectPatientRecord = isBloodUnitTest
@@ -174,9 +181,10 @@ export default function NewLabOrderPage() {
     : selectedPatientRecord;
 
   const selectedEncounterRecord = useMemo<PatientEncounter | null>(() => {
+    if (isStandaloneMode) return null;
     if (!activeEncounterId) return null;
     return patientEncounters.find((item) => item.id === activeEncounterId) ?? null;
-  }, [activeEncounterId, patientEncounters]);
+  }, [isStandaloneMode, activeEncounterId, patientEncounters]);
 
   const handleSuccess = (orderNumber: string) => {
     // Redirect back to the source context, not the order detail
@@ -239,7 +247,11 @@ export default function NewLabOrderPage() {
     <div className="space-y-6">
       <PageHeader
         title="New Lab Order"
-        helpContent={`Create a laboratory order for ${patientDisplayName}.`}
+        helpContent={
+          isStandaloneMode
+            ? `Create a standalone laboratory order for ${patientDisplayName}.`
+            : `Create a laboratory order for ${patientDisplayName}.`
+        }
       />
 
       <Card>
@@ -247,186 +259,202 @@ export default function NewLabOrderPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
               <Label>{isBloodUnitTest ? 'Recipient (Bill To)' : 'Patient'}</Label>
-              <Sheet open={isPatientSheetOpen} onOpenChange={setIsPatientSheetOpen}>
-                <SheetTrigger asChild>
-                  <Button type="button" variant="outline" size="sm">
-                    {selectedPatientRecord ? 'Change selection' : 'Select patient'}
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-full sm:max-w-lg">
-                  <SheetHeader>
-                    <SheetTitle>
-                      {isBloodUnitTest ? 'Configure blood unit test order' : 'Select patient'}
-                    </SheetTitle>
-                    <SheetDescription>
-                      {isBloodUnitTest
-                        ? 'Choose recipient (billing), donor, and blood unit.'
-                        : 'Search by name, MRN, or phone number.'}
-                    </SheetDescription>
-                  </SheetHeader>
-                  <div className="mt-4 space-y-4">
-                    {bloodBankModuleEnabled && (
-                      <div className="flex items-center justify-between rounded-md border p-3">
-                        <div>
-                          <Label htmlFor="blood-unit-test-toggle">Blood Unit Test</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Enable donor/unit testing with separate recipient billing.
-                          </p>
-                        </div>
-                        <Switch
-                          id="blood-unit-test-toggle"
-                          checked={isBloodUnitTest}
-                          onCheckedChange={(checked) => {
-                            setIsBloodUnitTest(checked);
-                            setSelectedEncounterId(null);
-                            if (!checked) {
-                              setSelectedDonorId(null);
-                              setSelectedBloodUnitId(null);
-                            }
-                          }}
-                        />
-                      </div>
-                    )}
-
-                    <PatientSelector
-                      value={activePatientId}
-                      selectedPatient={selectedPatientRecord}
-                      onChange={(patientSelectionId, patientSelection) => {
-                        setSelectedPatientId(patientSelectionId);
-                        setSelectedPatient(patientSelection);
-                        setSelectedEncounterId(null);
-                      }}
-                    />
-
-                    {isBloodUnitTest && bloodBankModuleEnabled && (
-                      <>
-                        <div className="space-y-2">
-                          <Label>Donor</Label>
-                          <Select
-                            value={selectedDonorId ? String(selectedDonorId) : 'none'}
-                            onValueChange={(value) => {
-                              setSelectedDonorId(value === 'none' ? null : Number(value));
-                              setSelectedBloodUnitId(null);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select donor" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No donor selected</SelectItem>
-                              {donors.map((donor) => (
-                                <SelectItem key={donor.id} value={String(donor.id)}>
-                                  {donor.donor_number} - {donor.first_name} {donor.last_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {selectedDonor && !selectedDonor.patient && (
-                            <p className="text-xs text-destructive">
-                              Selected donor is not linked to a patient record.
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Blood Unit</Label>
-                          <Select
-                            value={selectedBloodUnitId ? String(selectedBloodUnitId) : 'none'}
-                            onValueChange={(value) =>
-                              setSelectedBloodUnitId(value === 'none' ? null : Number(value))
-                            }
-                            disabled={!selectedDonorId || donorUnits.length === 0 || loadingUnits}
-                          >
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={
-                                  !selectedDonorId ? 'Select donor first' : 'Select blood unit'
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No blood unit selected</SelectItem>
-                              {donorUnits.map((unit) => (
-                                <SelectItem key={unit.id} value={String(unit.id)}>
-                                  {unit.unit_number} - {unit.blood_group} -{' '}
-                                  {unit.component.replace('_', ' ')} ({unit.status})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {!loadingUnits && selectedDonorId && donorUnits.length === 0 && (
+              {!isStandaloneMode && (
+                <Sheet open={isPatientSheetOpen} onOpenChange={setIsPatientSheetOpen}>
+                  <SheetTrigger asChild>
+                    <Button type="button" variant="outline" size="sm">
+                      {selectedPatientRecord ? 'Change selection' : 'Select patient'}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-full sm:max-w-lg">
+                    <SheetHeader>
+                      <SheetTitle>
+                        {isBloodUnitTest ? 'Configure blood unit test order' : 'Select patient'}
+                      </SheetTitle>
+                      <SheetDescription>
+                        {isBloodUnitTest
+                          ? 'Choose recipient (billing), donor, and blood unit.'
+                          : 'Search by name, MRN, or phone number.'}
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-4 space-y-4">
+                      {bloodBankModuleEnabled && (
+                        <div className="flex items-center justify-between rounded-md border p-3">
+                          <div>
+                            <Label htmlFor="blood-unit-test-toggle">Blood Unit Test</Label>
                             <p className="text-xs text-muted-foreground">
-                              No eligible units for this donor (expired/transfused excluded).
+                              Enable donor/unit testing with separate recipient billing.
                             </p>
-                          )}
-                          {selectedDonorId && !donorPatientId && (
-                            <p className="text-xs text-amber-700">
-                              Donor has no linked patient record. Order will be created as
-                              donor-unit screening with billing to the selected recipient.
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label>
-                        Encounter{' '}
-                        {encounterRequired ? (
-                          ''
-                        ) : (
-                          <span className="text-muted-foreground">(optional)</span>
-                        )}
-                      </Label>
-                      <Select
-                        value={activeEncounterId ? String(activeEncounterId) : 'none'}
-                        onValueChange={(value) =>
-                          setSelectedEncounterId(value === 'none' ? null : Number(value))
-                        }
-                        disabled={
-                          !(effectiveBillingPatientId || activePatientId) ||
-                          loadingPatientEncounters
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={
-                              effectiveBillingPatientId || activePatientId
-                                ? 'Select encounter'
-                                : 'Select a patient first'
-                            }
+                          </div>
+                          <Switch
+                            id="blood-unit-test-toggle"
+                            checked={isBloodUnitTest}
+                            onCheckedChange={(checked) => {
+                              setIsBloodUnitTest(checked);
+                              setSelectedEncounterId(null);
+                              if (!checked) {
+                                setSelectedDonorId(null);
+                                setSelectedBloodUnitId(null);
+                              }
+                            }}
                           />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {!encounterRequired && <SelectItem value="none">No encounter</SelectItem>}
-                          {patientEncounters.map((encounterOption) => (
-                            <SelectItem key={encounterOption.id} value={String(encounterOption.id)}>
-                              {encounterOption.encounter_type} -{' '}
-                              {new Date(encounterOption.encounter_date).toLocaleDateString()} -{' '}
-                              {encounterOption.status}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {(effectiveBillingPatientId || activePatientId) &&
-                        !loadingPatientEncounters &&
-                        patientEncounters.length === 0 && (
-                          <p className="text-sm text-muted-foreground">
-                            No encounters found for this patient. You can still create a lab order
-                            without linking an encounter.
-                          </p>
-                        )}
-                    </div>
+                        </div>
+                      )}
 
-                    <div className="flex justify-end border-t pt-2">
-                      <Button type="button" size="sm" onClick={() => setIsPatientSheetOpen(false)}>
-                        Save Selection
-                      </Button>
+                      <PatientSelector
+                        value={activePatientId}
+                        selectedPatient={selectedPatientRecord}
+                        onChange={(patientSelectionId, patientSelection) => {
+                          setSelectedPatientId(patientSelectionId);
+                          setSelectedPatient(patientSelection);
+                          setSelectedEncounterId(null);
+                        }}
+                      />
+
+                      {isBloodUnitTest && bloodBankModuleEnabled && (
+                        <>
+                          <div className="space-y-2">
+                            <Label>Donor</Label>
+                            <Select
+                              value={selectedDonorId ? String(selectedDonorId) : 'none'}
+                              onValueChange={(value) => {
+                                setSelectedDonorId(value === 'none' ? null : Number(value));
+                                setSelectedBloodUnitId(null);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select donor" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">No donor selected</SelectItem>
+                                {donors.map((donor) => (
+                                  <SelectItem key={donor.id} value={String(donor.id)}>
+                                    {donor.donor_number} - {donor.first_name} {donor.last_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {selectedDonor && !selectedDonor.patient && (
+                              <p className="text-xs text-destructive">
+                                Selected donor is not linked to a patient record.
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Blood Unit</Label>
+                            <Select
+                              value={selectedBloodUnitId ? String(selectedBloodUnitId) : 'none'}
+                              onValueChange={(value) =>
+                                setSelectedBloodUnitId(value === 'none' ? null : Number(value))
+                              }
+                              disabled={!selectedDonorId || donorUnits.length === 0 || loadingUnits}
+                            >
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={
+                                    !selectedDonorId ? 'Select donor first' : 'Select blood unit'
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">No blood unit selected</SelectItem>
+                                {donorUnits.map((unit) => (
+                                  <SelectItem key={unit.id} value={String(unit.id)}>
+                                    {unit.unit_number} - {unit.blood_group} -{' '}
+                                    {unit.component.replace('_', ' ')} ({unit.status})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {!loadingUnits && selectedDonorId && donorUnits.length === 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                No eligible units for this donor (expired/transfused excluded).
+                              </p>
+                            )}
+                            {selectedDonorId && !donorPatientId && (
+                              <p className="text-xs text-amber-700">
+                                Donor has no linked patient record. Order will be created as
+                                donor-unit screening with billing to the selected recipient.
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label>
+                          Encounter{' '}
+                          {encounterRequired ? (
+                            ''
+                          ) : (
+                            <span className="text-muted-foreground">(optional)</span>
+                          )}
+                        </Label>
+                        <Select
+                          value={activeEncounterId ? String(activeEncounterId) : 'none'}
+                          onValueChange={(value) =>
+                            setSelectedEncounterId(value === 'none' ? null : Number(value))
+                          }
+                          disabled={
+                            !(effectiveBillingPatientId || activePatientId) ||
+                            loadingPatientEncounters
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                effectiveBillingPatientId || activePatientId
+                                  ? 'Select encounter'
+                                  : 'Select a patient first'
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {!encounterRequired && <SelectItem value="none">No encounter</SelectItem>}
+                            {patientEncounters.map((encounterOption) => (
+                              <SelectItem key={encounterOption.id} value={String(encounterOption.id)}>
+                                {encounterOption.encounter_type} -{' '}
+                                {new Date(encounterOption.encounter_date).toLocaleDateString()} -{' '}
+                                {encounterOption.status}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {(effectiveBillingPatientId || activePatientId) &&
+                          !loadingPatientEncounters &&
+                          patientEncounters.length === 0 && (
+                            <p className="text-sm text-muted-foreground">
+                              No encounters found for this patient. You can still create a lab order
+                              without linking an encounter.
+                            </p>
+                          )}
+                      </div>
+
+                      <div className="flex justify-end border-t pt-2">
+                        <Button type="button" size="sm" onClick={() => setIsPatientSheetOpen(false)}>
+                          Save Selection
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
+                  </SheetContent>
+                </Sheet>
+              )}
             </div>
+
+            {isStandaloneMode && (
+              <div className="rounded-md border p-3">
+                <PatientSelector
+                  value={activePatientId}
+                  selectedPatient={selectedPatientRecord}
+                  onChange={(patientSelectionId, patientSelection) => {
+                    setSelectedPatientId(patientSelectionId);
+                    setSelectedPatient(patientSelection);
+                    setSelectedEncounterId(null);
+                  }}
+                />
+              </div>
+            )}
             {selectedPatientRecord ? (
               <p className="text-sm text-muted-foreground">
                 {isBloodUnitTest ? 'Recipient: ' : ''}
@@ -443,7 +471,7 @@ export default function NewLabOrderPage() {
                 {selectedSubjectPatientRecord.mrn ? ` - ${selectedSubjectPatientRecord.mrn}` : ''}
               </p>
             )}
-            {selectedEncounterRecord && (
+            {!isStandaloneMode && selectedEncounterRecord && (
               <p className="text-sm text-muted-foreground">
                 Encounter: {selectedEncounterRecord.encounter_type} -{' '}
                 {new Date(selectedEncounterRecord.encounter_date).toLocaleDateString()} -{' '}

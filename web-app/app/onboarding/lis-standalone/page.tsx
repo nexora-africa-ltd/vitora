@@ -6,7 +6,15 @@
 
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Loader2,
+  Sparkles,
+} from 'lucide-react';
 
 import { standaloneLisApi } from '@/lib/api/standalone-lis';
 import { facilitiesApi } from '@/lib/api/facilities';
@@ -15,36 +23,71 @@ import { useAuth } from '@/lib/auth/context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { PageHeader } from '@/components/shared/page-header';
-import type { LISOnboardingSeedResult, LISOnboardingStatus } from '@/lib/types/standalone-lis';
+import type {
+  LISOnboardingImportError,
+  LISOnboardingSeedResult,
+  LISOnboardingStatus,
+} from '@/lib/types/standalone-lis';
 import type { FacilityDetail } from '@/lib/types/facility';
 
-const STEP_ROUTES: Record<string, string> = {
-  lab_identity: '/admin/facilities',
-  test_catalog: '/laboratory/tests',
-  specimen_workflow: '/laboratory/settings',
-  instrument_channels: '/laboratory/analyzers',
-  pricing_basics: '/laboratory/tests',
-  team_access: '/admin/staff',
+type LabArchetype = 'small' | 'medium' | 'reference';
+
+const ARCHETYPES: Record<LabArchetype, { title: string; description: string; detail: string }> = {
+  small: {
+    title: 'Basic routine laboratory',
+    description: 'For a small lab running common daily tests.',
+    detail: 'Includes CBC, blood sugar, and urinalysis with starter cash prices.',
+  },
+  medium: {
+    title: 'General diagnostic laboratory',
+    description: 'For a broader routine diagnostic service.',
+    detail: 'Adds liver, renal, and malaria testing with starter workflow data.',
+  },
+  reference: {
+    title: 'Reference laboratory',
+    description: 'For a referral or higher-volume laboratory.',
+    detail: 'Creates the extended starter catalog and analyzer channel configuration.',
+  },
 };
 
 export default function LISStandaloneOnboardingPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [status, setStatus] = useState<LISOnboardingStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<LISOnboardingSeedResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [importResult, setImportResult] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<{
+    summary: string;
+    errors: LISOnboardingImportError[];
+  } | null>(null);
   const [importType, setImportType] = useState<
     'test-catalog' | 'specimen-workflow' | 'analyzer-channel' | 'reference-ranges'
   >('test-catalog');
   const [error, setError] = useState<string | null>(null);
   const [facilityDetail, setFacilityDetail] = useState<FacilityDetail | null>(null);
   const [isSavingIdentity, setIsSavingIdentity] = useState(false);
+  const [laboratoryName, setLaboratoryName] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [licenseIssuer, setLicenseIssuer] = useState('');
+  const [licenseIssueDate, setLicenseIssueDate] = useState('');
+  const [licenseExpiryDate, setLicenseExpiryDate] = useState('');
+  const [isFacilitySheetOpen, setIsFacilitySheetOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+  const [selectedArchetype, setSelectedArchetype] = useState<LabArchetype | null>(null);
+  const [activeStepKey, setActiveStepKey] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
     setIsLoading(true);
@@ -58,17 +101,18 @@ export default function LISStandaloneOnboardingPage() {
       if (primaryFacility) {
         const detail = await facilitiesApi.get(primaryFacility.id);
         setFacilityDetail(detail);
-      }
-
-      if (data.complete) {
-        router.push('/laboratory');
+        setLaboratoryName(detail.name || user?.facility?.name || '');
+        setLicenseNumber(detail.laboratory_license_number ?? '');
+        setLicenseIssuer(detail.laboratory_license_issuer ?? '');
+        setLicenseIssueDate((detail.laboratory_license_issue_date ?? '').slice(0, 10));
+        setLicenseExpiryDate((detail.laboratory_license_expiry ?? '').slice(0, 10));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load LIS onboarding status.');
     } finally {
       setIsLoading(false);
     }
-  }, [router]);
+  }, [user?.facility?.name]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -85,23 +129,56 @@ export default function LISStandaloneOnboardingPage() {
     return { done: done.length, total: required.length };
   }, [status]);
 
+  const steps = useMemo(() => status?.steps ?? [], [status]);
+  const requiredSteps = useMemo(() => steps.filter((step) => step.required), [steps]);
+  const nextStep = requiredSteps.find((step) => !step.done) ?? steps.find((step) => !step.done);
+
+  useEffect(() => {
+    if (!steps.length) {
+      setActiveStepKey(null);
+      return;
+    }
+
+    if (activeStepKey && steps.some((step) => step.key === activeStepKey)) {
+      return;
+    }
+
+    setActiveStepKey(nextStep?.key ?? steps[0]?.key ?? null);
+  }, [steps, nextStep, activeStepKey]);
+
   const handleSaveIdentity = async () => {
-    if (!facilityDetail) return;
     setIsSavingIdentity(true);
     setError(null);
     try {
-      const updated = await facilitiesApi.update(facilityDetail.id, {
-        dha_license_number: facilityDetail.dha_license_number,
-        dha_license_issue_date: facilityDetail.dha_license_issue_date,
-        dha_license_expiry: facilityDetail.dha_license_expiry,
+      const updated = await standaloneLisApi.updateOnboardingFacilityDetails({
+        name: laboratoryName,
+        laboratory_license_number: licenseNumber,
+        laboratory_license_issuer: licenseIssuer,
+        laboratory_license_issue_date: licenseIssueDate || null,
+        laboratory_license_expiry: licenseExpiryDate || null,
       });
       setFacilityDetail(updated);
+      setLaboratoryName(updated.name ?? '');
+      setLicenseNumber(updated.laboratory_license_number ?? '');
+      setLicenseIssuer(updated.laboratory_license_issuer ?? '');
+      setLicenseIssueDate((updated.laboratory_license_issue_date ?? '').slice(0, 10));
+      setLicenseExpiryDate((updated.laboratory_license_expiry ?? '').slice(0, 10));
+      setIsFacilitySheetOpen(false);
       await fetchStatus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save lab identity and licensing details.');
+      setError(
+        err instanceof Error ? err.message : 'Could not save lab identity and licensing details.'
+      );
     } finally {
       setIsSavingIdentity(false);
     }
+  };
+
+  const handleOpenFacilitySheet = () => {
+    setLaboratoryName(
+      (currentName) => currentName || facilityDetail?.name || user?.facility?.name || ''
+    );
+    setIsFacilitySheetOpen(true);
   };
 
   const handleInvite = async () => {
@@ -151,24 +228,28 @@ export default function LISStandaloneOnboardingPage() {
     try {
       if (importType === 'test-catalog') {
         const result = await standaloneLisApi.importTestCatalog(file);
-        setImportResult(
-          `Imported test catalog: ${result.created} created, ${result.updated} updated, ${result.error_count} row errors.`
-        );
+        setImportResult({
+          summary: `Imported test catalog: ${result.created} created, ${result.updated} updated, ${result.error_count} row errors.`,
+          errors: result.errors,
+        });
       } else if (importType === 'specimen-workflow') {
         const result = await standaloneLisApi.importSpecimenWorkflow(file);
-        setImportResult(
-          `Imported workflow settings: ${result.updated} fields updated, ${result.error_count} row errors.`
-        );
+        setImportResult({
+          summary: `Imported workflow settings: ${result.updated} fields updated, ${result.error_count} row errors.`,
+          errors: result.errors,
+        });
       } else if (importType === 'analyzer-channel') {
         const result = await standaloneLisApi.importAnalyzerChannel(file);
-        setImportResult(
-          `Imported analyzer channels: ${result.created_instruments} instruments, ${result.created_channels} channels created, ${result.updated_channels} channels updated, ${result.error_count} row errors.`
-        );
+        setImportResult({
+          summary: `Imported analyzer channels: ${result.created_instruments} instruments, ${result.created_channels} channels created, ${result.updated_channels} channels updated, ${result.error_count} row errors.`,
+          errors: result.errors,
+        });
       } else {
         const result = await standaloneLisApi.importReferenceRanges(file);
-        setImportResult(
-          `Imported reference ranges: ${result.updated} rows updated, ${result.error_count} row errors.`
-        );
+        setImportResult({
+          summary: `Imported reference ranges: ${result.updated} rows updated, ${result.error_count} row errors.`,
+          errors: result.errors,
+        });
       }
       await fetchStatus();
     } catch (err) {
@@ -179,13 +260,14 @@ export default function LISStandaloneOnboardingPage() {
     }
   };
 
-  const handleSeed = async (archetype: 'small' | 'medium' | 'reference') => {
+  const handleSeed = async (archetype: LabArchetype) => {
     setIsSeeding(true);
     setError(null);
     setSeedResult(null);
     try {
       const result = await standaloneLisApi.seedOnboardingDefaults(archetype);
       setSeedResult(result);
+      setSelectedArchetype(null);
       await fetchStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not seed LIS defaults.');
@@ -202,219 +284,418 @@ export default function LISStandaloneOnboardingPage() {
     );
   }
 
+  const currentStep =
+    steps.find((step) => step.key === activeStepKey) ?? nextStep ?? steps.find((step) => !step.done);
+  const currentRequiredIndex = currentStep
+    ? requiredSteps.findIndex((step) => step.key === currentStep.key)
+    : -1;
+  const hasPreviousRequiredStep = currentRequiredIndex > 0;
+  const hasNextRequiredStep =
+    currentRequiredIndex >= 0 && currentRequiredIndex < requiredSteps.length - 1;
+  const totalMinutes = steps
+    .filter((step) => step.required && !step.done)
+    .reduce((total, step) => total + step.estimated_minutes, 0);
+
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
       <PageHeader
-        title="LIS Standalone Onboarding"
-        helpContent="Complete required setup steps before using standalone LIS operational workflows."
+        title="Set up your laboratory"
+        helpContent="Complete the required foundations once. You can add more tests, instruments, and team members later."
       />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Final WS2 Completion Checklist</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>- Guided setup for identity, catalog, workflow, analyzer channels, pricing, and team access</p>
-          <p>- CSV templates/imports for all operational onboarding datasets</p>
-          <p>- Operational-ready target: complete required setup using defaults/sample CSVs in under 30 minutes</p>
-        </CardContent>
-      </Card>
-
-      {error && (
+      {error ? (
         <Card className="border-destructive/30 bg-destructive/5">
-          <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <CardContent className="flex gap-2 p-4 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             <p>{error}</p>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Setup Progress</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Required steps complete: {requiredProgress.done}/{requiredProgress.total}
-          </p>
-
-          {seedResult && (
-            <Card className="border-emerald-300 bg-emerald-50/60">
-              <CardContent className="p-3 text-sm text-emerald-800">
-                Seeded <strong>{seedResult.archetype}</strong> defaults: {seedResult.created_tests} tests,{' '}
-                {seedResult.created_instruments} instruments, {seedResult.created_channels} channels.
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="space-y-2">
-            {(status?.steps ?? []).map((step) => (
-              <div
-                key={step.key}
-                className="flex items-center justify-between rounded-md border border-border px-3 py-2"
-              >
-                <div className="flex items-center gap-2">
+      <Card className="relative overflow-hidden border-primary/20">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_48%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_42%)]"
+          aria-hidden="true"
+        />
+        <CardContent className="relative space-y-4 p-4 sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold">
+                {requiredProgress.done === requiredProgress.total
+                  ? 'Your laboratory is ready'
+                  : `Step ${requiredProgress.done + 1} of ${requiredProgress.total}`}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {requiredProgress.done}/{requiredProgress.total} required foundations complete
+              </p>
+            </div>
+            {totalMinutes ? (
+              <Badge variant="secondary" className="w-fit gap-1">
+                <Clock3 className="h-3.5 w-3.5" />
+                About {totalMinutes} min left
+              </Badge>
+            ) : (
+              <Badge className="w-fit">Ready to launch</Badge>
+            )}
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-primary transition-all"
+              style={{
+                width: `${requiredProgress.total ? (requiredProgress.done / requiredProgress.total) * 100 : 100}%`,
+              }}
+            />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {steps
+              .filter((step) => step.required)
+              .map((step, index) => (
+                <div key={step.key} className="flex items-center gap-2 text-xs">
                   <CheckCircle2
-                    className={`h-4 w-4 ${step.done ? 'text-emerald-600' : 'text-muted-foreground'}`}
+                    className={`h-4 w-4 shrink-0 ${step.done ? 'text-emerald-600' : index === requiredProgress.done ? 'text-primary' : 'text-muted-foreground'}`}
                   />
-                  <span className="text-sm">{step.label}</span>
-                  {step.required ? <Badge variant="secondary">Required</Badge> : null}
+                  <span className={step.done ? 'text-foreground' : 'text-muted-foreground'}>
+                    {step.label}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => router.push(STEP_ROUTES[step.key] || '/laboratory')}
-                  >
-                    Open
-                  </Button>
-                  <Badge variant={step.done ? 'default' : 'outline'}>
-                    {step.done ? 'Done' : 'Pending'}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="rounded-md border border-border p-3">
-            <p className="mb-2 text-sm font-medium">Step 1: Facility/Lab identity and licensing</p>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <input
-                type="text"
-                value={facilityDetail?.dha_license_number ?? ''}
-                onChange={(event) =>
-                  setFacilityDetail((prev) =>
-                    prev ? { ...prev, dha_license_number: event.target.value } : prev
-                  )
-                }
-                placeholder="License number"
-                className="rounded-md border border-border bg-background px-2 py-1 text-sm"
-              />
-              <input
-                type="date"
-                value={(facilityDetail?.dha_license_issue_date ?? '').slice(0, 10)}
-                onChange={(event) =>
-                  setFacilityDetail((prev) =>
-                    prev ? { ...prev, dha_license_issue_date: event.target.value } : prev
-                  )
-                }
-                className="rounded-md border border-border bg-background px-2 py-1 text-sm"
-              />
-              <input
-                type="date"
-                value={(facilityDetail?.dha_license_expiry ?? '').slice(0, 10)}
-                onChange={(event) =>
-                  setFacilityDetail((prev) =>
-                    prev ? { ...prev, dha_license_expiry: event.target.value } : prev
-                  )
-                }
-                className="rounded-md border border-border bg-background px-2 py-1 text-sm"
-              />
-            </div>
-            <div className="mt-2 flex justify-end">
-              <Button variant="outline" onClick={handleSaveIdentity} disabled={isSavingIdentity}>
-                {isSavingIdentity ? 'Saving...' : 'Save Identity'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="rounded-md border border-border p-3">
-            <p className="mb-2 text-sm font-medium">Quick start defaults</p>
-            <p className="mb-3 text-xs text-muted-foreground">
-              Seed sample data for a lab archetype to complete setup faster.
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button variant="outline" disabled={isSeeding} onClick={() => handleSeed('small')}>
-                Seed Small Lab
-              </Button>
-              <Button variant="outline" disabled={isSeeding} onClick={() => handleSeed('medium')}>
-                Seed Medium Lab
-              </Button>
-              <Button variant="outline" disabled={isSeeding} onClick={() => handleSeed('reference')}>
-                Seed Reference Lab
-              </Button>
-            </div>
-          </div>
-
-          <div className="rounded-md border border-border p-3">
-            <p className="mb-2 text-sm font-medium">CSV templates and import</p>
-            <p className="mb-3 text-xs text-muted-foreground">
-              Download onboarding templates and import test catalog data from CSV.
-            </p>
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button variant="outline" onClick={() => handleDownloadTemplate('test-catalog')}>
-                Template: Test Catalog
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleDownloadTemplate('specimen-workflow')}
-              >
-                Template: Workflow
-              </Button>
-              <Button variant="outline" onClick={() => handleDownloadTemplate('analyzer-channel')}>
-                Template: Analyzer
-              </Button>
-              <Button variant="outline" onClick={() => handleDownloadTemplate('reference-ranges')}>
-                Template: Reference Ranges
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={importType}
-                onChange={(event) =>
-                  setImportType(
-                    event.target.value as
-                      | 'test-catalog'
-                      | 'specimen-workflow'
-                      | 'analyzer-channel'
-                      | 'reference-ranges'
-                  )
-                }
-                className="rounded-md border border-border bg-background px-2 py-1 text-sm"
-              >
-                <option value="test-catalog">Import: Test Catalog</option>
-                <option value="specimen-workflow">Import: Workflow Settings</option>
-                <option value="analyzer-channel">Import: Analyzer Channels</option>
-                <option value="reference-ranges">Import: Reference Ranges</option>
-              </select>
-              <input
-                type="file"
-                accept=".csv,text/csv"
-                onChange={handleImportTestCatalog}
-                disabled={isImporting}
-                className="text-sm"
-              />
-              {isImporting ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
-            </div>
-            {importResult ? <p className="mt-2 text-xs text-muted-foreground">{importResult}</p> : null}
-          </div>
-
-          <div className="rounded-md border border-border p-3">
-            <p className="mb-2 text-sm font-medium">Step 6: Team invitations and permissions</p>
-            <p className="mb-3 text-xs text-muted-foreground">
-              Invite at least one teammate for operational handoff and role assignment.
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                type="email"
-                value={inviteEmail}
-                onChange={(event) => setInviteEmail(event.target.value)}
-                placeholder="staff@facility.example"
-                className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
-              />
-              <Button onClick={handleInvite} disabled={isInviting || !inviteEmail.trim()}>
-                {isInviting ? 'Sending...' : 'Send Invitation'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={fetchStatus} disabled={isSeeding}>
-              Refresh
-            </Button>
+              ))}
           </div>
         </CardContent>
       </Card>
+
+      {seedResult ? (
+        <Card className="border-emerald-300 bg-emerald-50/60">
+          <CardContent className="p-4 text-sm text-emerald-900">
+            Starter data added for the{' '}
+            <strong>{ARCHETYPES[seedResult.archetype].title.toLowerCase()}</strong>:{' '}
+            {seedResult.created_tests} tests, {seedResult.created_instruments} instruments, and{' '}
+            {seedResult.created_channels} channels. Review the prices and workflow before going
+            live.
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {requiredProgress.done === requiredProgress.total ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Review and launch</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Required configuration is complete. Optional analyzer integration and team invitations
+              can be finished later without blocking manual laboratory work.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {steps.map((step) => (
+                <div
+                  key={step.key}
+                  className="flex items-center justify-between rounded-md border p-3 text-sm"
+                >
+                  <span>{step.label}</span>
+                  <Badge variant={step.done ? 'default' : 'outline'}>
+                    {step.done ? 'Configured' : 'Optional'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+            <Button onClick={() => router.push('/laboratory')}>Open laboratory workspace</Button>
+          </CardContent>
+        </Card>
+      ) : currentStep ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle>{currentStep.label}</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">{currentStep.description}</p>
+              </div>
+              <Badge variant="secondary" className="shrink-0">
+                {currentStep.estimated_minutes} min
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {currentStep.missing_items.length ? (
+              <div className="rounded-md bg-muted/60 p-3 text-sm">
+                <p className="font-medium">To finish this step</p>
+                <p className="mt-1 text-muted-foreground">
+                  {currentStep.missing_items.join(', ')}.
+                </p>
+              </div>
+            ) : null}
+            {currentStep.key === 'lab_identity' ? (
+              <div className="space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button onClick={handleOpenFacilitySheet}>Edit laboratory details</Button>
+                </div>
+              </div>
+            ) : null}
+            {currentStep.key === 'test_catalog' ? (
+              <div className="space-y-4">
+                <div>
+                  <p className="font-medium">Choose a setup path</p>
+                  <p className="text-sm text-muted-foreground">
+                    Use a safe starter catalog, bring in an existing spreadsheet, or configure tests
+                    manually.
+                  </p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {(Object.keys(ARCHETYPES) as LabArchetype[]).map((archetype) => (
+                    <button
+                      key={archetype}
+                      type="button"
+                      onClick={() => setSelectedArchetype(archetype)}
+                      className={`rounded-lg border p-4 text-left transition-colors ${selectedArchetype === archetype ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
+                    >
+                      <Sparkles className="mb-3 h-4 w-4 text-primary" />
+                      <p className="font-medium">{ARCHETYPES[archetype].title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {ARCHETYPES[archetype].description}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+                {selectedArchetype ? (
+                  <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+                    <p>{ARCHETYPES[selectedArchetype].detail}</p>
+                    <div className="mt-3 flex gap-2">
+                      <Button onClick={() => handleSeed(selectedArchetype)} disabled={isSeeding}>
+                        {isSeeding ? 'Adding defaults...' : 'Add these defaults'}
+                      </Button>
+                      <Button variant="ghost" onClick={() => setSelectedArchetype(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row">
+                  <Button variant="outline" onClick={() => handleDownloadTemplate('test-catalog')}>
+                    Download catalog template
+                  </Button>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onClick={() => setImportType('test-catalog')}
+                    onChange={handleImportTestCatalog}
+                    disabled={isImporting}
+                    className="text-sm"
+                  />
+                  <Button variant="ghost" onClick={() => router.push('/laboratory/tests')}>
+                    Configure manually
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {currentStep.key === 'specimen_workflow' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Start with the laboratory workflow settings, or import the workflow you already
+                  use.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button onClick={() => router.push(currentStep.next_action.route)}>
+                    Configure workflow
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownloadTemplate('specimen-workflow')}
+                  >
+                    Download workflow template
+                  </Button>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onClick={() => setImportType('specimen-workflow')}
+                    onChange={handleImportTestCatalog}
+                    disabled={isImporting}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            ) : null}
+            {currentStep.key === 'pricing_basics' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Review cash prices for your active tests. You can add payer-specific rules later.
+                </p>
+                <Button onClick={() => router.push(currentStep.next_action.route)}>
+                  Set test prices
+                </Button>
+              </div>
+            ) : null}
+            {currentStep.key === 'instrument_channels' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Analyzer connection is optional. Select manual entry if you do not have an
+                  analyzer yet.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button onClick={() => router.push(currentStep.next_action.route)}>
+                    Connect an analyzer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownloadTemplate('analyzer-channel')}
+                  >
+                    Download analyzer template
+                  </Button>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onClick={() => setImportType('analyzer-channel')}
+                    onChange={handleImportTestCatalog}
+                    disabled={isImporting}
+                    className="text-sm"
+                  />
+                  <Button variant="ghost" onClick={fetchStatus}>
+                    Use manual entry
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {currentStep.key === 'team_access' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Invite a colleague now, or continue and complete handover later.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(event) => setInviteEmail(event.target.value)}
+                    placeholder="staff@facility.example"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  />
+                  <Button onClick={handleInvite} disabled={isInviting || !inviteEmail.trim()}>
+                    {isInviting ? 'Sending...' : 'Send invitation'}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {importResult ? (
+              <div className="space-y-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                <p>{importResult.summary}</p>
+                {importResult.errors.length ? (
+                  <ul className="list-disc space-y-1 pl-5 text-destructive">
+                    {importResult.errors.slice(0, 5).map((rowError) => (
+                      <li key={`${rowError.row}-${rowError.error}`}>
+                        Row {rowError.row}: {rowError.error}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {importResult.errors.length > 5 ? (
+                  <p>Showing the first 5 row errors. Correct the CSV and import it again.</p>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-between">
+              <Button variant="ghost" onClick={() => router.push('/laboratory')}>
+                <ChevronLeft className="mr-1 h-4 w-4" />
+                Save and finish later
+              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!hasPreviousRequiredStep) return;
+                    setActiveStepKey(requiredSteps[currentRequiredIndex - 1]?.key ?? null);
+                  }}
+                  disabled={!hasPreviousRequiredStep}
+                >
+                  <ChevronLeft className="mr-1 h-4 w-4" />
+                  Previous step
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!hasNextRequiredStep) return;
+                    setActiveStepKey(requiredSteps[currentRequiredIndex + 1]?.key ?? null);
+                  }}
+                  disabled={!hasNextRequiredStep}
+                >
+                  Next step
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+      <Sheet open={isFacilitySheetOpen} onOpenChange={setIsFacilitySheetOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>Laboratory details</SheetTitle>
+            <SheetDescription>
+              Update the standalone laboratory name and regulator-issued licence details used on
+              reports.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="standalone-laboratory-name">Laboratory name</Label>
+              <input
+                id="standalone-laboratory-name"
+                type="text"
+                value={laboratoryName}
+                onChange={(event) => setLaboratoryName(event.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="laboratory-license-issuer">Licence issuer</Label>
+              <input
+                id="laboratory-license-issuer"
+                type="text"
+                value={licenseIssuer}
+                onChange={(event) => setLicenseIssuer(event.target.value)}
+                placeholder="e.g. KMLTTB"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="laboratory-license-number">Laboratory licence number</Label>
+              <input
+                id="laboratory-license-number"
+                type="text"
+                value={licenseNumber}
+                onChange={(event) => setLicenseNumber(event.target.value)}
+                placeholder="Enter licence number"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="laboratory-license-issue-date">Licence issue date</Label>
+                <input
+                  id="laboratory-license-issue-date"
+                  type="date"
+                  value={licenseIssueDate}
+                  onChange={(event) => setLicenseIssueDate(event.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="laboratory-license-expiry-date">Licence expiry date</Label>
+                <input
+                  id="laboratory-license-expiry-date"
+                  type="date"
+                  value={licenseExpiryDate}
+                  onChange={(event) => setLicenseExpiryDate(event.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+          <SheetFooter className="mt-6">
+            <Button variant="outline" onClick={() => setIsFacilitySheetOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveIdentity} disabled={isSavingIdentity}>
+              {isSavingIdentity ? 'Saving...' : 'Save details'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
