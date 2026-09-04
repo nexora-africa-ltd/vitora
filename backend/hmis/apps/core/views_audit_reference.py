@@ -145,6 +145,8 @@ def _build_user_info(user) -> dict:
     role_display = None
     phone_number = None
     facility_data = None
+    lis_onboarding_complete = True
+    lis_onboarding_completed_at = None
 
     if hasattr(user, "staff_profile"):
         try:
@@ -167,6 +169,13 @@ def _build_user_info(user) -> dict:
                 deployment_profile = (
                     "lis_standalone" if operating_mode == "STANDALONE_LAB" else "full_hmis"
                 )
+                if operating_mode == "STANDALONE_LAB":
+                    lis_onboarding_complete = fac.lis_onboarding_complete
+                    lis_onboarding_completed_at = (
+                        fac.lis_onboarding_completed_at.isoformat()
+                        if fac.lis_onboarding_completed_at
+                        else None
+                    )
                 facility_data = {
                     "id": fac.id,
                     "mfl_code": fac.mfl_code,
@@ -252,6 +261,8 @@ def _build_user_info(user) -> dict:
         "permissions": list(user.get_all_permissions()),
         "facility": facility_data,
         "onboarding_complete": onboarding_complete,
+        "lis_onboarding_complete": lis_onboarding_complete,
+        "lis_onboarding_completed_at": lis_onboarding_completed_at,
         "memberships": _build_memberships(user),
         **subscription_data,
     }

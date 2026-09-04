@@ -1511,6 +1511,15 @@ export const laboratoryApi = {
       context: 'laboratoryApi.updateWorkflowSettings',
     });
   },
+
+  async createWorkflowSettings(
+    data: Partial<LabWorkflowSettings>
+  ): Promise<LabWorkflowSettings> {
+    const response = await apiClient.post('/api/lab/settings/workflow/', data);
+    return parseResponse(LabWorkflowSettingsSchema, response.data, {
+      context: 'laboratoryApi.createWorkflowSettings',
+    });
+  },
 };
 
 // ============================================================================

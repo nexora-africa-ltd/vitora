@@ -18,19 +18,28 @@ export function OnboardingBanner() {
   const { user } = useAuth();
   const [dismissed, setDismissed] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [setupRoute, setSetupRoute] = useState('/onboarding');
 
   useEffect(() => {
     if (!user) return;
 
     // Only show for admin roles with incomplete onboarding
     const isAdmin = ADMIN_ROLES.includes(user.role || '');
-    if (!isAdmin || user.onboarding_complete !== false) return;
+    const isLisStandalone =
+      user.facility?.operating_mode === 'STANDALONE_LAB' ||
+      user.facility?.deployment_profile === 'lis_standalone';
+    const onboardingIncomplete = isLisStandalone
+      ? user.lis_onboarding_complete === false
+      : user.onboarding_complete === false;
+    if (!isAdmin || !onboardingIncomplete) return;
 
     // Check if dismissed this session
     if (sessionStorage.getItem(ONBOARDING_BANNER_DISMISSED_KEY) === 'true') {
       setDismissed(true);
       return;
     }
+
+    setSetupRoute(isLisStandalone ? '/onboarding/lis-standalone' : '/onboarding');
 
     setVisible(true);
   }, [user]);
@@ -47,8 +56,9 @@ export function OnboardingBanner() {
       <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400" />
       <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm text-blue-800 dark:text-blue-200">
-          Your organization setup is incomplete. Complete the onboarding checklist to unlock all
-          features.
+          {setupRoute === '/onboarding/lis-standalone'
+            ? 'Your laboratory setup is incomplete. Complete LIS onboarding to unlock standalone workflows.'
+            : 'Your organization setup is incomplete. Complete the onboarding checklist to unlock all features.'}
         </span>
         <span className="flex shrink-0 items-center gap-2">
           <Button
@@ -57,7 +67,7 @@ export function OnboardingBanner() {
             variant="outline"
             className="border-blue-600 text-blue-700 hover:bg-blue-100 dark:border-blue-400 dark:text-blue-300 dark:hover:bg-blue-900/30"
           >
-            <Link href="/onboarding">Complete Setup</Link>
+            <Link href={setupRoute}>Complete Setup</Link>
           </Button>
           <Button
             size="sm"

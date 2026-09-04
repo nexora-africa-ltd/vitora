@@ -77,6 +77,8 @@ export interface User {
   national_id?: string | null;
   facility?: UserFacility | null; // Primary facility with module capabilities
   onboarding_complete?: boolean; // Whether org has completed onboarding
+  lis_onboarding_complete?: boolean; // Whether LIS standalone onboarding is complete for primary facility
+  lis_onboarding_completed_at?: string | null; // ISO completion timestamp for LIS standalone onboarding
   memberships?: OrgMembership[]; // All active org memberships for multi-org users
   // Subscription / plan data (from organization)
   subscription_tier?: string | null; // e.g. FREE/BASIC/PROFESSIONAL/ENTERPRISE/*_STANDALONE
@@ -260,6 +262,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           typeof userInfo.onboarding_complete === 'boolean'
             ? userInfo.onboarding_complete
             : undefined,
+        lis_onboarding_complete:
+          typeof userInfo.lis_onboarding_complete === 'boolean'
+            ? userInfo.lis_onboarding_complete
+            : undefined,
+        lis_onboarding_completed_at:
+          typeof userInfo.lis_onboarding_completed_at === 'string'
+            ? userInfo.lis_onboarding_completed_at
+            : null,
         memberships: Array.isArray(userInfo.memberships)
           ? (userInfo.memberships as OrgMembership[])
           : undefined,
@@ -546,6 +556,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phone_number: data.user.phone_number ?? undefined,
           facility: data.user.facility ?? null,
           onboarding_complete: data.user.onboarding_complete ?? undefined,
+          lis_onboarding_complete: data.user.lis_onboarding_complete ?? undefined,
+          lis_onboarding_completed_at: data.user.lis_onboarding_completed_at ?? null,
           memberships: Array.isArray(data.user.memberships) ? data.user.memberships : undefined,
           subscription_tier: data.user.subscription_tier ?? null,
           plan_features:
@@ -650,6 +662,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone_number: data.user.phone_number ?? undefined,
         facility: data.user.facility ?? null,
         onboarding_complete: data.user.onboarding_complete ?? undefined,
+        lis_onboarding_complete: data.user.lis_onboarding_complete ?? undefined,
+        lis_onboarding_completed_at: data.user.lis_onboarding_completed_at ?? null,
         memberships: Array.isArray(data.user.memberships) ? data.user.memberships : undefined,
         subscription_tier: data.user.subscription_tier ?? null,
         plan_features:

@@ -1226,6 +1226,15 @@ function WorkflowSettingsTab({ queryClient }: { queryClient: ReturnType<typeof u
     onError: () => toast.error('Failed to save'),
   });
 
+  const create = useMutation({
+    mutationFn: (data: Partial<LabWorkflowSettings>) => laboratoryApi.createWorkflowSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-settings'] });
+      toast.success('Workflow settings initialized');
+    },
+    onError: () => toast.error('Failed to initialize workflow settings'),
+  });
+
   if (isLoading)
     return (
       <Card>
@@ -1237,10 +1246,19 @@ function WorkflowSettingsTab({ queryClient }: { queryClient: ReturnType<typeof u
       <Card>
         <CardContent className="py-8 text-center">
           <p className="mb-3 text-muted-foreground">Failed to load workflow settings.</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Retry
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Retry
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => create.mutate({})}
+              disabled={create.isPending}
+            >
+              {create.isPending ? 'Initializing...' : 'Initialize Workflow Settings'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );

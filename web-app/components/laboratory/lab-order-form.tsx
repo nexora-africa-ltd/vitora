@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -36,9 +37,11 @@ import {
   LabOrderCreateData,
   OrderType,
   LabPriority,
+  ReferralLab,
   TestCatalogListItem,
 } from '@/lib/types/laboratory';
 import { useCreateLabOrder, useSubmitLabOrder, useTestCatalog } from '@/lib/hooks/use-laboratory';
+import { laboratoryApi } from '@/lib/api/laboratory';
 import { useBloodUnits } from '@/lib/hooks/use-blood-bank';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/lib/hooks';
@@ -217,12 +220,18 @@ export function LabOrderForm({
   const items = form.watch('items');
   const linkedBloodUnitId = form.watch('blood_bank_unit');
   const bloodBankModuleEnabled = hasModule('blood_bank');
+  const [externalLabSelection, setExternalLabSelection] = useState<string>('freeform');
 
   const { data: bloodUnits, isLoading: loadingBloodUnits } = useBloodUnits({ page_size: 200 });
   const { data: testCatalogPage } = useTestCatalog({
     is_active: true,
     available_in_house: true,
     page_size: 200,
+  });
+  const { data: referralLabs = [], isLoading: loadingReferralLabs } = useQuery<ReferralLab[]>({
+    queryKey: ['lab-referral-labs', 'active-only'],
+    queryFn: () => laboratoryApi.listReferralLabs({ is_active: true }),
+    enabled: orderType === 'EXTERNAL',
   });
 
   const selectableBloodUnits = (bloodUnits?.results || []).filter(
@@ -237,6 +246,13 @@ export function LabOrderForm({
   useEffect(() => {
     form.setValue('billing_patient', billingPatientId || undefined);
   }, [billingPatientId, form]);
+
+  useEffect(() => {
+    if (orderType !== 'EXTERNAL') {
+      setExternalLabSelection('freeform');
+      form.setValue('external_lab', undefined);
+    }
+  }, [form, orderType]);
 
   useEffect(() => {
     form.setValue('blood_bank_unit', bloodBankUnitId || undefined);
@@ -647,22 +663,66 @@ export function LabOrderForm({
             </div>
 
             {orderType === 'EXTERNAL' && (
-              <FormField
-                control={form.control}
-                name="external_lab"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-center gap-2">
-                      <FormLabel>External Lab Partner</FormLabel>
-                      <HelpPopover content="Specify the external laboratory for sample referral." />
-                    </div>
-                    <FormControl>
-                      <Input placeholder="Enter external lab name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              <div className="space-y-4">
+                <FormItem>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>External Lab Partner</FormLabel>
+                    <HelpPopover content="Choose a configured referral lab, or switch to manual entry for one-off partners." />
+                  </div>
+                  <FormControl>
+                    <Select
+                      value={externalLabSelection}
+                      onValueChange={(value) => {
+                        setExternalLabSelection(value);
+                        if (value === 'freeform') {
+                          form.setValue('external_lab', '', { shouldValidate: true });
+                          return;
+                        }
+                        const selectedLab = referralLabs.find((lab) => `lab:${lab.id}` === value);
+                        if (selectedLab) {
+                          form.setValue('external_lab', selectedLab.name, { shouldValidate: true });
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select referral lab source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="freeform">Other / Enter manually</SelectItem>
+                        {referralLabs.map((lab) => (
+                          <SelectItem key={lab.id} value={`lab:${lab.id}`}>
+                            {lab.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  {loadingReferralLabs && (
+                    <p className="text-xs text-muted-foreground">Loading referral labs...</p>
+                  )}
+                  {!loadingReferralLabs && referralLabs.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      No active referral labs configured yet. Use manual entry or configure labs in
+                      Laboratory Settings.
+                    </p>
+                  )}
+                </FormItem>
+
+                {externalLabSelection === 'freeform' && (
+                  <FormField
+                    control={form.control}
+                    name="external_lab"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input placeholder="Enter external lab name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 )}
-              />
+              </div>
             )}
 
             {orderType === 'EXTERNAL' && (

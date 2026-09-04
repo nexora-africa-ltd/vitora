@@ -86,6 +86,7 @@ export default function LISStandaloneOnboardingPage() {
   const [isFacilitySheetOpen, setIsFacilitySheetOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [selectedArchetype, setSelectedArchetype] = useState<LabArchetype | null>(null);
   const [activeStepKey, setActiveStepKey] = useState<string | null>(null);
 
@@ -276,6 +277,19 @@ export default function LISStandaloneOnboardingPage() {
     }
   };
 
+  const handleCompleteOnboarding = async () => {
+    setIsCompleting(true);
+    setError(null);
+    try {
+      const result = await standaloneLisApi.completeOnboarding();
+      setStatus(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not complete LIS onboarding.');
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -397,7 +411,31 @@ export default function LISStandaloneOnboardingPage() {
                 </div>
               ))}
             </div>
-            <Button onClick={() => router.push('/laboratory')}>Open laboratory workspace</Button>
+            {!status?.complete ? (
+              <div className="space-y-3 rounded-md border bg-muted/40 p-3">
+                <p className="text-sm text-muted-foreground">
+                  Required steps are complete. Finish onboarding to unlock the full standalone
+                  laboratory workspace.
+                </p>
+                <Button onClick={handleCompleteOnboarding} disabled={isCompleting}>
+                  {isCompleting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Finishing onboarding...
+                    </>
+                  ) : (
+                    'Finish onboarding'
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3 rounded-md border border-emerald-300 bg-emerald-50/60 dark:bg-emerald-900/30 dark:text-emerald-50 p-3">
+                <p className="text-sm text-emerald-900">
+                  Onboarding complete{status.completed_at ? ` on ${new Date(status.completed_at).toLocaleString()}` : ''}.
+                </p>
+                <Button onClick={() => router.push('/laboratory')}>Open laboratory workspace</Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : currentStep ? (
@@ -491,24 +529,33 @@ export default function LISStandaloneOnboardingPage() {
                   Start with the laboratory workflow settings, or import the workflow you already
                   use.
                 </p>
+                {currentStep.done ? (
+                  <div className="rounded-md border border-emerald-300 bg-emerald-50/60 p-3 text-sm text-emerald-900">
+                    Workflow settings are already configured for this facility.
+                  </div>
+                ) : null}
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button onClick={() => router.push(currentStep.next_action.route)}>
-                    Configure workflow
+                    {currentStep.done ? 'Review workflow settings' : 'Configure workflow'}
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleDownloadTemplate('specimen-workflow')}
-                  >
-                    Download workflow template
-                  </Button>
-                  <input
-                    type="file"
-                    accept=".csv,text/csv"
-                    onClick={() => setImportType('specimen-workflow')}
-                    onChange={handleImportTestCatalog}
-                    disabled={isImporting}
-                    className="text-sm"
-                  />
+                  {!currentStep.done ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleDownloadTemplate('specimen-workflow')}
+                      >
+                        Download workflow template
+                      </Button>
+                      <input
+                        type="file"
+                        accept=".csv,text/csv"
+                        onClick={() => setImportType('specimen-workflow')}
+                        onChange={handleImportTestCatalog}
+                        disabled={isImporting}
+                        className="text-sm"
+                      />
+                    </>
+                  ) : null}
                 </div>
               </div>
             ) : null}
