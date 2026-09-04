@@ -39,6 +39,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { autoverifyApi } from '@/lib/api/autoverify';
+import { laboratoryApi } from '@/lib/api/laboratory';
+import { HelpPopover } from '@/components/shared/help-popover';
 import type {
   DeltaCheckRule,
   AutoVerifyRule,
@@ -46,6 +48,7 @@ import type {
   AutoVerifyStats,
   AutoVerifyConfig,
 } from '@/lib/types/autoverify';
+import type { TestCatalogListItem } from '@/lib/types/laboratory';
 
 // =============================================================================
 // Helpers
@@ -90,6 +93,28 @@ export default function AutoVerifyPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const queryClient = useQueryClient();
   const [showDeltaRuleDialog, setShowDeltaRuleDialog] = useState(false);
+  const [showVerifyRuleDialog, setShowVerifyRuleDialog] = useState(false);
+  const [seedVerifyTestId, setSeedVerifyTestId] = useState<string>('none');
+  const [deltaForm, setDeltaForm] = useState({
+    test: '',
+    check_type: 'PERCENT' as 'PERCENT' | 'ABSOLUTE' | 'BOTH',
+    threshold_percent: '20',
+    threshold_absolute: '',
+    lookback_hours: '72',
+    action: 'FLAG_FOR_REVIEW' as 'FLAG_FOR_REVIEW' | 'BLOCK_RELEASE' | 'ALERT_ONLY',
+  });
+  const [verifyForm, setVerifyForm] = useState({
+    test: '',
+    condition_type: 'IN_REFERENCE_RANGE' as
+      | 'IN_REFERENCE_RANGE'
+      | 'DELTA_CHECK_PASS'
+      | 'QC_IN_CONTROL'
+      | 'NO_CRITICAL_FLAG'
+      | 'SPECIMEN_AGE_OK'
+      | 'NUMERIC_RESULT'
+      | 'NOT_AMENDED',
+    priority: '1',
+  });
 
   // Queries
   const { data: stats } = useQuery({
@@ -122,6 +147,11 @@ export default function AutoVerifyPage() {
     queryFn: () => autoverifyApi.listDeltaResults(),
   });
 
+  const { data: testsData } = useQuery({
+    queryKey: ['autoverify-tests'],
+    queryFn: () => laboratoryApi.listTests({ is_active: true, page_size: 200 }),
+  });
+
   // Mutations
   const toggleConfig = useMutation({
     mutationFn: (enabled: boolean) => {
@@ -136,6 +166,32 @@ export default function AutoVerifyPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['autoverify-delta-rules'] }),
   });
 
+  const createDeltaRule = useMutation({
+    mutationFn: () =>
+      autoverifyApi.createDeltaRule({
+        test: Number(deltaForm.test),
+        check_type: deltaForm.check_type,
+        threshold_percent:
+          deltaForm.check_type === 'ABSOLUTE' ? null : Number(deltaForm.threshold_percent),
+        threshold_absolute:
+          deltaForm.check_type === 'PERCENT' ? null : Number(deltaForm.threshold_absolute),
+        lookback_hours: Number(deltaForm.lookback_hours),
+        action: deltaForm.action,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['autoverify-delta-rules'] });
+      setShowDeltaRuleDialog(false);
+      setDeltaForm({
+        test: '',
+        check_type: 'PERCENT',
+        threshold_percent: '20',
+        threshold_absolute: '',
+        lookback_hours: '72',
+        action: 'FLAG_FOR_REVIEW',
+      });
+    },
+  });
+
   const deleteDeltaRule = useMutation({
     mutationFn: (id: number) => autoverifyApi.deleteDeltaRule(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['autoverify-delta-rules'] }),
@@ -146,10 +202,37 @@ export default function AutoVerifyPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['autoverify-rules'] }),
   });
 
+  const createVerifyRule = useMutation({
+    mutationFn: () =>
+      autoverifyApi.createRule({
+        test: Number(verifyForm.test),
+        condition_type: verifyForm.condition_type,
+        priority: Number(verifyForm.priority),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['autoverify-rules'] });
+      setShowVerifyRuleDialog(false);
+      setVerifyForm({
+        test: '',
+        condition_type: 'IN_REFERENCE_RANGE',
+        priority: '1',
+      });
+    },
+  });
+
+  const seedVerifyDefaults = useMutation({
+    mutationFn: () => autoverifyApi.seedRuleDefaults(Number(seedVerifyTestId)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['autoverify-rules'] });
+      setSeedVerifyTestId('none');
+    },
+  });
+
   const deltaRules = deltaRulesData?.results || [];
   const autoRules = rulesData?.results || [];
   const logs = logsData?.results || [];
   const deltaResults = deltaResultsData?.results || [];
+  const tests: TestCatalogListItem[] = testsData?.results || [];
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
@@ -274,7 +357,10 @@ export default function AutoVerifyPage() {
           <TabsContent value="delta-rules" className="mt-4">
             <Card>
               <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <CardTitle className="text-base sm:text-lg">Delta Check Rules</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Delta Check Rules</CardTitle>
+                  <HelpPopover content="Set acceptable change thresholds between prior and current values. Failures can be flagged, blocked, or alert-only based on rule action." />
+                </div>
                 <Button
                   size="sm"
                   variant="outline"
@@ -283,6 +369,10 @@ export default function AutoVerifyPage() {
                 >
                   <Zap className="mr-1.5 h-3.5 w-3.5" />
                   Seed Defaults
+                </Button>
+                <Button size="sm" onClick={() => setShowDeltaRuleDialog(true)}>
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add Rule
                 </Button>
               </CardHeader>
               <CardContent>
@@ -377,8 +467,41 @@ export default function AutoVerifyPage() {
           {/* Auto-Verify Rules Tab */}
           <TabsContent value="verify-rules" className="mt-4">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base sm:text-lg">Auto-Verification Rules</CardTitle>
+              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Auto-Verification Rules</CardTitle>
+                  <HelpPopover content="Define conditions a result must pass before system auto-verifies it. Use priority to control evaluation order." />
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="flex items-center gap-2">
+                    <Select value={seedVerifyTestId} onValueChange={setSeedVerifyTestId}>
+                      <SelectTrigger className="w-[220px]">
+                        <SelectValue placeholder="Select test" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Select test for defaults</SelectItem>
+                        {tests.map((test) => (
+                          <SelectItem key={test.id} value={String(test.id)}>
+                            {test.code} - {test.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => seedVerifyDefaults.mutate()}
+                      disabled={seedVerifyTestId === 'none' || seedVerifyDefaults.isPending}
+                    >
+                      <Zap className="mr-1.5 h-3.5 w-3.5" />
+                      Seed Defaults
+                    </Button>
+                  </div>
+                  <Button size="sm" onClick={() => setShowVerifyRuleDialog(true)}>
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    Add Rule
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <ResponsiveTable
@@ -455,7 +578,10 @@ export default function AutoVerifyPage() {
           <TabsContent value="logs" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base sm:text-lg">Verification Log</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Verification Log</CardTitle>
+                  <HelpPopover content="Read-only audit trail of auto-verification evaluations, including outcome and blocking condition when verification is stopped." />
+                </div>
               </CardHeader>
               <CardContent>
                 <ResponsiveTable
@@ -519,7 +645,10 @@ export default function AutoVerifyPage() {
           <TabsContent value="delta-results" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base sm:text-lg">Delta Check Alerts</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg">Delta Check Alerts</CardTitle>
+                  <HelpPopover content="Read-only history of delta-check outcomes showing prior/current values, calculated change, and action taken." />
+                </div>
               </CardHeader>
               <CardContent>
                 <ResponsiveTable
@@ -595,6 +724,214 @@ export default function AutoVerifyPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={showDeltaRuleDialog} onOpenChange={setShowDeltaRuleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Delta Rule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Test</Label>
+              <Select
+                value={deltaForm.test || 'none'}
+                onValueChange={(value) => setDeltaForm((prev) => ({ ...prev, test: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select test" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Select test</SelectItem>
+                  {tests.map((test) => (
+                    <SelectItem key={test.id} value={String(test.id)}>
+                      {test.code} - {test.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Check Type</Label>
+                <Select
+                  value={deltaForm.check_type}
+                  onValueChange={(value) =>
+                    setDeltaForm((prev) => ({ ...prev, check_type: value as typeof prev.check_type }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PERCENT">Percent</SelectItem>
+                    <SelectItem value="ABSOLUTE">Absolute</SelectItem>
+                    <SelectItem value="BOTH">Both</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Lookback (hours)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={deltaForm.lookback_hours}
+                  onChange={(event) =>
+                    setDeltaForm((prev) => ({ ...prev, lookback_hours: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            {deltaForm.check_type !== 'ABSOLUTE' && (
+              <div className="space-y-2">
+                <Label>Threshold Percent</Label>
+                <Input
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={deltaForm.threshold_percent}
+                  onChange={(event) =>
+                    setDeltaForm((prev) => ({ ...prev, threshold_percent: event.target.value }))
+                  }
+                />
+              </div>
+            )}
+
+            {deltaForm.check_type !== 'PERCENT' && (
+              <div className="space-y-2">
+                <Label>Threshold Absolute</Label>
+                <Input
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  value={deltaForm.threshold_absolute}
+                  onChange={(event) =>
+                    setDeltaForm((prev) => ({ ...prev, threshold_absolute: event.target.value }))
+                  }
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Action</Label>
+              <Select
+                value={deltaForm.action}
+                onValueChange={(value) =>
+                  setDeltaForm((prev) => ({ ...prev, action: value as typeof prev.action }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FLAG_FOR_REVIEW">Flag for review</SelectItem>
+                  <SelectItem value="BLOCK_RELEASE">Block release</SelectItem>
+                  <SelectItem value="ALERT_ONLY">Alert only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeltaRuleDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createDeltaRule.mutate()}
+              disabled={
+                createDeltaRule.isPending ||
+                !deltaForm.test ||
+                deltaForm.test === 'none' ||
+                !deltaForm.lookback_hours ||
+                (deltaForm.check_type !== 'ABSOLUTE' && !deltaForm.threshold_percent) ||
+                (deltaForm.check_type !== 'PERCENT' && !deltaForm.threshold_absolute)
+              }
+            >
+              Add Rule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showVerifyRuleDialog} onOpenChange={setShowVerifyRuleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Auto-Verify Rule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Test</Label>
+              <Select
+                value={verifyForm.test || 'none'}
+                onValueChange={(value) => setVerifyForm((prev) => ({ ...prev, test: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select test" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Select test</SelectItem>
+                  {tests.map((test) => (
+                    <SelectItem key={test.id} value={String(test.id)}>
+                      {test.code} - {test.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Condition</Label>
+              <Select
+                value={verifyForm.condition_type}
+                onValueChange={(value) =>
+                  setVerifyForm((prev) => ({ ...prev, condition_type: value as typeof prev.condition_type }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IN_REFERENCE_RANGE">In reference range</SelectItem>
+                  <SelectItem value="DELTA_CHECK_PASS">Delta check pass</SelectItem>
+                  <SelectItem value="QC_IN_CONTROL">QC in control</SelectItem>
+                  <SelectItem value="NO_CRITICAL_FLAG">No critical flag</SelectItem>
+                  <SelectItem value="SPECIMEN_AGE_OK">Specimen age ok</SelectItem>
+                  <SelectItem value="NUMERIC_RESULT">Numeric result</SelectItem>
+                  <SelectItem value="NOT_AMENDED">Not amended</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Priority</Label>
+              <Input
+                type="number"
+                min={1}
+                value={verifyForm.priority}
+                onChange={(event) =>
+                  setVerifyForm((prev) => ({ ...prev, priority: event.target.value }))
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowVerifyRuleDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createVerifyRule.mutate()}
+              disabled={
+                createVerifyRule.isPending ||
+                !verifyForm.test ||
+                verifyForm.test === 'none' ||
+                !verifyForm.priority
+              }
+            >
+              Add Rule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PullToRefresh>
   );
 }
