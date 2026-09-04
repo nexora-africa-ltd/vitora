@@ -30,9 +30,11 @@ from hmis.apps.laboratory.analyzers.protocols.serial_adapter import SerialBridge
 from hmis.apps.laboratory.analyzers.services import (
     build_work_order,
     check_channel_health,
+    explain_message_failure,
     get_adapter_for_channel,
     get_pending_work_orders,
     process_inbound_message,
+    replay_inbound_analyzer_message,
     resolve_lab_order_item,
     resolve_specimen_from_sample_id,
 )
@@ -778,6 +780,8 @@ class TestChannelHealth:
         assert health["channel_id"] == sample_channel.id
         assert health["instrument_code"] == "SYS-XN1000"
         assert "messages_last_hour" in health
+        assert "queue_depth" in health
+        assert "error_rate" in health
         assert "is_healthy" in health
 
     def test_idle_detection(self, sample_channel):
@@ -790,6 +794,38 @@ class TestChannelHealth:
         check_channel_health(sample_channel)
         sample_channel.refresh_from_db()
         assert sample_channel.connection_status == InstrumentChannel.ConnectionStatus.IDLE
+
+
+@pytest.mark.django_db
+class TestMessageDiagnosticsService:
+    """Tests for analyzer diagnostics/replay service helpers."""
+
+    def test_explain_failure_returns_structured_payload(self, sample_channel, sample_facility):
+        failed_message = AnalyzerMessage.objects.create(
+            channel=sample_channel,
+            direction=AnalyzerMessage.Direction.INBOUND,
+            raw_data="bad payload",
+            status=AnalyzerMessage.Status.FAILED,
+            error_message="Checksum mismatch",
+            facility=sample_facility,
+        )
+
+        explanation = explain_message_failure(failed_message)
+        assert explanation["message_id"] == failed_message.id
+        assert explanation["root_cause"] == "Checksum mismatch"
+        assert "recommended_fix" in explanation
+        assert "next_action" in explanation
+
+    def test_replay_inbound_message_creates_new_message(self, sample_channel):
+        original = process_inbound_message(
+            sample_channel,
+            "H|\\^&|||Analyzer\rQ|1|^SPEC-001||\rL|1|N",
+        )
+
+        replayed = replay_inbound_analyzer_message(original)
+        assert replayed.id != original.id
+        assert replayed.direction == AnalyzerMessage.Direction.INBOUND
+        assert replayed.parsed_data["replayed_from_message_id"] == original.id
 
 
 # =============================================================================
@@ -929,6 +965,64 @@ class TestAnalyzerMessageAPI:
         )
         response = authenticated_client.get("/api/lab/analyzers/messages/?direction=INBOUND")
         assert response.status_code == status.HTTP_200_OK
+
+    def test_explain_failure_endpoint(self, authenticated_client, sample_channel, sample_facility):
+        failed_message = AnalyzerMessage.objects.create(
+            channel=sample_channel,
+            direction=AnalyzerMessage.Direction.INBOUND,
+            raw_data="bad payload",
+            status=AnalyzerMessage.Status.FAILED,
+            error_message="Unsupported protocol segment",
+            facility=sample_facility,
+        )
+
+        response = authenticated_client.get(
+            f"/api/lab/analyzers/messages/{failed_message.id}/explain_failure/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["message_id"] == failed_message.id
+        assert "recommended_fix" in response.data
+
+    def test_explain_failure_rejects_non_failed_message(
+        self, authenticated_client, sample_channel, sample_facility
+    ):
+        message = AnalyzerMessage.objects.create(
+            channel=sample_channel,
+            direction=AnalyzerMessage.Direction.INBOUND,
+            raw_data="ok payload",
+            status=AnalyzerMessage.Status.PARSED,
+            facility=sample_facility,
+        )
+
+        response = authenticated_client.get(
+            f"/api/lab/analyzers/messages/{message.id}/explain_failure/"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_replay_message_endpoint(self, authenticated_client, sample_channel):
+        original = process_inbound_message(
+            sample_channel,
+            "H|\\^&|||Analyzer\rQ|1|^SPEC-001||\rL|1|N",
+        )
+
+        response = authenticated_client.post(f"/api/lab/analyzers/messages/{original.id}/replay/")
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["original_message_id"] == original.id
+        assert response.data["replay_message"]["id"] != original.id
+
+    def test_replay_message_rejects_outbound(
+        self, authenticated_client, sample_channel, sample_facility
+    ):
+        outbound = AnalyzerMessage.objects.create(
+            channel=sample_channel,
+            direction=AnalyzerMessage.Direction.OUTBOUND,
+            raw_data="host message",
+            status=AnalyzerMessage.Status.PENDING,
+            facility=sample_facility,
+        )
+
+        response = authenticated_client.post(f"/api/lab/analyzers/messages/{outbound.id}/replay/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 @pytest.mark.django_db

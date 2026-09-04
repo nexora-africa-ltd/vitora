@@ -38,8 +38,15 @@ from .serializers import (
     InstrumentChannelCreateSerializer,
     InstrumentChannelDetailSerializer,
     InstrumentChannelListSerializer,
+    MessageFailureExplanationSerializer,
+    ReplayAnalyzerMessageSerializer,
 )
-from .services import check_channel_health, process_inbound_message
+from .services import (
+    check_channel_health,
+    explain_message_failure,
+    process_inbound_message,
+    replay_inbound_analyzer_message,
+)
 
 # =============================================================================
 # InstrumentChannel ViewSet
@@ -255,6 +262,38 @@ class AnalyzerMessageViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSe
         return Response(
             AnalyzerMessageDetailSerializer(message).data,
             status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["get"])
+    def explain_failure(self, request, pk=None):
+        """Return parser diagnostics and recommended fix for a failed message."""
+        message = self.get_object()
+        if message.status != AnalyzerMessage.Status.FAILED:
+            return Response(
+                {"detail": "Failure explanation is only available for failed messages."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        payload = explain_message_failure(message)
+        return Response(MessageFailureExplanationSerializer(payload).data)
+
+    @action(detail=True, methods=["post"])
+    def replay(self, request, pk=None):
+        """Safely replay a historical inbound message through the parser pipeline."""
+        message = self.get_object()
+        if message.direction != AnalyzerMessage.Direction.INBOUND:
+            return Response(
+                {"detail": "Only inbound messages can be replayed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        replayed = replay_inbound_analyzer_message(message)
+        payload = {
+            "original_message_id": message.id,
+            "replay_message": AnalyzerMessageDetailSerializer(replayed).data,
+        }
+        return Response(
+            ReplayAnalyzerMessageSerializer(payload).data, status=status.HTTP_201_CREATED
         )
 
 

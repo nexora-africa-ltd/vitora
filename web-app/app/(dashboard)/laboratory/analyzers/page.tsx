@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -38,6 +39,9 @@ import {
   PlugZap,
   Settings2,
   RefreshCw,
+  Repeat,
+  Bug,
+  FileWarning,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type {
@@ -45,6 +49,8 @@ import type {
   InstrumentChannelCreateData,
   AnalyzerDashboard,
   AnalyzerDriverTemplate,
+  AnalyzerFailureExplanation,
+  AnalyzerMessage,
   Instrument,
   ChannelProtocol,
 } from '@/lib/types/laboratory';
@@ -70,6 +76,8 @@ export default function AnalyzersPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<InstrumentChannel | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<AnalyzerMessage | null>(null);
+  const [showProfileWizardDialog, setShowProfileWizardDialog] = useState(false);
 
   // --- Data Queries ---
   const { data: dashboard } = useQuery<AnalyzerDashboard>({
@@ -90,6 +98,17 @@ export default function AnalyzersPage() {
   const { data: instruments = [] } = useQuery<Instrument[]>({
     queryKey: ['instruments'],
     queryFn: () => laboratoryApi.listInstruments(),
+  });
+
+  const { data: messages = [], isLoading: messagesLoading } = useQuery<AnalyzerMessage[]>({
+    queryKey: ['analyzer-messages'],
+    queryFn: () => laboratoryApi.listMessages({ limit: 100 }),
+  });
+
+  const { data: failureExplanation } = useQuery<AnalyzerFailureExplanation | null>({
+    queryKey: ['analyzer-message-explanation', selectedMessage?.id],
+    queryFn: () => laboratoryApi.explainMessageFailure(selectedMessage!.id),
+    enabled: Boolean(selectedMessage && selectedMessage.status === 'FAILED'),
   });
 
   // --- Mutations ---
@@ -140,6 +159,16 @@ export default function AnalyzersPage() {
     onError: () => toast.error('Failed to seed default templates'),
   });
 
+  const replayMessage = useMutation({
+    mutationFn: (id: number) => laboratoryApi.replayAnalyzerMessage(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['analyzer-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['analyzer-dashboard'] });
+      toast.success(`Replay complete (new message #${data.replay_message.id})`);
+    },
+    onError: () => toast.error('Replay failed'),
+  });
+
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
@@ -147,11 +176,18 @@ export default function AnalyzersPage() {
           title="Analyzer Interfacing"
           helpContent="Connect laboratory instruments to receive results automatically. Create a channel for each analyzer, select a protocol, and optionally apply a driver template for pre-configured settings."
           actions={
-            <Button onClick={() => setShowAddDialog(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Add Channel</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setShowProfileWizardDialog(true)}>
+                <Settings2 className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Custom Profile Wizard</span>
+                <span className="sm:hidden">Wizard</span>
+              </Button>
+              <Button onClick={() => setShowAddDialog(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Add Channel</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            </div>
           }
         />
 
@@ -225,6 +261,10 @@ export default function AnalyzersPage() {
             <TabsTrigger value="templates" className="gap-1.5">
               <Settings2 className="h-4 w-4" />
               <span className="hidden sm:inline">Driver Templates</span>
+            </TabsTrigger>
+            <TabsTrigger value="ops" className="gap-1.5">
+              <Bug className="h-4 w-4" />
+              <span className="hidden sm:inline">Diagnostics</span>
             </TabsTrigger>
           </TabsList>
 
@@ -472,6 +512,183 @@ export default function AnalyzersPage() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="ops" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base sm:text-lg">Channel Health Diagnostics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!dashboard || dashboard.channel_statuses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No active channels to diagnose yet.</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {dashboard.channel_statuses.map((status) => (
+                      <Card key={status.channel_id} className="border-muted">
+                        <CardContent className="space-y-2 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium">{status.channel_name}</p>
+                            <Badge className={statusColors[status.connection_status] || ''}>
+                              {status.connection_status}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{status.instrument_code}</p>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded border p-2">
+                              <p className="text-muted-foreground">Queue depth</p>
+                              <p className="font-semibold">{status.queue_depth}</p>
+                            </div>
+                            <div className="rounded border p-2">
+                              <p className="text-muted-foreground">Error rate</p>
+                              <p className="font-semibold">{(status.error_rate * 100).toFixed(1)}%</p>
+                            </div>
+                          </div>
+                          {status.last_error && (
+                            <p className="rounded border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+                              {status.last_error}
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base sm:text-lg">Raw Message Viewer and Replay Harness</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ResponsiveTable
+                  data={messages}
+                  keyExtractor={(msg) => msg.id}
+                  isLoading={messagesLoading}
+                  onRowClick={(msg) => setSelectedMessage(msg)}
+                  columns={[
+                    { key: 'id', header: 'ID', sortable: true, cell: (msg) => `#${msg.id}` },
+                    {
+                      key: 'channel_name',
+                      header: 'Channel',
+                      sortable: true,
+                      cell: (msg) => msg.channel_name,
+                    },
+                    {
+                      key: 'message_type',
+                      header: 'Type',
+                      sortable: true,
+                      cell: (msg) => <Badge variant="outline">{msg.message_type}</Badge>,
+                    },
+                    {
+                      key: 'status',
+                      header: 'Status',
+                      sortable: true,
+                      cell: (msg) => (
+                        <Badge className={msg.status === 'FAILED' ? 'bg-red-100 text-red-800' : ''}>
+                          {msg.status}
+                        </Badge>
+                      ),
+                    },
+                    {
+                      key: 'timestamp',
+                      header: 'Received',
+                      sortable: true,
+                      sortType: 'date' as const,
+                      cell: (msg) => new Date(msg.timestamp).toLocaleString(),
+                      hideOnMobile: true,
+                    },
+                  ]}
+                  mobileCard={(msg) => (
+                    <div className="flex items-center justify-between p-3">
+                      <div>
+                        <p className="font-medium">#{msg.id}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {msg.channel_name} • {msg.message_type}
+                        </p>
+                      </div>
+                      <Badge>{msg.status}</Badge>
+                    </div>
+                  )}
+                />
+
+                {selectedMessage && (
+                  <Card>
+                    <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <CardTitle className="text-sm sm:text-base">
+                        Message #{selectedMessage.id} Diagnostics
+                      </CardTitle>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={selectedMessage.direction !== 'INBOUND' || replayMessage.isPending}
+                          onClick={() => replayMessage.mutate(selectedMessage.id)}
+                        >
+                          <Repeat className="mr-1.5 h-4 w-4" />
+                          Replay
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <p className="mb-1 text-xs font-medium text-muted-foreground">Raw Payload</p>
+                        <pre className="max-h-48 overflow-auto rounded border bg-muted p-3 text-xs">
+                          {selectedMessage.raw_data}
+                        </pre>
+                      </div>
+
+                      {selectedMessage.status === 'FAILED' && failureExplanation && (
+                        <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                          <p className="mb-1 font-medium">Parser failure root cause</p>
+                          <p>{failureExplanation.root_cause}</p>
+                          <p className="mt-2 text-xs">
+                            <span className="font-medium">Recommended fix:</span>{' '}
+                            {failureExplanation.recommended_fix}
+                          </p>
+                          <p className="mt-1 text-xs">
+                            <span className="font-medium">Next action:</span>{' '}
+                            {failureExplanation.next_action}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="grid gap-2 text-xs sm:grid-cols-3">
+                        <a
+                          className="rounded border p-2 text-primary underline-offset-2 hover:underline"
+                          href="/api/lab/analyzers/dashboard/"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open diagnostics API
+                        </a>
+                        <a
+                          className="rounded border p-2 text-primary underline-offset-2 hover:underline"
+                          href="/api/lab/analyzers/messages/"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open message audit trail
+                        </a>
+                        <a
+                          className="rounded border p-2 text-primary underline-offset-2 hover:underline"
+                          href="/laboratory/settings"
+                        >
+                          Open integration settings and troubleshooting
+                        </a>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="rounded border border-dashed p-3 text-xs text-muted-foreground">
+              <FileWarning className="mr-1 inline h-3.5 w-3.5" />
+              Use replay only after validating parser mappings and connection configuration to avoid
+              repeated bad ingests.
+            </div>
+          </TabsContent>
         </Tabs>
 
         {/* Channel Detail Panel (when a row is clicked) */}
@@ -505,6 +722,14 @@ export default function AnalyzersPage() {
           templates={templates}
           onApply={(channelId, templateId) => applyTemplate.mutate({ channelId, templateId })}
           isLoading={applyTemplate.isPending}
+        />
+
+        <CustomProfileWizardDialog
+          open={showProfileWizardDialog}
+          onOpenChange={setShowProfileWizardDialog}
+          instruments={instruments}
+          onSubmit={(data) => createChannel.mutate(data)}
+          isLoading={createChannel.isPending}
         />
       </div>
     </PullToRefresh>
@@ -890,6 +1115,191 @@ function ApplyTemplateDialog({
             Apply Template
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CustomProfileWizardDialog({
+  open,
+  onOpenChange,
+  instruments,
+  onSubmit,
+  isLoading,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  instruments: Instrument[];
+  onSubmit: (data: InstrumentChannelCreateData) => void;
+  isLoading: boolean;
+}) {
+  const [instrument, setInstrument] = useState('');
+  const [name, setName] = useState('');
+  const [protocol, setProtocol] = useState<ChannelProtocol>('ASTM');
+  const [host, setHost] = useState('127.0.0.1');
+  const [port, setPort] = useState('9100');
+  const [encoding, setEncoding] = useState('ascii');
+  const [sampleField, setSampleField] = useState('OBR.3');
+  const [testField, setTestField] = useState('OBX.3.1');
+  const [resultField, setResultField] = useState('OBX.5');
+  const [unitField, setUnitField] = useState('OBX.6');
+  const [flagField, setFlagField] = useState('OBX.8');
+  const [unitMapJson, setUnitMapJson] = useState('{"mg/dL":"mg/dL"}');
+  const [flagMapJson, setFlagMapJson] = useState('{"H":"HIGH","L":"LOW"}');
+  const [configJson, setConfigJson] = useState('{"timeout_ms":30000}');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!instrument || !name) {
+      return;
+    }
+
+    try {
+      const config = JSON.parse(configJson) as Record<string, unknown>;
+      const unitMap = JSON.parse(unitMapJson) as Record<string, unknown>;
+      const flagMap = JSON.parse(flagMapJson) as Record<string, unknown>;
+
+      onSubmit({
+        instrument: Number(instrument),
+        name,
+        protocol,
+        host,
+        port: Number(port),
+        encoding,
+        config: {
+          ...config,
+          unit_map: unitMap,
+          flag_map: flagMap,
+        },
+        field_mapping: {
+          sample_id_field: sampleField,
+          test_code_field: testField,
+          result_value_field: resultField,
+          result_unit_field: unitField,
+          result_flags_field: flagField,
+        },
+      });
+      onOpenChange(false);
+    } catch {
+      toast.error('Invalid JSON in profile mapping fields.');
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Custom Analyzer Profile Wizard</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>Instrument *</Label>
+              <Select value={instrument} onValueChange={setInstrument}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select instrument..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {instruments.map((inst) => (
+                    <SelectItem key={inst.id} value={String(inst.id)}>
+                      {inst.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Profile Name *</Label>
+              <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="sm:col-span-2">
+              <Label>Protocol</Label>
+              <Select value={protocol} onValueChange={(v) => setProtocol(v as ChannelProtocol)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ASTM">ASTM</SelectItem>
+                  <SelectItem value="HL7">HL7</SelectItem>
+                  <SelectItem value="SERIAL">SERIAL</SelectItem>
+                  <SelectItem value="TCP">TCP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Host</Label>
+              <Input className="mt-1" value={host} onChange={(e) => setHost(e.target.value)} />
+            </div>
+            <div>
+              <Label>Port</Label>
+              <Input className="mt-1" value={port} onChange={(e) => setPort(e.target.value)} />
+            </div>
+          </div>
+
+          <div>
+            <Label>Encoding</Label>
+            <Input className="mt-1" value={encoding} onChange={(e) => setEncoding(e.target.value)} />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>Sample ID field</Label>
+              <Input className="mt-1" value={sampleField} onChange={(e) => setSampleField(e.target.value)} />
+            </div>
+            <div>
+              <Label>Test code field</Label>
+              <Input className="mt-1" value={testField} onChange={(e) => setTestField(e.target.value)} />
+            </div>
+            <div>
+              <Label>Result value field</Label>
+              <Input className="mt-1" value={resultField} onChange={(e) => setResultField(e.target.value)} />
+            </div>
+            <div>
+              <Label>Unit field</Label>
+              <Input className="mt-1" value={unitField} onChange={(e) => setUnitField(e.target.value)} />
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Flag field</Label>
+              <Input className="mt-1" value={flagField} onChange={(e) => setFlagField(e.target.value)} />
+            </div>
+          </div>
+
+          <div>
+            <Label>Additional protocol config JSON</Label>
+            <Textarea className="mt-1 font-mono text-xs" rows={3} value={configJson} onChange={(e) => setConfigJson(e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Include protocol-specific settings like timeout, framing, and adapter options.
+            </p>
+          </div>
+          <div>
+            <Label>Unit normalization map JSON</Label>
+            <Textarea className="mt-1 font-mono text-xs" rows={3} value={unitMapJson} onChange={(e) => setUnitMapJson(e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Example: {`{"mg/dL":"mg/dL","mmol/L":"mmol/L"}`}
+            </p>
+          </div>
+          <div>
+            <Label>Flag mapping JSON</Label>
+            <Textarea className="mt-1 font-mono text-xs" rows={3} value={flagMapJson} onChange={(e) => setFlagMapJson(e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Map analyzer flags to LIS flags (HIGH, LOW, CRITICAL_HIGH, CRITICAL_LOW).
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading || !instrument || !name}>
+              {isLoading && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+              Save Custom Profile
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

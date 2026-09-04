@@ -327,6 +327,8 @@ class ChannelHealthSerializer(serializers.Serializer):
     last_error = serializers.CharField(allow_blank=True)
     messages_last_hour = serializers.IntegerField()
     errors_last_hour = serializers.IntegerField()
+    queue_depth = serializers.IntegerField()
+    error_rate = serializers.FloatField()
     is_healthy = serializers.BooleanField()
 
 
@@ -341,3 +343,24 @@ class ChannelStatusSummarySerializer(serializers.Serializer):
     results_applied_today = serializers.IntegerField()
     failed_messages_today = serializers.IntegerField()
     channel_statuses = ChannelHealthSerializer(many=True)
+
+
+class MessageFailureExplanationSerializer(serializers.Serializer):
+    """Structured parser/root-cause diagnostics for a failed message."""
+
+    message_id = serializers.IntegerField()
+    channel_id = serializers.IntegerField()
+    protocol = serializers.CharField()
+    status = serializers.CharField()
+    root_cause = serializers.CharField()
+    recommended_fix = serializers.CharField()
+    next_action = serializers.CharField()
+    sample_id = serializers.CharField(allow_blank=True)
+    test_code = serializers.CharField(allow_blank=True)
+
+
+class ReplayAnalyzerMessageSerializer(serializers.Serializer):
+    """Response payload for replaying a historical inbound message."""
+
+    original_message_id = serializers.IntegerField()
+    replay_message = serializers.DictField()

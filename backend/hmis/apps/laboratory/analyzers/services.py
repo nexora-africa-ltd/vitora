@@ -338,6 +338,10 @@ def check_channel_health(channel: InstrumentChannel) -> dict:
     recent_hour_messages = channel.messages.filter(timestamp__gte=last_hour)
     messages_last_hour = recent_hour_messages.count()
     errors_last_hour = recent_hour_messages.filter(status=AnalyzerMessage.Status.FAILED).count()
+    queue_depth = channel.messages.filter(
+        status__in=[AnalyzerMessage.Status.PENDING, AnalyzerMessage.Status.RECEIVED]
+    ).count()
+    error_rate = (errors_last_hour / messages_last_hour) if messages_last_hour > 0 else 0.0
 
     is_healthy = (
         channel.connection_status
@@ -359,8 +363,55 @@ def check_channel_health(channel: InstrumentChannel) -> dict:
         "last_error": channel.last_error,
         "messages_last_hour": messages_last_hour,
         "errors_last_hour": errors_last_hour,
+        "queue_depth": queue_depth,
+        "error_rate": round(error_rate, 3),
         "is_healthy": is_healthy,
     }
+
+
+def explain_message_failure(message: AnalyzerMessage) -> dict:
+    """Return structured parser diagnostics for a failed analyzer message."""
+    root_cause = message.error_message or "Unknown parse/application error"
+    protocol = message.channel.protocol
+
+    recommendation = "Inspect raw payload and field mapping configuration."
+    if "checksum" in root_cause.lower():
+        recommendation = (
+            "Validate analyzer framing/checksum settings and ensure baud/parity match the device."
+        )
+    elif "unsupported protocol" in root_cause.lower():
+        recommendation = "Confirm channel protocol matches analyzer output format."
+    elif "sample" in root_cause.lower() and "not" in root_cause.lower():
+        recommendation = (
+            "Verify sample/barcode mapping and that the specimen exists in the lab queue."
+        )
+
+    next_action = "Replay this message after applying the recommended fix."
+    return {
+        "message_id": message.id,
+        "channel_id": message.channel_id,
+        "protocol": protocol,
+        "status": message.status,
+        "root_cause": root_cause,
+        "recommended_fix": recommendation,
+        "next_action": next_action,
+        "sample_id": message.sample_id,
+        "test_code": message.test_code,
+    }
+
+
+def replay_inbound_analyzer_message(message: AnalyzerMessage) -> AnalyzerMessage:
+    """Replay a previously captured inbound analyzer message safely."""
+    if message.direction != AnalyzerMessage.Direction.INBOUND:
+        raise ProtocolError("Only inbound messages can be replayed.")
+
+    replayed = process_inbound_message(message.channel, message.raw_data)
+    replayed.parsed_data = {
+        **(replayed.parsed_data or {}),
+        "replayed_from_message_id": message.id,
+    }
+    replayed.save(update_fields=["parsed_data"])
+    return replayed
 
 
 def _map_parsed_type(parsed_type: str) -> str:

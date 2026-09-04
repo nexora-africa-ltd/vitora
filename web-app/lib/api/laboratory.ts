@@ -42,6 +42,8 @@ import {
   AnalyzerMessage,
   AnalyzerDriverTemplate,
   AnalyzerDashboard,
+  AnalyzerFailureExplanation,
+  AnalyzerReplayResponse,
   SpecimenRejectionReason,
   ResultCommentTemplate,
   ReferralLab,
@@ -94,6 +96,8 @@ import {
   AnalyzerDriverTemplateSchema,
   AnalyzerDriverTemplateArraySchema,
   AnalyzerDashboardSchema,
+  AnalyzerFailureExplanationSchema,
+  AnalyzerReplayResponseSchema,
   SpecimenRejectionReasonSchema,
   SpecimenRejectionReasonArraySchema,
   ResultCommentTemplateSchema,
@@ -1311,6 +1315,20 @@ export const laboratoryApi = {
     });
     return parseResponse(AnalyzerMessageSchema, response.data, {
       context: 'laboratoryApi.ingestMessage',
+    });
+  },
+
+  async explainMessageFailure(messageId: number): Promise<AnalyzerFailureExplanation> {
+    const response = await apiClient.get(`/api/lab/analyzers/messages/${messageId}/explain_failure/`);
+    return parseResponse(AnalyzerFailureExplanationSchema, response.data, {
+      context: 'laboratoryApi.explainMessageFailure',
+    });
+  },
+
+  async replayAnalyzerMessage(messageId: number): Promise<AnalyzerReplayResponse> {
+    const response = await apiClient.post(`/api/lab/analyzers/messages/${messageId}/replay/`);
+    return parseResponse(AnalyzerReplayResponseSchema, response.data, {
+      context: 'laboratoryApi.replayAnalyzerMessage',
     });
   },
 

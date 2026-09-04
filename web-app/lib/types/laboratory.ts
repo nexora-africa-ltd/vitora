@@ -1009,7 +1009,26 @@ export interface ChannelHealthStatus {
   last_error: string;
   messages_last_hour: number;
   errors_last_hour: number;
+  queue_depth: number;
+  error_rate: number;
   is_healthy: boolean;
+}
+
+export interface AnalyzerFailureExplanation {
+  message_id: number;
+  channel_id: number;
+  protocol: ChannelProtocol;
+  status: AnalyzerMessageStatus;
+  root_cause: string;
+  recommended_fix: string;
+  next_action: string;
+  sample_id: string;
+  test_code: string;
+}
+
+export interface AnalyzerReplayResponse {
+  original_message_id: number;
+  replay_message: AnalyzerMessage;
 }
 
 export interface AnalyzerDashboard {

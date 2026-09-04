@@ -1072,6 +1072,8 @@ export const ChannelHealthStatusSchema = z.object({
   last_error: z.string(),
   messages_last_hour: z.number(),
   errors_last_hour: z.number(),
+  queue_depth: z.number(),
+  error_rate: z.number(),
   is_healthy: z.boolean(),
 });
 
@@ -1084,6 +1086,23 @@ export const AnalyzerDashboardSchema = z.object({
   results_applied_today: z.number(),
   failed_messages_today: z.number(),
   channel_statuses: z.array(ChannelHealthStatusSchema),
+});
+
+export const AnalyzerFailureExplanationSchema = z.object({
+  message_id: z.number(),
+  channel_id: z.number(),
+  protocol: ChannelProtocolSchema,
+  status: AnalyzerMessageStatusSchema,
+  root_cause: z.string(),
+  recommended_fix: z.string(),
+  next_action: z.string(),
+  sample_id: z.string(),
+  test_code: z.string(),
+});
+
+export const AnalyzerReplayResponseSchema = z.object({
+  original_message_id: z.number(),
+  replay_message: AnalyzerMessageSchema,
 });
 
 // =============================================================================
