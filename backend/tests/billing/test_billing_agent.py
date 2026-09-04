@@ -271,20 +271,25 @@ class TestHandleLabOrderConfirmed:
         assert lab_items.count() == 1
         assert lab_items.first().unit_price == Decimal("500.00")
 
-    def test_skips_items_without_matching_service(self, db, sample_lab_order):
-        """Should skip lab items that have no matching billing service."""
+    def test_falls_back_to_test_catalog_cost_without_matching_service(self, db, sample_lab_order):
+        """Should bill lab items using TestCatalog cost when Service mapping is missing."""
         from hmis.apps.billing.agent import BillingAgentService
 
         # No lab_billing_service fixture → no matching Service with code=CBC
         BillingAgentService.handle_lab_order_confirmed(sample_lab_order)
 
-        # Should still create an invoice but with no items
+        # Should still create an invoice and add a fallback LAB line item.
         invoice = Invoice.objects.filter(
             patient=sample_lab_order.patient,
             status=Invoice.Status.DRAFT,
         ).first()
         assert invoice is not None
-        assert invoice.items.count() == 0
+        assert invoice.items.count() == 1
+        item = invoice.items.first()
+        assert item is not None
+        assert item.item_type == InvoiceItem.ItemType.LAB
+        assert item.service is None
+        assert item.unit_price == sample_lab_order.items.first().unit_cost
 
     def test_links_lab_order_to_invoice_item(self, db, sample_lab_order, lab_billing_service):
         """Should link the LabOrder FK on the InvoiceItem."""

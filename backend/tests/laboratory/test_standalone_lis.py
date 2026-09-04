@@ -271,7 +271,7 @@ class TestStandaloneOrderAPI:
         assert response.data["is_walkin"] is True
         assert response.data["walkin_patient_name"] == "Test Patient"
         assert response.data["encounter"] is None
-        assert response.data["patient"] is None
+        assert response.data["patient"] is not None
 
     def test_create_standalone_order_with_walkin_patient_id(
         self, authenticated_client, walkin_patient, sample_test_catalog
@@ -365,14 +365,17 @@ class TestStandaloneOrderAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_standalone_order_does_not_create_invoice(
+    def test_standalone_order_creates_invoice_without_encounter(
         self, authenticated_client, sample_test_catalog
     ):
-        """Standalone orders with bill_patient=False don't trigger billing."""
+        """Standalone orders create invoice items even when encounter is null."""
+        from hmis.apps.billing.models import Invoice
         from hmis.apps.laboratory.models import LabOrder
 
         data = {
             "walkin_name": "Test Patient",
+            "walkin_dob": "1991-01-01",
+            "walkin_gender": "F",
             "items": [{"test_code": "CBC"}],
         }
         response = authenticated_client.post(
@@ -382,8 +385,10 @@ class TestStandaloneOrderAPI:
         )
         assert response.status_code == status.HTTP_201_CREATED
         order = LabOrder.objects.get(id=response.data["id"])
-        assert order.bill_patient is False
+        assert order.bill_patient is True
         assert order.encounter is None  # No encounter = no invoice
+        assert order.billing_patient_id is not None
+        assert Invoice.objects.filter(items__lab_order=order).exists()
 
     def test_standalone_order_multiple_items(self, authenticated_client, sample_test_catalog):
         """Order can have multiple test items."""
@@ -851,6 +856,48 @@ class TestBillingDecoupling:
         assert sample_lab_order.encounter is not None
         assert sample_lab_order.patient is not None
         assert sample_lab_order.is_walkin is False
+
+    def test_standalone_billing_reconciliation_endpoint(
+        self, authenticated_client, sample_test_catalog
+    ):
+        data = {
+            "walkin_name": "Recon Patient",
+            "walkin_dob": "1992-02-02",
+            "walkin_gender": "M",
+            "items": [{"test_code": "CBC"}],
+        }
+        create = authenticated_client.post(
+            "/api/lab/standalone/orders/create/", data, format="json"
+        )
+        assert create.status_code == status.HTTP_201_CREATED
+
+        response = authenticated_client.get("/api/lab/standalone/billing/reconciliation/")
+        assert response.status_code == status.HTTP_200_OK
+        assert "released_orders" in response.data
+        assert "collected_amount" in response.data
+
+    def test_standalone_invoice_pdf_endpoint(self, authenticated_client, sample_test_catalog):
+        from hmis.apps.billing.models import Invoice
+
+        data = {
+            "walkin_name": "PDF Patient",
+            "walkin_dob": "1993-03-03",
+            "walkin_gender": "F",
+            "items": [{"test_code": "CBC"}],
+        }
+        create = authenticated_client.post(
+            "/api/lab/standalone/orders/create/", data, format="json"
+        )
+        assert create.status_code == status.HTTP_201_CREATED
+
+        invoice = Invoice.objects.filter(items__lab_order_id=create.data["id"]).first()
+        assert invoice is not None
+
+        response = authenticated_client.get(
+            f"/api/lab/standalone/billing/invoices/{invoice.id}/pdf/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "application/pdf"
 
 
 # =============================================================================

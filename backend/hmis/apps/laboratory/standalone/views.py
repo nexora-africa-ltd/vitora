@@ -7,7 +7,7 @@ import logging
 from io import StringIO
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.http import HttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -17,6 +17,7 @@ from rest_framework.decorators import permission_classes as drf_permission_class
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.billing.models import Invoice, Payment, Receipt
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog, ExternalCodeMapping
 from hmis.apps.core.permissions import (
@@ -25,7 +26,7 @@ from hmis.apps.core.permissions import (
     get_client_ip,
 )
 from hmis.apps.laboratory.analyzers.models import InstrumentChannel
-from hmis.apps.laboratory.models import Instrument, LabWorkflowSettings, TestCatalog
+from hmis.apps.laboratory.models import Instrument, LabOrder, LabWorkflowSettings, TestCatalog
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISStandaloneRequired
 from hmis.apps.laboratory.serializers import LabOrderSerializer
 
@@ -894,6 +895,137 @@ class StandaloneOrderViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
 
+class StandaloneBillingViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
+    """Standalone lab billing and reconciliation endpoints."""
+
+    tenant_scope = "facility"
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        RequiresActiveShiftPermission,
+        LISStandaloneRequired,
+        ReadRequiresModelPermission,
+    ]
+
+    @action(detail=False, methods=["get"], url_path="reconciliation")
+    def reconciliation(self, request):
+        tenant = self.get_tenant_save_kwargs()
+        facility = tenant.get("facility")
+
+        released_orders = LabOrder.objects.filter(
+            facility=facility,
+            status="COMPLETED",
+            is_walkin=True,
+        )
+        released_count = released_orders.count()
+        released_amount = released_orders.aggregate(total=Sum("total_cost")).get("total") or 0
+
+        invoices = Invoice.objects.filter(
+            facility=facility,
+            items__lab_order__in=released_orders,
+        ).distinct()
+        invoice_count = invoices.count()
+        invoice_total = invoices.aggregate(total=Sum("total_amount")).get("total") or 0
+
+        payments = Payment.objects.filter(
+            invoice__in=invoices,
+            status=Payment.Status.COMPLETED,
+        )
+        payment_count = payments.count()
+        collected_total = payments.aggregate(total=Sum("amount")).get("total") or 0
+
+        outstanding = invoice_total - collected_total
+
+        return Response(
+            {
+                "released_orders": released_count,
+                "released_amount": str(released_amount),
+                "invoices": invoice_count,
+                "invoiced_amount": str(invoice_total),
+                "payments": payment_count,
+                "collected_amount": str(collected_total),
+                "outstanding_amount": str(outstanding),
+            }
+        )
+
+    @action(detail=False, methods=["get"], url_path="invoices")
+    def invoices(self, request):
+        tenant = self.get_tenant_save_kwargs()
+        facility = tenant.get("facility")
+        qs = (
+            Invoice.objects.filter(facility=facility, items__lab_order__is_walkin=True)
+            .select_related("patient")
+            .prefetch_related("items")
+            .distinct()
+            .order_by("-created_at")[:100]
+        )
+        payload = [
+            {
+                "id": invoice.id,
+                "invoice_number": invoice.invoice_number,
+                "patient_name": str(invoice.patient),
+                "invoice_date": invoice.invoice_date.isoformat(),
+                "status": invoice.status,
+                "payer_type": invoice.payer_type,
+                "total_amount": str(invoice.total_amount),
+                "amount_paid": str(invoice.amount_paid),
+                "balance_due": str(invoice.balance_due),
+            }
+            for invoice in qs
+        ]
+        return Response(payload)
+
+    @action(detail=False, methods=["get"], url_path=r"invoices/(?P<invoice_id>[^/.]+)/pdf")
+    def invoice_pdf(self, request, invoice_id=None):
+        tenant = self.get_tenant_save_kwargs()
+        facility = tenant.get("facility")
+        invoice = Invoice.objects.filter(
+            id=invoice_id,
+            facility=facility,
+            items__lab_order__is_walkin=True,
+        ).first()
+        if invoice is None:
+            return Response({"detail": "Invoice not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        from .services import generate_invoice_pdf_bytes
+
+        pdf_bytes = generate_invoice_pdf_bytes(invoice)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="standalone-invoice-{invoice.invoice_number}.pdf"'
+        )
+        return response
+
+    @action(detail=False, methods=["get"], url_path=r"payments/(?P<payment_id>[^/.]+)/receipt-pdf")
+    def payment_receipt_pdf(self, request, payment_id=None):
+        tenant = self.get_tenant_save_kwargs()
+        facility = tenant.get("facility")
+        payment = Payment.objects.filter(
+            id=payment_id,
+            invoice__facility=facility,
+            invoice__items__lab_order__is_walkin=True,
+        ).first()
+        if payment is None:
+            return Response({"detail": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        receipt = Receipt.objects.filter(payment=payment).first()
+        if receipt is None:
+            receipt = Receipt.objects.create(
+                payment=payment,
+                invoice=payment.invoice,
+                patient=payment.invoice.patient,
+                amount=payment.amount,
+                payment_method=payment.method,
+                issued_by=request.user,
+            )
+
+        response = HttpResponse(receipt.generate_pdf(), content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="receipt-{receipt.receipt_number}.pdf"'
+        )
+        return response
+
+
 class InteropInboundViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
     """Inbound interop intake with idempotency and dead-letter tracking."""
 
@@ -1252,6 +1384,9 @@ class ExternalOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 ext_order,
                 user=request.user,
                 auto_create_walkin=serializer.validated_data.get("auto_create_walkin", True),
+                enable_billing=serializer.validated_data.get("enable_billing", True),
+                payer_type=serializer.validated_data.get("payer_type", Invoice.PayerType.CASH),
+                diagnostic_package=serializer.validated_data.get("diagnostic_package", ""),
                 facility=getattr(request, "_facility", None) or ext_order.facility,
                 organization=getattr(request, "_organization", None) or ext_order.organization,
             )

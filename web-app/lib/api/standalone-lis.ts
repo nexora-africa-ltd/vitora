@@ -24,6 +24,8 @@ import {
   MessageMappingConfigListSchema,
   MessageMappingConfigSchema,
   MessageMappingValidationResultSchema,
+  StandaloneBillingInvoiceListSchema,
+  StandaloneBillingReconciliationSchema,
 } from '@/lib/schemas/standalone-lis.schema';
 import { LabOrderSchema } from '@/lib/schemas/laboratory.schema';
 import type {
@@ -43,6 +45,8 @@ import type {
   InboundIngestResponse,
   MessageMappingConfig,
   MessageMappingValidationResult,
+  StandaloneBillingInvoice,
+  StandaloneBillingReconciliation,
 } from '@/lib/types/standalone-lis';
 import type { LabOrder } from '@/lib/types/laboratory';
 
@@ -230,13 +234,52 @@ export const standaloneLisApi = {
     });
   },
 
-  async acceptExternalOrder(id: number, autoCreateWalkin = true) {
+  async acceptExternalOrder(
+    id: number,
+    options?: {
+      auto_create_walkin?: boolean;
+      enable_billing?: boolean;
+      payer_type?: 'cash' | 'sha' | 'private_insurance' | 'corporate' | 'mixed';
+      diagnostic_package?: '' | 'BASIC' | 'COMPREHENSIVE' | 'EMPLOYMENT' | 'REFERRAL';
+    }
+  ) {
     const response = await apiClient.post(`${BASE}/external-orders/${id}/accept/`, {
-      auto_create_walkin: autoCreateWalkin,
+      auto_create_walkin: options?.auto_create_walkin ?? true,
+      enable_billing: options?.enable_billing ?? true,
+      payer_type: options?.payer_type ?? 'cash',
+      diagnostic_package: options?.diagnostic_package ?? '',
     });
     return parseResponse(AcceptExternalOrderResponseSchema, response.data, {
       context: 'standaloneLisApi.acceptExternalOrder',
     });
+  },
+
+  async getBillingReconciliation(): Promise<StandaloneBillingReconciliation> {
+    const response = await apiClient.get(`${BASE}/billing/reconciliation/`);
+    return parseResponse(StandaloneBillingReconciliationSchema, response.data, {
+      context: 'standaloneLisApi.getBillingReconciliation',
+    });
+  },
+
+  async listBillingInvoices(): Promise<StandaloneBillingInvoice[]> {
+    const response = await apiClient.get(`${BASE}/billing/invoices/`);
+    return parseResponse(StandaloneBillingInvoiceListSchema, response.data, {
+      context: 'standaloneLisApi.listBillingInvoices',
+    });
+  },
+
+  async downloadInvoicePdf(invoiceId: number): Promise<Blob> {
+    const response = await apiClient.get(`${BASE}/billing/invoices/${invoiceId}/pdf/`, {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+
+  async downloadPaymentReceiptPdf(paymentId: number): Promise<Blob> {
+    const response = await apiClient.get(`${BASE}/billing/payments/${paymentId}/receipt-pdf/`, {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
   },
 
   async rejectExternalOrder(id: number, reason: string) {

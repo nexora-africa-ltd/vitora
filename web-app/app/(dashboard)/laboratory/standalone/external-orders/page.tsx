@@ -36,6 +36,7 @@ import type {
   MessageMappingValidationResult,
   ResultDeliveryLog,
   CrosswalkEntry,
+  StandaloneBillingInvoice,
 } from '@/lib/types/standalone-lis';
 import { toast } from 'sonner';
 
@@ -48,11 +49,19 @@ const statusColors: Record<ExternalOrderStatus, string> = {
 };
 
 export default function ExternalOrdersPage() {
-  const [activeTab, setActiveTab] = useState<'orders' | 'reconciliation' | 'mappings'>('orders');
+  const [activeTab, setActiveTab] = useState<
+    'orders' | 'reconciliation' | 'commercial' | 'mappings'
+  >('orders');
   const [rejectDialog, setRejectDialog] = useState<ExternalOrderRequest | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [deliveryDestination, setDeliveryDestination] = useState<Record<number, string>>({});
   const [mappingCodeSystem, setMappingCodeSystem] = useState('EXT_LIS');
+  const [defaultPayerType, setDefaultPayerType] = useState<
+    'cash' | 'sha' | 'private_insurance' | 'corporate' | 'mixed'
+  >('cash');
+  const [defaultPackage, setDefaultPackage] = useState<
+    '' | 'BASIC' | 'COMPREHENSIVE' | 'EMPLOYMENT' | 'REFERRAL'
+  >('');
   const [mappingExternalCode, setMappingExternalCode] = useState('');
   const [mappingTestCode, setMappingTestCode] = useState('');
   const [mappingValidationPayload, setMappingValidationPayload] = useState(
@@ -88,10 +97,28 @@ export default function ExternalOrdersPage() {
     queryFn: () => standaloneLisApi.listMessageMappings(mappingCodeSystem),
   });
 
+  const { data: billingReconciliation, isLoading: isBillingReconLoading } = useQuery({
+    queryKey: ['lis-billing-reconciliation'],
+    queryFn: () => standaloneLisApi.getBillingReconciliation(),
+  });
+
+  const { data: billingInvoices, isLoading: isBillingInvoicesLoading } = useQuery({
+    queryKey: ['lis-billing-invoices'],
+    queryFn: () => standaloneLisApi.listBillingInvoices(),
+  });
+
   const acceptMutation = useMutation({
-    mutationFn: (id: number) => standaloneLisApi.acceptExternalOrder(id),
+    mutationFn: (id: number) =>
+      standaloneLisApi.acceptExternalOrder(id, {
+        auto_create_walkin: true,
+        enable_billing: true,
+        payer_type: defaultPayerType,
+        diagnostic_package: defaultPackage,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['external-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['lis-billing-reconciliation'] });
+      queryClient.invalidateQueries({ queryKey: ['lis-billing-invoices'] });
       toast.success('External order accepted and lab order created');
     },
     onError: () => toast.error('Failed to accept order'),
@@ -402,6 +429,65 @@ export default function ExternalOrdersPage() {
     },
   ];
 
+  const billingInvoiceColumns = [
+    {
+      key: 'invoice_number',
+      header: 'Invoice',
+      sortable: true,
+      cell: (item: StandaloneBillingInvoice) => (
+        <span className="font-mono text-xs">{item.invoice_number}</span>
+      ),
+    },
+    {
+      key: 'patient_name',
+      header: 'Patient',
+      sortable: true,
+      cell: (item: StandaloneBillingInvoice) => item.patient_name,
+    },
+    {
+      key: 'payer_type',
+      header: 'Payer',
+      sortable: true,
+      cell: (item: StandaloneBillingInvoice) => item.payer_type,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      cell: (item: StandaloneBillingInvoice) => item.status,
+    },
+    {
+      key: 'total_amount',
+      header: 'Total (KES)',
+      sortable: true,
+      cell: (item: StandaloneBillingInvoice) => item.total_amount,
+    },
+    {
+      key: 'balance_due',
+      header: 'Balance',
+      sortable: true,
+      cell: (item: StandaloneBillingInvoice) => item.balance_due,
+    },
+    {
+      key: 'actions',
+      header: '',
+      cell: (item: StandaloneBillingInvoice) => (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={async () => {
+            const blob = await standaloneLisApi.downloadInvoicePdf(item.id);
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+          }}
+        >
+          <Download className="mr-1 h-3 w-3" /> Print
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
@@ -441,7 +527,7 @@ export default function ExternalOrdersPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="orders" className="gap-2">
               <Inbox className="h-4 w-4" />
               <span className="sm:hidden">Orders</span>
@@ -452,6 +538,11 @@ export default function ExternalOrdersPage() {
               <span className="sm:hidden">Ops</span>
               <span className="hidden sm:inline">Reconciliation</span>
             </TabsTrigger>
+            <TabsTrigger value="commercial" className="gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              <span className="sm:hidden">Bill</span>
+              <span className="hidden sm:inline">Commercial</span>
+            </TabsTrigger>
             <TabsTrigger value="mappings" className="gap-2">
               <ShieldCheck className="h-4 w-4" />
               <span className="sm:hidden">Map</span>
@@ -460,6 +551,48 @@ export default function ExternalOrdersPage() {
           </TabsList>
 
           <TabsContent value="orders" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Default Billing Rules (on Accept)</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-2 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>Default payer</Label>
+                  <Input
+                    value={defaultPayerType}
+                    onChange={(e) =>
+                      setDefaultPayerType(
+                        e.target.value as
+                          | 'cash'
+                          | 'sha'
+                          | 'private_insurance'
+                          | 'corporate'
+                          | 'mixed'
+                      )
+                    }
+                    placeholder="cash | sha | private_insurance | corporate | mixed"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Diagnostic package</Label>
+                  <Input
+                    value={defaultPackage}
+                    onChange={(e) =>
+                      setDefaultPackage(
+                        (e.target.value || '') as
+                          | ''
+                          | 'BASIC'
+                          | 'COMPREHENSIVE'
+                          | 'EMPLOYMENT'
+                          | 'REFERRAL'
+                      )
+                    }
+                    placeholder="BASIC | COMPREHENSIVE | EMPLOYMENT | REFERRAL"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             {pendingCount > 0 && (
               <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30">
                 <CardContent className="flex items-center gap-3 py-3">
@@ -625,6 +758,56 @@ export default function ExternalOrdersPage() {
                     </div>
                   </div>
                 ) : null}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="commercial" className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <Card>
+                <CardContent className="py-4">
+                  <p className="text-xs text-muted-foreground">Released Tests</p>
+                  <p className="text-2xl font-semibold">
+                    {isBillingReconLoading ? '-' : billingReconciliation?.released_orders ?? 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    KES {billingReconciliation?.released_amount ?? '0.00'}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="py-4">
+                  <p className="text-xs text-muted-foreground">Collected Payments</p>
+                  <p className="text-2xl font-semibold">
+                    {isBillingReconLoading ? '-' : billingReconciliation?.payments ?? 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    KES {billingReconciliation?.collected_amount ?? '0.00'}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="py-4">
+                  <p className="text-xs text-muted-foreground">Outstanding</p>
+                  <p className="text-2xl font-semibold">KES {billingReconciliation?.outstanding_amount ?? '0.00'}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Standalone Lab Invoices</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveTable
+                  data={billingInvoices || []}
+                  keyExtractor={(item) => item.id}
+                  columns={billingInvoiceColumns}
+                  defaultSortColumn="invoice_date"
+                  defaultSortDirection="desc"
+                  isLoading={isBillingInvoicesLoading}
+                  emptyMessage="No standalone lab invoices yet."
+                />
               </CardContent>
             </Card>
           </TabsContent>

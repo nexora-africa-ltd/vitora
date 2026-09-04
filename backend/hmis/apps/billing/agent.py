@@ -85,6 +85,8 @@ class BillingAgentService:
             return invoice
 
         facility = getattr(encounter, "facility", None) if encounter else None
+        if facility is None and patient is not None:
+            facility = getattr(patient, "registered_at_facility", None)
         return Invoice.objects.create(
             patient=patient,
             encounter=encounter,
@@ -339,6 +341,13 @@ class BillingAgentService:
         invoice = cls.get_or_create_draft_invoice(billing_patient, encounter_for_billing)
 
         for item in lab_order.items.select_related("test"):
+            existing = invoice.items.filter(
+                lab_order=lab_order,
+                description=f"Lab: {item.test.name}",
+            ).first()
+            if existing is not None:
+                continue
+
             # Primary lookup: exact code match (TestCatalog.code == Service.code)
             service = Service.objects.filter(
                 code=item.test.code,
@@ -368,9 +377,18 @@ class BillingAgentService:
                     invoice.invoice_number,
                 )
             else:
+                cls.add_line_item(
+                    invoice,
+                    service=None,
+                    quantity=1,
+                    unit_price=item.unit_cost,
+                    description=f"Lab: {item.test.name}",
+                    item_type=InvoiceItem.ItemType.LAB,
+                    lab_order=lab_order,
+                )
                 logger.warning(
                     "Billing agent: no billing Service found for test %s (code=%s). "
-                    "Run 'manage.py seed_service_catalog --force' to sync.",
+                    "Used TestCatalog cost fallback.",
                     item.test.name,
                     item.test.code,
                 )

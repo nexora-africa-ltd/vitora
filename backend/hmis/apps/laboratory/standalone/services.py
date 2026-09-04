@@ -9,6 +9,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from io import BytesIO
 from urllib import error as urllib_error
 from urllib import request as urllib_request
@@ -37,6 +38,9 @@ def process_external_order(
     ext_order: ExternalOrderRequest,
     user,
     auto_create_walkin: bool = True,
+    enable_billing: bool = True,
+    payer_type: str = "cash",
+    diagnostic_package: str = "",
     facility=None,
     organization=None,
 ) -> LabOrder:
@@ -60,6 +64,7 @@ def process_external_order(
     """
     walkin = None
     patient = None
+    billing_patient = None
 
     if auto_create_walkin and ext_order.patient_name:
         # Parse name (HL7 format: LAST^FIRST or "First Last")
@@ -80,6 +85,9 @@ def process_external_order(
         )
         ext_order.walkin_patient = walkin
         ext_order.save(update_fields=["walkin_patient", "updated_at"])
+        if enable_billing:
+            billing_patient = ensure_walkin_has_billing_patient(walkin, user)
+            patient = billing_patient
 
     # Create the lab order
     order = LabOrder.objects.create(
@@ -95,7 +103,8 @@ def process_external_order(
         walkin_patient_dob=ext_order.patient_dob,
         walkin_patient_gender=ext_order.patient_gender,
         external_accession_number=ext_order.placer_order_number,
-        bill_patient=False,
+        bill_patient=enable_billing,
+        billing_patient=billing_patient,
         facility=facility,
         organization=organization,
     )
@@ -128,7 +137,145 @@ def process_external_order(
     order.status = "ORDERED"
     order.save(update_fields=["status", "total_cost", "updated_at"])
 
+    if enable_billing:
+        apply_diagnostic_billing_rules(
+            lab_order=order,
+            payer_type=payer_type,
+            diagnostic_package=diagnostic_package,
+        )
+
     return order
+
+
+def ensure_walkin_has_billing_patient(walkin: WalkInPatient, user) -> object:
+    """Ensure a walk-in record is linked to an HMIS patient for billing."""
+    if walkin.linked_patient_id:
+        return walkin.linked_patient
+
+    from hmis.apps.patients.models import Patient
+
+    date_of_birth = walkin.date_of_birth or datetime.now().date()
+    gender = walkin.gender or "O"
+    patient = Patient.objects.create(
+        first_name=walkin.first_name,
+        last_name=walkin.last_name,
+        date_of_birth=date_of_birth,
+        gender=gender,
+        identification_type="national_id",
+        registered_by=user,
+        registered_at_facility=walkin.facility,
+        organization=walkin.organization,
+        referral_source="self",
+    )
+
+    if walkin.national_id:
+        patient.identification_number = walkin.national_id
+    if walkin.phone_number:
+        patient.phone_number = walkin.phone_number
+    if walkin.email:
+        patient.email = walkin.email
+    patient.save()
+
+    walkin.linked_patient = patient
+    walkin.save(update_fields=["linked_patient", "updated_at"])
+    return patient
+
+
+def apply_diagnostic_billing_rules(
+    *,
+    lab_order: LabOrder,
+    payer_type: str,
+    diagnostic_package: str,
+):
+    """Apply standalone diagnostic payer/package rules to the linked invoice."""
+    from hmis.apps.billing.models import Invoice, InvoicePayer
+
+    invoice = (
+        Invoice.objects.filter(items__lab_order=lab_order)
+        .select_related("patient")
+        .prefetch_related("payers")
+        .first()
+    )
+    if invoice is None:
+        return None
+
+    normalized_payer = (payer_type or "cash").strip().lower()
+    valid_payers = {
+        Invoice.PayerType.CASH,
+        Invoice.PayerType.SHA,
+        Invoice.PayerType.PRIVATE_INSURANCE,
+        Invoice.PayerType.CORPORATE,
+        Invoice.PayerType.MIXED,
+    }
+    if normalized_payer not in valid_payers:
+        normalized_payer = Invoice.PayerType.CASH
+
+    changed_fields = []
+    if invoice.payer_type != normalized_payer:
+        invoice.payer_type = normalized_payer
+        changed_fields.append("payer_type")
+
+    package_code = (diagnostic_package or "").strip().upper()
+    package_discount_map = {
+        "BASIC": Decimal("0.00"),
+        "COMPREHENSIVE": Decimal("10.00"),
+        "EMPLOYMENT": Decimal("15.00"),
+        "REFERRAL": Decimal("5.00"),
+    }
+    if package_code:
+        note = f"Standalone LIS diagnostic package: {package_code}"
+        if note not in (invoice.internal_notes or ""):
+            invoice.internal_notes = f"{invoice.internal_notes}\n{note}".strip()
+            changed_fields.append("internal_notes")
+
+    if changed_fields:
+        invoice.save(update_fields=[*changed_fields, "updated_at"])
+
+    payer, _ = InvoicePayer.objects.get_or_create(
+        invoice=invoice,
+        priority=1,
+        defaults={
+            "payer_type": normalized_payer,
+            "allocated_amount": invoice.total_amount,
+            "allocation_percent": Decimal("100.00"),
+            "status": InvoicePayer.Status.PENDING,
+        },
+    )
+    payer_update_fields = []
+    if payer.payer_type != normalized_payer:
+        payer.payer_type = normalized_payer
+        payer_update_fields.append("payer_type")
+    if payer.allocated_amount != invoice.total_amount:
+        payer.allocated_amount = invoice.total_amount
+        payer_update_fields.append("allocated_amount")
+    if payer.allocation_percent != Decimal("100.00"):
+        payer.allocation_percent = Decimal("100.00")
+        payer_update_fields.append("allocation_percent")
+    if payer_update_fields:
+        payer.save(update_fields=[*payer_update_fields, "updated_at"])
+
+    package_discount = package_discount_map.get(package_code)
+    if package_discount is not None:
+        if package_discount > 0:
+            discount_amount = (invoice.subtotal * package_discount / Decimal("100")).quantize(
+                Decimal("0.01")
+            )
+            invoice.apply_discount(
+                amount=discount_amount,
+                reason=f"{package_code} diagnostic package",
+                discount_type=Invoice.DiscountType.PERCENTAGE,
+                discount_value=package_discount,
+            )
+        elif invoice.discount_amount > 0 and "diagnostic package" in (
+            invoice.discount_reason or ""
+        ):
+            invoice.discount_type = ""
+            invoice.discount_value = Decimal("0.00")
+            invoice.discount_amount = Decimal("0.00")
+            invoice.discount_reason = ""
+            invoice.calculate_totals()
+
+    return invoice
 
 
 def ingest_hl7_orm(
@@ -411,6 +558,55 @@ def generate_result_pdf_bytes(lab_order: LabOrder, payload: dict) -> bytes:
                 styles["BodyText"],
             )
         )
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def generate_invoice_pdf_bytes(invoice) -> bytes:
+    """Generate a printable invoice PDF optimized for standalone labs."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
+    )
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph("Standalone LIS Invoice", styles["Title"]),
+        Spacer(1, 6 * mm),
+        Paragraph(f"Invoice: {invoice.invoice_number}", styles["Normal"]),
+        Paragraph(f"Date: {invoice.invoice_date.isoformat()}", styles["Normal"]),
+        Paragraph(f"Patient: {invoice.patient}", styles["Normal"]),
+        Paragraph(f"Payer: {invoice.get_payer_type_display()}", styles["Normal"]),
+        Spacer(1, 5 * mm),
+    ]
+
+    for line in invoice.items.all().order_by("created_at"):
+        story.append(
+            Paragraph(
+                f"{line.description}: {line.quantity} x {line.unit_price} = {line.line_total} KES",
+                styles["BodyText"],
+            )
+        )
+
+    story.extend(
+        [
+            Spacer(1, 6 * mm),
+            Paragraph(f"Subtotal: {invoice.subtotal} KES", styles["Normal"]),
+            Paragraph(f"Discount: {invoice.discount_amount} KES", styles["Normal"]),
+            Paragraph(f"Total: {invoice.total_amount} KES", styles["Heading3"]),
+            Paragraph(f"Paid: {invoice.amount_paid} KES", styles["Normal"]),
+            Paragraph(f"Balance: {invoice.balance_due} KES", styles["Normal"]),
+        ]
+    )
     doc.build(story)
     return buffer.getvalue()
 

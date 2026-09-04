@@ -44,8 +44,33 @@ export interface StandaloneOrderCreateData {
   walkin_gender?: '' | 'M' | 'F' | 'O';
   priority?: 'ROUTINE' | 'URGENT' | 'STAT';
   clinical_notes?: string;
+  enable_billing?: boolean;
+  payer_type?: 'cash' | 'sha' | 'private_insurance' | 'corporate' | 'mixed';
+  diagnostic_package?: '' | 'BASIC' | 'COMPREHENSIVE' | 'EMPLOYMENT' | 'REFERRAL';
   referring_clinician?: string;
   items: StandaloneOrderItem[];
+}
+
+export interface StandaloneBillingReconciliation {
+  released_orders: number;
+  released_amount: string;
+  invoices: number;
+  invoiced_amount: string;
+  payments: number;
+  collected_amount: string;
+  outstanding_amount: string;
+}
+
+export interface StandaloneBillingInvoice {
+  id: number;
+  invoice_number: string;
+  patient_name: string;
+  invoice_date: string;
+  status: string;
+  payer_type: string;
+  total_amount: string;
+  amount_paid: string;
+  balance_due: string;
 }
 
 export interface StandaloneOrderItem {

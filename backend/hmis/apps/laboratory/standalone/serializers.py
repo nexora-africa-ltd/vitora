@@ -3,6 +3,7 @@
 
 from rest_framework import serializers
 
+from hmis.apps.billing.models import Invoice
 from hmis.apps.core.models import ExternalCodeMapping
 from hmis.apps.laboratory.models import LabOrder, LabOrderItem, TestCatalog
 
@@ -117,6 +118,24 @@ class StandaloneOrderCreateSerializer(serializers.Serializer):
     priority = serializers.ChoiceField(choices=["ROUTINE", "URGENT", "STAT"], default="ROUTINE")
     clinical_notes = serializers.CharField(required=False, default="")
     referring_clinician = serializers.CharField(required=False, default="")
+    enable_billing = serializers.BooleanField(required=False, default=True)
+    payer_type = serializers.ChoiceField(
+        choices=Invoice.PayerType.choices,
+        required=False,
+        default=Invoice.PayerType.CASH,
+    )
+    diagnostic_package = serializers.ChoiceField(
+        choices=[
+            ("", "None"),
+            ("BASIC", "Basic"),
+            ("COMPREHENSIVE", "Comprehensive"),
+            ("EMPLOYMENT", "Employment"),
+            ("REFERRAL", "Referral"),
+        ],
+        required=False,
+        allow_blank=True,
+        default="",
+    )
     items = StandaloneOrderItemSerializer(many=True)
 
     def validate_items(self, value):
@@ -140,20 +159,28 @@ class StandaloneOrderCreateSerializer(serializers.Serializer):
         items_data = validated_data.pop("items")
         request = self.context["request"]
         user = request.user
+        enable_billing = validated_data.pop("enable_billing", True)
+        payer_type = validated_data.pop("payer_type", Invoice.PayerType.CASH)
+        diagnostic_package = validated_data.pop("diagnostic_package", "")
+
+        from .services import apply_diagnostic_billing_rules, ensure_walkin_has_billing_patient
 
         # Resolve patient
         patient = None
+        billing_patient = None
         walkin_patient_name = ""
         walkin_patient_id_val = ""
         walkin_patient_phone = ""
         walkin_patient_dob = None
         walkin_patient_gender = ""
+        walkin = None
 
         if validated_data.get("patient_id"):
             from hmis.apps.patients.models import Patient
 
             try:
                 patient = Patient.objects.get(id=validated_data["patient_id"])
+                billing_patient = patient
             except Patient.DoesNotExist as e:
                 raise serializers.ValidationError({"patient_id": "Patient not found."}) from e
         elif validated_data.get("walkin_patient_id"):
@@ -167,6 +194,7 @@ class StandaloneOrderCreateSerializer(serializers.Serializer):
                 # If the walk-in is linked to a full patient, use that
                 if walkin.linked_patient:
                     patient = walkin.linked_patient
+                    billing_patient = walkin.linked_patient
             except WalkInPatient.DoesNotExist as e:
                 raise serializers.ValidationError(
                     {"walkin_patient_id": "Walk-in patient not found."}
@@ -178,10 +206,36 @@ class StandaloneOrderCreateSerializer(serializers.Serializer):
             walkin_patient_id_val = validated_data.get("walkin_national_id", "")
             walkin_patient_dob = validated_data.get("walkin_dob")
             walkin_patient_gender = validated_data.get("walkin_gender", "")
+            walkin = WalkInPatient.objects.create(
+                first_name=walkin_patient_name.split(" ")[0],
+                last_name=" ".join(walkin_patient_name.split(" ")[1:]).strip(),
+                date_of_birth=walkin_patient_dob,
+                gender=walkin_patient_gender,
+                phone_number=walkin_patient_phone,
+                national_id=walkin_patient_id_val,
+                registered_by=user,
+                **self.context.get("tenant_kwargs", {}),
+            )
+
+        if enable_billing and billing_patient is None and walkin is not None:
+            billing_patient = ensure_walkin_has_billing_patient(walkin, user)
+            if patient is None:
+                patient = billing_patient
+
+        if enable_billing and billing_patient is None:
+            raise serializers.ValidationError(
+                {
+                    "patient_id": (
+                        "Billable standalone orders require an HMIS patient or walk-in details "
+                        "that can be promoted to an HMIS patient."
+                    )
+                }
+            )
 
         # Create the lab order
         order = LabOrder.objects.create(
             patient=patient,
+            billing_patient=billing_patient,
             encounter=None,
             ordered_by=user,
             order_type="IN_HOUSE",
@@ -193,7 +247,7 @@ class StandaloneOrderCreateSerializer(serializers.Serializer):
             walkin_patient_phone=walkin_patient_phone,
             walkin_patient_dob=walkin_patient_dob,
             walkin_patient_gender=walkin_patient_gender,
-            bill_patient=False,  # Standalone orders don't auto-bill
+            bill_patient=enable_billing,
             **self.context.get("tenant_kwargs", {}),
         )
 
@@ -214,7 +268,16 @@ class StandaloneOrderCreateSerializer(serializers.Serializer):
                 special_instructions=item_data.get("special_instructions", ""),
             )
 
+        order.status = "ORDERED"
         order.calculate_total_cost()
+        order.save(update_fields=["status", "total_cost", "updated_at"])
+
+        if enable_billing:
+            apply_diagnostic_billing_rules(
+                lab_order=order,
+                payer_type=payer_type,
+                diagnostic_package=diagnostic_package,
+            )
         return order
 
 
@@ -254,6 +317,24 @@ class ExternalOrderAcceptSerializer(serializers.Serializer):
 
     auto_create_walkin = serializers.BooleanField(
         default=True, help_text="Auto-create walk-in patient from external patient data"
+    )
+    enable_billing = serializers.BooleanField(default=True)
+    payer_type = serializers.ChoiceField(
+        choices=Invoice.PayerType.choices,
+        required=False,
+        default=Invoice.PayerType.CASH,
+    )
+    diagnostic_package = serializers.ChoiceField(
+        choices=[
+            ("", "None"),
+            ("BASIC", "Basic"),
+            ("COMPREHENSIVE", "Comprehensive"),
+            ("EMPLOYMENT", "Employment"),
+            ("REFERRAL", "Referral"),
+        ],
+        required=False,
+        allow_blank=True,
+        default="",
     )
 
 

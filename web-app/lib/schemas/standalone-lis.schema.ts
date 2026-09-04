@@ -221,3 +221,27 @@ export const LISOnboardingReferenceRangeImportResultSchema = z.object({
   errors: z.array(LISOnboardingImportErrorSchema),
   error_count: z.number(),
 });
+
+export const StandaloneBillingReconciliationSchema = z.object({
+  released_orders: z.number(),
+  released_amount: z.string(),
+  invoices: z.number(),
+  invoiced_amount: z.string(),
+  payments: z.number(),
+  collected_amount: z.string(),
+  outstanding_amount: z.string(),
+});
+
+export const StandaloneBillingInvoiceSchema = z.object({
+  id: z.number(),
+  invoice_number: z.string(),
+  patient_name: z.string(),
+  invoice_date: z.string(),
+  status: z.string(),
+  payer_type: z.string(),
+  total_amount: z.string(),
+  amount_paid: z.string(),
+  balance_due: z.string(),
+});
+
+export const StandaloneBillingInvoiceListSchema = z.array(StandaloneBillingInvoiceSchema);
