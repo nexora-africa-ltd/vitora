@@ -672,9 +672,11 @@ export default function AnalyzersPage() {
                         </a>
                         <a
                           className="rounded border p-2 text-primary underline-offset-2 hover:underline"
-                          href="/laboratory/settings"
+                          href="https://get.vitora.digital/docs/laboratory-integration-runbook"
+                          target="_blank"
+                          rel="noreferrer"
                         >
-                          Open integration settings and troubleshooting
+                          Open analyzer integration runbook
                         </a>
                       </div>
                     </CardContent>
