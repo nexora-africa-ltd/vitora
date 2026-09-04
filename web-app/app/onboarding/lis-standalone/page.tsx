@@ -20,12 +20,12 @@ import type { LISOnboardingSeedResult, LISOnboardingStatus } from '@/lib/types/s
 import type { FacilityDetail } from '@/lib/types/facility';
 
 const STEP_ROUTES: Record<string, string> = {
-  lab_identity: '/core/facilities/current',
+  lab_identity: '/admin/facilities',
   test_catalog: '/laboratory/tests',
-  specimen_workflow: '/laboratory/settings/workflow',
-  instrument_channels: '/laboratory/analyzers/channels',
+  specimen_workflow: '/laboratory/settings',
+  instrument_channels: '/laboratory/analyzers',
   pricing_basics: '/laboratory/tests',
-  team_access: '/settings/staff',
+  team_access: '/admin/staff',
 };
 
 export default function LISStandaloneOnboardingPage() {
@@ -33,7 +33,6 @@ export default function LISStandaloneOnboardingPage() {
   const { isAuthenticated } = useAuth();
   const [status, setStatus] = useState<LISOnboardingStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCompleting, setIsCompleting] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<LISOnboardingSeedResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -86,20 +85,6 @@ export default function LISStandaloneOnboardingPage() {
     return { done: done.length, total: required.length };
   }, [status]);
 
-  const handleComplete = async () => {
-    setIsCompleting(true);
-    setError(null);
-    try {
-      const result = await standaloneLisApi.completeOnboarding();
-      setStatus(result);
-      router.push('/laboratory');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not complete LIS onboarding.');
-    } finally {
-      setIsCompleting(false);
-    }
-  };
-
   const handleSaveIdentity = async () => {
     if (!facilityDetail) return;
     setIsSavingIdentity(true);
@@ -107,7 +92,7 @@ export default function LISStandaloneOnboardingPage() {
     try {
       const updated = await facilitiesApi.update(facilityDetail.id, {
         dha_license_number: facilityDetail.dha_license_number,
-        dha_license_status: facilityDetail.dha_license_status,
+        dha_license_issue_date: facilityDetail.dha_license_issue_date,
         dha_license_expiry: facilityDetail.dha_license_expiry,
       });
       setFacilityDetail(updated);
@@ -302,18 +287,17 @@ export default function LISStandaloneOnboardingPage() {
                     prev ? { ...prev, dha_license_number: event.target.value } : prev
                   )
                 }
-                placeholder="DHA license number"
+                placeholder="License number"
                 className="rounded-md border border-border bg-background px-2 py-1 text-sm"
               />
               <input
-                type="text"
-                value={facilityDetail?.dha_license_status ?? ''}
+                type="date"
+                value={(facilityDetail?.dha_license_issue_date ?? '').slice(0, 10)}
                 onChange={(event) =>
                   setFacilityDetail((prev) =>
-                    prev ? { ...prev, dha_license_status: event.target.value } : prev
+                    prev ? { ...prev, dha_license_issue_date: event.target.value } : prev
                   )
                 }
-                placeholder="License status"
                 className="rounded-md border border-border bg-background px-2 py-1 text-sm"
               />
               <input
@@ -425,21 +409,8 @@ export default function LISStandaloneOnboardingPage() {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={fetchStatus} disabled={isCompleting || isSeeding}>
+            <Button variant="outline" onClick={fetchStatus} disabled={isSeeding}>
               Refresh
-            </Button>
-            <Button
-              onClick={handleComplete}
-              disabled={isCompleting || isSeeding || status?.complete === true}
-            >
-              {isCompleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Completing...
-                </>
-              ) : (
-                'Mark LIS Onboarding Complete'
-              )}
             </Button>
           </div>
         </CardContent>

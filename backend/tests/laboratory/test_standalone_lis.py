@@ -1034,6 +1034,31 @@ class TestStandaloneOnboardingStatusAPI:
         assert sample_facility.lis_onboarding_completed_at is not None
         assert response.data["complete"] is True
 
+    def test_get_status_auto_marks_complete_when_required_steps_done(
+        self, authenticated_client, sample_facility, mocker
+    ):
+        from hmis.apps.core.models import Facility
+
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.lis_onboarding_completed_at = None
+        sample_facility.save(update_fields=["operating_mode", "lis_onboarding_completed_at"])
+
+        mocker.patch.object(
+            Facility,
+            "get_lis_onboarding_checklist",
+            return_value=[
+                {"key": "lab_identity", "label": "Identity", "done": True, "required": True},
+                {"key": "test_catalog", "label": "Catalog", "done": True, "required": True},
+            ],
+        )
+
+        response = authenticated_client.get("/api/lab/standalone/onboarding/status/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["complete"] is True
+        sample_facility.refresh_from_db()
+        assert sample_facility.lis_onboarding_completed_at is not None
+
 
 class TestStandaloneOnboardingMiddleware:
     """Tests for standalone LIS onboarding enforcement middleware."""
@@ -1151,6 +1176,21 @@ class TestStandaloneOnboardingCSV:
         assert response.status_code == status.HTTP_200_OK
         assert "code,name,short_name" in response.content.decode("utf-8")
 
+    def test_download_specimen_workflow_template_uses_real_newlines(
+        self, authenticated_client, sample_facility
+    ):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        response = authenticated_client.get(
+            "/api/lab/standalone/onboarding/templates/specimen-workflow/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        content = response.content.decode("utf-8")
+        assert "workflow_key,enabled,value\nrequire_specimen_receipt,true,true" in content
+        assert "\\n" not in content
+
     def test_import_test_catalog_csv(self, authenticated_client, sample_facility):
         sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
         sample_facility.save()
@@ -1209,6 +1249,33 @@ class TestStandaloneOnboardingCSV:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["updated"] >= 1
+
+    def test_import_specimen_workflow_tsv(self, authenticated_client, sample_facility):
+        sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB
+        sample_facility.save()
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        tsv_content = (
+            "workflow_key\tenabled\tvalue\n"
+            "require_specimen_receipt\tTRUE\tTRUE\n"
+            "auto_print_labels_on_collect\tTRUE\tTRUE\n"
+            "tat_warning_threshold_percent\tTRUE\t75\n"
+        )
+        upload = SimpleUploadedFile(
+            "workflow.tsv",
+            tsv_content.encode("utf-8"),
+            "text/tab-separated-values",
+        )
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/onboarding/import/specimen-workflow/",
+            {"file": upload},
+            format="multipart",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["updated"] >= 1
+        assert response.data["error_count"] == 0
 
     def test_import_analyzer_channel_csv(self, authenticated_client, sample_facility):
         sample_facility.operating_mode = sample_facility.OperatingMode.STANDALONE_LAB

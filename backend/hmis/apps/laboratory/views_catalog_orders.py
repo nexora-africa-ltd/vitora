@@ -98,7 +98,7 @@ def _parse_date_range(request) -> tuple[date, date]:
     return start_date, end_date
 
 
-class TestCatalogViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
+class TestCatalogViewSet(AuditedMutationMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for test catalog.
     Provides full CRUD operations with search functionality.
@@ -157,7 +157,7 @@ class TestCatalogViewSet(AuditedMutationMixin, viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save()
+        serializer.save(**self.get_tenant_save_kwargs())
 
     def perform_update(self, serializer):
         serializer.save()
@@ -1287,3 +1287,5 @@ class LabResultViewSet(AuditedMutationMixin, NestedTenantScopeMixin, viewsets.Mo
 
         serializer = self.get_serializer(result)
         return Response(serializer.data)
+
+    tenant_scope = "facility"

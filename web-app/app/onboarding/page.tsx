@@ -163,7 +163,7 @@ export default function OnboardingPage() {
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
 
-  const resolveDeploymentProfile = () => {
+  const resolveDeploymentProfile = useCallback(() => {
     if (user?.facility?.deployment_profile) {
       return user.facility.deployment_profile;
     }
@@ -174,7 +174,7 @@ export default function OnboardingPage() {
     } catch {
       return undefined;
     }
-  };
+  }, [user]);
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState<WizardStep>('facility');
@@ -297,7 +297,7 @@ export default function OnboardingPage() {
       }
       fetchStatus();
     }
-  }, [isAuthenticated, fetchStatus, router, user]);
+  }, [isAuthenticated, fetchStatus, resolveDeploymentProfile, router]);
 
   // Step navigation
   const stepIndex = WIZARD_STEPS.findIndex((s) => s.key === currentStep);

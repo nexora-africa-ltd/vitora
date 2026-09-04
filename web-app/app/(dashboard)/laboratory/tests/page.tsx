@@ -211,7 +211,7 @@ export default function LaboratoryTestsPage() {
                 <h3 className="mb-1 text-lg font-medium">No tests in catalog</h3>
                 <p className="mb-4 max-w-sm text-sm text-muted-foreground">
                   {canManage
-                    ? 'Seed the catalog with 16 essential Kenya laboratory tests (CBC, HIV, Malaria, Urinalysis, etc.) to get started.'
+                    ? 'Seed the catalog with 16 essential laboratory tests (CBC, HIV, Malaria, Urinalysis, etc.) to get started.'
                     : 'No tests have been configured yet. Ask an administrator to seed the test catalog.'}
                 </p>
                 {canManage && (

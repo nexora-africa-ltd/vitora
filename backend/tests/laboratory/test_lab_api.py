@@ -187,6 +187,88 @@ class TestTestCatalogAPI:
         created = TestCatalog.objects.get(pk=response.data["id"])
         assert created.code == "HBA1C"
 
+    def test_list_tests_is_scoped_to_request_facility(
+        self,
+        auth_client,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+    ):
+        from hmis.apps.core.models import Facility
+
+        second_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Lab Facility",
+            mfl_code="LAB-SECOND-001",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+
+        TestCatalog.objects.create(
+            code="FAC1",
+            name="Facility One Test",
+            short_name="F1",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        TestCatalog.objects.create(
+            code="FAC2",
+            name="Facility Two Test",
+            short_name="F2",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            facility=second_facility,
+            organization=sample_organization,
+        )
+
+        response = auth_client.get("/api/lab/tests/")
+
+        assert response.status_code == status.HTTP_200_OK
+        codes = {item["code"] for item in response.data["results"]}
+        assert "FAC1" in codes
+        assert "FAC2" not in codes
+
+    def test_retrieve_test_from_other_facility_returns_not_found(
+        self,
+        auth_client,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+    ):
+        from hmis.apps.core.models import Facility
+
+        second_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Lab Facility",
+            mfl_code="LAB-SECOND-002",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+
+        TestCatalog.objects.create(
+            code="OTHERFAC",
+            name="Other Facility Test",
+            short_name="OF",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+            facility=second_facility,
+            organization=sample_organization,
+        )
+
+        response = auth_client.get("/api/lab/tests/OTHERFAC/")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
     def test_seed_defaults_creates_facility_scoped_records(self, auth_client, sample_facility):
         response = auth_client.post("/api/lab/tests/seed-defaults/", format="json")
 

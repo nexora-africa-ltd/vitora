@@ -299,6 +299,12 @@ class Facility(TimeStampedModel):
         default="",
         help_text="License number from DHA.",
     )
+    dha_license_issue_date = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        help_text="License issue date string from DHA.",
+    )
     dha_license_expiry = models.CharField(
         max_length=30,
         blank=True,
@@ -629,18 +635,12 @@ class Facility(TimeStampedModel):
         from hmis.apps.laboratory.analyzers.models import InstrumentChannel
         from hmis.apps.laboratory.models import LabWorkflowSettings, TestCatalog
 
-        license_status = str(self.dha_license_status or "").strip().upper()
-        license_expiry_ok = bool(
-            self.dha_license_expiry and self.dha_license_expiry >= timezone.now().date()
-        )
-        license_status_ok = license_status in {"ACTIVE", "VALID", "CURRENT", "LICENSED"}
         has_lab_identity = bool(
             self.name
             and self.mfl_code
             and self.dha_license_number
+            and self.dha_license_issue_date
             and self.dha_license_expiry
-            and license_expiry_ok
-            and license_status_ok
         )
         has_test_catalog = TestCatalog.objects.filter(
             facility=self,
@@ -1129,6 +1129,7 @@ class Facility(TimeStampedModel):
         self.dha_fr_code = str(data.get("frCode", "") or "")
         self.dha_license_status = str(data.get("facilityLicenseStatus", "") or "")
         self.dha_license_number = str(data.get("licenseNumber", "") or "")
+        self.dha_license_issue_date = str(data.get("facilityLicenseStartDate", "") or "")
         self.dha_license_expiry = str(data.get("facilityLicenseEndDate", "") or "")
         self.dha_facility_type = str(data.get("facilityType", "") or "")
         self.dha_keph_level = str(data.get("kephLevel", "") or "")

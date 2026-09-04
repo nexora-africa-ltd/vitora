@@ -87,6 +87,7 @@ export interface FacilityDetail extends FacilityListItem {
   dha_fr_code: string;
   dha_license_status: string;
   dha_license_number: string;
+  dha_license_issue_date: string;
   dha_license_expiry: string;
   dha_operational_status: string;
   dha_sha_contract_status: string;
@@ -120,6 +121,7 @@ export interface FacilityUpdateData {
   sha_contract_expiry?: string | null;
   sha_facility_code?: string;
   dha_license_number?: string;
+  dha_license_issue_date?: string;
   dha_license_status?: string;
   dha_license_expiry?: string;
   dhis2_org_unit?: string;

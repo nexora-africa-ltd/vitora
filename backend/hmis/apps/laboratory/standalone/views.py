@@ -57,6 +57,21 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 
+def _build_csv_reader(decoded: str) -> csv.DictReader:
+    """Build a DictReader that tolerates common CSV delimiters.
+
+    Accepts comma, semicolon, or tab-delimited input to support spreadsheet
+    exports that may vary by locale/editor.
+    """
+
+    sample = decoded[:2048]
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+    except csv.Error:
+        dialect = csv.excel
+    return csv.DictReader(StringIO(decoded), dialect=dialect)
+
+
 def _get_standalone_facility(request):
     """Resolve and validate standalone LIS facility context for onboarding endpoints."""
     profile = getattr(request.user, "staff_profile", None)
@@ -87,6 +102,24 @@ def standalone_onboarding_status(request):
         return error_response
 
     steps = facility.get_lis_onboarding_checklist()
+    missing_required = [step["key"] for step in steps if step["required"] and not step["done"]]
+
+    if not missing_required and not facility.lis_onboarding_complete:
+        facility.lis_onboarding_completed_at = timezone.now()
+        facility.save(update_fields=["lis_onboarding_completed_at", "updated_at"])
+
+        AuditLog.log(
+            action="lis_onboarding_completed",
+            user=request.user,
+            resource_type="Facility",
+            resource_id=facility.id,
+            facility=facility,
+            organization=facility.organization,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"operating_mode": str(facility.operating_mode), "source": "auto_inferred"},
+            request=request,
+        )
 
     if request.method == "GET":
         return Response(
@@ -110,7 +143,6 @@ def standalone_onboarding_status(request):
             }
         )
 
-    missing_required = [step["key"] for step in steps if step["required"] and not step["done"]]
     if missing_required:
         return Response(
             {
@@ -310,7 +342,7 @@ def standalone_onboarding_template_download(request, template_name: str):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    response = Response(content, content_type="text/csv")
+    response = HttpResponse(content, content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = f'attachment; filename="{template_name}.csv"'
     return response
 
@@ -333,7 +365,7 @@ def standalone_onboarding_import_test_catalog(request):
     except UnicodeDecodeError:
         return Response({"detail": "CSV file must be UTF-8 encoded."}, status=400)
 
-    reader = csv.DictReader(StringIO(decoded))
+    reader = _build_csv_reader(decoded)
     required_columns = {
         "code",
         "name",
@@ -456,7 +488,7 @@ def standalone_onboarding_import_specimen_workflow(request):
     except UnicodeDecodeError:
         return Response({"detail": "CSV file must be UTF-8 encoded."}, status=400)
 
-    reader = csv.DictReader(StringIO(decoded))
+    reader = _build_csv_reader(decoded)
     required_columns = {"workflow_key", "enabled", "value"}
     missing = sorted(required_columns - set(reader.fieldnames or []))
     if missing:
@@ -545,7 +577,7 @@ def standalone_onboarding_import_analyzer_channel(request):
     except UnicodeDecodeError:
         return Response({"detail": "CSV file must be UTF-8 encoded."}, status=400)
 
-    reader = csv.DictReader(StringIO(decoded))
+    reader = _build_csv_reader(decoded)
     required_columns = {
         "instrument_code",
         "instrument_name",
@@ -671,7 +703,7 @@ def standalone_onboarding_import_reference_ranges(request):
     except UnicodeDecodeError:
         return Response({"detail": "CSV file must be UTF-8 encoded."}, status=400)
 
-    reader = csv.DictReader(StringIO(decoded))
+    reader = _build_csv_reader(decoded)
     required_columns = {"test_code", "gender", "age_band", "normal_range", "unit"}
     missing = sorted(required_columns - set(reader.fieldnames or []))
     if missing:

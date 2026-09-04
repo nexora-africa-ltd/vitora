@@ -113,6 +113,7 @@ export const FacilityDetailSchema = FacilityListItemSchema.extend({
   dha_fr_code: z.string().default(''),
   dha_license_status: z.string().default(''),
   dha_license_number: z.string().default(''),
+  dha_license_issue_date: z.string().default(''),
   dha_license_expiry: z.string().default(''),
   dha_operational_status: z.string().default(''),
   dha_sha_contract_status: z.string().default(''),
