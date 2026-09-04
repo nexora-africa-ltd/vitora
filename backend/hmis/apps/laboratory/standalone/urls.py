@@ -6,6 +6,11 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     ExternalOrderRequestViewSet,
+    ExternalPatientIdentifierCrosswalkViewSet,
+    InboundIngestionEventViewSet,
+    InteropInboundViewSet,
+    LISMessageMappingViewSet,
+    ResultDeliveryLogViewSet,
     StandaloneOrderViewSet,
     WalkInPatientViewSet,
     standalone_onboarding_import_analyzer_channel,
@@ -20,6 +25,10 @@ from .views import (
 router = DefaultRouter()
 router.register(r"walkin-patients", WalkInPatientViewSet, basename="walkin-patient")
 router.register(r"external-orders", ExternalOrderRequestViewSet, basename="external-order")
+router.register(r"interop/inbound-events", InboundIngestionEventViewSet, basename="inbound-event")
+router.register(r"interop/crosswalk", ExternalPatientIdentifierCrosswalkViewSet, basename="xwalk")
+router.register(r"interop/delivery-logs", ResultDeliveryLogViewSet, basename="result-delivery-log")
+router.register(r"interop/mappings", LISMessageMappingViewSet, basename="interop-mapping")
 
 urlpatterns = [
     path(
@@ -61,6 +70,11 @@ urlpatterns = [
         "orders/create/",
         StandaloneOrderViewSet.as_view({"post": "create"}),
         name="standalone-order-create",
+    ),
+    path(
+        "interop/inbound-orders/",
+        InteropInboundViewSet.as_view({"post": "create"}),
+        name="standalone-interop-inbound-orders",
     ),
     path("", include(router.urls)),
 ]

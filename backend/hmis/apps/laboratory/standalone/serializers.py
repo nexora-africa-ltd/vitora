@@ -3,9 +3,16 @@
 
 from rest_framework import serializers
 
+from hmis.apps.core.models import ExternalCodeMapping
 from hmis.apps.laboratory.models import LabOrder, LabOrderItem, TestCatalog
 
-from .models import ExternalOrderRequest, WalkInPatient
+from .models import (
+    ExternalOrderRequest,
+    ExternalPatientIdentifierCrosswalk,
+    InboundIngestionEvent,
+    ResultDeliveryLog,
+    WalkInPatient,
+)
 
 
 class WalkInPatientSerializer(serializers.ModelSerializer):
@@ -254,3 +261,163 @@ class ExternalOrderRejectSerializer(serializers.Serializer):
     """Reject an external order request."""
 
     reason = serializers.CharField(help_text="Reason for rejection")
+
+
+class InboundOrderIngestSerializer(serializers.Serializer):
+    """Inbound order payload for standalone interop endpoint."""
+
+    source_system = serializers.CharField(max_length=100)
+    channel = serializers.ChoiceField(choices=["API", "HL7"], default="API")
+    message_format = serializers.ChoiceField(choices=["HL7", "JSON"], default="HL7")
+    hl7_message = serializers.CharField(required=False, allow_blank=False)
+    payload = serializers.JSONField(required=False)
+
+    def validate(self, attrs):
+        message_format = attrs.get("message_format", "HL7")
+        if message_format == "HL7" and not attrs.get("hl7_message"):
+            raise serializers.ValidationError({"hl7_message": "This field is required for HL7."})
+        if message_format == "JSON" and attrs.get("payload") is None:
+            raise serializers.ValidationError({"payload": "This field is required for JSON."})
+        return attrs
+
+
+class InboundIngestionEventSerializer(serializers.ModelSerializer):
+    """Read serializer for inbound ingestion events / dead-letter queue."""
+
+    class Meta:
+        model = InboundIngestionEvent
+        fields = [
+            "id",
+            "trace_id",
+            "source_system",
+            "channel",
+            "idempotency_key",
+            "status",
+            "error_message",
+            "replay_count",
+            "last_replayed_at",
+            "processed_at",
+            "external_order",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class ExternalPatientIdentifierCrosswalkSerializer(serializers.ModelSerializer):
+    """Read serializer for external patient identifier crosswalk entries."""
+
+    class Meta:
+        model = ExternalPatientIdentifierCrosswalk
+        fields = [
+            "id",
+            "source_system",
+            "external_patient_id",
+            "external_member_id",
+            "patient_name_snapshot",
+            "walkin_patient",
+            "patient",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class ResultDeliveryRequestSerializer(serializers.Serializer):
+    """Request payload for outbound result delivery actions."""
+
+    channel = serializers.ChoiceField(choices=ResultDeliveryLog.Channel.choices)
+    destination = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class ResultDeliveryLogSerializer(serializers.ModelSerializer):
+    """Read serializer for outbound result delivery logs."""
+
+    class Meta:
+        model = ResultDeliveryLog
+        fields = [
+            "id",
+            "trace_id",
+            "channel",
+            "status",
+            "destination",
+            "external_order",
+            "lab_order",
+            "requested_by",
+            "response_status_code",
+            "response_body",
+            "error_message",
+            "attempt_count",
+            "delivered_at",
+            "pdf_filename",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class LISMessageMappingSerializer(serializers.ModelSerializer):
+    """Serializer for standalone LIS message mapping configuration entries."""
+
+    test_id = serializers.IntegerField(source="object_id", read_only=True)
+    test_code = serializers.SerializerMethodField()
+    test_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ExternalCodeMapping
+        fields = [
+            "id",
+            "code_system",
+            "external_code",
+            "external_display",
+            "relationship",
+            "is_active",
+            "notes",
+            "test_id",
+            "test_code",
+            "test_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "test_id", "test_code", "test_name", "created_at", "updated_at"]
+
+    def get_test_code(self, obj):
+        internal = getattr(obj, "internal_object", None)
+        if isinstance(internal, TestCatalog):
+            return internal.code
+        return None
+
+    def get_test_name(self, obj):
+        internal = getattr(obj, "internal_object", None)
+        if isinstance(internal, TestCatalog):
+            return internal.name
+        return None
+
+
+class LISMessageMappingUpsertSerializer(serializers.Serializer):
+    """Create/update payload for LIS message mapping entries."""
+
+    code_system = serializers.CharField(max_length=100)
+    external_code = serializers.CharField(max_length=100)
+    external_display = serializers.CharField(required=False, allow_blank=True, default="")
+    relationship = serializers.ChoiceField(choices=["EQUIVALENT", "BROADER", "NARROWER", "RELATED"])
+    is_active = serializers.BooleanField(default=True)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+    test_code = serializers.CharField(max_length=50)
+
+
+class LISMessageMappingValidationSerializer(serializers.Serializer):
+    """Validation payload for inbound message-to-test mapping preview."""
+
+    source_system = serializers.CharField(max_length=100)
+    message_format = serializers.ChoiceField(choices=["HL7", "JSON"])
+    hl7_message = serializers.CharField(required=False)
+    payload = serializers.JSONField(required=False)
+
+    def validate(self, attrs):
+        fmt = attrs.get("message_format")
+        if fmt == "HL7" and not attrs.get("hl7_message"):
+            raise serializers.ValidationError({"hl7_message": "This field is required for HL7."})
+        if fmt == "JSON" and attrs.get("payload") is None:
+            raise serializers.ValidationError({"payload": "This field is required for JSON."})
+        return attrs

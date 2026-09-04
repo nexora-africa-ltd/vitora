@@ -602,6 +602,214 @@ class TestExternalOrderWorkflow:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
+class TestStandaloneInteropInbound:
+    """Tests for WS3 inbound interop endpoints (idempotency, crosswalk, replay)."""
+
+    def test_inbound_ingest_hl7_creates_trace_and_crosswalk(
+        self, authenticated_client, sample_hl7_orm_message
+    ):
+        response = authenticated_client.post(
+            "/api/lab/standalone/interop/inbound-orders/",
+            {
+                "source_system": "EXT_LIS",
+                "channel": "HL7",
+                "message_format": "HL7",
+                "hl7_message": sample_hl7_orm_message,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["trace_id"]
+
+        from hmis.apps.laboratory.standalone.models import ExternalPatientIdentifierCrosswalk
+
+        assert ExternalPatientIdentifierCrosswalk.objects.filter(
+            source_system="EXT_LIS",
+            external_patient_id="PAT001",
+        ).exists()
+
+    def test_inbound_ingest_supports_idempotency_key(
+        self, authenticated_client, sample_hl7_orm_message
+    ):
+        payload = {
+            "source_system": "EXT_LIS",
+            "channel": "HL7",
+            "message_format": "HL7",
+            "hl7_message": sample_hl7_orm_message,
+        }
+        headers = {"HTTP_X_IDEMPOTENCY_KEY": "idem-ord-001"}
+
+        first = authenticated_client.post(
+            "/api/lab/standalone/interop/inbound-orders/",
+            payload,
+            format="json",
+            **headers,
+        )
+        second = authenticated_client.post(
+            "/api/lab/standalone/interop/inbound-orders/",
+            payload,
+            format="json",
+            **headers,
+        )
+
+        assert first.status_code == status.HTTP_201_CREATED
+        assert second.status_code == status.HTTP_200_OK
+        assert second.data["status"] == "idempotent_replay"
+        assert first.data["trace_id"] == second.data["trace_id"]
+
+    def test_replay_failed_dead_letter_event(
+        self, authenticated_client, sample_hl7_orm_message, sample_facility, sample_organization
+    ):
+        from hmis.apps.laboratory.standalone.models import InboundIngestionEvent
+
+        event = InboundIngestionEvent.objects.create(
+            source_system="EXT_LIS",
+            channel="HL7",
+            status=InboundIngestionEvent.Status.FAILED,
+            raw_payload=sample_hl7_orm_message,
+            error_message="Parse error",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.post(
+            f"/api/lab/standalone/interop/inbound-events/{event.id}/replay/",
+            {},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        event.refresh_from_db()
+        assert event.status == InboundIngestionEvent.Status.REPLAYED
+        assert event.external_order is not None
+
+
+class TestStandaloneInteropOutbound:
+    """Tests for WS3 outbound result delivery and delivery status tracking."""
+
+    def test_deliver_result_pdf_package_and_download(
+        self,
+        authenticated_client,
+        external_order,
+        sample_lab_order,
+        sample_facility,
+        sample_organization,
+    ):
+        external_order.lab_order = sample_lab_order
+        external_order.status = external_order.Status.ACCEPTED
+        external_order.facility = sample_facility
+        external_order.organization = sample_organization
+        external_order.save(update_fields=["lab_order", "status", "facility", "organization"])
+
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status", "updated_at"])
+
+        deliver = authenticated_client.post(
+            f"/api/lab/standalone/external-orders/{external_order.id}/deliver-result/",
+            {"channel": "PDF_PACKAGE"},
+            format="json",
+        )
+        assert deliver.status_code == status.HTTP_201_CREATED
+        assert deliver.data["status"] == "DELIVERED"
+        assert deliver.data["pdf_filename"].endswith(".pdf")
+
+        download = authenticated_client.get(
+            f"/api/lab/standalone/interop/delivery-logs/{deliver.data['id']}/download-pdf/"
+        )
+        assert download.status_code == status.HTTP_200_OK
+        assert download["Content-Type"] == "application/pdf"
+
+    def test_deliver_result_webhook_failure_is_logged(
+        self,
+        authenticated_client,
+        external_order,
+        sample_lab_order,
+        sample_facility,
+        sample_organization,
+        mocker,
+    ):
+        from urllib.error import URLError
+
+        mocker.patch(
+            "hmis.apps.laboratory.standalone.services.urllib_request.urlopen",
+            side_effect=URLError("network down"),
+        )
+
+        external_order.lab_order = sample_lab_order
+        external_order.status = external_order.Status.ACCEPTED
+        external_order.facility = sample_facility
+        external_order.organization = sample_organization
+        external_order.save(update_fields=["lab_order", "status", "facility", "organization"])
+
+        sample_lab_order.status = "COMPLETED"
+        sample_lab_order.save(update_fields=["status", "updated_at"])
+
+        response = authenticated_client.post(
+            f"/api/lab/standalone/external-orders/{external_order.id}/deliver-result/",
+            {"channel": "WEBHOOK", "destination": "https://example.invalid/hooks/lab-results"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["status"] == "FAILED"
+        assert "network down" in response.data["error_message"]
+
+
+class TestStandaloneMappingTooling:
+    """Tests for WS3 message mapping config and validation tooling."""
+
+    def test_create_and_list_mapping(self, authenticated_client, sample_test_catalog):
+        create = authenticated_client.post(
+            "/api/lab/standalone/interop/mappings/",
+            {
+                "code_system": "EXT_LIS",
+                "external_code": "EXT-CBC-01",
+                "external_display": "External CBC",
+                "relationship": "EQUIVALENT",
+                "is_active": True,
+                "test_code": sample_test_catalog.code,
+            },
+            format="json",
+        )
+        assert create.status_code == status.HTTP_201_CREATED
+        assert create.data["external_code"] == "EXT-CBC-01"
+
+        listed = authenticated_client.get(
+            "/api/lab/standalone/interop/mappings/?code_system=EXT_LIS"
+        )
+        assert listed.status_code == status.HTTP_200_OK
+        assert len(listed.data) >= 1
+        assert any(entry["external_code"] == "EXT-CBC-01" for entry in listed.data)
+
+    def test_validate_mapping_preview(self, authenticated_client, sample_test_catalog):
+        authenticated_client.post(
+            "/api/lab/standalone/interop/mappings/",
+            {
+                "code_system": "EXT_LIS",
+                "external_code": "EXT-CBC-02",
+                "relationship": "EQUIVALENT",
+                "is_active": True,
+                "test_code": sample_test_catalog.code,
+            },
+            format="json",
+        )
+
+        response = authenticated_client.post(
+            "/api/lab/standalone/interop/mappings/validate/",
+            {
+                "source_system": "EXT_LIS",
+                "message_format": "JSON",
+                "payload": {
+                    "tests": [{"code": "EXT-CBC-02"}, {"code": "UNKNOWN-CODE"}],
+                },
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["total_codes"] == 2
+        assert response.data["mapped_count"] == 1
+        assert response.data["unmapped_count"] == 1
+
+
 # =============================================================================
 # Billing Decoupling Tests
 # =============================================================================

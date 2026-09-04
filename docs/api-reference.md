@@ -262,6 +262,159 @@ GET             /api/lab/queue/                      # Lab processing queue
 GET|POST        /api/lab/orders/{id}/comments/
 ```
 
+### LIS Standalone Interop (WS3) - Contract
+
+> Scope: `lis_standalone` profile only (`/api/lab/standalone/**`).
+
+```
+# Inbound intake (idempotent)
+POST            /api/lab/standalone/interop/inbound-orders/
+                 Header: X-Idempotency-Key: <client-generated-uuid>
+
+# Dead-letter / replay
+GET             /api/lab/standalone/interop/inbound-events/
+POST            /api/lab/standalone/interop/inbound-events/{id}/replay/
+
+# External patient identifier crosswalk
+GET             /api/lab/standalone/interop/crosswalk/
+
+# Message mapping config + validation tooling
+GET             /api/lab/standalone/interop/mappings/
+POST            /api/lab/standalone/interop/mappings/
+DELETE          /api/lab/standalone/interop/mappings/{id}/
+POST            /api/lab/standalone/interop/mappings/validate/
+
+# Outbound delivery and reconciliation
+POST            /api/lab/standalone/external-orders/{id}/deliver-result/
+GET             /api/lab/standalone/interop/delivery-logs/
+GET             /api/lab/standalone/interop/delivery-logs/{id}/download-pdf/
+```
+
+#### Inbound Intake Request Examples
+
+HL7 request:
+
+```http
+POST /api/lab/standalone/interop/inbound-orders/
+X-Idempotency-Key: 819ad32a-7f78-4ee7-8124-fde130f8678b
+Content-Type: application/json
+
+{
+  "source_system": "EXT_LIS",
+  "channel": "HL7",
+  "message_format": "HL7",
+  "hl7_message": "MSH|^~\\&|ExternalLIS|Kenyatta Lab|VitoraLIS|Demo Clinic|20260507||ORM^O01|MSG001|P|2.5\rPID|1||PAT001||Wanjiku^Jane||19900615|F\rORC|NW|ORD12345|||ROUTINE|||R\rOBR|1|ORD12345||CBC^Complete Blood Count"
+}
+```
+
+JSON request:
+
+```json
+{
+  "source_system": "EXT_LIS",
+  "channel": "API",
+  "message_format": "JSON",
+  "payload": {
+    "patient": {
+      "external_patient_id": "PAT-9921",
+      "name": "Jane Wanjiku",
+      "dob": "1990-06-15",
+      "gender": "F"
+    },
+    "order": {
+      "message_control_id": "MSG-API-001",
+      "placer_order_number": "ORD-API-001",
+      "sending_application": "EXT_LIS",
+      "sending_facility": "Nairobi Lab",
+      "priority": "ROUTINE"
+    },
+    "tests": [{ "code": "CBC", "name": "Complete Blood Count" }]
+  }
+}
+```
+
+Inbound success response:
+
+```json
+{
+  "trace_id": "d6cc4764-4370-4cce-a6f8-1cc33b404582",
+  "event_id": 42,
+  "external_order": {
+    "id": 101,
+    "trace_id": "d6cc4764-4370-4cce-a6f8-1cc33b404582",
+    "message_control_id": "MSG001",
+    "placer_order_number": "ORD12345",
+    "status": "RECEIVED"
+  }
+}
+```
+
+#### Message Mapping Validation Example
+
+```http
+POST /api/lab/standalone/interop/mappings/validate/
+Content-Type: application/json
+
+{
+  "source_system": "EXT_LIS",
+  "message_format": "JSON",
+  "payload": {
+    "tests": [{ "code": "EXT-CBC-01" }, { "code": "UNKNOWN" }]
+  }
+}
+```
+
+```json
+{
+  "source_system": "EXT_LIS",
+  "total_codes": 2,
+  "mapped_count": 1,
+  "unmapped_count": 1,
+  "mappings": [
+    {
+      "external_code": "EXT-CBC-01",
+      "mapped": true,
+      "mapping_source": "external_code_mapping",
+      "test_code": "CBC",
+      "test_name": "Complete Blood Count",
+      "reason": "Mapped via ExternalCodeMapping"
+    },
+    {
+      "external_code": "UNKNOWN",
+      "mapped": false,
+      "mapping_source": "none",
+      "test_code": null,
+      "test_name": null,
+      "reason": "No mapping found"
+    }
+  ]
+}
+```
+
+#### Outbound Delivery Example
+
+```http
+POST /api/lab/standalone/external-orders/101/deliver-result/
+Content-Type: application/json
+
+{
+  "channel": "WEBHOOK",
+  "destination": "https://partner.example.org/his/lab-results"
+}
+```
+
+```json
+{
+  "id": 55,
+  "trace_id": "7a8d70a7-cfc7-4b66-bb2f-90f55fb5017d",
+  "channel": "WEBHOOK",
+  "status": "DELIVERED",
+  "destination": "https://partner.example.org/his/lab-results",
+  "response_status_code": 200,
+  "attempt_count": 1
+}
+```
+
 ---
 
 ## Pharmacy

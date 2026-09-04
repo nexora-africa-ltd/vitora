@@ -179,6 +179,11 @@ class LaboratoryEvents:
     WALKIN_PATIENT_REGISTERED = "laboratory.standalone.walkin_registered"
     EXTERNAL_ORDER_RECEIVED = "laboratory.standalone.external_order_received"
     EXTERNAL_ORDER_ACCEPTED = "laboratory.standalone.external_order_accepted"
+    STANDALONE_INGESTION_RECEIVED = "laboratory.standalone.ingestion_received"
+    STANDALONE_INGESTION_FAILED = "laboratory.standalone.ingestion_failed"
+    STANDALONE_IDENTIFIER_CROSSWALKED = "laboratory.standalone.identifier_crosswalked"
+    STANDALONE_RESULT_DELIVERED = "laboratory.standalone.result_delivered"
+    STANDALONE_RESULT_DELIVERY_FAILED = "laboratory.standalone.result_delivery_failed"
 
 
 class ClinicalEvents:

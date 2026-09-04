@@ -2,9 +2,13 @@
 """Views for standalone LIS operations."""
 
 import csv
+import json
 import logging
 from io import StringIO
 
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
+from django.http import HttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import filters, status, viewsets
@@ -14,7 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.core.models import AuditLog
+from hmis.apps.core.models import AuditLog, ExternalCodeMapping
 from hmis.apps.core.permissions import (
     ReadRequiresModelPermission,
     RequiresActiveShiftPermission,
@@ -25,11 +29,25 @@ from hmis.apps.laboratory.models import Instrument, LabWorkflowSettings, TestCat
 from hmis.apps.laboratory.permissions import LaboratoryModuleRequired, LISStandaloneRequired
 from hmis.apps.laboratory.serializers import LabOrderSerializer
 
-from .models import ExternalOrderRequest, WalkInPatient
+from .models import (
+    ExternalOrderRequest,
+    ExternalPatientIdentifierCrosswalk,
+    InboundIngestionEvent,
+    ResultDeliveryLog,
+    WalkInPatient,
+)
 from .serializers import (
     ExternalOrderAcceptSerializer,
     ExternalOrderRejectSerializer,
     ExternalOrderRequestSerializer,
+    ExternalPatientIdentifierCrosswalkSerializer,
+    InboundIngestionEventSerializer,
+    InboundOrderIngestSerializer,
+    LISMessageMappingSerializer,
+    LISMessageMappingUpsertSerializer,
+    LISMessageMappingValidationSerializer,
+    ResultDeliveryLogSerializer,
+    ResultDeliveryRequestSerializer,
     StandaloneOrderCreateSerializer,
     WalkInPatientCreateSerializer,
     WalkInPatientSerializer,
@@ -876,6 +894,321 @@ class StandaloneOrderViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
 
+class InteropInboundViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
+    """Inbound interop intake with idempotency and dead-letter tracking."""
+
+    tenant_scope = "facility"
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        RequiresActiveShiftPermission,
+        LISStandaloneRequired,
+        ReadRequiresModelPermission,
+    ]
+
+    def create(self, request, *args, **kwargs):
+        serializer = InboundOrderIngestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        idempotency_key = request.META.get("HTTP_X_IDEMPOTENCY_KEY", "").strip()
+        source_system = serializer.validated_data["source_system"].strip()
+        message_format = serializer.validated_data["message_format"]
+        tenant_kwargs = self.get_tenant_save_kwargs()
+
+        if idempotency_key:
+            existing = ExternalOrderRequest.objects.filter(
+                facility=tenant_kwargs.get("facility"),
+                idempotency_key=idempotency_key,
+            ).first()
+            if existing:
+                return Response(
+                    {
+                        "trace_id": str(existing.trace_id),
+                        "status": "idempotent_replay",
+                        "external_order": ExternalOrderRequestSerializer(existing).data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+        raw_payload = (
+            serializer.validated_data.get("hl7_message", "")
+            if message_format == "HL7"
+            else json.dumps(serializer.validated_data.get("payload") or {})
+        )
+        event = InboundIngestionEvent.objects.create(
+            source_system=source_system,
+            channel=serializer.validated_data.get("channel", "API"),
+            idempotency_key=idempotency_key,
+            raw_payload=raw_payload,
+            status=InboundIngestionEvent.Status.RECEIVED,
+            **tenant_kwargs,
+        )
+
+        from .services import ingest_hl7_orm, ingest_structured_order_payload
+
+        try:
+            if message_format == "HL7":
+                ext_order = ingest_hl7_orm(
+                    raw_payload,
+                    facility=tenant_kwargs.get("facility"),
+                    organization=tenant_kwargs.get("organization"),
+                    idempotency_key=idempotency_key,
+                )
+            else:
+                ext_order = ingest_structured_order_payload(
+                    payload=serializer.validated_data.get("payload") or {},
+                    source_system=source_system,
+                    facility=tenant_kwargs.get("facility"),
+                    organization=tenant_kwargs.get("organization"),
+                    idempotency_key=idempotency_key,
+                )
+
+            event.external_order = ext_order
+            event.trace_id = ext_order.trace_id
+            event.status = InboundIngestionEvent.Status.MAPPED
+            event.error_message = ""
+            event.processed_at = timezone.now()
+            event.save(
+                update_fields=[
+                    "external_order",
+                    "trace_id",
+                    "status",
+                    "error_message",
+                    "processed_at",
+                    "updated_at",
+                ]
+            )
+
+            from .services import create_or_update_crosswalk
+
+            create_or_update_crosswalk(
+                source_system=source_system,
+                external_patient_id=ext_order.external_patient_id,
+                patient_name=ext_order.patient_name,
+                facility=tenant_kwargs.get("facility"),
+                organization=tenant_kwargs.get("organization"),
+            )
+
+            return Response(
+                {
+                    "trace_id": str(ext_order.trace_id),
+                    "event_id": event.id,
+                    "external_order": ExternalOrderRequestSerializer(ext_order).data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as exc:  # noqa: BLE001 - dead-letter entry must be preserved with diagnostics
+            logger.exception("Standalone LIS inbound ingest failed")
+            event.status = InboundIngestionEvent.Status.FAILED
+            event.error_message = str(exc)
+            event.processed_at = timezone.now()
+            event.save(update_fields=["status", "error_message", "processed_at", "updated_at"])
+            return Response(
+                {
+                    "detail": "Inbound ingestion failed and was added to dead-letter queue.",
+                    "event_id": event.id,
+                    "trace_id": str(event.trace_id),
+                    "error": str(exc),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class InboundIngestionEventViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
+    """Read/replay API for inbound ingestion events and dead-letter queue."""
+
+    tenant_scope = "facility"
+    queryset = InboundIngestionEvent.objects.select_related("external_order")
+    serializer_class = InboundIngestionEventSerializer
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        RequiresActiveShiftPermission,
+        LISStandaloneRequired,
+        ReadRequiresModelPermission,
+    ]
+
+    @action(detail=True, methods=["post"])
+    def replay(self, request, pk=None):
+        event = self.get_object()
+        if event.status != InboundIngestionEvent.Status.FAILED:
+            return Response(
+                {"detail": "Only FAILED ingestion events can be replayed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .services import replay_inbound_event
+
+        try:
+            ext_order = replay_inbound_event(
+                event,
+                facility=getattr(request, "_facility", None) or event.facility,
+                organization=getattr(request, "_organization", None) or event.organization,
+            )
+            return Response(
+                {
+                    "status": "replayed",
+                    "trace_id": str(ext_order.trace_id),
+                    "external_order": ExternalOrderRequestSerializer(ext_order).data,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as exc:  # noqa: BLE001 - propagate dead-letter diagnostics
+            return Response(
+                {"detail": "Replay failed.", "error": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ResultDeliveryLogViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
+    """Read/download API for outbound result delivery logs."""
+
+    tenant_scope = "facility"
+    queryset = ResultDeliveryLog.objects.select_related(
+        "lab_order", "external_order", "requested_by"
+    )
+    serializer_class = ResultDeliveryLogSerializer
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        RequiresActiveShiftPermission,
+        LISStandaloneRequired,
+        ReadRequiresModelPermission,
+    ]
+
+    @action(detail=True, methods=["get"], url_path="download-pdf")
+    def download_pdf(self, request, pk=None):
+        delivery = self.get_object()
+        if not delivery.pdf_package:
+            return Response(
+                {"detail": "No PDF package is available for this delivery log."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        response = HttpResponse(bytes(delivery.pdf_package), content_type="application/pdf")
+        filename = delivery.pdf_filename or f"lab-result-{delivery.lab_order.order_number}.pdf"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+
+class ExternalPatientIdentifierCrosswalkViewSet(
+    TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet
+):
+    """Read-only API for external patient identifier crosswalk entries."""
+
+    tenant_scope = "facility"
+    queryset = ExternalPatientIdentifierCrosswalk.objects.select_related(
+        "walkin_patient", "patient"
+    )
+    serializer_class = ExternalPatientIdentifierCrosswalkSerializer
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        RequiresActiveShiftPermission,
+        LISStandaloneRequired,
+        ReadRequiresModelPermission,
+    ]
+
+
+class LISMessageMappingViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
+    """Manage and validate standalone LIS inbound message mapping configuration."""
+
+    tenant_scope = "facility"
+    permission_classes = [
+        IsAuthenticated,
+        LaboratoryModuleRequired,
+        RequiresActiveShiftPermission,
+        LISStandaloneRequired,
+        ReadRequiresModelPermission,
+    ]
+
+    def _test_queryset(self):
+        tenant = self.get_tenant_save_kwargs()
+        facility = tenant.get("facility")
+        organization = tenant.get("organization")
+        return TestCatalog.objects.filter(
+            Q(facility=facility) | Q(facility__isnull=True),
+            Q(organization=organization) | Q(organization__isnull=True),
+        )
+
+    def _mapping_queryset(self):
+        test_ids = list(self._test_queryset().values_list("id", flat=True))
+        if not test_ids:
+            return ExternalCodeMapping.objects.none()
+        test_ct = ContentType.objects.get_for_model(TestCatalog)
+        return ExternalCodeMapping.objects.filter(content_type=test_ct, object_id__in=test_ids)
+
+    def list(self, request, *args, **kwargs):
+        code_system = str(request.query_params.get("code_system", "")).strip()
+        qs = self._mapping_queryset()
+        if code_system:
+            qs = qs.filter(code_system=code_system)
+        serializer = LISMessageMappingSerializer(
+            qs.order_by("code_system", "external_code"), many=True
+        )
+        return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        serializer = LISMessageMappingUpsertSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+        test = self._test_queryset().filter(code=str(data["test_code"]).strip().upper()).first()
+        if test is None:
+            return Response(
+                {"detail": "test_code not found in this facility test catalog."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        test_ct = ContentType.objects.get_for_model(TestCatalog)
+        mapping, _ = ExternalCodeMapping.objects.update_or_create(
+            code_system=data["code_system"].strip(),
+            external_code=data["external_code"].strip(),
+            defaults={
+                "external_display": data.get("external_display", ""),
+                "content_type": test_ct,
+                "object_id": test.id,
+                "relationship": data["relationship"],
+                "is_active": data["is_active"],
+                "notes": data.get("notes", ""),
+            },
+        )
+        return Response(LISMessageMappingSerializer(mapping).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, pk=None, *args, **kwargs):
+        if not request.user.has_perm("core.delete_externalcodemapping"):
+            return Response(
+                {"detail": "You do not have permission to delete this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        mapping = self._mapping_queryset().filter(pk=pk).first()
+        if mapping is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        mapping.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["post"], url_path="validate")
+    def validate_mappings(self, request):
+        serializer = LISMessageMappingValidationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        from .services import extract_test_codes_for_validation, validate_message_mappings
+
+        payload = serializer.validated_data
+        test_codes = extract_test_codes_for_validation(
+            message_format=payload["message_format"],
+            hl7_message=payload.get("hl7_message", ""),
+            payload=payload.get("payload"),
+        )
+        result = validate_message_mappings(
+            source_system=payload["source_system"],
+            test_codes=test_codes,
+            facility=getattr(request, "_facility", None),
+        )
+        return Response(result)
+
+
 class ExternalOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     View and process external order requests (from HL7 ORM^O01 messages).
@@ -912,7 +1245,7 @@ class ExternalOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         serializer = ExternalOrderAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        from .services import process_external_order
+        from .services import create_or_update_crosswalk, process_external_order
 
         try:
             lab_order = process_external_order(
@@ -925,6 +1258,15 @@ class ExternalOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             ext_order.accept(request.user)
             ext_order.lab_order = lab_order
             ext_order.save(update_fields=["lab_order", "updated_at"])
+
+            create_or_update_crosswalk(
+                source_system=ext_order.sending_application or "EXTERNAL",
+                external_patient_id=ext_order.external_patient_id,
+                patient_name=ext_order.patient_name,
+                facility=getattr(request, "_facility", None) or ext_order.facility,
+                organization=getattr(request, "_organization", None) or ext_order.organization,
+                walkin_patient=ext_order.walkin_patient,
+            )
 
             return Response(
                 {
@@ -962,3 +1304,61 @@ class ExternalOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         ext_order.reject(request.user, serializer.validated_data["reason"])
 
         return Response(ExternalOrderRequestSerializer(ext_order).data)
+
+    @action(detail=True, methods=["post"], url_path="deliver-result")
+    def deliver_result(self, request, pk=None):
+        """Deliver released results to configured outbound channels."""
+        ext_order = self.get_object()
+        if not ext_order.lab_order_id:
+            return Response(
+                {"detail": "External order has no linked lab order yet."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        lab_order = ext_order.lab_order
+        if lab_order.status != "COMPLETED":
+            return Response(
+                {"detail": "Lab order is not completed/released for outbound delivery."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = ResultDeliveryRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        channel = serializer.validated_data["channel"]
+        destination = serializer.validated_data.get("destination", "")
+
+        delivery = ResultDeliveryLog.objects.create(
+            channel=channel,
+            destination=destination,
+            external_order=ext_order,
+            lab_order=lab_order,
+            requested_by=request.user,
+            status=ResultDeliveryLog.Status.PENDING,
+            **self.get_tenant_save_kwargs(),
+        )
+
+        from .services import deliver_result
+
+        delivery = deliver_result(delivery, destination=destination)
+
+        AuditLog.log(
+            action="laboratory_result_delivery",
+            user=request.user,
+            resource_type="ResultDeliveryLog",
+            resource_id=delivery.id,
+            facility=delivery.facility,
+            organization=delivery.organization,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "trace_id": str(delivery.trace_id),
+                "channel": delivery.channel,
+                "status": delivery.status,
+                "destination": destination,
+                "external_order_id": ext_order.id,
+                "lab_order_id": lab_order.id,
+            },
+            request=request,
+        )
+
+        return Response(ResultDeliveryLogSerializer(delivery).data, status=status.HTTP_201_CREATED)

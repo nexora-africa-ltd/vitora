@@ -6,6 +6,8 @@ Provides walk-in patient registration and standalone lab order capabilities
 for facilities operating the LIS independently of the full HMIS.
 """
 
+import uuid
+
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -209,6 +211,8 @@ class ExternalOrderRequest(FacilityScopedModel, TimeStampedModel):
         COMPLETED = "COMPLETED", "Completed"
 
     # HL7 message tracking
+    trace_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
+    idempotency_key = models.CharField(max_length=120, blank=True, db_index=True)
     message_control_id = models.CharField(max_length=100, db_index=True)
     sending_application = models.CharField(max_length=100)
     sending_facility = models.CharField(max_length=100)
@@ -260,6 +264,8 @@ class ExternalOrderRequest(FacilityScopedModel, TimeStampedModel):
         verbose_name_plural = "External Order Requests"
         ordering = ["-created_at"]
         indexes = [
+            models.Index(fields=["trace_id"]),
+            models.Index(fields=["idempotency_key"]),
             models.Index(fields=["message_control_id"]),
             models.Index(fields=["placer_order_number"]),
             models.Index(fields=["status"]),
@@ -294,3 +300,150 @@ class ExternalOrderRequest(FacilityScopedModel, TimeStampedModel):
                 "updated_at",
             ]
         )
+
+
+class ExternalPatientIdentifierCrosswalk(FacilityScopedModel, TimeStampedModel):
+    """Maps external patient identifiers to local walk-in/HMIS patient records."""
+
+    source_system = models.CharField(max_length=100, db_index=True)
+    external_patient_id = models.CharField(max_length=100, db_index=True)
+    external_member_id = models.CharField(max_length=100, blank=True)
+    patient_name_snapshot = models.CharField(max_length=200, blank=True)
+
+    walkin_patient = models.ForeignKey(
+        WalkInPatient,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="identifier_crosswalks",
+    )
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="lab_identifier_crosswalks",
+    )
+
+    class Meta:
+        verbose_name = "External Patient Identifier Crosswalk"
+        verbose_name_plural = "External Patient Identifier Crosswalks"
+        ordering = ["-updated_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "source_system", "external_patient_id"],
+                name="uniq_lab_xwalk_facility_source_external_patient",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["source_system", "external_patient_id"]),
+            models.Index(fields=["external_member_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.source_system}:{self.external_patient_id}"
+
+
+class InboundIngestionEvent(FacilityScopedModel, TimeStampedModel):
+    """Tracks standalone LIS inbound ingestion lifecycle and replay diagnostics."""
+
+    class Status(models.TextChoices):
+        RECEIVED = "RECEIVED", "Received"
+        MAPPED = "MAPPED", "Mapped"
+        FAILED = "FAILED", "Failed"
+        REPLAYED = "REPLAYED", "Replayed"
+
+    trace_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    source_system = models.CharField(max_length=100, default="EXTERNAL", db_index=True)
+    channel = models.CharField(max_length=20, default="API")
+    idempotency_key = models.CharField(max_length=120, blank=True, db_index=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RECEIVED)
+    raw_payload = models.TextField()
+    error_message = models.TextField(blank=True)
+    replay_count = models.PositiveIntegerField(default=0)
+    last_replayed_at = models.DateTimeField(null=True, blank=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    external_order = models.ForeignKey(
+        ExternalOrderRequest,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ingestion_events",
+    )
+
+    class Meta:
+        verbose_name = "Inbound Ingestion Event"
+        verbose_name_plural = "Inbound Ingestion Events"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["idempotency_key"]),
+            models.Index(fields=["source_system"]),
+            models.Index(fields=["trace_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.trace_id} ({self.status})"
+
+
+class ResultDeliveryLog(FacilityScopedModel, TimeStampedModel):
+    """Tracks outbound delivery attempts for released standalone LIS results."""
+
+    class Channel(models.TextChoices):
+        WEBHOOK = "WEBHOOK", "API Callback/Webhook"
+        PDF_PACKAGE = "PDF_PACKAGE", "Downloadable PDF Package"
+        HL7_FHIR = "HL7_FHIR", "HL7/FHIR Adapter"
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        DELIVERED = "DELIVERED", "Delivered"
+        FAILED = "FAILED", "Failed"
+
+    trace_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    channel = models.CharField(max_length=20, choices=Channel.choices)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    destination = models.CharField(max_length=500, blank=True)
+
+    external_order = models.ForeignKey(
+        ExternalOrderRequest,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="result_deliveries",
+    )
+    lab_order = models.ForeignKey(
+        "laboratory.LabOrder",
+        on_delete=models.CASCADE,
+        related_name="result_deliveries",
+    )
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    payload = models.JSONField(default=dict, blank=True)
+    response_status_code = models.IntegerField(null=True, blank=True)
+    response_body = models.TextField(blank=True)
+    error_message = models.TextField(blank=True)
+    attempt_count = models.PositiveIntegerField(default=0)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    pdf_filename = models.CharField(max_length=255, blank=True)
+    pdf_package = models.BinaryField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Result Delivery Log"
+        verbose_name_plural = "Result Delivery Logs"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["channel"]),
+            models.Index(fields=["trace_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.lab_order.order_number} -> {self.channel} ({self.status})"

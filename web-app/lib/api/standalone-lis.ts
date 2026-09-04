@@ -16,6 +16,14 @@ import {
   LISOnboardingWorkflowImportResultSchema,
   LISOnboardingAnalyzerImportResultSchema,
   LISOnboardingReferenceRangeImportResultSchema,
+  InboundIngestionEventListSchema,
+  CrosswalkEntryListSchema,
+  ResultDeliveryLogListSchema,
+  InboundIngestResponseSchema,
+  ResultDeliveryLogSchema,
+  MessageMappingConfigListSchema,
+  MessageMappingConfigSchema,
+  MessageMappingValidationResultSchema,
 } from '@/lib/schemas/standalone-lis.schema';
 import { LabOrderSchema } from '@/lib/schemas/laboratory.schema';
 import type {
@@ -29,6 +37,12 @@ import type {
   LISOnboardingWorkflowImportResult,
   LISOnboardingAnalyzerImportResult,
   LISOnboardingReferenceRangeImportResult,
+  InboundIngestionEvent,
+  CrosswalkEntry,
+  ResultDeliveryLog,
+  InboundIngestResponse,
+  MessageMappingConfig,
+  MessageMappingValidationResult,
 } from '@/lib/types/standalone-lis';
 import type { LabOrder } from '@/lib/types/laboratory';
 
@@ -230,5 +244,120 @@ export const standaloneLisApi = {
     return parseResponse(ExternalOrderRequestSchema, response.data, {
       context: 'standaloneLisApi.rejectExternalOrder',
     });
+  },
+
+  async ingestInboundOrder(
+    data:
+      | { source_system: string; channel?: 'API' | 'HL7'; message_format: 'HL7'; hl7_message: string }
+      | { source_system: string; channel?: 'API' | 'HL7'; message_format: 'JSON'; payload: unknown },
+    idempotencyKey?: string
+  ): Promise<InboundIngestResponse> {
+    const response = await apiClient.post(`${BASE}/interop/inbound-orders/`, data, {
+      headers: idempotencyKey ? { 'X-Idempotency-Key': idempotencyKey } : undefined,
+    });
+    return parseResponse(InboundIngestResponseSchema, response.data, {
+      context: 'standaloneLisApi.ingestInboundOrder',
+    });
+  },
+
+  async listInboundEvents(params?: { status?: string; page?: number }): Promise<{
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: InboundIngestionEvent[];
+  }> {
+    const response = await apiClient.get(`${BASE}/interop/inbound-events/`, { params });
+    return parseResponse(InboundIngestionEventListSchema, response.data, {
+      context: 'standaloneLisApi.listInboundEvents',
+    });
+  },
+
+  async replayInboundEvent(eventId: number): Promise<unknown> {
+    const response = await apiClient.post(`${BASE}/interop/inbound-events/${eventId}/replay/`, {});
+    return response.data;
+  },
+
+  async listCrosswalk(params?: { page?: number }): Promise<{
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: CrosswalkEntry[];
+  }> {
+    const response = await apiClient.get(`${BASE}/interop/crosswalk/`, { params });
+    return parseResponse(CrosswalkEntryListSchema, response.data, {
+      context: 'standaloneLisApi.listCrosswalk',
+    });
+  },
+
+  async deliverResult(
+    externalOrderId: number,
+    data: { channel: 'WEBHOOK' | 'PDF_PACKAGE' | 'HL7_FHIR'; destination?: string }
+  ): Promise<ResultDeliveryLog> {
+    const response = await apiClient.post(
+      `${BASE}/external-orders/${externalOrderId}/deliver-result/`,
+      data
+    );
+    return parseResponse(ResultDeliveryLogSchema, response.data, {
+      context: 'standaloneLisApi.deliverResult',
+    });
+  },
+
+  async listDeliveryLogs(params?: { status?: string; channel?: string; page?: number }): Promise<{
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: ResultDeliveryLog[];
+  }> {
+    const response = await apiClient.get(`${BASE}/interop/delivery-logs/`, { params });
+    return parseResponse(ResultDeliveryLogListSchema, response.data, {
+      context: 'standaloneLisApi.listDeliveryLogs',
+    });
+  },
+
+  async downloadDeliveryPdf(deliveryLogId: number): Promise<Blob> {
+    const response = await apiClient.get(`${BASE}/interop/delivery-logs/${deliveryLogId}/download-pdf/`, {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+
+  async listMessageMappings(codeSystem?: string): Promise<MessageMappingConfig[]> {
+    const response = await apiClient.get(`${BASE}/interop/mappings/`, {
+      params: codeSystem ? { code_system: codeSystem } : undefined,
+    });
+    return parseResponse(MessageMappingConfigListSchema, response.data, {
+      context: 'standaloneLisApi.listMessageMappings',
+    });
+  },
+
+  async upsertMessageMapping(data: {
+    code_system: string;
+    external_code: string;
+    external_display?: string;
+    relationship: 'EQUIVALENT' | 'BROADER' | 'NARROWER' | 'RELATED';
+    is_active?: boolean;
+    notes?: string;
+    test_code: string;
+  }): Promise<MessageMappingConfig> {
+    const response = await apiClient.post(`${BASE}/interop/mappings/`, data);
+    return parseResponse(MessageMappingConfigSchema, response.data, {
+      context: 'standaloneLisApi.upsertMessageMapping',
+    });
+  },
+
+  async validateMessageMappings(data: {
+    source_system: string;
+    message_format: 'HL7' | 'JSON';
+    hl7_message?: string;
+    payload?: unknown;
+  }): Promise<MessageMappingValidationResult> {
+    const response = await apiClient.post(`${BASE}/interop/mappings/validate/`, data);
+    return parseResponse(MessageMappingValidationResultSchema, response.data, {
+      context: 'standaloneLisApi.validateMessageMappings',
+    });
+  },
+
+  async deleteMessageMapping(id: number): Promise<void> {
+    await apiClient.delete(`${BASE}/interop/mappings/${id}/`);
   },
 };

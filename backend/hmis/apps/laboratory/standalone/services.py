@@ -5,14 +5,29 @@ Services for standalone LIS operations.
 Handles HL7 ORM^O01 inbound order processing and walk-in patient creation.
 """
 
+import json
 import logging
+import uuid
 from datetime import datetime
+from io import BytesIO
+from urllib import error as urllib_error
+from urllib import request as urllib_request
+from urllib.parse import urlparse
 
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
+from hmis.apps.core.models import ExternalCodeMapping
 from hmis.apps.laboratory.models import LabOrder, LabOrderItem, TestCatalog
 
-from .models import ExternalOrderRequest, WalkInPatient
+from .models import (
+    ExternalOrderRequest,
+    ExternalPatientIdentifierCrosswalk,
+    InboundIngestionEvent,
+    ResultDeliveryLog,
+    WalkInPatient,
+)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -89,7 +104,7 @@ def process_external_order(
     items_created = 0
     for test_info in ext_order.requested_tests:
         test_code = test_info if isinstance(test_info, str) else test_info.get("code", "")
-        test = _resolve_test_code(test_code)
+        test = _resolve_test_code(test_code, facility=facility)
         if test:
             LabOrderItem.objects.create(
                 lab_order=order,
@@ -116,7 +131,12 @@ def process_external_order(
     return order
 
 
-def ingest_hl7_orm(raw_message: str, facility=None, organization=None) -> ExternalOrderRequest:
+def ingest_hl7_orm(
+    raw_message: str,
+    facility=None,
+    organization=None,
+    idempotency_key: str = "",
+) -> ExternalOrderRequest:
     """
     Parse and ingest an HL7 ORM^O01 message into an ExternalOrderRequest.
 
@@ -166,6 +186,8 @@ def ingest_hl7_orm(raw_message: str, facility=None, organization=None) -> Extern
             clinical_info = obr["clinical_info"]
 
     ext_order = ExternalOrderRequest.objects.create(
+        trace_id=uuid.uuid4(),
+        idempotency_key=idempotency_key,
         message_control_id=message_control_id,
         sending_application=sending_app,
         sending_facility=sending_fac,
@@ -193,6 +215,356 @@ def ingest_hl7_orm(raw_message: str, facility=None, organization=None) -> Extern
     )
 
     return ext_order
+
+
+def ingest_structured_order_payload(
+    payload: dict,
+    source_system: str,
+    facility=None,
+    organization=None,
+    idempotency_key: str = "",
+) -> ExternalOrderRequest:
+    """Ingest a JSON payload order into ``ExternalOrderRequest``."""
+    patient = payload.get("patient") or {}
+    order = payload.get("order") or {}
+    tests = payload.get("tests") or []
+
+    requested_tests = []
+    for item in tests:
+        if isinstance(item, dict):
+            code = str(item.get("code", "")).strip()
+            if code:
+                requested_tests.append(
+                    {
+                        "code": code,
+                        "name": str(item.get("name", "")).strip(),
+                    }
+                )
+
+    return ExternalOrderRequest.objects.create(
+        trace_id=uuid.uuid4(),
+        idempotency_key=idempotency_key,
+        message_control_id=str(order.get("message_control_id", "")).strip()
+        or str(order.get("placer_order_number", "")).strip()
+        or str(patient.get("external_patient_id", "")).strip()
+        or str(uuid.uuid4()),
+        sending_application=str(order.get("sending_application", source_system)).strip()
+        or source_system,
+        sending_facility=str(order.get("sending_facility", "EXTERNAL")).strip() or "EXTERNAL",
+        external_patient_id=str(patient.get("external_patient_id", "")).strip(),
+        patient_name=str(patient.get("name", "")).strip() or "Unknown Patient",
+        patient_dob=patient.get("dob") or None,
+        patient_gender=str(patient.get("gender", "")).strip(),
+        patient_id_number=str(patient.get("id_number", "")).strip(),
+        placer_order_number=str(order.get("placer_order_number", "")).strip()
+        or str(order.get("message_control_id", "")).strip(),
+        order_priority=str(order.get("priority", "ROUTINE")).strip().upper() or "ROUTINE",
+        clinical_info=str(order.get("clinical_info", "")).strip(),
+        requested_tests=requested_tests,
+        raw_message=json.dumps(payload),
+        status=ExternalOrderRequest.Status.RECEIVED,
+        facility=facility,
+        organization=organization,
+    )
+
+
+def create_or_update_crosswalk(
+    *,
+    source_system: str,
+    external_patient_id: str,
+    patient_name: str,
+    facility,
+    organization,
+    walkin_patient: WalkInPatient | None = None,
+):
+    """Create or update an external patient identifier crosswalk entry."""
+    if not external_patient_id:
+        return None
+
+    defaults = {
+        "organization": organization,
+        "patient_name_snapshot": patient_name,
+        "walkin_patient": walkin_patient,
+    }
+    crosswalk, _ = ExternalPatientIdentifierCrosswalk.objects.update_or_create(
+        facility=facility,
+        source_system=source_system,
+        external_patient_id=external_patient_id,
+        defaults=defaults,
+    )
+    return crosswalk
+
+
+def replay_inbound_event(event: InboundIngestionEvent, facility=None, organization=None):
+    """Replay a failed inbound event and return the ingested external order."""
+    event.replay_count += 1
+    event.last_replayed_at = timezone.now()
+    event.save(update_fields=["replay_count", "last_replayed_at", "updated_at"])
+
+    try:
+        raw = event.raw_payload
+        if raw.strip().startswith("MSH|"):
+            ext_order = ingest_hl7_orm(raw, facility=facility, organization=organization)
+        else:
+            payload = json.loads(raw)
+            ext_order = ingest_structured_order_payload(
+                payload=payload,
+                source_system=event.source_system,
+                facility=facility,
+                organization=organization,
+                idempotency_key=event.idempotency_key,
+            )
+        event.external_order = ext_order
+        event.status = InboundIngestionEvent.Status.REPLAYED
+        event.error_message = ""
+        event.processed_at = timezone.now()
+        event.trace_id = ext_order.trace_id
+        event.save(
+            update_fields=[
+                "external_order",
+                "status",
+                "error_message",
+                "processed_at",
+                "trace_id",
+                "updated_at",
+            ]
+        )
+        return ext_order
+    except Exception as exc:  # noqa: BLE001 - replay endpoint should preserve dead-letter state
+        event.status = InboundIngestionEvent.Status.FAILED
+        event.error_message = str(exc)
+        event.save(update_fields=["status", "error_message", "updated_at"])
+        raise
+
+
+def build_result_payload(lab_order: LabOrder) -> dict:
+    """Build normalized payload for outbound standalone LIS result delivery."""
+    results = []
+    for item in lab_order.items.select_related("test", "result").all():
+        result = getattr(item, "result", None)
+        if result is None:
+            continue
+        result_value = result.text_value or result.option_value
+        if result.numeric_value is not None:
+            result_value = str(result.numeric_value)
+        results.append(
+            {
+                "test_code": item.test.code,
+                "test_name": item.test.name,
+                "result": result_value,
+                "unit": result.result_unit,
+                "reference_range": result.reference_range_text,
+                "flag": result.result_flag,
+                "verification_status": result.verification_status,
+                "verified_at": result.verified_at.isoformat() if result.verified_at else None,
+            }
+        )
+
+    return {
+        "order_number": lab_order.order_number,
+        "external_accession_number": lab_order.external_accession_number,
+        "status": lab_order.status,
+        "released_at": lab_order.completed_at.isoformat() if lab_order.completed_at else None,
+        "patient": {
+            "name": lab_order.walkin_patient_name
+            or (
+                f"{lab_order.patient.first_name} {lab_order.patient.last_name}"
+                if lab_order.patient
+                else "Unknown"
+            ),
+            "id": lab_order.walkin_patient_id
+            or (lab_order.patient.mrn if lab_order.patient else ""),
+        },
+        "results": results,
+    }
+
+
+def generate_result_pdf_bytes(lab_order: LabOrder, payload: dict) -> bytes:
+    """Generate a compact PDF package for outbound standalone LIS delivery."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
+    )
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph("Standalone LIS Result Package", styles["Title"]),
+        Spacer(1, 8 * mm),
+        Paragraph(f"Order: {lab_order.order_number}", styles["Normal"]),
+        Paragraph(f"Patient: {payload['patient']['name']}", styles["Normal"]),
+        Paragraph(f"Released: {payload.get('released_at') or 'N/A'}", styles["Normal"]),
+        Spacer(1, 6 * mm),
+    ]
+    for result in payload.get("results", []):
+        story.append(
+            Paragraph(
+                f"{result['test_code']} - {result['test_name']}: {result['result'] or '-'} {result['unit'] or ''}",
+                styles["BodyText"],
+            )
+        )
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def deliver_result(log: ResultDeliveryLog, destination: str) -> ResultDeliveryLog:
+    """Attempt outbound result delivery for the requested channel."""
+    payload = build_result_payload(log.lab_order)
+    log.payload = payload
+    log.destination = destination
+    log.attempt_count += 1
+
+    try:
+        if log.channel == ResultDeliveryLog.Channel.PDF_PACKAGE:
+            log.pdf_filename = f"lab-result-{log.lab_order.order_number}.pdf"
+            log.pdf_package = generate_result_pdf_bytes(log.lab_order, payload)
+            log.status = ResultDeliveryLog.Status.DELIVERED
+            log.delivered_at = timezone.now()
+            log.response_status_code = 200
+            log.response_body = "PDF package generated."
+        else:
+            if not destination:
+                raise ValueError("destination is required for webhook or HL7/FHIR channel")
+
+            parsed = urlparse(destination)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError("destination must be an absolute http(s) URL")
+
+            encoded = json.dumps(payload).encode("utf-8")
+            req = urllib_request.Request(  # noqa: S310
+                destination,
+                data=encoded,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib_request.urlopen(req, timeout=10) as response:  # noqa: S310 # nosec B310
+                response_body = response.read().decode("utf-8")
+                status_code = int(getattr(response, "status", 200))
+
+            if 200 <= status_code < 300:
+                log.status = ResultDeliveryLog.Status.DELIVERED
+                log.delivered_at = timezone.now()
+                log.response_status_code = status_code
+                log.response_body = response_body
+            else:
+                log.status = ResultDeliveryLog.Status.FAILED
+                log.response_status_code = status_code
+                log.error_message = f"Unexpected response status {status_code}"
+                log.response_body = response_body
+    except (ValueError, urllib_error.URLError, urllib_error.HTTPError) as exc:
+        log.status = ResultDeliveryLog.Status.FAILED
+        log.error_message = str(exc)
+
+    log.save(
+        update_fields=[
+            "payload",
+            "destination",
+            "attempt_count",
+            "status",
+            "delivered_at",
+            "response_status_code",
+            "response_body",
+            "error_message",
+            "pdf_filename",
+            "pdf_package",
+            "updated_at",
+        ]
+    )
+    return log
+
+
+def extract_test_codes_for_validation(message_format: str, hl7_message: str = "", payload=None):
+    """Extract test codes from HL7 or JSON inbound payload for mapping validation."""
+    if message_format == "HL7":
+        segments = _parse_hl7_segments(hl7_message)
+        return [
+            code
+            for code in [obr.get("universal_service_id", "") for obr in segments.get("OBR", [])]
+            if code
+        ]
+
+    tests = (payload or {}).get("tests") or []
+    codes = []
+    for item in tests:
+        if isinstance(item, dict):
+            code = str(item.get("code", "")).strip()
+            if code:
+                codes.append(code)
+    return codes
+
+
+def validate_message_mappings(source_system: str, test_codes: list[str], facility=None) -> dict:
+    """Validate inbound test codes against message mapping config and local test catalog."""
+    mapping_rows = []
+    mapped = 0
+    unmapped = 0
+
+    test_ct = ContentType.objects.get_for_model(TestCatalog)
+
+    for external_code in test_codes:
+        row = {
+            "external_code": external_code,
+            "mapped": False,
+            "mapping_source": "none",
+            "test_code": None,
+            "test_name": None,
+            "reason": "No mapping found",
+        }
+
+        mapping = ExternalCodeMapping.objects.filter(
+            code_system=source_system,
+            external_code=external_code,
+            content_type=test_ct,
+            is_active=True,
+        ).first()
+
+        if mapping is not None:
+            test = TestCatalog.objects.filter(pk=mapping.object_id).first()
+            if test and (facility is None or test.facility_id == getattr(facility, "id", None)):
+                row.update(
+                    {
+                        "mapped": True,
+                        "mapping_source": "external_code_mapping",
+                        "test_code": test.code,
+                        "test_name": test.name,
+                        "reason": "Mapped via ExternalCodeMapping",
+                    }
+                )
+
+        if not row["mapped"]:
+            direct = _resolve_test_code(external_code, facility=facility)
+            if direct is not None:
+                row.update(
+                    {
+                        "mapped": True,
+                        "mapping_source": "direct_catalog",
+                        "test_code": direct.code,
+                        "test_name": direct.name,
+                        "reason": "Resolved directly from local test catalog",
+                    }
+                )
+
+        if row["mapped"]:
+            mapped += 1
+        else:
+            unmapped += 1
+        mapping_rows.append(row)
+
+    return {
+        "source_system": source_system,
+        "total_codes": len(test_codes),
+        "mapped_count": mapped,
+        "unmapped_count": unmapped,
+        "mappings": mapping_rows,
+    }
 
 
 def _parse_hl7_segments(raw_message: str) -> dict:
@@ -289,7 +661,7 @@ def _map_hl7_priority(priority: str) -> str:
     return priority if priority in valid else "ROUTINE"
 
 
-def _resolve_test_code(code: str) -> TestCatalog | None:
+def _resolve_test_code(code: str, facility=None) -> TestCatalog | None:
     """
     Resolve an external test code to a TestCatalog entry.
 
@@ -299,17 +671,27 @@ def _resolve_test_code(code: str) -> TestCatalog | None:
         return None
 
     # Try exact code match
-    test = TestCatalog.objects.filter(code=code).first()
+    scoped_lookup = TestCatalog.objects.all()
+    if facility is not None:
+        scoped_lookup = scoped_lookup.filter(facility=facility)
+
+    test = scoped_lookup.filter(code=code).first()
+    if not test:
+        test = TestCatalog.objects.filter(code=code).first()
     if test:
         return test
 
     # Try LOINC code
-    test = TestCatalog.objects.filter(loinc_code=code).first()
+    test = scoped_lookup.filter(loinc_code=code).first()
+    if not test:
+        test = TestCatalog.objects.filter(loinc_code=code).first()
     if test:
         return test
 
     # Try short name (case-insensitive)
-    test = TestCatalog.objects.filter(short_name__iexact=code).first()
+    test = scoped_lookup.filter(short_name__iexact=code).first()
+    if not test:
+        test = TestCatalog.objects.filter(short_name__iexact=code).first()
     if test:
         return test
 

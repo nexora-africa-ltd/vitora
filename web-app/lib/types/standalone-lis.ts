@@ -55,6 +55,7 @@ export interface StandaloneOrderItem {
 
 export interface ExternalOrderRequest {
   id: number;
+  trace_id?: string;
   message_control_id: string;
   sending_application: string;
   sending_facility: string;
@@ -75,6 +76,91 @@ export interface ExternalOrderRequest {
   processed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface InboundIngestionEvent {
+  id: number;
+  trace_id: string;
+  source_system: string;
+  channel: string;
+  idempotency_key: string;
+  status: 'RECEIVED' | 'MAPPED' | 'FAILED' | 'REPLAYED';
+  error_message: string;
+  replay_count: number;
+  last_replayed_at: string | null;
+  processed_at: string | null;
+  external_order: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CrosswalkEntry {
+  id: number;
+  source_system: string;
+  external_patient_id: string;
+  external_member_id: string;
+  patient_name_snapshot: string;
+  walkin_patient: number | null;
+  patient: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ResultDeliveryLog {
+  id: number;
+  trace_id: string;
+  channel: 'WEBHOOK' | 'PDF_PACKAGE' | 'HL7_FHIR';
+  status: 'PENDING' | 'DELIVERED' | 'FAILED';
+  destination: string;
+  external_order: number | null;
+  lab_order: number;
+  requested_by: number | null;
+  response_status_code: number | null;
+  response_body: string;
+  error_message: string;
+  attempt_count: number;
+  delivered_at: string | null;
+  pdf_filename: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InboundIngestResponse {
+  trace_id: string;
+  event_id: number;
+  external_order: ExternalOrderRequest;
+}
+
+export interface MessageMappingConfig {
+  id: number;
+  code_system: string;
+  external_code: string;
+  external_display: string;
+  relationship: 'EQUIVALENT' | 'BROADER' | 'NARROWER' | 'RELATED';
+  is_active: boolean;
+  notes: string;
+  test_id: number;
+  test_code: string;
+  test_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageMappingValidationRow {
+  external_code: string;
+  mapped: boolean;
+  mapping_source: 'none' | 'external_code_mapping' | 'direct_catalog';
+  test_code: string | null;
+  test_name: string | null;
+  reason: string;
+}
+
+export interface MessageMappingValidationResult {
+  source_system: string;
+  total_codes: number;
+  mapped_count: number;
+  unmapped_count: number;
+  mappings: MessageMappingValidationRow[];
 }
 
 export interface ExternalOrderTest {

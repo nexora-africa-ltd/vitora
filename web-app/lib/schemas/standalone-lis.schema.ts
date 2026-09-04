@@ -32,6 +32,7 @@ export const WalkInPatientListSchema = z.object({
 
 export const ExternalOrderRequestSchema = z.object({
   id: z.number(),
+  trace_id: z.string().uuid().optional(),
   message_control_id: z.string(),
   sending_application: z.string(),
   sending_facility: z.string(),
@@ -59,6 +60,114 @@ export const ExternalOrderListSchema = z.object({
   next: z.string().nullable(),
   previous: z.string().nullable(),
   results: z.array(ExternalOrderRequestSchema),
+});
+
+export const InboundIngestionEventSchema = z.object({
+  id: z.number(),
+  trace_id: z.string().uuid(),
+  source_system: z.string(),
+  channel: z.string(),
+  idempotency_key: z.string(),
+  status: z.enum(['RECEIVED', 'MAPPED', 'FAILED', 'REPLAYED']),
+  error_message: z.string(),
+  replay_count: z.number(),
+  last_replayed_at: z.string().nullable(),
+  processed_at: z.string().nullable(),
+  external_order: z.number().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const InboundIngestionEventListSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(InboundIngestionEventSchema),
+});
+
+export const CrosswalkEntrySchema = z.object({
+  id: z.number(),
+  source_system: z.string(),
+  external_patient_id: z.string(),
+  external_member_id: z.string(),
+  patient_name_snapshot: z.string(),
+  walkin_patient: z.number().nullable(),
+  patient: z.number().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const CrosswalkEntryListSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(CrosswalkEntrySchema),
+});
+
+export const ResultDeliveryLogSchema = z.object({
+  id: z.number(),
+  trace_id: z.string().uuid(),
+  channel: z.enum(['WEBHOOK', 'PDF_PACKAGE', 'HL7_FHIR']),
+  status: z.enum(['PENDING', 'DELIVERED', 'FAILED']),
+  destination: z.string(),
+  external_order: z.number().nullable(),
+  lab_order: z.number(),
+  requested_by: z.number().nullable(),
+  response_status_code: z.number().nullable(),
+  response_body: z.string(),
+  error_message: z.string(),
+  attempt_count: z.number(),
+  delivered_at: z.string().nullable(),
+  pdf_filename: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const ResultDeliveryLogListSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(ResultDeliveryLogSchema),
+});
+
+export const InboundIngestResponseSchema = z.object({
+  trace_id: z.string().uuid(),
+  event_id: z.number(),
+  external_order: ExternalOrderRequestSchema,
+});
+
+export const MessageMappingConfigSchema = z.object({
+  id: z.number(),
+  code_system: z.string(),
+  external_code: z.string(),
+  external_display: z.string(),
+  relationship: z.enum(['EQUIVALENT', 'BROADER', 'NARROWER', 'RELATED']),
+  is_active: z.boolean(),
+  notes: z.string(),
+  test_id: z.number(),
+  test_code: z.string(),
+  test_name: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const MessageMappingConfigListSchema = z.array(MessageMappingConfigSchema);
+
+export const MessageMappingValidationRowSchema = z.object({
+  external_code: z.string(),
+  mapped: z.boolean(),
+  mapping_source: z.enum(['none', 'external_code_mapping', 'direct_catalog']),
+  test_code: z.string().nullable(),
+  test_name: z.string().nullable(),
+  reason: z.string(),
+});
+
+export const MessageMappingValidationResultSchema = z.object({
+  source_system: z.string(),
+  total_codes: z.number(),
+  mapped_count: z.number(),
+  unmapped_count: z.number(),
+  mappings: z.array(MessageMappingValidationRowSchema),
 });
 
 export const LISOnboardingStepSchema = z.object({
